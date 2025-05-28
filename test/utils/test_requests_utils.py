@@ -97,7 +97,6 @@ class TestRequestWithRetry:
 
                 assert response == success_response
                 assert mock_request.call_count == 2
-                # Verify that sleep was called (indicating retry logic was triggered)
                 mock_sleep.assert_called()
 
     def test_request_with_retry_retries_on_status_code(self):
@@ -129,7 +128,6 @@ class TestRequestWithRetry:
 
                 assert response == success_response
                 assert mock_request.call_count == 2
-                # Verify that sleep was called (indicating retry logic was triggered)
                 mock_sleep.assert_called()
 
 
@@ -213,7 +211,6 @@ class TestAsyncRequestWithRetry:
 
                 assert response == success_response
                 assert mock_request.call_count == 2
-                # Verify that sleep was called (indicating retry logic was triggered)
                 mock_sleep.assert_called()
 
     @pytest.mark.asyncio
@@ -246,5 +243,4 @@ class TestAsyncRequestWithRetry:
 
                 assert response == success_response
                 assert mock_request.call_count == 2
-                # Verify that sleep was called (indicating retry logic was triggered)
                 mock_sleep.assert_called()

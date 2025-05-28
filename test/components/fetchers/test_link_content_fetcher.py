@@ -326,7 +326,6 @@ class TestLinkContentFetcherAsync:
             assert len(streams) == 1
             assert streams[0].data == b"Success"
 
-            # Verify that sleep was called (indicating retry logic was triggered)
             mock_sleep.assert_called_once()
 
     @pytest.mark.asyncio
