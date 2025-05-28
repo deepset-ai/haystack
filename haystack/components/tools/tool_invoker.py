@@ -612,6 +612,7 @@ class ToolInvoker:
                     await streaming_callback(
                         StreamingChunk(
                             content="",
+                            index=len(tool_messages) - 1,
                             tool_call_result=tool_messages[-1].tool_call_results[0],
                             start=True,
                             meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},

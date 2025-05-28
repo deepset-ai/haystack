@@ -103,7 +103,9 @@ def _convert_tools_to_hfapi_tools(
 
 
 def _convert_chat_completion_stream_output_to_streaming_chunk(
-    chunk: "ChatCompletionStreamOutput", component_info: Optional[ComponentInfo] = None
+    chunk: "ChatCompletionStreamOutput",
+    previous_chunks: List[StreamingChunk],
+    component_info: Optional[ComponentInfo] = None,
 ) -> StreamingChunk:
     """
     Converts the Hugging Face API ChatCompletionStreamOutput to a StreamingChunk.
@@ -127,6 +129,8 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
         content=choice.delta.content or "",
         meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "finish_reason": choice.finish_reason},
         component_info=component_info,
+        index=0 if choice.finish_reason is None else None,
+        start=True if len(previous_chunks) == 0 else None,
     )
     return stream_chunk
 
@@ -437,7 +441,7 @@ class HuggingFaceAPIChatGenerator:
         streaming_chunks = []
         for chunk in api_output:
             streaming_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
-                chunk=chunk, component_info=component_info
+                chunk=chunk, previous_chunks=streaming_chunks, component_info=component_info
             )
             streaming_chunks.append(streaming_chunk)
             streaming_callback(streaming_chunk)
@@ -501,7 +505,7 @@ class HuggingFaceAPIChatGenerator:
         streaming_chunks = []
         async for chunk in api_output:
             stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
-                chunk=chunk, component_info=component_info
+                chunk=chunk, previous_chunks=streaming_chunks, component_info=component_info
             )
             streaming_chunks.append(stream_chunk)
             await streaming_callback(stream_chunk)  # type: ignore

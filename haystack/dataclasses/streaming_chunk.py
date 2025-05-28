@@ -20,9 +20,9 @@ class ToolCallDelta:
     :param arguments: Either the full arguments in JSON format or a delta of the arguments.
     """
 
-    id: Optional[str] = None  # noqa: A003
-    tool_name: Optional[str] = None
-    arguments: Optional[str] = None
+    id: Optional[str] = field(default=None)  # noqa: A003
+    tool_name: Optional[str] = field(default=None)
+    arguments: Optional[str] = field(default=None)
 
     def __post_init__(self):
         if self.tool_name is None and self.arguments is None:
@@ -78,11 +78,11 @@ class StreamingChunk:
 
     content: str
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
-    component_info: Optional[ComponentInfo] = field(default=None, hash=False)
-    index: Optional[int] = None
-    tool_call: Optional[ToolCallDelta] = None
-    tool_call_result: Optional[ToolCallResult] = None
-    start: Optional[bool] = None
+    component_info: Optional[ComponentInfo] = field(default=None)
+    index: Optional[int] = field(default=None)
+    tool_call: Optional[ToolCallDelta] = field(default=None)
+    tool_call_result: Optional[ToolCallResult] = field(default=None)
+    start: Optional[bool] = field(default=None)
 
     def __post_init__(self):
         fields_set = sum(bool(x) for x in (self.content, self.tool_call, self.tool_call_result))
@@ -95,7 +95,7 @@ class StreamingChunk:
 
         # NOTE: We don't enforce this for self.content otherwise it would be a breaking change
         if (self.tool_call or self.tool_call_result) and self.index is None:
-            raise ValueError("If `content`, `tool_call`, or `tool_call_result` is set, `index` must also be set.")
+            raise ValueError("If `tool_call`, or `tool_call_result` is set, `index` must also be set.")
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]
