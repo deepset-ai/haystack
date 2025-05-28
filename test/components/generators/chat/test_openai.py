@@ -602,32 +602,18 @@ class TestOpenAIChatGenerator:
         openai_chunks = [
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
-                choices=[
-                    chat_completion_chunk.Choice(
-                        delta=ChoiceDelta(
-                            content=None, function_call=None, refusal=None, role="assistant", tool_calls=None
-                        ),
-                        finish_reason=None,
-                        index=0,
-                        logprobs=None,
-                    )
-                ],
+                choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(role="assistant"), index=0)],
                 created=1747834733,
                 model="gpt-4o-mini-2024-07-18",
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
                 choices=[
                     chat_completion_chunk.Choice(
                         delta=ChoiceDelta(
-                            content=None,
-                            function_call=None,
-                            refusal=None,
-                            role=None,
                             tool_calls=[
                                 ChoiceDeltaToolCall(
                                     index=0,
@@ -635,11 +621,9 @@ class TestOpenAIChatGenerator:
                                     function=ChoiceDeltaToolCallFunction(arguments="", name="weather"),
                                     type="function",
                                 )
-                            ],
+                            ]
                         ),
-                        finish_reason=None,
                         index=0,
-                        logprobs=None,
                     )
                 ],
                 created=1747834733,
@@ -647,29 +631,17 @@ class TestOpenAIChatGenerator:
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
                 choices=[
                     chat_completion_chunk.Choice(
                         delta=ChoiceDelta(
-                            content=None,
-                            function_call=None,
-                            refusal=None,
-                            role=None,
                             tool_calls=[
-                                ChoiceDeltaToolCall(
-                                    index=0,
-                                    id=None,
-                                    function=ChoiceDeltaToolCallFunction(arguments='{"ci', name=None),
-                                    type=None,
-                                )
-                            ],
+                                ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))
+                            ]
                         ),
-                        finish_reason=None,
                         index=0,
-                        logprobs=None,
                     )
                 ],
                 created=1747834733,
@@ -677,29 +649,17 @@ class TestOpenAIChatGenerator:
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
                 choices=[
                     chat_completion_chunk.Choice(
                         delta=ChoiceDelta(
-                            content=None,
-                            function_call=None,
-                            refusal=None,
-                            role=None,
                             tool_calls=[
-                                ChoiceDeltaToolCall(
-                                    index=0,
-                                    id=None,
-                                    function=ChoiceDeltaToolCallFunction(arguments='ty": ', name=None),
-                                    type=None,
-                                )
-                            ],
+                                ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='ty": '))
+                            ]
                         ),
-                        finish_reason=None,
                         index=0,
-                        logprobs=None,
                     )
                 ],
                 created=1747834733,
@@ -707,29 +667,17 @@ class TestOpenAIChatGenerator:
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
                 choices=[
                     chat_completion_chunk.Choice(
                         delta=ChoiceDelta(
-                            content=None,
-                            function_call=None,
-                            refusal=None,
-                            role=None,
                             tool_calls=[
-                                ChoiceDeltaToolCall(
-                                    index=0,
-                                    id=None,
-                                    function=ChoiceDeltaToolCallFunction(arguments='"Paris', name=None),
-                                    type=None,
-                                )
-                            ],
+                                ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"Paris'))
+                            ]
                         ),
-                        finish_reason=None,
                         index=0,
-                        logprobs=None,
                     )
                 ],
                 created=1747834733,
@@ -737,29 +685,17 @@ class TestOpenAIChatGenerator:
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
                 choices=[
                     chat_completion_chunk.Choice(
                         delta=ChoiceDelta(
-                            content=None,
-                            function_call=None,
-                            refusal=None,
-                            role=None,
                             tool_calls=[
-                                ChoiceDeltaToolCall(
-                                    index=0,
-                                    id=None,
-                                    function=ChoiceDeltaToolCallFunction(arguments='"}', name=None),
-                                    type=None,
-                                )
-                            ],
+                                ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"}'))
+                            ]
                         ),
-                        finish_reason=None,
                         index=0,
-                        logprobs=None,
                     )
                 ],
                 created=1747834733,
@@ -767,17 +703,12 @@ class TestOpenAIChatGenerator:
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
                 choices=[
                     chat_completion_chunk.Choice(
                         delta=ChoiceDelta(
-                            content=None,
-                            function_call=None,
-                            refusal=None,
-                            role=None,
                             tool_calls=[
                                 ChoiceDeltaToolCall(
                                     index=1,
@@ -785,11 +716,9 @@ class TestOpenAIChatGenerator:
                                     function=ChoiceDeltaToolCallFunction(arguments="", name="weather"),
                                     type="function",
                                 )
-                            ],
+                            ]
                         ),
-                        finish_reason=None,
                         index=0,
-                        logprobs=None,
                     )
                 ],
                 created=1747834733,
@@ -797,29 +726,17 @@ class TestOpenAIChatGenerator:
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
                 choices=[
                     chat_completion_chunk.Choice(
                         delta=ChoiceDelta(
-                            content=None,
-                            function_call=None,
-                            refusal=None,
-                            role=None,
                             tool_calls=[
-                                ChoiceDeltaToolCall(
-                                    index=1,
-                                    id=None,
-                                    function=ChoiceDeltaToolCallFunction(arguments='{"ci', name=None),
-                                    type=None,
-                                )
-                            ],
+                                ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))
+                            ]
                         ),
-                        finish_reason=None,
                         index=0,
-                        logprobs=None,
                     )
                 ],
                 created=1747834733,
@@ -827,29 +744,17 @@ class TestOpenAIChatGenerator:
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
                 choices=[
                     chat_completion_chunk.Choice(
                         delta=ChoiceDelta(
-                            content=None,
-                            function_call=None,
-                            refusal=None,
-                            role=None,
                             tool_calls=[
-                                ChoiceDeltaToolCall(
-                                    index=1,
-                                    id=None,
-                                    function=ChoiceDeltaToolCallFunction(arguments='ty": ', name=None),
-                                    type=None,
-                                )
-                            ],
+                                ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='ty": '))
+                            ]
                         ),
-                        finish_reason=None,
                         index=0,
-                        logprobs=None,
                     )
                 ],
                 created=1747834733,
@@ -857,29 +762,17 @@ class TestOpenAIChatGenerator:
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
                 choices=[
                     chat_completion_chunk.Choice(
                         delta=ChoiceDelta(
-                            content=None,
-                            function_call=None,
-                            refusal=None,
-                            role=None,
                             tool_calls=[
-                                ChoiceDeltaToolCall(
-                                    index=1,
-                                    id=None,
-                                    function=ChoiceDeltaToolCallFunction(arguments='"Berli', name=None),
-                                    type=None,
-                                )
-                            ],
+                                ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='"Berli'))
+                            ]
                         ),
-                        finish_reason=None,
                         index=0,
-                        logprobs=None,
                     )
                 ],
                 created=1747834733,
@@ -887,29 +780,17 @@ class TestOpenAIChatGenerator:
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
                 choices=[
                     chat_completion_chunk.Choice(
                         delta=ChoiceDelta(
-                            content=None,
-                            function_call=None,
-                            refusal=None,
-                            role=None,
                             tool_calls=[
-                                ChoiceDeltaToolCall(
-                                    index=1,
-                                    id=None,
-                                    function=ChoiceDeltaToolCallFunction(arguments='n"}', name=None),
-                                    type=None,
-                                )
-                            ],
+                                ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='n"}'))
+                            ]
                         ),
-                        finish_reason=None,
                         index=0,
-                        logprobs=None,
                     )
                 ],
                 created=1747834733,
@@ -917,24 +798,15 @@ class TestOpenAIChatGenerator:
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
-                choices=[
-                    chat_completion_chunk.Choice(
-                        delta=ChoiceDelta(content=None, function_call=None, refusal=None, role=None, tool_calls=None),
-                        finish_reason="tool_calls",
-                        index=0,
-                        logprobs=None,
-                    )
-                ],
+                choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(), finish_reason="tool_calls", index=0)],
                 created=1747834733,
                 model="gpt-4o-mini-2024-07-18",
                 object="chat.completion.chunk",
                 service_tier="default",
                 system_fingerprint="fp_54eb4bd693",
-                usage=None,
             ),
             ChatCompletionChunk(
                 id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
