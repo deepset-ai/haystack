@@ -438,7 +438,7 @@ class HuggingFaceAPIChatGenerator:
         )
 
         component_info = ComponentInfo.from_component(self)
-        streaming_chunks = []
+        streaming_chunks: List[StreamingChunk] = []
         for chunk in api_output:
             streaming_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
                 chunk=chunk, previous_chunks=streaming_chunks, component_info=component_info
@@ -502,7 +502,7 @@ class HuggingFaceAPIChatGenerator:
         )
 
         component_info = ComponentInfo.from_component(self)
-        streaming_chunks = []
+        streaming_chunks: List[StreamingChunk] = []
         async for chunk in api_output:
             stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
                 chunk=chunk, previous_chunks=streaming_chunks, component_info=component_info
