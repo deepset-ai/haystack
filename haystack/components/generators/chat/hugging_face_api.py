@@ -7,7 +7,8 @@ from datetime import datetime
 from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, select_streaming_callback
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
@@ -99,6 +100,35 @@ def _convert_tools_to_hfapi_tools(
         )
 
     return hf_tools
+
+
+def _convert_chat_completion_stream_output_to_streaming_chunk(
+    chunk: "ChatCompletionStreamOutput", component_info: Optional[ComponentInfo] = None
+) -> StreamingChunk:
+    """
+    Converts the Hugging Face API ChatCompletionStreamOutput to a StreamingChunk.
+    """
+    # Choices is empty if include_usage is set to True where the usage information is returned.
+    if len(chunk.choices) == 0:
+        usage = None
+        if chunk.usage:
+            usage = {"prompt_tokens": chunk.usage.prompt_tokens, "completion_tokens": chunk.usage.completion_tokens}
+        return StreamingChunk(
+            content="",
+            meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "usage": usage},
+            component_info=component_info,
+        )
+
+    # n is unused, so the API always returns only one choice
+    # the argument is probably allowed for compatibility with OpenAI
+    # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
+    choice = chunk.choices[0]
+    stream_chunk = StreamingChunk(
+        content=choice.delta.content or "",
+        meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "finish_reason": choice.finish_reason},
+        component_info=component_info,
+    )
+    return stream_chunk
 
 
 @component
@@ -403,51 +433,19 @@ class HuggingFaceAPIChatGenerator:
             **generation_kwargs,
         )
 
-        generated_text = ""
-        first_chunk_time = None
-        finish_reason = None
-        usage = None
-        meta: Dict[str, Any] = {}
-
+        component_info = ComponentInfo.from_component(self)
+        streaming_chunks = []
         for chunk in api_output:
-            # The chunk with usage returns an empty array for choices
-            if len(chunk.choices) > 0:
-                # n is unused, so the API always returns only one choice
-                # the argument is probably allowed for compatibility with OpenAI
-                # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
-                choice = chunk.choices[0]
+            streaming_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
+                chunk=chunk, component_info=component_info
+            )
+            streaming_chunks.append(streaming_chunk)
+            streaming_callback(streaming_chunk)
 
-                text = choice.delta.content or ""
-                generated_text += text
+        message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
+        if message.meta.get("usage") is None:
+            message.meta["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
 
-                if choice.finish_reason:
-                    finish_reason = choice.finish_reason
-
-                stream_chunk = StreamingChunk(text, meta)
-                streaming_callback(stream_chunk)
-
-            if chunk.usage:
-                usage = chunk.usage
-
-            if first_chunk_time is None:
-                first_chunk_time = datetime.now().isoformat()
-
-        if usage:
-            usage_dict = {"prompt_tokens": usage.prompt_tokens, "completion_tokens": usage.completion_tokens}
-        else:
-            usage_dict = {"prompt_tokens": 0, "completion_tokens": 0}
-
-        meta.update(
-            {
-                "model": self._client.model,
-                "index": 0,
-                "finish_reason": finish_reason,
-                "usage": usage_dict,
-                "completion_start_time": first_chunk_time,
-            }
-        )
-
-        message = ChatMessage.from_assistant(text=generated_text, meta=meta)
         return {"replies": [message]}
 
     def _run_non_streaming(
@@ -499,51 +497,19 @@ class HuggingFaceAPIChatGenerator:
             **generation_kwargs,
         )
 
-        generated_text = ""
-        first_chunk_time = None
-        finish_reason = None
-        usage = None
-        meta: Dict[str, Any] = {}
-
+        component_info = ComponentInfo.from_component(self)
+        streaming_chunks = []
         async for chunk in api_output:
-            # The chunk with usage returns an empty array for choices
-            if len(chunk.choices) > 0:
-                # n is unused, so the API always returns only one choice
-                # the argument is probably allowed for compatibility with OpenAI
-                # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
-                choice = chunk.choices[0]
+            stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
+                chunk=chunk, component_info=component_info
+            )
+            streaming_chunks.append(stream_chunk)
+            await streaming_callback(stream_chunk)  # type: ignore
 
-                text = choice.delta.content or ""
-                generated_text += text
+        message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
+        if message.meta.get("usage") is None:
+            message.meta["usage"] = {"prompt_tokens": 0, "completion_tokens": 0}
 
-                if choice.finish_reason:
-                    finish_reason = choice.finish_reason
-
-                stream_chunk = StreamingChunk(text, meta)
-                await streaming_callback(stream_chunk)  # type: ignore
-
-            if chunk.usage:
-                usage = chunk.usage
-
-            if first_chunk_time is None:
-                first_chunk_time = datetime.now().isoformat()
-
-        if usage:
-            usage_dict = {"prompt_tokens": usage.prompt_tokens, "completion_tokens": usage.completion_tokens}
-        else:
-            usage_dict = {"prompt_tokens": 0, "completion_tokens": 0}
-
-        meta.update(
-            {
-                "model": self._async_client.model,
-                "index": 0,
-                "finish_reason": finish_reason,
-                "usage": usage_dict,
-                "completion_start_time": first_chunk_time,
-            }
-        )
-
-        message = ChatMessage.from_assistant(text=generated_text, meta=meta)
         return {"replies": [message]}
 
     async def _run_non_streaming_async(
