@@ -5,7 +5,7 @@
 from typing import Any, Dict, List, Literal, Optional, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import StreamingCallbackT, select_streaming_callback
+from haystack.dataclasses import ComponentInfo, StreamingCallbackT, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.utils import (
     ComponentDevice,
@@ -256,9 +256,10 @@ class HuggingFaceLocalGenerator:
                 updated_generation_kwargs["num_return_sequences"] = 1
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             updated_generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                self.pipeline.tokenizer,  # type: ignore
-                streaming_callback,
-                self.stop_words,  # type: ignore
+                tokenizer=self.pipeline.tokenizer,  # type: ignore
+                stream_handler=streaming_callback,
+                stop_words=self.stop_words,  # type: ignore
+                component_info=ComponentInfo.from_component(self),
             )
 
         output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **updated_generation_kwargs)  # type: ignore

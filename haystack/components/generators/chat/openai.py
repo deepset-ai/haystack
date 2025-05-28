@@ -13,6 +13,7 @@ from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -460,69 +461,6 @@ def _check_finish_reason(meta: Dict[str, Any]) -> None:
             index=meta["index"],
             finish_reason=meta["finish_reason"],
         )
-
-
-def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> ChatMessage:
-    """
-    Connects the streaming chunks into a single ChatMessage.
-
-    :param chunks: The list of all `StreamingChunk` objects.
-
-    :returns: The ChatMessage.
-    """
-    text = "".join([chunk.content for chunk in chunks])
-    tool_calls = []
-
-    # Process tool calls if present in any chunk
-    tool_call_data: Dict[str, Dict[str, str]] = {}  # Track tool calls by index
-    for chunk_payload in chunks:
-        tool_calls_meta = chunk_payload.meta.get("tool_calls")
-        if tool_calls_meta is not None:
-            for delta in tool_calls_meta:
-                # We use the index of the tool call to track it across chunks since the ID is not always provided
-                if delta.index not in tool_call_data:
-                    tool_call_data[delta.index] = {"id": "", "name": "", "arguments": ""}
-
-                # Save the ID if present
-                if delta.id is not None:
-                    tool_call_data[delta.index]["id"] = delta.id
-
-                if delta.function is not None:
-                    if delta.function.name is not None:
-                        tool_call_data[delta.index]["name"] += delta.function.name
-                    if delta.function.arguments is not None:
-                        tool_call_data[delta.index]["arguments"] += delta.function.arguments
-
-    # Convert accumulated tool call data into ToolCall objects
-    for call_data in tool_call_data.values():
-        try:
-            arguments = json.loads(call_data["arguments"])
-            tool_calls.append(ToolCall(id=call_data["id"], tool_name=call_data["name"], arguments=arguments))
-        except json.JSONDecodeError:
-            logger.warning(
-                "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
-                "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
-                "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                _id=call_data["id"],
-                _name=call_data["name"],
-                _arguments=call_data["arguments"],
-            )
-
-    # finish_reason can appear in different places so we look for the last one
-    finish_reasons = [
-        chunk.meta.get("finish_reason") for chunk in chunks if chunk.meta.get("finish_reason") is not None
-    ]
-    finish_reason = finish_reasons[-1] if finish_reasons else None
-
-    meta = {
-        "model": chunks[-1].meta.get("model"),
-        "index": 0,
-        "finish_reason": finish_reason,
-        "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
-        "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
-    }
-
-    return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
 
 
 def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice: Choice) -> ChatMessage:

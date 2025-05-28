@@ -13,8 +13,8 @@ from haystack.components.generators.chat.openai import (
     _check_finish_reason,
     _convert_chat_completion_chunk_to_streaming_chunk,
     _convert_chat_completion_to_chat_message,
-    _convert_streaming_chunks_to_chat_message,
 )
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
 from haystack.dataclasses import (
     ChatMessage,
     ComponentInfo,

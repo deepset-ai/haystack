@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses import StreamingCallbackT, StreamingChunk, select_streaming_callback
+from haystack.dataclasses import ComponentInfo, StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model
@@ -220,6 +220,7 @@ class HuggingFaceAPIGenerator:
         chunks: List[StreamingChunk] = []
         first_chunk_time = None
 
+        component_info = ComponentInfo.from_component(self)
         for chunk in hf_output:
             token: TextGenerationStreamOutputToken = chunk.token
             if token.special:
@@ -230,7 +231,7 @@ class HuggingFaceAPIGenerator:
                 first_chunk_time = datetime.now().isoformat()
 
             # TODO Consider adding start
-            stream_chunk = StreamingChunk(content=token.text, meta=chunk_metadata)
+            stream_chunk = StreamingChunk(content=token.text, meta=chunk_metadata, component_info=component_info)
             chunks.append(stream_chunk)
             streaming_callback(stream_chunk)
 

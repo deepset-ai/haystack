@@ -21,14 +21,13 @@ from openai.types.chat import chat_completion_chunk
 
 from haystack import component
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import StreamingChunk, ComponentInfo
+from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
 from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
     _check_finish_reason,
-    _convert_streaming_chunks_to_chat_message,
     _convert_chat_completion_chunk_to_streaming_chunk,
 )
 from haystack.tools.toolset import Toolset

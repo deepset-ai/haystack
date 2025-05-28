@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.chat.openai import _convert_streaming_chunks_to_chat_message
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
 from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingChunk, ToolCall, select_streaming_callback
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.lazy_imports import LazyImport
@@ -100,6 +100,35 @@ def _convert_tools_to_hfapi_tools(
         )
 
     return hf_tools
+
+
+def _convert_chat_completion_stream_output_to_streaming_chunk(
+    chunk: "ChatCompletionStreamOutput", component_info: Optional[ComponentInfo] = None
+) -> StreamingChunk:
+    """
+    Converts the Hugging Face API ChatCompletionStreamOutput to a StreamingChunk.
+    """
+    # Choices is empty if include_usage is set to True where the usage information is returned.
+    if len(chunk.choices) == 0:
+        usage = None
+        if chunk.usage:
+            usage = {"prompt_tokens": chunk.usage.prompt_tokens, "completion_tokens": chunk.usage.completion_tokens}
+        return StreamingChunk(
+            content="",
+            meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "usage": usage},
+            component_info=component_info,
+        )
+
+    # n is unused, so the API always returns only one choice
+    # the argument is probably allowed for compatibility with OpenAI
+    # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
+    choice = chunk.choices[0]
+    stream_chunk = StreamingChunk(
+        content=choice.delta.content or "",
+        meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "finish_reason": choice.finish_reason},
+        component_info=component_info,
+    )
+    return stream_chunk
 
 
 @component
@@ -394,45 +423,6 @@ class HuggingFaceAPIChatGenerator:
 
         return await self._run_non_streaming_async(formatted_messages, generation_kwargs, hf_tools)
 
-    def _convert_chat_completion_stream_output_to_streaming_chunk(
-        self, chunk: ChatCompletionStreamOutput, previous_chunks: List[StreamingChunk]
-    ):
-        """
-        Converts the Hugging Face API ChatCompletionStreamOutput to a StreamingChunk.
-
-        This method is not used in the current implementation but can be useful for future enhancements.
-        """
-        # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
-        # It is also empty if include_usage is set to True where the usage information is returned.
-        if len(chunk.choices) == 0:
-            usage = None
-            if chunk.usage:
-                usage = {"prompt_tokens": chunk.usage.prompt_tokens, "completion_tokens": chunk.usage.completion_tokens}
-            return StreamingChunk(
-                content="",
-                # Index is None since it's only set to an int when a content block is present
-                index=None,
-                meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "usage": usage},
-            )
-
-        # n is unused, so the API always returns only one choice
-        # the argument is probably allowed for compatibility with OpenAI
-        # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
-        choice = chunk.choices[0]
-        stream_chunk = StreamingChunk(
-            content=choice.delta.content or "",
-            # We set the index to be 0 since the Hugging Face API does not support multiple choices in streaming
-            index=0,
-            # TODO Correctly evaluate start
-            start=None,
-            meta={
-                "model": chunk.model,
-                "received_at": datetime.now().isoformat(),
-                "finish_reason": choice.finish_reason,
-            },
-        )
-        return stream_chunk
-
     def _run_streaming(
         self, messages: List[Dict[str, str]], generation_kwargs: Dict[str, Any], streaming_callback: StreamingCallbackT
     ):
@@ -443,10 +433,11 @@ class HuggingFaceAPIChatGenerator:
             **generation_kwargs,
         )
 
+        component_info = ComponentInfo.from_component(self)
         streaming_chunks = []
         for chunk in api_output:
-            streaming_chunk = self._convert_chat_completion_stream_output_to_streaming_chunk(
-                chunk=chunk, previous_chunks=[]
+            streaming_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
+                chunk=chunk, component_info=component_info
             )
             streaming_chunks.append(streaming_chunk)
             streaming_callback(streaming_chunk)
@@ -506,10 +497,11 @@ class HuggingFaceAPIChatGenerator:
             **generation_kwargs,
         )
 
+        component_info = ComponentInfo.from_component(self)
         streaming_chunks = []
         async for chunk in api_output:
-            stream_chunk = self._convert_chat_completion_stream_output_to_streaming_chunk(
-                chunk=chunk, previous_chunks=[]
+            stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
+                chunk=chunk, component_info=component_info
             )
             streaming_chunks.append(stream_chunk)
             await streaming_callback(stream_chunk)  # type: ignore
