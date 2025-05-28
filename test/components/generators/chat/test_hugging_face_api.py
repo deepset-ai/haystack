@@ -685,6 +685,8 @@ class TestHuggingFaceAPIChatGenerator:
                         "model": "microsoft/Phi-3.5-mini-instruct",
                         "finish_reason": None,
                     },
+                    index=0,
+                    start=True,
                 ),
             ),
             (

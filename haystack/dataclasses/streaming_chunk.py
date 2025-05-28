@@ -93,7 +93,8 @@ class StreamingChunk:
                 f"tool_call_result: '{self.tool_call_result}'"
             )
 
-        if (self.content or self.tool_call or self.tool_call_result) and self.index is None:
+        # NOTE: We don't enforce this for self.content otherwise it would be a breaking change
+        if (self.tool_call or self.tool_call_result) and self.index is None:
             raise ValueError("If `content`, `tool_call`, or `tool_call_result` is set, `index` must also be set.")
 
 
