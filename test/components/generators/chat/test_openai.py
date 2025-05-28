@@ -847,6 +847,18 @@ class TestOpenAIChatGenerator:
         assert result.meta["finish_reason"] == "tool_calls"
         assert result.meta["index"] == 0
         assert result.meta["completion_start_time"] is not None
+        assert result.meta["usage"] == {
+            "completion_tokens": 42,
+            "prompt_tokens": 282,
+            "total_tokens": 324,
+            "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0,
+            },
+            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
+        }
 
     def test_convert_usage_chunk_to_streaming_chunk(self):
         chunk = ChatCompletionChunk(

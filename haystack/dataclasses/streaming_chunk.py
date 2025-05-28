@@ -93,6 +93,9 @@ class StreamingChunk:
                 f"tool_call_result: '{self.tool_call_result}'"
             )
 
+        if (self.content or self.tool_call or self.tool_call_result) and self.index is None:
+            raise ValueError("If `content`, `tool_call`, or `tool_call_result` is set, `index` must also be set.")
+
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]
 AsyncStreamingCallbackT = Callable[[StreamingChunk], Awaitable[None]]
