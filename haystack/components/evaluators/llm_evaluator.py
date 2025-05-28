@@ -13,7 +13,7 @@ from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
-from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
+from haystack.utils import deserialize_component_inplace, deserialize_type, serialize_type
 
 logger = logging.getLogger(__name__)
 
@@ -303,7 +303,7 @@ class LLMEvaluator:
         ]
 
         if data["init_parameters"].get("chat_generator"):
-            deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
+            deserialize_component_inplace(data["init_parameters"], key="chat_generator")
 
         return default_from_dict(cls, data)
 

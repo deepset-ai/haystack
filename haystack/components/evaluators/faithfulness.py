@@ -10,7 +10,7 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
-from haystack.utils import deserialize_chatgenerator_inplace
+from haystack.utils import deserialize_component_inplace
 
 # Default examples to include in the prompt if the user does not provide any examples
 _DEFAULT_EXAMPLES = [
@@ -205,5 +205,5 @@ class FaithfulnessEvaluator(LLMEvaluator):
             The deserialized component instance.
         """
         if data["init_parameters"].get("chat_generator"):
-            deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
+            deserialize_component_inplace(data["init_parameters"], key="chat_generator")
         return default_from_dict(cls, data)

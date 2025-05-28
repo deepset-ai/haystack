@@ -16,7 +16,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
-from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range
+from haystack.utils import deserialize_component_inplace, expand_page_range
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +201,7 @@ class LLMMetadataExtractor:
             An instance of the component.
         """
 
-        deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
+        deserialize_component_inplace(data["init_parameters"], key="chat_generator")
         return default_from_dict(cls, data)
 
     def _extract_metadata(self, llm_answer: str) -> Dict[str, Any]:
