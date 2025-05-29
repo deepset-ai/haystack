@@ -665,3 +665,37 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
         assert response["replies"][0].text == "Hello world"
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.asyncio
+    async def test_live_run_async_with_streaming(self, monkeypatch):
+        """Test async streaming with a live model."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+
+        streaming_chunks = []
+        streaming_complete = asyncio.Event()
+
+        async def streaming_callback(chunk: StreamingChunk) -> None:
+            streaming_chunks.append(chunk)
+            if chunk.content.endswith("\n"):
+                streaming_complete.set()
+
+        messages = [ChatMessage.from_user("Please create a summary about the following topic: Climate change")]
+
+        llm = HuggingFaceLocalChatGenerator(
+            model="Qwen/Qwen2.5-0.5B-Instruct",
+            generation_kwargs={"max_new_tokens": 50},
+            streaming_callback=streaming_callback,
+        )
+        llm.warm_up()
+
+        response = await llm.run_async(messages=messages)
+
+        await streaming_complete.wait()
+
+        assert len(streaming_chunks) > 0
+        assert "replies" in response
+        assert isinstance(response["replies"][0], ChatMessage)
+        assert "climate change" in response["replies"][0].text.lower()
