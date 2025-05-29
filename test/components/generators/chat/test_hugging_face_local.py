@@ -47,13 +47,14 @@ def model_info_mock():
 
 
 @pytest.fixture
-def mock_pipeline_tokenizer():
+def mock_pipeline_with_tokenizer():
     # Mocking the pipeline
     mock_pipeline = Mock(return_value=[{"generated_text": "Berlin is cool"}])
 
     # Mocking the tokenizer
     mock_tokenizer = Mock(spec=PreTrainedTokenizer)
     mock_tokenizer.encode.return_value = ["Berlin", "is", "cool"]
+    mock_tokenizer.apply_chat_template.return_value = "Berlin is cool"
     mock_tokenizer.pad_token_id = 100
     mock_pipeline.tokenizer = mock_tokenizer
 
@@ -249,11 +250,11 @@ class TestHuggingFaceLocalChatGenerator:
             model="mistralai/Mistral-7B-Instruct-v0.2", task="text2text-generation", token=None, device="cpu"
         )
 
-    def test_run(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
+    def test_run(self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages):
         generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
 
         # Use the mocked pipeline from the fixture and simulate warm_up
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
 
         results = generator.run(messages=chat_messages)
 
@@ -263,16 +264,16 @@ class TestHuggingFaceLocalChatGenerator:
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
 
-    def test_run_with_custom_generation_parameters(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
+    def test_run_with_custom_generation_parameters(self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages):
         generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
 
         # Use the mocked pipeline from the fixture and simulate warm_up
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
 
         generation_kwargs = {"temperature": 0.8, "max_new_tokens": 100}
 
         # Use the mocked pipeline from the fixture and simulate warm_up
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
         results = generator.run(messages=chat_messages, generation_kwargs=generation_kwargs)
 
         # check kwargs passed pipeline
@@ -287,7 +288,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
 
-    def test_run_with_streaming_callback(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
+    def test_run_with_streaming_callback(self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages):
         # Define the streaming callback function
         def streaming_callback_fn(chunk: StreamingChunk): ...
 
@@ -296,7 +297,7 @@ class TestHuggingFaceLocalChatGenerator:
         )
 
         # Use the mocked pipeline from the fixture and simulate warm_up
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
 
         results = generator.run(messages=chat_messages)
 
@@ -308,14 +309,16 @@ class TestHuggingFaceLocalChatGenerator:
         generator.pipeline.assert_called_once()
         generator.pipeline.call_args[1]["streamer"].token_handler == streaming_callback_fn
 
-    def test_run_with_streaming_callback_in_run_method(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
+    def test_run_with_streaming_callback_in_run_method(
+        self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages
+    ):
         # Define the streaming callback function
         def streaming_callback_fn(chunk: StreamingChunk): ...
 
         generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
 
         # Use the mocked pipeline from the fixture and simulate warm_up
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
 
         results = generator.run(messages=chat_messages, streaming_callback=streaming_callback_fn)
 
@@ -447,15 +450,12 @@ class TestHuggingFaceLocalChatGenerator:
         assert "22°C" in message.text
         assert message.meta["finish_reason"] == "stop"
 
-    def test_run_with_custom_tool_parser(self, model_info_mock, tools):
+    def test_run_with_custom_tool_parser(self, model_info_mock, mock_pipeline_with_tokenizer, tools):
         """Test that a custom tool parsing function works correctly."""
         generator = HuggingFaceLocalChatGenerator(
             model="meta-llama/Llama-2-13b-chat-hf", tools=tools, tool_parsing_function=custom_tool_parser
         )
-        generator.pipeline = Mock(return_value=[{"mocked_response": "Mocked response, we don't use it"}])
-        generator.pipeline.tokenizer = Mock()
-        generator.pipeline.tokenizer.encode.return_value = [1, 2, 3]
-        generator.pipeline.tokenizer.pad_token_id = 1
+        generator.pipeline = mock_pipeline_with_tokenizer
 
         messages = [ChatMessage.from_user("What's the weather like in Berlin?")]
         results = generator.run(messages=messages)
@@ -474,6 +474,7 @@ class TestHuggingFaceLocalChatGenerator:
         generator.pipeline.tokenizer = Mock()
         generator.pipeline.tokenizer.encode.return_value = [1, 2, 3]
         generator.pipeline.tokenizer.pad_token_id = 1
+        generator.pipeline.tokenizer.apply_chat_template.return_value = "Irrelevant"
 
         messages = [ChatMessage.from_user("What's the weather like in Berlin?")]
         results = generator.run(messages=messages)
@@ -493,7 +494,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
     async def test_run_async(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
         """Test basic async functionality"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model")
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
 
         results = await generator.run_async(messages=chat_messages)
 
@@ -504,10 +505,10 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert chat_message.text == "Berlin is cool"
 
     @pytest.mark.asyncio
-    async def test_run_async_with_tools(self, model_info_mock, mock_pipeline_tokenizer, tools):
+    async def test_run_async_with_tools(self, model_info_mock, mock_pipeline_with_tokenizer, tools):
         """Test async functionality with tools"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model", tools=tools)
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
         # Mock the pipeline to return a tool call format
         generator.pipeline.return_value = [{"generated_text": '{"name": "weather", "arguments": {"city": "Berlin"}}'}]
 
@@ -523,10 +524,10 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert tool_call.arguments == {"city": "Berlin"}
 
     @pytest.mark.asyncio
-    async def test_concurrent_async_requests(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
+    async def test_concurrent_async_requests(self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages):
         """Test handling of multiple concurrent async requests"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model")
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
 
         # Create multiple concurrent requests
         tasks = [generator.run_async(messages=chat_messages) for _ in range(5)]
@@ -538,7 +539,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
             assert result["replies"][0].text == "Berlin is cool"
 
     @pytest.mark.asyncio
-    async def test_async_error_handling(self, model_info_mock, mock_pipeline_tokenizer):
+    async def test_async_error_handling(self, model_info_mock, mock_pipeline_with_tokenizer):
         """Test error handling in async context"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model")
 
@@ -547,7 +548,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
             await generator.run_async(messages=[ChatMessage.from_user("test")])
 
         # Test with invalid streaming callback
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
         with pytest.raises(ValueError, match="Using tools and streaming at the same time is not supported"):
             await generator.run_async(
                 messages=[ChatMessage.from_user("test")],
@@ -555,7 +556,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
                 tools=[Tool(name="test", description="test", parameters={}, function=lambda: None)],
             )
 
-    def test_executor_shutdown(self, model_info_mock, mock_pipeline_tokenizer):
+    def test_executor_shutdown(self, model_info_mock, mock_pipeline_with_tokenizer):
         with patch("haystack.components.generators.chat.hugging_face_local.pipeline") as mock_pipeline:
             generator = HuggingFaceLocalChatGenerator(model="mocked-model")
             executor = generator.executor
@@ -565,12 +566,12 @@ class TestHuggingFaceLocalChatGeneratorAsync:
                 mock_shutdown.assert_called_once_with(wait=True)
 
     def test_hugging_face_local_generator_with_toolset_initialization(
-        self, model_info_mock, mock_pipeline_tokenizer, tools
+        self, model_info_mock, mock_pipeline_with_tokenizer, tools
     ):
         """Test that the HuggingFaceLocalChatGenerator can be initialized with a Toolset."""
         toolset = Toolset(tools)
         generator = HuggingFaceLocalChatGenerator(model="irrelevant", tools=toolset)
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
         assert generator.tools == toolset
 
     def test_from_dict_with_toolset(self, model_info_mock, tools):
@@ -585,11 +586,11 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert len(deserialized_component.tools) == len(tools)
         assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
 
-    def test_to_dict_with_toolset(self, model_info_mock, mock_pipeline_tokenizer, tools):
+    def test_to_dict_with_toolset(self, model_info_mock, mock_pipeline_with_tokenizer, tools):
         """Test that the HuggingFaceLocalChatGenerator can be serialized to a dictionary with a Toolset."""
         toolset = Toolset(tools)
         generator = HuggingFaceLocalChatGenerator(huggingface_pipeline_kwargs={"model": "irrelevant"}, tools=toolset)
-        generator.pipeline = mock_pipeline_tokenizer
+        generator.pipeline = mock_pipeline_with_tokenizer
         data = generator.to_dict()
 
         expected_tools_data = {

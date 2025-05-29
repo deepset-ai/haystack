@@ -14,7 +14,7 @@ import pytest
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 
-from haystack import Pipeline, component
+from haystack import Pipeline, component, SuperComponent
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
@@ -28,6 +28,21 @@ from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT
 
 
 # Component and Model Definitions
+
+
+@component
+class SimpleComponentUsingChatMessages:
+    """A simple component that generates text."""
+
+    @component.output_types(reply=str)
+    def run(self, messages: List[ChatMessage]) -> Dict[str, str]:
+        """
+        A simple component that generates text.
+
+        :param messages: Users messages
+        :return: A dictionary with the generated text.
+        """
+        return {"reply": f"Hello, {messages[0].text}!"}
 
 
 @component
@@ -305,6 +320,13 @@ class TestComponentTool:
 
         with pytest.raises(ValueError):
             ComponentTool(component=not_a_component, name="invalid_tool", description="This should fail")
+
+    def test_component_invoker_with_chat_message_input(self):
+        tool = ComponentTool(
+            component=SimpleComponentUsingChatMessages(), name="simple_tool", description="A simple tool"
+        )
+        result = tool.invoke(messages=[ChatMessage.from_user(text="world")])
+        assert result == {"reply": "Hello, world!"}
 
 
 # Integration tests
@@ -639,3 +661,108 @@ class TestToolComponentInPipelineWithOpenAI:
             result = pipeline.run({"llm": {"messages": [ChatMessage.from_user(text="Hello")], "tools": [tool]}})
 
         assert result["llm"]["replies"][0].text == "A response from the model"
+
+    def test_component_tool_with_super_component_docstrings(self, monkeypatch):
+        """Test that ComponentTool preserves docstrings from underlying pipeline components in SuperComponents."""
+
+        @component
+        class AnnotatedComponent:
+            """An annotated component with descriptive parameter docstrings."""
+
+            @component.output_types(result=str)
+            def run(self, text: str, number: int = 42):
+                """Process inputs and return result.
+                :param text: A detailed description of the text parameter that should be preserved
+                :param number: A detailed description of the number parameter that should be preserved
+                """
+                return {"result": f"Processed: {text} and {number}"}
+
+        # Create a pipeline with the annotated component
+        pipeline = Pipeline()
+        pipeline.add_component("processor", AnnotatedComponent())
+        # Create SuperComponent with mapping
+        super_comp = SuperComponent(
+            pipeline=pipeline,
+            input_mapping={"input_text": ["processor.text"], "input_number": ["processor.number"]},
+            output_mapping={"processor.result": "processed_result"},
+        )
+
+        # Create ComponentTool from SuperComponent
+        tool = ComponentTool(component=super_comp, name="text_processor")
+
+        # Verify that schema includes the docstrings from the original component
+        assert tool.parameters == {
+            "type": "object",
+            "description": "A component that combines: 'processor': Process inputs and return result.",
+            "properties": {
+                "input_text": {
+                    "type": "string",
+                    "description": "Provided to the 'processor' component as: 'A detailed description of the text parameter that should be preserved'.",
+                },
+                "input_number": {
+                    "type": "integer",
+                    "description": "Provided to the 'processor' component as: 'A detailed description of the number parameter that should be preserved'.",
+                },
+            },
+            "required": ["input_text"],
+        }
+
+        # Test the tool functionality works
+        result = tool.invoke(input_text="Hello", input_number=42)
+        assert result["processed_result"] == "Processed: Hello and 42"
+
+    def test_component_tool_with_multiple_mapped_docstrings(self):
+        """Test that ComponentTool combines docstrings from multiple components when a single input maps to multiple components."""
+
+        @component
+        class ComponentA:
+            """Component A with descriptive docstrings."""
+
+            @component.output_types(output_a=str)
+            def run(self, query: str):
+                """Process query in component A.
+                :param query: The query string for component A
+                """
+                return {"output_a": f"A processed: {query}"}
+
+        @component
+        class ComponentB:
+            """Component B with descriptive docstrings."""
+
+            @component.output_types(output_b=str)
+            def run(self, text: str):
+                """Process text in component B.
+                :param text: Text to process in component B
+                """
+                return {"output_b": f"B processed: {text}"}
+
+        # Create a pipeline with both components
+        pipeline = Pipeline()
+        pipeline.add_component("comp_a", ComponentA())
+        pipeline.add_component("comp_b", ComponentB())
+
+        # Create SuperComponent with a single input mapped to both components
+        super_comp = SuperComponent(
+            pipeline=pipeline, input_mapping={"combined_input": ["comp_a.query", "comp_b.text"]}
+        )
+
+        # Create ComponentTool from SuperComponent
+        tool = ComponentTool(component=super_comp, name="combined_processor")
+
+        # Verify that schema includes combined docstrings from both components
+        assert tool.parameters == {
+            "type": "object",
+            "description": "A component that combines: 'comp_a': Process query in component A., 'comp_b': Process text in component B.",
+            "properties": {
+                "combined_input": {
+                    "type": "string",
+                    "description": "Provided to the 'comp_a' component as: 'The query string for component A', and Provided to the 'comp_b' component as: 'Text to process in component B'.",
+                }
+            },
+            "required": ["combined_input"],
+        }
+
+        # Test the tool functionality works
+        result = tool.invoke(combined_input="test input")
+        assert result["output_a"] == "A processed: test input"
+        assert result["output_b"] == "B processed: test input"

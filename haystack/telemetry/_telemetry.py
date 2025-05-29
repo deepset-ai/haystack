@@ -61,7 +61,7 @@ class Telemetry:
             logging.getLogger(module_name).addHandler(logging.NullHandler())
             logging.getLogger(module_name).propagate = False
 
-        self.user_id = None
+        self.user_id = ""
 
         if CONFIG_PATH.exists():
             # Load the config file
@@ -96,7 +96,7 @@ class Telemetry:
 
         self.event_properties = collect_system_specs()
 
-    def send_event(self, event_name: str, event_properties: Optional[Dict[str, Any]] = None):
+    def send_event(self, event_name: str, event_properties: Optional[Dict[str, Any]] = None) -> None:
         """
         Sends a telemetry event.
 

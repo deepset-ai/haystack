@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import os
 
 import pytest
@@ -86,6 +87,8 @@ class TestOpenAITextEmbedder:
                 "http_client_kwargs": None,
                 "prefix": "",
                 "suffix": "",
+                "timeout": None,
+                "max_retries": None,
             },
         }
 
@@ -98,6 +101,8 @@ class TestOpenAITextEmbedder:
             organization="fake-organization",
             prefix="prefix",
             suffix="suffix",
+            timeout=10.0,
+            max_retries=2,
             http_client_kwargs={"proxy": "http://localhost:8080"},
         )
         data = component.to_dict()
@@ -112,6 +117,8 @@ class TestOpenAITextEmbedder:
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
                 "prefix": "prefix",
                 "suffix": "suffix",
+                "timeout": 10.0,
+                "max_retries": 2,
             },
         }
 

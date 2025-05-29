@@ -135,6 +135,7 @@ jobs:
   unit-tests:
     name: Unit / ${{ matrix.os }}
     needs: format
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -285,7 +286,7 @@ jobs:
     name: Integration / ubuntu-latest
     needs: unit-tests
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -339,6 +340,7 @@ jobs:
     name: Integration / macos-latest
     needs: unit-tests
     runs-on: macos-latest
+    timeout-minutes: 30
     env:
       HAYSTACK_MPS_ENABLED: false
 
@@ -401,6 +403,7 @@ jobs:
     name: Integration / windows-latest
     needs: unit-tests
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 

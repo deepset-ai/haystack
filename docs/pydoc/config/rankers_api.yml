@@ -1,7 +1,14 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/rankers]
-    modules: ["lost_in_the_middle", "meta_field", "meta_field_grouping_ranker", "transformers_similarity", "sentence_transformers_diversity"]
+    modules: [
+      "hugging_face_tei",
+      "lost_in_the_middle",
+      "meta_field",
+      "meta_field_grouping_ranker",
+      "sentence_transformers_diversity",
+      "sentence_transformers_similarity",
+      "transformers_similarity"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter

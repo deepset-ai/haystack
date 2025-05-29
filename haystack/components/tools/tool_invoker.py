@@ -2,13 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import inspect
 import json
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.agents import State
 from haystack.core.component.sockets import Sockets
-from haystack.dataclasses import ChatMessage, State, ToolCall
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.tools import (
     ComponentTool,
@@ -162,6 +166,8 @@ class ToolInvoker:
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
+        *,
+        async_executor: Optional[ThreadPoolExecutor] = None,
     ):
         """
         Initialize the ToolInvoker component.
@@ -180,6 +186,9 @@ class ToolInvoker:
             A callback function that will be called to emit tool results.
             Note that the result is only emitted once it becomes available — it is not
             streamed incrementally in real time.
+        :param async_executor:
+            Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded executor will be
+            initialized and used.
         :raises ValueError:
             If no tools are provided or if duplicate tool names are found.
         """
@@ -205,6 +214,26 @@ class ToolInvoker:
         self._tools_with_names = dict(zip(tool_names, converted_tools))
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
+        self._owns_executor = async_executor is None
+        self.executor = (
+            ThreadPoolExecutor(thread_name_prefix=f"async-ToolInvoker-executor-{id(self)}", max_workers=1)
+            if async_executor is None
+            else async_executor
+        )
+
+    def __del__(self):
+        """
+        Cleanup when the instance is being destroyed.
+        """
+        if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
+            self.executor.shutdown(wait=True)
+
+    def shutdown(self):
+        """
+        Explicitly shutdown the executor if we own it.
+        """
+        if self._owns_executor:
+            self.executor.shutdown(wait=True)
 
     def _handle_error(self, error: Exception) -> str:
         """
@@ -478,6 +507,115 @@ class ToolInvoker:
                             meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
                         )
                     )
+
+        # We stream one more chunk that contains a finish_reason if tool_messages were generated
+        if len(tool_messages) > 0 and streaming_callback is not None:
+            streaming_callback(StreamingChunk(content="", meta={"finish_reason": "tool_call_results"}))
+
+        return {"tool_messages": tool_messages, "state": state}
+
+    @component.output_types(tool_messages=List[ChatMessage], state=State)
+    async def run_async(
+        self,
+        messages: List[ChatMessage],
+        state: Optional[State] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+    ) -> Dict[str, Any]:
+        """
+        Asynchronously processes ChatMessage objects containing tool calls and invokes the corresponding tools.
+
+        :param messages:
+            A list of ChatMessage objects.
+        :param state: The runtime state that should be used by the tools.
+        :param streaming_callback: An asynchronous callback function that will be called to emit tool results.
+            Note that the result is only emitted once it becomes available — it is not
+            streamed incrementally in real time.
+        :returns:
+            A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
+            Each ChatMessage objects wraps the result of a tool invocation.
+
+        :raises ToolNotFoundException:
+            If the tool is not found in the list of available tools and `raise_on_failure` is True.
+        :raises ToolInvocationError:
+            If the tool invocation fails and `raise_on_failure` is True.
+        :raises StringConversionError:
+            If the conversion of the tool result to a string fails and `raise_on_failure` is True.
+        :raises ToolOutputMergeError:
+            If merging tool outputs into state fails and `raise_on_failure` is True.
+        """
+        if state is None:
+            state = State(schema={})
+
+        # Only keep messages with tool calls
+        messages_with_tool_calls = [message for message in messages if message.tool_calls]
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
+        )
+
+        tool_messages = []
+        for message in messages_with_tool_calls:
+            for tool_call in message.tool_calls:
+                tool_name = tool_call.tool_name
+
+                # Check if the tool is available, otherwise return an error message
+                if tool_name not in self._tools_with_names:
+                    error_message = self._handle_error(
+                        ToolNotFoundException(tool_name, list(self._tools_with_names.keys()))
+                    )
+                    tool_messages.append(ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True))
+                    continue
+
+                tool_to_invoke = self._tools_with_names[tool_name]
+
+                # 1) Combine user + state inputs
+                llm_args = tool_call.arguments.copy()
+                final_args = self._inject_state_args(tool_to_invoke, llm_args, state)
+
+                # 2) Invoke the tool asynchronously
+                try:
+                    tool_result = await asyncio.get_running_loop().run_in_executor(
+                        self.executor, partial(tool_to_invoke.invoke, **final_args)
+                    )
+
+                except ToolInvocationError as e:
+                    error_message = self._handle_error(e)
+                    tool_messages.append(ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True))
+                    continue
+
+                # 3) Merge outputs into state
+                try:
+                    self._merge_tool_outputs(tool_to_invoke, tool_result, state)
+                except Exception as e:
+                    try:
+                        error_message = self._handle_error(
+                            ToolOutputMergeError(f"Failed to merge tool outputs from tool {tool_name} into State: {e}")
+                        )
+                        tool_messages.append(
+                            ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
+                        )
+                        continue
+                    except ToolOutputMergeError as propagated_e:
+                        # Re-raise with proper error chain
+                        raise propagated_e from e
+
+                # 4) Prepare the tool result ChatMessage message
+                tool_messages.append(
+                    self._prepare_tool_result_message(
+                        result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
+                    )
+                )
+
+                if streaming_callback is not None:
+                    await streaming_callback(
+                        StreamingChunk(
+                            content="",
+                            meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
+                        )
+                    )  # type: ignore[misc] # we have checked that streaming_callback is not None and async
+
+        # We stream one more chunk that contains a finish_reason if tool_messages were generated
+        if len(tool_messages) > 0 and streaming_callback is not None:
+            await streaming_callback(StreamingChunk(content="", meta={"finish_reason": "tool_call_results"}))  # type: ignore[misc] # we have checked that streaming_callback is not None and async
 
         return {"tool_messages": tool_messages, "state": state}
 

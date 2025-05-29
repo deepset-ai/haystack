@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -94,6 +95,7 @@ comp1["<b>comp1</b><br><small><i>AddFixedValue<br><br>Optional inputs:<ul style=
 comp2["<b>comp2</b><br><small><i>Double</i></small>"]:::component -- "value -> value<br><small><i>int</i></small>" --> comp1["<b>comp1</b><br><small><i>AddFixedValue<br><br>Optional inputs:<ul style='text-align:left;'><li>add (Optional[int])</li></ul></i></small>"]:::component
 
 classDef component text-align:center;
+
 """
     )
 

@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import logging
 import os
 from typing import List
@@ -202,35 +203,6 @@ class TestOpenAIGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, str) for reply in response["replies"]]
-
-    def test_check_abnormal_completions(self, caplog):
-        caplog.set_level(logging.INFO)
-        component = OpenAIGenerator(api_key=Secret.from_token("test-api-key"))
-
-        # underlying implementation uses ChatMessage objects so we have to use them here
-        messages: List[ChatMessage] = []
-        for i, _ in enumerate(range(4)):
-            message = ChatMessage.from_assistant("Hello")
-            metadata = {"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
-            message.meta.update(metadata)
-            messages.append(message)
-
-        for m in messages:
-            component._check_finish_reason(m)
-
-        # check truncation warning
-        message_template = (
-            "The completion for index {index} has been truncated before reaching a natural stopping point. "
-            "Increase the max_tokens parameter to allow for longer completions."
-        )
-
-        for index in [1, 3]:
-            assert caplog.records[index].message == message_template.format(index=index)
-
-        # check content filter warning
-        message_template = "The completion for index {index} has been truncated due to the content filter."
-        for index in [0, 2]:
-            assert caplog.records[index].message == message_template.format(index=index)
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),

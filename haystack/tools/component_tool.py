@@ -17,7 +17,7 @@ from haystack.core.serialization import (
 from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema
-from haystack.tools.parameters_schema_utils import _get_param_descriptions, _resolve_type
+from haystack.tools.parameters_schema_utils import _get_component_param_descriptions, _resolve_type
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
@@ -151,7 +151,7 @@ class ComponentTool(Tool):
             :returns: The result of the component invocation.
             """
             converted_kwargs = {}
-            input_sockets = component.__haystack_input__._sockets_dict
+            input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
             for param_name, param_value in kwargs.items():
                 param_type = input_sockets[param_name].type
 
@@ -159,15 +159,19 @@ class ComponentTool(Tool):
                 target_type = get_args(param_type)[0] if get_origin(param_type) is list else param_type
                 if hasattr(target_type, "from_dict"):
                     if isinstance(param_value, list):
-                        param_value = [target_type.from_dict(item) for item in param_value if isinstance(item, dict)]
+                        resolved_param_value = [
+                            target_type.from_dict(item) if isinstance(item, dict) else item for item in param_value
+                        ]
                     elif isinstance(param_value, dict):
-                        param_value = target_type.from_dict(param_value)
+                        resolved_param_value = target_type.from_dict(param_value)
+                    else:
+                        resolved_param_value = param_value
                 else:
                     # Let TypeAdapter handle both single values and lists
                     type_adapter = TypeAdapter(param_type)
-                    param_value = type_adapter.validate_python(param_value)
+                    resolved_param_value = type_adapter.validate_python(param_value)
 
-                converted_kwargs[param_name] = param_value
+                converted_kwargs[param_name] = resolved_param_value
             logger.debug(f"Invoking component {type(component)} with kwargs: {converted_kwargs}")
             return component.run(**converted_kwargs)
 
@@ -270,7 +274,7 @@ class ComponentTool(Tool):
         :raises SchemaGenerationError: If schema generation fails
         :returns: OpenAI tools schema for the component's run method parameters.
         """
-        component_run_description, param_descriptions = _get_param_descriptions(component.run)
+        component_run_description, param_descriptions = _get_component_param_descriptions(component)
 
         # collect fields (types and defaults) and descriptions from function parameters
         fields: Dict[str, Any] = {}

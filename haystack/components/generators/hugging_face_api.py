@@ -4,10 +4,10 @@
 
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses import ComponentInfo, StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model
@@ -80,7 +80,7 @@ class HuggingFaceAPIGenerator:
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         generation_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
         Initialize the HuggingFaceAPIGenerator instance.
@@ -180,7 +180,7 @@ class HuggingFaceAPIGenerator:
     def run(
         self,
         prompt: str,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -200,7 +200,9 @@ class HuggingFaceAPIGenerator:
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
         # check if streaming_callback is passed
-        streaming_callback = streaming_callback or self.streaming_callback
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         hf_output = self._client.text_generation(
             prompt, details=True, stream=streaming_callback is not None, **generation_kwargs
@@ -213,11 +215,12 @@ class HuggingFaceAPIGenerator:
         return self._build_non_streaming_response(cast(TextGenerationOutput, hf_output))
 
     def _stream_and_build_response(
-        self, hf_output: Iterable["TextGenerationStreamOutput"], streaming_callback: Callable[[StreamingChunk], None]
+        self, hf_output: Iterable["TextGenerationStreamOutput"], streaming_callback: StreamingCallbackT
     ):
         chunks: List[StreamingChunk] = []
         first_chunk_time = None
 
+        component_info = ComponentInfo.from_component(self)
         for chunk in hf_output:
             token: TextGenerationStreamOutputToken = chunk.token
             if token.special:
@@ -227,7 +230,7 @@ class HuggingFaceAPIGenerator:
             if first_chunk_time is None:
                 first_chunk_time = datetime.now().isoformat()
 
-            stream_chunk = StreamingChunk(token.text, chunk_metadata)
+            stream_chunk = StreamingChunk(content=token.text, meta=chunk_metadata, component_info=component_info)
             chunks.append(stream_chunk)
             streaming_callback(stream_chunk)
 

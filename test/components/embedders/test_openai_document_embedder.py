@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 import os
 import random
 from typing import List
@@ -122,6 +123,8 @@ class TestOpenAIDocumentEmbedder:
                 "progress_bar": True,
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
+                "timeout": None,
+                "max_retries": None,
             },
         }
 
@@ -138,6 +141,8 @@ class TestOpenAIDocumentEmbedder:
             progress_bar=False,
             meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
+            timeout=10.0,
+            max_retries=2,
         )
         data = component.to_dict()
         assert data == {
@@ -155,6 +160,8 @@ class TestOpenAIDocumentEmbedder:
                 "progress_bar": False,
                 "meta_fields_to_embed": ["test_field"],
                 "embedding_separator": " | ",
+                "timeout": 10.0,
+                "max_retries": 2,
             },
         }
 

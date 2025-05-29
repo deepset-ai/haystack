@@ -28,7 +28,7 @@ from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool, ComponentTool
 from haystack.tools.toolset import Toolset
 from haystack.utils import serialize_callable, Secret
-from haystack.dataclasses.state_utils import merge_lists
+from haystack.components.agents.state import merge_lists
 
 
 def streaming_callback_for_serde(chunk: StreamingChunk):
@@ -297,7 +297,7 @@ class TestAgent:
             },
         }
 
-    def test_from_dict(self, weather_tool, component_tool, monkeypatch):
+    def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         data = {
             "type": "haystack.components.agents.agent.Agent",
@@ -804,8 +804,9 @@ class TestAgent:
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
 
+    @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-    def test_agent_streaming_with_tool_call(self, monkeypatch, weather_tool):
+    def test_agent_streaming_with_tool_call(self, weather_tool):
         chat_generator = OpenAIChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         agent.warm_up()
@@ -872,7 +873,7 @@ class TestAgentTracing:
             100,
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',
             '["text"]',
-            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.dataclasses.state_utils.merge_lists"}}',
+            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
             1,
@@ -932,7 +933,7 @@ class TestAgentTracing:
             100,
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',
             '["text"]',
-            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.dataclasses.state_utils.merge_lists"}}',
+            '{"messages": {"type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',
             1,

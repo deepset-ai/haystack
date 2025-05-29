@@ -9,6 +9,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
+    from transformers import Pipeline as HfPipeline
     from transformers import pipeline
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
@@ -136,7 +137,7 @@ class TransformersZeroShotTextRouter:
             token=token,
         )
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
-        self.pipeline = None
+        self.pipeline: Optional[HfPipeline] = None
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
         """
@@ -209,7 +210,7 @@ class TransformersZeroShotTextRouter:
         if not isinstance(text, str):
             raise TypeError("TransformersZeroShotTextRouter expects a str as input.")
 
-        prediction = self.pipeline(sequences=[text], candidate_labels=self.labels, multi_label=self.multi_label)
+        prediction = self.pipeline([text], candidate_labels=self.labels, multi_label=self.multi_label)
         predicted_scores = prediction[0]["scores"]
         max_score_index = max(range(len(predicted_scores)), key=predicted_scores.__getitem__)
         label = prediction[0]["labels"][max_score_index]

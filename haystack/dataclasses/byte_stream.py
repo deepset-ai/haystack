@@ -21,7 +21,7 @@ class ByteStream:
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
     mime_type: Optional[str] = field(default=None)
 
-    def to_file(self, destination_path: Path):
+    def to_file(self, destination_path: Path) -> None:
         """
         Write the ByteStream to a file. Note: the metadata will be lost.
 

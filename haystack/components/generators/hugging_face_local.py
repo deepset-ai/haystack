@@ -2,10 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import StreamingChunk
+from haystack.dataclasses import ComponentInfo, StreamingCallbackT, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.utils import (
     ComponentDevice,
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
+    from transformers import Pipeline as HfPipeline
     from transformers import StoppingCriteriaList, pipeline
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
@@ -63,7 +64,7 @@ class HuggingFaceLocalGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
         stop_words: Optional[List[str]] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
         Creates an instance of a HuggingFaceLocalGenerator.
@@ -126,8 +127,8 @@ class HuggingFaceLocalGenerator:
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.generation_kwargs = generation_kwargs
         self.stop_words = stop_words
-        self.pipeline = None
-        self.stopping_criteria_list = None
+        self.pipeline: Optional[HfPipeline] = None
+        self.stopping_criteria_list: Optional[StoppingCriteriaList] = None
         self.streaming_callback = streaming_callback
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -152,9 +153,12 @@ class HuggingFaceLocalGenerator:
             return
 
         if self.pipeline is None:
-            self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
+            self.pipeline = cast(HfPipeline, pipeline(**self.huggingface_pipeline_kwargs))
 
         if self.stop_words:
+            # text-generation and text2text-generation pipelines always have a non-None tokenizer
+            assert self.pipeline.tokenizer is not None
+
             stop_words_criteria = StopWordsCriteria(
                 tokenizer=self.pipeline.tokenizer, stop_words=self.stop_words, device=self.pipeline.device
             )
@@ -207,7 +211,7 @@ class HuggingFaceLocalGenerator:
     def run(
         self,
         prompt: str,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -236,7 +240,9 @@ class HuggingFaceLocalGenerator:
         updated_generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
         # check if streaming_callback is passed
-        streaming_callback = streaming_callback or self.streaming_callback
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         if streaming_callback:
             num_responses = updated_generation_kwargs.get("num_return_sequences", 1)
@@ -250,9 +256,10 @@ class HuggingFaceLocalGenerator:
                 updated_generation_kwargs["num_return_sequences"] = 1
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             updated_generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                self.pipeline.tokenizer,  # type: ignore
-                streaming_callback,
-                self.stop_words,  # type: ignore
+                tokenizer=self.pipeline.tokenizer,  # type: ignore
+                stream_handler=streaming_callback,
+                stop_words=self.stop_words,  # type: ignore
+                component_info=ComponentInfo.from_component(self),
             )
 
         output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **updated_generation_kwargs)  # type: ignore

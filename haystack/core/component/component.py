@@ -76,7 +76,20 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Dict, Mapping, Optional, Protocol, Type, TypeVar, Union, overload, runtime_checkable
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    Mapping,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+    runtime_checkable,
+)
 
 from typing_extensions import ParamSpec
 
@@ -113,7 +126,7 @@ _COMPONENT_PRE_INIT_HOOK: ContextVar[Optional[PreInitHookPayload]] = ContextVar(
 
 
 @contextmanager
-def _hook_component_init(callback: Callable):
+def _hook_component_init(callback: Callable) -> Iterator[None]:
     """
     Context manager to set a callback that will be invoked before a component's constructor is called.
 
@@ -183,7 +196,7 @@ class Component(Protocol):
 
 class ComponentMeta(type):
     @staticmethod
-    def _positional_to_kwargs(cls_type, args) -> Dict[str, Any]:
+    def _positional_to_kwargs(cls_type: Type, args: Tuple[Any, ...]) -> Dict[str, Any]:
         """
         Convert positional arguments to keyword arguments based on the signature of the `__init__` method.
         """
@@ -202,7 +215,7 @@ class ComponentMeta(type):
         return out
 
     @staticmethod
-    def _parse_and_set_output_sockets(instance: Any):
+    def _parse_and_set_output_sockets(instance: Any) -> None:
         has_async_run = hasattr(instance, "run_async")
 
         # If `component.set_output_types()` was called in the component constructor,
@@ -226,7 +239,7 @@ class ComponentMeta(type):
             instance.__haystack_output__ = Sockets(instance, deepcopy(output_types_cache), OutputSocket)
 
     @staticmethod
-    def _parse_and_set_input_sockets(component_cls: Type, instance: Any):
+    def _parse_and_set_input_sockets(component_cls: Type, instance: Any) -> None:
         def inner(method, sockets):
             from inspect import Parameter
 
@@ -408,11 +421,11 @@ class _Component:
 
     def set_input_type(
         self,
-        instance,
+        instance: Component,
         name: str,
         type: Any,  # noqa: A002
         default: Any = _empty,
-    ):
+    ) -> None:
         """
         Add a single input socket to the component instance.
 
@@ -429,8 +442,8 @@ class _Component:
             )
 
         if not hasattr(instance, "__haystack_input__"):
-            instance.__haystack_input__ = Sockets(instance, {}, InputSocket)
-        instance.__haystack_input__[name] = InputSocket(name=name, type=type, default_value=default)
+            instance.__haystack_input__ = Sockets(instance, {}, InputSocket)  # type: ignore
+        instance.__haystack_input__[name] = InputSocket(name=name, type=type, default_value=default)  # type: ignore
 
     def set_input_types(self, instance, **types):
         """
@@ -608,10 +621,10 @@ class _Component:
     @overload
     def __call__(self) -> Callable[[Type[T]], Type[T]]: ...
 
-    def __call__(self, cls: Optional[type[T]] = None) -> Union[T, Callable[[Type[T]], Type[T]]]:
+    def __call__(self, cls: Optional[Type[T]] = None) -> Union[Type[T], Callable[[Type[T]], Type[T]]]:
         # We must wrap the call to the decorator in a function for it to work
         # correctly with or without parens
-        def wrap(cls: type[T]):
+        def wrap(cls: Type[T]) -> Type[T]:
             return self._component(cls)
 
         if cls:

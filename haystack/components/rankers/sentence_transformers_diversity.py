@@ -10,7 +10,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
-with LazyImport(message="Run 'pip install \"sentence-transformers>=3.0.0\"'") as torch_and_sentence_transformers_import:
+with LazyImport(message="Run 'pip install \"sentence-transformers>=4.1.0\"'") as torch_and_sentence_transformers_import:
     import torch
     from sentence_transformers import SentenceTransformer
 
@@ -175,7 +175,7 @@ class SentenceTransformersDiversityRanker:
         self.top_k = top_k
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
-        self.model = None
+        self.model: Optional[SentenceTransformer] = None
         self.similarity = DiversityRankingSimilarity.from_str(similarity) if isinstance(similarity, str) else similarity
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
@@ -320,9 +320,11 @@ class SentenceTransformersDiversityRanker:
         return ranked_docs
 
     def _embed_and_normalize(self, query, texts_to_embed):
+        assert self.model is not None  # verified in run but mypy doesn't see it
+
         # Calculate embeddings
-        doc_embeddings = self.model.encode(texts_to_embed, convert_to_tensor=True)  # type: ignore[attr-defined]
-        query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)  # type: ignore[attr-defined]
+        doc_embeddings = self.model.encode(texts_to_embed, convert_to_tensor=True)
+        query_embedding = self.model.encode([self.query_prefix + query + self.query_suffix], convert_to_tensor=True)
 
         # Normalize embeddings to unit length for computing cosine similarity
         if self.similarity == DiversityRankingSimilarity.COSINE:

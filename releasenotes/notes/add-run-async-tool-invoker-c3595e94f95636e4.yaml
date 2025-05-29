@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    - Added `run_async` method to `ToolInvoker` class to allow asynchronous tool invocations.
+    - Agent can now stream tool result with `run_async` method as well.

@@ -5,7 +5,7 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from haystack import Document, component, default_from_dict, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, DeviceMap, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
@@ -16,6 +16,8 @@ with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") a
     from torch.utils.data import DataLoader, Dataset
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+logger = logging.getLogger(__name__)
+
 
 @component
 class TransformersSimilarityRanker:
@@ -23,6 +25,12 @@ class TransformersSimilarityRanker:
     Ranks documents based on their semantic similarity to the query.
 
     It uses a pre-trained cross-encoder model from Hugging Face to embed the query and the documents.
+
+    Note:
+    This component is considered legacy and will no longer receive updates. It may be deprecated in a future release,
+    with removal following after a deprecation period.
+    Consider using SentenceTransformersSimilarityRanker instead, which provides the same functionality along with
+    additional features.
 
     ### Usage example
 
@@ -102,6 +110,14 @@ class TransformersSimilarityRanker:
         """
         torch_and_transformers_import.check()
 
+        soft_deprecation_message = (
+            "TransformersSimilarityRanker is considered legacy and will no longer receive updates. "
+            "It may be deprecated in a future release, with removal following after a deprecation period. "
+            "Consider using SentenceTransformersSimilarityRanker instead, which provides the same functionality "
+            "along with additional features."
+        )
+        logger.warning(soft_deprecation_message)
+
         self.model_name_or_path = str(model)
         self.model = None
         self.query_prefix = query_prefix
@@ -149,6 +165,7 @@ class TransformersSimilarityRanker:
                 token=self.token.resolve_value() if self.token else None,
                 **self.tokenizer_kwargs,
             )
+            assert self.model is not None
             self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
     def to_dict(self) -> Dict[str, Any]:
