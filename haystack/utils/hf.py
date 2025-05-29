@@ -388,13 +388,17 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
             stream_handler: Callable[[StreamingChunk], Awaitable[None]],
             stop_words: Optional[List[str]] = None,
+            component_info: Optional[ComponentInfo] = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
+            self.component_info = component_info
 
-        def on_finalized_text(self, word: str, stream_end: bool = False):
+        def on_finalized_text(self, word: str, stream_end: bool = False) -> None:
             """Synchronous callback that schedules the async handler."""
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:
-                asyncio.create_task(self.token_handler(StreamingChunk(content=word_to_send)))  # type: ignore  # token_handler returns Awaitable[None] which is compatible with create_task at runtime
+                asyncio.create_task(
+                    self.token_handler(StreamingChunk(content=word_to_send, component_info=self.component_info))
+                )  # type: ignore[arg-type]  # token_handler returns Awaitable[None] which is compatible with create_task at runtime

@@ -491,7 +491,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
     """Async tests for HuggingFaceLocalChatGenerator"""
 
     @pytest.mark.asyncio
-    async def test_run_async(self, model_info_mock, mock_pipeline_tokenizer, chat_messages):
+    async def test_run_async(self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages):
         """Test basic async functionality"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model")
         generator.pipeline = mock_pipeline_with_tokenizer
