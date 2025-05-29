@@ -394,11 +394,20 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             self.token_handler = stream_handler
             self.stop_words = stop_words or []
             self.component_info = component_info
+            self._queue: asyncio.Queue[StreamingChunk] = asyncio.Queue()
 
         def on_finalized_text(self, word: str, stream_end: bool = False) -> None:
-            """Synchronous callback that schedules the async handler."""
+            """Synchronous callback that puts chunks in a queue."""
             word_to_send = word + "\n" if stream_end else word
             if word_to_send.strip() not in self.stop_words:
-                asyncio.create_task(
-                    self.token_handler(StreamingChunk(content=word_to_send, component_info=self.component_info))
-                )  # type: ignore[arg-type]  # token_handler returns Awaitable[None] which is compatible with create_task at runtime
+                self._queue.put_nowait(StreamingChunk(content=word_to_send, component_info=self.component_info))
+
+        async def process_queue(self) -> None:
+            """Process the queue of streaming chunks."""
+            while True:
+                try:
+                    chunk = await self._queue.get()
+                    await self.token_handler(chunk)
+                    self._queue.task_done()
+                except asyncio.CancelledError:
+                    break

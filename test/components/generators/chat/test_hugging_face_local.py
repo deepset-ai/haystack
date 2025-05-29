@@ -692,11 +692,19 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         )
         llm.warm_up()
 
-        response = await llm.run_async(messages=messages)
+        # Start queue processing in the background
+        queue_processor = asyncio.create_task(llm.pipeline.streamer.process_queue())
+        try:
+            response = await llm.run_async(messages=messages)
+            await streaming_complete.wait()
 
-        await streaming_complete.wait()
-
-        assert len(streaming_chunks) > 0
-        assert "replies" in response
-        assert isinstance(response["replies"][0], ChatMessage)
-        assert "climate change" in response["replies"][0].text.lower()
+            assert len(streaming_chunks) > 0
+            assert "replies" in response
+            assert isinstance(response["replies"][0], ChatMessage)
+            assert "climate change" in response["replies"][0].text.lower()
+        finally:
+            queue_processor.cancel()
+            try:
+                await queue_processor
+            except asyncio.CancelledError:
+                pass
