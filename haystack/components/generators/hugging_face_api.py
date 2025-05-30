@@ -95,6 +95,7 @@ class HuggingFaceAPIGenerator:
             - `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
             - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
             `TEXT_GENERATION_INFERENCE`.
+            - Other parameters specific to the chosen API type, such as `timeout`, `headers`, `provider` etc.
         :param token: The Hugging Face token to use as HTTP bearer authorization.
             Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
         :param generation_kwargs:
@@ -145,7 +146,11 @@ class HuggingFaceAPIGenerator:
         self.token = token
         self.generation_kwargs = generation_kwargs
         self.streaming_callback = streaming_callback
-        self._client = InferenceClient(model_or_url, token=token.resolve_value() if token else None)
+
+        resolved_api_params: Dict[str, Any] = {k: v for k, v in api_params.items() if k != "model" and k != "url"}
+        self._client = InferenceClient(
+            model_or_url, token=token.resolve_value() if token else None, **resolved_api_params
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """

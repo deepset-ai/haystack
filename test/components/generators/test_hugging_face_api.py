@@ -300,7 +300,7 @@ class TestHuggingFaceAPIGenerator:
     def test_run_serverless(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
             generation_kwargs={"max_new_tokens": 20},
         )
 
@@ -332,7 +332,7 @@ class TestHuggingFaceAPIGenerator:
     def test_live_run_streaming_check_completion_start_time(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
             generation_kwargs={"max_new_tokens": 30},
             streaming_callback=streaming_callback_handler,
         )
