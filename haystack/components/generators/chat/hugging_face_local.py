@@ -340,14 +340,13 @@ class HuggingFaceLocalChatGenerator:
         :param messages: A list of ChatMessage objects representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :param streaming_callback: An optional callable for handling streaming responses.
-        :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. If set, it will override
+        :param tools: A list of tools or a Toolset for which the model can prepare calls. If set, it will override
             the `tools` parameter provided during initialization. This parameter can accept either a list
             of `Tool` objects or a `Toolset` instance.
-        :returns:
-            A list containing the generated responses as ChatMessage instances.
+        :returns: A dictionary with the following keys:
+            - `replies`: A list containing the generated responses as ChatMessage instances.
         """
-        resolved_inputs = self._pre_process(
+        prepared_inputs = self._prepare_inputs(
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools
         )
 
@@ -355,7 +354,7 @@ class HuggingFaceLocalChatGenerator:
             self.streaming_callback, streaming_callback, requires_async=False
         )
         if streaming_callback:
-            num_responses = resolved_inputs["generation_kwargs"].get("num_return_sequences", 1)
+            num_responses = prepared_inputs["generation_kwargs"].get("num_return_sequences", 1)
             if num_responses > 1:
                 msg = (
                     "Streaming is enabled, but the number of responses is set to {num_responses}. "
@@ -363,27 +362,27 @@ class HuggingFaceLocalChatGenerator:
                     "Setting the number of responses to 1."
                 )
                 logger.warning(msg, num_responses=num_responses)
-                resolved_inputs["generation_kwargs"]["num_return_sequences"] = 1
+                prepared_inputs["generation_kwargs"]["num_return_sequences"] = 1
 
             # Get component name and type
             component_info = ComponentInfo.from_component(self)
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                tokenizer=resolved_inputs["tokenizer"],
+                tokenizer=prepared_inputs["tokenizer"],
                 stream_handler=streaming_callback,
-                stop_words=resolved_inputs["stop_words"],
+                stop_words=prepared_inputs["stop_words"],
                 component_info=component_info,
             )
 
         # Generate responses
-        output = self.pipeline(resolved_inputs["prepared_prompt"], **generation_kwargs)
+        output = self.pipeline(prepared_inputs["prepared_prompt"], **generation_kwargs)
 
-        chat_messages = self._post_process(
+        chat_messages = self._convert_hf_output_to_chat_messages(
             hf_pipeline_output=output,
-            prepared_prompt=resolved_inputs["prepared_prompt"],
-            tokenizer=resolved_inputs["tokenizer"],
-            generation_kwargs=resolved_inputs["generation_kwargs"],
-            stop_words=resolved_inputs["stop_words"],
+            prepared_prompt=prepared_inputs["prepared_prompt"],
+            tokenizer=prepared_inputs["tokenizer"],
+            generation_kwargs=prepared_inputs["generation_kwargs"],
+            stop_words=prepared_inputs["stop_words"],
         )
 
         return {"replies": chat_messages}
@@ -477,41 +476,62 @@ class HuggingFaceLocalChatGenerator:
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
-        resolved_inputs = self._pre_process(
+        prepared_inputs = self._prepare_inputs(
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools
         )
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
         if streaming_callback:
+            num_responses = prepared_inputs["generation_kwargs"].get("num_return_sequences", 1)
+            if num_responses > 1:
+                msg = (
+                    "Streaming is enabled, but the number of responses is set to {num_responses}. "
+                    "Streaming is only supported for single response generation. "
+                    "Setting the number of responses to 1."
+                )
+                logger.warning(msg, num_responses=num_responses)
+
             # get the component name and type
             component_info = ComponentInfo.from_component(self)
+            # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                resolved_inputs["tokenizer"], streaming_callback, resolved_inputs["stop_words"], component_info
+                prepared_inputs["tokenizer"], streaming_callback, prepared_inputs["stop_words"], component_info
             )
 
         output = await asyncio.get_running_loop().run_in_executor(
             self.executor,
-            lambda: self.pipeline(resolved_inputs["prepared_prompt"], **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
+            lambda: self.pipeline(prepared_inputs["prepared_prompt"], **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
         )
 
-        chat_messages = self._post_process(
+        chat_messages = self._convert_hf_output_to_chat_messages(
             hf_pipeline_output=output,
-            prepared_prompt=resolved_inputs["prepared_prompt"],
-            tokenizer=resolved_inputs["tokenizer"],
-            generation_kwargs=resolved_inputs["generation_kwargs"],
-            stop_words=resolved_inputs["stop_words"],
-            tools=resolved_inputs["tools"],
+            prepared_prompt=prepared_inputs["prepared_prompt"],
+            tokenizer=prepared_inputs["tokenizer"],
+            generation_kwargs=prepared_inputs["generation_kwargs"],
+            stop_words=prepared_inputs["stop_words"],
+            tools=prepared_inputs["tools"],
         )
         return {"replies": chat_messages}
 
-    def _pre_process(
+    def _prepare_inputs(
         self,
         messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
     ) -> Dict[str, Any]:
+        """
+        Prepares the inputs for the Hugging Face pipeline.
+
+        :param messages: A list of ChatMessage objects representing the input messages.
+        :param generation_kwargs: Additional keyword arguments for text generation.
+        :param streaming_callback: An optional callable for handling streaming responses.
+        :param tools: A list of tools or a Toolset for which the model can prepare calls.
+        :returns: A dictionary containing the prepared prompt, tokenizer, generation kwargs, and tools.
+        :raises RuntimeError: If the generation model has not been loaded.
+        :raises ValueError: If both tools and streaming_callback are provided.
+        """
         if self.pipeline is None:
             raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
 
@@ -563,7 +583,7 @@ class HuggingFaceLocalChatGenerator:
             "tools": tools,
         }
 
-    def _post_process(
+    def _convert_hf_output_to_chat_messages(
         self,
         hf_pipeline_output,
         prepared_prompt: str,
@@ -572,6 +592,17 @@ class HuggingFaceLocalChatGenerator:
         stop_words: Optional[List[str]],
         tools: Optional[Union[List[Tool], Toolset]] = None,
     ) -> List[ChatMessage]:
+        """
+        Converts the HuggingFace pipeline output into a List of ChatMessages
+
+        :param hf_pipeline_output: The output from the HuggingFace pipeline.
+        :param prepared_prompt: The prompt used for generation.
+        :param tokenizer: The tokenizer used for generation.
+        :param generation_kwargs: The generation parameters.
+        :param stop_words: A list of stop words to remove from the replies.
+        :param tools: A list of tools or a Toolset for which the model can prepare calls.
+            This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
+        """
         replies = [o.get("generated_text", "") for o in hf_pipeline_output]
 
         # Remove stop words from replies if present
