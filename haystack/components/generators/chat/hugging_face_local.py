@@ -570,7 +570,7 @@ class HuggingFaceLocalChatGenerator:
     def _convert_hf_output_to_chat_messages(
         self,
         *,
-        hf_pipeline_output,
+        hf_pipeline_output: List[Dict[str, Any]],
         prepared_prompt: str,
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
         generation_kwargs: Dict[str, Any],
