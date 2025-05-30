@@ -408,7 +408,7 @@ class HuggingFaceLocalChatGenerator:
         replies = [o.get("generated_text", "") for o in output]
 
         # Remove stop words from replies if present
-        for stop_word in stop_words:
+        for stop_word in stop_words or []:
             replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
         chat_messages = [
