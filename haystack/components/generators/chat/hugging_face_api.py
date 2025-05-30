@@ -287,7 +287,7 @@ class HuggingFaceAPIChatGenerator:
         self.generation_kwargs = generation_kwargs
         self.streaming_callback = streaming_callback
 
-        resolved_api_params = {k: v for k, v in api_params.items() if k != "model" and k != "url"}
+        resolved_api_params: Dict[str, Any] = {k: v for k, v in api_params.items() if k != "model" and k != "url"}
         self._client = InferenceClient(
             model_or_url, token=token.resolve_value() if token else None, **resolved_api_params
         )
