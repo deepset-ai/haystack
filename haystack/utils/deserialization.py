@@ -52,23 +52,7 @@ def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_gen
         If the key is missing in the serialized data, the value is not a dictionary,
         the type key is missing, the class cannot be imported, or the class lacks a 'from_dict' method.
     """
-    if key not in data:
-        raise DeserializationError(f"Missing '{key}' in serialization data")
-
-    serialized_chat_generator = data[key]
-
-    if not isinstance(serialized_chat_generator, dict):
-        raise DeserializationError(f"The value of '{key}' is not a dictionary")
-
-    if "type" not in serialized_chat_generator:
-        raise DeserializationError(f"Missing 'type' in {key} serialization data")
-
-    try:
-        chat_generator_class = import_class_by_name(serialized_chat_generator["type"])
-    except ImportError as e:
-        raise DeserializationError(f"Class '{serialized_chat_generator['type']}' not correctly imported") from e
-
-    data[key] = component_from_dict(cls=chat_generator_class, data=serialized_chat_generator, name="chat_generator")
+    deserialize_component_inplace(data, key=key)
 
 
 def deserialize_component_inplace(data: Dict[str, Any], key: str = "chat_generator") -> None:
@@ -96,8 +80,8 @@ def deserialize_component_inplace(data: Dict[str, Any], key: str = "chat_generat
         raise DeserializationError(f"Missing 'type' in {key} serialization data")
 
     try:
-        chat_generator_class = import_class_by_name(serialized_component["type"])
+        component_class = import_class_by_name(serialized_component["type"])
     except ImportError as e:
         raise DeserializationError(f"Class '{serialized_component['type']}' not correctly imported") from e
 
-    data[key] = component_from_dict(cls=chat_generator_class, data=serialized_component, name="chat_generator")
+    data[key] = component_from_dict(cls=component_class, data=serialized_component, name=key)
