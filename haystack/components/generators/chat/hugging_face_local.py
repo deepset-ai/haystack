@@ -7,7 +7,7 @@ import json
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall, select_streaming_callback
@@ -135,7 +135,7 @@ class HuggingFaceLocalChatGenerator:
         tools: Optional[Union[List[Tool], Toolset]] = None,
         tool_parsing_function: Optional[Callable[[str], Optional[List[ToolCall]]]] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
-    ):
+    ) -> None:
         """
         Initializes the HuggingFaceLocalChatGenerator component.
 
@@ -246,14 +246,14 @@ class HuggingFaceLocalChatGenerator:
             else async_executor
         )
 
-    def __del__(self):
+    def __del__(self) -> None:
         """
         Cleanup when the instance is being destroyed.
         """
         if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
             self.executor.shutdown(wait=True)
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """
         Explicitly shutdown the executor if we own it.
         """
@@ -268,7 +268,7 @@ class HuggingFaceLocalChatGenerator:
             return {"model": self.huggingface_pipeline_kwargs["model"]}
         return {"model": f"[object of type {type(self.huggingface_pipeline_kwargs['model'])}]"}
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -333,7 +333,7 @@ class HuggingFaceLocalChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
-    ):
+    ) -> Dict[str, List[ChatMessage]]:
         """
         Invoke text generation inference based on the provided messages and generation parameters.
 
@@ -354,36 +354,20 @@ class HuggingFaceLocalChatGenerator:
             self.streaming_callback, streaming_callback, requires_async=False
         )
         if streaming_callback:
-            num_responses = prepared_inputs["generation_kwargs"].get("num_return_sequences", 1)
-            if num_responses > 1:
-                msg = (
-                    "Streaming is enabled, but the number of responses is set to {num_responses}. "
-                    "Streaming is only supported for single response generation. "
-                    "Setting the number of responses to 1."
-                )
-                logger.warning(msg, num_responses=num_responses)
-                prepared_inputs["generation_kwargs"]["num_return_sequences"] = 1
-
-            # Get component name and type
-            component_info = ComponentInfo.from_component(self)
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
-            generation_kwargs["streamer"] = HFTokenStreamingHandler(
+            prepared_inputs["generation_kwargs"]["streamer"] = HFTokenStreamingHandler(
                 tokenizer=prepared_inputs["tokenizer"],
                 stream_handler=streaming_callback,
                 stop_words=prepared_inputs["stop_words"],
-                component_info=component_info,
+                component_info=ComponentInfo.from_component(self),
             )
 
+        # We know it's not None because we check it in _prepare_inputs
+        assert self.pipeline is not None
         # Generate responses
-        output = self.pipeline(prepared_inputs["prepared_prompt"], **generation_kwargs)
+        output = self.pipeline(prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"])
 
-        chat_messages = self._convert_hf_output_to_chat_messages(
-            hf_pipeline_output=output,
-            prepared_prompt=prepared_inputs["prepared_prompt"],
-            tokenizer=prepared_inputs["tokenizer"],
-            generation_kwargs=prepared_inputs["generation_kwargs"],
-            stop_words=prepared_inputs["stop_words"],
-        )
+        chat_messages = self._convert_hf_output_to_chat_messages(hf_pipeline_output=output, **prepared_inputs)
 
         return {"replies": chat_messages}
 
@@ -461,7 +445,7 @@ class HuggingFaceLocalChatGenerator:
         generation_kwargs: Optional[Dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
         tools: Optional[Union[List[Tool], Toolset]] = None,
-    ):
+    ) -> Dict[str, List[ChatMessage]]:
         """
         Asynchronously invokes text generation inference based on the provided messages and generation parameters.
 
@@ -483,35 +467,22 @@ class HuggingFaceLocalChatGenerator:
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
         if streaming_callback:
-            num_responses = prepared_inputs["generation_kwargs"].get("num_return_sequences", 1)
-            if num_responses > 1:
-                msg = (
-                    "Streaming is enabled, but the number of responses is set to {num_responses}. "
-                    "Streaming is only supported for single response generation. "
-                    "Setting the number of responses to 1."
-                )
-                logger.warning(msg, num_responses=num_responses)
-
-            # get the component name and type
-            component_info = ComponentInfo.from_component(self)
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
-            generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                prepared_inputs["tokenizer"], streaming_callback, prepared_inputs["stop_words"], component_info
+            prepared_inputs["generation_kwargs"]["streamer"] = HFTokenStreamingHandler(
+                tokenizer=prepared_inputs["tokenizer"],
+                stream_handler=streaming_callback,
+                stop_words=prepared_inputs["stop_words"],
+                component_info=ComponentInfo.from_component(self),
             )
 
+        # We know it's not None because we check it in _prepare_inputs
+        assert self.pipeline is not None
         output = await asyncio.get_running_loop().run_in_executor(
             self.executor,
-            lambda: self.pipeline(prepared_inputs["prepared_prompt"], **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
+            lambda: self.pipeline(prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
         )
 
-        chat_messages = self._convert_hf_output_to_chat_messages(
-            hf_pipeline_output=output,
-            prepared_prompt=prepared_inputs["prepared_prompt"],
-            tokenizer=prepared_inputs["tokenizer"],
-            generation_kwargs=prepared_inputs["generation_kwargs"],
-            stop_words=prepared_inputs["stop_words"],
-            tools=prepared_inputs["tools"],
-        )
+        chat_messages = self._convert_hf_output_to_chat_messages(hf_pipeline_output=output, **prepared_inputs)
         return {"replies": chat_messages}
 
     def _prepare_inputs(
@@ -550,6 +521,18 @@ class HuggingFaceLocalChatGenerator:
         # Check and update generation parameters
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
+        # If streaming_callback is provided, ensure that num_return_sequences is set to 1
+        if streaming_callback:
+            num_responses = generation_kwargs.get("num_return_sequences", 1)
+            if num_responses > 1:
+                msg = (
+                    "Streaming is enabled, but the number of responses is set to {num_responses}. "
+                    "Streaming is only supported for single response generation. "
+                    "Setting the number of responses to 1."
+                )
+                logger.warning(msg, num_responses=num_responses)
+                generation_kwargs["num_return_sequences"] = 1
+
         stop_words = generation_kwargs.pop("stop_words", []) + generation_kwargs.pop("stop_sequences", [])
         stop_words = self._validate_stop_words(stop_words)
 
@@ -581,10 +564,12 @@ class HuggingFaceLocalChatGenerator:
             "tokenizer": tokenizer,
             "generation_kwargs": generation_kwargs,
             "tools": tools,
+            "stop_words": stop_words,
         }
 
     def _convert_hf_output_to_chat_messages(
         self,
+        *,
         hf_pipeline_output,
         prepared_prompt: str,
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
