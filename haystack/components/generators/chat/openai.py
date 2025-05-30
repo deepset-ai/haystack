@@ -4,6 +4,7 @@
 
 import json
 import os
+from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
@@ -371,6 +372,74 @@ class OpenAIChatGenerator:
 
         return {"replies": completions}
 
+    @staticmethod
+    def _is_type_object(obj: Any) -> bool:
+        """
+        Check if the object is of type 'object' in OpenAI's schema.
+
+        :param obj: The object to check.
+        :returns: True if the object is of type 'object', False otherwise.
+        """
+        return isinstance(obj, dict) and "type" in obj and obj["type"] == "object"
+
+    def _strictify_object(self, obj: Any) -> Any:
+        """
+        Recursively updates the sub-objects of the tool specification to follow OpenAI's strict schema.
+
+        This function:
+        - Sets "additionalProperties" to False in all type = object sections of the tool specification, which is a
+          requirement for OpenAI's strict schema.
+        - Removes all non-required fields since all property fields must be required. For ease, we opt to remove all
+          variables that are not required.
+        """
+        if isinstance(obj, dict):
+            for key, value in list(obj.items()):
+                # type = object updates
+                if self._is_type_object(value):
+                    if "required" not in value:
+                        # If type = object and doesn't have required variables it needs to be removed
+                        del obj[key]
+                        continue
+
+                    # If type = object and has required variables, we need to remove all non-required variables
+                    # from the properties
+                    obj[key]["properties"] = {
+                        k: self._strictify_object(v) for k, v in value["properties"].items() if k in value["required"]
+                    }
+                    # Always add and set additionalProperties to False for type = object
+                    obj[key]["additionalProperties"] = False
+                    continue
+
+                obj[key] = self._strictify_object(value)
+            return obj
+
+        if isinstance(obj, list):
+            new_items = []
+            for item in obj:
+                # If type = object and doesn't have required variables it needs to be removed
+                if self._is_type_object(item) and "required" not in item:
+                    continue
+                new_items.append(self._strictify_object(item))
+            return new_items
+
+        return obj
+
+    def _strictify_function_schema(self, function_schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Updates the tool specification object to follow OpenAI's strict schema.
+
+        OpenAI's strict schema is equivalent to their Structured Output schema.
+        More information on Structured Output can be found
+        (here)[https://platform.openai.com/docs/guides/structured-outputs/supported-schemas?api-mode=responses].
+
+        The supported schemas for Structured Outputs can be found
+        (here)[https://platform.openai.com/docs/guides/structured-outputs/supported-schemas?api-mode=responses#supported-schemas]
+        """
+        # TODO Ideally _strictify would also "repair" any function schema. e.g. a required variable had to be
+        #      removed b/c it had schema {"type": "object", "additionalProperties": True} which is not allowed
+        #      Look at test_strictify_function_schema_chat_message for a real example that is quite messy.
+        return {**self._strictify_object(deepcopy(function_schema)), **{"strict": True}}
+
     def _prepare_api_call(  # noqa: PLR0913
         self,
         *,
@@ -398,8 +467,7 @@ class OpenAIChatGenerator:
             for t in tools:
                 function_spec = {**t.tool_spec}
                 if tools_strict:
-                    function_spec["strict"] = True
-                    function_spec["parameters"]["additionalProperties"] = False
+                    function_spec = self._strictify_function_schema(function_spec)
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
 

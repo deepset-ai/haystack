@@ -31,6 +31,14 @@ from haystack.components.generators.chat.openai import (
 )
 from haystack.tools.toolset import Toolset
 
+from test.tools.test_parameters_schema_utils import (
+    CHAT_MESSAGE_SCHEMA,
+    CHAT_ROLE_SCHEMA,
+    TEXT_CONTENT_SCHEMA,
+    TOOL_CALL_SCHEMA,
+    TOOL_CALL_RESULT_SCHEMA,
+)
+
 
 @pytest.fixture
 def chat_messages():
@@ -621,6 +629,130 @@ class TestOpenAIChatGenerator:
         assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
         assert result.meta["received_at"] is not None
 
+    def test_strictify_function_schema(self):
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        function_spec = {
+            "name": "function_name",
+            "description": "function_description",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string"},
+                    "param2": {"type": "integer"},
+                    "param3": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["param1", "param2"],
+            },
+        }
+        strict_function_spec = component._strictify_function_schema(function_spec)
+        assert strict_function_spec == {
+            "name": "function_name",
+            "description": "function_description",
+            "parameters": {
+                "type": "object",
+                "properties": {"param1": {"type": "string"}, "param2": {"type": "integer"}},
+                "required": ["param1", "param2"],
+                "additionalProperties": False,
+            },
+            "strict": True,
+        }
+
+    def test_strictify_function_schema_chat_message(self):
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        example_schema = {
+            "$defs": {
+                "ChatMessage": CHAT_MESSAGE_SCHEMA,
+                "ChatRole": CHAT_ROLE_SCHEMA,
+                "TextContent": TEXT_CONTENT_SCHEMA,
+                "ToolCall": TOOL_CALL_SCHEMA,
+                "ToolCallResult": TOOL_CALL_RESULT_SCHEMA,
+            },
+            "description": "A test function",
+            "properties": {
+                "input_name": {
+                    "description": "A list of chat messages",
+                    "items": {"$ref": "#/$defs/ChatMessage"},
+                    "type": "array",
+                }
+            },
+            "required": ["input_name"],
+            "type": "object",
+        }
+        strict_function_spec = component._strictify_function_schema(example_schema)
+        expected_spec = {
+            "$defs": {
+                "ChatMessage": {
+                    "type": "object",
+                    "properties": {
+                        "role": {"$ref": "#/$defs/ChatRole", "description": "Field 'role' of 'ChatMessage'."},
+                        "content": {
+                            "type": "array",
+                            "description": "Field 'content' of 'ChatMessage'.",
+                            "items": {
+                                "anyOf": [
+                                    {"$ref": "#/$defs/TextContent"}
+                                    # {"$ref": "#/$defs/ToolCall"},
+                                    # {"$ref": "#/$defs/ToolCallResult"},
+                                ]
+                            },
+                        },
+                    },
+                    "required": ["role", "content"],
+                },
+                "ChatRole": CHAT_ROLE_SCHEMA,
+                "TextContent": TEXT_CONTENT_SCHEMA,
+                # TODO `arguments` is the problematic parameter that will be auto-removed but it's also in required
+                #      This means ToolCall itself should be removed (if possible). It can be from ChatMessage
+                #      since it's contained within an anyOf list.
+                #      However, this also affects TOOL_CALL_RESULT_SCHEMA which has ToolCall as a requirement
+                #      This means ToolCallResult should also be removed if possible.
+                #      Then if not possible to remove all the way up then an error should be thrown.
+                # "ToolCall": {
+                #     "type": "object",
+                #     "properties": {
+                #         "tool_name": {"type": "string", "description": "The name of the Tool to call."},
+                #         "arguments": {
+                #             "type": "object",
+                #             "description": "The arguments to call the Tool with.",
+                #             "additionalProperties": True,
+                #         },
+                #         "id": {
+                #             "anyOf": [{"type": "string"}, {"type": "null"}],
+                #             "default": None,
+                #             "description": "The ID of the Tool call.",
+                #         },
+                #     },
+                #     "required": ["tool_name", "arguments"],
+                # },
+                # "ToolCallResult": {
+                #     "type": "object",
+                #     "properties": {
+                #         "result": {"type": "string", "description": "The result of the Tool invocation."},
+                #         "origin": {
+                #             "$ref": "#/$defs/ToolCall",
+                #             "description": "The Tool call that produced this result.",
+                #         },
+                #         "error": {
+                #             "type": "boolean",
+                #             "description": "Whether the Tool invocation resulted in an error.",
+                #         },
+                #     },
+                #     "required": ["result", "origin", "error"],
+                # },
+            },
+            "description": "A test function",
+            "properties": {
+                "input_name": {
+                    "description": "A list of chat messages",
+                    "items": {"$ref": "#/$defs/ChatMessage"},
+                    "type": "array",
+                }
+            },
+            "required": ["input_name"],
+            "type": "object",
+        }
+        # assert strict_function_spec == expected_spec
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -757,3 +889,25 @@ class TestOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+
+    # TODO Re-enable once unit tests are working
+    # @pytest.mark.skipif(
+    #     not os.environ.get("OPENAI_API_KEY", None),
+    #     reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    # )
+    # @pytest.mark.integration
+    # def test_live_run_with_tools_strict(self, tools):
+    #     chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
+    #     component = OpenAIChatGenerator(tools=tools, tools_strict=True)
+    #     results = component.run(chat_messages)
+    #     assert len(results["replies"]) == 1
+    #     message = results["replies"][0]
+    #
+    #     assert not message.texts
+    #     assert not message.text
+    #     assert message.tool_calls
+    #     tool_call = message.tool_call
+    #     assert isinstance(tool_call, ToolCall)
+    #     assert tool_call.tool_name == "weather"
+    #     assert tool_call.arguments == {"city": "Paris"}
+    #     assert message.meta["finish_reason"] == "tool_calls"
