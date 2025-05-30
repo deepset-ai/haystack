@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed a mypy issue in the OpenAIChatGenerator and its handling of stream responses. This issue only occurs with mypy >=1.16.0.
