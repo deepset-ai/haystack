@@ -421,13 +421,19 @@ class OpenAIChatGenerator:
         chunks: List[StreamingChunk] = []
         chunk = None
         chunk_delta: StreamingChunk
+        last_chunk: Optional[ChatCompletionChunk] = None
 
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
             chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)
             callback(chunk_delta)
-        return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
+            last_chunk = chunk
+
+        if not last_chunk:
+            raise ValueError("No chunks received from the stream")
+
+        return [self._convert_streaming_chunks_to_chat_message(last_chunk, chunks)]
 
     async def _handle_async_stream_response(
         self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
@@ -435,13 +441,19 @@ class OpenAIChatGenerator:
         chunks: List[StreamingChunk] = []
         chunk = None
         chunk_delta: StreamingChunk
+        last_chunk: Optional[ChatCompletionChunk] = None
 
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
             chunk_delta = self._convert_chat_completion_chunk_to_streaming_chunk(chunk)
             chunks.append(chunk_delta)
             await callback(chunk_delta)
-        return [self._convert_streaming_chunks_to_chat_message(chunk, chunks)]
+            last_chunk = chunk
+
+        if not last_chunk:
+            raise ValueError("No chunks received from the stream")
+
+        return [self._convert_streaming_chunks_to_chat_message(last_chunk, chunks)]
 
     def _check_finish_reason(self, meta: Dict[str, Any]) -> None:
         if meta["finish_reason"] == "length":
