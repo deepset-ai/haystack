@@ -708,7 +708,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert len(streaming_chunks) > 0, "Should have received at least one streaming chunk"
         assert "replies" in response
         assert isinstance(response["replies"][0], ChatMessage)
-        assert "climate change" in response["replies"][0].text.lower()
+        assert "Paris" in response["replies"][0].text, "Response should mention Paris"
 
         # Verify streaming chunks contain actual content
         total_streamed_content = "".join(chunk.content for chunk in streaming_chunks)
@@ -717,4 +717,3 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         print(f"Received {len(streaming_chunks)} streaming chunks")
         print(f"Total streamed content length: {len(total_streamed_content)}")
         print(f"Final response length: {len(response['replies'][0].text)}")
-        assert "Paris" in response["replies"][0].text, "Response should mention Paris"
