@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add `AsyncHFTokenStreamingHandler` for async streaming support in `HuggingFaceLocalChatGenerator`
