@@ -2,9 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Protocol, TypeVar
-
-T = TypeVar("T", bound="TextEmbedder")
+from typing import Any, Dict, Protocol
 
 # See https://github.com/pylint-dev/pylint/issues/9319.
 # pylint: disable=unnecessary-ellipsis

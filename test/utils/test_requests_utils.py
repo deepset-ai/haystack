@@ -79,46 +79,56 @@ class TestRequestWithRetry:
 
     def test_request_with_retry_retries_on_error(self):
         """Test that request_with_retry retries on HTTP errors"""
-        error_response = requests.Response()
-        error_response.status_code = 503
+        with patch("time.sleep") as mock_sleep:
+            # Mock time.sleep used by tenacity to keep this test fast
+            mock_sleep.return_value = None
 
-        success_response = requests.Response()
-        success_response.status_code = 200
+            error_response = requests.Response()
+            error_response.status_code = 503
 
-        with patch("requests.request") as mock_request:
-            # First call raises an error, second call succeeds
-            mock_request.side_effect = [requests.exceptions.HTTPError("Server error"), success_response]
+            success_response = requests.Response()
+            success_response.status_code = 200
 
-            response = request_with_retry(method="GET", url="https://example.com", attempts=2)
+            with patch("requests.request") as mock_request:
+                # First call raises an error, second call succeeds
+                mock_request.side_effect = [requests.exceptions.HTTPError("Server error"), success_response]
 
-            assert response == success_response
-            assert mock_request.call_count == 2
+                response = request_with_retry(method="GET", url="https://example.com", attempts=2)
+
+                assert response == success_response
+                assert mock_request.call_count == 2
+                mock_sleep.assert_called()
 
     def test_request_with_retry_retries_on_status_code(self):
         """Test that request_with_retry retries on specified status codes"""
-        error_response = requests.Response()
-        error_response.status_code = 503
+        with patch("time.sleep") as mock_sleep:
+            # Mock time.sleep used by tenacity to keep this test fast
+            mock_sleep.return_value = None
 
-        def raise_for_status():
-            if error_response.status_code in [503]:
-                raise requests.exceptions.HTTPError("Service Unavailable")
+            error_response = requests.Response()
+            error_response.status_code = 503
 
-        error_response.raise_for_status = raise_for_status
+            def raise_for_status():
+                if error_response.status_code in [503]:
+                    raise requests.exceptions.HTTPError("Service Unavailable")
 
-        success_response = requests.Response()
-        success_response.status_code = 200
-        success_response.raise_for_status = lambda: None
+            error_response.raise_for_status = raise_for_status
 
-        with patch("requests.request") as mock_request:
-            # First call returns error status code, second call succeeds
-            mock_request.side_effect = [error_response, success_response]
+            success_response = requests.Response()
+            success_response.status_code = 200
+            success_response.raise_for_status = lambda: None
 
-            response = request_with_retry(
-                method="GET", url="https://example.com", attempts=2, status_codes_to_retry=[503]
-            )
+            with patch("requests.request") as mock_request:
+                # First call returns error status code, second call succeeds
+                mock_request.side_effect = [error_response, success_response]
 
-            assert response == success_response
-            assert mock_request.call_count == 2
+                response = request_with_retry(
+                    method="GET", url="https://example.com", attempts=2, status_codes_to_retry=[503]
+                )
+
+                assert response == success_response
+                assert mock_request.call_count == 2
+                mock_sleep.assert_called()
 
 
 class TestAsyncRequestWithRetry:
@@ -183,44 +193,54 @@ class TestAsyncRequestWithRetry:
     @pytest.mark.asyncio
     async def test_async_request_with_retry_retries_on_error(self):
         """Test that async_request_with_retry retries on HTTP errors"""
-        error_response = httpx.Response(status_code=503, request=httpx.Request("GET", "https://example.com"))
-        success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+        with patch("asyncio.sleep") as mock_sleep:
+            # Mock asyncio.sleep used by tenacity to keep this test fast
+            mock_sleep.return_value = None
 
-        with patch("httpx.AsyncClient.request") as mock_request:
-            # First call raises an error, second call succeeds
-            mock_request.side_effect = [
-                httpx.RequestError("Server error", request=httpx.Request("GET", "https://example.com")),
-                success_response,
-            ]
+            error_response = httpx.Response(status_code=503, request=httpx.Request("GET", "https://example.com"))
+            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
 
-            response = await async_request_with_retry(method="GET", url="https://example.com", attempts=2)
+            with patch("httpx.AsyncClient.request") as mock_request:
+                # First call raises an error, second call succeeds
+                mock_request.side_effect = [
+                    httpx.RequestError("Server error", request=httpx.Request("GET", "https://example.com")),
+                    success_response,
+                ]
 
-            assert response == success_response
-            assert mock_request.call_count == 2
+                response = await async_request_with_retry(method="GET", url="https://example.com", attempts=2)
+
+                assert response == success_response
+                assert mock_request.call_count == 2
+                mock_sleep.assert_called()
 
     @pytest.mark.asyncio
     async def test_async_request_with_retry_retries_on_status_code(self):
         """Test that async_request_with_retry retries on specified status codes"""
-        error_response = httpx.Response(status_code=503, request=httpx.Request("GET", "https://example.com"))
+        with patch("asyncio.sleep") as mock_sleep:
+            # Mock asyncio.sleep used by tenacity to keep this test fast
+            mock_sleep.return_value = None
 
-        def raise_for_status():
-            if error_response.status_code in [503]:
-                raise httpx.HTTPStatusError(
-                    "Service Unavailable", request=error_response.request, response=error_response
+            error_response = httpx.Response(status_code=503, request=httpx.Request("GET", "https://example.com"))
+
+            def raise_for_status():
+                if error_response.status_code in [503]:
+                    raise httpx.HTTPStatusError(
+                        "Service Unavailable", request=error_response.request, response=error_response
+                    )
+
+            error_response.raise_for_status = raise_for_status
+
+            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+            success_response.raise_for_status = lambda: None
+
+            with patch("httpx.AsyncClient.request") as mock_request:
+                # First call returns error status code, second call succeeds
+                mock_request.side_effect = [error_response, success_response]
+
+                response = await async_request_with_retry(
+                    method="GET", url="https://example.com", attempts=2, status_codes_to_retry=[503]
                 )
 
-        error_response.raise_for_status = raise_for_status
-
-        success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
-        success_response.raise_for_status = lambda: None
-
-        with patch("httpx.AsyncClient.request") as mock_request:
-            # First call returns error status code, second call succeeds
-            mock_request.side_effect = [error_response, success_response]
-
-            response = await async_request_with_retry(
-                method="GET", url="https://example.com", attempts=2, status_codes_to_retry=[503]
-            )
-
-            assert response == success_response
-            assert mock_request.call_count == 2
+                assert response == success_response
+                assert mock_request.call_count == 2
+                mock_sleep.assert_called()
