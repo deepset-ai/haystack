@@ -511,7 +511,6 @@ def _get_default_device() -> Device:
             hasattr(torch, "xpu")
             and hasattr(torch.xpu, "is_available")
             and torch.xpu.is_available()
-            and torch.xpu.device_count() > 0
             and os.getenv("HAYSTACK_XPU_ENABLED", "true") != "false"
         )
     except ImportError:
