@@ -404,6 +404,9 @@ jobs:
     needs: unit-tests
     runs-on: windows-latest
     timeout-minutes: 30
+    env:
+      HAYSTACK_XPU_ENABLED: false
+
     steps:
       - uses: actions/checkout@v4
 
