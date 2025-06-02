@@ -570,9 +570,8 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
         #       Anthropic Claude
         index=0,
-        # The first chunk is always a start message chunk, so if we reach here and previous_chunks is length 1
-        # then this is the start of text content. Previous length should be 1 since first chunk always contains
-        # role information.
+        # The first chunk is always a start message chunk that only contains role information, so if we reach here
+        # and previous_chunks is length 1 then this is the start of text content.
         start=len(previous_chunks) == 1 or None,
         meta={
             "model": chunk.model,
