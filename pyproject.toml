@@ -58,6 +58,7 @@ dependencies = [
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
   "haystack-experimental",
+  "ibm-watsonx-ai",
 ]
 
 [tool.hatch.envs.default]

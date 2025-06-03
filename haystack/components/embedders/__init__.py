@@ -16,6 +16,8 @@ _import_structure = {
     "openai_text_embedder": ["OpenAITextEmbedder"],
     "sentence_transformers_document_embedder": ["SentenceTransformersDocumentEmbedder"],
     "sentence_transformers_text_embedder": ["SentenceTransformersTextEmbedder"],
+    "watsonx_document_embedder": ["WatsonXDocumentEmbedder"],
+    "watsonx_text_embedder": ["WatsonXTextEmbedder"],
 }
 
 if TYPE_CHECKING:
@@ -27,6 +29,8 @@ if TYPE_CHECKING:
     from .openai_text_embedder import OpenAITextEmbedder
     from .sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
     from .sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
+    from .watsonx_document_embedder import WatsonXDocumentEmbedder
+    from .watsonx_text_embedder import WatsonXTextEmbedder
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
