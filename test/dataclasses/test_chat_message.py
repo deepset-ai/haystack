@@ -430,3 +430,23 @@ def test_from_openai_dict_format_unsupported_role():
 def test_from_openai_dict_format_assistant_missing_content_and_tool_calls():
     with pytest.raises(ValueError):
         ChatMessage.from_openai_dict_format({"role": "assistant", "irrelevant": "irrelevant"})
+
+
+def test_from_dict_with_invalid_content_improved_error():
+    """Test that _deserialize_content provides clear error messages for invalid content formats."""
+    # Test with completely invalid content structure
+    data = {"role": "user", "content": [{"invalid_key": "some_value"}]}
+
+    with pytest.raises(
+        ValueError,
+        match=r"Invalid content in ChatMessage.*ChatMessage content must be a list of dictionaries.*'text', 'tool_call', or 'tool_call_result'",
+    ):
+        ChatMessage.from_dict(data)
+
+    # Test with mixed valid and invalid content
+    data = {"role": "assistant", "content": [{"text": "Valid text"}, {"wrong_field": "invalid"}]}
+
+    with pytest.raises(
+        ValueError, match=r"Invalid content in ChatMessage.*Valid formats.*text.*tool_call.*tool_call_result"
+    ):
+        ChatMessage.from_dict(data)
