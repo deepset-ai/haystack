@@ -39,7 +39,7 @@ class OpenAIDocumentEmbedder:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913 (too-many-arguments) # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "text-embedding-ada-002",
@@ -55,6 +55,8 @@ class OpenAIDocumentEmbedder:
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
         http_client_kwargs: Optional[Dict[str, Any]] = None,
+        *,
+        raise_on_failure: bool = False,
     ):
         """
         Creates an OpenAIDocumentEmbedder component.
@@ -100,6 +102,9 @@ class OpenAIDocumentEmbedder:
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param raise_on_failure:
+            Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
+            and continue processing the remaining documents. If `True`, it will raise an exception on failure.
         """
         self.api_key = api_key
         self.model = model
@@ -115,6 +120,7 @@ class OpenAIDocumentEmbedder:
         self.timeout = timeout
         self.max_retries = max_retries
         self.http_client_kwargs = http_client_kwargs
+        self.raise_on_failure = raise_on_failure
 
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -163,6 +169,7 @@ class OpenAIDocumentEmbedder:
             timeout=self.timeout,
             max_retries=self.max_retries,
             http_client_kwargs=self.http_client_kwargs,
+            raise_on_failure=self.raise_on_failure,
         )
 
     @classmethod
@@ -215,6 +222,8 @@ class OpenAIDocumentEmbedder:
                 ids = ", ".join(b[0] for b in batch)
                 msg = "Failed embedding of documents {ids} caused by {exc}"
                 logger.exception(msg, ids=ids, exc=exc)
+                if self.raise_on_failure:
+                    raise exc
                 continue
 
             embeddings = [el.embedding for el in response.data]
@@ -256,6 +265,8 @@ class OpenAIDocumentEmbedder:
                 ids = ", ".join(b[0] for b in batch)
                 msg = "Failed embedding of documents {ids} caused by {exc}"
                 logger.exception(msg, ids=ids, exc=exc)
+                if self.raise_on_failure:
+                    raise exc
                 continue
 
             embeddings = [el.embedding for el in response.data]

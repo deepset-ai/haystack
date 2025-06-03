@@ -125,6 +125,7 @@ class TestOpenAIDocumentEmbedder:
                 "embedding_separator": "\n",
                 "timeout": None,
                 "max_retries": None,
+                "raise_on_failure": False,
             },
         }
 
@@ -143,6 +144,7 @@ class TestOpenAIDocumentEmbedder:
             embedding_separator=" | ",
             timeout=10.0,
             max_retries=2,
+            raise_on_failure=True,
         )
         data = component.to_dict()
         assert data == {
@@ -162,6 +164,7 @@ class TestOpenAIDocumentEmbedder:
                 "embedding_separator": " | ",
                 "timeout": 10.0,
                 "max_retries": 2,
+                "raise_on_failure": True,
             },
         }
 
@@ -236,6 +239,17 @@ class TestOpenAIDocumentEmbedder:
 
         assert len(caplog.records) == 1
         assert "Failed embedding of documents 1, 2 caused by Mocked error" in caplog.records[0].msg
+
+    def test_embed_batch_raises_exception_on_failure(self):
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"), raise_on_failure=True)
+        fake_texts_to_embed = {"1": "text1", "2": "text2"}
+        with patch.object(
+            embedder.client.embeddings,
+            "create",
+            side_effect=APIError(message="Mocked error", request=Mock(), body=None),
+        ):
+            with pytest.raises(APIError, match="Mocked error"):
+                embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=2)
 
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
