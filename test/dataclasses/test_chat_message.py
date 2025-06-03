@@ -342,14 +342,31 @@ def test_to_openai_dict_format_invalid():
     with pytest.raises(ValueError):
         message.to_openai_dict_format()
 
+
+def test_to_openai_dict_format_require_tool_call_ids():
     tool_call_null_id = ToolCall(id=None, tool_name="weather", arguments={"city": "Paris"})
     message = ChatMessage.from_assistant(tool_calls=[tool_call_null_id])
     with pytest.raises(ValueError):
-        message.to_openai_dict_format()
+        message.to_openai_dict_format(require_tool_call_ids=True)
 
     message = ChatMessage.from_tool(tool_result="result", origin=tool_call_null_id)
     with pytest.raises(ValueError):
-        message.to_openai_dict_format()
+        message.to_openai_dict_format(require_tool_call_ids=True)
+
+
+def test_to_openai_dict_format_require_tool_call_ids_false():
+    tool_call_null_id = ToolCall(id=None, tool_name="weather", arguments={"city": "Paris"})
+    message = ChatMessage.from_assistant(tool_calls=[tool_call_null_id])
+    openai_msg = message.to_openai_dict_format(require_tool_call_ids=False)
+
+    assert openai_msg == {
+        "role": "assistant",
+        "tool_calls": [{"type": "function", "function": {"name": "weather", "arguments": '{"city": "Paris"}'}}],
+    }
+
+    message = ChatMessage.from_tool(tool_result="result", origin=tool_call_null_id)
+    openai_msg = message.to_openai_dict_format(require_tool_call_ids=False)
+    assert openai_msg == {"role": "tool", "content": "result"}
 
 
 def test_from_openai_dict_format_user_message():

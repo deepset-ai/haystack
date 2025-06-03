@@ -388,9 +388,19 @@ class ChatMessage:
 
         raise ValueError(f"Missing 'content' or '_content' in serialized ChatMessage: `{data}`")
 
-    def to_openai_dict_format(self) -> Dict[str, Any]:
+    def to_openai_dict_format(self, require_tool_call_ids: bool = True) -> Dict[str, Any]:
         """
         Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
+
+        :param require_tool_call_ids:
+            If True (default), enforces that each Tool Call includes a non-null `id` attribute.
+            Set to False to allow Tool Calls without `id`, which may be suitable for shallow OpenAI-compatible APIs.
+        :returns:
+            The ChatMessage in the format expected by OpenAI's Chat API.
+
+        :raises ValueError:
+            If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
+            `id` attribute.
         """
         text_contents = self.texts
         tool_calls = self.tool_calls
@@ -411,10 +421,12 @@ class ChatMessage:
 
         if tool_call_results:
             result = tool_call_results[0]
-            if result.origin.id is None:
-                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
             openai_msg["content"] = result.result
-            openai_msg["tool_call_id"] = result.origin.id
+            if result.origin.id is not None:
+                openai_msg["tool_call_id"] = result.origin.id
+            elif require_tool_call_ids:
+                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
+
             # OpenAI does not provide a way to communicate errors in tool invocations, so we ignore the error field
             return openai_msg
 
@@ -422,17 +434,19 @@ class ChatMessage:
             openai_msg["content"] = text_contents[0]
         if tool_calls:
             openai_tool_calls = []
+
             for tc in tool_calls:
-                if tc.id is None:
+                openai_tool_call = {
+                    "type": "function",
+                    # We disable ensure_ascii so special chars like emojis are not converted
+                    "function": {"name": tc.tool_name, "arguments": json.dumps(tc.arguments, ensure_ascii=False)},
+                }
+                if tc.id is not None:
+                    openai_tool_call["id"] = tc.id
+                elif require_tool_call_ids:
                     raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
-                openai_tool_calls.append(
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        # We disable ensure_ascii so special chars like emojis are not converted
-                        "function": {"name": tc.tool_name, "arguments": json.dumps(tc.arguments, ensure_ascii=False)},
-                    }
-                )
+                openai_tool_calls.append(openai_tool_call)
+
             openai_msg["tool_calls"] = openai_tool_calls
         return openai_msg
 
