@@ -78,6 +78,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "default_headers": {},
                 "azure_ad_token_provider": None,
                 "http_client_kwargs": None,
+                "raise_on_failure": False,
             },
         }
 
@@ -95,6 +96,7 @@ class TestAzureOpenAIDocumentEmbedder:
             default_headers={"x-custom-header": "custom-value"},
             azure_ad_token_provider=default_azure_ad_token_provider,
             http_client_kwargs={"proxy": "http://example.com:3128", "verify": False},
+            raise_on_failure=True,
         )
         data = component.to_dict()
         assert data == {
@@ -118,6 +120,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "default_headers": {"x-custom-header": "custom-value"},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
                 "http_client_kwargs": {"proxy": "http://example.com:3128", "verify": False},
+                "raise_on_failure": True,
             },
         }
 
@@ -144,6 +147,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "default_headers": {},
                 "azure_ad_token_provider": None,
                 "http_client_kwargs": None,
+                "raise_on_failure": False,
             },
         }
         component = AzureOpenAIDocumentEmbedder.from_dict(data)
@@ -157,6 +161,7 @@ class TestAzureOpenAIDocumentEmbedder:
         assert component.default_headers == {}
         assert component.azure_ad_token_provider is None
         assert component.http_client_kwargs is None
+        assert component.raise_on_failure is False
 
     def test_from_dict_with_parameters(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -181,6 +186,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "default_headers": {"x-custom-header": "custom-value"},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
                 "http_client_kwargs": {"proxy": "http://example.com:3128", "verify": False},
+                "raise_on_failure": True,
             },
         }
         component = AzureOpenAIDocumentEmbedder.from_dict(data)
@@ -194,6 +200,7 @@ class TestAzureOpenAIDocumentEmbedder:
         assert component.default_headers == {"x-custom-header": "custom-value"}
         assert component.azure_ad_token_provider is not None
         assert component.http_client_kwargs == {"proxy": "http://example.com:3128", "verify": False}
+        assert component.raise_on_failure is True
 
     def test_embed_batch_handles_exceptions_gracefully(self, caplog):
         embedder = AzureOpenAIDocumentEmbedder(
@@ -214,6 +221,22 @@ class TestAzureOpenAIDocumentEmbedder:
 
         assert len(caplog.records) == 1
         assert "Failed embedding of documents 1, 2 caused by Mocked error" in caplog.text
+
+    def test_embed_batch_raises_exception_on_failure(self):
+        embedder = AzureOpenAIDocumentEmbedder(
+            azure_endpoint="https://test.openai.azure.com",
+            api_key=Secret.from_token("fake-api-key"),
+            azure_deployment="text-embedding-ada-002",
+            raise_on_failure=True,
+        )
+        fake_texts_to_embed = {"1": "text1", "2": "text2"}
+        with patch.object(
+            embedder.client.embeddings,
+            "create",
+            side_effect=APIError(message="Mocked error", request=Mock(), body=None),
+        ):
+            with pytest.raises(APIError, match="Mocked error"):
+                embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=2)
 
     @pytest.mark.integration
     @pytest.mark.skipif(
