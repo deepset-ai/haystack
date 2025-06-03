@@ -240,6 +240,34 @@ class TestOpenAIDocumentEmbedder:
         assert len(caplog.records) == 1
         assert "Failed embedding of documents 1, 2 caused by Mocked error" in caplog.records[0].msg
 
+    def test_run_handles_exceptions_gracefully(self, caplog):
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"), batch_size=1)
+        docs = [
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+        ]
+
+        # Create a successful response for the second call
+        successful_response = Mock()
+        successful_response.data = [
+            Mock(embedding=[0.4, 0.5, 0.6])  # Mock embedding for second doc
+        ]
+        successful_response.model = "text-embedding-ada-002"
+        successful_response.usage = {"prompt_tokens": 10, "total_tokens": 10}
+
+        with patch.object(
+            embedder.client.embeddings,
+            "create",
+            side_effect=[
+                APIError(message="Mocked error", request=Mock(), body=None),  # First call fails
+                successful_response,  # Second call succeeds
+            ],
+        ):
+            result = embedder.run(documents=docs)
+        assert len(result["documents"]) == 2
+        assert result["documents"][0].embedding is None
+        assert result["documents"][1].embedding == [0.4, 0.5, 0.6]
+
     def test_embed_batch_raises_exception_on_failure(self):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"), raise_on_failure=True)
         fake_texts_to_embed = {"1": "text1", "2": "text2"}
