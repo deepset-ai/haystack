@@ -284,6 +284,8 @@ log_cli = true
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "class"
 
+# trigger CI
+
 [tool.mypy]
 python_version = "3.9"
 disallow_incomplete_defs = true
