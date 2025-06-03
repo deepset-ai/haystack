@@ -208,7 +208,7 @@ class OpenAIDocumentEmbedder:
         Embed a list of texts in batches.
         """
 
-        all_embeddings: Dict[str, List[float]] = {}
+        doc_ids_to_embeddings: Dict[str, List[float]] = {}
         meta: Dict[str, Any] = {}
         for batch in tqdm(
             batched(texts_to_embed.items(), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
@@ -229,7 +229,7 @@ class OpenAIDocumentEmbedder:
                 continue
 
             embeddings = [el.embedding for el in response.data]
-            all_embeddings.update(dict(zip((b[0] for b in batch), embeddings)))
+            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings)))
 
             if "model" not in meta:
                 meta["model"] = response.model
@@ -239,7 +239,7 @@ class OpenAIDocumentEmbedder:
                 meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
                 meta["usage"]["total_tokens"] += response.usage.total_tokens
 
-        return all_embeddings, meta
+        return doc_ids_to_embeddings, meta
 
     async def _embed_batch_async(
         self, texts_to_embed: Dict[str, str], batch_size: int
@@ -248,7 +248,7 @@ class OpenAIDocumentEmbedder:
         Embed a list of texts in batches asynchronously.
         """
 
-        all_embeddings: Dict[str, List[float]] = {}
+        doc_ids_to_embeddings: Dict[str, List[float]] = {}
         meta: Dict[str, Any] = {}
 
         batches = list(batched(texts_to_embed.items(), batch_size))
@@ -272,7 +272,7 @@ class OpenAIDocumentEmbedder:
                 continue
 
             embeddings = [el.embedding for el in response.data]
-            all_embeddings.update(dict(zip((b[0] for b in batch), embeddings)))
+            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings)))
 
             if "model" not in meta:
                 meta["model"] = response.model
@@ -282,7 +282,7 @@ class OpenAIDocumentEmbedder:
                 meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
                 meta["usage"]["total_tokens"] += response.usage.total_tokens
 
-        return all_embeddings, meta
+        return doc_ids_to_embeddings, meta
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, documents: List[Document]):
@@ -305,10 +305,10 @@ class OpenAIDocumentEmbedder:
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
-        embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
+        doc_ids_to_embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
         doc_id_to_document = {doc.id: doc for doc in documents}
-        for doc_id, emb in embeddings.items():
+        for doc_id, emb in doc_ids_to_embeddings.items():
             doc_id_to_document[doc_id].embedding = emb
 
         return {"documents": list(doc_id_to_document.values()), "meta": meta}
@@ -334,10 +334,12 @@ class OpenAIDocumentEmbedder:
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
-        embeddings, meta = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
+        doc_ids_to_embeddings, meta = await self._embed_batch_async(
+            texts_to_embed=texts_to_embed, batch_size=self.batch_size
+        )
 
         doc_id_to_document = {doc.id: doc for doc in documents}
-        for doc_id, emb in embeddings.items():
+        for doc_id, emb in doc_ids_to_embeddings.items():
             doc_id_to_document[doc_id].embedding = emb
 
         return {"documents": list(doc_id_to_document.values()), "meta": meta}
