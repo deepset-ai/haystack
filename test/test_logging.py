@@ -313,8 +313,10 @@ class TestStructuredLoggingJSONRendering:
                     "exc_notes": [],
                     "exc_type": "ValueError",
                     "exc_value": "This is an error",
+                    "exceptions": [],
                     "syntax_error": None,
                     "is_cause": False,
+                    "is_group": False,
                     "frames": [
                         {
                             "filename": str(Path.cwd() / "test" / "test_logging.py"),
