@@ -113,7 +113,14 @@ def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatM
             tcr = ToolCallResult(result=result, origin=origin, error=error)
             content.append(tcr)
         else:
-            raise ValueError(f"Unsupported part in serialized ChatMessage: `{part}`")
+            raise ValueError(
+                f"Invalid content in ChatMessage: {part}. "
+                "ChatMessage content must be a list of dictionaries, where each dictionary contains one of these keys: "
+                "'text', 'tool_call', or 'tool_call_result'. "
+                f"Valid formats: [{{'text': 'Hello'}}, "
+                f"{{'tool_call': {{'tool_name': 'search', 'arguments': {{}}, 'id': 'call_123'}}}}, "
+                f"{{'tool_call_result': {{'result': 'data', 'origin': {{...}}, 'error': false}}}}]"
+            )
 
     return content
 
