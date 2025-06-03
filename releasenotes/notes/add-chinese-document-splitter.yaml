@@ -1,0 +1,18 @@
+---
+highlights: >
+  Added support for Chinese DocumentSplitter, enabling precise splitting of Chinese documents.
+
+
+features:
+  - |
+    Added a new `chinese_DocumentSpliter` component for fine-grained Chinese document splitting.
+
+enhancements: []
+
+issues: []
+
+deprecations: []
+
+security: []
+
+fixes: []
