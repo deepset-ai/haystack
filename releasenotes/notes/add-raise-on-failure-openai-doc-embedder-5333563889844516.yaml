@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added a raise_on_failure boolean parameter to OpenAIDocumentEmbedder and AzureOpenAIDocumentEmbedder. If set to True then the component will raise an exception when there is an error with the API request. It is set to False by default to so the previous behavior of logging an exception and continuing is still the default.
+fixes:
+  - |
+    Fix bug where if raise_on_failure=False and an error occurs mid-batch that the following embeddings would be paired with the wrong documents.
