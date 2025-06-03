@@ -59,6 +59,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         default_headers: Optional[Dict[str, str]] = None,
         azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
         http_client_kwargs: Optional[Dict[str, Any]] = None,
+        raise_on_failure: bool = False,
     ):
         """
         Creates an AzureOpenAIDocumentEmbedder component.
@@ -109,6 +110,9 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param raise_on_failure:
+            Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
+            and continue processing the remaining documents. If `True`, it will raise an exception on failure.
         """
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
@@ -140,6 +144,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
+        self.raise_on_failure = raise_on_failure
 
         client_args: Dict[str, Any] = {
             "api_version": api_version,
@@ -191,6 +196,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
             default_headers=self.default_headers,
             azure_ad_token_provider=azure_ad_token_provider_name,
             http_client_kwargs=self.http_client_kwargs,
+            raise_on_failure=self.raise_on_failure,
         )
 
     @classmethod
