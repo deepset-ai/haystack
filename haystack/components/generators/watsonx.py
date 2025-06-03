@@ -1,13 +1,16 @@
 import os
-from typing import Any, Dict, List, Optional, Union, Generator
+from typing import Any, Dict, Generator, List, Optional, Union
+
+from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames
-from ibm_watsonx_ai import Credentials
+
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import StreamingChunk
 from haystack.utils import Secret, deserialize_secrets_inplace
 
 logger = logging.getLogger(__name__)
+
 
 @component
 class WatsonxGenerator:
@@ -139,8 +142,7 @@ class WatsonxGenerator:
     def _initialize_client(self):
         """Initialize the Watsonx client with the configured credentials."""
         credentials = Credentials(
-            api_key=self.api_key.resolve_value(),
-            url=self.api_base_url or "https://us-south.ml.cloud.ibm.com"
+            api_key=self.api_key.resolve_value(), url=self.api_base_url or "https://us-south.ml.cloud.ibm.com"
         )
         self.client = ModelInference(
             model_id=self.model,
@@ -148,7 +150,7 @@ class WatsonxGenerator:
             project_id=self.project_id,
             space_id=self.space_id,
             params=self.generation_kwargs,
-            verify=self.verify
+            verify=self.verify,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -180,13 +182,13 @@ class WatsonxGenerator:
     ):
         """
         Generate text using the watsonx.ai model.
-        
+
         Args:
             prompt: The input prompt string
             generation_kwargs: Additional generation parameters
             guardrails: Enable HAP content filtering
             stream: Enable streaming response
-            
+
         Returns:
             Dictionary containing:
             - replies: List of generated texts
@@ -208,19 +210,11 @@ class WatsonxGenerator:
             logger.error(f"Generation failed: {str(e)}")
             return self._create_error_response(str(e))
 
-    def _handle_streaming(
-        self,
-        prompt: str,
-        generation_kwargs: Dict[str, Any],
-        guardrails: bool
-    ) -> Dict[str, Any]:
+    def _handle_streaming(self, prompt: str, generation_kwargs: Dict[str, Any], guardrails: bool) -> Dict[str, Any]:
         """Handle streaming generation."""
         try:
             stream = self.client.generate_text_stream(
-                prompt=prompt,
-                params=generation_kwargs,
-                guardrails=guardrails,
-                raw_response=True
+                prompt=prompt, params=generation_kwargs, guardrails=guardrails, raw_response=True
             )
 
             chunks = []
@@ -229,54 +223,38 @@ class WatsonxGenerator:
             for chunk in stream:
                 if not isinstance(chunk, dict):
                     continue
-                
-                chunk_text = chunk.get('results', [{}])[0].get('generated_text', '')
+
+                chunk_text = chunk.get("results", [{}])[0].get("generated_text", "")
                 if chunk_text:
                     full_text += chunk_text
-                    chunks.append(StreamingChunk(
-                        content=chunk_text,
-                        meta={
-                            "model": self.model,
-                            "finish_reason": chunk.get("stop_reason", "streaming")
-                        }
-                    ))
+                    chunks.append(
+                        StreamingChunk(
+                            content=chunk_text,
+                            meta={"model": self.model, "finish_reason": chunk.get("stop_reason", "streaming")},
+                        )
+                    )
 
             return {
                 "replies": [full_text] if full_text else ["[No content]"],
-                "meta": [{
-                    "model": self.model,
-                    "finish_reason": "completed",
-                    "chunk_count": len(chunks)
-                }],
-                "chunks": chunks
+                "meta": [{"model": self.model, "finish_reason": "completed", "chunk_count": len(chunks)}],
+                "chunks": chunks,
             }
         except Exception as e:
             logger.error(f"Streaming generation failed: {str(e)}")
             return self._create_error_response(str(e))
 
-    def _handle_standard(
-        self,
-        prompt: str,
-        generation_kwargs: Dict[str, Any],
-        guardrails: bool
-    ) -> Dict[str, Any]:
+    def _handle_standard(self, prompt: str, generation_kwargs: Dict[str, Any], guardrails: bool) -> Dict[str, Any]:
         """Handle standard (non-streaming) generation."""
         try:
             response = self.client.generate_text(
-                prompt=prompt,
-                params=generation_kwargs,
-                guardrails=guardrails,
-                raw_response=True
+                prompt=prompt, params=generation_kwargs, guardrails=guardrails, raw_response=True
             )
 
-            reply = response.get('results', [{}])[0].get('generated_text', '')
+            reply = response.get("results", [{}])[0].get("generated_text", "")
             return {
                 "replies": [reply] if reply.strip() else ["[Empty response]"],
-                "meta": [{
-                    "model": self.model,
-                    "finish_reason": response.get("stop_reason", "completed")
-                }],
-                "chunks": []
+                "meta": [{"model": self.model, "finish_reason": response.get("stop_reason", "completed")}],
+                "chunks": [],
             }
         except Exception as e:
             logger.error(f"Generation failed: {str(e)}")
@@ -284,20 +262,12 @@ class WatsonxGenerator:
 
     def _create_empty_response(self) -> Dict[str, Any]:
         """Create response for empty input."""
-        return {
-            "replies": [""],
-            "meta": [{"model": self.model, "finish_reason": "empty_input"}],
-            "chunks": []
-        }
+        return {"replies": [""], "meta": [{"model": self.model, "finish_reason": "empty_input"}], "chunks": []}
 
     def _create_error_response(self, error_msg: str) -> Dict[str, Any]:
         """Create response for error cases."""
         return {
             "replies": [f"[Error: {error_msg}]"],
-            "meta": [{
-                "model": self.model,
-                "finish_reason": "error",
-                "error": error_msg
-            }],
-            "chunks": []
+            "meta": [{"model": self.model, "finish_reason": "error", "error": error_msg}],
+            "chunks": [],
         }

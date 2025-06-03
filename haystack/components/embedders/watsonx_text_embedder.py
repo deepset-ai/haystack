@@ -1,11 +1,12 @@
 import os
 from typing import Any, Dict, List, Optional
 
-from haystack import component, default_from_dict, default_to_dict
-from haystack.utils import Secret, deserialize_secrets_inplace
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import Embeddings
 from ibm_watsonx_ai.foundation_models.utils.enums import EmbeddingTypes
+
+from haystack import component, default_from_dict, default_to_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 
 @component
@@ -91,10 +92,7 @@ class WatsonXTextEmbedder:
         self.max_retries = max_retries
 
         # Initialize the embeddings client
-        credentials = Credentials(
-            api_key=api_key.resolve_value(),
-            url=url
-        )
+        credentials = Credentials(api_key=api_key.resolve_value(), url=url)
 
         params = {}
         if truncate_input_tokens is not None:
@@ -105,7 +103,7 @@ class WatsonXTextEmbedder:
             credentials=credentials,
             project_id=project_id,
             space_id=space_id,
-            params=params if params else None
+            params=params if params else None,
         )
 
     def _get_telemetry_data(self) -> Dict[str, Any]:
@@ -151,10 +149,7 @@ class WatsonXTextEmbedder:
     def _prepare_output(self, embedding: List[float]) -> Dict[str, Any]:
         return {
             "embedding": embedding,
-            "meta": {
-                "model": self.model,
-                "truncated_input_tokens": self.truncate_input_tokens,
-            },
+            "meta": {"model": self.model, "truncated_input_tokens": self.truncate_input_tokens},
         }
 
     @component.output_types(embedding=List[float], meta=Dict[str, Any])

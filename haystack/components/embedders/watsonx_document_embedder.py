@@ -4,10 +4,11 @@
 
 from typing import Any, Dict, List, Optional
 
-from haystack import Document, component, default_from_dict, default_to_dict
-from haystack.utils import Secret, deserialize_secrets_inplace
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import Embeddings
+
+from haystack import Document, component, default_from_dict, default_to_dict
+from haystack.utils import Secret, deserialize_secrets_inplace
 
 
 @component
@@ -99,10 +100,7 @@ class WatsonXDocumentEmbedder:
         self.max_retries = max_retries
 
         # Initialize the embeddings client
-        credentials = Credentials(
-            api_key=api_key.resolve_value(),
-            url=url
-        )
+        credentials = Credentials(api_key=api_key.resolve_value(), url=url)
 
         params = {}
         if truncate_input_tokens is not None:
