@@ -115,6 +115,7 @@ dependencies = [
 
   "nltk>=3.9.1", # NLTKDocumentSplitter, RecursiveDocumentSplitter
   "tiktoken", # RecursiveDocumentSplitter
+  "hanlp", # ChineseDocumentSplitter
 
   # OpenAPI
   "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
