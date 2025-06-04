@@ -1,7 +1,7 @@
 enhancements:
   - |
     Improved error messages in ChatMessage deserialization to provide clearer guidance for LLM-agent use cases.
-    The ``_deserialize_content`` function now provides detailed error messages when ChatMessage content format
+    The `_deserialize_content` function now provides detailed error messages when ChatMessage content format
     is invalid, including the expected structure (list of dictionaries with 'text', 'tool_call', or
     'tool_call_result' keys) and concrete examples. This enhancement reduces debugging cycles and improves
     LLM self-correction capabilities when working with agent tools and structured message formats.
