@@ -114,9 +114,9 @@ def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatM
             content.append(tcr)
         else:
             raise ValueError(
-                f"Unsupported part in the serialized ChatMessage: {part}. "
-                "The serialized ChatMessage must be a list of dictionaries, where each dictionary contains "
-                "one of these keys: 'text', 'tool_call', or 'tool_call_result'. "
+                f"Unsupported content part in the serialized ChatMessage: {part}. "
+                "The `content` field of the serialized ChatMessage must be a list of dictionaries, where each "
+                "dictionary contains one of these keys: 'text', 'tool_call', or 'tool_call_result'. "
                 f"Valid formats: [{{'text': 'Hello'}}, "
                 f"{{'tool_call': {{'tool_name': 'search', 'arguments': {{}}, 'id': 'call_123'}}}}, "
                 f"{{'tool_call_result': {{'result': 'data', 'origin': {{...}}, 'error': false}}}}]"
@@ -367,7 +367,7 @@ class ChatMessage:
         :returns:
             The created object.
         """
-        if not "role" in data:
+        if not "role" in data and not "_role" in data:
             raise ValueError(
                 "The `role` field is required in the message dictionary. "
                 f"Expected a dictionary with 'role' field containing one of: {[role.value for role in ChatRole]}. "
@@ -376,14 +376,6 @@ class ChatMessage:
             )
 
         if "content" in data:
-            if not "role" in data:
-                raise ValueError(
-                    "The `role` field is required in the message dictionary. "
-                    f"Expected a dictionary with 'role' field containing one of: {[role.value for role in ChatRole]}. "
-                    f"Common roles are 'user' (for user messages) and 'assistant' (for AI responses). "
-                    f"Received dictionary with keys: {list(data.keys())}"
-                )
-
             init_params: Dict[str, Any] = {
                 "_role": ChatRole(data["role"]),
                 "_name": data.get("name"),
