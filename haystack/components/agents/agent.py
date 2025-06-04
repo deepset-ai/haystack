@@ -237,6 +237,8 @@ class Agent:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
             - Any additional keys defined in the `state_schema`.
+        :raises RuntimeError: If the Agent component wasn't warmed up before calling `run()`.
+        :raises ValueError: If no messages were provided to the Agent.
         """
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
@@ -341,6 +343,8 @@ class Agent:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
             - Any additional keys defined in the `state_schema`.
+        :raises RuntimeError: If the Agent component wasn't warmed up before calling `run_async()`.
+        :raises ValueError: If no messages were provided to the Agent.
         """
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run_async()'.")

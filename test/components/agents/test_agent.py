@@ -719,6 +719,20 @@ class TestAgent:
         with pytest.raises(RuntimeError, match="The component Agent wasn't warmed up."):
             agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
 
+    def test_run_no_messages(self):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[])
+        agent.warm_up()
+        with pytest.raises(ValueError, match="No messages were provided to the Agent."):
+            _ = agent.run([])
+
+    def test_run_only_system_prompt(self, caplog):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="This is a system prompt.")
+        agent.warm_up()
+        _ = agent.run([])
+        assert "All messages provided to the Agent component are system messages." in caplog.text
+
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_run(self, weather_tool):
