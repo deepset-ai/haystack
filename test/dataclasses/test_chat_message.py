@@ -201,12 +201,19 @@ def test_to_dict_with_invalid_content_type():
 
 
 def test_from_dict_with_invalid_content_type():
-    data = {"_role": "assistant", "_content": [{"text": "Hello"}, "invalid"]}
-    with pytest.raises(ValueError):
+    data = {"role": "assistant", "content": [{"text": "Hello"}, "invalid"]}
+    with pytest.raises(ValueError, match="Unsupported content part in the serialized ChatMessage"):
         ChatMessage.from_dict(data)
 
-    data = {"_role": "assistant", "_content": [{"text": "Hello"}, {"invalid": "invalid"}]}
-    with pytest.raises(ValueError):
+    data = {"role": "assistant", "content": [{"text": "Hello"}, {"invalid": "invalid"}]}
+    with pytest.raises(ValueError, match="Unsupported content part in the serialized ChatMessage"):
+        ChatMessage.from_dict(data)
+
+
+def test_from_dict_with_missing_role():
+    data = {"content": [{"text": "Hello"}], "meta": {}}
+
+    with pytest.raises(ValueError, match=r"The `role` field is required"):
         ChatMessage.from_dict(data)
 
 
