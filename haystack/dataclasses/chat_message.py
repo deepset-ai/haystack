@@ -114,8 +114,8 @@ def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatM
             content.append(tcr)
         else:
             raise ValueError(
-                f"Invalid content in ChatMessage: {part}. "
-                "ChatMessage content must be a list of dictionaries, where each dictionary contains one of these keys: "
+                f"Unsupported part in the serialized ChatMessage: {part}. "
+                "The serialized ChatMessage must be a list of dictionaries, where each dictionary contains one of these keys: "
                 "'text', 'tool_call', or 'tool_call_result'. "
                 f"Valid formats: [{{'text': 'Hello'}}, "
                 f"{{'tool_call': {{'tool_name': 'search', 'arguments': {{}}, 'id': 'call_123'}}}}, "
