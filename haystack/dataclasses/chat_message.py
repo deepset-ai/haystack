@@ -368,6 +368,14 @@ class ChatMessage:
             The created object.
         """
         if "content" in data:
+            if not "role" in data:
+                raise ValueError(
+                    "The `role` field is required in the message dictionary. "
+                    f"Expected a dictionary with 'role' field containing one of: {[role.value for role in ChatRole]}. "
+                    f"Common roles are 'user' (for user messages) and 'assistant' (for AI responses). "
+                    f"Received dictionary with keys: {list(data.keys())}"
+                )
+
             init_params: Dict[str, Any] = {
                 "_role": ChatRole(data["role"]),
                 "_name": data.get("name"),

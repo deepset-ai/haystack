@@ -450,3 +450,19 @@ def test_from_dict_with_invalid_content_improved_error():
         ValueError, match=r"Invalid content in ChatMessage.*Valid formats.*text.*tool_call.*tool_call_result"
     ):
         ChatMessage.from_dict(data)
+
+
+def test_from_dict_with_missing_role_improved_error():
+    """Test that from_dict provides clear error messages when role field is missing."""
+    # Test with missing role field
+    data = {"content": [{"text": "Hello"}], "meta": {}}
+
+    with pytest.raises(
+        ValueError,
+        match=r"The `role` field is required.*Expected a dictionary with 'role' field containing one of.*\['user', 'system', 'assistant', 'tool'\].*Common roles are 'user'.*'assistant'",
+    ):
+        ChatMessage.from_dict(data)
+
+    # Test that the error message shows the received keys
+    with pytest.raises(ValueError, match=r"Received dictionary with keys: \['content', 'meta'\]"):
+        ChatMessage.from_dict(data)
