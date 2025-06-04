@@ -1,7 +1,7 @@
 loaders:
   - type: haystack_pydoc_tools.loaders.CustomPythonLoader
     search_path: [../../../haystack/components/agents]
-    modules: ["agent"]
+    modules: ["agent", "state"]
     ignore_when_discovered: ["__init__"]
 processors:
   - type: filter
