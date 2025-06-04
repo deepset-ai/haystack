@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    - Now if no messages are provided to the agent at runtime a ValueError is raised. Previously the Agent would return an empty list of messages as output.
+    - Now if only system messages are provided as input a warning will be logged to the user indicating that this likely not intended.
