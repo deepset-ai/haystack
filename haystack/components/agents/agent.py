@@ -12,7 +12,7 @@ from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.core.serialization import component_to_dict
-from haystack.dataclasses import ChatMessage
+from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
@@ -244,6 +244,15 @@ class Agent:
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
 
+        if len(messages) == 0:
+            raise ValueError("No messages were provided to the Agent.")
+
+        if all(m.is_from(ChatRole.SYSTEM) for m in messages):
+            logger.warning(
+                "All messages provided to the Agent component are system messages. This is not recommended as the "
+                "Agent will not perform any actions specific to user input. Consider adding user messages to the input."
+            )
+
         state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
         component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
@@ -338,6 +347,15 @@ class Agent:
 
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
+
+        if len(messages) == 0:
+            raise ValueError("No messages were provided to the Agent.")
+
+        if all(m.is_from(ChatRole.SYSTEM) for m in messages):
+            logger.warning(
+                "All messages provided to the Agent component are system messages. This is not recommended as the "
+                "Agent will not perform any actions specific to user input. Consider adding user messages to the input."
+            )
 
         state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
