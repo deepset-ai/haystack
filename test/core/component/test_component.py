@@ -328,6 +328,23 @@ def test_output_types_decorator_and_set_output_types():
         _ = MockComponent()
 
 
+def test_output_types_decorator_and_set_output_types_async():
+    @component
+    class MockComponent:
+        def __init__(self) -> None:
+            component.set_output_types(self, value=int)
+
+        def run(self, value: int):
+            return {"value": 1}
+
+        @component.output_types(value=int)
+        async def run_async(self, value: int):
+            return {"value": 1}
+
+    with pytest.raises(ComponentError, match="Cannot call `set_output_types`"):
+        _ = MockComponent()
+
+
 def test_output_types_decorator_mismatch_run_async_run():
     @component
     class MockComponent:
