@@ -77,7 +77,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
     tool_call_data: Dict[int, Dict[str, str]] = {}  # Track tool calls by index
     for chunk in chunks:
         if chunk.tool_call:
-            # We do this to make mypy is happy, but we enforce index is not None in the StreamingChunk dataclass if
+            # We do this to make sure mypy is happy, but we enforce index is not None in the StreamingChunk dataclass if
             # tool_call is present
             assert chunk.index is not None
 
