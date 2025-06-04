@@ -81,7 +81,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
             # tool_call is present
             assert chunk.index is not None
 
-            # We use the index of the chunk track the tool call across chunks since the ID is not always provided
+            # We use the index of the chunk to track the tool call across chunks since the ID is not always provided
             if chunk.index not in tool_call_data:
                 tool_call_data[chunk.index] = {"id": "", "name": "", "arguments": ""}
 
