@@ -293,6 +293,7 @@ warn_unused_configs = true
 ignore_missing_imports = true
 check_untyped_defs = true
 
+
 [[tool.mypy.overrides]]
 # TODO: Fix component typings
 module = ["haystack.components.*", "haystack.testing.*"]
