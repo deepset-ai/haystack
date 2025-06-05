@@ -1,5 +1,4 @@
 ---
-upgrade:
 enhancements:
   - |
     The default in `default_streaming_callback` was confusing, this function was the go-to-helper
