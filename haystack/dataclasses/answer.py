@@ -99,7 +99,7 @@ class GeneratedAnswer:
             Serialized dictionary representation of the object.
         """
         documents = [doc.to_dict(flatten=False) for doc in self.documents]
-        if (all_messages := self.meta.get("all_messages")) and isinstance(all_messages[0], ChatMessage):
+        if (all_messages := self.meta.get("all_messages")) is not None and isinstance(all_messages[0], ChatMessage):
             self.meta["all_messages"] = [message.to_dict() for message in all_messages]
 
         return default_to_dict(self, data=self.data, query=self.query, documents=documents, meta=self.meta)
@@ -117,11 +117,11 @@ class GeneratedAnswer:
         """
         init_params = data.get("init_parameters", {})
 
-        if documents := init_params.get("documents"):
+        if (documents := init_params.get("documents")) is not None:
             init_params["documents"] = [Document.from_dict(d) for d in documents]
 
         meta = init_params.get("meta", {})
-        if (all_messages := meta.get("all_messages")) and isinstance(all_messages[0], ChatMessage):
+        if (all_messages := meta.get("all_messages")) is not None and isinstance(all_messages[0], ChatMessage):
             meta["all_messages"] = [ChatMessage.from_dict(m) for m in all_messages]
         init_params["meta"] = meta
 
