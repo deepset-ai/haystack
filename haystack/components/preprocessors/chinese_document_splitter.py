@@ -19,10 +19,11 @@ logger = logging.getLogger(__name__)
 
 # mapping of split by character, 'function' and 'sentence' don't split by character
 _CHARACTER_SPLIT_BY_MAPPING = {"page": "\f", "passage": "\n\n", "period": ".", "word": " ", "line": "\n"}
-chinese_tokenizer_coarse = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
-chinese_tokenizer_fine = hanlp.load(hanlp.pretrained.tok.FINE_ELECTRA_SMALL_ZH)
+
+# chinese_tokenizer_coarse = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
+# chinese_tokenizer_fine = hanlp.load(hanlp.pretrained.tok.FINE_ELECTRA_SMALL_ZH)
 # Load Chinese sentence slicer
-split_sent = hanlp.load(hanlp.pretrained.eos.UD_CTB_EOS_MUL)
+# split_sent = hanlp.load(hanlp.pretrained.eos.UD_CTB_EOS_MUL)
 
 
 @component
@@ -85,7 +86,7 @@ class ChineseDocumentSplitter(DocumentSplitter):
     def chinese_sentence_split(self, text: str) -> list:
         """Split Chinese text into sentences."""
         # Split sentences
-        sentences = split_sent(text)
+        sentences = self.split_sent(text)
 
         # Organize the format of segmented sentences
         results = []
@@ -107,9 +108,8 @@ class ChineseDocumentSplitter(DocumentSplitter):
 
         return self._split_by_character(doc)
 
-    @staticmethod
-    def _concatenate_sentences_based_on_word_amount(
-        sentences: List[str], split_length: int, split_overlap: int, language: str, particle_size: str
+    def _concatenate_sentences_based_on_word_amount(  # pylint: disable=too-many-positional-arguments
+        self, sentences: List[str], split_length: int, split_overlap: int, language: str, particle_size: str
     ) -> Tuple[List[str], List[int], List[int]]:
         """
         Groups the sentences into chunks of `split_length` words while respecting sentence boundaries.
@@ -136,16 +136,18 @@ class ChineseDocumentSplitter(DocumentSplitter):
         for sentence_idx, sentence in enumerate(sentences):
             current_chunk.append(sentence)
             if language == "zh" and particle_size == "coarse":
-                chunk_word_count += len(chinese_tokenizer_coarse(sentence))
+                chunk_word_count += len(self.chinese_tokenizer_coarse(sentence))
                 next_sentence_word_count = (
-                    len(chinese_tokenizer_coarse(sentences[sentence_idx + 1]))
+                    len(self.chinese_tokenizer_coarse(sentences[sentence_idx + 1]))
                     if sentence_idx < len(sentences) - 1
                     else 0
                 )
             if language == "zh" and particle_size == "fine":
-                chunk_word_count += len(chinese_tokenizer_fine(sentence))
+                chunk_word_count += len(self.chinese_tokenizer_fine(sentence))
                 next_sentence_word_count = (
-                    len(chinese_tokenizer_fine(sentences[sentence_idx + 1])) if sentence_idx < len(sentences) - 1 else 0
+                    len(self.chinese_tokenizer_fine(sentences[sentence_idx + 1]))
+                    if sentence_idx < len(sentences) - 1
+                    else 0
                 )
 
             # Number of words in the current chunk plus the next sentence is larger than the split_length,
@@ -327,9 +329,8 @@ class ChineseDocumentSplitter(DocumentSplitter):
                 overlapping_range = (0, overlapping_range[1] - overlapping_range[0])
                 previous_doc.meta["_split_overlap"].append({"doc_id": current_doc.id, "range": overlapping_range})
 
-    @staticmethod
-    def _number_of_sentences_to_keep(
-        sentences: List[str], split_length: int, split_overlap: int, language: str, particle_size: str
+    def _number_of_sentences_to_keep(  # pylint: disable=too-many-positional-arguments
+        self, sentences: List[str], split_length: int, split_overlap: int, language: str, particle_size: str
     ) -> int:
         """
         Returns the number of sentences to keep in the next chunk based on the `split_overlap` and `split_length`.
@@ -348,9 +349,9 @@ class ChineseDocumentSplitter(DocumentSplitter):
 
         for sent in reversed(sentences[1:]):
             if language == "zh" and particle_size == "coarse":
-                num_words += len(chinese_tokenizer_coarse(sent))
+                num_words += len(self.chinese_tokenizer_coarse(sent))
             if language == "zh" and particle_size == "fine":
-                num_words += len(chinese_tokenizer_fine(sent))
+                num_words += len(self.chinese_tokenizer_fine(sent))
             # If the number of words is larger than the split_length then don't add any more sentences
             if num_words > split_length:
                 break
