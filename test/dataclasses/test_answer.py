@@ -132,7 +132,14 @@ class TestGeneratedAnswer:
         )
         assert isinstance(answer, Answer)
 
-    def test_to_dict_with_str_messages(self):
+    def test_to_dict(self):
+        answer = GeneratedAnswer(data="42", query="What is the answer?", documents=[])
+        assert answer.to_dict() == {
+            "type": "haystack.dataclasses.answer.GeneratedAnswer",
+            "init_parameters": {"data": "42", "query": "What is the answer?", "documents": [], "meta": {}},
+        }
+
+    def test_to_dict_with_meta(self):
         answer = GeneratedAnswer(
             data="42",
             query="What is the answer?",
@@ -149,7 +156,7 @@ class TestGeneratedAnswer:
             },
         }
 
-    def test_to_dict_with_chat_message(self):
+    def test_to_dict_with_chat_message_in_meta(self):
         documents = [
             Document(id="1", content="The answer is 42."),
             Document(id="2", content="I believe the answer is 42."),
@@ -174,7 +181,19 @@ class TestGeneratedAnswer:
             },
         }
 
-    def test_from_dict_with_str_messages(self):
+    def test_from_dict(self):
+        answer = GeneratedAnswer.from_dict(
+            {
+                "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                "init_parameters": {"data": "42", "query": "What is the answer?", "documents": [], "meta": {}},
+            }
+        )
+        assert answer.data == "42"
+        assert answer.query == "What is the answer?"
+        assert answer.documents == []
+        assert answer.meta == {}
+
+    def test_from_dict_with_meta(self):
         answer = GeneratedAnswer.from_dict(
             {
                 "type": "haystack.dataclasses.answer.GeneratedAnswer",
@@ -192,7 +211,7 @@ class TestGeneratedAnswer:
         assert answer.meta["meta_key"] == "meta_value"
         assert answer.meta["all_messages"] == ["What is the answer?"]
 
-    def test_from_dict_with_chat_message(self):
+    def test_from_dict_with_chat_message_in_meta(self):
         answer = GeneratedAnswer.from_dict(
             {
                 "type": "haystack.dataclasses.answer.GeneratedAnswer",
@@ -211,7 +230,6 @@ class TestGeneratedAnswer:
                 },
             }
         )
-        print(answer.meta)
         assert answer.data == "42"
         assert answer.query == "What is the answer?"
         assert answer.documents == [

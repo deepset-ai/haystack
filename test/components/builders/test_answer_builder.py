@@ -245,7 +245,6 @@ class TestAnswerBuilder:
             documents=[Document(content="test doc 1"), Document(content="test doc 2")],
         )
         answers = output["answers"]
-        print(answers[0].meta)
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[2]"
 

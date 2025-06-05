@@ -101,9 +101,12 @@ class GeneratedAnswer:
         documents = [doc.to_dict(flatten=False) for doc in self.documents]
 
         # Serialize ChatMessage objects to dicts
-        meta = self.meta.copy()
-        if (all_messages := meta.get("all_messages")) is not None and isinstance(all_messages[0], ChatMessage):
-            meta["all_messages"] = [message.to_dict() for message in all_messages]
+        meta = self.meta
+        all_messages = meta.get("all_messages")
+
+        # all_messages is either a list of ChatMessage objects or a list of strings
+        if all_messages and isinstance(all_messages[0], ChatMessage):
+            meta = {**meta, "all_messages": [msg.to_dict() for msg in all_messages]}
 
         return default_to_dict(self, data=self.data, query=self.query, documents=documents, meta=meta)
 
