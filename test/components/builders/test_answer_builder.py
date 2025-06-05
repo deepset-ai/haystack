@@ -52,6 +52,7 @@ class TestAnswerBuilder:
         assert answers[0].data == "reply1"
         _check_metadata_excluding_all_messages(answers[0].meta, {"test": "meta"})
         assert "all_messages" in answers[0].meta
+        assert answers[0].meta["all_messages"] == ["reply1"]
         assert answers[0].query == "query"
         assert answers[0].documents == []
         assert isinstance(answers[0], GeneratedAnswer)
@@ -244,6 +245,7 @@ class TestAnswerBuilder:
             documents=[Document(content="test doc 1"), Document(content="test doc 2")],
         )
         answers = output["answers"]
+        print(answers[0].meta)
         assert len(answers) == 1
         assert answers[0].data == "Answer: AnswerString[2]"
 
@@ -254,6 +256,9 @@ class TestAnswerBuilder:
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 1
         assert answers[0].documents[0].content == "test doc 2"
+        assert answers[0].meta["all_messages"] == [
+            ChatMessage.from_assistant("Answer: AnswerString[2]", meta=message_meta)
+        ]
 
     def test_run_with_chat_message_replies_with_pattern_set_at_runtime(self):
         component = AnswerBuilder(pattern="unused pattern")

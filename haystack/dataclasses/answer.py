@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses.document import Document
+from haystack.dataclasses import ChatMessage, Document
 
 
 @runtime_checkable
@@ -99,6 +99,9 @@ class GeneratedAnswer:
             Serialized dictionary representation of the object.
         """
         documents = [doc.to_dict(flatten=False) for doc in self.documents]
+        if (all_messages := self.meta.get("all_messages")) and isinstance(all_messages[0], ChatMessage):
+            self.meta["all_messages"] = [message.to_dict() for message in all_messages]
+
         return default_to_dict(self, data=self.data, query=self.query, documents=documents, meta=self.meta)
 
     @classmethod
@@ -113,7 +116,13 @@ class GeneratedAnswer:
             Deserialized object.
         """
         init_params = data.get("init_parameters", {})
-        if (documents := init_params.get("documents")) is not None:
-            data["init_parameters"]["documents"] = [Document.from_dict(d) for d in documents]
+
+        if documents := init_params.get("documents"):
+            init_params["documents"] = [Document.from_dict(d) for d in documents]
+
+        meta = init_params.get("meta", {})
+        if (all_messages := meta.get("all_messages")) and isinstance(all_messages[0], ChatMessage):
+            meta["all_messages"] = [ChatMessage.from_dict(m) for m in all_messages]
+        init_params["meta"] = meta
 
         return default_from_dict(cls, data)
