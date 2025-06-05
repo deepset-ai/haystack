@@ -9,6 +9,7 @@ import datetime
 from haystack import Pipeline
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.tools.tool_invoker import ToolInvoker, ToolNotFoundException, StringConversionError
 from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult, ChatRole
 from haystack.dataclasses.state import State
@@ -408,6 +409,28 @@ class TestToolInvoker:
                 "tools": [weather_tool.to_dict()],
                 "raise_on_failure": True,
                 "convert_result_to_json_string": False,
+                "enable_streaming_passthrough": False,
+                "streaming_callback": None,
+            },
+        }
+
+    def test_to_dict_with_params(self, weather_tool):
+        invoker = ToolInvoker(
+            tools=[weather_tool],
+            raise_on_failure=False,
+            convert_result_to_json_string=True,
+            enable_streaming_passthrough=True,
+            streaming_callback=print_streaming_chunk,
+        )
+
+        assert invoker.to_dict() == {
+            "type": "haystack.components.tools.tool_invoker.ToolInvoker",
+            "init_parameters": {
+                "tools": [weather_tool.to_dict()],
+                "raise_on_failure": False,
+                "convert_result_to_json_string": True,
+                "enable_streaming_passthrough": True,
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
             },
         }
 
@@ -425,6 +448,25 @@ class TestToolInvoker:
         assert invoker._tools_with_names == {"weather_tool": weather_tool}
         assert invoker.raise_on_failure
         assert not invoker.convert_result_to_json_string
+
+    def test_from_dict_with_streaming_callback(self, weather_tool):
+        data = {
+            "type": "haystack.components.tools.tool_invoker.ToolInvoker",
+            "init_parameters": {
+                "tools": [weather_tool.to_dict()],
+                "raise_on_failure": True,
+                "convert_result_to_json_string": False,
+                "enable_streaming_passthrough": True,
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
+            },
+        }
+        invoker = ToolInvoker.from_dict(data)
+        assert invoker.tools == [weather_tool]
+        assert invoker._tools_with_names == {"weather_tool": weather_tool}
+        assert invoker.raise_on_failure
+        assert not invoker.convert_result_to_json_string
+        assert invoker.streaming_callback == print_streaming_chunk
+        assert invoker.enable_streaming_passthrough is True
 
     def test_serde_in_pipeline(self, invoker, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key")
@@ -463,6 +505,8 @@ class TestToolInvoker:
                         ],
                         "raise_on_failure": True,
                         "convert_result_to_json_string": False,
+                        "enable_streaming_passthrough": False,
+                        "streaming_callback": None,
                     },
                 },
                 "chatgenerator": {
