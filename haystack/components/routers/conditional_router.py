@@ -4,7 +4,7 @@
 
 import ast
 import contextlib
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Union, get_args, get_origin
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, TypedDict, Union, get_args, get_origin
 
 from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
@@ -22,6 +22,13 @@ class NoRouteSelectedException(Exception):
 
 class RouteConditionException(Exception):
     """Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter."""
+
+
+class Route(TypedDict):
+    condition: str
+    output: Union[str, List[str]]
+    output_name: Union[str, List[str]]
+    output_type: Union[type, List[type]]
 
 
 @component
@@ -108,7 +115,7 @@ class ConditionalRouter:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        routes: List[Dict],
+        routes: List[Route],
         custom_filters: Optional[Dict[str, Callable]] = None,
         unsafe: bool = False,
         validate_output_type: bool = False,
@@ -179,7 +186,7 @@ class ConditionalRouter:
             - Some variables are only needed for specific routing conditions
             - You're building flexible pipelines where not all inputs are guaranteed to be present
         """
-        self.routes: List[dict] = routes
+        self.routes: List[Route] = routes
         self.custom_filters = custom_filters or {}
         self._unsafe = unsafe
         self._validate_output_type = validate_output_type
@@ -199,7 +206,7 @@ class ConditionalRouter:
         self._validate_routes(routes)
         # Inspect the routes to determine input and output types.
         input_types: Set[str] = set()  # let's just store the name, type will always be Any
-        output_types: Dict[str, str] = {}
+        output_types: Dict[str, Union[type, List[type]]] = {}
 
         for route in routes:
             # extract inputs
@@ -248,8 +255,12 @@ class ConditionalRouter:
         """
         serialized_routes = []
         for route in self.routes:
-            # output_type needs to be serialized to a string
-            serialized_routes.append({**route, "output_type": serialize_type(route["output_type"])})
+            serialized_output_type = (
+                [serialize_type(t) for t in route["output_type"]]
+                if isinstance(route["output_type"], list)
+                else serialize_type(route["output_type"])
+            )
+            serialized_routes.append({**route, "output_type": serialized_output_type})
         se_filters = {name: serialize_callable(filter_func) for name, filter_func in self.custom_filters.items()}
         return default_to_dict(
             self,
@@ -274,7 +285,10 @@ class ConditionalRouter:
         routes = init_params.get("routes")
         for route in routes:
             # output_type needs to be deserialized from a string to a type
-            route["output_type"] = deserialize_type(route["output_type"])
+            if isinstance(route["output_type"], list):
+                route["output_type"] = [deserialize_type(t) for t in route["output_type"]]
+            else:
+                route["output_type"] = deserialize_type(route["output_type"])
 
         # Since the custom_filters are typed as optional in the init signature, we catch the
         # case where they are not present in the serialized data and set them to an empty dict.
@@ -355,7 +369,7 @@ class ConditionalRouter:
 
         raise NoRouteSelectedException(f"No route fired. Routes: {self.routes}")
 
-    def _validate_routes(self, routes: List[Dict]):
+    def _validate_routes(self, routes: List[Route]):
         """
         Validates a list of routes.
 
@@ -401,8 +415,7 @@ class ConditionalRouter:
         """
         variables = set()
         for template in templates:
-            ast = env.parse(template)
-            variables.update(meta.find_undeclared_variables(ast))
+            variables.update(meta.find_undeclared_variables(env.parse(template)))
         return variables
 
     def _validate_template(self, env: Environment, template_text: str):
