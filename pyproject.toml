@@ -64,6 +64,7 @@ dependencies = [
 installer = "uv"
 dependencies = [
   "pre-commit",
+  "ruff",
   "toml",
   "reno",
   # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
@@ -74,6 +75,7 @@ dependencies = [
 
 [tool.hatch.envs.default.scripts]
 release-note = "reno new {args}"
+fmt = "ruff check --fix {args} && ruff format {args}"
 
 [tool.hatch.envs.test]
 
@@ -299,7 +301,6 @@ exclude = [".github", "proposals"]
 
 [tool.ruff.format]
 skip-magic-trailing-comma = true
-docstring-code-format = false
 
 [tool.ruff.lint]
 isort.split-on-trailing-comma = false

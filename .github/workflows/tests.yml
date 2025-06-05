@@ -46,7 +46,7 @@ jobs:
         run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Ruff - check format and linting
-        run: hatch fmt --check
+        run: hatch run ruff check && hatch run ruff format --check
 
       - name: Check presence of license header
         run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
