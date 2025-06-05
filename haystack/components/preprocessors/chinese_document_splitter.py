@@ -20,11 +20,6 @@ logger = logging.getLogger(__name__)
 # mapping of split by character, 'function' and 'sentence' don't split by character
 _CHARACTER_SPLIT_BY_MAPPING = {"page": "\f", "passage": "\n\n", "period": ".", "word": " ", "line": "\n"}
 
-# chinese_tokenizer_coarse = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
-# chinese_tokenizer_fine = hanlp.load(hanlp.pretrained.tok.FINE_ELECTRA_SMALL_ZH)
-# Load Chinese sentence slicer
-# split_sent = hanlp.load(hanlp.pretrained.eos.UD_CTB_EOS_MUL)
-
 
 @component
 class ChineseDocumentSplitter(DocumentSplitter):
@@ -43,8 +38,18 @@ class ChineseDocumentSplitter(DocumentSplitter):
 
         hanlp_import.check()
 
-        self.chinese_tokenizer_coarse = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
-        self.chinese_tokenizer_fine = hanlp.load(hanlp.pretrained.tok.FINE_ELECTRA_SMALL_ZH)
+        if particle_size not in ["coarse", "fine"]:
+            raise ValueError(f"Invalid particle_size '{particle_size}'. Choose either 'coarse' or 'fine'.")
+
+        if particle_size == "coarse":
+            logger.info("Using 'coarse' granularity Chinese word segmentation.")
+            self.chinese_tokenizer_coarse = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
+
+        if particle_size == "fine":
+            logger.info("Using 'fine' granularity Chinese word segmentation.")
+            self.chinese_tokenizer_fine = hanlp.load(hanlp.pretrained.tok.FINE_ELECTRA_SMALL_ZH)
+
+        # Load Chinese sentence slicer
         self.split_sent = hanlp.load(hanlp.pretrained.eos.UD_CTB_EOS_MUL)  # 加载中文的句子切分器
 
     def _split_by_character(self, doc) -> List[Document]:
@@ -122,17 +127,18 @@ class ChineseDocumentSplitter(DocumentSplitter):
         :param split_overlap: The number of overlapping words in each split.
         :returns: A tuple containing the concatenated sentences, the start page numbers, and the start indices.
         """
+
         # chunk information
         chunk_word_count = 0
         chunk_starting_page_number = 1
         chunk_start_idx = 0
         current_chunk: List[str] = []
+
         # output lists
         split_start_page_numbers = []
         list_of_splits: List[List[str]] = []
         split_start_indices = []
-        # chinese_tokenizer_coarse = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
-        # chinese_tokenizer_fine = hanlp.load(hanlp.pretrained.tok.FINE_ELECTRA_SMALL_ZH)
+
         for sentence_idx, sentence in enumerate(sentences):
             current_chunk.append(sentence)
             if language == "zh" and particle_size == "coarse":
@@ -172,6 +178,7 @@ class ChineseDocumentSplitter(DocumentSplitter):
                     processed_sentences = current_chunk[:-num_sentences_to_keep]
                     chunk_starting_page_number += sum(sent.count("\f") for sent in processed_sentences)
                     chunk_start_idx += len("".join(processed_sentences))
+
                     # Next chunk starts with the sentences that were overlapping with the previous chunk
                     current_chunk = current_chunk[-num_sentences_to_keep:]
                     chunk_word_count = sum(len(s.split()) for s in current_chunk)

@@ -12,6 +12,7 @@ class TestChineseDocumentSplitter:
     def sample_text(self) -> str:
         return "这是第一句话，也是故事的开端，紧接着是第二句话，渐渐引出了背景；随后，翻开新/f的一页，我们读到了这一页的第一句话，继续延展出情节的发展，直到这页的第二句话将整段文字温柔地收束于平静之中。"
 
+    @pytest.mark.integration
     def test_split_by_word(self, sample_text):
         """
         Test splitting by word.
@@ -39,6 +40,7 @@ class TestChineseDocumentSplitter:
         assert all(isinstance(doc, Document) for doc in docs)
         assert all(len(doc.content.strip()) <= 10 for doc in docs)
 
+    @pytest.mark.integration
     def test_split_by_sentence(self, sample_text):
         splitter = ChineseDocumentSplitter(
             split_by="sentence", language="zh", particle_size="coarse", split_length=10, split_overlap=0
