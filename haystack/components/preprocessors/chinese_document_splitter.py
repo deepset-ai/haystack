@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 from more_itertools import windowed
 
@@ -27,9 +27,8 @@ class ChineseDocumentSplitter(DocumentSplitter):
         """
         A DocumentSplitter for Chinese text.
 
-        # coarse代表粗颗粒度中文分词，fine代表细颗粒度分词，默认为粗颗粒度分词
-        # 'coarse' represents coarse granularity Chinese word segmentation, 'fine' represents fine granularity word
-        # segmentation, default is coarse granularity word segmentation
+        'coarse' represents coarse granularity Chinese word segmentation, 'fine' represents fine granularity word
+        segmentation, default is coarse granularity word segmentation.
 
         :param particle_size: The granularity of Chinese word segmentation, either 'coarse' or 'fine'.
 
