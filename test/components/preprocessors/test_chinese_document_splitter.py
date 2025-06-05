@@ -55,6 +55,7 @@ class TestChineseDocumentSplitter:
         assert all(doc.content.strip() != "" for doc in docs)
         assert any("。" in doc.content for doc in docs), "Expected at least one chunk containing a full stop."
 
+    @pytest.mark.integration
     def test_respect_sentence_boundary(self):
         """Test that respect_sentence_boundary=True avoids splitting sentences"""
         text = "这是第一句话，这是第二句话，这是第三句话。这是第四句话，这是第五句话，这是第六句话！这是第七句话，这是第八句话，这是第九句话？"
@@ -73,6 +74,7 @@ class TestChineseDocumentSplitter:
             # Optional: check that sentences are not cut off
             assert d.content.strip().endswith(("。", "！", "？")), "Sentence was cut off!"
 
+    @pytest.mark.integration
     def test_overlap_chunks_with_long_text(self):
         """Test split_overlap parameter to ensure there is clear overlap between chunks of long text"""
         text = (
