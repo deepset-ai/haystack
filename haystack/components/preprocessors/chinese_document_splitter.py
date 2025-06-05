@@ -1,14 +1,15 @@
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
-import hanlp
 from more_itertools import windowed
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors import DocumentSplitter
-from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter, nltk_imports
-from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.utils import deserialize_callable, serialize_callable
+from haystack.lazy_imports import LazyImport
+
+with LazyImport("Run 'pip install hanlp'") as hanlp_import:
+    import hanlp
+
 
 logger = logging.getLogger(__name__)
 
@@ -21,24 +22,50 @@ split_sent = hanlp.load(hanlp.pretrained.eos.UD_CTB_EOS_MUL)
 
 
 @component
-class chinese_DocumentSplitter(DocumentSplitter):
+class ChineseDocumentSplitter(DocumentSplitter):
     def __init__(self, *args, particle_size: Literal["coarse", "fine"] = "coarse", **kwargs):
-        super(chinese_DocumentSplitter, self).__init__(*args, **kwargs)
+        """
+        A DocumentSplitter for Chinese text.
+
+        # coarse代表粗颗粒度中文分词，fine代表细颗粒度分词，默认为粗颗粒度分词
+        # 'coarse' represents coarse granularity Chinese word segmentation, 'fine' represents fine granularity word
+        # segmentation, default is coarse granularity word segmentation
+
+        :param particle_size: The granularity of Chinese word segmentation, either 'coarse' or 'fine'.
+
+        """
+        super(ChineseDocumentSplitter, self).__init__(*args, **kwargs)
         self.particle_size = particle_size
 
+        hanlp_import.check()
+
+        self.chinese_tokenizer_coarse = hanlp.load(hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH)
+        self.chinese_tokenizer_fine = hanlp.load(hanlp.pretrained.tok.FINE_ELECTRA_SMALL_ZH)
+        self.split_sent = hanlp.load(hanlp.pretrained.eos.UD_CTB_EOS_MUL)  # 加载中文的句子切分器
+
     def _split_by_character(self, doc) -> List[Document]:
+        """
+        Define a function to handle Chinese clauses
+
+        :param doc:
+        :return:
+        """
         split_at = _CHARACTER_SPLIT_BY_MAPPING[self.split_by]
+
         # 'coarse' represents coarse granularity Chinese word segmentation,
         # 'fine' represents fine granularity word segmentation,
         #  default is coarse granularity word segmentation
+
         if self.language == "zh" and self.particle_size == "coarse":
-            units = chinese_tokenizer_coarse(doc.content)
+            units = self.chinese_tokenizer_coarse(doc.content)
 
         if self.language == "zh" and self.particle_size == "fine":
-            units = chinese_tokenizer_fine(doc.content)
+            units = self.chinese_tokenizer_fine(doc.content)
+
         if self.language == "en":
             units = doc.content.split(split_at)
             # Add the delimiter back to all units except the last one
+
         for i in range(len(units) - 1):
             units[i] += split_at
         text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
@@ -46,6 +73,7 @@ class chinese_DocumentSplitter(DocumentSplitter):
         )
         metadata = deepcopy(doc.meta)
         metadata["source_id"] = doc.id
+
         return self._create_docs_from_splits(
             text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
         )
@@ -126,7 +154,7 @@ class chinese_DocumentSplitter(DocumentSplitter):
                 split_start_indices.append(chunk_start_idx)
 
                 # Get the number of sentences that overlap with the next chunk
-                num_sentences_to_keep = chinese_DocumentSplitter._number_of_sentences_to_keep(
+                num_sentences_to_keep = ChineseDocumentSplitter._number_of_sentences_to_keep(
                     sentences=current_chunk,
                     split_length=split_length,
                     split_overlap=split_overlap,
