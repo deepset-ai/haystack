@@ -121,7 +121,7 @@ class GeneratedAnswer:
             init_params["documents"] = [Document.from_dict(d) for d in documents]
 
         meta = init_params.get("meta", {})
-        if (all_messages := meta.get("all_messages")) is not None and isinstance(all_messages[0], ChatMessage):
+        if (all_messages := meta.get("all_messages")) is not None and isinstance(all_messages[0], dict):
             meta["all_messages"] = [ChatMessage.from_dict(m) for m in all_messages]
         init_params["meta"] = meta
 
