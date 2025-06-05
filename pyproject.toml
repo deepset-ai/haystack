@@ -64,7 +64,6 @@ dependencies = [
 installer = "uv"
 dependencies = [
   "pre-commit",
-  "ruff",
   "toml",
   "reno",
   # dulwich is a reno dependency, they pin it at >=0.15.0 so pip takes ton of time to resolve the dependency tree.
@@ -75,10 +74,6 @@ dependencies = [
 
 [tool.hatch.envs.default.scripts]
 release-note = "reno new {args}"
-check = "ruff check {args}"
-fix = "ruff check --fix"
-format = "ruff format {args}"
-format-check = "ruff format --check {args}"
 
 [tool.hatch.envs.test]
 
@@ -155,6 +150,7 @@ unit = 'pytest --cov-report xml:coverage.xml --cov="haystack" -m "not integratio
 integration = 'pytest --maxfail=5 -m "integration" {args:test}'
 integration-only-fast = 'pytest --maxfail=5 -m "integration and not slow" {args:test}'
 integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test}'
+all = 'pytest {args:test}'
 
 types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack}"
 lint = "pylint -ry -j 0 {args:haystack}"
@@ -303,6 +299,7 @@ exclude = [".github", "proposals"]
 
 [tool.ruff.format]
 skip-magic-trailing-comma = true
+docstring-code-line-length = 120
 
 [tool.ruff.lint]
 isort.split-on-trailing-comma = false
