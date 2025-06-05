@@ -7,15 +7,11 @@ from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
 from typing import Any, Callable, Dict, List, Sequence, Tuple, Union, get_args, get_origin
 
+from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage
-from haystack.lazy_imports import LazyImport
-
-with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parser_import:
-    from docstring_parser import parse
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +29,6 @@ def _get_param_descriptions(method: Callable) -> Tuple[str, Dict[str, str]]:
     if not docstring:
         return "", {}
 
-    docstring_parser_import.check()
     parsed_doc = parse(docstring)
     param_descriptions = {}
     for param in parsed_doc.params:
