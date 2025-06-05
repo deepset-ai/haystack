@@ -70,7 +70,7 @@ class ChineseDocumentSplitter(DocumentSplitter):
             units = doc.content.split(split_at)
             # Add the delimiter back to all units except the last one
 
-        for i in range(len(units) - 1):
+        for i in range(len(units) - 1):  # pylint: disable=possibly-used-before-assignment
             units[i] += split_at
         text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
             units, self.split_length, self.split_overlap, self.split_threshold
@@ -152,7 +152,7 @@ class ChineseDocumentSplitter(DocumentSplitter):
 
             # Number of words in the current chunk plus the next sentence is larger than the split_length,
             # or we reached the last sentence
-            if (chunk_word_count + next_sentence_word_count) > split_length or sentence_idx == len(sentences) - 1:
+            if (chunk_word_count + next_sentence_word_count) > split_length or sentence_idx == len(sentences) - 1:  # pylint: disable=possibly-used-before-assignment
                 #  Save current chunk and start a new one
                 list_of_splits.append(current_chunk)
                 split_start_page_numbers.append(chunk_starting_page_number)

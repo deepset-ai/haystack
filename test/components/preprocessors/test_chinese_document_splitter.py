@@ -4,7 +4,7 @@
 
 import pytest
 from haystack import Document
-from haystack.components.preprocessors.chinese_document_spliter import chinese_DocumentSplitter
+from haystack.components.preprocessors.chinese_document_splitter import ChineseDocumentSplitter
 
 
 class TestChineseDocumentSplitter:
@@ -27,7 +27,7 @@ class TestChineseDocumentSplitter:
         Therefore, splitting by word means splitting by these multi-character tokens,
         not simply by single characters or spaces.
         """
-        splitter = chinese_DocumentSplitter(
+        splitter = ChineseDocumentSplitter(
             split_by="word", language="zh", particle_size="coarse", split_length=5, split_overlap=0
         )
         if hasattr(splitter, "warm_up"):
@@ -40,7 +40,7 @@ class TestChineseDocumentSplitter:
         assert all(len(doc.content.strip()) <= 10 for doc in docs)
 
     def test_split_by_sentence(self, sample_text):
-        splitter = chinese_DocumentSplitter(
+        splitter = ChineseDocumentSplitter(
             split_by="sentence", language="zh", particle_size="coarse", split_length=10, split_overlap=0
         )
         if hasattr(splitter, "warm_up"):
@@ -58,7 +58,7 @@ class TestChineseDocumentSplitter:
         text = "这是第一句话，这是第二句话，这是第三句话。这是第四句话，这是第五句话，这是第六句话！这是第七句话，这是第八句话，这是第九句话？"
         doc = Document(content=text)
 
-        splitter = chinese_DocumentSplitter(
+        splitter = ChineseDocumentSplitter(
             split_by="word", split_length=10, split_overlap=3, language="zh", respect_sentence_boundary=True
         )
         splitter.warm_up()
@@ -87,7 +87,7 @@ class TestChineseDocumentSplitter:
         )
         doc = Document(content=text)
 
-        splitter = chinese_DocumentSplitter(
+        splitter = ChineseDocumentSplitter(
             split_by="word", language="zh", split_length=30, split_overlap=10, particle_size="coarse"
         )
         if hasattr(splitter, "warm_up"):
@@ -110,7 +110,7 @@ class TestChineseDocumentSplitter:
         def has_any_overlap(suffix: str, prefix: str) -> bool:
             """
             Check if suffix and prefix have at least one continuous overlapping character sequence.
-            Tries from longest possible overlap down to 1 character.
+            Tries from the longest possible overlap down to 1 character.
             Returns True if any overlap found.
             """
             max_check_len = min(len(suffix), len(prefix))
