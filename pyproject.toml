@@ -299,7 +299,7 @@ exclude = [".github", "proposals"]
 
 [tool.ruff.format]
 skip-magic-trailing-comma = true
-docstring-code-line-length = 120
+docstring-code-format = false
 
 [tool.ruff.lint]
 isort.split-on-trailing-comma = false
