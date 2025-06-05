@@ -76,6 +76,7 @@ dependencies = [
 [tool.hatch.envs.default.scripts]
 release-note = "reno new {args}"
 fmt = "ruff check --fix {args} && ruff format {args}"
+fmt-check = "ruff check {args} && ruff format --check {args}"
 
 [tool.hatch.envs.test]
 
