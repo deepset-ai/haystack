@@ -159,7 +159,7 @@ class ChineseDocumentSplitter(DocumentSplitter):
                 split_start_indices.append(chunk_start_idx)
 
                 # Get the number of sentences that overlap with the next chunk
-                num_sentences_to_keep = ChineseDocumentSplitter._number_of_sentences_to_keep(
+                num_sentences_to_keep = self._number_of_sentences_to_keep(
                     sentences=current_chunk,
                     split_length=split_length,
                     split_overlap=split_overlap,
