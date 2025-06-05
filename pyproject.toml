@@ -57,6 +57,7 @@ dependencies = [
   "numpy",
   "python-dateutil",
   "jsonschema",             # JsonSchemaValidator, Tool
+  "docstring-parser",       # ComponentTool
   "haystack-experimental",
 ]
 
@@ -125,9 +126,6 @@ dependencies = [
 
   # Structured logging
   "structlog",
-
-  # ComponentTool
-  "docstring-parser",
 
   # needed in link content fetcher tests
   "httpx[http2]",

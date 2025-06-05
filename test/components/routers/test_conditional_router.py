@@ -616,3 +616,24 @@ class TestRouter:
                     }
                 ]
             )
+
+    def test_sede_multiple_outputs(self):
+        routes = [
+            {
+                "condition": "{{phone_num|get_area_code == 123}}",
+                "output": ["{{phone_num}}", "{{phone_num|get_area_code}}"],
+                "output_name": ["phone_num", "area_code"],
+                "output_type": [str, int],
+            },
+            {
+                "condition": "{{phone_num|get_area_code != 123}}",
+                "output": ["{{phone_num}}", "{{phone_num|get_area_code}}"],
+                "output_name": ["phone_num", "area_code"],
+                "output_type": [str, int],
+            },
+        ]
+
+        router = ConditionalRouter(routes, custom_filters={"get_area_code": custom_filter_to_sede})
+        reloaded_router = ConditionalRouter.from_dict(router.to_dict())
+        assert reloaded_router.custom_filters == router.custom_filters
+        assert reloaded_router.routes == router.routes
