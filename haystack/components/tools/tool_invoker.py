@@ -7,7 +7,7 @@ import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.agents import State
@@ -337,18 +337,12 @@ class ToolInvoker:
                 raise conversion_error from e
         return ChatMessage.from_tool(tool_result=tool_result_str, error=error, origin=tool_call)
 
-    @staticmethod
-    def _inject_state_args(tool: Tool, llm_args: Dict[str, Any], state: State) -> Dict[str, Any]:
+    def _get_func_params(self, tool: Tool) -> Set:
         """
-        Combine LLM-provided arguments (llm_args) with state-based arguments.
+        Returns the function parameters of the tool's invoke method.
 
-        Tool arguments take precedence in the following order:
-          - LLM overrides state if the same param is present in both
-          - local tool.inputs mappings (if any)
-          - function signature name matching
+        This method inspects the tool's function signature to determine which parameters the tool accepts.
         """
-        final_args = dict(llm_args)  # start with LLM-provided
-
         # ComponentTool wraps the function with a function that accepts kwargs, so we need to look at input sockets
         # to find out which parameters the tool accepts.
         if isinstance(tool, ComponentTool):
@@ -359,6 +353,20 @@ class ToolInvoker:
             func_params = set(tool._component.__haystack_input__._sockets_dict.keys())
         else:
             func_params = set(inspect.signature(tool.function).parameters.keys())
+
+        return func_params
+
+    def _inject_state_args(self, tool: Tool, llm_args: Dict[str, Any], state: State) -> Dict[str, Any]:
+        """
+        Combine LLM-provided arguments (llm_args) with state-based arguments.
+
+        Tool arguments take precedence in the following order:
+          - LLM overrides state if the same param is present in both
+          - local tool.inputs mappings (if any)
+          - function signature name matching
+        """
+        final_args = dict(llm_args)  # start with LLM-provided
+        func_params = self._get_func_params(tool)
 
         # Determine the source of parameter mappings (explicit tool inputs or direct function parameters)
         # Typically, a "Tool" might have .inputs_from_state = {"state_key": "tool_param_name"}
@@ -494,8 +502,8 @@ class ToolInvoker:
                     and streaming_callback is not None
                     and "streaming_callback" not in final_args
                 ):
-                    invoke_sig = inspect.signature(tool_to_invoke.invoke)
-                    if "streaming_callback" in invoke_sig.parameters:
+                    invoke_params = self._get_func_params(tool_to_invoke)
+                    if "streaming_callback" in invoke_params:
                         final_args["streaming_callback"] = streaming_callback
 
                 # 2) Invoke the tool
@@ -619,8 +627,8 @@ class ToolInvoker:
                     and streaming_callback is not None
                     and "streaming_callback" not in final_args
                 ):
-                    invoke_sig = inspect.signature(tool_to_invoke.invoke)
-                    if "streaming_callback" in invoke_sig.parameters:
+                    invoke_params = self._get_func_params(tool_to_invoke)
+                    if "streaming_callback" in invoke_params:
                         final_args["streaming_callback"] = streaming_callback
 
                 # 2) Invoke the tool asynchronously

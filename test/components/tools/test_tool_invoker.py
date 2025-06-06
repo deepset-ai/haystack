@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import MagicMock, patch
 import pytest
 import json
 import datetime
@@ -130,7 +131,7 @@ class TestToolInvoker:
         with pytest.raises(ValueError):
             ToolInvoker(tools=[weather_tool, new_tool])
 
-    def test_inject_state_args_no_tool_inputs(self):
+    def test_inject_state_args_no_tool_inputs(self, invoker):
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",
@@ -138,19 +139,19 @@ class TestToolInvoker:
             function=weather_function,
         )
         state = State(schema={"location": {"type": str}}, data={"location": "Berlin"})
-        args = ToolInvoker._inject_state_args(tool=weather_tool, llm_args={}, state=state)
+        args = invoker._inject_state_args(tool=weather_tool, llm_args={}, state=state)
         assert args == {"location": "Berlin"}
 
-    def test_inject_state_args_no_tool_inputs_component_tool(self):
+    def test_inject_state_args_no_tool_inputs_component_tool(self, invoker):
         comp = PromptBuilder(template="Hello, {{name}}!")
         prompt_tool = ComponentTool(
             component=comp, name="prompt_tool", description="Creates a personalized greeting prompt."
         )
         state = State(schema={"name": {"type": str}}, data={"name": "James"})
-        args = ToolInvoker._inject_state_args(tool=prompt_tool, llm_args={}, state=state)
+        args = invoker._inject_state_args(tool=prompt_tool, llm_args={}, state=state)
         assert args == {"name": "James"}
 
-    def test_inject_state_args_with_tool_inputs(self):
+    def test_inject_state_args_with_tool_inputs(self, invoker):
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",
@@ -159,10 +160,10 @@ class TestToolInvoker:
             inputs_from_state={"loc": "location"},
         )
         state = State(schema={"location": {"type": str}}, data={"loc": "Berlin"})
-        args = ToolInvoker._inject_state_args(tool=weather_tool, llm_args={}, state=state)
+        args = invoker._inject_state_args(tool=weather_tool, llm_args={}, state=state)
         assert args == {"location": "Berlin"}
 
-    def test_inject_state_args_param_in_state_and_llm(self):
+    def test_inject_state_args_param_in_state_and_llm(self, invoker):
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",
@@ -170,7 +171,7 @@ class TestToolInvoker:
             function=weather_function,
         )
         state = State(schema={"location": {"type": str}}, data={"location": "Berlin"})
-        args = ToolInvoker._inject_state_args(tool=weather_tool, llm_args={"location": "Paris"}, state=state)
+        args = invoker._inject_state_args(tool=weather_tool, llm_args={"location": "Paris"}, state=state)
         assert args == {"location": "Paris"}
 
     def test_run_with_streaming_callback(self, invoker):
@@ -537,6 +538,35 @@ class TestToolInvoker:
 
         new_pipeline = Pipeline.loads(pipeline_yaml)
         assert new_pipeline == pipeline
+
+    def test_enable_streaming_callback_passthrough(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+        llm_tool = ComponentTool(
+            component=OpenAIChatGenerator(),
+            name="chat_generator_tool",
+            description="A tool that generates chat messages using OpenAI's GPT model.",
+        )
+        invoker = ToolInvoker(
+            tools=[llm_tool], enable_streaming_callback_passthrough=True, streaming_callback=print_streaming_chunk
+        )
+        with patch("haystack.components.generators.chat.OpenAIChatGenerator.run") as mock_run:
+            mock_run.return_value = {"replies": [ChatMessage.from_assistant("Hello! How can I help you?")]}
+            invoker.run(
+                messages=[
+                    ChatMessage.from_assistant(
+                        tool_calls=[
+                            ToolCall(
+                                tool_name="chat_generator_tool",
+                                arguments={"messages": [{"role": "user", "content": [{"text": "Hello!"}]}]},
+                                id="12345",
+                            )
+                        ]
+                    )
+                ]
+            )
+            mock_run.assert_called_once_with(
+                messages=[ChatMessage.from_user(text="Hello!")], streaming_callback=print_streaming_chunk
+            )
 
 
 class TestMergeToolOutputs:
