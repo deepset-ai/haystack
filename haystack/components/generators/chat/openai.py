@@ -574,7 +574,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         index=0,
         # The first chunk is always a start message chunk that only contains role information, so if we reach here
         # and previous_chunks is length 1 then this is the start of text content.
-        start=len(previous_chunks) == 1 or False,
+        start=len(previous_chunks) == 1,
         meta={
             "model": chunk.model,
             "index": choice.index,
