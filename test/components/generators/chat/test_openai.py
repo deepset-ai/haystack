@@ -987,8 +987,8 @@ class TestOpenAIChatGenerator:
             assert isinstance(tool_call, ToolCall)
             assert tool_call.tool_name == "weather"
 
-        arguments = {tool_call.arguments for tool_call in tool_calls}
-        assert arguments == {{"city": "Paris"}, {"city": "Berlin"}}
+        arguments = [tool_call.arguments for tool_call in tool_calls]
+        assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
         assert message.meta["finish_reason"] == "tool_calls"
 
     def test_openai_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
