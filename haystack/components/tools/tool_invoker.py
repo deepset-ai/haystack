@@ -168,7 +168,7 @@ class ToolInvoker:
         convert_result_to_json_string: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
-        enable_streaming_passthrough: bool = False,
+        enable_streaming_callback_passthrough: bool = False,
         async_executor: Optional[ThreadPoolExecutor] = None,
     ):
         """
@@ -188,7 +188,7 @@ class ToolInvoker:
             A callback function that will be called to emit tool results.
             Note that the result is only emitted once it becomes available — it is not
             streamed incrementally in real time.
-        :param enable_streaming_passthrough:
+        :param enable_streaming_callback_passthrough:
             If True, the `streaming_callback` will be passed to the tool invocation if the tool supports it.
             This allows tools to stream their results back to the client.
             Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
@@ -205,7 +205,7 @@ class ToolInvoker:
         # could be a Toolset instance or a list of Tools
         self.tools = tools
         self.streaming_callback = streaming_callback
-        self.enable_streaming_passthrough = enable_streaming_passthrough
+        self.enable_streaming_callback_passthrough = enable_streaming_callback_passthrough
 
         # Convert Toolset to list for internal use
         if isinstance(tools, Toolset):
@@ -426,7 +426,7 @@ class ToolInvoker:
         state: Optional[State] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
-        enable_streaming_passthrough: Optional[bool] = None,
+        enable_streaming_callback_passthrough: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
@@ -437,7 +437,7 @@ class ToolInvoker:
         :param streaming_callback: A callback function that will be called to emit tool results.
             Note that the result is only emitted once it becomes available — it is not
             streamed incrementally in real time.
-        :param enable_streaming_passthrough:
+        :param enable_streaming_callback_passthrough:
             If True, the `streaming_callback` will be passed to the tool invocation if the tool supports it.
             This allows tools to stream their results back to the client.
             Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
@@ -459,7 +459,9 @@ class ToolInvoker:
         if state is None:
             state = State(schema={})
 
-        resolved_enable_streaming_passthrough = enable_streaming_passthrough or self.enable_streaming_passthrough
+        resolved_enable_streaming_passthrough = (
+            enable_streaming_callback_passthrough or self.enable_streaming_callback_passthrough
+        )
 
         # Only keep messages with tool calls
         messages_with_tool_calls = [message for message in messages if message.tool_calls]
@@ -549,7 +551,7 @@ class ToolInvoker:
         state: Optional[State] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
-        enable_streaming_passthrough: Optional[bool] = None,
+        enable_streaming_callback_passthrough: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """
         Asynchronously processes ChatMessage objects containing tool calls and invokes the corresponding tools.
@@ -560,7 +562,7 @@ class ToolInvoker:
         :param streaming_callback: An asynchronous callback function that will be called to emit tool results.
             Note that the result is only emitted once it becomes available — it is not
             streamed incrementally in real time.
-        :param enable_streaming_passthrough:
+        :param enable_streaming_callback_passthrough:
             If True, the `streaming_callback` will be passed to the tool invocation if the tool supports it.
             This allows tools to stream their results back to the client.
             Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
@@ -582,7 +584,9 @@ class ToolInvoker:
         if state is None:
             state = State(schema={})
 
-        resolved_enable_streaming_passthrough = enable_streaming_passthrough or self.enable_streaming_passthrough
+        resolved_enable_streaming_passthrough = (
+            enable_streaming_callback_passthrough or self.enable_streaming_callback_passthrough
+        )
 
         # Only keep messages with tool calls
         messages_with_tool_calls = [message for message in messages if message.tool_calls]
@@ -685,7 +689,7 @@ class ToolInvoker:
             raise_on_failure=self.raise_on_failure,
             convert_result_to_json_string=self.convert_result_to_json_string,
             streaming_callback=streaming_callback,
-            enable_streaming_passthrough=self.enable_streaming_passthrough,
+            enable_streaming_callback_passthrough=self.enable_streaming_callback_passthrough,
         )
 
     @classmethod

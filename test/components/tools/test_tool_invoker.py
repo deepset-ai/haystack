@@ -409,7 +409,7 @@ class TestToolInvoker:
                 "tools": [weather_tool.to_dict()],
                 "raise_on_failure": True,
                 "convert_result_to_json_string": False,
-                "enable_streaming_passthrough": False,
+                "enable_streaming_callback_passthrough": False,
                 "streaming_callback": None,
             },
         }
@@ -419,7 +419,7 @@ class TestToolInvoker:
             tools=[weather_tool],
             raise_on_failure=False,
             convert_result_to_json_string=True,
-            enable_streaming_passthrough=True,
+            enable_streaming_callback_passthrough=True,
             streaming_callback=print_streaming_chunk,
         )
 
@@ -429,7 +429,7 @@ class TestToolInvoker:
                 "tools": [weather_tool.to_dict()],
                 "raise_on_failure": False,
                 "convert_result_to_json_string": True,
-                "enable_streaming_passthrough": True,
+                "enable_streaming_callback_passthrough": True,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
             },
         }
@@ -441,6 +441,8 @@ class TestToolInvoker:
                 "tools": [weather_tool.to_dict()],
                 "raise_on_failure": True,
                 "convert_result_to_json_string": False,
+                "enable_streaming_callback_passthrough": False,
+                "streaming_callback": None,
             },
         }
         invoker = ToolInvoker.from_dict(data)
@@ -448,6 +450,8 @@ class TestToolInvoker:
         assert invoker._tools_with_names == {"weather_tool": weather_tool}
         assert invoker.raise_on_failure
         assert not invoker.convert_result_to_json_string
+        assert invoker.streaming_callback is None
+        assert invoker.enable_streaming_callback_passthrough is False
 
     def test_from_dict_with_streaming_callback(self, weather_tool):
         data = {
@@ -456,7 +460,7 @@ class TestToolInvoker:
                 "tools": [weather_tool.to_dict()],
                 "raise_on_failure": True,
                 "convert_result_to_json_string": False,
-                "enable_streaming_passthrough": True,
+                "enable_streaming_callback_passthrough": True,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
             },
         }
@@ -466,7 +470,7 @@ class TestToolInvoker:
         assert invoker.raise_on_failure
         assert not invoker.convert_result_to_json_string
         assert invoker.streaming_callback == print_streaming_chunk
-        assert invoker.enable_streaming_passthrough is True
+        assert invoker.enable_streaming_callback_passthrough is True
 
     def test_serde_in_pipeline(self, invoker, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key")
@@ -505,7 +509,7 @@ class TestToolInvoker:
                         ],
                         "raise_on_failure": True,
                         "convert_result_to_json_string": False,
-                        "enable_streaming_passthrough": False,
+                        "enable_streaming_callback_passthrough": False,
                         "streaming_callback": None,
                     },
                 },
