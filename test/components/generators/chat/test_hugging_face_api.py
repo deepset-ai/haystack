@@ -821,13 +821,13 @@ class TestHuggingFaceAPIChatGenerator:
         """
         We test the round trip: generate tool call, pass tool message, generate response.
 
-        The model used here (Hermes-3-Llama-3.1-8B) is not gated and kept in a warm state.
+        The model used here (Qwen/Qwen2.5-72B-Instruct) is not gated and kept in a warm state.
         """
 
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "NousResearch/Hermes-3-Llama-3.1-8B"},
+            api_params={"model": "Qwen/Qwen2.5-72B-Instruct", "provider": "hf-inference"},
             generation_kwargs={"temperature": 0.5},
         )
 
@@ -852,7 +852,7 @@ class TestHuggingFaceAPIChatGenerator:
         final_message = results["replies"][0]
         assert not final_message.tool_calls
         assert len(final_message.text) > 0
-        assert "paris" in final_message.text.lower()
+        assert "paris" in final_message.text.lower() and "22" in final_message.text
 
     @pytest.mark.asyncio
     async def test_run_async(self, mock_check_valid_model, mock_chat_completion_async, chat_messages):
