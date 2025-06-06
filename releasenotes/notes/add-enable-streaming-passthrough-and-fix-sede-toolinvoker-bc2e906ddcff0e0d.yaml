@@ -1,7 +1,7 @@
 ---
 features:
   - |
-    Added the `enable_streaming_passhthrough` to the `ToolInovker` init, run and run_async methods. If set to True the ToolInvoker will try and pass the `streaming_callback` function to a tool's invoke method only if the tool's invoke method has `streaming_callback` in its signature.
+    Added the `enable_streaming_callback_passthrough` to the `ToolInovker` init, run and run_async methods. If set to True the ToolInvoker will try and pass the `streaming_callback` function to a tool's invoke method only if the tool's invoke method has `streaming_callback` in its signature.
 fixes:
   - |
     Fixed the `to_dict` and `from_dict` of `ToolInvoker` to properly serialize the `streaming_callback` init parameter.
