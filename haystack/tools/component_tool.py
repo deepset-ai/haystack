@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
@@ -23,6 +24,7 @@ from haystack.utils.callable_serialization import deserialize_callable, serializ
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class ComponentTool(Tool):
     """
     A Tool that wraps Haystack components, allowing them to be used as tools by LLMs.

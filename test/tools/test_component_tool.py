@@ -599,12 +599,18 @@ class TestToolComponentInPipelineWithOpenAI:
 
         # Test serialization
         tool_dict = tool.to_dict()
-        assert tool_dict["type"] == "haystack.tools.component_tool.ComponentTool"
-        assert tool_dict["data"]["name"] == "simple_tool"
-        assert tool_dict["data"]["description"] == "A simple tool"
-        assert "component" in tool_dict["data"]
-        assert tool_dict["data"]["inputs_from_state"] == {"test": "input"}
-        assert tool_dict["data"]["outputs_to_state"]["output"]["handler"] == "test_component_tool.output_handler"
+        assert tool_dict == {
+            "type": "haystack.tools.component_tool.ComponentTool",
+            "data": {
+                "component": {"type": "test_component_tool.SimpleComponent", "init_parameters": {}},
+                "name": "simple_tool",
+                "description": "A simple tool",
+                "parameters": None,
+                "outputs_to_string": None,
+                "inputs_from_state": {"test": "input"},
+                "outputs_to_state": {"output": {"source": "out", "handler": "test_component_tool.output_handler"}},
+            },
+        }
 
         # Test deserialization
         new_tool = ComponentTool.from_dict(tool_dict)
