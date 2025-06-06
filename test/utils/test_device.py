@@ -22,12 +22,14 @@ def test_device_creation():
     assert Device.cpu().type == DeviceType.CPU
     assert Device.gpu().type == DeviceType.GPU
     assert Device.mps().type == DeviceType.MPS
+    assert Device.xpu().type == DeviceType.XPU
     assert Device.disk().type == DeviceType.DISK
 
     assert Device.from_str("cpu") == Device.cpu()
     assert Device.from_str("cuda:1") == Device.gpu(1)
     assert Device.from_str("disk") == Device.disk()
     assert Device.from_str("mps:0") == Device(DeviceType.MPS, 0)
+    assert Device.from_str("xpu:0") == Device(DeviceType.XPU, 0)
 
     with pytest.raises(ValueError, match="Device id must be >= 0"):
         Device.gpu(-1)
@@ -115,23 +117,38 @@ def test_component_device_multiple():
     assert multiple.first_device == ComponentDevice.from_single(Device.cpu())
 
 
+@patch("torch.xpu.is_available")
 @patch("torch.backends.mps.is_available")
 @patch("torch.cuda.is_available")
-def test_component_device_resolution(torch_cuda_is_available, torch_backends_mps_is_available):
+def test_component_device_resolution(torch_cuda_is_available, torch_backends_mps_is_available, torch_xpu_is_available):
     assert ComponentDevice.resolve_device(ComponentDevice.from_single(Device.cpu()))._single_device == Device.cpu()
 
     torch_cuda_is_available.return_value = True
     assert ComponentDevice.resolve_device(None)._single_device == Device.gpu(0)
 
     torch_cuda_is_available.return_value = False
+    torch_xpu_is_available.return_value = True
+    torch_backends_mps_is_available.return_value = False
+    assert ComponentDevice.resolve_device(None)._single_device == Device.xpu()
+
+    torch_cuda_is_available.return_value = False
+    torch_xpu_is_available.return_value = False
     torch_backends_mps_is_available.return_value = True
     assert ComponentDevice.resolve_device(None)._single_device == Device.mps()
 
     torch_cuda_is_available.return_value = False
+    torch_xpu_is_available.return_value = False
     torch_backends_mps_is_available.return_value = False
     assert ComponentDevice.resolve_device(None)._single_device == Device.cpu()
 
     torch_cuda_is_available.return_value = False
+    torch_xpu_is_available.return_value = False
     torch_backends_mps_is_available.return_value = True
     os.environ["HAYSTACK_MPS_ENABLED"] = "false"
+    assert ComponentDevice.resolve_device(None)._single_device == Device.cpu()
+
+    torch_cuda_is_available.return_value = False
+    torch_xpu_is_available.return_value = True
+    os.environ["HAYSTACK_XPU_ENABLED"] = "false"
+    torch_backends_mps_is_available.return_value = False
     assert ComponentDevice.resolve_device(None)._single_device == Device.cpu()
