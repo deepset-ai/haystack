@@ -82,7 +82,7 @@ class StreamingChunk:
     index: Optional[int] = field(default=None)
     tool_call: Optional[ToolCallDelta] = field(default=None)
     tool_call_result: Optional[ToolCallResult] = field(default=None)
-    start: Optional[bool] = field(default=None)
+    start: bool = field(default=False)
 
     def __post_init__(self):
         fields_set = sum(bool(x) for x in (self.content, self.tool_call, self.tool_call_result))

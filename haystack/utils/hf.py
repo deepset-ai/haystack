@@ -374,9 +374,6 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             if word_to_send.strip() not in self.stop_words:
                 self.token_handler(
                     StreamingChunk(
-                        content=word_to_send,
-                        index=0,
-                        start=True if self._call_counter == 1 else None,
-                        component_info=self.component_info,
+                        content=word_to_send, index=0, start=self._call_counter == 1, component_info=self.component_info
                     )
                 )

@@ -132,7 +132,7 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
         # Index must always be 0 since we don't allow tool calls in streaming mode.
         index=0 if choice.finish_reason is None else None,
         # start is True at the very beginning since first chunk contains role information + first part of the answer.
-        start=True if len(previous_chunks) == 0 else None,
+        start=len(previous_chunks) == 0,
     )
     return stream_chunk
 

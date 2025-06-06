@@ -236,11 +236,7 @@ class HuggingFaceAPIGenerator:
                 first_chunk_time = datetime.now().isoformat()
 
             stream_chunk = StreamingChunk(
-                content=token.text,
-                meta=chunk_metadata,
-                component_info=component_info,
-                index=0,
-                start=True if len(chunks) == 0 else None,
+                content=token.text, meta=chunk_metadata, component_info=component_info, index=0, start=len(chunks) == 0
             )
             chunks.append(stream_chunk)
             streaming_callback(stream_chunk)
