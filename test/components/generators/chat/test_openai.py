@@ -881,7 +881,7 @@ class TestOpenAIChatGenerator:
         )
         result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])[0]
         assert result.content == ""
-        assert result.start is None
+        assert result.start is False
         assert result.tool_call is None
         assert result.tool_call_result is None
         assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
