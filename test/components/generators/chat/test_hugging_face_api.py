@@ -664,7 +664,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert len(tool_calls) == 0
 
     @pytest.mark.parametrize(
-        "hf_stream_output, expected_stream_chunk",
+        "hf_stream_output, expected_stream_chunk, dummy_previous_chunks",
         [
             (
                 ChatCompletionStreamOutput(
@@ -685,7 +685,10 @@ class TestHuggingFaceAPIChatGenerator:
                         "model": "microsoft/Phi-3.5-mini-instruct",
                         "finish_reason": None,
                     },
+                    index=0,
+                    start=True,
                 ),
+                [],
             ),
             (
                 ChatCompletionStreamOutput(
@@ -709,6 +712,7 @@ class TestHuggingFaceAPIChatGenerator:
                         "finish_reason": "stop",
                     },
                 ),
+                [0],
             ),
             (
                 ChatCompletionStreamOutput(
@@ -727,11 +731,16 @@ class TestHuggingFaceAPIChatGenerator:
                         "usage": {"completion_tokens": 2, "prompt_tokens": 21},
                     },
                 ),
+                [0, 1],
             ),
         ],
     )
-    def test_convert_chat_completion_stream_output_to_streaming_chunk(self, hf_stream_output, expected_stream_chunk):
-        converted_stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(chunk=hf_stream_output)
+    def test_convert_chat_completion_stream_output_to_streaming_chunk(
+        self, hf_stream_output, expected_stream_chunk, dummy_previous_chunks
+    ):
+        converted_stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
+            chunk=hf_stream_output, previous_chunks=dummy_previous_chunks
+        )
         # Remove timestamp from comparison since it's always the current time
         converted_stream_chunk.meta.pop("received_at", None)
         expected_stream_chunk.meta.pop("received_at", None)
