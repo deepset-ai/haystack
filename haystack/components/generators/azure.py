@@ -55,7 +55,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     """
 
     # pylint: disable=super-init-not-called
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(  # pylint: disable=too-many-positional-arguments  # noqa: PLR0913
         self,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",

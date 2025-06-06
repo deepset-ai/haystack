@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    In ConditionalRouter fixed the to_dict and from_dict methods to properly handle the case when output_type is a List of types or a List of strings. This occurs when a user specifies a route in ConditionalRouter to have multiple outputs.
