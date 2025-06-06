@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from lazy_imports import LazyImporter
 
 _import_structure = {
+    "chinese_document_splitter": ["ChineseDocumentSplitter"],
     "csv_document_cleaner": ["CSVDocumentCleaner"],
     "csv_document_splitter": ["CSVDocumentSplitter"],
     "document_cleaner": ["DocumentCleaner"],
@@ -19,6 +20,7 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
+    from .chinese_document_splitter import ChineseDocumentSplitter
     from .csv_document_cleaner import CSVDocumentCleaner
     from .csv_document_splitter import CSVDocumentSplitter
     from .document_cleaner import DocumentCleaner

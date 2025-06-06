@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Adding a new component `ChineseDocumentSplitter`, enabling precise splitting of Chinese documents.
