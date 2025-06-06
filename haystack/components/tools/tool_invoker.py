@@ -468,7 +468,9 @@ class ToolInvoker:
             state = State(schema={})
 
         resolved_enable_streaming_passthrough = (
-            enable_streaming_callback_passthrough or self.enable_streaming_callback_passthrough
+            enable_streaming_callback_passthrough
+            if enable_streaming_callback_passthrough is not None
+            else self.enable_streaming_callback_passthrough
         )
 
         # Only keep messages with tool calls
@@ -593,7 +595,9 @@ class ToolInvoker:
             state = State(schema={})
 
         resolved_enable_streaming_passthrough = (
-            enable_streaming_callback_passthrough or self.enable_streaming_callback_passthrough
+            enable_streaming_callback_passthrough
+            if enable_streaming_callback_passthrough is not None
+            else self.enable_streaming_callback_passthrough
         )
 
         # Only keep messages with tool calls

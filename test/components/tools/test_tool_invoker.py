@@ -568,6 +568,34 @@ class TestToolInvoker:
                 messages=[ChatMessage.from_user(text="Hello!")], streaming_callback=print_streaming_chunk
             )
 
+    def test_enable_streaming_callback_passthrough_runtime(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+        llm_tool = ComponentTool(
+            component=OpenAIChatGenerator(),
+            name="chat_generator_tool",
+            description="A tool that generates chat messages using OpenAI's GPT model.",
+        )
+        invoker = ToolInvoker(
+            tools=[llm_tool], enable_streaming_callback_passthrough=True, streaming_callback=print_streaming_chunk
+        )
+        with patch("haystack.components.generators.chat.OpenAIChatGenerator.run") as mock_run:
+            mock_run.return_value = {"replies": [ChatMessage.from_assistant("Hello! How can I help you?")]}
+            invoker.run(
+                messages=[
+                    ChatMessage.from_assistant(
+                        tool_calls=[
+                            ToolCall(
+                                tool_name="chat_generator_tool",
+                                arguments={"messages": [{"role": "user", "content": [{"text": "Hello!"}]}]},
+                                id="12345",
+                            )
+                        ]
+                    )
+                ],
+                enable_streaming_callback_passthrough=False,
+            )
+            mock_run.assert_called_once_with(messages=[ChatMessage.from_user(text="Hello!")])
+
 
 class TestMergeToolOutputs:
     def test_merge_tool_outputs_result_not_a_dict(self, weather_tool):
