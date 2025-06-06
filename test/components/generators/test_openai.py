@@ -2,9 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
 import os
-from typing import List
 from datetime import datetime
 import pytest
 from openai import OpenAIError
@@ -13,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, StreamingChunk
+from haystack.dataclasses import StreamingChunk
 from haystack.utils.auth import Secret
 
 
