@@ -981,10 +981,14 @@ class TestOpenAIChatGenerator:
         assert not message.text
         assert message.tool_calls
         tool_calls = message.tool_calls
+        assert len(tool_calls) == 2
+
         for tool_call in tool_calls:
             assert isinstance(tool_call, ToolCall)
             assert tool_call.tool_name == "weather"
-            assert tool_call.arguments == {"city": "Paris"} or tool_call.arguments == {"city": "Berlin"}
+
+        arguments = {tool_call.arguments for tool_call in tool_calls}
+        assert arguments == {{"city": "Paris"}, {"city": "Berlin"}}
         assert message.meta["finish_reason"] == "tool_calls"
 
     def test_openai_chat_generator_with_toolset_initialization(self, tools, monkeypatch):

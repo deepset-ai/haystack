@@ -510,10 +510,12 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
 
     :param chunk: The chunk returned by the OpenAI API.
-    :param previous_chunks: The previous chunks processed from the OpenAI API.
+    :param previous_chunks: A list of previously received StreamingChunks.
+    :param component_info: An optional `ComponentInfo` object containing information about the component that
+        generated the chunk, such as the component name and type.
 
     :returns:
-        The StreamingChunk.
+        A list of StreamingChunk objects representing the content of the chunk from the OpenAI API.
     """
     # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
     # It is also empty if include_usage is set to True where the usage information is returned.
