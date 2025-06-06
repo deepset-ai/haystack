@@ -59,6 +59,7 @@ dependencies = [
   "jsonschema",             # JsonSchemaValidator, Tool
   "docstring-parser",       # ComponentTool
   "haystack-experimental",
+  "ibm-watsonx-ai",
 ]
 
 [tool.hatch.envs.default]
