@@ -15,12 +15,13 @@ _import_structure = {
     "sparse_embedding": ["SparseEmbedding"],
     "state": ["State"],
     "streaming_chunk": [
-        "StreamingChunk",
         "AsyncStreamingCallbackT",
-        "StreamingCallbackT",
-        "SyncStreamingCallbackT",
-        "select_streaming_callback",
         "ComponentInfo",
+        "StreamingCallbackT",
+        "StreamingChunk",
+        "SyncStreamingCallbackT",
+        "ToolCallDelta",
+        "select_streaming_callback",
     ],
 }
 
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
         StreamingCallbackT,
         StreamingChunk,
         SyncStreamingCallbackT,
+        ToolCallDelta,
         select_streaming_callback,
     )
 else:

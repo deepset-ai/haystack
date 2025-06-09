@@ -39,7 +39,7 @@ class OpenAIDocumentEmbedder:
     ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913 (too-many-arguments) # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "text-embedding-ada-002",
@@ -55,6 +55,8 @@ class OpenAIDocumentEmbedder:
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
         http_client_kwargs: Optional[Dict[str, Any]] = None,
+        *,
+        raise_on_failure: bool = False,
     ):
         """
         Creates an OpenAIDocumentEmbedder component.
@@ -100,6 +102,9 @@ class OpenAIDocumentEmbedder:
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+        :param raise_on_failure:
+            Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
+            and continue processing the remaining documents. If `True`, it will raise an exception on failure.
         """
         self.api_key = api_key
         self.model = model
@@ -115,6 +120,7 @@ class OpenAIDocumentEmbedder:
         self.timeout = timeout
         self.max_retries = max_retries
         self.http_client_kwargs = http_client_kwargs
+        self.raise_on_failure = raise_on_failure
 
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -163,6 +169,7 @@ class OpenAIDocumentEmbedder:
             timeout=self.timeout,
             max_retries=self.max_retries,
             http_client_kwargs=self.http_client_kwargs,
+            raise_on_failure=self.raise_on_failure,
         )
 
     @classmethod
@@ -194,12 +201,14 @@ class OpenAIDocumentEmbedder:
 
         return texts_to_embed
 
-    def _embed_batch(self, texts_to_embed: Dict[str, str], batch_size: int) -> Tuple[List[List[float]], Dict[str, Any]]:
+    def _embed_batch(
+        self, texts_to_embed: Dict[str, str], batch_size: int
+    ) -> Tuple[Dict[str, List[float]], Dict[str, Any]]:
         """
         Embed a list of texts in batches.
         """
 
-        all_embeddings = []
+        doc_ids_to_embeddings: Dict[str, List[float]] = {}
         meta: Dict[str, Any] = {}
         for batch in tqdm(
             batched(texts_to_embed.items(), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
@@ -215,10 +224,12 @@ class OpenAIDocumentEmbedder:
                 ids = ", ".join(b[0] for b in batch)
                 msg = "Failed embedding of documents {ids} caused by {exc}"
                 logger.exception(msg, ids=ids, exc=exc)
+                if self.raise_on_failure:
+                    raise exc
                 continue
 
             embeddings = [el.embedding for el in response.data]
-            all_embeddings.extend(embeddings)
+            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings)))
 
             if "model" not in meta:
                 meta["model"] = response.model
@@ -228,16 +239,16 @@ class OpenAIDocumentEmbedder:
                 meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
                 meta["usage"]["total_tokens"] += response.usage.total_tokens
 
-        return all_embeddings, meta
+        return doc_ids_to_embeddings, meta
 
     async def _embed_batch_async(
         self, texts_to_embed: Dict[str, str], batch_size: int
-    ) -> Tuple[List[List[float]], Dict[str, Any]]:
+    ) -> Tuple[Dict[str, List[float]], Dict[str, Any]]:
         """
         Embed a list of texts in batches asynchronously.
         """
 
-        all_embeddings = []
+        doc_ids_to_embeddings: Dict[str, List[float]] = {}
         meta: Dict[str, Any] = {}
 
         batches = list(batched(texts_to_embed.items(), batch_size))
@@ -256,10 +267,12 @@ class OpenAIDocumentEmbedder:
                 ids = ", ".join(b[0] for b in batch)
                 msg = "Failed embedding of documents {ids} caused by {exc}"
                 logger.exception(msg, ids=ids, exc=exc)
+                if self.raise_on_failure:
+                    raise exc
                 continue
 
             embeddings = [el.embedding for el in response.data]
-            all_embeddings.extend(embeddings)
+            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings)))
 
             if "model" not in meta:
                 meta["model"] = response.model
@@ -269,7 +282,7 @@ class OpenAIDocumentEmbedder:
                 meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
                 meta["usage"]["total_tokens"] += response.usage.total_tokens
 
-        return all_embeddings, meta
+        return doc_ids_to_embeddings, meta
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     def run(self, documents: List[Document]):
@@ -292,12 +305,13 @@ class OpenAIDocumentEmbedder:
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
-        embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
+        doc_ids_to_embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
-        for doc, emb in zip(documents, embeddings):
-            doc.embedding = emb
+        doc_id_to_document = {doc.id: doc for doc in documents}
+        for doc_id, emb in doc_ids_to_embeddings.items():
+            doc_id_to_document[doc_id].embedding = emb
 
-        return {"documents": documents, "meta": meta}
+        return {"documents": list(doc_id_to_document.values()), "meta": meta}
 
     @component.output_types(documents=List[Document], meta=Dict[str, Any])
     async def run_async(self, documents: List[Document]):
@@ -320,9 +334,12 @@ class OpenAIDocumentEmbedder:
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
-        embeddings, meta = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
+        doc_ids_to_embeddings, meta = await self._embed_batch_async(
+            texts_to_embed=texts_to_embed, batch_size=self.batch_size
+        )
 
-        for doc, emb in zip(documents, embeddings):
-            doc.embedding = emb
+        doc_id_to_document = {doc.id: doc for doc in documents}
+        for doc_id, emb in doc_ids_to_embeddings.items():
+            doc_id_to_document[doc_id].embedding = emb
 
-        return {"documents": documents, "meta": meta}
+        return {"documents": list(doc_id_to_document.values()), "meta": meta}

@@ -664,7 +664,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert len(tool_calls) == 0
 
     @pytest.mark.parametrize(
-        "hf_stream_output, expected_stream_chunk",
+        "hf_stream_output, expected_stream_chunk, dummy_previous_chunks",
         [
             (
                 ChatCompletionStreamOutput(
@@ -685,7 +685,10 @@ class TestHuggingFaceAPIChatGenerator:
                         "model": "microsoft/Phi-3.5-mini-instruct",
                         "finish_reason": None,
                     },
+                    index=0,
+                    start=True,
                 ),
+                [],
             ),
             (
                 ChatCompletionStreamOutput(
@@ -709,6 +712,7 @@ class TestHuggingFaceAPIChatGenerator:
                         "finish_reason": "stop",
                     },
                 ),
+                [0],
             ),
             (
                 ChatCompletionStreamOutput(
@@ -727,11 +731,16 @@ class TestHuggingFaceAPIChatGenerator:
                         "usage": {"completion_tokens": 2, "prompt_tokens": 21},
                     },
                 ),
+                [0, 1],
             ),
         ],
     )
-    def test_convert_chat_completion_stream_output_to_streaming_chunk(self, hf_stream_output, expected_stream_chunk):
-        converted_stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(chunk=hf_stream_output)
+    def test_convert_chat_completion_stream_output_to_streaming_chunk(
+        self, hf_stream_output, expected_stream_chunk, dummy_previous_chunks
+    ):
+        converted_stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
+            chunk=hf_stream_output, previous_chunks=dummy_previous_chunks
+        )
         # Remove timestamp from comparison since it's always the current time
         converted_stream_chunk.meta.pop("received_at", None)
         expected_stream_chunk.meta.pop("received_at", None)
@@ -747,7 +756,7 @@ class TestHuggingFaceAPIChatGenerator:
     def test_live_run_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
             generation_kwargs={"max_tokens": 20},
         )
 
@@ -782,7 +791,7 @@ class TestHuggingFaceAPIChatGenerator:
     def test_live_run_serverless_streaming(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
             generation_kwargs={"max_tokens": 20},
             streaming_callback=streaming_callback_handler,
         )
@@ -821,13 +830,13 @@ class TestHuggingFaceAPIChatGenerator:
         """
         We test the round trip: generate tool call, pass tool message, generate response.
 
-        The model used here (Hermes-3-Llama-3.1-8B) is not gated and kept in a warm state.
+        The model used here (Qwen/Qwen2.5-72B-Instruct) is not gated and kept in a warm state.
         """
 
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "NousResearch/Hermes-3-Llama-3.1-8B"},
+            api_params={"model": "Qwen/Qwen2.5-72B-Instruct", "provider": "hf-inference"},
             generation_kwargs={"temperature": 0.5},
         )
 
@@ -852,7 +861,7 @@ class TestHuggingFaceAPIChatGenerator:
         final_message = results["replies"][0]
         assert not final_message.tool_calls
         assert len(final_message.text) > 0
-        assert "paris" in final_message.text.lower()
+        assert "paris" in final_message.text.lower() and "22" in final_message.text
 
     @pytest.mark.asyncio
     async def test_run_async(self, mock_check_valid_model, mock_chat_completion_async, chat_messages):
@@ -1019,7 +1028,7 @@ class TestHuggingFaceAPIChatGenerator:
     async def test_live_run_async_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
             generation_kwargs={"max_tokens": 20},
         )
 

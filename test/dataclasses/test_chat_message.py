@@ -201,12 +201,19 @@ def test_to_dict_with_invalid_content_type():
 
 
 def test_from_dict_with_invalid_content_type():
-    data = {"_role": "assistant", "_content": [{"text": "Hello"}, "invalid"]}
-    with pytest.raises(ValueError):
+    data = {"role": "assistant", "content": [{"text": "Hello"}, "invalid"]}
+    with pytest.raises(ValueError, match="Unsupported content part in the serialized ChatMessage"):
         ChatMessage.from_dict(data)
 
-    data = {"_role": "assistant", "_content": [{"text": "Hello"}, {"invalid": "invalid"}]}
-    with pytest.raises(ValueError):
+    data = {"role": "assistant", "content": [{"text": "Hello"}, {"invalid": "invalid"}]}
+    with pytest.raises(ValueError, match="Unsupported content part in the serialized ChatMessage"):
+        ChatMessage.from_dict(data)
+
+
+def test_from_dict_with_missing_role():
+    data = {"content": [{"text": "Hello"}], "meta": {}}
+
+    with pytest.raises(ValueError, match=r"The `role` field is required"):
         ChatMessage.from_dict(data)
 
 
@@ -342,14 +349,31 @@ def test_to_openai_dict_format_invalid():
     with pytest.raises(ValueError):
         message.to_openai_dict_format()
 
+
+def test_to_openai_dict_format_require_tool_call_ids():
     tool_call_null_id = ToolCall(id=None, tool_name="weather", arguments={"city": "Paris"})
     message = ChatMessage.from_assistant(tool_calls=[tool_call_null_id])
     with pytest.raises(ValueError):
-        message.to_openai_dict_format()
+        message.to_openai_dict_format(require_tool_call_ids=True)
 
     message = ChatMessage.from_tool(tool_result="result", origin=tool_call_null_id)
     with pytest.raises(ValueError):
-        message.to_openai_dict_format()
+        message.to_openai_dict_format(require_tool_call_ids=True)
+
+
+def test_to_openai_dict_format_require_tool_call_ids_false():
+    tool_call_null_id = ToolCall(id=None, tool_name="weather", arguments={"city": "Paris"})
+    message = ChatMessage.from_assistant(tool_calls=[tool_call_null_id])
+    openai_msg = message.to_openai_dict_format(require_tool_call_ids=False)
+
+    assert openai_msg == {
+        "role": "assistant",
+        "tool_calls": [{"type": "function", "function": {"name": "weather", "arguments": '{"city": "Paris"}'}}],
+    }
+
+    message = ChatMessage.from_tool(tool_result="result", origin=tool_call_null_id)
+    openai_msg = message.to_openai_dict_format(require_tool_call_ids=False)
+    assert openai_msg == {"role": "tool", "content": "result"}
 
 
 def test_from_openai_dict_format_user_message():

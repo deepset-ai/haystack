@@ -103,7 +103,9 @@ def _convert_tools_to_hfapi_tools(
 
 
 def _convert_chat_completion_stream_output_to_streaming_chunk(
-    chunk: "ChatCompletionStreamOutput", component_info: Optional[ComponentInfo] = None
+    chunk: "ChatCompletionStreamOutput",
+    previous_chunks: List[StreamingChunk],
+    component_info: Optional[ComponentInfo] = None,
 ) -> StreamingChunk:
     """
     Converts the Hugging Face API ChatCompletionStreamOutput to a StreamingChunk.
@@ -127,6 +129,10 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
         content=choice.delta.content or "",
         meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "finish_reason": choice.finish_reason},
         component_info=component_info,
+        # Index must always be 0 since we don't allow tool calls in streaming mode.
+        index=0 if choice.finish_reason is None else None,
+        # start is True at the very beginning since first chunk contains role information + first part of the answer.
+        start=len(previous_chunks) == 0,
     )
     return stream_chunk
 
@@ -224,6 +230,7 @@ class HuggingFaceAPIChatGenerator:
             - `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
             - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
             `TEXT_GENERATION_INFERENCE`.
+            - Other parameters specific to the chosen API type, such as `timeout`, `headers`, `provider` etc.
         :param token:
             The Hugging Face token to use as HTTP bearer authorization.
             Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
@@ -285,8 +292,14 @@ class HuggingFaceAPIChatGenerator:
         self.token = token
         self.generation_kwargs = generation_kwargs
         self.streaming_callback = streaming_callback
-        self._client = InferenceClient(model_or_url, token=token.resolve_value() if token else None)
-        self._async_client = AsyncInferenceClient(model_or_url, token=token.resolve_value() if token else None)
+
+        resolved_api_params: Dict[str, Any] = {k: v for k, v in api_params.items() if k != "model" and k != "url"}
+        self._client = InferenceClient(
+            model_or_url, token=token.resolve_value() if token else None, **resolved_api_params
+        )
+        self._async_client = AsyncInferenceClient(
+            model_or_url, token=token.resolve_value() if token else None, **resolved_api_params
+        )
         self.tools = tools
 
     def to_dict(self) -> Dict[str, Any]:
@@ -434,10 +447,10 @@ class HuggingFaceAPIChatGenerator:
         )
 
         component_info = ComponentInfo.from_component(self)
-        streaming_chunks = []
+        streaming_chunks: List[StreamingChunk] = []
         for chunk in api_output:
             streaming_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
-                chunk=chunk, component_info=component_info
+                chunk=chunk, previous_chunks=streaming_chunks, component_info=component_info
             )
             streaming_chunks.append(streaming_chunk)
             streaming_callback(streaming_chunk)
@@ -498,10 +511,10 @@ class HuggingFaceAPIChatGenerator:
         )
 
         component_info = ComponentInfo.from_component(self)
-        streaming_chunks = []
+        streaming_chunks: List[StreamingChunk] = []
         async for chunk in api_output:
             stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
-                chunk=chunk, component_info=component_info
+                chunk=chunk, previous_chunks=streaming_chunks, component_info=component_info
             )
             streaming_chunks.append(stream_chunk)
             await streaming_callback(stream_chunk)  # type: ignore
