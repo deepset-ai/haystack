@@ -426,9 +426,8 @@ class HuggingFaceLocalChatGenerator:
 
         # Remove stop words from replies if present
         if stop_words:
-            for stop_word in stop_words or []:
-                if stop_word in replies[0]:
-                    replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+            for stop_word in stop_words:
+                replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
         chat_messages = [
             self.create_message(
@@ -589,7 +588,7 @@ class HuggingFaceLocalChatGenerator:
         # get the component name and type
         component_info = ComponentInfo.from_component(self)
 
-        async_handler = AsyncHFTokenStreamingHandler(tokenizer, streaming_callback, stop_words, component_info)
+        async_handler = AsyncHFTokenStreamingHandler(tokenizer, streaming_callback, stop_words, component_info)  # type: ignore[call-arg]
         generation_kwargs["streamer"] = async_handler
 
         # Start queue processing in the background
@@ -607,8 +606,7 @@ class HuggingFaceLocalChatGenerator:
             # Remove stop words from replies if present
             if stop_words:
                 for stop_word in stop_words:
-                    if stop_word in replies[0]:
-                        replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+                    replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
             chat_messages = [
                 self.create_message(
@@ -671,8 +669,7 @@ class HuggingFaceLocalChatGenerator:
         # Remove stop words from replies if present
         if stop_words:
             for stop_word in stop_words:
-                if stop_word in replies[0]:
-                    replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+                replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
         chat_messages = [
             self.create_message(
