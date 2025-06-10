@@ -588,7 +588,7 @@ class HuggingFaceLocalChatGenerator:
         # get the component name and type
         component_info = ComponentInfo.from_component(self)
 
-        async_handler = AsyncHFTokenStreamingHandler(tokenizer, streaming_callback, stop_words, component_info)  # type: ignore[call-arg]
+        async_handler = AsyncHFTokenStreamingHandler(tokenizer, streaming_callback, stop_words, component_info)  # type: ignore
         generation_kwargs["streamer"] = async_handler
 
         # Start queue processing in the background
