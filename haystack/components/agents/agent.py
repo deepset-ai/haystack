@@ -29,7 +29,7 @@ class Agent:
     """
     A Haystack component that implements a tool-using agent with provider-agnostic chat model support.
 
-    The component processes messages and executes tools until a exit_condition condition is met.
+    The component processes messages and executes tools until an exit_condition condition is met.
     The exit_condition can be triggered either by a direct text response or by invoking a specific designated tool.
 
     When you call an Agent without tools, it acts as a ChatGenerator, produces one response, then exits.

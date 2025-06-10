@@ -160,7 +160,7 @@ and keep reading once you can run from your terminal:
 
 ```console
 $ hatch --version
-Hatch, version 1.9.3
+Hatch, version 1.14.1
 ```
 
 You can create a new virtual environment for Haystack with `hatch` by running:
@@ -239,35 +239,24 @@ We also use tools to ensure consistent code style, quality, and static type chec
 tested by the CI, but once again, running the checks locally will speed up the review cycle.
 
 
-To check your code type checking, run:
+To check for static type errors, run:
 ```sh
 hatch run test:types
 ```
 
-
-To check your code format run:
+To format your code and perform linting using Ruff (with automatic fixes), run:
 ```sh
-hatch run format-check
+hatch run fmt
 ```
 
 
-To format your code, you can run:
-```sh
-hatch run format
-````
+To run linting with Pylint, use:
 
-
-To check your code style according to linting rules run:
 ```sh
-hatch run check
 hatch run test:lint
-````
-
-
-If the linters spot any error, you can fix it before checking in your code:
-```sh
-hatch run fix
 ```
+
+
 
 
 ## Requirements for Pull Requests

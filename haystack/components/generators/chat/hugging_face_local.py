@@ -426,7 +426,7 @@ class HuggingFaceLocalChatGenerator:
 
         # Remove stop words from replies if present
         if stop_words:
-            for stop_word in stop_words:
+            for stop_word in stop_words or []:
                 if stop_word in replies[0]:
                     replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 

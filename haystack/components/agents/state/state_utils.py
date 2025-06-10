@@ -31,7 +31,7 @@ def _is_valid_type(obj: Any) -> bool:
         False
     """
     # Handle Union types (including Optional)
-    if hasattr(obj, "__origin__") and obj.__origin__ is Union:
+    if hasattr(obj, "__origin__") and obj.__origin__ == Union:
         return True
 
     # Handle normal classes and generic types
@@ -45,7 +45,7 @@ def _is_list_type(type_hint: Any) -> bool:
     :param type_hint: The type hint to check
     :return: True if the type hint represents a list, False otherwise
     """
-    return type_hint is list or (hasattr(type_hint, "__origin__") and get_origin(type_hint) is list)
+    return type_hint == list or (hasattr(type_hint, "__origin__") and get_origin(type_hint) == list)
 
 
 def merge_lists(current: Union[List[T], T, None], new: Union[List[T], T]) -> List[T]:

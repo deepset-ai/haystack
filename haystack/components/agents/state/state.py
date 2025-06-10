@@ -69,7 +69,7 @@ def _validate_schema(schema: Dict[str, Any]) -> None:
             raise ValueError(f"StateSchema: 'type' for key '{param}' must be a Python type, got {definition['type']}")
         if definition.get("handler") is not None and not callable(definition["handler"]):
             raise ValueError(f"StateSchema: 'handler' for key '{param}' must be callable or None")
-        if param == "messages" and definition["type"] is not List[ChatMessage]:
+        if param == "messages" and definition["type"] != List[ChatMessage]:
             raise ValueError(f"StateSchema: 'messages' must be of type List[ChatMessage], got {definition['type']}")
 
 

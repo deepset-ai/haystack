@@ -6,7 +6,29 @@ from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
 from haystack.core.component import Component
+from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
+
+
+@dataclass
+class ToolCallDelta:
+    """
+    Represents a Tool call prepared by the model, usually contained in an assistant message.
+
+    :param tool_name: The name of the Tool to call.
+    :param arguments: Either the full arguments in JSON format or a delta of the arguments.
+    :param id: The ID of the Tool call.
+    """
+
+    tool_name: Optional[str] = field(default=None)
+    arguments: Optional[str] = field(default=None)
+    id: Optional[str] = field(default=None)  # noqa: A003
+
+    def __post_init__(self):
+        # NOTE: We allow for name and arguments to both be present because some providers like Mistral provide the
+        # name and full arguments in one chunk
+        if self.tool_name is None and self.arguments is None:
+            raise ValueError("At least one of tool_name or arguments must be provided.")
 
 
 @dataclass
@@ -48,11 +70,32 @@ class StreamingChunk:
     :param meta: A dictionary containing metadata related to the message chunk.
     :param component_info: A `ComponentInfo` object containing information about the component that generated the chunk,
         such as the component name and type.
+    :param index: An optional integer index representing which content block this chunk belongs to.
+    :param tool_call: An optional ToolCallDelta object representing a tool call associated with the message chunk.
+    :param tool_call_result: An optional ToolCallResult object representing the result of a tool call.
+    :param start: A boolean indicating whether this chunk marks the start of a content block.
     """
 
     content: str
     meta: Dict[str, Any] = field(default_factory=dict, hash=False)
-    component_info: Optional[ComponentInfo] = field(default=None, hash=False)
+    component_info: Optional[ComponentInfo] = field(default=None)
+    index: Optional[int] = field(default=None)
+    tool_call: Optional[ToolCallDelta] = field(default=None)
+    tool_call_result: Optional[ToolCallResult] = field(default=None)
+    start: bool = field(default=False)
+
+    def __post_init__(self):
+        fields_set = sum(bool(x) for x in (self.content, self.tool_call, self.tool_call_result))
+        if fields_set > 1:
+            raise ValueError(
+                "Only one of `content`, `tool_call`, or `tool_call_result` may be set in a StreamingChunk. "
+                f"Got content: '{self.content}', tool_call: '{self.tool_call}', "
+                f"tool_call_result: '{self.tool_call_result}'"
+            )
+
+        # NOTE: We don't enforce this for self.content otherwise it would be a breaking change
+        if (self.tool_call or self.tool_call_result) and self.index is None:
+            raise ValueError("If `tool_call`, or `tool_call_result` is set, `index` must also be set.")
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]

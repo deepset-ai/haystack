@@ -512,13 +512,18 @@ class _Component:
             # no decorators here
             def run(self, value: int):
                 return {"output_1": 1, "output_2": "2"}
+
+            # also no decorators here
+            async def run_async(self, value: int):
+                return {"output_1": 1, "output_2": "2"}
         ```
         """
-        has_decorator = hasattr(instance.run, "_output_types_cache")
-        if has_decorator:
+        has_run_decorator = hasattr(instance.run, "_output_types_cache")
+        has_run_async_decorator = hasattr(instance, "run_async") and hasattr(instance.run_async, "_output_types_cache")
+        if has_run_decorator or has_run_async_decorator:
             raise ComponentError(
-                "Cannot call `set_output_types` on a component that already has "
-                "the 'output_types' decorator on its `run` method"
+                "Cannot call `set_output_types` on a component that already has the 'output_types' decorator on its "
+                "`run` or `run_async` methods."
             )
 
         instance.__haystack_output__ = Sockets(
