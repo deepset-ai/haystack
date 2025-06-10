@@ -11,7 +11,7 @@ from contextlib import suppress
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
 from haystack.dataclasses.streaming_chunk import select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
