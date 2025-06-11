@@ -27,8 +27,10 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             yield tmp_dir
 
     @pytest.fixture
-    def document_store(self) -> InMemoryDocumentStore:
-        return InMemoryDocumentStore(bm25_algorithm="BM25L")
+    def document_store(self):
+        store = InMemoryDocumentStore(bm25_algorithm="BM25L")
+        yield store
+        store.shutdown()
 
     def test_to_dict(self):
         store = InMemoryDocumentStore()

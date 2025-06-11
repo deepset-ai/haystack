@@ -377,9 +377,8 @@ class OpenAPIServiceConnector:
             param_value = invocation_arguments.get(param_name)
             if param_value:
                 method_call_params["parameters"][param_name] = param_value
-            else:
-                if param.get("required", False):
-                    raise ValueError(f"Missing parameter: '{param_name}' required for the '{name}' operation.")
+            elif param.get("required", False):
+                raise ValueError(f"Missing parameter: '{param_name}' required for the '{name}' operation.")
 
         # Pack request body parameters under "data" key
         if request_body:
@@ -389,10 +388,9 @@ class OpenAPIServiceConnector:
                 param_value = invocation_arguments.get(param_name)
                 if param_value:
                     method_call_params["data"][param_name] = param_value
-                else:
-                    if param_name in required_params:
-                        raise ValueError(
-                            f"Missing requestBody parameter: '{param_name}' required for the '{name}' operation."
-                        )
+                elif param_name in required_params:
+                    raise ValueError(
+                        f"Missing requestBody parameter: '{param_name}' required for the '{name}' operation."
+                    )
         # call the underlying service REST API with the parameters
         return method_to_call(**method_call_params, raw_response=True)

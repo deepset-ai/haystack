@@ -99,11 +99,11 @@ class DocumentLanguageClassifier:
         return {"documents": documents}
 
     def _detect_language(self, document: Document) -> Optional[str]:
+        language = None
         try:
             language = langdetect.detect(document.content)
         except langdetect.LangDetectException:
             logger.warning(
                 "Langdetect cannot detect the language of Document with id: {document_id}", document_id=document.id
             )
-            language = None
         return language
