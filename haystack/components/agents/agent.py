@@ -69,7 +69,7 @@ class Agent:
         max_agent_steps: int = 100,
         raise_on_tool_invocation_failure: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
-    ):
+    ) -> None:
         """
         Initialize the agent component.
 
@@ -246,9 +246,6 @@ class Agent:
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
 
-        if len(messages) == 0:
-            raise ValueError("No messages were provided to the Agent.")
-
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning(
                 "All messages provided to the Agent component are system messages. This is not recommended as the "
@@ -351,9 +348,6 @@ class Agent:
 
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
-
-        if len(messages) == 0:
-            raise ValueError("No messages were provided to the Agent.")
 
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning(

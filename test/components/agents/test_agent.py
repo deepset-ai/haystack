@@ -719,12 +719,13 @@ class TestAgent:
         with pytest.raises(RuntimeError, match="The component Agent wasn't warmed up."):
             agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
 
-    def test_run_no_messages(self):
-        chat_generator = MockChatGeneratorWithoutRunAsync()
+    def test_run_no_messages(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        chat_generator = OpenAIChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[])
         agent.warm_up()
-        with pytest.raises(ValueError, match="No messages were provided to the Agent."):
-            _ = agent.run([])
+        result = agent.run([])
+        assert result["messages"] == []
 
     def test_run_only_system_prompt(self, caplog):
         chat_generator = MockChatGeneratorWithoutRunAsync()
