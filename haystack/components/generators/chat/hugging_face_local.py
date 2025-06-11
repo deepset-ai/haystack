@@ -7,10 +7,12 @@ import json
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall, select_streaming_callback
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
+from haystack.dataclasses.streaming_chunk import select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
@@ -37,6 +39,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_an
     from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+        AsyncHFTokenStreamingHandler,
         HFTokenStreamingHandler,
         StopWordsCriteria,
         convert_message_to_hf_format,
@@ -422,8 +425,9 @@ class HuggingFaceLocalChatGenerator:
         replies = [o.get("generated_text", "") for o in output]
 
         # Remove stop words from replies if present
-        for stop_word in stop_words or []:
-            replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+        if stop_words:
+            for stop_word in stop_words:
+                replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
         chat_messages = [
             self.create_message(
@@ -583,28 +587,43 @@ class HuggingFaceLocalChatGenerator:
 
         # get the component name and type
         component_info = ComponentInfo.from_component(self)
-        generation_kwargs["streamer"] = HFTokenStreamingHandler(
-            tokenizer, streaming_callback, stop_words, component_info
-        )
 
-        # Generate responses asynchronously
-        output = await asyncio.get_running_loop().run_in_executor(
-            self.executor,
-            lambda: self.pipeline(prepared_prompt, **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
-        )
+        async_handler = AsyncHFTokenStreamingHandler(tokenizer, streaming_callback, stop_words, component_info)  # type: ignore
+        generation_kwargs["streamer"] = async_handler
 
-        replies = [o.get("generated_text", "") for o in output]
+        # Start queue processing in the background
+        queue_processor = asyncio.create_task(async_handler.process_queue())
 
-        # Remove stop words from replies if present
-        for stop_word in stop_words or []:
-            replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+        try:
+            # Generate responses asynchronously
+            output = await asyncio.get_running_loop().run_in_executor(
+                self.executor,
+                lambda: self.pipeline(prepared_prompt, **generation_kwargs),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
+            )
 
-        chat_messages = [
-            self.create_message(reply, r_index, tokenizer, prepared_prompt, generation_kwargs, parse_tool_calls=False)
-            for r_index, reply in enumerate(replies)
-        ]
+            replies = [o.get("generated_text", "") for o in output]
 
-        return {"replies": chat_messages}
+            # Remove stop words from replies if present
+            if stop_words:
+                for stop_word in stop_words:
+                    replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+
+            chat_messages = [
+                self.create_message(
+                    reply, r_index, tokenizer, prepared_prompt, generation_kwargs, parse_tool_calls=False
+                )
+                for r_index, reply in enumerate(replies)
+            ]
+
+            return {"replies": chat_messages}
+
+        finally:
+            try:
+                await asyncio.wait_for(queue_processor, timeout=0.1)
+            except asyncio.TimeoutError:
+                queue_processor.cancel()
+                with suppress(asyncio.CancelledError):
+                    await queue_processor
 
     async def _run_non_streaming_async(  # pylint: disable=too-many-positional-arguments
         self,
@@ -648,8 +667,9 @@ class HuggingFaceLocalChatGenerator:
         replies = [o.get("generated_text", "") for o in output]
 
         # Remove stop words from replies if present
-        for stop_word in stop_words or []:
-            replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+        if stop_words:
+            for stop_word in stop_words:
+                replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
         chat_messages = [
             self.create_message(
