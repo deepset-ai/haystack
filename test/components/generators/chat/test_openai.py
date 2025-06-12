@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from openai import OpenAIError
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionMessageToolCall
 from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.chat import chat_completion_chunk
@@ -597,6 +598,268 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "tool_calls"
         assert message.meta["usage"]["completion_tokens"] == 47
 
+    def test_handle_stream_response(self):
+        openai_chunks = [
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(role="assistant"), index=0)],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(
+                            tool_calls=[
+                                ChoiceDeltaToolCall(
+                                    index=0,
+                                    id="call_zcvlnVaTeJWRjLAFfYxX69z4",
+                                    function=ChoiceDeltaToolCallFunction(arguments="", name="weather"),
+                                    type="function",
+                                )
+                            ]
+                        ),
+                        index=0,
+                    )
+                ],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(
+                            tool_calls=[
+                                ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))
+                            ]
+                        ),
+                        index=0,
+                    )
+                ],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(
+                            tool_calls=[
+                                ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='ty": '))
+                            ]
+                        ),
+                        index=0,
+                    )
+                ],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(
+                            tool_calls=[
+                                ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"Paris'))
+                            ]
+                        ),
+                        index=0,
+                    )
+                ],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(
+                            tool_calls=[
+                                ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"}'))
+                            ]
+                        ),
+                        index=0,
+                    )
+                ],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(
+                            tool_calls=[
+                                ChoiceDeltaToolCall(
+                                    index=1,
+                                    id="call_C88m67V16CrETq6jbNXjdZI9",
+                                    function=ChoiceDeltaToolCallFunction(arguments="", name="weather"),
+                                    type="function",
+                                )
+                            ]
+                        ),
+                        index=0,
+                    )
+                ],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(
+                            tool_calls=[
+                                ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))
+                            ]
+                        ),
+                        index=0,
+                    )
+                ],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(
+                            tool_calls=[
+                                ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='ty": '))
+                            ]
+                        ),
+                        index=0,
+                    )
+                ],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(
+                            tool_calls=[
+                                ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='"Berli'))
+                            ]
+                        ),
+                        index=0,
+                    )
+                ],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        delta=ChoiceDelta(
+                            tool_calls=[
+                                ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='n"}'))
+                            ]
+                        ),
+                        index=0,
+                    )
+                ],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(), finish_reason="tool_calls", index=0)],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+            ),
+            ChatCompletionChunk(
+                id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
+                choices=[],
+                created=1747834733,
+                model="gpt-4o-mini-2024-07-18",
+                object="chat.completion.chunk",
+                service_tier="default",
+                system_fingerprint="fp_54eb4bd693",
+                usage=CompletionUsage(
+                    completion_tokens=42,
+                    prompt_tokens=282,
+                    total_tokens=324,
+                    completion_tokens_details=CompletionTokensDetails(
+                        accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
+                    ),
+                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                ),
+            ),
+        ]
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        result = component._handle_stream_response(openai_chunks, callback=lambda chunk: None)[0]  # type: ignore
+
+        assert not result.texts
+        assert not result.text
+
+        # Verify both tool calls were found and processed
+        assert len(result.tool_calls) == 2
+        assert result.tool_calls[0].id == "call_zcvlnVaTeJWRjLAFfYxX69z4"
+        assert result.tool_calls[0].tool_name == "weather"
+        assert result.tool_calls[0].arguments == {"city": "Paris"}
+        assert result.tool_calls[1].id == "call_C88m67V16CrETq6jbNXjdZI9"
+        assert result.tool_calls[1].tool_name == "weather"
+        assert result.tool_calls[1].arguments == {"city": "Berlin"}
+
+        # Verify meta information
+        assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
+        assert result.meta["finish_reason"] == "tool_calls"
+        assert result.meta["index"] == 0
+        assert result.meta["completion_start_time"] is not None
+        assert result.meta["usage"] == {
+            "completion_tokens": 42,
+            "prompt_tokens": 282,
+            "total_tokens": 324,
+            "completion_tokens_details": {
+                "accepted_prediction_tokens": 0,
+                "audio_tokens": 0,
+                "reasoning_tokens": 0,
+                "rejected_prediction_tokens": 0,
+            },
+            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
+        }
+
     def test_convert_usage_chunk_to_streaming_chunk(self):
         chunk = ChatCompletionChunk(
             id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
@@ -616,8 +879,11 @@ class TestOpenAIChatGenerator:
                 prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
             ),
         )
-        result = _convert_chat_completion_chunk_to_streaming_chunk(chunk)
+        result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])[0]
         assert result.content == ""
+        assert result.start is False
+        assert result.tool_call is None
+        assert result.tool_call_result is None
         assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
         assert result.meta["received_at"] is not None
 
@@ -701,8 +967,12 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_tools_streaming(self, tools):
-        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
-        component = OpenAIChatGenerator(tools=tools, streaming_callback=print_streaming_chunk)
+        chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
+        component = OpenAIChatGenerator(
+            tools=tools,
+            streaming_callback=print_streaming_chunk,
+            generation_kwargs={"stream_options": {"include_usage": True}},
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -710,10 +980,15 @@ class TestOpenAIChatGenerator:
         assert not message.texts
         assert not message.text
         assert message.tool_calls
-        tool_call = message.tool_call
-        assert isinstance(tool_call, ToolCall)
-        assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
+        tool_calls = message.tool_calls
+        assert len(tool_calls) == 2
+
+        for tool_call in tool_calls:
+            assert isinstance(tool_call, ToolCall)
+            assert tool_call.tool_name == "weather"
+
+        arguments = [tool_call.arguments for tool_call in tool_calls]
+        assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
         assert message.meta["finish_reason"] == "tool_calls"
 
     def test_openai_chat_generator_with_toolset_initialization(self, tools, monkeypatch):

@@ -82,7 +82,7 @@ class Secret(ABC):
         """
         out = {"type": self.type.value}
         inner = self._to_dict()
-        assert all(k not in inner for k in out.keys())
+        assert all(k not in inner for k in out)
         out.update(inner)
         return out
 

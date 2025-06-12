@@ -7,10 +7,12 @@ import json
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, Dict, List, Literal, Optional, Union
+from contextlib import suppress
+from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall, select_streaming_callback
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
+from haystack.dataclasses.streaming_chunk import select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
@@ -37,6 +39,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_an
     from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 
     from haystack.utils.hf import (  # pylint: disable=ungrouped-imports
+        AsyncHFTokenStreamingHandler,
         HFTokenStreamingHandler,
         StopWordsCriteria,
         convert_message_to_hf_format,
@@ -250,7 +253,7 @@ class HuggingFaceLocalChatGenerator:
         """
         Cleanup when the instance is being destroyed.
         """
-        if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
+        if self._owns_executor:
             self.executor.shutdown(wait=True)
 
     def shutdown(self) -> None:
@@ -468,20 +471,41 @@ class HuggingFaceLocalChatGenerator:
         streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
         if streaming_callback:
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
-            prepared_inputs["generation_kwargs"]["streamer"] = HFTokenStreamingHandler(
+            async_handler = AsyncHFTokenStreamingHandler(
                 tokenizer=prepared_inputs["tokenizer"],
-                stream_handler=streaming_callback,
+                stream_handler=streaming_callback,  # type: ignore
                 stop_words=prepared_inputs["stop_words"],
                 component_info=ComponentInfo.from_component(self),
             )
+            prepared_inputs["generation_kwargs"]["streamer"] = async_handler
+
+            # Start queue processing in the background
+            queue_processor = asyncio.create_task(async_handler.process_queue())
+
+            try:
+                # We know it's not None because we check it in _prepare_inputs
+                assert self.pipeline is not None
+                output = await asyncio.get_running_loop().run_in_executor(
+                    self.executor,
+                    lambda: self.pipeline(prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]),
+                )
+                chat_messages = self._convert_hf_output_to_chat_messages(hf_pipeline_output=output, **prepared_inputs)
+                return {"replies": chat_messages}
+
+            finally:
+                try:
+                    await asyncio.wait_for(queue_processor, timeout=0.1)
+                except asyncio.TimeoutError:
+                    queue_processor.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await queue_processor
 
         # We know it's not None because we check it in _prepare_inputs
         assert self.pipeline is not None
         output = await asyncio.get_running_loop().run_in_executor(
             self.executor,
-            lambda: self.pipeline(prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]),  # type: ignore # if self.executor was not passed it was initialized with max_workers=1 in init
+            lambda: self.pipeline(prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]),
         )
-
         chat_messages = self._convert_hf_output_to_chat_messages(hf_pipeline_output=output, **prepared_inputs)
         return {"replies": chat_messages}
 
@@ -591,8 +615,9 @@ class HuggingFaceLocalChatGenerator:
         replies = [o.get("generated_text", "") for o in hf_pipeline_output]
 
         # Remove stop words from replies if present
-        for stop_word in stop_words or []:
-            replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
+        if stop_words:
+            for stop_word in stop_words:
+                replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
         chat_messages = [
             self.create_message(

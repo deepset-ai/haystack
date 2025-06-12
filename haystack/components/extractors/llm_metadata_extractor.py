@@ -205,6 +205,8 @@ class LLMMetadataExtractor:
         return default_from_dict(cls, data)
 
     def _extract_metadata(self, llm_answer: str) -> Dict[str, Any]:
+        parsed_metadata: Dict[str, Any] = {}
+
         try:
             parsed_metadata = json.loads(llm_answer)
         except json.JSONDecodeError as e:

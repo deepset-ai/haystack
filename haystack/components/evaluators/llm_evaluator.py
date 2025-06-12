@@ -322,7 +322,7 @@ class LLMEvaluator:
             If the received inputs are not lists or have different lengths
         """
         # Validate that all expected inputs are present in the received inputs
-        for param in expected.keys():
+        for param in expected:
             if param not in received:
                 msg = f"LLM evaluator expected input parameter '{param}' but received only {received.keys()}."
                 raise ValueError(msg)
