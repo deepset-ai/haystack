@@ -233,6 +233,11 @@ class HuggingFaceLocalGenerator:
                 "The component HuggingFaceLocalGenerator was not warmed up. Please call warm_up() before running."
             )
 
+        # at this point, we know that the pipeline has been initialized
+        assert self.pipeline is not None
+        # text-generation and text2text-generation pipelines always have a non-None tokenizer
+        assert self.pipeline.tokenizer is not None
+
         if not prompt:
             return {"replies": []}
 
@@ -254,15 +259,16 @@ class HuggingFaceLocalGenerator:
                 )
                 logger.warning(msg, num_responses=num_responses)
                 updated_generation_kwargs["num_return_sequences"] = 1
+
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             updated_generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                tokenizer=self.pipeline.tokenizer,  # type: ignore
+                tokenizer=self.pipeline.tokenizer,
                 stream_handler=streaming_callback,
-                stop_words=self.stop_words,  # type: ignore
+                stop_words=self.stop_words,
                 component_info=ComponentInfo.from_component(self),
             )
 
-        output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **updated_generation_kwargs)  # type: ignore
+        output = self.pipeline(prompt, stopping_criteria=self.stopping_criteria_list, **updated_generation_kwargs)
         replies = [o["generated_text"] for o in output if "generated_text" in o]
 
         if self.stop_words:

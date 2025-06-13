@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, Literal, Optional, Union, overload
 
 from haystack.core.component import Component
 from haystack.dataclasses.chat_message import ToolCallResult
@@ -102,6 +102,20 @@ SyncStreamingCallbackT = Callable[[StreamingChunk], None]
 AsyncStreamingCallbackT = Callable[[StreamingChunk], Awaitable[None]]
 
 StreamingCallbackT = Union[SyncStreamingCallbackT, AsyncStreamingCallbackT]
+
+
+@overload
+def select_streaming_callback(
+    init_callback: Optional[StreamingCallbackT],
+    runtime_callback: Optional[StreamingCallbackT],
+    requires_async: Literal[False],
+) -> Optional[SyncStreamingCallbackT]: ...
+@overload
+def select_streaming_callback(
+    init_callback: Optional[StreamingCallbackT],
+    runtime_callback: Optional[StreamingCallbackT],
+    requires_async: Literal[True],
+) -> Optional[AsyncStreamingCallbackT]: ...
 
 
 def select_streaming_callback(
