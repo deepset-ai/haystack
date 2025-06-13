@@ -7,7 +7,7 @@ import json
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import suppress
+from contextlib import asynccontextmanager, suppress
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -467,47 +467,47 @@ class HuggingFaceLocalChatGenerator:
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools
         )
 
-        # validate and select the streaming callback
+        # Validate and select the streaming callback
         streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
+
         if streaming_callback:
-            # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             async_handler = AsyncHFTokenStreamingHandler(
                 tokenizer=prepared_inputs["tokenizer"],
-                stream_handler=streaming_callback,  # type: ignore
+                stream_handler=streaming_callback,
                 stop_words=prepared_inputs["stop_words"],
                 component_info=ComponentInfo.from_component(self),
             )
             prepared_inputs["generation_kwargs"]["streamer"] = async_handler
 
-            # Start queue processing in the background
-            queue_processor = asyncio.create_task(async_handler.process_queue())
-
-            try:
-                # We know it's not None because we check it in _prepare_inputs
-                assert self.pipeline is not None
+            # Use async context manager for proper resource cleanup
+            async with self._manage_queue_processor(async_handler):
                 output = await asyncio.get_running_loop().run_in_executor(
                     self.executor,
                     lambda: self.pipeline(prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]),
                 )
-                chat_messages = self._convert_hf_output_to_chat_messages(hf_pipeline_output=output, **prepared_inputs)
-                return {"replies": chat_messages}
+        else:
+            output = await asyncio.get_running_loop().run_in_executor(
+                self.executor,
+                lambda: self.pipeline(prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]),
+            )
 
-            finally:
-                try:
-                    await asyncio.wait_for(queue_processor, timeout=0.1)
-                except asyncio.TimeoutError:
-                    queue_processor.cancel()
-                    with suppress(asyncio.CancelledError):
-                        await queue_processor
-
-        # We know it's not None because we check it in _prepare_inputs
-        assert self.pipeline is not None
-        output = await asyncio.get_running_loop().run_in_executor(
-            self.executor,
-            lambda: self.pipeline(prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]),
-        )
         chat_messages = self._convert_hf_output_to_chat_messages(hf_pipeline_output=output, **prepared_inputs)
         return {"replies": chat_messages}
+
+    @asynccontextmanager
+    async def _manage_queue_processor(self, async_handler: AsyncHFTokenStreamingHandler):
+        """Context manager for proper queue processor lifecycle management."""
+        queue_processor = asyncio.create_task(async_handler.process_queue())
+        try:
+            yield queue_processor
+        finally:
+            # Ensure the queue processor is cleaned up properly
+            try:
+                await asyncio.wait_for(queue_processor, timeout=0.1)
+            except asyncio.TimeoutError:
+                queue_processor.cancel()
+                with suppress(asyncio.CancelledError):
+                    await queue_processor
 
     def _prepare_inputs(
         self,
