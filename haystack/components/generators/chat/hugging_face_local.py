@@ -8,10 +8,10 @@ import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
-from typing import Any, Callable, Dict, List, Literal, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
+from haystack.dataclasses import AsyncStreamingCallbackT, ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
 from haystack.dataclasses.streaming_chunk import select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
@@ -473,7 +473,8 @@ class HuggingFaceLocalChatGenerator:
         if streaming_callback:
             async_handler = AsyncHFTokenStreamingHandler(
                 tokenizer=prepared_inputs["tokenizer"],
-                stream_handler=streaming_callback,
+                # Cast to AsyncStreamingCallbackT since we know streaming_callback is async
+                stream_handler=cast(AsyncStreamingCallbackT, streaming_callback),
                 stop_words=prepared_inputs["stop_words"],
                 component_info=ComponentInfo.from_component(self),
             )
@@ -483,12 +484,18 @@ class HuggingFaceLocalChatGenerator:
             async with self._manage_queue_processor(async_handler):
                 output = await asyncio.get_running_loop().run_in_executor(
                     self.executor,
-                    lambda: self.pipeline(prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]),
+                    # have to ignore since assert self.pipeline is not None doesn't work
+                    lambda: self.pipeline(  # type: ignore[misc]
+                        prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]
+                    ),
                 )
         else:
             output = await asyncio.get_running_loop().run_in_executor(
                 self.executor,
-                lambda: self.pipeline(prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]),
+                # have to ignore since assert self.pipeline is not None doesn't work
+                lambda: self.pipeline(  # type: ignore[misc]
+                    prepared_inputs["prepared_prompt"], **prepared_inputs["generation_kwargs"]
+                ),
             )
 
         chat_messages = self._convert_hf_output_to_chat_messages(hf_pipeline_output=output, **prepared_inputs)

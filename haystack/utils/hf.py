@@ -5,10 +5,10 @@
 import asyncio
 import copy
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from haystack import logging
-from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, StreamingChunk
+from haystack.dataclasses import AsyncStreamingCallbackT, ChatMessage, ComponentInfo, StreamingCallbackT, StreamingChunk
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
@@ -392,7 +392,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
         def __init__(
             self,
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
-            stream_handler: Callable[[StreamingChunk], Awaitable[None]],
+            stream_handler: AsyncStreamingCallbackT,
             stop_words: Optional[List[str]] = None,
             component_info: Optional[ComponentInfo] = None,
         ):
