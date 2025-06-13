@@ -11,7 +11,7 @@ from contextlib import suppress
 from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
+from haystack.dataclasses import AsyncStreamingCallbackT, ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
 from haystack.dataclasses.streaming_chunk import select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
@@ -566,7 +566,7 @@ class HuggingFaceLocalChatGenerator:
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
         generation_kwargs: Dict[str, Any],
         stop_words: Optional[List[str]],
-        streaming_callback: StreamingCallbackT,
+        streaming_callback: AsyncStreamingCallbackT,
     ):
         """
         Handles async streaming generation of responses.
@@ -588,7 +588,9 @@ class HuggingFaceLocalChatGenerator:
         # get the component name and type
         component_info = ComponentInfo.from_component(self)
 
-        async_handler = AsyncHFTokenStreamingHandler(tokenizer, streaming_callback, stop_words, component_info)  # type: ignore
+        async_handler = AsyncHFTokenStreamingHandler(
+            tokenizer=tokenizer, stream_handler=streaming_callback, stop_words=stop_words, component_info=component_info
+        )
         generation_kwargs["streamer"] = async_handler
 
         # Start queue processing in the background

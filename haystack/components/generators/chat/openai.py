@@ -280,8 +280,10 @@ class OpenAIChatGenerator:
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
+                # we cannot check isinstance(chat_completion, Stream) because some observability tools wrap Stream
+                # and return a different type. See https://github.com/deepset-ai/haystack/issues/9014.
                 chat_completion,  # type: ignore
-                streaming_callback,  # type: ignore
+                streaming_callback,
             )
 
         else:
@@ -356,8 +358,10 @@ class OpenAIChatGenerator:
 
         if streaming_callback is not None:
             completions = await self._handle_async_stream_response(
+                # we cannot check isinstance(chat_completion, AsyncStream) because some observability tools wrap
+                # AsyncStream and return a different type. See https://github.com/deepset-ai/haystack/issues/9014.
                 chat_completion,  # type: ignore
-                streaming_callback,  # type: ignore
+                streaming_callback,
             )
 
         else:
