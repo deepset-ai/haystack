@@ -16,6 +16,7 @@ env:
   PYTHON_VERSION: "3.9"
   HATCH_VERSION: "1.14.1"
   HAYSTACK_MPS_ENABLED: false
+  HAYSTACK_XPU_ENABLED: false
 
 on:
   workflow_dispatch: # Activate this workflow manually
