@@ -10,7 +10,7 @@ from lazy_imports import LazyImporter
 _import_structure = {"protocol": ["Marshaller"], "yaml": ["YamlMarshaller"]}
 
 if TYPE_CHECKING:
-    from .protocol import Marshaller
-    from .yaml import YamlMarshaller
+    from .protocol import Marshaller as Marshaller
+    from .yaml import YamlMarshaller as YamlMarshaller
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
