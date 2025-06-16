@@ -18,13 +18,17 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .hugging_face_tei import HuggingFaceTEIRanker
-    from .lost_in_the_middle import LostInTheMiddleRanker
-    from .meta_field import MetaFieldRanker
-    from .meta_field_grouping_ranker import MetaFieldGroupingRanker
-    from .sentence_transformers_diversity import SentenceTransformersDiversityRanker
-    from .sentence_transformers_similarity import SentenceTransformersSimilarityRanker
-    from .transformers_similarity import TransformersSimilarityRanker
+    from .hugging_face_tei import HuggingFaceTEIRanker as HuggingFaceTEIRanker
+    from .lost_in_the_middle import LostInTheMiddleRanker as LostInTheMiddleRanker
+    from .meta_field import MetaFieldRanker as MetaFieldRanker
+    from .meta_field_grouping_ranker import MetaFieldGroupingRanker as MetaFieldGroupingRanker
+    from .sentence_transformers_diversity import (
+        SentenceTransformersDiversityRanker as SentenceTransformersDiversityRanker,
+    )
+    from .sentence_transformers_similarity import (
+        SentenceTransformersSimilarityRanker as SentenceTransformersSimilarityRanker,
+    )
+    from .transformers_similarity import TransformersSimilarityRanker as TransformersSimilarityRanker
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

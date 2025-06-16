@@ -16,11 +16,11 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .answer_joiner import AnswerJoiner
-    from .branch import BranchJoiner
-    from .document_joiner import DocumentJoiner
-    from .list_joiner import ListJoiner
-    from .string_joiner import StringJoiner
+    from .answer_joiner import AnswerJoiner as AnswerJoiner
+    from .branch import BranchJoiner as BranchJoiner
+    from .document_joiner import DocumentJoiner as DocumentJoiner
+    from .list_joiner import ListJoiner as ListJoiner
+    from .string_joiner import StringJoiner as StringJoiner
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

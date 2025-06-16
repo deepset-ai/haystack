@@ -16,11 +16,11 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .azure import AzureOpenAIGenerator
-    from .hugging_face_api import HuggingFaceAPIGenerator
-    from .hugging_face_local import HuggingFaceLocalGenerator
-    from .openai import OpenAIGenerator
-    from .openai_dalle import DALLEImageGenerator
+    from .azure import AzureOpenAIGenerator as AzureOpenAIGenerator
+    from .hugging_face_api import HuggingFaceAPIGenerator as HuggingFaceAPIGenerator
+    from .hugging_face_local import HuggingFaceLocalGenerator as HuggingFaceLocalGenerator
+    from .openai import OpenAIGenerator as OpenAIGenerator
+    from .openai_dalle import DALLEImageGenerator as DALLEImageGenerator
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
