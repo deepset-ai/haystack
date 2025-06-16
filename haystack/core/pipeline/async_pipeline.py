@@ -198,7 +198,7 @@ class AsyncPipeline(PipelineBase):
         prepared_data = self._prepare_component_input_data(data)
 
         # raises ValueError if input is malformed in some way
-        self._validate_input(prepared_data)
+        self.validate_input(prepared_data)
         inputs_state = self._convert_to_internal_format(prepared_data)
 
         # For quick lookup of downstream receivers

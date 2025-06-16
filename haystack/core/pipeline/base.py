@@ -899,7 +899,7 @@ class PipelineBase:
             parent_span=parent_span,
         )
 
-    def _validate_input(self, data: Dict[str, Any]) -> None:
+    def validate_input(self, data: Dict[str, Any]) -> None:
         """
         Validates pipeline input data.
 
