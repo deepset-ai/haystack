@@ -19,14 +19,18 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .azure_document_embedder import AzureOpenAIDocumentEmbedder
-    from .azure_text_embedder import AzureOpenAITextEmbedder
-    from .hugging_face_api_document_embedder import HuggingFaceAPIDocumentEmbedder
-    from .hugging_face_api_text_embedder import HuggingFaceAPITextEmbedder
-    from .openai_document_embedder import OpenAIDocumentEmbedder
-    from .openai_text_embedder import OpenAITextEmbedder
-    from .sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
-    from .sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
+    from .azure_document_embedder import AzureOpenAIDocumentEmbedder as AzureOpenAIDocumentEmbedder
+    from .azure_text_embedder import AzureOpenAITextEmbedder as AzureOpenAITextEmbedder
+    from .hugging_face_api_document_embedder import HuggingFaceAPIDocumentEmbedder as HuggingFaceAPIDocumentEmbedder
+    from .hugging_face_api_text_embedder import HuggingFaceAPITextEmbedder as HuggingFaceAPITextEmbedder
+    from .openai_document_embedder import OpenAIDocumentEmbedder as OpenAIDocumentEmbedder
+    from .openai_text_embedder import OpenAITextEmbedder as OpenAITextEmbedder
+    from .sentence_transformers_document_embedder import (
+        SentenceTransformersDocumentEmbedder as SentenceTransformersDocumentEmbedder,
+    )
+    from .sentence_transformers_text_embedder import (
+        SentenceTransformersTextEmbedder as SentenceTransformersTextEmbedder,
+    )
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

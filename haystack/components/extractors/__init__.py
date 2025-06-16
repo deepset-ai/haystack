@@ -13,8 +13,10 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .llm_metadata_extractor import LLMMetadataExtractor
-    from .named_entity_extractor import NamedEntityAnnotation, NamedEntityExtractor, NamedEntityExtractorBackend
+    from .llm_metadata_extractor import LLMMetadataExtractor as LLMMetadataExtractor
+    from .named_entity_extractor import NamedEntityAnnotation as NamedEntityAnnotation
+    from .named_entity_extractor import NamedEntityExtractor as NamedEntityExtractor
+    from .named_entity_extractor import NamedEntityExtractorBackend as NamedEntityExtractorBackend
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
