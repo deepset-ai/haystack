@@ -423,10 +423,12 @@ class RecursiveDocumentSplitter:
         new_docs: List[Document] = []
 
         for split_nr, chunk in enumerate(chunks):
-            new_doc = Document(content=chunk, meta=deepcopy(doc.meta))
-            new_doc.meta["split_id"] = split_nr
-            new_doc.meta["split_idx_start"] = current_position
-            new_doc.meta["_split_overlap"] = [] if self.split_overlap > 0 else None
+            meta = deepcopy(doc.meta)
+            meta["parent_id"] = doc.id
+            meta["split_id"] = split_nr
+            meta["split_idx_start"] = current_position
+            meta["_split_overlap"] = [] if self.split_overlap > 0 else None
+            new_doc = Document(content=chunk, meta=meta)
 
             # add overlap information to the previous and current doc
             if split_nr > 0 and self.split_overlap > 0:
