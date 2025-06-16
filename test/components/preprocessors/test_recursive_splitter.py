@@ -993,14 +993,6 @@ def test_run_complex_text_with_multiple_separators():
 
 
 def test_recursive_splitter_generates_unique_ids_and_correct_meta():
-    """
-    • Every produced chunk must have a unique `id`.
-    • Each chunk must carry `parent_id` = original doc’s ID.
-    • `split_id` values must be 0, 1, 2, …
-    """
-    from haystack import Document
-    from haystack.components.preprocessors.recursive_splitter import RecursiveDocumentSplitter
-
     text = "Haystack is awesome. " * 5
     source_doc = Document(content=text)
 

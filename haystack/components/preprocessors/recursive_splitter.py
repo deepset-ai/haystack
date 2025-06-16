@@ -427,9 +427,8 @@ class RecursiveDocumentSplitter:
             meta["parent_id"] = doc.id
             meta["split_id"] = split_nr
             meta["split_idx_start"] = current_position
+            meta["_split_overlap"] = [] if self.split_overlap > 0 else None
             new_doc = Document(content=chunk, meta=meta)
-            new_doc.meta["split_idx_start"] = current_position
-            new_doc.meta["_split_overlap"] = [] if self.split_overlap > 0 else None
 
             # add overlap information to the previous and current doc
             if split_nr > 0 and self.split_overlap > 0:
