@@ -15,10 +15,11 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .auto_merging_retriever import AutoMergingRetriever
-    from .filter_retriever import FilterRetriever
-    from .in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
-    from .sentence_window_retriever import SentenceWindowRetriever
+    from .auto_merging_retriever import AutoMergingRetriever as AutoMergingRetriever
+    from .filter_retriever import FilterRetriever as FilterRetriever
+    from .in_memory import InMemoryBM25Retriever as InMemoryBM25Retriever
+    from .in_memory import InMemoryEmbeddingRetriever as InMemoryEmbeddingRetriever
+    from .sentence_window_retriever import SentenceWindowRetriever as SentenceWindowRetriever
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
