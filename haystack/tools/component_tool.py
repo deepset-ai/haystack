@@ -291,6 +291,7 @@ class ComponentTool(Tool):
             resolved_type = _resolve_type(input_type)
             fields[input_name] = (resolved_type, Field(default=default, description=description))
 
+        parameters_schema: Dict[str, Any] = {}
         try:
             model = create_model(component.run.__name__, __doc__=component_run_description, **fields)
             parameters_schema = model.model_json_schema()
