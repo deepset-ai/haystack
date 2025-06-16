@@ -1866,3 +1866,61 @@ class TestPipelineBase:
         with warnings.catch_warnings(record=True) as w:
             pipeline.show(server_url="http://localhost:3000")
             assert len(w) == 0, "No warning should be triggered when using keyword arguments"
+
+
+class TestValidateInput:
+    def test_validate_input_valid_data(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", input_types={"x": int}, output_types={"y": int})()
+        pipe.add_component("comp1", comp1)
+        pipe._validate_input(data={"comp1": {"x": 1}})
+        # No exception should be raised
+
+    def test_validate_input_missing_mandatory_input(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", input_types={"x": int}, output_types={"y": int})()
+        pipe.add_component("comp1", comp1)
+        with pytest.raises(ValueError, match="Missing mandatory input 'x' for component 'comp1'"):
+            pipe._validate_input(data={"comp1": {}})
+
+    def test_validate_input_missing_mandatory_input_for_component_not_in_data(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", input_types={"x": int}, output_types={"y": int})()
+        comp2 = component_class("Comp2", input_types={"a": str}, output_types={"b": str})()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2) # comp2 requires 'a' but is not in data
+        with pytest.raises(ValueError, match="Missing mandatory input 'a' for component 'comp2' which was not provided in the input data."):
+            pipe._validate_input(data={"comp1": {"x": 1}})
+
+
+    def test_validate_input_to_already_connected_socket(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", input_types={"x": int}, output_types={"y": int})()
+        comp2 = component_class("Comp2", input_types={"a": int}, output_types={"b": int})()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2)
+        pipe.connect("comp1.y", "comp2.a")
+        with pytest.raises(ValueError, match="Input 'a' for component 'comp2' is already provided by component 'comp1'. Do not provide it directly."):
+            pipe._validate_input(data={"comp2": {"a": 1}})
+
+    def test_validate_input_for_non_existent_component(self):
+        pipe = PipelineBase()
+        with pytest.raises(ValueError, match="Component 'non_existent' not found in the pipeline. Available components: \\[\\]"):
+            pipe._validate_input(data={"non_existent": {"x": 1}})
+
+    def test_validate_input_with_unexpected_input_name(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", input_types={"x": int}, output_types={"y": int})()
+        pipe.add_component("comp1", comp1)
+        with pytest.raises(ValueError, match="Unexpected input 'z' for component 'comp1'. Available inputs: \\['x'\\]"):
+            pipe._validate_input(data={"comp1": {"z": 1}})
+
+    def test_validate_input_variadic_socket_can_receive_multiple_inputs(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", output_types={"y": int})()
+        comp2 = component_class("Comp2", input_types={"a": Variadic[int]}, output_types={"b": int})()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2)
+        pipe.connect("comp1.y", "comp2.a")
+        # Should not raise an error, as variadic sockets can accept multiple inputs
+        pipe._validate_input(data={"comp2": {"a": 1}})
