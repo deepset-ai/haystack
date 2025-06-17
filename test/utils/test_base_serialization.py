@@ -74,10 +74,25 @@ def test_deserialize_class_instance_invalid_data():
         deserialize_class_instance({"type": "test_base_serialization.CustomClassNoFromDict", "data": {}})
 
 
+def test_serialize_value_primitive_types():
+    numbers = 1
+    string = "test"
+    bool = True
+    none = None
+    result = _serialize_value_with_schema(numbers)
+    assert result == {"serialization_schema": {"type": "integer"}, "serialized_data": 1}
+    result = _serialize_value_with_schema(string)
+    assert result == {"serialization_schema": {"type": "string"}, "serialized_data": "test"}
+    result = _serialize_value_with_schema(bool)
+    assert result == {"serialization_schema": {"type": "boolean"}, "serialized_data": True}
+    result = _serialize_value_with_schema(none)
+    assert result == {"serialization_schema": {"type": "null"}, "serialized_data": None}
+
+
 def test_serialize_value_with_schema():
     data = {
         "numbers": 1,
-        "messages": [ChatMessage.from_user(text="Hello, world!")],
+        "messages": [ChatMessage.from_user(text="Hello, world!"), ChatMessage.from_assistant(text="Hello, world!")],
         "user_id": "123",
         "dict_of_lists": {"numbers": [1, 2, 3]},
         "documents": [Document(content="Hello, world!")],
@@ -92,19 +107,29 @@ def test_serialize_value_with_schema():
         ],
     }
     result = _serialize_value_with_schema(data)
+    print(result)
     assert result == {
         "serialization_schema": {
-            "numbers": {"type": "integer"},
-            "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
-            "user_id": {"type": "string"},
-            "dict_of_lists": {"type": "object"},
-            "documents": {"type": "array", "items": {"type": "haystack.dataclasses.document.Document"}},
-            "list_of_dicts": {"type": "array", "items": {"type": "string"}},
-            "answers": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
+            "type": "object",
+            "properties": {
+                "numbers": {"type": "integer"},
+                "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+                "user_id": {"type": "string"},
+                "dict_of_lists": {
+                    "type": "object",
+                    "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}},
+                },
+                "documents": {"type": "array", "items": {"type": "haystack.dataclasses.document.Document"}},
+                "list_of_dicts": {"type": "array", "items": {"type": "string"}},
+                "answers": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
+            },
         },
         "serialized_data": {
             "numbers": 1,
-            "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+            "messages": [
+                {"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]},
+                {"role": "assistant", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]},
+            ],
             "user_id": "123",
             "dict_of_lists": {"numbers": [1, 2, 3]},
             "documents": [
@@ -146,17 +171,26 @@ def test_serialize_value_with_schema():
 def test_deserialize_value_with_schema():
     serialized__data = {
         "serialization_schema": {
-            "numbers": {"type": "integer"},
-            "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
-            "user_id": {"type": "string"},
-            "dict_of_lists": {"type": "object"},
-            "documents": {"type": "array", "items": {"type": "haystack.dataclasses.document.Document"}},
-            "list_of_dicts": {"type": "array", "items": {"type": "string"}},
-            "answers": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
+            "type": "object",
+            "properties": {
+                "numbers": {"type": "integer"},
+                "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+                "user_id": {"type": "string"},
+                "dict_of_lists": {
+                    "type": "object",
+                    "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}},
+                },
+                "documents": {"type": "array", "items": {"type": "haystack.dataclasses.document.Document"}},
+                "list_of_dicts": {"type": "array", "items": {"type": "string"}},
+                "answers": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
+            },
         },
         "serialized_data": {
             "numbers": 1,
-            "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+            "messages": [
+                {"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]},
+                {"role": "assistant", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]},
+            ],
             "user_id": "123",
             "dict_of_lists": {"numbers": [1, 2, 3]},
             "documents": [
@@ -211,8 +245,11 @@ def test_serialize_value_with_custom_class_type():
     result = _serialize_value_with_schema(data)
     assert result == {
         "serialization_schema": {
-            "numbers": {"type": "integer"},
-            "custom_type": {"type": "test_base_serialization.CustomClass"},
+            "properties": {
+                "custom_type": {"type": "test_base_serialization.CustomClass"},
+                "numbers": {"type": "integer"},
+            },
+            "type": "object",
         },
         "serialized_data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
     }
@@ -221,8 +258,11 @@ def test_serialize_value_with_custom_class_type():
 def test_deserialize_value_with_custom_class_type():
     serialized_data = {
         "serialization_schema": {
-            "numbers": {"type": "integer"},
-            "custom_type": {"type": "test_base_serialization.CustomClass"},
+            "properties": {
+                "custom_type": {"type": "test_base_serialization.CustomClass"},
+                "numbers": {"type": "integer"},
+            },
+            "type": "object",
         },
         "serialized_data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
     }

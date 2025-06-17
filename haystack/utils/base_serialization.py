@@ -55,9 +55,9 @@ def deserialize_class_instance(data: Dict[str, Any]) -> Any:
 
 
 # TODO: Make this function public once its implementation is finalized and tested
-def _serialize_value_with_schema(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _serialize_value_with_schema(payload: Any) -> Dict[str, Any]:
     """
-    Serializes a dictionary into a schema-aware format suitable for storage or transmission.
+    Serializes a value into a schema-aware format suitable for storage or transmission.
 
     The output format separates the schema information from the actual data, making it easier
     to deserialize complex nested structures correctly.
@@ -69,60 +69,62 @@ def _serialize_value_with_schema(payload: Dict[str, Any]) -> Dict[str, Any]:
     - Lists, tuples, and sets
     - Primitive types (str, int, float, bool, None)
 
-    :param value: The value to serialize
+    :param payload: The value to serialize (can be any type)
     :returns: The serialized dict representation of the given value. Contains two keys:
-        - "schema": Contains type information for each field
-        - "data": Contains the actual data in a simplified format
+        - "serialization_schema": Contains type information
+        - "serialized_data": Contains the actual data in a simplified format
 
     """
-    schema: Dict[str, Any] = {}
-    data: Dict[str, Any] = {}
+    # Handle dictionary case - iterate through fields
+    if isinstance(payload, dict):
+        schema: Dict[str, Any] = {}
+        data: Dict[str, Any] = {}
 
-    for field, val in payload.items():
-        # 1) Handle dataclass‐style objects
-        if hasattr(val, "to_dict") and callable(val.to_dict):
-            type_name = generate_qualified_class_name(type(val))
-            pure = _convert_to_basic_types(val.to_dict())
-            schema[field] = {"type": type_name}
-            data[field] = pure
+        for field, val in payload.items():
+            # Recursively serialize each field
+            serialized_field = _serialize_value_with_schema(val)
+            schema[field] = serialized_field["serialization_schema"]
+            data[field] = serialized_field["serialized_data"]
 
-        # 2) Arbitrary objects w/ __dict__
-        elif hasattr(val, "__dict__"):
-            type_name = generate_qualified_class_name(type(val))
-            pure = _convert_to_basic_types(vars(val))
-            schema[field] = {"type": type_name}
-            data[field] = pure
+        return {"serialization_schema": {"type": "object", "properties": schema}, "serialized_data": data}
 
-        # 3) Dicts → "object"
-        elif isinstance(val, dict):
-            pure = _convert_to_basic_types(val)
-            schema[field] = {"type": "object"}
-            data[field] = pure
+    # Handle array case - iterate through elements
+    elif isinstance(payload, (list, tuple, set)):
+        # Convert to list for consistent handling
+        pure_list = _convert_to_basic_types(list(payload))
 
-        # 4) Sequences → "array"
-        elif isinstance(val, (list, tuple, set)):
-            # pure data
-            pure_list = _convert_to_basic_types(list(val))
-            # determine item type from first element (if any)
-            if val:
-                first = next(iter(val))
-                if hasattr(first, "to_dict") and callable(first.to_dict) or hasattr(first, "__dict__"):
-                    item_type = generate_qualified_class_name(type(first))
-                else:
-                    item_type = _primitive_schema_type(first)
+        # Determine item type from first element (if any)
+        if payload:
+            first = next(iter(payload))
+            if hasattr(first, "to_dict") and callable(first.to_dict) or hasattr(first, "__dict__"):
+                item_type = generate_qualified_class_name(type(first))
             else:
-                item_type = "any"
-
-            schema[field] = {"type": "array", "items": {"type": item_type}}
-            data[field] = pure_list
-
-        # 5) Primitives
+                item_type = _primitive_schema_type(first)
         else:
-            prim_type = _primitive_schema_type(val)
-            schema[field] = {"type": prim_type}
-            data[field] = val
+            item_type = "any"
 
-    return {"serialization_schema": schema, "serialized_data": data}
+        schema = {"type": "array", "items": {"type": item_type}}
+        return {"serialization_schema": schema, "serialized_data": pure_list}
+
+    # Handle dataclass-style objects
+    elif hasattr(payload, "to_dict") and callable(payload.to_dict):
+        type_name = generate_qualified_class_name(type(payload))
+        pure = _convert_to_basic_types(payload.to_dict())
+        schema = {"type": type_name}
+        return {"serialization_schema": schema, "serialized_data": pure}
+
+    # Handle arbitrary objects with __dict__
+    elif hasattr(payload, "__dict__"):
+        type_name = generate_qualified_class_name(type(payload))
+        pure = _convert_to_basic_types(vars(payload))
+        schema = {"type": type_name}
+        return {"serialization_schema": schema, "serialized_data": pure}
+
+    # Handle primitives
+    else:
+        prim_type = _primitive_schema_type(payload)
+        schema = {"type": prim_type}
+        return {"serialization_schema": schema, "serialized_data": payload}
 
 
 def _primitive_schema_type(value: Any) -> str:
@@ -180,61 +182,76 @@ def _convert_to_basic_types(value: Any) -> Any:
 
 
 # TODO: Make this function public once its implementation is finalized and tested
-def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Dict[str, Any]:
+def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911
     """
-    Deserializes a dictionary with schema information and data to original values.
+    Deserializes a value with schema information back to its original form.
 
     Takes a dict of the form:
       {
-         "schema": {
-            "numbers": {"type": "integer"},
-            "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
-        },
-        "data": {
-            "numbers": 1,
-            "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+         "serialization_schema": {"type": "integer"} or {"type": "object", "properties": {...}},
+         "serialized_data": <the actual data>
       }
 
     :param serialized: The serialized dict with schema and data.
-    :returns: The deserialized dict with original values.
+    :returns: The deserialized value in its original form.
     """
     schema = serialized.get("serialization_schema", {})
-    data = serialized.get("serialized_data", {})
+    data = serialized.get("serialized_data")
 
-    result: Dict[str, Any] = {}
-    for field, raw in data.items():
-        info = schema.get(field)
-        # no schema entry → just deep-deserialize whatever we have
-        if not info:
-            result[field] = _deserialize_value(raw)
-            continue
+    if not schema or "type" not in schema:
+        # No schema info, try to deserialize as-is
+        return _deserialize_value(data)
 
-        t = info["type"]
+    schema_type = schema["type"]
 
-        # ARRAY case
-        if t == "array":
-            item_type = info["items"]["type"]
-            reconstructed = []
-            for item in raw:
+    # Handle object case (dictionary with properties)
+    if schema_type == "object":
+        if "properties" in schema:
+            # New format: object with properties schema
+            result: Dict[str, Any] = {}
+            properties = schema["properties"]
+
+            if isinstance(data, dict):
+                for field, raw_value in data.items():
+                    field_schema = properties.get(field)
+                    if field_schema:
+                        # Recursively deserialize each field
+                        field_serialized = {"serialization_schema": field_schema, "serialized_data": raw_value}
+                        result[field] = _deserialize_value_with_schema(field_serialized)
+                    else:
+                        # No schema for this field, deserialize as-is
+                        result[field] = _deserialize_value(raw_value)
+            return result
+        else:
+            # Old format: generic object
+            envelope = {"type": "object", "data": data}
+            return _deserialize_value(envelope)
+
+    # Handle array case
+    elif schema_type == "array":
+        if not isinstance(data, list):
+            return data
+
+        item_schema = schema.get("items", {})
+        item_type = item_schema.get("type", "any")
+
+        reconstructed = []
+        for item in data:
+            if item_type == "any":
+                reconstructed.append(_deserialize_value(item))
+            else:
                 envelope = {"type": item_type, "data": item}
                 reconstructed.append(_deserialize_value(envelope))
-            result[field] = reconstructed
+        return reconstructed
 
-        # PRIMITIVE case
-        elif t in ("null", "boolean", "integer", "number", "string"):
-            result[field] = raw
+    # Handle primitive types
+    elif schema_type in ("null", "boolean", "integer", "number", "string"):
+        return data
 
-        # GENERIC OBJECT
-        elif t == "object":
-            envelope = {"type": "object", "data": raw}
-            result[field] = _deserialize_value(envelope)
-
-        # CUSTOM CLASS
-        else:
-            envelope = {"type": t, "data": raw}
-            result[field] = _deserialize_value(envelope)
-
-    return result
+    # Handle custom class types
+    else:
+        envelope = {"type": schema_type, "data": data}
+        return _deserialize_value(envelope)
 
 
 def _deserialize_value(value: Any) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911
