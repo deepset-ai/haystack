@@ -89,7 +89,7 @@ dependencies = [
   "pandas",                                    # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
                                                # EvaluationRunResult, XLSXToDocument, and pipeline tests
 
-  "transformers[torch,sentencepiece]>=4.51.1,<4.52", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+  "transformers[torch, sentencepiece]>=4.51.1,<4.52", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.27.0",                   # Hugging Face API Generators and Embedders
   "sentence-transformers>=4.1.0",              # Sentence Transformers Embedders, Rankers, and SASEvaluator
   "langdetect",                                # TextLanguageRouter and DocumentLanguageClassifier
@@ -333,7 +333,9 @@ ignore = [
   "SIM118",  # in-dict-keys
   # we re-export symbols for correct type checking
   # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
-  "PLC0414", # useless-import-alias
+  "PLC0414", # useless-import-alias,
+  "PLC0415", # useless-import-alias,
+  "PLW1641", # use-f-string
 ]
 
 [tool.ruff.lint.mccabe]
