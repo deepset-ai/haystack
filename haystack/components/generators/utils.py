@@ -102,18 +102,18 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
     # Convert accumulated tool call data into ToolCall objects
     sorted_keys = sorted(tool_call_data.keys())
     for key in sorted_keys:
-        tool_call = tool_call_data[key]
+        tool_call_dict = tool_call_data[key]
         try:
-            arguments = json.loads(tool_call["arguments"])
-            tool_calls.append(ToolCall(id=tool_call["id"], tool_name=tool_call["name"], arguments=arguments))
+            arguments = json.loads(tool_call_dict["arguments"])
+            tool_calls.append(ToolCall(id=tool_call_dict["id"], tool_name=tool_call_dict["name"], arguments=arguments))
         except json.JSONDecodeError:
             logger.warning(
                 "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
                 "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
                 "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                _id=tool_call["id"],
-                _name=tool_call["name"],
-                _arguments=tool_call["arguments"],
+                _id=tool_call_dict["id"],
+                _name=tool_call_dict["name"],
+                _arguments=tool_call_dict["arguments"],
             )
 
     # finish_reason can appear in different places so we look for the last one
