@@ -521,8 +521,8 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     :returns:
         A list of StreamingChunk objects representing the content of the chunk from the OpenAI API.
     """
-    # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
-    # It is also empty if include_usage is set to True where the usage information is returned.
+    # On very first chunk so len(previous_chunks) == 0, the Choices field only provides role info (e.g. "assistant")
+    # Choices is empty if include_usage is set to True where the usage information is returned.
     if len(chunk.choices) == 0:
         return [
             StreamingChunk(
@@ -539,7 +539,6 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         ]
 
     choice: ChunkChoice = chunk.choices[0]
-    content = choice.delta.content or ""
 
     # create a list of ToolCallDelta objects from the tool calls
     if choice.delta.tool_calls:
@@ -547,7 +546,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         for tool_call in choice.delta.tool_calls:
             function = tool_call.function
             chunk_message = StreamingChunk(
-                content=content,
+                content=choice.delta.content or "",
                 # We adopt the tool_call.index as the index of the chunk
                 component_info=component_info,
                 index=tool_call.index,
@@ -560,7 +559,8 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                 meta={
                     "model": chunk.model,
                     "index": choice.index,
-                    "tool_calls": choice.delta.tool_calls,
+                    # We only provide the corresponding tool_call in meta
+                    "tool_calls": [tool_call],
                     "finish_reason": choice.finish_reason,
                     "received_at": datetime.now().isoformat(),
                     "usage": _serialize_usage(chunk.usage),
@@ -569,13 +569,20 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
             chunk_messages.append(chunk_message)
         return chunk_messages
 
-    chunk_message = StreamingChunk(
-        content=content,
-        component_info=component_info,
+    # On very first chunk the choice field only provides role info (e.g. "assistant") so we set index to None
+    # We set all chunks missing the content field to index of None. E.g. can happen if chunk only contains finish
+    # reason.
+    if choice.delta.content is None or choice.delta.role is not None:
+        resolved_index = None
+    else:
         # We set the index to be 0 since if text content is being streamed then no tool calls are being streamed
         # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
         #       Anthropic Claude
-        index=0,
+        resolved_index = 0
+    chunk_message = StreamingChunk(
+        content=choice.delta.content or "",
+        component_info=component_info,
+        index=resolved_index,
         # The first chunk is always a start message chunk that only contains role information, so if we reach here
         # and previous_chunks is length 1 then this is the start of text content.
         start=len(previous_chunks) == 1,
