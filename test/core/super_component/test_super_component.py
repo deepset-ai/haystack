@@ -266,6 +266,7 @@ class TestSuperComponent:
         assert "type" in serialized
         assert "init_parameters" in serialized
         assert "pipeline" in serialized["init_parameters"]
+        assert serialized["init_parameters"]["is_pipeline_async"] is False
 
         # Test deserialization
         deserialized = SuperComponent.from_dict(serialized)
@@ -457,7 +458,6 @@ class TestSuperComponent:
 
         async_super_component = SuperComponent(pipeline=pipeline)
         serialized_super_component = async_super_component.to_dict()
-        print(serialized_super_component)
         assert serialized_super_component["init_parameters"]["is_pipeline_async"] is True
 
         deserialized_super_component = SuperComponent.from_dict(serialized_super_component)
