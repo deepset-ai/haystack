@@ -334,8 +334,8 @@ ignore = [
   # we re-export symbols for correct type checking
   # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
   "PLC0414", # useless-import-alias,
-  "PLC0415", # useless-import-alias,
-  "PLW1641", # use-f-string
+  "PLC0415", # import-outside-top-level,
+  "PLW1641", # eq-without-hash
 ]
 
 [tool.ruff.lint.mccabe]
