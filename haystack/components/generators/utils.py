@@ -31,17 +31,20 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
         print("\n\n", flush=True, end="")
 
     ## Tool Call streaming
-    if chunk.tool_call:
-        # If chunk.start is True indicates beginning of a tool call
-        # Also presence of chunk.tool_call.name indicates the start of a tool call too
-        if chunk.start:
-            print("[TOOL CALL]\n", flush=True, end="")
-            print(f"Tool: {chunk.tool_call.tool_name} ", flush=True, end="")
-            print("\nArguments: ", flush=True, end="")
+    if chunk.tool_calls:
+        # Typically, if there are multiple tool calls in the chunk, typically this means that the tool calls are fully
+        # formed and not just a delta.
+        for tool_call in chunk.tool_calls:
+            # If chunk.start is True indicates beginning of a tool call
+            # Also presence of tool_call.tool_name indicates the start of a tool call too
+            if chunk.start:
+                print("[TOOL CALL]\n", flush=True, end="")
+                print(f"Tool: {tool_call.tool_name} ", flush=True, end="")
+                print("\nArguments: ", flush=True, end="")
 
-        # print the tool arguments
-        if chunk.tool_call.arguments:
-            print(chunk.tool_call.arguments, flush=True, end="")
+            # print the tool arguments
+            if tool_call.arguments:
+                print(tool_call.arguments, flush=True, end="")
 
     ## Tool Call Result streaming
     # Print tool call results if available (from ToolInvoker)
