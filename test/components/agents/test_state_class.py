@@ -358,7 +358,6 @@ class TestState:
         }
         state = State(state_schema, data)
         state_dict = state.to_dict()
-        print(state_dict)
         assert state_dict["schema"] == {
             "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
             "messages": {

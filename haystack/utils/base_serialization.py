@@ -71,8 +71,8 @@ def _serialize_value_with_schema(payload: Any) -> Dict[str, Any]:
 
     :param payload: The value to serialize (can be any type)
     :returns: The serialized dict representation of the given value. Contains two keys:
-        - "serialization_schema": Contains type information
-        - "serialized_data": Contains the actual data in a simplified format
+        - "serialization_schema": Contains type information for each field.
+        - "serialized_data": Contains the actual data in a simplified format.
 
     """
     # Handle dictionary case - iterate through fields
