@@ -10,8 +10,8 @@ from lazy_imports import LazyImporter
 _import_structure = {"bm25_retriever": ["InMemoryBM25Retriever"], "embedding_retriever": ["InMemoryEmbeddingRetriever"]}
 
 if TYPE_CHECKING:
-    from .bm25_retriever import InMemoryBM25Retriever
-    from .embedding_retriever import InMemoryEmbeddingRetriever
+    from .bm25_retriever import InMemoryBM25Retriever as InMemoryBM25Retriever
+    from .embedding_retriever import InMemoryEmbeddingRetriever as InMemoryEmbeddingRetriever
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

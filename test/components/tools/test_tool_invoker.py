@@ -327,6 +327,34 @@ class TestToolInvoker:
             assert not tool_call_result.error
             assert tool_call_result.origin == tool_calls[i]
 
+    def test_run_tool_calls_with_empty_args(self):
+        hello_world_tool = Tool(
+            name="hello_world",
+            description="A tool that returns a greeting.",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "Hello, world!",
+        )
+        invoker = ToolInvoker(tools=[hello_world_tool])
+
+        tool_call = ToolCall(tool_name="hello_world", arguments={})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[tool_call_message])
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        tool_message = result["tool_messages"][0]
+        assert isinstance(tool_message, ChatMessage)
+        assert tool_message.is_from(ChatRole.TOOL)
+
+        assert tool_message.tool_call_results
+        tool_call_result = tool_message.tool_call_result
+
+        assert isinstance(tool_call_result, ToolCallResult)
+        assert not tool_call_result.error
+
+        assert tool_call_result.result == "Hello, world!"
+
     def test_tool_not_found_error(self, invoker):
         tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
