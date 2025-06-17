@@ -8,8 +8,16 @@ from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
-from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingChunk, ToolCall, select_streaming_callback
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT
+from haystack.dataclasses import (
+    AsyncStreamingCallbackT,
+    ChatMessage,
+    ComponentInfo,
+    StreamingCallbackT,
+    StreamingChunk,
+    SyncStreamingCallbackT,
+    ToolCall,
+    select_streaming_callback,
+)
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
@@ -437,7 +445,10 @@ class HuggingFaceAPIChatGenerator:
         return await self._run_non_streaming_async(formatted_messages, generation_kwargs, hf_tools)
 
     def _run_streaming(
-        self, messages: List[Dict[str, str]], generation_kwargs: Dict[str, Any], streaming_callback: StreamingCallbackT
+        self,
+        messages: List[Dict[str, str]],
+        generation_kwargs: Dict[str, Any],
+        streaming_callback: SyncStreamingCallbackT,
     ):
         api_output: Iterable[ChatCompletionStreamOutput] = self._client.chat_completion(
             messages,
@@ -501,7 +512,10 @@ class HuggingFaceAPIChatGenerator:
         return {"replies": [message]}
 
     async def _run_streaming_async(
-        self, messages: List[Dict[str, str]], generation_kwargs: Dict[str, Any], streaming_callback: StreamingCallbackT
+        self,
+        messages: List[Dict[str, str]],
+        generation_kwargs: Dict[str, Any],
+        streaming_callback: AsyncStreamingCallbackT,
     ):
         api_output: AsyncIterable[ChatCompletionStreamOutput] = await self._async_client.chat_completion(
             messages,
