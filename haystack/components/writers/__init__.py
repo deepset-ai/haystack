@@ -10,7 +10,7 @@ from lazy_imports import LazyImporter
 _import_structure = {"document_writer": ["DocumentWriter"]}
 
 if TYPE_CHECKING:
-    from .document_writer import DocumentWriter
+    from .document_writer import DocumentWriter as DocumentWriter
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

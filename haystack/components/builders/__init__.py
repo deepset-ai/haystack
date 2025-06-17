@@ -14,9 +14,9 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .answer_builder import AnswerBuilder
-    from .chat_prompt_builder import ChatPromptBuilder
-    from .prompt_builder import PromptBuilder
+    from .answer_builder import AnswerBuilder as AnswerBuilder
+    from .chat_prompt_builder import ChatPromptBuilder as ChatPromptBuilder
+    from .prompt_builder import PromptBuilder as PromptBuilder
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

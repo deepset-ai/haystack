@@ -990,3 +990,21 @@ def test_run_complex_text_with_multiple_separators():
     assert len(chunks[3].content) == 152
     assert chunks[3].content.startswith("C")
     assert chunks[3].content.endswith("D" * 50)
+
+
+def test_recursive_splitter_generates_unique_ids_and_correct_meta():
+    text = "Haystack is awesome. " * 5
+    source_doc = Document(content=text)
+
+    splitter = RecursiveDocumentSplitter(split_length=3)
+    splitter.warm_up()
+
+    chunks = splitter.run([source_doc])["documents"]
+
+    # IDs must be unique
+    assert len({c.id for c in chunks}) == len(chunks)
+
+    # parent_id and split_id checks
+    for idx, chunk in enumerate(chunks):
+        assert chunk.meta["parent_id"] == source_doc.id
+        assert chunk.meta["split_id"] == idx
