@@ -488,32 +488,34 @@ class OpenAIChatGenerator:
 
         # create a list of ToolCallDelta objects from the tool calls
         if choice.delta.tool_calls:
-            chunk_messages = []
+            tool_calls_deltas = []
             for tool_call in choice.delta.tool_calls:
                 function = tool_call.function
-                chunk_message = StreamingChunk(
-                    content=choice.delta.content or "",
-                    # We adopt the tool_call.index as the index of the chunk
-                    component_info=component_info,
-                    index=tool_call.index,
-                    tool_call=ToolCallDelta(
+                tool_calls_deltas.append(
+                    ToolCallDelta(
+                        index=tool_call.index,
                         id=tool_call.id,
                         tool_name=function.name if function else None,
                         arguments=function.arguments if function and function.arguments else None,
-                    ),
-                    start=function.name is not None if function else False,
-                    meta={
-                        "model": chunk.model,
-                        "index": choice.index,
-                        # We only provide the corresponding tool_call in meta
-                        "tool_calls": [tool_call],
-                        "finish_reason": choice.finish_reason,
-                        "received_at": datetime.now().isoformat(),
-                        "usage": _serialize_usage(chunk.usage),
-                    },
+                    )
                 )
-                chunk_messages.append(chunk_message)
-            return chunk_messages
+            chunk_message = StreamingChunk(
+                content=choice.delta.content or "",
+                component_info=component_info,
+                # We adopt the first tool_calls_deltas.index as the overall index of the chunk.
+                index=tool_calls_deltas[0].index,
+                tool_calls=tool_calls_deltas,
+                start=tool_calls_deltas[0].tool_name is not None,
+                meta={
+                    "model": chunk.model,
+                    "index": choice.index,
+                    "tool_calls": choice.delta.tool_calls,
+                    "finish_reason": choice.finish_reason,
+                    "received_at": datetime.now().isoformat(),
+                    "usage": _serialize_usage(chunk.usage),
+                },
+            )
+            return [chunk_message]
 
         # On very first chunk the choice field only provides role info (e.g. "assistant") so we set index to None
         # We set all chunks missing the content field to index of None. E.g. can happen if chunk only contains finish

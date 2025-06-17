@@ -1004,7 +1004,7 @@ def streaming_chunks():
                     "usage": None,
                 },
                 index=0,
-                tool_call=ToolCallDelta(tool_name="weather", id="call_zcvlnVaTeJWRjLAFfYxX69z4"),
+                tool_calls=[ToolCallDelta(tool_name="weather", id="call_zcvlnVaTeJWRjLAFfYxX69z4", index=0)],
                 start=True,
             )
         ],
@@ -1022,7 +1022,7 @@ def streaming_chunks():
                     "usage": None,
                 },
                 index=0,
-                tool_call=ToolCallDelta(arguments='{"ci'),
+                tool_calls=[ToolCallDelta(arguments='{"ci', index=0)],
             )
         ],
         [
@@ -1039,7 +1039,7 @@ def streaming_chunks():
                     "usage": None,
                 },
                 index=0,
-                tool_call=ToolCallDelta(arguments='ty": '),
+                tool_calls=[ToolCallDelta(arguments='ty": ', index=0)],
             )
         ],
         [
@@ -1056,7 +1056,7 @@ def streaming_chunks():
                     "usage": None,
                 },
                 index=0,
-                tool_call=ToolCallDelta(arguments='"Paris'),
+                tool_calls=[ToolCallDelta(arguments='"Paris', index=0)],
             )
         ],
         [
@@ -1071,7 +1071,7 @@ def streaming_chunks():
                     "usage": None,
                 },
                 index=0,
-                tool_call=ToolCallDelta(arguments='"}'),
+                tool_calls=[ToolCallDelta(arguments='"}', index=0)],
             )
         ],
         [
@@ -1093,7 +1093,7 @@ def streaming_chunks():
                     "usage": None,
                 },
                 index=1,
-                tool_call=ToolCallDelta(tool_name="weather", id="call_C88m67V16CrETq6jbNXjdZI9"),
+                tool_calls=[ToolCallDelta(tool_name="weather", id="call_C88m67V16CrETq6jbNXjdZI9", index=1)],
                 start=True,
             )
         ],
@@ -1111,7 +1111,7 @@ def streaming_chunks():
                     "usage": None,
                 },
                 index=1,
-                tool_call=ToolCallDelta(arguments='{"ci'),
+                tool_calls=[ToolCallDelta(arguments='{"ci', index=1)],
             )
         ],
         [
@@ -1128,7 +1128,7 @@ def streaming_chunks():
                     "usage": None,
                 },
                 index=1,
-                tool_call=ToolCallDelta(arguments='ty": '),
+                tool_calls=[ToolCallDelta(arguments='ty": ', index=1)],
             )
         ],
         [
@@ -1145,7 +1145,7 @@ def streaming_chunks():
                     "usage": None,
                 },
                 index=1,
-                tool_call=ToolCallDelta(arguments='"Berli'),
+                tool_calls=[ToolCallDelta(arguments='"Berli', index=1)],
             )
         ],
         [
@@ -1160,7 +1160,7 @@ def streaming_chunks():
                     "usage": None,
                 },
                 index=1,
-                tool_call=ToolCallDelta(arguments='n"}'),
+                tool_calls=[ToolCallDelta(arguments='n"}', index=1)],
             )
         ],
         [
@@ -1270,7 +1270,7 @@ class TestChatCompletionChunkConversion:
         )[0]
         assert result.content == ""
         assert result.start is False
-        assert result.tool_call is None
+        assert result.tool_calls is None
         assert result.tool_call_result is None
         assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
         assert result.meta["received_at"] is not None

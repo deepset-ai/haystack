@@ -76,23 +76,25 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
     # Process tool calls if present in any chunk
     tool_call_data: Dict[int, Dict[str, str]] = {}  # Track tool calls by index
     for chunk in chunks:
-        if chunk.tool_call:
+        if chunk.tool_calls:
             # We do this to make sure mypy is happy, but we enforce index is not None in the StreamingChunk dataclass if
             # tool_call is present
             assert chunk.index is not None
 
-            # We use the index of the chunk to track the tool call across chunks since the ID is not always provided
-            if chunk.index not in tool_call_data:
-                tool_call_data[chunk.index] = {"id": "", "name": "", "arguments": ""}
+            for tool_call in chunk.tool_calls:
+                # We use the index of the tool_call to track the tool call across chunks since the ID is not always
+                # provided
+                if tool_call.index not in tool_call_data:
+                    tool_call_data[chunk.index] = {"id": "", "name": "", "arguments": ""}
 
-            # Save the ID if present
-            if chunk.tool_call.id is not None:
-                tool_call_data[chunk.index]["id"] = chunk.tool_call.id
+                # Save the ID if present
+                if tool_call.id is not None:
+                    tool_call_data[chunk.index]["id"] = tool_call.id
 
-            if chunk.tool_call.tool_name is not None:
-                tool_call_data[chunk.index]["name"] += chunk.tool_call.tool_name
-            if chunk.tool_call.arguments is not None:
-                tool_call_data[chunk.index]["arguments"] += chunk.tool_call.arguments
+                if tool_call.tool_name is not None:
+                    tool_call_data[chunk.index]["name"] += tool_call.tool_name
+                if tool_call.arguments is not None:
+                    tool_call_data[chunk.index]["arguments"] += tool_call.arguments
 
     # Convert accumulated tool call data into ToolCall objects
     sorted_keys = sorted(tool_call_data.keys())
