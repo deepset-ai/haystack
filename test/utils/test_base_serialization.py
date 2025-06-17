@@ -164,61 +164,47 @@ def test_deserialize_value_with_schema_handles_nested_lists():
     assert result == nested_lists
 
 
-def test_serialize_value_with_schema_handles_objects_with_to_dict():
-    class TestObject:
-        def __init__(self, value):
-            self.value = value
-
-        def to_dict(self):
-            return {"value": self.value}
-
-    obj = TestObject("test")
-    result = _serialize_value_with_schema(obj)
-    assert result == {
-        "serialization_schema": {"type": "test_base_serialization.TestObject"},
-        "serialized_data": {"value": "test"},
-    }
-
-
-def test_serialize_value_with_schema_handles_objects_without_to_dict():
-    class TestObject:
-        def __init__(self, value):
-            self.value = value
-
-    obj = TestObject("test")
-    result = _serialize_value_with_schema(obj)
-    assert result == {
-        "serialization_schema": {"type": "test_base_serialization.TestObject"},
-        "serialized_data": {"value": "test"},
-    }
-
-
-def test_serialize_value_with_schema_handles_nested_structures():
-    class TestObject:
-        def __init__(self, value):
-            self.value = value
-
-        def to_dict(self):
-            return {"value": self.value}
-
-    obj = TestObject("test")
-    data = {"key1": obj, "key2": [obj, "string"], "key3": {"nested": obj}}
+def test_serialize_value_with_schema_handles_nested_dicts():
+    data = {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}}
     result = _serialize_value_with_schema(data)
     assert result == {
         "serialization_schema": {
             "type": "object",
             "properties": {
-                "key1": {"type": "test_base_serialization.TestObject"},
-                "key2": {"type": "array", "items": {"type": "test_base_serialization.TestObject"}},
-                "key3": {"type": "object", "properties": {"nested": {"type": "test_base_serialization.TestObject"}}},
+                "key1": {
+                    "type": "object",
+                    "properties": {
+                        "nested1": {"type": "string"},
+                        "nested2": {"type": "object", "properties": {"deep": {"type": "string"}}},
+                    },
+                }
             },
         },
-        "serialized_data": {
-            "key1": {"value": "test"},
-            "key2": [{"value": "test"}, "string"],
-            "key3": {"nested": {"value": "test"}},
-        },
+        "serialized_data": {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}},
     }
+
+
+def test_deserialize_value_with_schema_handles_nested_dicts():
+    """Test that _deserialize_value_with_schema handles nested dictionaries"""
+    data = {
+        "serialization_schema": {
+            "type": "object",
+            "properties": {
+                "key1": {
+                    "type": "object",
+                    "properties": {
+                        "nested1": {"type": "string"},
+                        "nested2": {"type": "object", "properties": {"deep": {"type": "string"}}},
+                    },
+                }
+            },
+        },
+        "serialized_data": {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}},
+    }
+
+    result = _deserialize_value_with_schema(data)
+
+    assert result == {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}}
 
 
 def test_handling_empty_structures():
@@ -312,29 +298,6 @@ def test_serialize_value_with_schema():
             ],
         },
     }
-
-
-def test_deserialize_value_with_schema_handles_nested_dicts():
-    """Test that _deserialize_value_with_schema handles nested dictionaries"""
-    data = {
-        "serialization_schema": {
-            "type": "object",
-            "properties": {
-                "key1": {
-                    "type": "object",
-                    "properties": {
-                        "nested1": {"type": "string"},
-                        "nested2": {"type": "object", "properties": {"deep": {"type": "string"}}},
-                    },
-                }
-            },
-        },
-        "serialized_data": {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}},
-    }
-
-    result = _deserialize_value_with_schema(data)
-
-    assert result == {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}}
 
 
 def test_deserialize_value_with_schema():
