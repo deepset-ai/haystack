@@ -121,10 +121,8 @@ class Tool:
                 serialized_outputs[key] = serialized_config
             data["outputs_to_state"] = serialized_outputs
 
-        if self.outputs_to_string is not None:
-            data["outputs_to_string"] = self.outputs_to_string.copy()
-            if self.outputs_to_string.get("handler") is not None:
-                data["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
+        if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
+            data["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
 
         return {"type": generate_qualified_class_name(type(self)), "data": data}
 
