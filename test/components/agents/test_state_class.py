@@ -358,6 +358,7 @@ class TestState:
         }
         state = State(state_schema, data)
         state_dict = state.to_dict()
+        print(state_dict)
         assert state_dict["schema"] == {
             "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
             "messages": {
@@ -368,9 +369,15 @@ class TestState:
         }
         assert state_dict["data"] == {
             "serialization_schema": {
-                "numbers": {"type": "integer"},
-                "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
-                "dict_of_lists": {"type": "object"},
+                "type": "object",
+                "properties": {
+                    "numbers": {"type": "integer"},
+                    "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+                    "dict_of_lists": {
+                        "type": "object",
+                        "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}},
+                    },
+                },
             },
             "serialized_data": {
                 "numbers": 1,
@@ -394,9 +401,18 @@ class TestState:
             },
             "data": {
                 "serialization_schema": {
-                    "numbers": {"type": "integer"},
-                    "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
-                    "dict_of_lists": {"type": "object"},
+                    "type": "object",
+                    "properties": {
+                        "numbers": {"type": "integer"},
+                        "messages": {
+                            "type": "array",
+                            "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
+                        },
+                        "dict_of_lists": {
+                            "type": "object",
+                            "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}},
+                        },
+                    },
                 },
                 "serialized_data": {
                     "numbers": 1,

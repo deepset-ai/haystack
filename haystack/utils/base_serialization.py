@@ -94,16 +94,14 @@ def _serialize_value_with_schema(payload: Any) -> Dict[str, Any]:
         pure_list = _convert_to_basic_types(list(payload))
 
         # Determine item type from first element (if any)
+        # TODO: This implementation does not support lists with mixed types
         if payload:
             first = next(iter(payload))
-            if hasattr(first, "to_dict") and callable(first.to_dict) or hasattr(first, "__dict__"):
-                item_type = generate_qualified_class_name(type(first))
-            else:
-                item_type = _primitive_schema_type(first)
-        else:
-            item_type = "any"
+            item_schema = _serialize_value_with_schema(first)
 
-        schema = {"type": "array", "items": {"type": item_type}}
+            schema = {"type": "array", "items": item_schema["serialization_schema"]}
+        else:
+            schema = {"type": "array", "items": {}}
         return {"serialization_schema": schema, "serialized_data": pure_list}
 
     # Handle dataclass-style objects
