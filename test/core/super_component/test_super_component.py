@@ -266,6 +266,7 @@ class TestSuperComponent:
         assert "type" in serialized
         assert "init_parameters" in serialized
         assert "pipeline" in serialized["init_parameters"]
+        assert serialized["init_parameters"]["is_pipeline_async"] is False
 
         # Test deserialization
         deserialized = SuperComponent.from_dict(serialized)
@@ -434,3 +435,33 @@ class TestSuperComponent:
         input_sockets = wrapper.__haystack_input__._sockets_dict
         assert "text" in input_sockets
         assert input_sockets["text"].type == str
+
+    @pytest.mark.asyncio
+    async def test_super_component_async_serialization_deserialization(self):
+        """
+        Test that when using the SuperComponent class, a SuperComponent based on an async pipeline can be serialized and
+        deserialized correctly.
+        """
+
+        @component
+        class AsyncComponent:
+            @component.output_types(output=str)
+            def run(self):
+                return {"output": "irrelevant"}
+
+            @component.output_types(output=str)
+            async def run_async(self):
+                return {"output": "Hello world"}
+
+        pipeline = AsyncPipeline()
+        pipeline.add_component("hello", AsyncComponent())
+
+        async_super_component = SuperComponent(pipeline=pipeline)
+        serialized_super_component = async_super_component.to_dict()
+        assert serialized_super_component["init_parameters"]["is_pipeline_async"] is True
+
+        deserialized_super_component = SuperComponent.from_dict(serialized_super_component)
+        assert isinstance(deserialized_super_component.pipeline, AsyncPipeline)
+
+        result = await deserialized_super_component.run_async()
+        assert result == {"output": "Hello world"}

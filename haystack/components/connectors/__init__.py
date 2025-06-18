@@ -10,8 +10,8 @@ from lazy_imports import LazyImporter
 _import_structure = {"openapi": ["OpenAPIConnector"], "openapi_service": ["OpenAPIServiceConnector"]}
 
 if TYPE_CHECKING:
-    from .openapi import OpenAPIConnector
-    from .openapi_service import OpenAPIServiceConnector
+    from .openapi import OpenAPIConnector as OpenAPIConnector
+    from .openapi_service import OpenAPIServiceConnector as OpenAPIServiceConnector
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
