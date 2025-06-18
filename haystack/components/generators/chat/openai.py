@@ -427,12 +427,11 @@ class OpenAIChatGenerator:
         chunks: List[StreamingChunk] = []
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_deltas = _convert_chat_completion_chunk_to_streaming_chunk(
+            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=chunk, previous_chunks=chunks, component_info=component_info
             )
-            for chunk_delta in chunk_deltas:
-                chunks.append(chunk_delta)
-                callback(chunk_delta)
+            chunks.append(chunk_delta)
+            callback(chunk_delta)
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
@@ -442,12 +441,11 @@ class OpenAIChatGenerator:
         chunks: List[StreamingChunk] = []
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_deltas = _convert_chat_completion_chunk_to_streaming_chunk(
+            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=chunk, previous_chunks=chunks, component_info=component_info
             )
-            for chunk_delta in chunk_deltas:
-                chunks.append(chunk_delta)
-                await callback(chunk_delta)
+            chunks.append(chunk_delta)
+            await callback(chunk_delta)
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
 
@@ -509,7 +507,7 @@ def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice:
 
 def _convert_chat_completion_chunk_to_streaming_chunk(
     chunk: ChatCompletionChunk, previous_chunks: List[StreamingChunk], component_info: Optional[ComponentInfo] = None
-) -> List[StreamingChunk]:
+) -> StreamingChunk:
     """
     Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
 
@@ -524,19 +522,17 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     # On very first chunk so len(previous_chunks) == 0, the Choices field only provides role info (e.g. "assistant")
     # Choices is empty if include_usage is set to True where the usage information is returned.
     if len(chunk.choices) == 0:
-        return [
-            StreamingChunk(
-                content="",
-                component_info=component_info,
-                # Index is None since it's only set to an int when a content block is present
-                index=None,
-                meta={
-                    "model": chunk.model,
-                    "received_at": datetime.now().isoformat(),
-                    "usage": _serialize_usage(chunk.usage),
-                },
-            )
-        ]
+        return StreamingChunk(
+            content="",
+            component_info=component_info,
+            # Index is None since it's only set to an int when a content block is present
+            index=None,
+            meta={
+                "model": chunk.model,
+                "received_at": datetime.now().isoformat(),
+                "usage": _serialize_usage(chunk.usage),
+            },
+        )
 
     choice: ChunkChoice = chunk.choices[0]
 
@@ -569,7 +565,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                 "usage": _serialize_usage(chunk.usage),
             },
         )
-        return [chunk_message]
+        return chunk_message
 
     # On very first chunk the choice field only provides role info (e.g. "assistant") so we set index to None
     # We set all chunks missing the content field to index of None. E.g. can happen if chunk only contains finish
@@ -597,7 +593,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
             "usage": _serialize_usage(chunk.usage),
         },
     )
-    return [chunk_message]
+    return chunk_message
 
 
 def _serialize_usage(usage):
