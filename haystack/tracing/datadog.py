@@ -14,6 +14,10 @@ with LazyImport("Run 'pip install ddtrace'") as ddtrace_import:
     from ddtrace.trace import Span as ddSpan
     from ddtrace.trace import Tracer as ddTracer
 
+_COMPONENT_NAME_KEY = "haystack.component.name"
+_COMPONENT_TYPE_KEY = "haystack.component.type"
+_COMPONENT_RUN_OPERATION_NAME = "haystack.component.run"
+
 
 class DatadogSpan(Span):
     def __init__(self, span: "ddSpan") -> None:
@@ -60,12 +64,27 @@ class DatadogTracer(Tracer):
         ddtrace_import.check()
         self._tracer = tracer
 
+    @staticmethod
+    def _get_span_resource_name(operation_name: str, tags: Optional[Dict[str, Any]]) -> Optional[str]:
+        """
+        Get the resource name for the Datadog span.
+        """
+        if operation_name == _COMPONENT_RUN_OPERATION_NAME and tags:
+            component_type = tags.get(_COMPONENT_TYPE_KEY, "")
+            component_name = tags.get(_COMPONENT_NAME_KEY, "")
+
+            return f"{component_type}: {component_name}"
+
+        return None
+
     @contextlib.contextmanager
     def trace(
         self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
     ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
-        with self._tracer.trace(operation_name) as span:
+        resource_name = self._get_span_resource_name(operation_name, tags)
+
+        with self._tracer.trace(name=operation_name, resource=resource_name) as span:
             custom_span = DatadogSpan(span)
             if tags:
                 custom_span.set_tags(tags)

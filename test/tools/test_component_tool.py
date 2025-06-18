@@ -60,6 +60,10 @@ class SimpleComponent:
         return {"reply": f"Hello, {text}!"}
 
 
+def reply_formatter(input_text: str) -> str:
+    return f"Formatted reply: {input_text}"
+
+
 @dataclass
 class User:
     """A simple user dataclass."""
@@ -593,24 +597,33 @@ class TestToolComponentInPipelineWithOpenAI:
             component=SimpleComponent(),
             name="simple_tool",
             description="A simple tool",
+            outputs_to_string={"source": "reply", "handler": reply_formatter},
             inputs_from_state={"test": "input"},
             outputs_to_state={"output": {"source": "out", "handler": output_handler}},
         )
 
         # Test serialization
+        expected_tool_dict = {
+            "type": "haystack.tools.component_tool.ComponentTool",
+            "data": {
+                "component": {"type": "test_component_tool.SimpleComponent", "init_parameters": {}},
+                "name": "simple_tool",
+                "description": "A simple tool",
+                "parameters": None,
+                "outputs_to_string": {"source": "reply", "handler": "test_component_tool.reply_formatter"},
+                "inputs_from_state": {"test": "input"},
+                "outputs_to_state": {"output": {"source": "out", "handler": "test_component_tool.output_handler"}},
+            },
+        }
         tool_dict = tool.to_dict()
-        assert tool_dict["type"] == "haystack.tools.component_tool.ComponentTool"
-        assert tool_dict["data"]["name"] == "simple_tool"
-        assert tool_dict["data"]["description"] == "A simple tool"
-        assert "component" in tool_dict["data"]
-        assert tool_dict["data"]["inputs_from_state"] == {"test": "input"}
-        assert tool_dict["data"]["outputs_to_state"]["output"]["handler"] == "test_component_tool.output_handler"
+        assert tool_dict == expected_tool_dict
 
         # Test deserialization
-        new_tool = ComponentTool.from_dict(tool_dict)
+        new_tool = ComponentTool.from_dict(expected_tool_dict)
         assert new_tool.name == tool.name
         assert new_tool.description == tool.description
         assert new_tool.parameters == tool.parameters
+        assert new_tool.outputs_to_string == tool.outputs_to_string
         assert new_tool.inputs_from_state == tool.inputs_from_state
         assert new_tool.outputs_to_state == tool.outputs_to_state
         assert isinstance(new_tool._component, SimpleComponent)
