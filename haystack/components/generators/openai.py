@@ -10,8 +10,8 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.openai import (
-    OpenAIChatGenerator,
     _check_finish_reason,
+    _convert_chat_completion_chunk_to_streaming_chunk,
     _convert_chat_completion_to_chat_message,
 )
 from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
@@ -245,7 +245,7 @@ class OpenAIGenerator:
             component_info = ComponentInfo.from_component(self)
             chunks: List[StreamingChunk] = []
             for chunk in completion:
-                chunk_delta: StreamingChunk = OpenAIChatGenerator._convert_chat_completion_chunk_to_streaming_chunk(
+                chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(
                     chunk=chunk,  # type: ignore
                     previous_chunks=chunks,
                     component_info=component_info,

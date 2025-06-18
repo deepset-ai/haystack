@@ -25,7 +25,11 @@ from haystack.dataclasses import StreamingChunk, ToolCallDelta
 from haystack.utils.auth import Secret
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
-from haystack.components.generators.chat.openai import OpenAIChatGenerator, _check_finish_reason
+from haystack.components.generators.chat.openai import (
+    OpenAIChatGenerator,
+    _check_finish_reason,
+    _convert_chat_completion_chunk_to_streaming_chunk,
+)
 from haystack.tools.toolset import Toolset
 
 
@@ -1204,7 +1208,7 @@ class TestChatCompletionChunkConversion:
     def test_convert_chat_completion_chunk_to_streaming_chunk(self, chat_completion_chunks, streaming_chunks):
         previous_chunks = []
         for openai_chunk, haystack_chunks in zip(chat_completion_chunks, streaming_chunks):
-            stream_chunks = OpenAIChatGenerator._convert_chat_completion_chunk_to_streaming_chunk(
+            stream_chunks = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=previous_chunks
             )
             assert len(stream_chunks) == 1
@@ -1265,9 +1269,7 @@ class TestChatCompletionChunkConversion:
                 prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
             ),
         )
-        result = OpenAIChatGenerator._convert_chat_completion_chunk_to_streaming_chunk(
-            chunk=usage_chunk, previous_chunks=[]
-        )[0]
+        result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=usage_chunk, previous_chunks=[])[0]
         assert result.content == ""
         assert result.start is False
         assert result.tool_calls is None
