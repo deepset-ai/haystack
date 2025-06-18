@@ -335,7 +335,6 @@ ignore = [
   # https://typing.python.org/en/latest/spec/distributing.html#import-conventions
   "PLC0414", # useless-import-alias,
   "PLC0415", # import-outside-top-level,
-  "PLW1641", # eq-without-hash
 ]
 
 [tool.ruff.lint.mccabe]
