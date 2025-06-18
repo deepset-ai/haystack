@@ -569,7 +569,7 @@ class ToolInvoker:
         """
         Asynchronously processes ChatMessage objects containing tool calls and invokes the corresponding tools.
 
-        Tool invocations are performed concurrently for better performance.
+        Multiple tool calls are performed concurrently.
         :param messages:
             A list of ChatMessage objects.
         :param state: The runtime state that should be used by the tools.
@@ -611,22 +611,21 @@ class ToolInvoker:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
 
-        # Collect all tool calls and prepare them for concurrent execution
+        # Collect valid tool calls for concurrent execution
         tool_call_tasks = []
-        tool_call_metadata = []  # Keep track of original tool_call and message info
+        valid_tool_calls = []  # Only store valid tool calls and their tools
+        tool_messages = []  # Start building results immediately
 
         for message in messages_with_tool_calls:
             for tool_call in message.tool_calls:
                 tool_name = tool_call.tool_name
 
-                # Check if the tool is available, otherwise create error message immediately
+                # Handle invalid tools immediately
                 if tool_name not in self._tools_with_names:
                     error_message = self._handle_error(
                         ToolNotFoundException(tool_name, list(self._tools_with_names.keys()))
                     )
-                    tool_call_metadata.append(
-                        {"tool_call": tool_call, "error_message": error_message, "is_error": True}
-                    )
+                    tool_messages.append(ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True))
                     continue
 
                 tool_to_invoke = self._tools_with_names[tool_name]
@@ -650,33 +649,14 @@ class ToolInvoker:
                     self.executor, partial(tool_to_invoke.invoke, **final_args)
                 )
                 tool_call_tasks.append(task)
-                tool_call_metadata.append({"tool_call": tool_call, "tool_to_invoke": tool_to_invoke, "is_error": False})
+                valid_tool_calls.append((tool_call, tool_to_invoke))
 
-        # Execute all tool calls concurrently
+        # Execute all valid tool calls concurrently
         if tool_call_tasks:
             tool_results = await asyncio.gather(*tool_call_tasks, return_exceptions=True)
-        else:
-            tool_results = []
 
-        # Process results and handle errors
-        tool_messages = []
-        task_index = 0  # Index for tracking non-error tasks
-
-        for metadata in tool_call_metadata:
-            if metadata["is_error"]:
-                # Handle pre-validation errors (tool not found)
-                tool_messages.append(
-                    ChatMessage.from_tool(
-                        tool_result=metadata["error_message"], origin=metadata["tool_call"], error=True
-                    )
-                )
-            else:
-                # Handle tool execution results
-                tool_call = metadata["tool_call"]
-                tool_to_invoke = metadata["tool_to_invoke"]
-                result = tool_results[task_index]
-                task_index += 1
-
+            # Process results
+            for (tool_call, tool_to_invoke), result in zip(valid_tool_calls, tool_results):
                 # Check if the result is an exception
                 if isinstance(result, Exception):
                     if isinstance(result, ToolInvocationError):
