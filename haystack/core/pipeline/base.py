@@ -71,7 +71,7 @@ class ComponentPriority(IntEnum):
     BLOCKED = 5
 
 
-class PipelineBase:  # noqa: PLW1641
+class PipelineBase:
     """
     Components orchestration engine.
 
