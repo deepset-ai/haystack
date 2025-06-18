@@ -15,10 +15,10 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .azure import AzureOpenAIChatGenerator
-    from .hugging_face_api import HuggingFaceAPIChatGenerator
-    from .hugging_face_local import HuggingFaceLocalChatGenerator
-    from .openai import OpenAIChatGenerator
+    from .azure import AzureOpenAIChatGenerator as AzureOpenAIChatGenerator
+    from .hugging_face_api import HuggingFaceAPIChatGenerator as HuggingFaceAPIChatGenerator
+    from .hugging_face_local import HuggingFaceLocalChatGenerator as HuggingFaceLocalChatGenerator
+    from .openai import OpenAIChatGenerator as OpenAIChatGenerator
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

@@ -19,14 +19,14 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .csv_document_cleaner import CSVDocumentCleaner
-    from .csv_document_splitter import CSVDocumentSplitter
-    from .document_cleaner import DocumentCleaner
-    from .document_preprocessor import DocumentPreprocessor
-    from .document_splitter import DocumentSplitter
-    from .hierarchical_document_splitter import HierarchicalDocumentSplitter
-    from .recursive_splitter import RecursiveDocumentSplitter
-    from .text_cleaner import TextCleaner
+    from .csv_document_cleaner import CSVDocumentCleaner as CSVDocumentCleaner
+    from .csv_document_splitter import CSVDocumentSplitter as CSVDocumentSplitter
+    from .document_cleaner import DocumentCleaner as DocumentCleaner
+    from .document_preprocessor import DocumentPreprocessor as DocumentPreprocessor
+    from .document_splitter import DocumentSplitter as DocumentSplitter
+    from .hierarchical_document_splitter import HierarchicalDocumentSplitter as HierarchicalDocumentSplitter
+    from .recursive_splitter import RecursiveDocumentSplitter as RecursiveDocumentSplitter
+    from .text_cleaner import TextCleaner as TextCleaner
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

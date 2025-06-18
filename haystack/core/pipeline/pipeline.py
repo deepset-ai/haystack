@@ -172,7 +172,7 @@ class Pipeline(PipelineBase):
         data = self._prepare_component_input_data(data)
 
         # Raise ValueError if input is malformed in some way
-        self._validate_input(data)
+        self.validate_input(data)
 
         if include_outputs_from is None:
             include_outputs_from = set()
