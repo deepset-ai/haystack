@@ -38,6 +38,12 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
             # If chunk.start is True indicates beginning of a tool call
             # Also presence of tool_call.tool_name indicates the start of a tool call too
             if chunk.start:
+                # If there is more than one tool call in the chunk, we print two new lines to separate them
+                # We know there is more than one tool call if the index of the tool call is greater than the index of
+                # the chunk.
+                if tool_call.index > chunk.index:
+                    print("\n\n", flush=True, end="")
+
                 print("[TOOL CALL]\n", flush=True, end="")
                 print(f"Tool: {tool_call.tool_name} ", flush=True, end="")
                 print("\nArguments: ", flush=True, end="")
