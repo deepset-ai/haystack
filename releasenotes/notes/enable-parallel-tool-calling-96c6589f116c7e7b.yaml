@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    `ToolInvoker` now executes `tool_calls` in parallel within the run_async method.
