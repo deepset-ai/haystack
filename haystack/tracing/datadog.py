@@ -72,9 +72,8 @@ class DatadogTracer(Tracer):
         if operation_name == _COMPONENT_RUN_OPERATION_NAME and tags:
             component_type = tags.get(_COMPONENT_TYPE_KEY, "")
             component_name = tags.get(_COMPONENT_NAME_KEY, "")
-            resource_name = f"{component_type} {component_name}".strip()
 
-            return resource_name if resource_name else None
+            return f"{component_type}: {component_name}"
 
         return None
 
