@@ -367,11 +367,13 @@ class _SuperComponent:
         :return: Dictionary containing serialized SuperComponent data
         """
         serialized_pipeline = self.pipeline.to_dict()
+        is_pipeline_async = isinstance(self.pipeline, AsyncPipeline)
         serialized = default_to_dict(
             self,
             pipeline=serialized_pipeline,
             input_mapping=self._original_input_mapping,
             output_mapping=self._original_output_mapping,
+            is_pipeline_async=is_pipeline_async,
         )
         serialized["type"] = generate_qualified_class_name(SuperComponent)
         return serialized
@@ -462,7 +464,9 @@ class SuperComponent(_SuperComponent):
         :returns:
             The deserialized SuperComponent.
         """
-        pipeline = Pipeline.from_dict(data["init_parameters"]["pipeline"])
+        is_pipeline_async = data["init_parameters"].pop("is_pipeline_async", False)
+        pipeline_class = AsyncPipeline if is_pipeline_async else Pipeline
+        pipeline = pipeline_class.from_dict(data["init_parameters"]["pipeline"])
         data["init_parameters"]["pipeline"] = pipeline
         return default_from_dict(cls, data)
 
