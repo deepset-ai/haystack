@@ -41,7 +41,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
                 # If there is more than one tool call in the chunk, we print two new lines to separate them
                 # We know there is more than one tool call if the index of the tool call is greater than the index of
                 # the chunk.
-                if tool_call.index > chunk.index:
+                if chunk.index and tool_call.index > chunk.index:
                     print("\n\n", flush=True, end="")
 
                 print("[TOOL CALL]\n", flush=True, end="")
