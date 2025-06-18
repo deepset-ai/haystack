@@ -94,15 +94,22 @@ def _serialize_value_with_schema(payload: Any) -> Dict[str, Any]:
         pure_list = _convert_to_basic_types(list(payload))
 
         # Determine item type from first element (if any)
-        # TODO: This implementation does not support lists with mixed types
+        # TODO: This implementation currently does not support lists with mixed types
         if payload:
             first = next(iter(payload))
             item_schema = _serialize_value_with_schema(first)
-
-            schema = {"type": "array", "items": item_schema["serialization_schema"]}
+            base_schema = {"type": "array", "items": item_schema["serialization_schema"]}
         else:
-            schema = {"type": "array", "items": {}}
-        return {"serialization_schema": schema, "serialized_data": pure_list}
+            base_schema = {"type": "array", "items": {}}
+
+        # Add JSON Schema properties to infer collection type during deserialization
+        if isinstance(payload, set):
+            base_schema["uniqueItems"] = True
+        elif isinstance(payload, tuple):
+            base_schema["minItems"] = len(payload)
+            base_schema["maxItems"] = len(payload)
+
+        return {"serialization_schema": base_schema, "serialized_data": pure_list}
 
     # Handle dataclass-style objects
     elif hasattr(payload, "to_dict") and callable(payload.to_dict):
@@ -180,7 +187,7 @@ def _convert_to_basic_types(value: Any) -> Any:
 
 
 # TODO: Make this function public once its implementation is finalized and tested
-def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911
+def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911, PLR0912
     """
     Deserializes a value with schema information back to its original form.
 
@@ -232,15 +239,36 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
 
         item_schema = schema.get("items", {})
         item_type = item_schema.get("type", "any")
+        if item_schema.get("uniqueItems") is True:
+            reconstructed = set()
+            for item in data:
+                print("Item")
+                print(item)
+                if item_type == "any":
+                    reconstructed.add(_deserialize_value(item))
+                else:
+                    envelope = {"type": item_type, "data": item}
+                    reconstructed.add(_deserialize_value(envelope))
+        elif item_schema.get("minItems") is not None and item_schema.get("maxItems") is not None:
+            reconstructed = []
+            for item in data:
+                if item_type == "any":
+                    reconstructed.append(_deserialize_value(item))
+                else:
+                    envelope = {"type": item_type, "data": item}
+                    reconstructed.append(_deserialize_value(envelope))
+            reconstructed = tuple(reconstructed)
+        else:
+            reconstructed = []
 
-        reconstructed = []
-        for item in data:
-            if item_type == "any":
-                reconstructed.append(_deserialize_value(item))
-            else:
-                envelope = {"type": item_type, "data": item}
-                reconstructed.append(_deserialize_value(envelope))
-        return reconstructed
+            for item in data:
+                print("Item")
+                print(item)
+                if item_type == "any":
+                    reconstructed.append(_deserialize_value(item))
+                else:
+                    envelope = {"type": item_type, "data": item}
+                    reconstructed.append(_deserialize_value(envelope))
 
     # Handle primitive types
     elif schema_type in ("null", "boolean", "integer", "number", "string"):

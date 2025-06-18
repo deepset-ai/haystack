@@ -100,6 +100,76 @@ def test_deserialize_value_primitive_types():
     assert result == None
 
 
+def test_serialize_value_with_sequences():
+    sequences = [1, 2, 3]
+    set_sequences = {1, 2, 3}
+    tuple_sequences = (1, 2, 3)
+    result = _serialize_value_with_schema(sequences)
+    assert result == {
+        "serialization_schema": {"type": "array", "items": {"type": "integer"}, "collection_type": "list"},
+        "serialized_data": [1, 2, 3],
+    }
+    result = _serialize_value_with_schema(set_sequences)
+    assert result == {
+        "serialization_schema": {
+            "type": "array",
+            "items": {"type": "integer"},
+            "collection_type": "set",
+            "uniqueItems": True,
+        },
+        "serialized_data": [1, 2, 3],
+    }
+    result = _serialize_value_with_schema(tuple_sequences)
+    assert result == {
+        "serialization_schema": {
+            "type": "array",
+            "items": {"type": "integer"},
+            "collection_type": "tuple",
+            "minItems": 3,
+            "maxItems": 3,
+        },
+        "serialized_data": [1, 2, 3],
+    }
+
+
+def test_deserialize_value_with_sequences():
+    sequences = [1, 2, 3]
+    set_sequences = {1, 2, 3}
+    tuple_sequences = (1, 2, 3)
+    result = _deserialize_value_with_schema(
+        {
+            "serialization_schema": {"type": "array", "items": {"type": "integer"}, "collection_type": "list"},
+            "serialized_data": [1, 2, 3],
+        }
+    )
+    assert result == sequences
+    result = _deserialize_value_with_schema(
+        {
+            "serialization_schema": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "collection_type": "set",
+                "uniqueItems": True,
+            },
+            "serialized_data": [1, 2, 3],
+        }
+    )
+    assert result == set_sequences
+    result = _deserialize_value_with_schema(
+        {
+            "serialization_schema": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "collection_type": "tuple",
+                "minItems": 3,
+                "maxItems": 3,
+            },
+            "serialized_data": [1, 2, 3],
+        }
+    )
+    assert result == tuple_sequences
+
+
 def test_serialize_value_with_schema_handles_nested_lists():
     nested_lists = [[1, 2], [3, 4]]
     nested_answers_list = [
@@ -205,6 +275,31 @@ def test_deserialize_value_with_schema_handles_nested_dicts():
     result = _deserialize_value_with_schema(data)
 
     assert result == {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}}
+
+
+def test_handling_nested_sets():
+    nested_sets = [{1, 2}, {3, 4}]
+
+    result = _serialize_value_with_schema(nested_sets)
+    print(result)
+    assert result == {
+        "serialization_schema": {
+            "items": {"items": {"type": "integer"}, "type": "array", "uniqueItems": True},
+            "type": "array",
+        },
+        "serialized_data": [{1, 2}, {3, 4}],
+    }
+
+    result = _deserialize_value_with_schema(
+        {
+            "serialization_schema": {
+                "items": {"items": {"type": "integer"}, "type": "array", "uniqueItems": True},
+                "type": "array",
+            },
+            "serialized_data": [{1, 2}, {3, 4}],
+        }
+    )
+    assert result == nested_sets
 
 
 def test_handling_empty_structures():
