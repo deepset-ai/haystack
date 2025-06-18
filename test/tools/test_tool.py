@@ -13,6 +13,10 @@ def get_weather_report(city: str) -> str:
     return f"Weather report for {city}: 20°C, sunny"
 
 
+def format_string(text: str) -> str:
+    return f"Formatted: {text}"
+
+
 parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
 
 
@@ -84,6 +88,8 @@ class TestTool:
             description="Get weather report",
             parameters=parameters,
             function=get_weather_report,
+            outputs_to_string={"handler": format_string},
+            inputs_from_state={"state_key": "tool_input_key"},
             outputs_to_state={"documents": {"handler": get_weather_report, "source": "docs"}},
         )
 
@@ -94,8 +100,8 @@ class TestTool:
                 "description": "Get weather report",
                 "parameters": parameters,
                 "function": "test_tool.get_weather_report",
-                "outputs_to_string": None,
-                "inputs_from_state": None,
+                "outputs_to_string": {"handler": "test_tool.format_string"},
+                "inputs_from_state": {"state_key": "tool_input_key"},
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
             },
         }
@@ -108,6 +114,8 @@ class TestTool:
                 "description": "Get weather report",
                 "parameters": parameters,
                 "function": "test_tool.get_weather_report",
+                "outputs_to_string": {"handler": "test_tool.format_string"},
+                "inputs_from_state": {"state_key": "tool_input_key"},
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
             },
         }
@@ -118,8 +126,9 @@ class TestTool:
         assert tool.description == "Get weather report"
         assert tool.parameters == parameters
         assert tool.function == get_weather_report
-        assert tool.outputs_to_state["documents"]["source"] == "docs"
-        assert tool.outputs_to_state["documents"]["handler"] == get_weather_report
+        assert tool.outputs_to_string == {"handler": format_string}
+        assert tool.inputs_from_state == {"state_key": "tool_input_key"}
+        assert tool.outputs_to_state == {"documents": {"source": "docs", "handler": get_weather_report}}
 
 
 def test_check_duplicate_tool_names():
