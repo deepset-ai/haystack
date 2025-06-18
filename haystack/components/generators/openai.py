@@ -249,7 +249,7 @@ class OpenAIGenerator:
                     chunk=chunk,  # type: ignore
                     previous_chunks=chunks,
                     component_info=component_info,
-                )[0]
+                )
                 chunks.append(chunk_delta)
                 streaming_callback(chunk_delta)
 
