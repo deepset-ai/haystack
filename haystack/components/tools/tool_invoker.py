@@ -675,9 +675,7 @@ class ToolInvoker:
                 except Exception as e:
                     try:
                         error_message = self._handle_error(
-                            ToolOutputMergeError(
-                                f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
-                            )
+                            ToolOutputMergeError(f"Failed to merge tool outputs from tool {tool_name} into State: {e}")
                         )
                         tool_messages.append(
                             ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
