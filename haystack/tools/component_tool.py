@@ -229,6 +229,8 @@ class ComponentTool(Tool):
             # This is soft-copied as to not modify the attributes in place
             serialized["outputs_to_string"] = self.outputs_to_string.copy()
             serialized["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
+        else:
+            serialized["outputs_to_string"] = None
 
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 
