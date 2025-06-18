@@ -12,7 +12,7 @@ SocketsDict = Dict[str, Union[InputSocket, OutputSocket]]
 SocketsIOType = Union[Type[InputSocket], Type[OutputSocket]]
 
 
-class Sockets:
+class Sockets:  # noqa: PLW1641
     """
     Represents the inputs or outputs of a `Component`.
 
