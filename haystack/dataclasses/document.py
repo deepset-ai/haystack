@@ -43,7 +43,7 @@ class _BackwardCompatible(type):
 
 
 @dataclass
-class Document(metaclass=_BackwardCompatible):
+class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
     """
     Base data class containing some data to be queried.
 
