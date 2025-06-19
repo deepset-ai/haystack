@@ -72,6 +72,7 @@ class ComponentPriority(IntEnum):
 
 
 class PipelineBase:
+    __hash__ = None
     """
     Components orchestration engine.
 
@@ -899,7 +900,7 @@ class PipelineBase:
             parent_span=parent_span,
         )
 
-    def _validate_component_input(self, component_name: str, component_inputs: Dict[str, Any], data: Dict[str, Any]) -> None:
+    def _validate_component_input(self, component_name: str, component_inputs: Dict[str, Any]) -> None:
         """
         Validates input data for a specific component.
 
@@ -909,7 +910,11 @@ class PipelineBase:
         :raises ValueError: If inputs are invalid.
         """
         if component_name not in self.graph.nodes:
-            raise ValueError(f"Component '{component_name}' not found in the pipeline. Available components: {list(self.graph.nodes.keys())}")
+          available_nodes_message = f"Available components: {list(self.graph.nodes.keys())}"
+          raise ValueError(
+                f"Component '{component_name}' not found in the pipeline. "
+                f"{available_nodes_message}"
+            )   
         instance = self.graph.nodes[component_name]["instance"]
 
         # Validate that all mandatory inputs are provided either directly or by senders
@@ -920,8 +925,12 @@ class PipelineBase:
         # Validate that provided inputs exist in the component's input sockets
         for input_name in component_inputs.keys():
             if input_name not in instance.__haystack_input__._sockets_dict:
-                raise ValueError(f"Unexpected input '{input_name}' for component '{component_name}'. Available inputs: {list(instance.__haystack_input__._sockets_dict.keys())}")
-
+                available_inputs_message = f"Available inputs: {list(instance.__haystack_input__._sockets_dict.keys())}"
+                raise ValueError(
+                    f"Unexpected input '{input_name}' for component '{component_name}'. "
+                    f"{available_inputs_message}"
+                )
+            
         # Validate that inputs are not multiply defined (already sent by another component and also provided directly)
         # unless the socket is variadic
         for socket_name, socket in instance.__haystack_input__._sockets_dict.items():
@@ -960,8 +969,12 @@ class PipelineBase:
                 instance = self.graph.nodes[component_name_in_graph]["instance"]
                 for socket_name, socket in instance.__haystack_input__._sockets_dict.items():
                     if socket.is_mandatory and not socket.senders:
-                        raise ValueError(f"Missing mandatory input '{socket_name}' for component '{component_name_in_graph}' which was not provided in the input data.")
-
+                        error_message = (
+                            f"Missing mandatory input '{socket_name}' for component '{component_name_in_graph}' "
+                            "(not found in input data)."
+                        )
+                        raise ValueError(error_message)
+                    
 
     def _prepare_component_input_data(self, data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         """
