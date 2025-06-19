@@ -4,7 +4,7 @@
 
 import pytest
 
-from haystack.dataclasses import StreamingChunk, ComponentInfo, ToolCallDelta, ToolCallResult, ToolCall
+from haystack.dataclasses import StreamingChunk, ComponentInfo, ToolCallDelta, ToolCallResult, ToolCall, FinishReason
 from haystack import component
 from haystack import Pipeline
 
@@ -101,3 +101,51 @@ def test_tool_call_delta():
 def test_tool_call_delta_with_missing_fields():
     with pytest.raises(ValueError):
         _ = ToolCallDelta(id="123")
+
+
+def test_create_chunk_with_finish_reason():
+    """Test creating a chunk with the new finish_reason field."""
+    chunk = StreamingChunk(content="Test content", finish_reason="stop")
+
+    assert chunk.content == "Test content"
+    assert chunk.finish_reason == "stop"
+    assert chunk.meta == {}
+
+
+def test_create_chunk_with_finish_reason_and_meta():
+    """Test creating a chunk with both finish_reason field and meta."""
+    chunk = StreamingChunk(
+        content="Test content", finish_reason="stop", meta={"model": "gpt-4", "usage": {"tokens": 10}}
+    )
+
+    assert chunk.content == "Test content"
+    assert chunk.finish_reason == "stop"
+    assert chunk.meta["model"] == "gpt-4"
+    assert chunk.meta["usage"]["tokens"] == 10
+
+
+def test_finish_reason_deprecation_warning():
+    """Test that accessing finish_reason via meta shows deprecation warning."""
+    import warnings
+
+    chunk = StreamingChunk(content="Test content", meta={"finish_reason": "length"})
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        result = chunk.meta.get("finish_reason")
+
+        assert len(w) == 1
+        assert issubclass(w[0].category, DeprecationWarning)
+        assert "finish_reason" in str(w[0].message)
+        assert "deprecated" in str(w[0].message)
+        assert "Haystack 2.17" in str(w[0].message)
+        assert result == "length"
+
+
+def test_finish_reason_custom_values():
+    """Test that custom finish_reason values still work (for migration compatibility)."""
+    custom_values = ["custom_stop", "provider_specific", "unknown"]
+
+    for value in custom_values:
+        chunk = StreamingChunk(content="Test content", finish_reason=value)
+        assert chunk.finish_reason == value

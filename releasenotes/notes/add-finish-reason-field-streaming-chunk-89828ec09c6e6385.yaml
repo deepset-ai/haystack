@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added dedicated `finish_reason` field to `StreamingChunk` class to improve type safety and enable sophisticated streaming UI logic. The field follows OpenAI's convention with standard values: "stop", "length", "tool_calls", "content_filter".
+deprecations:
+  - |
+    Accessing `finish_reason` from `StreamingChunk.meta` is now deprecated and will be removed in Haystack 2.17. Use the dedicated `StreamingChunk.finish_reason` field instead. During the migration period, both approaches work but accessing via meta shows deprecation warnings.

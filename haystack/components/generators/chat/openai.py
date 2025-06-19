@@ -530,10 +530,13 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                 component_info=component_info,
                 # Index is None since it's only set to an int when a content block is present
                 index=None,
+                finish_reason=None,
                 meta={
                     "model": chunk.model,
                     "received_at": datetime.now().isoformat(),
                     "usage": _serialize_usage(chunk.usage),
+                    # NOTE: finish_reason in meta is deprecated, use the dedicated finish_reason field
+                    "finish_reason": None,
                 },
             )
         ]
@@ -557,6 +560,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                     arguments=function.arguments if function and function.arguments else None,
                 ),
                 start=function.name is not None if function else False,
+                finish_reason=choice.finish_reason,
                 meta={
                     "model": chunk.model,
                     "index": choice.index,
@@ -579,6 +583,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # The first chunk is always a start message chunk that only contains role information, so if we reach here
         # and previous_chunks is length 1 then this is the start of text content.
         start=len(previous_chunks) == 1,
+        finish_reason=choice.finish_reason,
         meta={
             "model": chunk.model,
             "index": choice.index,
