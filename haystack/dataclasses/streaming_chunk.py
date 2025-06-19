@@ -72,7 +72,7 @@ class StreamingChunk:
 
     :param content: The content of the message chunk as a string.
     :param meta: A dictionary containing metadata related to the message chunk.
-        NOTE: The 'finish_reason' field in meta is deprecated and will be removed in a future release.
+        NOTE: The 'finish_reason' field in meta is deprecated and will be removed in Haystack 2.17.
         Use the dedicated 'finish_reason' field instead.
     :param component_info: A `ComponentInfo` object containing information about the component that generated the chunk,
         such as the component name and type.
@@ -91,6 +91,8 @@ class StreamingChunk:
     tool_call: Optional[ToolCallDelta] = field(default=None)
     tool_call_result: Optional[ToolCallResult] = field(default=None)
     start: bool = field(default=False)
+    # NOTE: We allow for the finish_reason to be a string during migration phase
+    # we will change finish_reason to be a FinishReason in a future release
     finish_reason: Optional[Union[FinishReason, str]] = field(default=None)
 
     def __post_init__(self):
@@ -171,8 +173,8 @@ class _DeprecationWarningDict(dict):
     def __getitem__(self, key):
         if key == "finish_reason":
             warnings.warn(
-                "Accessing 'finish_reason' from StreamingChunk.meta is deprecated and will be removed in a future "
-                "release. Use StreamingChunk.finish_reason instead.",
+                "Accessing 'finish_reason' from StreamingChunk.meta is deprecated and will be removed in "
+                "Haystack 2.17. Use StreamingChunk.finish_reason instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -181,8 +183,8 @@ class _DeprecationWarningDict(dict):
     def get(self, key, default=None):
         if key == "finish_reason":
             warnings.warn(
-                "Accessing 'finish_reason' from StreamingChunk.meta is deprecated and will be removed in a future "
-                "release. Use StreamingChunk.finish_reason instead.",
+                "Accessing 'finish_reason' from StreamingChunk.meta is deprecated and will be removed in "
+                "Haystack 2.17. Use StreamingChunk.finish_reason instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )

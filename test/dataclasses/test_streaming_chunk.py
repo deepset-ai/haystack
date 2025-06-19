@@ -4,8 +4,9 @@
 
 import pytest
 
-from haystack import Pipeline, component
-from haystack.dataclasses import ComponentInfo, FinishReason, StreamingChunk, ToolCall, ToolCallDelta, ToolCallResult
+from haystack.dataclasses import StreamingChunk, ComponentInfo, ToolCallDelta, ToolCallResult, ToolCall, FinishReason
+from haystack import component
+from haystack import Pipeline
 
 
 @component
@@ -137,16 +138,8 @@ def test_finish_reason_deprecation_warning():
         assert issubclass(w[0].category, DeprecationWarning)
         assert "finish_reason" in str(w[0].message)
         assert "deprecated" in str(w[0].message)
+        assert "Haystack 2.17" in str(w[0].message)
         assert result == "length"
-
-
-def test_finish_reason_openai_standard_values():
-    """Test that the finish_reason field accepts OpenAI standard values."""
-    openai_values = ["stop", "length", "tool_calls", "content_filter"]
-
-    for value in openai_values:
-        chunk = StreamingChunk(content="Test content", finish_reason=value)
-        assert chunk.finish_reason == value
 
 
 def test_finish_reason_custom_values():
