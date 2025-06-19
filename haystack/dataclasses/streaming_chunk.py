@@ -2,12 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, Literal, Optional, Union, overload
 
 from haystack.core.component import Component
 from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
+
+# Type alias for standard finish_reason values following OpenAI's convention
+FinishReason = Literal["stop", "length", "tool_calls", "content_filter"]
 
 
 @dataclass
@@ -68,12 +72,16 @@ class StreamingChunk:
 
     :param content: The content of the message chunk as a string.
     :param meta: A dictionary containing metadata related to the message chunk.
+        NOTE: The 'finish_reason' field in meta is deprecated and will be removed in a future release.
+        Use the dedicated 'finish_reason' field instead.
     :param component_info: A `ComponentInfo` object containing information about the component that generated the chunk,
         such as the component name and type.
     :param index: An optional integer index representing which content block this chunk belongs to.
     :param tool_call: An optional ToolCallDelta object representing a tool call associated with the message chunk.
     :param tool_call_result: An optional ToolCallResult object representing the result of a tool call.
     :param start: A boolean indicating whether this chunk marks the start of a content block.
+    :param finish_reason: An optional string indicating the reason the generation finished.
+        Standard values follow OpenAI's convention: "stop", "length", "tool_calls", "content_filter".
     """
 
     content: str
@@ -83,6 +91,7 @@ class StreamingChunk:
     tool_call: Optional[ToolCallDelta] = field(default=None)
     tool_call_result: Optional[ToolCallResult] = field(default=None)
     start: bool = field(default=False)
+    finish_reason: Optional[Union[FinishReason, str]] = field(default=None)
 
     def __post_init__(self):
         fields_set = sum(bool(x) for x in (self.content, self.tool_call, self.tool_call_result))
@@ -96,6 +105,10 @@ class StreamingChunk:
         # NOTE: We don't enforce this for self.content otherwise it would be a breaking change
         if (self.tool_call or self.tool_call_result) and self.index is None:
             raise ValueError("If `tool_call`, or `tool_call_result` is set, `index` must also be set.")
+
+        # Convert meta to _DeprecationWarningDict to show warnings when accessing deprecated fields
+        if not isinstance(self.meta, _DeprecationWarningDict):
+            self.meta = _DeprecationWarningDict(self.meta)
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]
@@ -148,3 +161,29 @@ def select_streaming_callback(
             raise ValueError("The runtime callback cannot be a coroutine.")
 
     return runtime_callback or init_callback
+
+
+class _DeprecationWarningDict(dict):
+    """
+    A dictionary subclass that issues deprecation warnings when accessing 'finish_reason'.
+    """
+
+    def __getitem__(self, key):
+        if key == "finish_reason":
+            warnings.warn(
+                "Accessing 'finish_reason' from StreamingChunk.meta is deprecated and will be removed in a future "
+                "release. Use StreamingChunk.finish_reason instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        return super().__getitem__(key)
+
+    def get(self, key, default=None):
+        if key == "finish_reason":
+            warnings.warn(
+                "Accessing 'finish_reason' from StreamingChunk.meta is deprecated and will be removed in a future "
+                "release. Use StreamingChunk.finish_reason instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        return super().get(key, default)

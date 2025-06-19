@@ -58,7 +58,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
 
     # End of LLM assistant message so we add two new lines
     # This ensures spacing between multiple LLM messages (e.g. Agent) or multiple Tool Call Results
-    if chunk.meta.get("finish_reason") is not None:
+    if chunk.finish_reason is not None:
         print("\n\n", flush=True, end="")
 
 
@@ -112,9 +112,13 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
             )
 
     # finish_reason can appear in different places so we look for the last one
-    finish_reasons = [
-        chunk.meta.get("finish_reason") for chunk in chunks if chunk.meta.get("finish_reason") is not None
-    ]
+    # First check the dedicated finish_reason field, then fall back to meta for backward compatibility
+    finish_reasons = []
+    for chunk in chunks:
+        if chunk.finish_reason is not None:
+            finish_reasons.append(chunk.finish_reason)
+        elif chunk.meta.get("finish_reason") is not None:
+            finish_reasons.append(chunk.meta.get("finish_reason"))
     finish_reason = finish_reasons[-1] if finish_reasons else None
 
     meta = {

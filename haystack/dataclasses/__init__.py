@@ -22,6 +22,7 @@ _import_structure = {
         "SyncStreamingCallbackT",
         "ToolCallDelta",
         "select_streaming_callback",
+        "FinishReason",
     ],
 }
 
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
     from .state import State as State
     from .streaming_chunk import AsyncStreamingCallbackT as AsyncStreamingCallbackT
     from .streaming_chunk import ComponentInfo as ComponentInfo
+    from .streaming_chunk import FinishReason as FinishReason
     from .streaming_chunk import StreamingCallbackT as StreamingCallbackT
     from .streaming_chunk import StreamingChunk as StreamingChunk
     from .streaming_chunk import SyncStreamingCallbackT as SyncStreamingCallbackT
