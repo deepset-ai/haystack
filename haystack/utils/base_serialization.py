@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
@@ -239,6 +239,7 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
 
         item_schema = schema.get("items", {})
         item_type = schema.get("items", {}).get("type", "any")
+        reconstructed: Union[list, set, tuple] = []
 
         if item_schema.get("type") == "object" or item_schema.get("type") == "array":
             reconstructed = []
