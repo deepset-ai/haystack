@@ -914,7 +914,7 @@ class PipelineBase:
           raise ValueError(
                 f"Component '{component_name}' not found in the pipeline. "
                 f"{available_nodes_message}"
-            )   
+            )
         instance = self.graph.nodes[component_name]["instance"]
 
         # Validate that all mandatory inputs are provided either directly or by senders
@@ -930,7 +930,7 @@ class PipelineBase:
                     f"Unexpected input '{input_name}' for component '{component_name}'. "
                     f"{available_inputs_message}"
                 )
-            
+
         # Validate that inputs are not multiply defined (already sent by another component and also provided directly)
         # unless the socket is variadic
         for socket_name, socket in instance.__haystack_input__._sockets_dict.items():
@@ -974,7 +974,7 @@ class PipelineBase:
                             "(not found in input data)."
                         )
                         raise ValueError(error_message)
-                    
+
 
     def _prepare_component_input_data(self, data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         """
