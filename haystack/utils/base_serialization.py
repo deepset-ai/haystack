@@ -179,8 +179,8 @@ def _convert_to_basic_types(value: Any) -> Any:
 
     # sequences
     if isinstance(value, (list, tuple, set)):
-        cls = type(value)
-        return cls(_convert_to_basic_types(v) for v in value)
+        # cls = type(value)
+        return [_convert_to_basic_types(v) for v in value]
 
     # primitive
     return value
@@ -238,18 +238,25 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
             return data
 
         item_schema = schema.get("items", {})
-        item_type = item_schema.get("type", "any")
-        if item_schema.get("uniqueItems") is True:
+        item_type = schema.get("items", {}).get("type", "any")
+
+        if item_schema.get("type") == "object" or item_schema.get("type") == "array":
+            reconstructed = []
+            for item in data:
+                serialized_dict = {"serialization_schema": item_schema, "serialized_data": item}
+                reconstructed.append(_deserialize_value_with_schema(serialized_dict))
+            return reconstructed
+        # Check if the array is a set
+        if schema.get("uniqueItems") is True:
             reconstructed = set()
             for item in data:
-                print("Item")
-                print(item)
                 if item_type == "any":
                     reconstructed.add(_deserialize_value(item))
                 else:
                     envelope = {"type": item_type, "data": item}
                     reconstructed.add(_deserialize_value(envelope))
-        elif item_schema.get("minItems") is not None and item_schema.get("maxItems") is not None:
+        # check if the array is a tuple
+        elif schema.get("minItems") is not None and schema.get("maxItems") is not None:
             reconstructed = []
             for item in data:
                 if item_type == "any":
@@ -262,13 +269,13 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
             reconstructed = []
 
             for item in data:
-                print("Item")
-                print(item)
                 if item_type == "any":
                     reconstructed.append(_deserialize_value(item))
                 else:
                     envelope = {"type": item_type, "data": item}
+
                     reconstructed.append(_deserialize_value(envelope))
+        return reconstructed
 
     # Handle primitive types
     elif schema_type in ("null", "boolean", "integer", "number", "string"):
