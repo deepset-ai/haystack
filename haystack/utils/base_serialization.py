@@ -101,7 +101,7 @@ def _serialize_value_with_schema(payload: Any) -> Dict[str, Any]:
         else:
             base_schema = {"type": "array", "items": {}}
 
-        # Add JSON Schema properties to infer collection type during deserialization
+        # Add JSON Schema properties to infer sets and tuples
         if isinstance(payload, set):
             base_schema["uniqueItems"] = True
         elif isinstance(payload, tuple):
@@ -178,15 +178,13 @@ def _convert_to_basic_types(value: Any) -> Any:
 
     # sequences
     if isinstance(value, (list, tuple, set)):
-        # cls = type(value)
         return [_convert_to_basic_types(v) for v in value]
 
     # primitive
     return value
 
 
-# TODO: Make this function public once its implementation is finalized and tested
-def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911, PLR0912
+def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint: disable=too-many-return-statements, too-many-branches # noqa: PLR0911, PLR0912, PLR0915
     """
     Deserializes a value with schema information back to its original form.
 
@@ -211,7 +209,6 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
     # Handle object case (dictionary with properties)
     if schema_type == "object":
         if "properties" in schema:
-            # New format: object with properties schema
             result: Dict[str, Any] = {}
             properties = schema["properties"]
 
