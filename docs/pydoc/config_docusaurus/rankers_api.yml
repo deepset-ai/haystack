@@ -1,0 +1,32 @@
+loaders:
+  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
+    search_path: [../../../haystack/components/rankers]
+    modules: [
+      "hugging_face_tei",
+      "lost_in_the_middle",
+      "meta_field",
+      "meta_field_grouping_ranker",
+      "sentence_transformers_diversity",
+      "sentence_transformers_similarity",
+      "transformers_similarity"]
+    ignore_when_discovered: ["__init__"]
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: haystack_pydoc_tools.renderers.DocusaurusRenderer
+  description: Reorders a set of Documents based on their relevance to the query.
+  title: Rankers
+  id: rankers-api
+  markdown:
+    descriptive_class_title: false
+    classdef_code_block: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: rankers_api.md
