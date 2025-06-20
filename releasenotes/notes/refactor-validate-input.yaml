@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+  - Refactore the PipelineBase._validate_input() method to improve clarity and maintainability.
+  - break down the method into smaller helper functions and enhance error messages for better specificity.
