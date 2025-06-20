@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
@@ -184,7 +184,7 @@ def _convert_to_basic_types(value: Any) -> Any:
     return value
 
 
-def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint: disable=too-many-return-statements, too-many-branches # noqa: PLR0911, PLR0912, PLR0915
+def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint: disable=too-many-return-statements, # noqa: PLR0911, PLR0912
     """
     Deserializes a value with schema information back to its original form.
 
@@ -208,71 +208,60 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
 
     # Handle object case (dictionary with properties)
     if schema_type == "object":
-        if "properties" in schema:
+        properties = schema.get("properties")
+        if properties:
             result: Dict[str, Any] = {}
-            properties = schema["properties"]
 
             if isinstance(data, dict):
                 for field, raw_value in data.items():
                     field_schema = properties.get(field)
                     if field_schema:
-                        # Recursively deserialize each field
-                        field_serialized = {"serialization_schema": field_schema, "serialized_data": raw_value}
-                        result[field] = _deserialize_value_with_schema(field_serialized)
+                        # Recursively deserialize each field - avoid creating temporary dict
+                        result[field] = _deserialize_value_with_schema(
+                            {"serialization_schema": field_schema, "serialized_data": raw_value}
+                        )
                     else:
                         # No schema for this field, deserialize as-is
                         result[field] = _deserialize_value(raw_value)
             return result
         else:
             # Old format: generic object
-            envelope = {"type": "object", "data": data}
-            return _deserialize_value(envelope)
+            return _deserialize_value({"type": "object", "data": data})
 
     # Handle array case
     elif schema_type == "array":
         if not isinstance(data, list):
             return data
 
+        # Cache frequently accessed schema properties
         item_schema = schema.get("items", {})
-        item_type = schema.get("items", {}).get("type", "any")
-        reconstructed: Union[list, set, tuple] = []
+        item_type = item_schema.get("type", "any")
+        is_set = schema.get("uniqueItems") is True
+        min_items = schema.get("minItems")
+        max_items = schema.get("maxItems")
+        is_tuple = min_items is not None and max_items is not None
 
-        if item_schema.get("type") == "object" or item_schema.get("type") == "array":
-            reconstructed = []
-            for item in data:
-                serialized_dict = {"serialization_schema": item_schema, "serialized_data": item}
-                reconstructed.append(_deserialize_value_with_schema(serialized_dict))
-            return reconstructed
-        # Check if the array is a set
-        if schema.get("uniqueItems") is True:
-            reconstructed = set()
-            for item in data:
-                if item_type == "any":
-                    reconstructed.add(_deserialize_value(item))
-                else:
-                    envelope = {"type": item_type, "data": item}
-                    reconstructed.add(_deserialize_value(envelope))
-        # check if the array is a tuple
-        elif schema.get("minItems") is not None and schema.get("maxItems") is not None:
-            reconstructed = []
-            for item in data:
-                if item_type == "any":
-                    reconstructed.append(_deserialize_value(item))
-                else:
-                    envelope = {"type": item_type, "data": item}
-                    reconstructed.append(_deserialize_value(envelope))
-            reconstructed = tuple(reconstructed)
+        # Handle nested objects/arrays first (most complex case)
+        if item_type in ("object", "array"):
+            return [
+                _deserialize_value_with_schema({"serialization_schema": item_schema, "serialized_data": item})
+                for item in data
+            ]
+
+        # Helper function to deserialize individual items
+        def deserialize_item(item):
+            if item_type == "any":
+                return _deserialize_value(item)
+            else:
+                return _deserialize_value({"type": item_type, "data": item})
+
+        # Handle different collection types
+        if is_set:
+            return {deserialize_item(item) for item in data}
+        elif is_tuple:
+            return tuple(deserialize_item(item) for item in data)
         else:
-            reconstructed = []
-
-            for item in data:
-                if item_type == "any":
-                    reconstructed.append(_deserialize_value(item))
-                else:
-                    envelope = {"type": item_type, "data": item}
-
-                    reconstructed.append(_deserialize_value(envelope))
-        return reconstructed
+            return [deserialize_item(item) for item in data]
 
     # Handle primitive types
     elif schema_type in ("null", "boolean", "integer", "number", "string"):
@@ -280,8 +269,7 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
 
     # Handle custom class types
     else:
-        envelope = {"type": schema_type, "data": data}
-        return _deserialize_value(envelope)
+        return _deserialize_value({"type": schema_type, "data": data})
 
 
 def _deserialize_value(value: Any) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911
