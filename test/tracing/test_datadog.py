@@ -47,7 +47,14 @@ class TestDatadogTracer:
     def test_opentelemetry_tracer(self, datadog_tracer: ddTracer, capfd: CaptureFixture) -> None:
         tracer = DatadogTracer(datadog_tracer)
 
-        with tracer.trace("test") as span:
+        component_tags = {
+            "haystack.component.name": "test_component",
+            "haystack.component.type": "TestType",
+            "haystack.component.input": {"input_key": "input_value"},
+            "haystack.component.output": {"output_key": "output_value"},
+        }
+
+        with tracer.trace("haystack.component.run", tags=component_tags) as span:
             span.set_tag("key", "value")
 
         traces = get_traces_from_console(capfd)
@@ -55,7 +62,9 @@ class TestDatadogTracer:
 
         trace = traces[0]
 
-        assert trace["name"] == "test"
+        assert trace["name"] == "haystack.component.run"
+        assert "test_component" in trace["resource"]
+        assert "TestType" in trace["resource"]
 
     def test_tagging(self, datadog_tracer: ddTracer, capfd: CaptureFixture) -> None:
         tracer = DatadogTracer(datadog_tracer)

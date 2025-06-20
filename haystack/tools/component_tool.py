@@ -206,14 +206,14 @@ class ComponentTool(Tool):
         """
         serialized_component = component_to_dict(obj=self._component, name=self.name)
 
-        serialized = {
+        serialized: Dict[str, Any] = {
             "component": serialized_component,
             "name": self.name,
             "description": self.description,
             "parameters": self._unresolved_parameters,
-            "outputs_to_string": self.outputs_to_string,
             "inputs_from_state": self.inputs_from_state,
-            "outputs_to_state": self.outputs_to_state,
+            # This is soft-copied as to not modify the attributes in place
+            "outputs_to_state": self.outputs_to_state.copy() if self.outputs_to_state else None,
         }
 
         if self.outputs_to_state is not None:
@@ -226,7 +226,11 @@ class ComponentTool(Tool):
             serialized["outputs_to_state"] = serialized_outputs
 
         if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
-            serialized["outputs_to_string"] = serialize_callable(self.outputs_to_string["handler"])
+            # This is soft-copied as to not modify the attributes in place
+            serialized["outputs_to_string"] = self.outputs_to_string.copy()
+            serialized["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
+        else:
+            serialized["outputs_to_string"] = None
 
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 
