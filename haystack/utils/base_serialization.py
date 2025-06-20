@@ -66,7 +66,7 @@ def _serialize_value_with_schema(payload: Any) -> Dict[str, Any]:
     - Objects with to_dict() methods (e.g. dataclasses)
     - Objects with __dict__ attributes
     - Dictionaries
-    - Lists, tuples, and sets
+    - Lists, tuples, and sets. Lists with mixed types are not supported.
     - Primitive types (str, int, float, bool, None)
 
     :param payload: The value to serialize (can be any type)
@@ -82,9 +82,9 @@ def _serialize_value_with_schema(payload: Any) -> Dict[str, Any]:
 
         for field, val in payload.items():
             # Recursively serialize each field
-            serialized_field = _serialize_value_with_schema(val)
-            schema[field] = serialized_field["serialization_schema"]
-            data[field] = serialized_field["serialized_data"]
+            serialized_value = _serialize_value_with_schema(val)
+            schema[field] = serialized_value["serialization_schema"]
+            data[field] = serialized_value["serialized_data"]
 
         return {"serialization_schema": {"type": "object", "properties": schema}, "serialized_data": data}
 
@@ -94,7 +94,6 @@ def _serialize_value_with_schema(payload: Any) -> Dict[str, Any]:
         pure_list = _convert_to_basic_types(list(payload))
 
         # Determine item type from first element (if any)
-        # TODO: This implementation currently does not support lists with mixed types
         if payload:
             first = next(iter(payload))
             item_schema = _serialize_value_with_schema(first)
@@ -111,7 +110,7 @@ def _serialize_value_with_schema(payload: Any) -> Dict[str, Any]:
 
         return {"serialization_schema": base_schema, "serialized_data": pure_list}
 
-    # Handle dataclass-style objects
+    # Handle Haystack style objects (e.g. dataclasses and Components)
     elif hasattr(payload, "to_dict") and callable(payload.to_dict):
         type_name = generate_qualified_class_name(type(payload))
         pure = _convert_to_basic_types(payload.to_dict())
