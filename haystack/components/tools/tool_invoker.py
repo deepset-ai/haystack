@@ -169,6 +169,7 @@ class ToolInvoker:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: bool = False,
+        max_workers: int = 4,
         async_executor: Optional[ThreadPoolExecutor] = None,
     ):
         """
@@ -193,6 +194,8 @@ class ToolInvoker:
             This allows tools to stream their results back to the client.
             Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
             If False, the `streaming_callback` will not be passed to the tool invocation.
+        :param max_workers:
+            The maximum number of workers to use in the thread pool executor.
         :param async_executor:
             Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded executor will be
             initialized and used.
@@ -206,6 +209,7 @@ class ToolInvoker:
         self.tools = tools
         self.streaming_callback = streaming_callback
         self.enable_streaming_callback_passthrough = enable_streaming_callback_passthrough
+        self.max_workers = max_workers
 
         # Convert Toolset to list for internal use
         if isinstance(tools, Toolset):
@@ -480,6 +484,9 @@ class ToolInvoker:
         )
 
         tool_messages = []
+
+        # Collect all tool calls and their parameters for parallel execution
+        tool_call_params = []
         for message in messages_with_tool_calls:
             for tool_call in message.tool_calls:
                 tool_name = tool_call.tool_name
@@ -498,7 +505,7 @@ class ToolInvoker:
                 llm_args = tool_call.arguments.copy()
                 final_args = self._inject_state_args(tool_to_invoke, llm_args, state)
 
-                # Check whether to inject streaming_callback
+                # 2) Check whether to inject streaming_callback
                 if (
                     resolved_enable_streaming_passthrough
                     and streaming_callback is not None
@@ -508,54 +515,87 @@ class ToolInvoker:
                     if "streaming_callback" in invoke_params:
                         final_args["streaming_callback"] = streaming_callback
 
-                # 2) Invoke the tool
-                try:
-                    tool_result = tool_to_invoke.invoke(**final_args)
-
-                except ToolInvocationError as e:
-                    error_message = self._handle_error(e)
-                    tool_messages.append(ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True))
-                    continue
-
-                # 3) Merge outputs into state
-                try:
-                    self._merge_tool_outputs(tool_to_invoke, tool_result, state)
-                except Exception as e:
-                    try:
-                        error_message = self._handle_error(
-                            ToolOutputMergeError(f"Failed to merge tool outputs from tool {tool_name} into State: {e}")
-                        )
-                        tool_messages.append(
-                            ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
-                        )
-                        continue
-                    except ToolOutputMergeError as propagated_e:
-                        # Re-raise with proper error chain
-                        raise propagated_e from e
-
-                # 4) Prepare the tool result ChatMessage message
-                tool_messages.append(
-                    self._prepare_tool_result_message(
-                        result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
-                    )
+                tool_call_params.append(
+                    {"tool_call": tool_call, "tool_to_invoke": tool_to_invoke, "final_args": final_args}
                 )
 
-                if streaming_callback is not None:
-                    streaming_callback(
-                        StreamingChunk(
-                            content="",
-                            index=len(tool_messages) - 1,
-                            tool_call_result=tool_messages[-1].tool_call_results[0],
-                            start=True,
-                            meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
+        # 3) Execute valid tool calls in parallel
+        if tool_call_params:
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                futures = []
+                for params in tool_call_params:
+                    future = executor.submit(self._execute_single_tool_call, **params)  # type: ignore[arg-type]
+                    futures.append(future)
+
+                # Process results as they complete
+                for future in futures:
+                    result = future.result()
+                    if isinstance(result, ChatMessage):
+                        tool_messages.append(result)
+                    else:
+                        # Handle state merging and prepare tool result message
+                        tool_call, tool_to_invoke, tool_result = result
+
+                        # 4) Merge outputs into state
+                        try:
+                            self._merge_tool_outputs(tool_to_invoke, tool_result, state)
+                        except Exception as e:
+                            try:
+                                error_message = self._handle_error(
+                                    ToolOutputMergeError(
+                                        f"Failed to merge tool outputs fromtool {tool_call.tool_name} into State: {e}"
+                                    )
+                                )
+                                tool_messages.append(
+                                    ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
+                                )
+                                continue
+                            except ToolOutputMergeError as propagated_e:
+                                # Re-raise with proper error chain
+                                raise propagated_e from e
+
+                        # 5) Prepare the tool result ChatMessage message
+                        tool_messages.append(
+                            self._prepare_tool_result_message(
+                                result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
+                            )
                         )
-                    )
+
+                        if streaming_callback is not None:
+                            streaming_callback(
+                                StreamingChunk(
+                                    content="",
+                                    index=len(tool_messages) - 1,
+                                    tool_call_result=tool_messages[-1].tool_call_results[0],
+                                    start=True,
+                                    meta={
+                                        "tool_result": tool_messages[-1].tool_call_results[0].result,
+                                        "tool_call": tool_call,
+                                    },
+                                )
+                            )
 
         # We stream one more chunk that contains a finish_reason if tool_messages were generated
         if len(tool_messages) > 0 and streaming_callback is not None:
             streaming_callback(StreamingChunk(content="", meta={"finish_reason": "tool_call_results"}))
 
         return {"tool_messages": tool_messages, "state": state}
+
+    def _execute_single_tool_call(self, tool_call: ToolCall, tool_to_invoke: Tool, final_args: Dict[str, Any]):
+        """
+        Execute a single tool call. This method is designed to be run in a thread pool.
+
+        :param tool_call: The ToolCall object containing the tool name and arguments.
+        :param tool_to_invoke: The Tool object that should be invoked.
+        :param final_args: The final arguments to pass to the tool.
+        :returns: Either a ChatMessage with error or a tuple of (tool_call, tool_to_invoke, tool_result)
+        """
+        try:
+            tool_result = tool_to_invoke.invoke(**final_args)
+            return (tool_call, tool_to_invoke, tool_result)
+        except ToolInvocationError as e:
+            error_message = self._handle_error(e)
+            return ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
 
     @component.output_types(tool_messages=List[ChatMessage], state=State)
     async def run_async(  # noqa: PLR0915
@@ -611,10 +651,6 @@ class ToolInvoker:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
 
-        # Count total calls so we can size the pool
-        total_calls = sum(len(message.tool_calls) for message in messages_with_tool_calls)
-        max_workers = total_calls or 1
-
         # Use a local executor sized to exactly the number of calls
         loop = asyncio.get_running_loop()
 
@@ -627,7 +663,7 @@ class ToolInvoker:
             except ToolInvocationError as e:
                 return e
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             tool_call_tasks = []
             valid_tool_calls = []
             tool_messages = []
@@ -652,7 +688,7 @@ class ToolInvoker:
                     llm_args = tool_call.arguments.copy()
                     final_args = self._inject_state_args(tool_to_invoke, llm_args, state)
 
-                    # Check whether to inject streaming_callback
+                    # 2) Check whether to inject streaming_callback
                     if (
                         resolved_enable_streaming_passthrough
                         and streaming_callback is not None
@@ -662,17 +698,17 @@ class ToolInvoker:
                         if "streaming_callback" in invoke_params:
                             final_args["streaming_callback"] = streaming_callback
 
-                    # Dispatch each call into our local executor
+                    # 3) Dispatch each call into our local executor
                     task = invoke_tool_safely(executor, tool_to_invoke, final_args)
                     tool_call_tasks.append(task)
                     valid_tool_calls.append((tool_call, tool_to_invoke))
 
-            # Execute all valid tool calls concurrently
+            # 4) Execute all valid tool calls concurrently
             if tool_call_tasks:
                 tool_results = await asyncio.gather(*tool_call_tasks)  # No return_exceptions since we handle in wrapper
 
                 # Process results
-                for (tool_call, tool_to_invoke), tool_result in zip(valid_tool_calls, tool_results):
+                for i, ((tool_call, tool_to_invoke), tool_result) in enumerate(zip(valid_tool_calls, tool_results)):
                     # Check if the tool_result is a ToolInvocationError (caught by our wrapper)
                     if isinstance(tool_result, ToolInvocationError):
                         error_message = self._handle_error(tool_result)
@@ -681,7 +717,7 @@ class ToolInvoker:
                         )
                         continue
 
-                    # 3) Merge outputs into state
+                    # 5) Merge outputs into state
                     try:
                         self._merge_tool_outputs(tool_to_invoke, tool_result, state)
                     except Exception as e:
@@ -699,7 +735,7 @@ class ToolInvoker:
                             # Re-raise with proper error chain
                             raise propagated_e from e
 
-                    # 4) Prepare the tool result ChatMessage message
+                    # 6) Prepare the tool result ChatMessage message
                     tool_messages.append(
                         self._prepare_tool_result_message(
                             result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
@@ -711,7 +747,7 @@ class ToolInvoker:
                         await streaming_callback(
                             StreamingChunk(
                                 content="",
-                                index=len(tool_messages) - 1,
+                                index=i,
                                 tool_call_result=tool_messages[-1].tool_call_results[0],
                                 start=True,
                                 meta={
