@@ -151,15 +151,6 @@ def test_dual_finish_reason_support():
     assert chunk_dual.meta.get("finish_reason") == "length"
 
 
-def test_finish_reason_custom_values():
-    """Test that custom finish_reason values still work (for migration compatibility)."""
-    custom_values = ["custom_stop", "provider_specific", "unknown"]
-
-    for value in custom_values:
-        chunk = StreamingChunk(content="Test content", finish_reason=value)
-        assert chunk.finish_reason == value
-
-
 def test_finish_reason_standard_values():
     """Test all standard finish_reason values including the new Haystack-specific ones."""
     standard_values = ["stop", "length", "tool_calls", "content_filter", "tool_call_results"]

@@ -81,8 +81,9 @@ class StreamingChunk:
     :param tool_call: An optional ToolCallDelta object representing a tool call associated with the message chunk.
     :param tool_call_result: An optional ToolCallResult object representing the result of a tool call.
     :param start: A boolean indicating whether this chunk marks the start of a content block.
-    :param finish_reason: An optional string indicating the reason the generation finished.
-        Standard values follow OpenAI's convention: "stop", "length", "tool_calls", "content_filter".
+    :param finish_reason: An optional value indicating the reason the generation finished.
+        Standard values follow OpenAI's convention: "stop", "length", "tool_calls", "content_filter",
+        plus Haystack-specific values like "tool_call_results".
     """
 
     content: str
@@ -92,9 +93,7 @@ class StreamingChunk:
     tool_call: Optional[ToolCallDelta] = field(default=None)
     tool_call_result: Optional[ToolCallResult] = field(default=None)
     start: bool = field(default=False)
-    # NOTE: We allow for the finish_reason to be a string during migration phase
-    # we will change finish_reason to be a FinishReason in a future release
-    finish_reason: Optional[Union[FinishReason, str]] = field(default=None)
+    finish_reason: Optional[FinishReason] = field(default=None)
 
     def __post_init__(self):
         fields_set = sum(bool(x) for x in (self.content, self.tool_call, self.tool_call_result))
