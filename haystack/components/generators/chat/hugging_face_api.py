@@ -141,7 +141,9 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
         index=0 if choice.finish_reason is None else None,
         # start is True at the very beginning since first chunk contains role information + first part of the answer.
         start=len(previous_chunks) == 0,
-        finish_reason=choice.finish_reason,
+        # there is no way to constrain here as many models can return any finish reason
+        # so we need to ignore the type error
+        finish_reason=choice.finish_reason,  # type: ignore[arg-type]
     )
     return stream_chunk
 

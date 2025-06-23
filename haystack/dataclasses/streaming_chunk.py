@@ -12,7 +12,7 @@ from haystack.utils.asynchronous import is_callable_async_compatible
 
 # Type alias for standard finish_reason values following OpenAI's convention
 # plus Haystack-specific values
-FinishReason = Literal["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
+FinishReason = Literal["stop", "length", "tool_calls", "function_call", "content_filter", "tool_call_results"]
 
 
 @dataclass
