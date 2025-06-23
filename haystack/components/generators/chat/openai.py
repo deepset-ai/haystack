@@ -535,7 +535,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                     "model": chunk.model,
                     "received_at": datetime.now().isoformat(),
                     "usage": _serialize_usage(chunk.usage),
-                    # NOTE: finish_reason in meta is deprecated, use the dedicated finish_reason field
+                    # NOTE: Both finish_reason field and meta["finish_reason"] are supported for flexibility
                     "finish_reason": None,
                 },
             )

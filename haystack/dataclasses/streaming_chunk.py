@@ -72,8 +72,8 @@ class StreamingChunk:
 
     :param content: The content of the message chunk as a string.
     :param meta: A dictionary containing metadata related to the message chunk.
-        NOTE: The 'finish_reason' field in meta is deprecated and will be removed in Haystack 2.17.
-        Use the dedicated 'finish_reason' field instead.
+        NOTE: Both 'finish_reason' field and meta['finish_reason'] are supported for flexibility.
+        The dedicated field provides better type safety and IDE support.
     :param component_info: A `ComponentInfo` object containing information about the component that generated the chunk,
         such as the component name and type.
     :param index: An optional integer index representing which content block this chunk belongs to.
@@ -107,10 +107,6 @@ class StreamingChunk:
         # NOTE: We don't enforce this for self.content otherwise it would be a breaking change
         if (self.tool_call or self.tool_call_result) and self.index is None:
             raise ValueError("If `tool_call`, or `tool_call_result` is set, `index` must also be set.")
-
-        # Convert meta to _DeprecationWarningDict to show warnings when accessing deprecated fields
-        if not isinstance(self.meta, _DeprecationWarningDict):
-            self.meta = _DeprecationWarningDict(self.meta)
 
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]
@@ -163,29 +159,3 @@ def select_streaming_callback(
             raise ValueError("The runtime callback cannot be a coroutine.")
 
     return runtime_callback or init_callback
-
-
-class _DeprecationWarningDict(dict):
-    """
-    A dictionary subclass that issues deprecation warnings when accessing 'finish_reason'.
-    """
-
-    def __getitem__(self, key):
-        if key == "finish_reason":
-            warnings.warn(
-                "Accessing 'finish_reason' from StreamingChunk.meta is deprecated and will be removed in "
-                "Haystack 2.17. Use StreamingChunk.finish_reason instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        return super().__getitem__(key)
-
-    def get(self, key, default=None):
-        if key == "finish_reason":
-            warnings.warn(
-                "Accessing 'finish_reason' from StreamingChunk.meta is deprecated and will be removed in "
-                "Haystack 2.17. Use StreamingChunk.finish_reason instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        return super().get(key, default)

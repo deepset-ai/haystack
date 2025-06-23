@@ -124,22 +124,31 @@ def test_create_chunk_with_finish_reason_and_meta():
     assert chunk.meta["usage"]["tokens"] == 10
 
 
-def test_finish_reason_deprecation_warning():
-    """Test that accessing finish_reason via meta shows deprecation warning."""
+def test_dual_finish_reason_support():
+    """Test that both finish_reason approaches work without warnings."""
     import warnings
 
+    # Test that accessing finish_reason via meta does NOT show warnings
     chunk = StreamingChunk(content="Test content", meta={"finish_reason": "length"})
 
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        result = chunk.meta.get("finish_reason")
+        result_meta = chunk.meta.get("finish_reason")
+        result_direct = chunk.meta["finish_reason"]
 
-        assert len(w) == 1
-        assert issubclass(w[0].category, DeprecationWarning)
-        assert "finish_reason" in str(w[0].message)
-        assert "deprecated" in str(w[0].message)
-        assert "Haystack 2.17" in str(w[0].message)
-        assert result == "length"
+        # No warnings should be raised
+        assert len(w) == 0
+        assert result_meta == "length"
+        assert result_direct == "length"
+
+    # Test that both approaches can be used simultaneously
+    chunk_dual = StreamingChunk(
+        content="Test content", finish_reason="stop", meta={"finish_reason": "length", "model": "gpt-4"}
+    )
+
+    assert chunk_dual.finish_reason == "stop"
+    assert chunk_dual.meta["finish_reason"] == "length"
+    assert chunk_dual.meta.get("finish_reason") == "length"
 
 
 def test_finish_reason_custom_values():
