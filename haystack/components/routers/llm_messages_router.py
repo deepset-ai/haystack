@@ -39,7 +39,7 @@ class LLMMessagesRouter:
     print(router.run([ChatMessage.from_user("How to rob a bank?")]))
 
     # {
-    #     'router_text': 'unsafe\nS2',
+    #     'chat_generator_text': 'unsafe\nS2',
     #     'unsafe': [
     #         ChatMessage(
     #             _role=<ChatRole.USER: 'user'>,
@@ -71,12 +71,10 @@ class LLMMessagesRouter:
         :param system_prompt: optional system prompt to customize the behavior of the LLM.
             For moderation models, refer to the model card for supported customization options.
 
-        :return: a LLMMessagesRouter instance.
-
         :raises ValueError: if output_names and output_patterns are not non-empty lists of the same length.
         """
         if not output_names or not output_patterns or len(output_names) != len(output_patterns):
-            raise ValueError("output_names and output_patterns must be non-empty lists of the same length")
+            raise ValueError("`output_names` and `output_patterns` must be non-empty lists of the same length")
 
         self._chat_generator = chat_generator
         self._system_prompt = system_prompt
@@ -87,7 +85,7 @@ class LLMMessagesRouter:
         self._is_warmed_up = False
 
         component.set_output_types(
-            self, **{"router_text": str, **dict.fromkeys(output_names + ["unmatched"], List[ChatMessage])}
+            self, **{"chat_generator_text": str, **dict.fromkeys(output_names + ["unmatched"], List[ChatMessage])}
         )
 
     def warm_up(self):
@@ -106,18 +104,18 @@ class LLMMessagesRouter:
         :param messages: list of ChatMessages to be routed. Only user and assistant messages are supported.
 
         :returns: A dictionary with the following keys:
-            - "llm_text": the text output of the LLM, useful for debugging.
+            - "chat_generator_text": the text output of the LLM, useful for debugging.
             - output names: each contains the list of messages that matched the corresponding pattern.
             - "unmatched": the messages that did not match any of the output patterns.
 
-        :raises ValueError: if messages is an empty list.
+        :raises ValueError: if messages is an empty list or contains messages with unsupported roles.
         :raises RuntimeError: if the component is not warmed up and the ChatGenerator has a warm_up method.
         """
         if not messages:
             raise ValueError("messages must be a non-empty list.")
         if not all(message.is_from(ChatRole.USER) or message.is_from(ChatRole.ASSISTANT) for message in messages):
             msg = (
-                "messages must contain only user and assistant messages. To customize the behavior of the "
+                "`messages` must contain only user and assistant messages. To customize the behavior of the "
                 "chat_generator, you can use the `system_prompt` parameter."
             )
             raise ValueError(msg)
@@ -130,12 +128,12 @@ class LLMMessagesRouter:
             messages_for_inference.append(ChatMessage.from_system(self._system_prompt))
         messages_for_inference.extend(messages)
 
-        llm_text = self._chat_generator.run(messages=messages_for_inference)["replies"][0].text
+        chat_generator_text = self._chat_generator.run(messages=messages_for_inference)["replies"][0].text
 
-        output = {"router_text": llm_text}
+        output = {"chat_generator_text": chat_generator_text}
 
         for output_name, pattern in zip(self._output_names, self._compiled_patterns):
-            if pattern.search(llm_text):
+            if pattern.search(chat_generator_text):
                 output[output_name] = messages
                 break
         else:
