@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any, Dict
 
 from haystack.core.errors import DeserializationError, SerializationError
@@ -206,8 +207,17 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
     data = serialized["serialized_data"]
 
     schema_type = schema.get("type")
+
     if not schema_type:
-        raise DeserializationError("Missing 'type' in serialization schema")
+        # for backward comaptability till Haystack 2.17 we use legacy implementation
+        warnings.warn(
+            "Missing 'type' key in 'serialization_schema'. This likely indicates that you're using a serialized "
+            "State object created with a version of Haystack older than 2.15.0. "
+            "Support for the old serialization format will be removed in Haystack 2.17.0. "
+            "Please upgrade to the new serialization format to ensure forward compatibility.",
+            DeprecationWarning,
+        )
+        return _deserialize_value_with_schema_legacy(serialized)
 
     # Handle object case (dictionary with properties)
     if schema_type == "object":
@@ -223,12 +233,9 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
                         result[field] = _deserialize_value_with_schema(
                             {"serialization_schema": field_schema, "serialized_data": raw_value}
                         )
-                    else:
-                        # No schema for this field, deserialize as-is
-                        result[field] = _deserialize_value(raw_value)
+
             return result
         else:
-            # for empty objects, we need to deserialize as-is
             return _deserialize_value(data)
 
     # Handle array case
@@ -324,3 +331,61 @@ def _deserialize_value(value: Any) -> Any:  # pylint: disable=too-many-return-st
 
     # 4) Fallback (shouldn't usually happen with our schema)
     return value
+
+
+def _deserialize_value_with_schema_legacy(serialized: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Legacy function for deserializing a dictionary with schema information and data to original values.
+
+    Kept for backward compatibility till Haystack 2.17.0.
+    Takes a dict of the form:
+      {
+         "schema": {
+            "numbers": {"type": "integer"},
+            "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+        },
+        "data": {
+            "numbers": 1,
+            "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+      }
+
+    :param serialized: The serialized dict with schema and data.
+    :returns: The deserialized dict with original values.
+    """
+    schema = serialized.get("serialization_schema", {})
+    data = serialized.get("serialized_data", {})
+
+    result: Dict[str, Any] = {}
+    for field, raw in data.items():
+        info = schema.get(field)
+        # no schema entry → just deep-deserialize whatever we have
+        if not info:
+            result[field] = _deserialize_value(raw)
+            continue
+
+        t = info["type"]
+
+        # ARRAY case
+        if t == "array":
+            item_type = info["items"]["type"]
+            reconstructed = []
+            for item in raw:
+                envelope = {"type": item_type, "data": item}
+                reconstructed.append(_deserialize_value(envelope))
+            result[field] = reconstructed
+
+        # PRIMITIVE case
+        elif t in ("null", "boolean", "integer", "number", "string"):
+            result[field] = raw
+
+        # GENERIC OBJECT
+        elif t == "object":
+            envelope = {"type": "object", "data": raw}
+            result[field] = _deserialize_value(envelope)
+
+        # CUSTOM CLASS
+        else:
+            envelope = {"type": t, "data": raw}
+            result[field] = _deserialize_value(envelope)
+
+    return result
