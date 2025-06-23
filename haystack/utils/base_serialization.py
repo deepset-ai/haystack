@@ -201,6 +201,8 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
 
     if not schema or "type" not in schema:
         # No schema info, try to deserialize as-is
+        # this is kept for cases where type is added in the object
+        # and schema is not provided
         return _deserialize_value(data)
 
     schema_type = schema["type"]
@@ -224,21 +226,16 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
                         result[field] = _deserialize_value(raw_value)
             return result
         else:
-            # Old format: generic object
-            return _deserialize_value({"type": "object", "data": data})
+            # for empty objects, we need to deserialize as-is
+            return _deserialize_value(data)
 
     # Handle array case
     elif schema_type == "array":
-        if not isinstance(data, list):
-            return data
-
         # Cache frequently accessed schema properties
         item_schema = schema.get("items", {})
         item_type = item_schema.get("type", "any")
         is_set = schema.get("uniqueItems") is True
-        min_items = schema.get("minItems")
-        max_items = schema.get("maxItems")
-        is_tuple = min_items is not None and max_items is not None
+        is_tuple = schema.get("minItems") is not None and schema.get("maxItems") is not None
 
         # Handle nested objects/arrays first (most complex case)
         if item_type in ("object", "array"):
