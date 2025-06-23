@@ -11,7 +11,8 @@ from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
 
 # Type alias for standard finish_reason values following OpenAI's convention
-FinishReason = Literal["stop", "length", "tool_calls", "content_filter"]
+# plus Haystack-specific values
+FinishReason = Literal["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
 
 
 @dataclass

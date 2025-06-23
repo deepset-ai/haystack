@@ -158,3 +158,21 @@ def test_finish_reason_custom_values():
     for value in custom_values:
         chunk = StreamingChunk(content="Test content", finish_reason=value)
         assert chunk.finish_reason == value
+
+
+def test_finish_reason_standard_values():
+    """Test all standard finish_reason values including the new Haystack-specific ones."""
+    standard_values = ["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
+
+    for value in standard_values:
+        chunk = StreamingChunk(content="Test content", finish_reason=value)
+        assert chunk.finish_reason == value
+
+
+def test_finish_reason_tool_call_results():
+    """Test specifically the new tool_call_results finish reason."""
+    chunk = StreamingChunk(content="", finish_reason="tool_call_results", meta={"finish_reason": "tool_call_results"})
+
+    assert chunk.finish_reason == "tool_call_results"
+    assert chunk.meta["finish_reason"] == "tool_call_results"
+    assert chunk.content == ""
