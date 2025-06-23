@@ -517,27 +517,23 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         generated the chunk, such as the component name and type.
 
     :returns:
-        A list of StreamingChunk objects representing the content of the chunk from the OpenAI API.
+        A StreamingChunk object representing the content of the chunk from the OpenAI API.
     """
     # On very first chunk so len(previous_chunks) == 0, the Choices field only provides role info (e.g. "assistant")
     # Choices is empty if include_usage is set to True where the usage information is returned.
     if len(chunk.choices) == 0:
-        return [
-            StreamingChunk(
-                content="",
-                component_info=component_info,
-                # Index is None since it's only set to an int when a content block is present
-                index=None,
-                finish_reason=None,
-                meta={
-                    "model": chunk.model,
-                    "received_at": datetime.now().isoformat(),
-                    "usage": _serialize_usage(chunk.usage),
-                    # NOTE: Both finish_reason field and meta["finish_reason"] are supported for flexibility
-                    "finish_reason": None,
-                },
-            )
-        ]
+        return StreamingChunk(
+            content="",
+            component_info=component_info,
+            # Index is None since it's only set to an int when a content block is present
+            index=None,
+            finish_reason=None,
+            meta={
+                "model": chunk.model,
+                "received_at": datetime.now().isoformat(),
+                "usage": _serialize_usage(chunk.usage),
+            },
+        )
 
     choice: ChunkChoice = chunk.choices[0]
 
@@ -552,17 +548,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                     id=tool_call.id,
                     tool_name=function.name if function else None,
                     arguments=function.arguments if function and function.arguments else None,
-                ),
-                start=function.name is not None if function else False,
-                finish_reason=choice.finish_reason,
-                meta={
-                    "model": chunk.model,
-                    "index": choice.index,
-                    "tool_calls": choice.delta.tool_calls,
-                    "finish_reason": choice.finish_reason,
-                    "received_at": datetime.now().isoformat(),
-                    "usage": _serialize_usage(chunk.usage),
-                },
+                )
             )
         chunk_message = StreamingChunk(
             content=choice.delta.content or "",
@@ -571,6 +557,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
             index=tool_calls_deltas[0].index,
             tool_calls=tool_calls_deltas,
             start=tool_calls_deltas[0].tool_name is not None,
+            finish_reason=choice.finish_reason,
             meta={
                 "model": chunk.model,
                 "index": choice.index,
