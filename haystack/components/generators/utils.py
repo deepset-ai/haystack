@@ -32,8 +32,8 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
 
     ## Tool Call streaming
     if chunk.tool_calls:
-        # Typically, if there are multiple tool calls in the chunk, typically this means that the tool calls are fully
-        # formed and not just a delta.
+        # Typically, if there are multiple tool calls in the chunk this means that the tool calls are fully formed and
+        # not just a delta.
         for tool_call in chunk.tool_calls:
             # If chunk.start is True indicates beginning of a tool call
             # Also presence of tool_call.tool_name indicates the start of a tool call too
@@ -44,9 +44,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
                 if chunk.index and tool_call.index > chunk.index:
                     print("\n\n", flush=True, end="")
 
-                print("[TOOL CALL]\n", flush=True, end="")
-                print(f"Tool: {tool_call.tool_name} ", flush=True, end="")
-                print("\nArguments: ", flush=True, end="")
+                print("[TOOL CALL]\nTool: {tool_call.tool_name} \nArguments: ", flush=True, end="")
 
             # print the tool arguments
             if tool_call.arguments:
