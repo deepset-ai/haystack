@@ -433,10 +433,10 @@ class TestState:
         assert state.data["messages"] == [ChatMessage.from_user(text="Hello, world!")]
         assert state.data["dict_of_lists"] == {"numbers": [1, 2, 3]}
 
-    def test_state_from_dict_old(self):
+    def test_state_from_dict_legacy(self):
         # this is the old format of the state dictionary
         # it is kept for backward compatibility
-        # it will be removed in Haystack 2.17.0
+        # it will be removed in Haystack 2.16.0
         state_dict = {
             "schema": {
                 "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
