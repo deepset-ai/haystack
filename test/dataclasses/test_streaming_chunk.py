@@ -58,7 +58,7 @@ def test_create_chunk_with_content_and_tool_call():
         StreamingChunk(
             content="Test content",
             meta={"key": "value"},
-            tool_call=ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}'),
+            tool_calls=[ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0)],
         )
 
 
@@ -92,15 +92,16 @@ def test_component_info_from_component_with_name_from_pipeline():
 
 
 def test_tool_call_delta():
-    tool_call = ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}')
+    tool_call = ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0)
     assert tool_call.id == "123"
     assert tool_call.tool_name == "test_tool"
     assert tool_call.arguments == '{"arg1": "value1"}'
+    assert tool_call.index == 0
 
 
 def test_tool_call_delta_with_missing_fields():
     with pytest.raises(ValueError):
-        _ = ToolCallDelta(id="123")
+        _ = ToolCallDelta(id="123", index=0)
 
 
 def test_create_chunk_with_finish_reason():

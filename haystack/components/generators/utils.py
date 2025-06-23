@@ -31,17 +31,24 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
         print("\n\n", flush=True, end="")
 
     ## Tool Call streaming
-    if chunk.tool_call:
-        # If chunk.start is True indicates beginning of a tool call
-        # Also presence of chunk.tool_call.name indicates the start of a tool call too
-        if chunk.start:
-            print("[TOOL CALL]\n", flush=True, end="")
-            print(f"Tool: {chunk.tool_call.tool_name} ", flush=True, end="")
-            print("\nArguments: ", flush=True, end="")
+    if chunk.tool_calls:
+        # Typically, if there are multiple tool calls in the chunk this means that the tool calls are fully formed and
+        # not just a delta.
+        for tool_call in chunk.tool_calls:
+            # If chunk.start is True indicates beginning of a tool call
+            # Also presence of tool_call.tool_name indicates the start of a tool call too
+            if chunk.start:
+                # If there is more than one tool call in the chunk, we print two new lines to separate them
+                # We know there is more than one tool call if the index of the tool call is greater than the index of
+                # the chunk.
+                if chunk.index and tool_call.index > chunk.index:
+                    print("\n\n", flush=True, end="")
 
-        # print the tool arguments
-        if chunk.tool_call.arguments:
-            print(chunk.tool_call.arguments, flush=True, end="")
+                print("[TOOL CALL]\nTool: {tool_call.tool_name} \nArguments: ", flush=True, end="")
+
+            # print the tool arguments
+            if tool_call.arguments:
+                print(tool_call.arguments, flush=True, end="")
 
     ## Tool Call Result streaming
     # Print tool call results if available (from ToolInvoker)
@@ -76,39 +83,41 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
     # Process tool calls if present in any chunk
     tool_call_data: Dict[int, Dict[str, str]] = {}  # Track tool calls by index
     for chunk in chunks:
-        if chunk.tool_call:
+        if chunk.tool_calls:
             # We do this to make sure mypy is happy, but we enforce index is not None in the StreamingChunk dataclass if
             # tool_call is present
             assert chunk.index is not None
 
-            # We use the index of the chunk to track the tool call across chunks since the ID is not always provided
-            if chunk.index not in tool_call_data:
-                tool_call_data[chunk.index] = {"id": "", "name": "", "arguments": ""}
+            for tool_call in chunk.tool_calls:
+                # We use the index of the tool_call to track the tool call across chunks since the ID is not always
+                # provided
+                if tool_call.index not in tool_call_data:
+                    tool_call_data[chunk.index] = {"id": "", "name": "", "arguments": ""}
 
-            # Save the ID if present
-            if chunk.tool_call.id is not None:
-                tool_call_data[chunk.index]["id"] = chunk.tool_call.id
+                # Save the ID if present
+                if tool_call.id is not None:
+                    tool_call_data[chunk.index]["id"] = tool_call.id
 
-            if chunk.tool_call.tool_name is not None:
-                tool_call_data[chunk.index]["name"] += chunk.tool_call.tool_name
-            if chunk.tool_call.arguments is not None:
-                tool_call_data[chunk.index]["arguments"] += chunk.tool_call.arguments
+                if tool_call.tool_name is not None:
+                    tool_call_data[chunk.index]["name"] += tool_call.tool_name
+                if tool_call.arguments is not None:
+                    tool_call_data[chunk.index]["arguments"] += tool_call.arguments
 
     # Convert accumulated tool call data into ToolCall objects
     sorted_keys = sorted(tool_call_data.keys())
     for key in sorted_keys:
-        tool_call = tool_call_data[key]
+        tool_call_dict = tool_call_data[key]
         try:
-            arguments = json.loads(tool_call["arguments"])
-            tool_calls.append(ToolCall(id=tool_call["id"], tool_name=tool_call["name"], arguments=arguments))
+            arguments = json.loads(tool_call_dict["arguments"])
+            tool_calls.append(ToolCall(id=tool_call_dict["id"], tool_name=tool_call_dict["name"], arguments=arguments))
         except json.JSONDecodeError:
             logger.warning(
                 "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
                 "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
                 "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                _id=tool_call["id"],
-                _name=tool_call["name"],
-                _arguments=tool_call["arguments"],
+                _id=tool_call_dict["id"],
+                _name=tool_call_dict["name"],
+                _arguments=tool_call_dict["arguments"],
             )
 
     # finish_reason can appear in different places so we look for the last one
