@@ -151,8 +151,22 @@ def test_deserialize_value_with_sequences():
     assert result == tuple_sequences
 
 
-def test_serialize_value_with_schema_handles_nested_lists():
+def test_serializing_and_deserializing_nested_lists():
     nested_lists = [[1, 2], [3, 4]]
+
+    serialized_nested_lists = _serialize_value_with_schema(nested_lists)
+    assert serialized_nested_lists == {
+        "serialization_schema": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}}},
+        "serialized_data": [[1, 2], [3, 4]],
+    }
+
+    deserialized_nested_lists = _deserialize_value_with_schema(serialized_nested_lists)
+    assert deserialized_nested_lists == nested_lists
+
+
+def test_serializing_and_deserializing_nested_answer_lists():
+    """Test that _deserialize_value_with_schema handles nested lists"""
+
     nested_answers_list = [
         [
             GeneratedAnswer(
@@ -161,16 +175,18 @@ def test_serialize_value_with_schema_handles_nested_lists():
                 documents=[Document(content="Paris is the capital of France")],
                 meta={"page": 1},
             )
-        ]
+        ],
+        [
+            GeneratedAnswer(
+                data="Berlin",
+                query="What is the capital of Germany?",
+                documents=[Document(content="Berlin is the capital of Germany")],
+                meta={"page": 1},
+            )
+        ],
     ]
-    result = _serialize_value_with_schema(nested_lists)
-    assert result == {
-        "serialization_schema": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}}},
-        "serialized_data": [[1, 2], [3, 4]],
-    }
-
-    result = _serialize_value_with_schema(nested_answers_list)
-    assert result == {
+    serialized_nested_answers_list = _serialize_value_with_schema(nested_answers_list)
+    assert serialized_nested_answers_list == {
         "serialization_schema": {
             "type": "array",
             "items": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
@@ -196,29 +212,39 @@ def test_serialize_value_with_schema_handles_nested_lists():
                         "meta": {"page": 1},
                     },
                 }
-            ]
+            ],
+            [
+                {
+                    "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                    "init_parameters": {
+                        "data": "Berlin",
+                        "query": "What is the capital of Germany?",
+                        "documents": [
+                            {
+                                "id": "c7b5b839963fcbf9b394b24c883731e840c3170ace33afb7af87a2de8a257f6f",
+                                "content": "Berlin is the capital of Germany",
+                                "blob": None,
+                                "meta": {},
+                                "score": None,
+                                "embedding": None,
+                                "sparse_embedding": None,
+                            }
+                        ],
+                        "meta": {"page": 1},
+                    },
+                }
+            ],
         ],
     }
 
-
-def test_deserialize_value_with_schema_handles_nested_lists():
-    """Test that _deserialize_value_with_schema handles nested lists"""
-
-    nested_lists = [[1, 2], [3, 4]]
-    result = _deserialize_value_with_schema(
-        {
-            "serialization_schema": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}}},
-            "serialized_data": [[1, 2], [3, 4]],
-        }
-    )
-
-    assert result == nested_lists
+    deserialized_nested_answers_list = _deserialize_value_with_schema(serialized_nested_answers_list)
+    assert deserialized_nested_answers_list == nested_answers_list
 
 
-def test_serialize_value_with_schema_handles_nested_dicts():
+def test_serializing_and_deserializing_nested_dicts():
     data = {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}}
-    result = _serialize_value_with_schema(data)
-    assert result == {
+    serialized_nested_dicts = _serialize_value_with_schema(data)
+    assert serialized_nested_dicts == {
         "serialization_schema": {
             "type": "object",
             "properties": {
@@ -234,31 +260,11 @@ def test_serialize_value_with_schema_handles_nested_dicts():
         "serialized_data": {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}},
     }
 
-
-def test_deserialize_value_with_schema_handles_nested_dicts():
-    """Test that _deserialize_value_with_schema handles nested dictionaries"""
-    data = {
-        "serialization_schema": {
-            "type": "object",
-            "properties": {
-                "key1": {
-                    "type": "object",
-                    "properties": {
-                        "nested1": {"type": "string"},
-                        "nested2": {"type": "object", "properties": {"deep": {"type": "string"}}},
-                    },
-                }
-            },
-        },
-        "serialized_data": {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}},
-    }
-
-    result = _deserialize_value_with_schema(data)
-
-    assert result == {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}}
+    deserialized_nested_dicts = _deserialize_value_with_schema(serialized_nested_dicts)
+    assert deserialized_nested_dicts == data
 
 
-def test_handling_nested_sets():
+def test_serializing_and_deserializing_nested_sets():
     nested_sets = [{1, 2}, {3, 4}]
 
     result = _serialize_value_with_schema(nested_sets)
@@ -282,7 +288,7 @@ def test_handling_nested_sets():
     assert result == nested_sets
 
 
-def test_handling_empty_structures():
+def test_serializing_and_deserializing_empty_structures():
     """Test that _deserialize_value_with_schema handles empty structures"""
     data = {"empty_list": [], "empty_dict": {}, "nested_empty": {"empty": []}}
     serialized_data = _serialize_value_with_schema(data)
@@ -446,11 +452,11 @@ def test_deserialize_value_with_schema():
     assert isinstance(result["answers"][0], GeneratedAnswer)
 
 
-def test_serialize_value_with_custom_class_type():
+def test_serializing_and_deserializing_custom_class_type():
     custom_type = CustomClass()
     data = {"numbers": 1, "custom_type": custom_type}
-    result = _serialize_value_with_schema(data)
-    assert result == {
+    serialized_data = _serialize_value_with_schema(data)
+    assert serialized_data == {
         "serialization_schema": {
             "properties": {
                 "custom_type": {"type": "test_base_serialization.CustomClass"},
@@ -461,18 +467,6 @@ def test_serialize_value_with_custom_class_type():
         "serialized_data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
     }
 
-
-def test_deserialize_value_with_custom_class_type():
-    serialized_data = {
-        "serialization_schema": {
-            "properties": {
-                "custom_type": {"type": "test_base_serialization.CustomClass"},
-                "numbers": {"type": "integer"},
-            },
-            "type": "object",
-        },
-        "serialized_data": {"numbers": 1, "custom_type": {"key": "value", "more": False}},
-    }
-    result = _deserialize_value_with_schema(serialized_data)
-    assert result["numbers"] == 1
-    assert isinstance(result["custom_type"], CustomClass)
+    deserialized_data = _deserialize_value_with_schema(serialized_data)
+    assert deserialized_data["numbers"] == 1
+    assert isinstance(deserialized_data["custom_type"], CustomClass)

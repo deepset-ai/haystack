@@ -196,16 +196,18 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
     :param serialized: The serialized dict with schema and data.
     :returns: The deserialized value in its original form.
     """
-    schema = serialized.get("serialization_schema", {})
-    data = serialized.get("serialized_data")
 
-    if not schema or "type" not in schema:
-        # No schema info, try to deserialize as-is
-        # this is kept for cases where type is added in the object
-        # and schema is not provided
-        return _deserialize_value(data)
+    if not serialized or "serialization_schema" not in serialized or "serialized_data" not in serialized:
+        raise DeserializationError(
+            f"Invalid format of passed serialized payload. Expected a dictionary with keys "
+            f"'serialization_schema' and 'serialized_data'. Got: {serialized}"
+        )
+    schema = serialized["serialization_schema"]
+    data = serialized["serialized_data"]
 
-    schema_type = schema["type"]
+    schema_type = schema.get("type")
+    if not schema_type:
+        raise DeserializationError("Missing 'type' in serialization schema")
 
     # Handle object case (dictionary with properties)
     if schema_type == "object":
