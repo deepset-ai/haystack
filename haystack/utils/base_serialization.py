@@ -209,11 +209,11 @@ def _deserialize_value_with_schema(serialized: Dict[str, Any]) -> Any:  # pylint
     schema_type = schema.get("type")
 
     if not schema_type:
-        # for backward comaptability till Haystack 2.17 we use legacy implementation
+        # for backward comaptability till Haystack 2.16 we use legacy implementation
         warnings.warn(
             "Missing 'type' key in 'serialization_schema'. This likely indicates that you're using a serialized "
             "State object created with a version of Haystack older than 2.15.0. "
-            "Support for the old serialization format will be removed in Haystack 2.17.0. "
+            "Support for the old serialization format will be removed in Haystack 2.16.0. "
             "Please upgrade to the new serialization format to ensure forward compatibility.",
             DeprecationWarning,
         )
@@ -337,7 +337,7 @@ def _deserialize_value_with_schema_legacy(serialized: Dict[str, Any]) -> Dict[st
     """
     Legacy function for deserializing a dictionary with schema information and data to original values.
 
-    Kept for backward compatibility till Haystack 2.17.0.
+    Kept for backward compatibility till Haystack 2.16.0.
     Takes a dict of the form:
       {
          "schema": {
