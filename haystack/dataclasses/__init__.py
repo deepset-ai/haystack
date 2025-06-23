@@ -17,12 +17,12 @@ _import_structure = {
     "streaming_chunk": [
         "AsyncStreamingCallbackT",
         "ComponentInfo",
+        "FinishReason",
         "StreamingCallbackT",
         "StreamingChunk",
         "SyncStreamingCallbackT",
         "ToolCallDelta",
         "select_streaming_callback",
-        "FinishReason",
     ],
 }
 
