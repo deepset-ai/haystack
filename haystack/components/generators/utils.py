@@ -112,14 +112,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
             )
 
     # finish_reason can appear in different places so we look for the last one
-    # First check the dedicated finish_reason field, then fall back to meta for backward compatibility
-    # NOTE: Support both finish_reason field and meta fallback for maximum flexibility.
-    # Users can choose either approach based on their preferences.
-    finish_reasons = [
-        chunk.finish_reason or chunk.meta.get("finish_reason")
-        for chunk in chunks
-        if chunk.finish_reason or chunk.meta.get("finish_reason")
-    ]
+    finish_reasons = [chunk.finish_reason for chunk in chunks if chunk.finish_reason]
     finish_reason = finish_reasons[-1] if finish_reasons else None
 
     meta = {
