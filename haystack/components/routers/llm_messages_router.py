@@ -3,11 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-from haystack import component
+from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.utils import deserialize_chatgenerator_inplace
 
 
 @component
@@ -15,36 +17,39 @@ class LLMMessagesRouter:
     """
     Routes Chat Messages to different connections, using a generative Language Model to perform classification.
 
+    This component can be used with general-purpose LLMs and with specialized LLMs for moderation like Llama Guard.
+
     ### Usage example
     ```python
-        from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
-        from haystack.components.routers.llm_messages_router import LLMMessagesRouter
-        from haystack.dataclasses import ChatMessage
+    from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+    from haystack.components.routers.llm_messages_router import LLMMessagesRouter
+    from haystack.dataclasses import ChatMessage
 
-        # initialize a Chat Generator with a generative model for moderation
-        chat_generator = HuggingFaceAPIChatGenerator(
-            api_type="serverless_inference_api",
-            api_params={"model": "meta-llama/Llama-Guard-4-12B", "provider": "groq"},
-        )
+    # initialize a Chat Generator with a generative model for moderation
+    chat_generator = HuggingFaceAPIChatGenerator(
+        api_type="serverless_inference_api",
+        api_params={"model": "meta-llama/Llama-Guard-4-12B", "provider": "groq"},
+    )
 
-        router = LLMMessagesRouter(chat_generator=chat_generator,
-                                   output_names=["unsafe", "safe"],
-                                   output_patterns=["unsafe", "safe"])
+    router = LLMMessagesRouter(chat_generator=chat_generator,
+                                output_names=["unsafe", "safe"],
+                                output_patterns=["unsafe", "safe"])
 
 
-        print(router.run([ChatMessage.from_user("How to rob a bank?")]))
+    print(router.run([ChatMessage.from_user("How to rob a bank?")]))
 
-        # {
-        #     'router_text': 'unsafe\nS2',
-        #     'unsafe': [
-        #         ChatMessage(
-        #             _role=<ChatRole.USER: 'user'>,
-        #             _content=[TextContent(text='How to rob a bank?')],
-        #             _name=None,
-        #             _meta={}
-        #         )
-        #     ]
-        # }
+    # {
+    #     'router_text': 'unsafe\nS2',
+    #     'unsafe': [
+    #         ChatMessage(
+    #             _role=<ChatRole.USER: 'user'>,
+    #             _content=[TextContent(text='How to rob a bank?')],
+    #             _name=None,
+    #             _meta={}
+    #         )
+    #     ]
+    # }
+    ```
     """
 
     def __init__(
@@ -58,11 +63,13 @@ class LLMMessagesRouter:
         Initialize the LLMMessagesRouter component.
 
         :param chat_generator: a ChatGenerator instance which represents the LLM.
-        :param output_names: list of names of the output connections of the router. These names can be used to connect
-            the router to other components.
-        :param output_patterns: list of regular expressions to be matched against the output of the LLM. Each of them
-            corresponds to an output name. Matching is executed in the order of the output_patterns list.
-        :param system_prompt: system prompt to customize the behavior of the LLM.
+        :param output_names: list of output connection names. These can be used to connect the router to other
+            components.
+        :param output_patterns: list of regular expressions to be matched against the output of the LLM. Each pattern
+            corresponds to an output name. Patterns are evaluated in order.
+            When using moderation models, refer to the model card to understand the expected outputs.
+        :param system_prompt: optional system prompt to customize the behavior of the LLM.
+            For moderation models, refer to the model card for supported customization options.
 
         :return: a LLMMessagesRouter instance.
 
@@ -94,15 +101,14 @@ class LLMMessagesRouter:
 
     def run(self, messages: List[ChatMessage]) -> Dict[str, Union[str, List[ChatMessage]]]:
         """
-        Use the LLM to classify the messages and route them to the appropriate output connection.
+        Classify the messages based on LLM output and route them to the appropriate output connection.
 
-        :param messages: list of ChatMessages to route. Only user and assistant messages are supported.
+        :param messages: list of ChatMessages to be routed. Only user and assistant messages are supported.
 
         :returns: A dictionary with the following keys:
-            - "router_text": the text output of the LLM (for debugging purposes).
+            - "llm_text": the text output of the LLM, useful for debugging.
+            - output names: each contains the list of messages that matched the corresponding pattern.
             - "unmatched": the messages that did not match any of the output patterns.
-            - other keys are the output names, and the values are the messages that matched the corresponding output
-            pattern.
 
         :raises ValueError: if messages is an empty list.
         :raises RuntimeError: if the component is not warmed up and the ChatGenerator has a warm_up method.
@@ -124,15 +130,45 @@ class LLMMessagesRouter:
             messages_for_inference.append(ChatMessage.from_system(self._system_prompt))
         messages_for_inference.extend(messages)
 
-        llm_response = self._chat_generator.run(messages=messages_for_inference)["replies"][0].text
+        llm_text = self._chat_generator.run(messages=messages_for_inference)["replies"][0].text
 
-        output = {"router_text": llm_response}
+        output = {"router_text": llm_text}
 
         for output_name, pattern in zip(self._output_names, self._compiled_patterns):
-            if pattern.search(llm_response):
+            if pattern.search(llm_text):
                 output[output_name] = messages
                 break
         else:
             output["unmatched"] = messages
 
         return output
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+
+        :returns:
+            The serialized component as a dictionary.
+        """
+        return default_to_dict(
+            self,
+            chat_generator=component_to_dict(obj=self._chat_generator, name="chat_generator"),
+            output_names=self._output_names,
+            output_patterns=self._output_patterns,
+            system_prompt=self._system_prompt,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "LLMMessagesRouter":
+        """
+        Deserialize this component from a dictionary.
+
+        :param data:
+            The dictionary representation of this component.
+        :returns:
+            The deserialized component instance.
+        """
+        if data["init_parameters"].get("chat_generator"):
+            deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
+
+        return default_from_dict(cls, data)
