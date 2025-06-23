@@ -112,7 +112,7 @@ def _serialize_value_with_schema(payload: Any) -> Dict[str, Any]:
     # Handle Haystack style objects (e.g. dataclasses and Components)
     elif hasattr(payload, "to_dict") and callable(payload.to_dict):
         type_name = generate_qualified_class_name(type(payload))
-        pure = _convert_to_basic_types(payload.to_dict())
+        pure = _convert_to_basic_types(payload)
         schema = {"type": type_name}
         return {"serialization_schema": schema, "serialized_data": pure}
 

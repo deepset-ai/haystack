@@ -285,11 +285,7 @@ def test_handling_nested_sets():
 def test_handling_empty_structures():
     """Test that _deserialize_value_with_schema handles empty structures"""
     data = {"empty_list": [], "empty_dict": {}, "nested_empty": {"empty": []}}
-    di = {}
-    print(_serialize_value_with_schema(di))
     serialized_data = _serialize_value_with_schema(data)
-    print(serialized_data)
-    print(_deserialize_value_with_schema(serialized_data))
     result = _deserialize_value_with_schema(serialized_data)
 
     assert result == data
