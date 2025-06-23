@@ -1,7 +1,6 @@
 ---
 features:
   - |
-    Added dedicated `finish_reason` field to `StreamingChunk` class to improve type safety and enable sophisticated streaming UI logic. The field follows OpenAI's convention with standard values: "stop", "length", "tool_calls", "content_filter".
-deprecations:
+    Added dedicated `finish_reason` field to `StreamingChunk` class to improve type safety and enable sophisticated streaming UI logic. The field uses a `FinishReason` type alias with standard values: "stop", "length", "tool_calls", "content_filter", plus Haystack-specific values like "tool_call_results" (used by ToolInvoker to indicate tool execution completion). Both the dedicated field and legacy meta access (`chunk.meta["finish_reason"]`) are permanently supported for maximum flexibility. Users can choose either approach based on their preferences, with the dedicated field providing better type safety and IDE support.
   - |
-    Accessing `finish_reason` from `StreamingChunk.meta` is now deprecated and will be removed in Haystack 2.17. Use the dedicated `StreamingChunk.finish_reason` field instead. During the migration period, both approaches work but accessing via meta shows deprecation warnings.
+    Updated `ToolInvoker` component to use the new `finish_reason` field when streaming tool results. The component now sets `finish_reason="tool_call_results"` in the final streaming chunk to indicate that tool execution has completed, while maintaining backward compatibility by also setting the value in `meta["finish_reason"]`.
