@@ -555,22 +555,24 @@ class ToolInvoker:
                         tool_call, tool_to_invoke, tool_result = result
 
                         # 4) Merge outputs into state
-                        try:
-                            self._merge_tool_outputs(tool_to_invoke, tool_result, state)
-                        except Exception as e:
+                        with self._state_lock:
                             try:
-                                error_message = self._handle_error(
-                                    ToolOutputMergeError(
-                                        f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
+                                self._merge_tool_outputs(tool_to_invoke, tool_result, state)
+                            except Exception as e:
+                                try:
+                                    error_message = self._handle_error(
+                                        ToolOutputMergeError(
+                                            f"Failed to merge tool outputs from"
+                                            f"tool {tool_call.tool_name} into State: {e}"
+                                        )
                                     )
-                                )
-                                tool_messages.append(
-                                    ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
-                                )
-                                continue
-                            except ToolOutputMergeError as propagated_e:
-                                # Re-raise with proper error chain
-                                raise propagated_e from e
+                                    tool_messages.append(
+                                        ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
+                                    )
+                                    continue
+                                except ToolOutputMergeError as propagated_e:
+                                    # Re-raise with proper error chain
+                                    raise propagated_e from e
 
                         # 5) Prepare the tool result ChatMessage message
                         tool_messages.append(
