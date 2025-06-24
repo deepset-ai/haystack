@@ -5,6 +5,7 @@
 import asyncio
 import inspect
 import json
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import Any, Dict, List, Optional, Set, Union
@@ -197,8 +198,12 @@ class ToolInvoker:
         :param max_workers:
             The maximum number of workers to use in the thread pool executor.
         :param async_executor:
-            Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded executor will be
-            initialized and used.
+            Optional `ThreadPoolExecutor` to use for asynchronous calls.
+            Note: As of Haystack 2.15.0, you no longer need to explicitly pass
+            `async_executor`. Instead, you can provide the `max_workers` parameter,
+            and a `ThreadPoolExecutor` will be created automatically for parallel tool invocations.
+            Support for `async_executor` will be removed in Haystack 2.16.0.
+            Please migrate to using `max_workers` instead.
         :raises ValueError:
             If no tools are provided or if duplicate tool names are found.
         """
@@ -227,8 +232,19 @@ class ToolInvoker:
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
         self._owns_executor = async_executor is None
+        if self._owns_executor:
+            warnings.warn(
+                "'async_executor' is deprecated in favor of the 'max_workers' parameter. "
+                "ToolInvoker now creates its own executor by default using 'max_workers'. "
+                "Support for 'async_executor' will be removed in Haystack 2.16.0. "
+                "Please update your usage to pass 'max_workers' instead.",
+                DeprecationWarning,
+            )
+
         self.executor = (
-            ThreadPoolExecutor(thread_name_prefix=f"async-ToolInvoker-executor-{id(self)}", max_workers=1)
+            ThreadPoolExecutor(
+                thread_name_prefix=f"async-ToolInvoker-executor-{id(self)}", max_workers=self.max_workers
+            )
             if async_executor is None
             else async_executor
         )
@@ -663,7 +679,7 @@ class ToolInvoker:
             except ToolInvocationError as e:
                 return e
 
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+        with self.executor as executor:
             tool_call_tasks = []
             valid_tool_calls = []
             tool_messages = []
