@@ -52,6 +52,7 @@ class SentenceTransformersSimilarityRanker:
         embedding_separator: str = "\n",
         scale_score: bool = True,
         score_threshold: Optional[float] = None,
+        trust_remote_code: bool = False,
         model_kwargs: Optional[Dict[str, Any]] = None,
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
         config_kwargs: Optional[Dict[str, Any]] = None,
@@ -84,6 +85,9 @@ class SentenceTransformersSimilarityRanker:
             If `False`, disables scaling of the raw logit predictions.
         :param score_threshold:
             Use it to return documents with a score above this threshold only.
+        :param trust_remote_code:
+            If `False`, allows only Hugging Face verified model architectures.
+            If `True`, allows custom models and scripts.
         :param model_kwargs:
             Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
             when loading the model. Refer to specific model documentation for available kwargs.
@@ -119,6 +123,7 @@ class SentenceTransformersSimilarityRanker:
         self.embedding_separator = embedding_separator
         self.scale_score = scale_score
         self.score_threshold = score_threshold
+        self.trust_remote_code = trust_remote_code
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
         self.config_kwargs = config_kwargs
@@ -140,6 +145,7 @@ class SentenceTransformersSimilarityRanker:
                 model_name_or_path=self.model,
                 device=self.device.to_torch_str(),
                 token=self.token.resolve_value() if self.token else None,
+                trust_remote_code=self.trust_remote_code,
                 model_kwargs=self.model_kwargs,
                 tokenizer_kwargs=self.tokenizer_kwargs,
                 config_kwargs=self.config_kwargs,
@@ -165,6 +171,7 @@ class SentenceTransformersSimilarityRanker:
             embedding_separator=self.embedding_separator,
             scale_score=self.scale_score,
             score_threshold=self.score_threshold,
+            trust_remote_code=self.trust_remote_code,
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
             config_kwargs=self.config_kwargs,
