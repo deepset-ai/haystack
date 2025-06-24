@@ -241,7 +241,7 @@ def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Se
         allowed_model = model_info.pipeline_tag in ["sentence-similarity", "feature-extraction"]
         error_msg = f"Model {model_id} is not a embedding model. Please provide a embedding model."
     elif model_type == HFModelType.GENERATION:
-        allowed_model = model_info.pipeline_tag in ["text-generation", "text2text-generation"]
+        allowed_model = model_info.pipeline_tag in ["text-generation", "text2text-generation", "image-text-to-text"]
         error_msg = f"Model {model_id} is not a text generation model. Please provide a text generation model."
     else:
         allowed_model = False
