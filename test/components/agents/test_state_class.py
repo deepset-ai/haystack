@@ -368,9 +368,15 @@ class TestState:
         }
         assert state_dict["data"] == {
             "serialization_schema": {
-                "numbers": {"type": "integer"},
-                "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
-                "dict_of_lists": {"type": "object"},
+                "type": "object",
+                "properties": {
+                    "numbers": {"type": "integer"},
+                    "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+                    "dict_of_lists": {
+                        "type": "object",
+                        "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}},
+                    },
+                },
             },
             "serialized_data": {
                 "numbers": 1,
@@ -380,6 +386,57 @@ class TestState:
         }
 
     def test_state_from_dict(self):
+        state_dict = {
+            "schema": {
+                "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
+                "messages": {
+                    "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
+                    "handler": "haystack.components.agents.state.state_utils.merge_lists",
+                },
+                "dict_of_lists": {
+                    "type": "dict",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+            },
+            "data": {
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {
+                        "numbers": {"type": "integer"},
+                        "messages": {
+                            "type": "array",
+                            "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
+                        },
+                        "dict_of_lists": {
+                            "type": "object",
+                            "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}},
+                        },
+                    },
+                },
+                "serialized_data": {
+                    "numbers": 1,
+                    "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+                    "dict_of_lists": {"numbers": [1, 2, 3]},
+                },
+            },
+        }
+        state = State.from_dict(state_dict)
+        # Check types are correctly converted
+        assert state.schema["numbers"]["type"] == int
+        assert state.schema["dict_of_lists"]["type"] == dict
+        # Check handlers are functions, not comparing exact functions as they might be different references
+        assert callable(state.schema["numbers"]["handler"])
+        assert callable(state.schema["messages"]["handler"])
+        assert callable(state.schema["dict_of_lists"]["handler"])
+        # Check data is correct
+        assert state.data["numbers"] == 1
+        assert state.data["messages"] == [ChatMessage.from_user(text="Hello, world!")]
+        assert state.data["dict_of_lists"] == {"numbers": [1, 2, 3]}
+
+    def test_state_from_dict_legacy(self):
+        # this is the old format of the state dictionary
+        # it is kept for backward compatibility
+        # it will be removed in Haystack 2.16.0
         state_dict = {
             "schema": {
                 "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
