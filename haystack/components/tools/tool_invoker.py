@@ -5,6 +5,7 @@
 import asyncio
 import inspect
 import json
+import threading
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -231,11 +232,12 @@ class ToolInvoker:
         self._tools_with_names = dict(zip(tool_names, converted_tools))
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
+        self._state_lock = threading.Lock()
         self._owns_executor = async_executor is None
         if self._owns_executor:
             warnings.warn(
                 "'async_executor' is deprecated in favor of the 'max_workers' parameter. "
-                "ToolInvoker now creates its own executor by default using 'max_workers'. "
+                "ToolInvoker now creates its own thread pool executor by default using 'max_workers'. "
                 "Support for 'async_executor' will be removed in Haystack 2.16.0. "
                 "Please update your usage to pass 'max_workers' instead.",
                 DeprecationWarning,
@@ -559,7 +561,7 @@ class ToolInvoker:
                             try:
                                 error_message = self._handle_error(
                                     ToolOutputMergeError(
-                                        f"Failed to merge tool outputs fromtool {tool_call.tool_name} into State: {e}"
+                                        f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
                                     )
                                 )
                                 tool_messages.append(
@@ -734,22 +736,23 @@ class ToolInvoker:
                         continue
 
                     # 5) Merge outputs into state
-                    try:
-                        self._merge_tool_outputs(tool_to_invoke, tool_result, state)
-                    except Exception as e:
+                    with self._state_lock:
                         try:
-                            error_message = self._handle_error(
-                                ToolOutputMergeError(
-                                    f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
+                            self._merge_tool_outputs(tool_to_invoke, tool_result, state)
+                        except Exception as e:
+                            try:
+                                error_message = self._handle_error(
+                                    ToolOutputMergeError(
+                                        f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
+                                    )
                                 )
-                            )
-                            tool_messages.append(
-                                ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
-                            )
-                            continue
-                        except ToolOutputMergeError as propagated_e:
-                            # Re-raise with proper error chain
-                            raise propagated_e from e
+                                tool_messages.append(
+                                    ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
+                                )
+                                continue
+                            except ToolOutputMergeError as propagated_e:
+                                # Re-raise with proper error chain
+                                raise propagated_e from e
 
                     # 6) Prepare the tool result ChatMessage message
                     tool_messages.append(
