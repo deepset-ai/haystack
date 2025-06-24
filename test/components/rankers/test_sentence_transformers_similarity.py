@@ -19,7 +19,29 @@ class TestSentenceTransformersSimilarityRanker:
             SentenceTransformersSimilarityRanker(top_k=-1)
 
     @patch("haystack.components.rankers.sentence_transformers_similarity.CrossEncoder")
-    def test_init_onnx_backend(self, mocked_cross_encoder):
+    def test_init_warm_up_torch_backend(self, mocked_cross_encoder):
+        ranker = SentenceTransformersSimilarityRanker(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            token=None,
+            device=ComponentDevice.from_str("cpu"),
+            backend="torch",
+            trust_remote_code=True,
+        )
+
+        ranker.warm_up()
+        mocked_cross_encoder.assert_called_once_with(
+            model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
+            device="cpu",
+            token=None,
+            trust_remote_code=True,
+            model_kwargs=None,
+            tokenizer_kwargs=None,
+            config_kwargs=None,
+            backend="torch",
+        )
+
+    @patch("haystack.components.rankers.sentence_transformers_similarity.CrossEncoder")
+    def test_init_warm_up_onnx_backend(self, mocked_cross_encoder):
         onnx_ranker = SentenceTransformersSimilarityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2",
             token=None,
@@ -32,6 +54,7 @@ class TestSentenceTransformersSimilarityRanker:
             model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
             device="cpu",
             token=None,
+            trust_remote_code=False,
             model_kwargs=None,
             tokenizer_kwargs=None,
             config_kwargs=None,
@@ -39,7 +62,7 @@ class TestSentenceTransformersSimilarityRanker:
         )
 
     @patch("haystack.components.rankers.sentence_transformers_similarity.CrossEncoder")
-    def test_init_openvino_backend(self, mocked_cross_encoder):
+    def test_init_warm_up_openvino_backend(self, mocked_cross_encoder):
         openvino_ranker = SentenceTransformersSimilarityRanker(
             model="sentence-transformers/all-MiniLM-L6-v2",
             token=None,
@@ -52,6 +75,7 @@ class TestSentenceTransformersSimilarityRanker:
             model_name_or_path="sentence-transformers/all-MiniLM-L6-v2",
             device="cpu",
             token=None,
+            trust_remote_code=False,
             model_kwargs=None,
             tokenizer_kwargs=None,
             config_kwargs=None,
@@ -74,6 +98,7 @@ class TestSentenceTransformersSimilarityRanker:
                 "embedding_separator": "\n",
                 "scale_score": True,
                 "score_threshold": None,
+                "trust_remote_code": False,
                 "model_kwargs": None,
                 "tokenizer_kwargs": None,
                 "config_kwargs": None,
@@ -92,6 +117,7 @@ class TestSentenceTransformersSimilarityRanker:
             document_prefix="document_instruction: ",
             scale_score=False,
             score_threshold=0.01,
+            trust_remote_code=True,
             model_kwargs={"torch_dtype": torch.float16},
             tokenizer_kwargs={"model_max_length": 512},
             batch_size=32,
@@ -110,6 +136,7 @@ class TestSentenceTransformersSimilarityRanker:
                 "embedding_separator": "\n",
                 "scale_score": False,
                 "score_threshold": 0.01,
+                "trust_remote_code": True,
                 "model_kwargs": {"torch_dtype": "torch.float16"},
                 "tokenizer_kwargs": {"model_max_length": 512},
                 "config_kwargs": None,
@@ -141,6 +168,7 @@ class TestSentenceTransformersSimilarityRanker:
                 "embedding_separator": "\n",
                 "scale_score": True,
                 "score_threshold": None,
+                "trust_remote_code": False,
                 "model_kwargs": {
                     "load_in_4bit": True,
                     "bnb_4bit_use_double_quant": True,
@@ -168,6 +196,7 @@ class TestSentenceTransformersSimilarityRanker:
                 "embedding_separator": "\n",
                 "scale_score": False,
                 "score_threshold": 0.01,
+                "trust_remote_code": False,
                 "model_kwargs": {"torch_dtype": "torch.float16"},
                 "tokenizer_kwargs": None,
                 "config_kwargs": None,
@@ -187,6 +216,7 @@ class TestSentenceTransformersSimilarityRanker:
         assert component.embedding_separator == "\n"
         assert not component.scale_score
         assert component.score_threshold == 0.01
+        assert component.trust_remote_code is False
         assert component.model_kwargs == {"torch_dtype": torch.float16}
         assert component.tokenizer_kwargs is None
         assert component.config_kwargs is None
@@ -209,6 +239,7 @@ class TestSentenceTransformersSimilarityRanker:
         assert component.embedding_separator == "\n"
         assert component.scale_score
         assert component.score_threshold is None
+        assert component.trust_remote_code is False
         assert component.model_kwargs is None
         assert component.tokenizer_kwargs is None
         assert component.config_kwargs is None
