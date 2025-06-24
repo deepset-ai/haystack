@@ -1,4 +1,6 @@
 ---
 features:
   - |
-    `ToolInvoker` now executes `tool_calls` in parallel within the run_async method.
+    `ToolInvoker` now executes `tool_calls` in parallel for both sync and async mode.
+    `async_executor` parameter in `ToolInvoker` is deprecated in favor of `max_workers` parameter and will be removed in Haystack 2.16.0.
+    You can use `max_workers` parameter to control the number of threads used for parallel tool calling.
