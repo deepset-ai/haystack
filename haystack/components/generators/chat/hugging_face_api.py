@@ -18,6 +18,7 @@ from haystack.dataclasses import (
     ToolCall,
     select_streaming_callback,
 )
+from haystack.dataclasses.streaming_chunk import FinishReason
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
@@ -41,6 +42,7 @@ with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"
         ChatCompletionOutput,
         ChatCompletionOutputToolCall,
         ChatCompletionStreamOutput,
+        ChatCompletionStreamOutputChoice,
         InferenceClient,
     )
 
@@ -110,6 +112,42 @@ def _convert_tools_to_hfapi_tools(
     return hf_tools
 
 
+def _map_hf_finish_reason_to_haystack(choice: "ChatCompletionStreamOutputChoice") -> Optional[FinishReason]:
+    """
+    Map HuggingFace finish reasons to Haystack FinishReason literals.
+
+    Uses the full choice object to detect tool calls and provide accurate mapping.
+
+    HuggingFace finish reasons:
+    - "length": number of generated tokens == `max_new_tokens`
+    - "eos_token": the model generated its end of sequence token
+    - "stop_sequence": the model generated a text included in `stop_sequences`
+
+    Additionally detects tool calls from delta.tool_calls or delta.tool_call_id.
+
+    :param choice: The HuggingFace ChatCompletionStreamOutputChoice object.
+    :returns: The corresponding Haystack FinishReason or None.
+    """
+    if choice.finish_reason is None:
+        return None
+
+    # Check if this choice contains tool call information
+    has_tool_calls = choice.delta.tool_calls is not None or choice.delta.tool_call_id is not None
+
+    # If we detect tool calls, override the finish reason
+    if has_tool_calls:
+        return "tool_calls"
+
+    # Map HuggingFace finish reasons to Haystack standard ones
+    mapping: Dict[str, FinishReason] = {
+        "length": "length",  # Direct match
+        "eos_token": "stop",  # EOS token means natural stop
+        "stop_sequence": "stop",  # Stop sequence means natural stop
+    }
+
+    return mapping.get(choice.finish_reason, "stop")  # Default to "stop" for unknown reasons
+
+
 def _convert_chat_completion_stream_output_to_streaming_chunk(
     chunk: "ChatCompletionStreamOutput",
     previous_chunks: List[StreamingChunk],
@@ -133,6 +171,7 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
     # the argument is probably allowed for compatibility with OpenAI
     # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
     choice = chunk.choices[0]
+    mapped_finish_reason = _map_hf_finish_reason_to_haystack(choice)
     stream_chunk = StreamingChunk(
         content=choice.delta.content or "",
         meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "finish_reason": choice.finish_reason},
@@ -141,9 +180,7 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
         index=0 if choice.finish_reason is None else None,
         # start is True at the very beginning since first chunk contains role information + first part of the answer.
         start=len(previous_chunks) == 0,
-        # there is no way to constrain here as many models can return any finish reason
-        # so we need to ignore the type error
-        finish_reason=choice.finish_reason,  # type: ignore[arg-type]
+        finish_reason=mapped_finish_reason,
     )
     return stream_chunk
 
