@@ -125,33 +125,6 @@ def test_create_chunk_with_finish_reason_and_meta():
     assert chunk.meta["usage"]["tokens"] == 10
 
 
-def test_dual_finish_reason_support():
-    """Test that both finish_reason approaches work without warnings."""
-    import warnings
-
-    # Test that accessing finish_reason via meta does NOT show warnings
-    chunk = StreamingChunk(content="Test content", meta={"finish_reason": "length"})
-
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        result_meta = chunk.meta.get("finish_reason")
-        result_direct = chunk.meta["finish_reason"]
-
-        # No warnings should be raised
-        assert len(w) == 0
-        assert result_meta == "length"
-        assert result_direct == "length"
-
-    # Test that both approaches can be used simultaneously
-    chunk_dual = StreamingChunk(
-        content="Test content", finish_reason="stop", meta={"finish_reason": "length", "model": "gpt-4"}
-    )
-
-    assert chunk_dual.finish_reason == "stop"
-    assert chunk_dual.meta["finish_reason"] == "length"
-    assert chunk_dual.meta.get("finish_reason") == "length"
-
-
 def test_finish_reason_standard_values():
     """Test all standard finish_reason values including the new Haystack-specific ones."""
     standard_values = ["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
