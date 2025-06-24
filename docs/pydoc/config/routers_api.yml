@@ -5,6 +5,7 @@ loaders:
       [
         "conditional_router",
         "file_type_router",
+        "llm_messages_router",
         "metadata_router",
         "text_language_router",
         "transformers_text_router",

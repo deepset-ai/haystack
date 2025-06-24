@@ -10,6 +10,7 @@ from lazy_imports import LazyImporter
 _import_structure = {
     "conditional_router": ["ConditionalRouter"],
     "file_type_router": ["FileTypeRouter"],
+    "llm_messages_router": ["LLMMessagesRouter"],
     "metadata_router": ["MetadataRouter"],
     "text_language_router": ["TextLanguageRouter"],
     "transformers_text_router": ["TransformersTextRouter"],
@@ -19,6 +20,7 @@ _import_structure = {
 if TYPE_CHECKING:
     from .conditional_router import ConditionalRouter as ConditionalRouter
     from .file_type_router import FileTypeRouter as FileTypeRouter
+    from .llm_messages_router import LLMMessagesRouter as LLMMessagesRouter
     from .metadata_router import MetadataRouter as MetadataRouter
     from .text_language_router import TextLanguageRouter as TextLanguageRouter
     from .transformers_text_router import TransformersTextRouter as TransformersTextRouter
