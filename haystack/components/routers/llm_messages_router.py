@@ -15,7 +15,7 @@ from haystack.utils import deserialize_chatgenerator_inplace
 @component
 class LLMMessagesRouter:
     """
-    Routes Chat Messages to different connections, using a generative Language Model to perform classification.
+    Routes Chat Messages to different connections using a generative Language Model to perform classification.
 
     This component can be used with general-purpose LLMs and with specialized LLMs for moderation like Llama Guard.
 
@@ -62,16 +62,16 @@ class LLMMessagesRouter:
         """
         Initialize the LLMMessagesRouter component.
 
-        :param chat_generator: a ChatGenerator instance which represents the LLM.
-        :param output_names: list of output connection names. These can be used to connect the router to other
+        :param chat_generator: A ChatGenerator instance which represents the LLM.
+        :param output_names: A list of output connection names. These can be used to connect the router to other
             components.
-        :param output_patterns: list of regular expressions to be matched against the output of the LLM. Each pattern
+        :param output_patterns: A list of regular expressions to be matched against the output of the LLM. Each pattern
             corresponds to an output name. Patterns are evaluated in order.
             When using moderation models, refer to the model card to understand the expected outputs.
-        :param system_prompt: optional system prompt to customize the behavior of the LLM.
+        :param system_prompt: An optional system prompt to customize the behavior of the LLM.
             For moderation models, refer to the model card for supported customization options.
 
-        :raises ValueError: if output_names and output_patterns are not non-empty lists of the same length.
+        :raises ValueError: If output_names and output_patterns are not non-empty lists of the same length.
         """
         if not output_names or not output_patterns or len(output_names) != len(output_patterns):
             raise ValueError("`output_names` and `output_patterns` must be non-empty lists of the same length")
@@ -101,22 +101,22 @@ class LLMMessagesRouter:
         """
         Classify the messages based on LLM output and route them to the appropriate output connection.
 
-        :param messages: list of ChatMessages to be routed. Only user and assistant messages are supported.
+        :param messages: A list of ChatMessages to be routed. Only user and assistant messages are supported.
 
         :returns: A dictionary with the following keys:
-            - "chat_generator_text": the text output of the LLM, useful for debugging.
-            - output names: each contains the list of messages that matched the corresponding pattern.
-            - "unmatched": the messages that did not match any of the output patterns.
+            - "chat_generator_text": The text output of the LLM, useful for debugging.
+            - "output_names": Each contains the list of messages that matched the corresponding pattern.
+            - "unmatched": The messages that did not match any of the output patterns.
 
-        :raises ValueError: if messages is an empty list or contains messages with unsupported roles.
-        :raises RuntimeError: if the component is not warmed up and the ChatGenerator has a warm_up method.
+        :raises ValueError: If messages is an empty list or contains messages with unsupported roles.
+        :raises RuntimeError: If the component is not warmed up and the ChatGenerator has a warm_up method.
         """
         if not messages:
-            raise ValueError("messages must be a non-empty list.")
+            raise ValueError("`messages` must be a non-empty list.")
         if not all(message.is_from(ChatRole.USER) or message.is_from(ChatRole.ASSISTANT) for message in messages):
             msg = (
                 "`messages` must contain only user and assistant messages. To customize the behavior of the "
-                "chat_generator, you can use the `system_prompt` parameter."
+                "`chat_generator`, you can use the `system_prompt` parameter."
             )
             raise ValueError(msg)
 
