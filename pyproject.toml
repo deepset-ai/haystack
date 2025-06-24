@@ -176,7 +176,7 @@ detached = true                         # To avoid installing the dependencies f
 dependencies = ["haystack-pydoc-tools"]
 
 [tool.hatch.envs.readme.scripts]
-sync = "./.github/utils/pydoc-markdown.sh"
+sync = "./.github/utils/pydoc-markdown.sh {args}"
 delete-outdated = "python ./.github/utils/delete_outdated_docs.py {args}"
 
 [project.urls]
