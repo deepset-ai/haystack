@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 import json
 import datetime
+import time
 
 from haystack import Pipeline
 from haystack.components.builders.prompt_builder import PromptBuilder
@@ -623,6 +624,84 @@ class TestToolInvoker:
                 enable_streaming_callback_passthrough=False,
             )
             mock_run.assert_called_once_with(messages=[ChatMessage.from_user(text="Hello!")])
+
+    def test_parallel_tool_calling_with_state_updates(self):
+        """Test that parallel tool execution with state updates works correctly with the state lock."""
+        # Create a shared counter variable to simulate a state value that gets updated
+        execution_log = []
+
+        def function_1():
+            # Simulate some work that takes time
+            time.sleep(0.1)
+            execution_log.append("tool_1_executed")
+            return {"counter": 1, "tool_name": "tool_1"}
+
+        def function_2():
+            # Simulate some work that takes time
+            time.sleep(0.1)
+            execution_log.append("tool_2_executed")
+            return {"counter": 2, "tool_name": "tool_2"}
+
+        def function_3():
+            # Simulate some work that takes time
+            time.sleep(0.1)
+            execution_log.append("tool_3_executed")
+            return {"counter": 3, "tool_name": "tool_3"}
+
+        # Create tools that all update the same state key
+        tool_1 = Tool(
+            name="state_tool_1",
+            description="A tool that updates state counter",
+            parameters={"type": "object", "properties": {}},
+            function=function_1,
+            outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
+        )
+
+        tool_2 = Tool(
+            name="state_tool_2",
+            description="A tool that updates state counter",
+            parameters={"type": "object", "properties": {}},
+            function=function_2,
+            outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
+        )
+
+        tool_3 = Tool(
+            name="state_tool_3",
+            description="A tool that updates state counter",
+            parameters={"type": "object", "properties": {}},
+            function=function_3,
+            outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
+        )
+
+        # Create ToolInvoker with all three tools
+        invoker = ToolInvoker(tools=[tool_1, tool_2, tool_3], raise_on_failure=True)
+
+        # Create initial state
+        state = State(schema={"counter": {"type": int}, "last_tool": {"type": str}})
+
+        # Create tool calls that will be executed in parallel
+        tool_calls = [
+            ToolCall(tool_name="state_tool_1", arguments={}),
+            ToolCall(tool_name="state_tool_2", arguments={}),
+            ToolCall(tool_name="state_tool_3", arguments={}),
+        ]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        # Execute the tools
+        result = invoker.run(messages=[message], state=state)
+
+        # Verify that all three tools were executed
+        assert len(execution_log) == 3
+        assert "tool_1_executed" in execution_log
+        assert "tool_2_executed" in execution_log
+        assert "tool_3_executed" in execution_log
+
+        # Verify that the state was updated correctly
+        # Due to parallel execution, we can't predict which tool will be the last to update
+        assert state.has("counter")
+        assert state.has("last_tool")
+        assert state.get("counter") in [1, 2, 3]  # Should be one of the tool values
+        assert state.get("last_tool") in ["tool_1", "tool_2", "tool_3"]  # Should be one of the tool names
 
 
 class TestMergeToolOutputs:
