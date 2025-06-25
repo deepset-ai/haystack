@@ -1,6 +1,6 @@
 ---
 features:
   - |
-    Added dedicated `finish_reason` field to `StreamingChunk` class to improve type safety and enable sophisticated streaming UI logic. The field uses a `FinishReason` type alias with standard values: "stop", "length", "tool_calls", "content_filter", plus Haystack-specific values like "tool_call_results" (used by ToolInvoker to indicate tool execution completion). Both the dedicated field and legacy meta access (`chunk.meta["finish_reason"]`) are permanently supported for maximum flexibility. Users can choose either approach based on their preferences, with the dedicated field providing better type safety and IDE support.
+    Added dedicated `finish_reason` field to `StreamingChunk` class to improve type safety and enable sophisticated streaming UI logic. The field uses a `FinishReason` type alias with standard values: "stop", "length", "tool_calls", "content_filter", plus Haystack-specific value "tool_call_results" (used by ToolInvoker to indicate tool execution completion).
   - |
     Updated `ToolInvoker` component to use the new `finish_reason` field when streaming tool results. The component now sets `finish_reason="tool_call_results"` in the final streaming chunk to indicate that tool execution has completed, while maintaining backward compatibility by also setting the value in `meta["finish_reason"]`.

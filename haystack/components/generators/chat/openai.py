@@ -18,6 +18,7 @@ from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
+    FinishReason,
     StreamingCallbackT,
     StreamingChunk,
     SyncStreamingCallbackT,
@@ -519,6 +520,13 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     :returns:
         A StreamingChunk object representing the content of the chunk from the OpenAI API.
     """
+    finish_reason_mapping: Dict[str, FinishReason] = {
+        "stop": "stop",
+        "length": "length",
+        "content_filter": "content_filter",
+        "tool_calls": "tool_calls",
+        "function_call": "tool_calls",
+    }
     # On very first chunk so len(previous_chunks) == 0, the Choices field only provides role info (e.g. "assistant")
     # Choices is empty if include_usage is set to True where the usage information is returned.
     if len(chunk.choices) == 0:
@@ -557,7 +565,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
             index=tool_calls_deltas[0].index,
             tool_calls=tool_calls_deltas,
             start=tool_calls_deltas[0].tool_name is not None,
-            finish_reason=choice.finish_reason,
+            finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
             meta={
                 "model": chunk.model,
                 "index": choice.index,
@@ -586,7 +594,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # The first chunk is always a start message chunk that only contains role information, so if we reach here
         # and previous_chunks is length 1 then this is the start of text content.
         start=len(previous_chunks) == 1,
-        finish_reason=choice.finish_reason,
+        finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
         meta={
             "model": chunk.model,
             "index": choice.index,

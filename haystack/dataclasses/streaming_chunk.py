@@ -10,8 +10,8 @@ from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
 
 # Type alias for standard finish_reason values following OpenAI's convention
-# plus Haystack-specific values
-FinishReason = Literal["stop", "length", "tool_calls", "function_call", "content_filter", "tool_call_results"]
+# plus Haystack-specific value ("tool_call_results")
+FinishReason = Literal["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
 
 
 @dataclass
@@ -74,8 +74,6 @@ class StreamingChunk:
 
     :param content: The content of the message chunk as a string.
     :param meta: A dictionary containing metadata related to the message chunk.
-        NOTE: Both 'finish_reason' field and meta['finish_reason'] are supported for flexibility.
-        The dedicated field provides better type safety and IDE support.
     :param component_info: A `ComponentInfo` object containing information about the component that generated the chunk,
         such as the component name and type.
     :param index: An optional integer index representing which content block this chunk belongs to.
@@ -85,7 +83,7 @@ class StreamingChunk:
     :param start: A boolean indicating whether this chunk marks the start of a content block.
     :param finish_reason: An optional value indicating the reason the generation finished.
         Standard values follow OpenAI's convention: "stop", "length", "tool_calls", "content_filter",
-        plus Haystack-specific values like "tool_call_results".
+        plus Haystack-specific value "tool_call_results".
     """
 
     content: str

@@ -118,7 +118,8 @@ def _map_hf_finish_reason_to_haystack(choice: "ChatCompletionStreamOutputChoice"
 
     Uses the full choice object to detect tool calls and provide accurate mapping.
 
-    HuggingFace finish reasons:
+    HuggingFace finish reasons (can be found here https://huggingface.github.io/text-generation-inference/ under
+    FinishReason):
     - "length": number of generated tokens == `max_new_tokens`
     - "eos_token": the model generated its end of sequence token
     - "stop_sequence": the model generated a text included in `stop_sequences`
@@ -171,7 +172,7 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
     # the argument is probably allowed for compatibility with OpenAI
     # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
     choice = chunk.choices[0]
-    mapped_finish_reason = _map_hf_finish_reason_to_haystack(choice)
+    mapped_finish_reason = _map_hf_finish_reason_to_haystack(choice) if choice.finish_reason else None
     stream_chunk = StreamingChunk(
         content=choice.delta.content or "",
         meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "finish_reason": choice.finish_reason},

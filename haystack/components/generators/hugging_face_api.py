@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union, cast
 from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses import (
     ComponentInfo,
+    FinishReason,
     StreamingCallbackT,
     StreamingChunk,
     SyncStreamingCallbackT,
@@ -241,13 +242,21 @@ class HuggingFaceAPIGenerator:
             if first_chunk_time is None:
                 first_chunk_time = datetime.now().isoformat()
 
+            mapping: Dict[str, FinishReason] = {
+                "length": "length",  # Direct match
+                "eos_token": "stop",  # EOS token means natural stop
+                "stop_sequence": "stop",  # Stop sequence means natural stop
+            }
+            mapped_finish_reason = (
+                mapping.get(chunk_metadata["finish_reason"], "stop") if chunk_metadata.get("finish_reason") else None
+            )
             stream_chunk = StreamingChunk(
                 content=token.text,
                 meta=chunk_metadata,
                 component_info=component_info,
                 index=0,
                 start=len(chunks) == 0,
-                finish_reason=chunk_metadata.get("finish_reason"),
+                finish_reason=mapped_finish_reason,
             )
             chunks.append(stream_chunk)
             streaming_callback(stream_chunk)

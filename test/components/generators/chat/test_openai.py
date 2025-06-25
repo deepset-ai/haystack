@@ -986,7 +986,6 @@ def streaming_chunks():
                 "received_at": ANY,
                 "usage": None,
             },
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1008,7 +1007,6 @@ def streaming_chunks():
             index=0,
             tool_calls=[ToolCallDelta(tool_name="weather", id="call_zcvlnVaTeJWRjLAFfYxX69z4", index=0)],
             start=True,
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1022,7 +1020,6 @@ def streaming_chunks():
             },
             index=0,
             tool_calls=[ToolCallDelta(arguments='{"ci', index=0)],
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1036,7 +1033,6 @@ def streaming_chunks():
             },
             index=0,
             tool_calls=[ToolCallDelta(arguments='ty": ', index=0)],
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1050,7 +1046,6 @@ def streaming_chunks():
             },
             index=0,
             tool_calls=[ToolCallDelta(arguments='"Paris', index=0)],
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1064,7 +1059,6 @@ def streaming_chunks():
             },
             index=0,
             tool_calls=[ToolCallDelta(arguments='"}', index=0)],
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1086,7 +1080,6 @@ def streaming_chunks():
             index=1,
             tool_calls=[ToolCallDelta(tool_name="weather", id="call_C88m67V16CrETq6jbNXjdZI9", index=1)],
             start=True,
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1100,7 +1093,6 @@ def streaming_chunks():
             },
             index=1,
             tool_calls=[ToolCallDelta(arguments='{"ci', index=1)],
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1114,7 +1106,6 @@ def streaming_chunks():
             },
             index=1,
             tool_calls=[ToolCallDelta(arguments='ty": ', index=1)],
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1128,7 +1119,6 @@ def streaming_chunks():
             },
             index=1,
             tool_calls=[ToolCallDelta(arguments='"Berli', index=1)],
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1142,7 +1132,6 @@ def streaming_chunks():
             },
             index=1,
             tool_calls=[ToolCallDelta(arguments='n"}', index=1)],
-            finish_reason=None,
         ),
         StreamingChunk(
             content="",
@@ -1174,7 +1163,6 @@ def streaming_chunks():
                     "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
                 },
             },
-            finish_reason=None,
         ),
     ]
 
