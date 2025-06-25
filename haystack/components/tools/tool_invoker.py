@@ -570,7 +570,7 @@ class ToolInvoker:
                     future = executor.submit(self._execute_single_tool_call, **params)  # type: ignore[arg-type]
                     futures.append(future)
 
-                # 3) Process results as they complete
+                # 3) Process results in the order they are submitted
                 for future in futures:
                     result = future.result()
                     if isinstance(result, ChatMessage):
