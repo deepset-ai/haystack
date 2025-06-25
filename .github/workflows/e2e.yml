@@ -18,6 +18,8 @@ env:
   PYTHON_VERSION: "3.9"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   HATCH_VERSION: "1.14.1"
+  # we use HF_TOKEN instead of HF_API_TOKEN to work around a Hugging Face bug
+  # see https://github.com/deepset-ai/haystack/issues/9552
   HF_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
 
 jobs:
