@@ -711,6 +711,7 @@ class TestHuggingFaceAPIChatGenerator:
                         "model": "microsoft/Phi-3.5-mini-instruct",
                         "finish_reason": "stop",
                     },
+                    finish_reason="stop",
                 ),
                 [0],
             ),

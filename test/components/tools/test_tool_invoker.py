@@ -203,6 +203,28 @@ class TestToolInvoker:
         assert tool_call_result.origin == tool_call
         assert not tool_call_result.error
 
+    def test_run_with_streaming_callback_finish_reason(self, invoker):
+        streaming_chunks = []
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            streaming_chunks.append(chunk)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        # Check that we received streaming chunks
+        assert len(streaming_chunks) >= 2  # At least one for tool result and one for finish reason
+
+        # The last chunk should have finish_reason set to "tool_call_results"
+        final_chunk = streaming_chunks[-1]
+        assert final_chunk.finish_reason == "tool_call_results"
+        assert final_chunk.meta["finish_reason"] == "tool_call_results"
+        assert final_chunk.content == ""
+
     @pytest.mark.asyncio
     async def test_run_async_with_streaming_callback(self, thread_executor, weather_tool):
         streaming_callback_called = False
@@ -244,6 +266,36 @@ class TestToolInvoker:
 
         # check we called the streaming callback
         assert streaming_callback_called
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_streaming_callback_finish_reason(self, thread_executor, weather_tool):
+        streaming_chunks = []
+
+        async def streaming_callback(chunk: StreamingChunk) -> None:
+            streaming_chunks.append(chunk)
+
+        tool_invoker = ToolInvoker(
+            tools=[weather_tool],
+            raise_on_failure=True,
+            convert_result_to_json_string=False,
+            async_executor=thread_executor,
+        )
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = await tool_invoker.run_async(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        # Check that we received streaming chunks
+        assert len(streaming_chunks) >= 2  # At least one for tool result and one for finish reason
+
+        # The last chunk should have finish_reason set to "tool_call_results"
+        final_chunk = streaming_chunks[-1]
+        assert final_chunk.finish_reason == "tool_call_results"
+        assert final_chunk.meta["finish_reason"] == "tool_call_results"
+        assert final_chunk.content == ""
 
     def test_run_with_toolset(self, tool_set):
         tool_invoker = ToolInvoker(tools=tool_set, raise_on_failure=True, convert_result_to_json_string=False)

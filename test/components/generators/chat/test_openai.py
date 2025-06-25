@@ -1143,6 +1143,7 @@ def streaming_chunks():
                 "received_at": ANY,
                 "usage": None,
             },
+            finish_reason="tool_calls",
         ),
         StreamingChunk(
             content="",
@@ -1174,7 +1175,7 @@ class TestChatCompletionChunkConversion:
                 chunk=openai_chunk, previous_chunks=previous_chunks
             )
             assert stream_chunk == haystack_chunk
-            previous_chunks.append(openai_chunk)
+            previous_chunks.append(stream_chunk)
 
     def test_handle_stream_response(self, chat_completion_chunks):
         openai_chunks = chat_completion_chunks

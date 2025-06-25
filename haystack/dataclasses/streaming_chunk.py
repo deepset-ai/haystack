@@ -9,6 +9,10 @@ from haystack.core.component import Component
 from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
 
+# Type alias for standard finish_reason values following OpenAI's convention
+# plus Haystack-specific value ("tool_call_results")
+FinishReason = Literal["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
+
 
 @dataclass
 class ToolCallDelta:
@@ -77,6 +81,9 @@ class StreamingChunk:
         chunk.
     :param tool_call_result: An optional ToolCallResult object representing the result of a tool call.
     :param start: A boolean indicating whether this chunk marks the start of a content block.
+    :param finish_reason: An optional value indicating the reason the generation finished.
+        Standard values follow OpenAI's convention: "stop", "length", "tool_calls", "content_filter",
+        plus Haystack-specific value "tool_call_results".
     """
 
     content: str
@@ -86,6 +93,7 @@ class StreamingChunk:
     tool_calls: Optional[List[ToolCallDelta]] = field(default=None)
     tool_call_result: Optional[ToolCallResult] = field(default=None)
     start: bool = field(default=False)
+    finish_reason: Optional[FinishReason] = field(default=None)
 
     def __post_init__(self):
         fields_set = sum(bool(x) for x in (self.content, self.tool_calls, self.tool_call_result))

@@ -266,6 +266,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.948772",
             },
             component_info=ComponentInfo(name="test", type="test"),
+            finish_reason="tool_calls",
         ),
         StreamingChunk(
             content="",
