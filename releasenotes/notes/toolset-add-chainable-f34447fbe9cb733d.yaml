@@ -1,0 +1,4 @@
+
+enhancements:
+  - |
+    Made `Toolset.add()` method chainable and ensured it flattens nested toolsets. This allows chaining calls like `t.add(a).add(b)` and adds all tools correctly.
