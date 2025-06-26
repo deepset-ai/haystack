@@ -185,7 +185,7 @@ class Toolset:
             return item in self.tools
         return False
 
-    def add(self, tool: Union[Tool, "Toolset"]) -> None:
+    def add(self, tool: Union[Tool, "Toolset"]) -> "Toolset":
         """
         Add a new Tool or merge another Toolset.
 
@@ -207,6 +207,7 @@ class Toolset:
         _check_duplicate_tool_names(combined_tools)
 
         self.tools.extend(new_tools)
+        return self
 
     def to_dict(self) -> Dict[str, Any]:
         """

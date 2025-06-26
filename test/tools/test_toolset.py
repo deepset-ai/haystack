@@ -584,3 +584,32 @@ class TestToolsetWithToolInvoker:
         assert deserialized_invoker._tools_with_names == invoker._tools_with_names
         assert deserialized_invoker.raise_on_failure == invoker.raise_on_failure
         assert deserialized_invoker.convert_result_to_json_string == invoker.convert_result_to_json_string
+
+    def test_toolset_add_can_flatten_nested_toolsets(self):
+        tool_a = Tool(
+            name="add",
+            description="Add two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=add_numbers,
+        )
+        tool_b = Tool(
+            name="multiply",
+            description="Multiply two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=multiply_numbers,
+        )
+        tset_a = Toolset([tool_a])
+        tset_b = Toolset([tool_b])
+
+        master = Toolset()
+        master.add(tset_a).add(tset_b)
+
+        assert {t.name for t in master} == {"add", "multiply"}
