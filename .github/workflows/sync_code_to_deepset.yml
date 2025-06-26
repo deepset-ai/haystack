@@ -14,7 +14,7 @@ jobs:
         fetch-depth: 0  # Fetch all history for proper diff
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.12'
 
@@ -51,5 +51,5 @@ jobs:
         
         # Run the script with changed and deleted files
         uv run --no-project --no-config --no-cache .github/utils/deepset_sync.py \
-          --changed $CHANGED_FILES \
-          --deleted ${{ steps.changed-files.outputs.deleted_files }}
+          --changed "$CHANGED_FILES" \
+          --deleted "${{ steps.changed-files.outputs.deleted_files }}"
