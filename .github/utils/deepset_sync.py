@@ -3,9 +3,6 @@
 #   "requests",
 # ]
 # ///
-"""
-Upload Markdown files to Deepset API with transformed filenames.
-"""
 
 import os
 import sys
@@ -117,7 +114,7 @@ def main() -> None:
     """
     # Parse command line arguments
     parser = argparse.ArgumentParser(
-        description="Upload/delete Markdown files to/from Deepset"
+        description="Upload/delete Python files to/from Deepset"
     )
     parser.add_argument(
         "--changed", nargs="*", default=[], help="Changed or added files"
@@ -138,7 +135,7 @@ def main() -> None:
     deleted_files: list[Path] = [Path(f.strip()) for f in args.deleted if f.strip()]
 
     if not changed_files and not deleted_files:
-        print("No Markdown files to process")
+        print("No files to process")
         sys.exit(0)
 
     print(f"Processing files in Deepset workspace: {workspace}")

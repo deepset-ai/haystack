@@ -1,4 +1,4 @@
-name: Upload Documentation to Deepset
+name: Upload Code to Deepset
 on:
   push:
     branches:
