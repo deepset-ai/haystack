@@ -42,7 +42,9 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             component_info=ComponentInfo(name="test", type="test"),
             index=0,
             start=True,
-            tool_call=ToolCallDelta(id="call_ZOj5l67zhZOx6jqjg7ATQwb6", tool_name="rag_pipeline_tool", arguments=""),
+            tool_calls=[
+                ToolCallDelta(id="call_ZOj5l67zhZOx6jqjg7ATQwb6", tool_name="rag_pipeline_tool", arguments="", index=0)
+            ],
         ),
         StreamingChunk(
             content="",
@@ -59,7 +61,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=0,
-            tool_call=ToolCallDelta(arguments='{"qu'),
+            tool_calls=[ToolCallDelta(arguments='{"qu', index=0)],
         ),
         StreamingChunk(
             content="",
@@ -76,7 +78,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=0,
-            tool_call=ToolCallDelta(arguments='ery":'),
+            tool_calls=[ToolCallDelta(arguments='ery":', index=0)],
         ),
         StreamingChunk(
             content="",
@@ -93,7 +95,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=0,
-            tool_call=ToolCallDelta(arguments=' "Wher'),
+            tool_calls=[ToolCallDelta(arguments=' "Wher', index=0)],
         ),
         StreamingChunk(
             content="",
@@ -110,7 +112,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=0,
-            tool_call=ToolCallDelta(arguments="e do"),
+            tool_calls=[ToolCallDelta(arguments="e do", index=0)],
         ),
         StreamingChunk(
             content="",
@@ -127,7 +129,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=0,
-            tool_call=ToolCallDelta(arguments="es Ma"),
+            tool_calls=[ToolCallDelta(arguments="es Ma", index=0)],
         ),
         StreamingChunk(
             content="",
@@ -144,7 +146,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=0,
-            tool_call=ToolCallDelta(arguments="rk liv"),
+            tool_calls=[ToolCallDelta(arguments="rk liv", index=0)],
         ),
         StreamingChunk(
             content="",
@@ -161,7 +163,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=0,
-            tool_call=ToolCallDelta(arguments='e?"}'),
+            tool_calls=[ToolCallDelta(arguments='e?"}', index=0)],
         ),
         StreamingChunk(
             content="",
@@ -182,7 +184,9 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             component_info=ComponentInfo(name="test", type="test"),
             index=1,
             start=True,
-            tool_call=ToolCallDelta(id="call_STxsYY69wVOvxWqopAt3uWTB", tool_name="get_weather", arguments=""),
+            tool_calls=[
+                ToolCallDelta(id="call_STxsYY69wVOvxWqopAt3uWTB", tool_name="get_weather", arguments="", index=1)
+            ],
         ),
         StreamingChunk(
             content="",
@@ -199,7 +203,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=1,
-            tool_call=ToolCallDelta(arguments='{"ci'),
+            tool_calls=[ToolCallDelta(arguments='{"ci', index=1)],
         ),
         StreamingChunk(
             content="",
@@ -216,7 +220,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=1,
-            tool_call=ToolCallDelta(arguments='ty": '),
+            tool_calls=[ToolCallDelta(arguments='ty": ', index=1)],
         ),
         StreamingChunk(
             content="",
@@ -233,7 +237,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=1,
-            tool_call=ToolCallDelta(arguments='"Berli'),
+            tool_calls=[ToolCallDelta(arguments='"Berli', index=1)],
         ),
         StreamingChunk(
             content="",
@@ -250,7 +254,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=1,
-            tool_call=ToolCallDelta(arguments='n"}'),
+            tool_calls=[ToolCallDelta(arguments='n"}', index=1)],
         ),
         StreamingChunk(
             content="",
@@ -262,6 +266,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.948772",
             },
             component_info=ComponentInfo(name="test", type="test"),
+            finish_reason="tool_calls",
         ),
         StreamingChunk(
             content="",

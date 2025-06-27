@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 import json
 import datetime
+import time
 
 from haystack import Pipeline
 from haystack.components.builders.prompt_builder import PromptBuilder
@@ -203,6 +204,28 @@ class TestToolInvoker:
         assert tool_call_result.origin == tool_call
         assert not tool_call_result.error
 
+    def test_run_with_streaming_callback_finish_reason(self, invoker):
+        streaming_chunks = []
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            streaming_chunks.append(chunk)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        # Check that we received streaming chunks
+        assert len(streaming_chunks) >= 2  # At least one for tool result and one for finish reason
+
+        # The last chunk should have finish_reason set to "tool_call_results"
+        final_chunk = streaming_chunks[-1]
+        assert final_chunk.finish_reason == "tool_call_results"
+        assert final_chunk.meta["finish_reason"] == "tool_call_results"
+        assert final_chunk.content == ""
+
     @pytest.mark.asyncio
     async def test_run_async_with_streaming_callback(self, thread_executor, weather_tool):
         streaming_callback_called = False
@@ -244,6 +267,36 @@ class TestToolInvoker:
 
         # check we called the streaming callback
         assert streaming_callback_called
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_streaming_callback_finish_reason(self, thread_executor, weather_tool):
+        streaming_chunks = []
+
+        async def streaming_callback(chunk: StreamingChunk) -> None:
+            streaming_chunks.append(chunk)
+
+        tool_invoker = ToolInvoker(
+            tools=[weather_tool],
+            raise_on_failure=True,
+            convert_result_to_json_string=False,
+            async_executor=thread_executor,
+        )
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = await tool_invoker.run_async(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        # Check that we received streaming chunks
+        assert len(streaming_chunks) >= 2  # At least one for tool result and one for finish reason
+
+        # The last chunk should have finish_reason set to "tool_call_results"
+        final_chunk = streaming_chunks[-1]
+        assert final_chunk.finish_reason == "tool_call_results"
+        assert final_chunk.meta["finish_reason"] == "tool_call_results"
+        assert final_chunk.content == ""
 
     def test_run_with_toolset(self, tool_set):
         tool_invoker = ToolInvoker(tools=tool_set, raise_on_failure=True, convert_result_to_json_string=False)
@@ -623,6 +676,147 @@ class TestToolInvoker:
                 enable_streaming_callback_passthrough=False,
             )
             mock_run.assert_called_once_with(messages=[ChatMessage.from_user(text="Hello!")])
+
+    def test_parallel_tool_calling_with_state_updates(self):
+        """Test that parallel tool execution with state updates works correctly with the state lock."""
+        # Create a shared counter variable to simulate a state value that gets updated
+        execution_log = []
+
+        def function_1():
+            time.sleep(0.1)
+            execution_log.append("tool_1_executed")
+            return {"counter": 1, "tool_name": "tool_1"}
+
+        def function_2():
+            time.sleep(0.1)
+            execution_log.append("tool_2_executed")
+            return {"counter": 2, "tool_name": "tool_2"}
+
+        def function_3():
+            time.sleep(0.1)
+            execution_log.append("tool_3_executed")
+            return {"counter": 3, "tool_name": "tool_3"}
+
+        # Create tools that all update the same state key
+        tool_1 = Tool(
+            name="state_tool_1",
+            description="A tool that updates state counter",
+            parameters={"type": "object", "properties": {}},
+            function=function_1,
+            outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
+        )
+
+        tool_2 = Tool(
+            name="state_tool_2",
+            description="A tool that updates state counter",
+            parameters={"type": "object", "properties": {}},
+            function=function_2,
+            outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
+        )
+
+        tool_3 = Tool(
+            name="state_tool_3",
+            description="A tool that updates state counter",
+            parameters={"type": "object", "properties": {}},
+            function=function_3,
+            outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
+        )
+
+        # Create ToolInvoker with all three tools
+        invoker = ToolInvoker(tools=[tool_1, tool_2, tool_3], raise_on_failure=True)
+
+        state = State(schema={"counter": {"type": int}, "last_tool": {"type": str}})
+        tool_calls = [
+            ToolCall(tool_name="state_tool_1", arguments={}),
+            ToolCall(tool_name="state_tool_2", arguments={}),
+            ToolCall(tool_name="state_tool_3", arguments={}),
+        ]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+        result = invoker.run(messages=[message], state=state)
+
+        # Verify that all three tools were executed
+        assert len(execution_log) == 3
+        assert "tool_1_executed" in execution_log
+        assert "tool_2_executed" in execution_log
+        assert "tool_3_executed" in execution_log
+
+        # Verify that the state was updated correctly
+        # Due to parallel execution, we can't predict which tool will be the last to update
+        assert state.has("counter")
+        assert state.has("last_tool")
+        assert state.get("counter") in [1, 2, 3]  # Should be one of the tool values
+        assert state.get("last_tool") in ["tool_1", "tool_2", "tool_3"]  # Should be one of the tool names
+
+    @pytest.mark.asyncio
+    async def test_async_parallel_tool_calling_with_state_updates(self):
+        """Test that parallel tool execution with state updates works correctly with the state lock."""
+        # Create a shared counter variable to simulate a state value that gets updated
+        execution_log = []
+
+        def function_1():
+            time.sleep(0.1)
+            execution_log.append("tool_1_executed")
+            return {"counter": 1, "tool_name": "tool_1"}
+
+        def function_2():
+            time.sleep(0.1)
+            execution_log.append("tool_2_executed")
+            return {"counter": 2, "tool_name": "tool_2"}
+
+        def function_3():
+            time.sleep(0.1)
+            execution_log.append("tool_3_executed")
+            return {"counter": 3, "tool_name": "tool_3"}
+
+        # Create tools that all update the same state key
+        tool_1 = Tool(
+            name="state_tool_1",
+            description="A tool that updates state counter",
+            parameters={"type": "object", "properties": {}},
+            function=function_1,
+            outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
+        )
+
+        tool_2 = Tool(
+            name="state_tool_2",
+            description="A tool that updates state counter",
+            parameters={"type": "object", "properties": {}},
+            function=function_2,
+            outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
+        )
+
+        tool_3 = Tool(
+            name="state_tool_3",
+            description="A tool that updates state counter",
+            parameters={"type": "object", "properties": {}},
+            function=function_3,
+            outputs_to_state={"counter": {"source": "counter"}, "last_tool": {"source": "tool_name"}},
+        )
+
+        # Create ToolInvoker with all three tools
+        invoker = ToolInvoker(tools=[tool_1, tool_2, tool_3], raise_on_failure=True)
+
+        state = State(schema={"counter": {"type": int}, "last_tool": {"type": str}})
+        tool_calls = [
+            ToolCall(tool_name="state_tool_1", arguments={}),
+            ToolCall(tool_name="state_tool_2", arguments={}),
+            ToolCall(tool_name="state_tool_3", arguments={}),
+        ]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+        result = await invoker.run_async(messages=[message], state=state)
+
+        # Verify that all three tools were executed
+        assert len(execution_log) == 3
+        assert "tool_1_executed" in execution_log
+        assert "tool_2_executed" in execution_log
+        assert "tool_3_executed" in execution_log
+
+        # Verify that the state was updated correctly
+        # Due to parallel execution, we can't predict which tool will be the last to update
+        assert state.has("counter")
+        assert state.has("last_tool")
+        assert state.get("counter") in [1, 2, 3]  # Should be one of the tool values
+        assert state.get("last_tool") in ["tool_1", "tool_2", "tool_3"]  # Should be one of the tool names
 
 
 class TestMergeToolOutputs:

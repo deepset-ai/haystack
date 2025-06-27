@@ -4,7 +4,7 @@
 
 import pytest
 
-from haystack.dataclasses import StreamingChunk, ComponentInfo, ToolCallDelta, ToolCallResult, ToolCall
+from haystack.dataclasses import StreamingChunk, ComponentInfo, ToolCallDelta, ToolCallResult, ToolCall, FinishReason
 from haystack import component
 from haystack import Pipeline
 
@@ -58,7 +58,7 @@ def test_create_chunk_with_content_and_tool_call():
         StreamingChunk(
             content="Test content",
             meta={"key": "value"},
-            tool_call=ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}'),
+            tool_calls=[ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0)],
         )
 
 
@@ -92,12 +92,52 @@ def test_component_info_from_component_with_name_from_pipeline():
 
 
 def test_tool_call_delta():
-    tool_call = ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}')
+    tool_call = ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0)
     assert tool_call.id == "123"
     assert tool_call.tool_name == "test_tool"
     assert tool_call.arguments == '{"arg1": "value1"}'
+    assert tool_call.index == 0
 
 
 def test_tool_call_delta_with_missing_fields():
     with pytest.raises(ValueError):
-        _ = ToolCallDelta(id="123")
+        _ = ToolCallDelta(id="123", index=0)
+
+
+def test_create_chunk_with_finish_reason():
+    """Test creating a chunk with the new finish_reason field."""
+    chunk = StreamingChunk(content="Test content", finish_reason="stop")
+
+    assert chunk.content == "Test content"
+    assert chunk.finish_reason == "stop"
+    assert chunk.meta == {}
+
+
+def test_create_chunk_with_finish_reason_and_meta():
+    """Test creating a chunk with both finish_reason field and meta."""
+    chunk = StreamingChunk(
+        content="Test content", finish_reason="stop", meta={"model": "gpt-4", "usage": {"tokens": 10}}
+    )
+
+    assert chunk.content == "Test content"
+    assert chunk.finish_reason == "stop"
+    assert chunk.meta["model"] == "gpt-4"
+    assert chunk.meta["usage"]["tokens"] == 10
+
+
+def test_finish_reason_standard_values():
+    """Test all standard finish_reason values including the new Haystack-specific ones."""
+    standard_values = ["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
+
+    for value in standard_values:
+        chunk = StreamingChunk(content="Test content", finish_reason=value)
+        assert chunk.finish_reason == value
+
+
+def test_finish_reason_tool_call_results():
+    """Test specifically the new tool_call_results finish reason."""
+    chunk = StreamingChunk(content="", finish_reason="tool_call_results", meta={"finish_reason": "tool_call_results"})
+
+    assert chunk.finish_reason == "tool_call_results"
+    assert chunk.meta["finish_reason"] == "tool_call_results"
+    assert chunk.content == ""
