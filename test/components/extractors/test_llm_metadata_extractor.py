@@ -245,13 +245,13 @@ class TestLLMMetadataExtractor:
 
         failed_doc_none = result["failed_documents"][0]
         assert failed_doc_none.id
-        assert failed_doc_none.id != doc_with_none_content.id
+        assert failed_doc_none.id == doc_with_none_content.id
         assert "metadata_extraction_error" in failed_doc_none.meta
         assert failed_doc_none.meta["metadata_extraction_error"] == "Document has no content, skipping LLM call."
 
         failed_doc_empty = result["failed_documents"][1]
         assert failed_doc_empty.id
-        assert failed_doc_empty.id != doc_with_empty_content.id
+        assert failed_doc_empty.id == doc_with_empty_content.id
         assert "metadata_extraction_error" in failed_doc_empty.meta
         assert failed_doc_empty.meta["metadata_extraction_error"] == "Document has no content, skipping LLM call."
 
@@ -329,4 +329,4 @@ output:
         doc_store_doc_ids = {doc.id for doc in doc_store_docs}
         assert len(doc_store_doc_ids) == 2
         original_doc_ids = {doc.id for doc in docs}
-        assert doc_store_doc_ids != original_doc_ids
+        assert doc_store_doc_ids == original_doc_ids
