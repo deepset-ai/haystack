@@ -325,8 +325,8 @@ class LLMMetadataExtractor:
                     "metadata_extraction_error": result["error"],
                     "metadata_extraction_response": None,
                 }
-                # We set id to an empty string to retrigger new id creation
-                failed_documents.append(replace(document, meta=new_meta, id=""))
+                # We use replace to ensure we don't modify the original document
+                failed_documents.append(replace(document, meta=new_meta))
                 continue
 
             parsed_metadata = self._extract_metadata(result["replies"][0].text)
@@ -336,15 +336,15 @@ class LLMMetadataExtractor:
                     "metadata_extraction_error": parsed_metadata["error"],
                     "metadata_extraction_response": result["replies"][0],
                 }
-                # We set id to an empty string to retrigger new id creation
-                failed_documents.append(replace(document, meta=new_meta, id=""))
+                # We use replace to ensure we don't modify the original document
+                failed_documents.append(replace(document, meta=new_meta))
                 continue
 
             new_meta = {**document.meta, **parsed_metadata}
             # Remove metadata_extraction_error and metadata_extraction_response if present from previous runs
             new_meta.pop("metadata_extraction_error", None)
             new_meta.pop("metadata_extraction_response", None)
-            # We set id to an empty string to retrigger new id creation
-            successful_documents.append(replace(document, meta=new_meta, id=""))
+            # We use replace to ensure we don't modify the original document
+            successful_documents.append(replace(document, meta=new_meta))
 
         return {"documents": successful_documents, "failed_documents": failed_documents}
