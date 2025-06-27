@@ -35,7 +35,6 @@ jobs:
       env:
         DEEPSET_API_KEY: ${{ secrets.DEEPSET_API_KEY }}
         DEEPSET_WORKSPACE: haystack-code
-      # shellcheck disable=SC2086
       run: |
         # Combine added and modified files for upload
         CHANGED_FILES=""
@@ -51,6 +50,7 @@ jobs:
         fi
         
         # Run the script with changed and deleted files
+        # shellcheck disable=SC2086
         uv run --no-project --no-config --no-cache .github/utils/deepset_sync.py \
           --changed $CHANGED_FILES \
           --deleted ${{ steps.changed-files.outputs.deleted_files }}
