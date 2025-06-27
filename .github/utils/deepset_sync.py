@@ -8,8 +8,10 @@ import os
 import sys
 import json
 import argparse
-import requests
+from typing import Optional
 from pathlib import Path
+
+import requests
 
 
 def transform_filename(filepath: Path) -> str:
@@ -56,7 +58,7 @@ def upload_file_to_deepset(filepath: Path, api_key: str, workspace: str) -> bool
     }
 
     try:
-        response = requests.post(url, params=params, headers=headers, files=files)
+        response = requests.post(url, params=params, headers=headers, files=files, timeout=300)
         response.raise_for_status()
         print(f"Successfully uploaded: {filepath} as {transformed_name}")
         return True
@@ -93,7 +95,7 @@ def delete_files_from_deepset(
     data: dict[str, list[str]] = {"names": transformed_names}
 
     try:
-        response = requests.delete(url, headers=headers, json=data)
+        response = requests.delete(url, headers=headers, json=data, timeout=300)
         response.raise_for_status()
         print(f"Successfully deleted {len(transformed_names)} file(s):")
         for original, transformed in zip(filepaths, transformed_names):
@@ -123,7 +125,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # Get environment variables
-    api_key: str | None = os.environ.get("DEEPSET_API_KEY")
+    api_key: Optional[str] = os.environ.get("DEEPSET_API_KEY")
     workspace: str = os.environ.get("DEEPSET_WORKSPACE")
 
     if not api_key:
