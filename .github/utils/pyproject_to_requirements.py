@@ -3,7 +3,8 @@ import re
 import sys
 from pathlib import Path
 
-import toml
+# toml is available in the default environment but not in the test environment, so pylinyt complains
+import toml  # pylint: disable=import-error
 
 matcher = re.compile(r"farm-haystack\[(.+)\]")
 parser = argparse.ArgumentParser(
