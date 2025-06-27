@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Returned documents from the `LLMMetadataExtractor` create new IDs based on the extracted metadata. This makes it easier to distinguish the parent documents and the new documents.
