@@ -325,7 +325,7 @@ output:
         assert "entities" in doc_store_docs[0].meta
         assert "entities" in doc_store_docs[1].meta
 
-        # Check that IDs of documents in doc store are different from the original documents
+        # Check that IDs of documents in doc store are the same as the original documents
         doc_store_doc_ids = {doc.id for doc in doc_store_docs}
         assert len(doc_store_doc_ids) == 2
         original_doc_ids = {doc.id for doc in docs}
