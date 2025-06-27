@@ -12,6 +12,9 @@ VERSION_VALIDATOR = re.compile(r"^[0-9]+\.[0-9]+$")
 
 
 def readme_token():
+    """
+    Get the Readme API token from the environment variable and encode it in base64.
+    """
     api_key = os.getenv("README_API_KEY", None)
     if not api_key:
         raise Exception("README_API_KEY env var is not set")
@@ -21,6 +24,9 @@ def readme_token():
 
 
 def create_headers(version: str):
+    """
+    Create headers for the Readme API.
+    """
     return {"authorization": f"Basic {readme_token()}", "x-readme-version": version}
 
 
@@ -35,6 +41,9 @@ def get_docs_in_category(category_slug: str, version: str) -> List[str]:
 
 
 def delete_doc(slug: str, version: str):
+    """
+    Delete a document from Readme, based on the slug and version.
+    """
     url = f"https://dash.readme.com/api/v1/docs/{slug}"
     headers = create_headers(version)
     res = requests.delete(url, headers=headers, timeout=10)

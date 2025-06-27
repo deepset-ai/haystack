@@ -16,7 +16,7 @@ on:
       - "haystack/core/pipeline/predefined/*"
       - "test/**/*.py"
       - "pyproject.toml"
-      - ".github/utils/check_imports.py"
+      - ".github/utils/*.py"
 
 jobs:
   check_if_changed:
@@ -39,7 +39,7 @@ jobs:
               - "haystack/core/pipeline/predefined/*"
               - "test/**/*.py"
               - "pyproject.toml"
-              - ".github/utils/check_imports.py"
+              - ".github/utils/*.py"
 
   trigger-catch-all:
     name: Tests completed
