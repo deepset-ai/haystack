@@ -51,5 +51,7 @@ jobs:
         
         # Run the script with changed and deleted files
         uv run --no-project --no-config --no-cache .github/utils/deepset_sync.py \
+          # shellcheck disable=SC2086
           --changed $CHANGED_FILES \
+          # shellcheck disable=SC2086
           --deleted ${{ steps.changed-files.outputs.deleted_files }}
