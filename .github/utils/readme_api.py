@@ -1,16 +1,23 @@
-import os
 import base64
+import os
+
 import requests
 
 
-
 class ReadmeAuth(requests.auth.AuthBase):
-    def __call__(self, r):
+    """
+    Custom authentication class for Readme API.
+    """
+
+    def __call__(self, r):  # noqa: D102
         r.headers["authorization"] = f"Basic {readme_token()}"
         return r
 
 
 def readme_token():
+    """
+    Get the Readme API token from the environment variable and encode it in base64.
+    """
     api_key = os.getenv("RDME_API_KEY", None)
     if not api_key:
         raise Exception("RDME_API_KEY env var is not set")

@@ -1,6 +1,6 @@
+import argparse
 import re
 import sys
-import argparse
 
 from readme_api import get_versions, promote_unstable_to_stable
 
@@ -8,9 +8,7 @@ VERSION_VALIDATOR = re.compile(r"^[0-9]+\.[0-9]+$")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-v", "--version", help="The version to promote to stable (e.g. 2.1).", required=True
-    )
+    parser.add_argument("-v", "--version", help="The version to promote to stable (e.g. 2.1).", required=True)
     args = parser.parse_args()
 
     if VERSION_VALIDATOR.match(args.version) is None:

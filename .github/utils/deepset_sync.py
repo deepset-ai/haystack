@@ -4,17 +4,20 @@
 # ]
 # ///
 
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
-import requests
 from pathlib import Path
+from typing import Optional
+
+import requests
 
 
 def transform_filename(filepath: Path) -> str:
     """
     Transform a file path to the required format:
+
     - Replace path separators with underscores
     """
     # Convert to string and replace path separators with underscores
@@ -44,10 +47,7 @@ def upload_file_to_deepset(filepath: Path, api_key: str, workspace: str) -> bool
     url = f"https://api.cloud.deepset.ai/api/v1/workspaces/{workspace}/files"
     params: dict[str, str] = {"file_name": transformed_name, "write_mode": "OVERWRITE"}
 
-    headers: dict[str, str] = {
-        "accept": "application/json",
-        "authorization": f"Bearer {api_key}",
-    }
+    headers: dict[str, str] = {"accept": "application/json", "authorization": f"Bearer {api_key}"}
 
     # Prepare multipart form data
     files: dict[str, tuple[None, str, str]] = {
@@ -56,7 +56,7 @@ def upload_file_to_deepset(filepath: Path, api_key: str, workspace: str) -> bool
     }
 
     try:
-        response = requests.post(url, params=params, headers=headers, files=files)
+        response = requests.post(url, params=params, headers=headers, files=files, timeout=300)
         response.raise_for_status()
         print(f"Successfully uploaded: {filepath} as {transformed_name}")
         return True
@@ -69,9 +69,7 @@ def upload_file_to_deepset(filepath: Path, api_key: str, workspace: str) -> bool
         return False
 
 
-def delete_files_from_deepset(
-    filepaths: list[Path], api_key: str, workspace: str
-) -> bool:
+def delete_files_from_deepset(filepaths: list[Path], api_key: str, workspace: str) -> bool:
     """
     Delete multiple files from Deepset API.
     """
@@ -93,7 +91,7 @@ def delete_files_from_deepset(
     data: dict[str, list[str]] = {"names": transformed_names}
 
     try:
-        response = requests.delete(url, headers=headers, json=data)
+        response = requests.delete(url, headers=headers, json=data, timeout=300)
         response.raise_for_status()
         print(f"Successfully deleted {len(transformed_names)} file(s):")
         for original, transformed in zip(filepaths, transformed_names):
@@ -113,17 +111,13 @@ def main() -> None:
     Main function to process and upload/delete files.
     """
     # Parse command line arguments
-    parser = argparse.ArgumentParser(
-        description="Upload/delete Python files to/from Deepset"
-    )
-    parser.add_argument(
-        "--changed", nargs="*", default=[], help="Changed or added files"
-    )
+    parser = argparse.ArgumentParser(description="Upload/delete Python files to/from Deepset")
+    parser.add_argument("--changed", nargs="*", default=[], help="Changed or added files")
     parser.add_argument("--deleted", nargs="*", default=[], help="Deleted files")
     args = parser.parse_args()
 
     # Get environment variables
-    api_key: str | None = os.environ.get("DEEPSET_API_KEY")
+    api_key: Optional[str] = os.environ.get("DEEPSET_API_KEY")
     workspace: str = os.environ.get("DEEPSET_WORKSPACE")
 
     if not api_key:
@@ -167,13 +161,9 @@ def main() -> None:
     print("-" * 50)
     print("Processing Summary:")
     if changed_files:
-        print(
-            f"   Uploads - Successful: {upload_success}, Failed: {len(upload_failed)}"
-        )
+        print(f"   Uploads - Successful: {upload_success}, Failed: {len(upload_failed)}")
     if deleted_files:
-        print(
-            f"   Deletions - {'Successful' if delete_success else 'Failed'}: {len(deleted_files)} file(s)"
-        )
+        print(f"   Deletions - {'Successful' if delete_success else 'Failed'}: {len(deleted_files)} file(s)")
 
     if upload_failed:
         print("\nFailed uploads:")
