@@ -550,6 +550,11 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         tool_calls_deltas = []
         for tool_call in choice.delta.tool_calls:
             function = tool_call.function
+            # Some providers may return tool calls with no name and no arguments.
+            # We filter these out to avoid issues downstream.
+            if not function or (function.name is None and function.arguments is None):
+                continue
+
             tool_calls_deltas.append(
                 ToolCallDelta(
                     index=tool_call.index,
@@ -558,24 +563,26 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                     arguments=function.arguments if function and function.arguments else None,
                 )
             )
-        chunk_message = StreamingChunk(
-            content=choice.delta.content or "",
-            component_info=component_info,
-            # We adopt the first tool_calls_deltas.index as the overall index of the chunk.
-            index=tool_calls_deltas[0].index,
-            tool_calls=tool_calls_deltas,
-            start=tool_calls_deltas[0].tool_name is not None,
-            finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
-            meta={
-                "model": chunk.model,
-                "index": choice.index,
-                "tool_calls": choice.delta.tool_calls,
-                "finish_reason": choice.finish_reason,
-                "received_at": datetime.now().isoformat(),
-                "usage": _serialize_usage(chunk.usage),
-            },
-        )
-        return chunk_message
+
+        if tool_calls_deltas:
+            chunk_message = StreamingChunk(
+                content=choice.delta.content or "",
+                component_info=component_info,
+                # We adopt the first tool_calls_deltas.index as the overall index of the chunk.
+                index=tool_calls_deltas[0].index,
+                tool_calls=tool_calls_deltas,
+                start=tool_calls_deltas[0].tool_name is not None,
+                finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
+                meta={
+                    "model": chunk.model,
+                    "index": choice.index,
+                    "tool_calls": choice.delta.tool_calls,
+                    "finish_reason": choice.finish_reason,
+                    "received_at": datetime.now().isoformat(),
+                    "usage": _serialize_usage(chunk.usage),
+                },
+            )
+            return chunk_message
 
     # On very first chunk the choice field only provides role info (e.g. "assistant") so we set index to None
     # We set all chunks missing the content field to index of None. E.g. can happen if chunk only contains finish
