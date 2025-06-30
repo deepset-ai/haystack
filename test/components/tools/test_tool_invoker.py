@@ -804,7 +804,6 @@ class TestToolInvoker:
         ]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
         result = await invoker.run_async(messages=[message], state=state)
-        print(result)
 
         # Verify that all three tools were executed
         assert len(execution_log) == 3
@@ -818,6 +817,26 @@ class TestToolInvoker:
         assert state.has("last_tool")
         assert state.get("counter") in [1, 2, 3]  # Should be one of the tool values
         assert state.get("last_tool") in ["tool_1", "tool_2", "tool_3"]  # Should be one of the tool names
+
+    def test_call_invoker_two_subsequent_run_calls(self, invoker: ToolInvoker):
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        streaming_callback_called = False
+
+        async def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        # First call
+        result_1 = invoker.run(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result_1
+        assert len(result_1["tool_messages"]) == 1
+
+        # Second call
+        result_2 = invoker.run(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result_2
+        assert len(result_2["tool_messages"]) == 1
 
     @pytest.mark.asyncio
     async def test_call_invoker_two_subsequent_run_async_calls(self, invoker: ToolInvoker):

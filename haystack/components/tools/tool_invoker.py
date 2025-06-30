@@ -197,6 +197,7 @@ class ToolInvoker:
             If False, the `streaming_callback` will not be passed to the tool invocation.
         :param max_workers:
             The maximum number of workers to use in the thread pool executor.
+            This also decides the maximum number of concurrent tool invocations.
         :param async_executor:
             Optional `ThreadPoolExecutor` to use for asynchronous calls.
             Note: As of Haystack 2.15.0, you no longer need to explicitly pass
