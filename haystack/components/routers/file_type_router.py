@@ -12,15 +12,6 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 
-CUSTOM_MIMETYPES = {
-    # we add markdown because it is not added by the mimetypes module
-    # see https://github.com/python/cpython/pull/17995
-    ".md": "text/markdown",
-    ".markdown": "text/markdown",
-    # we add msg because it is not added by the mimetypes module
-    ".msg": "application/vnd.ms-outlook",
-}
-
 
 @component
 class FileTypeRouter:
@@ -149,7 +140,8 @@ class FileTypeRouter:
                 source = Path(source)
 
             if isinstance(source, Path):
-                mime_type = self._get_mime_type(source)
+                b = ByteStream.from_file_path(source, guess_mime_type=True)
+                mime_type = b.mime_type
             elif isinstance(source, ByteStream):
                 mime_type = source.mime_type
             else:
@@ -171,16 +163,3 @@ class FileTypeRouter:
                 mime_types["unclassified"].append(source)
 
         return dict(mime_types)
-
-    def _get_mime_type(self, path: Path) -> Optional[str]:
-        """
-        Get the MIME type of the provided file path.
-
-        :param path: The file path to get the MIME type for.
-
-        :returns: The MIME type of the provided file path, or `None` if the MIME type cannot be determined.
-        """
-        extension = path.suffix.lower()
-        mime_type = mimetypes.guess_type(path.as_posix())[0]
-        # lookup custom mappings if the mime type is not found
-        return CUSTOM_MIMETYPES.get(extension, mime_type)
