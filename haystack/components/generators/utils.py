@@ -84,24 +84,20 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
     tool_call_data: Dict[int, Dict[str, str]] = {}  # Track tool calls by index
     for chunk in chunks:
         if chunk.tool_calls:
-            # We do this to make sure mypy is happy, but we enforce index is not None in the StreamingChunk dataclass if
-            # tool_call is present
-            assert chunk.index is not None
-
             for tool_call in chunk.tool_calls:
                 # We use the index of the tool_call to track the tool call across chunks since the ID is not always
                 # provided
                 if tool_call.index not in tool_call_data:
-                    tool_call_data[chunk.index] = {"id": "", "name": "", "arguments": ""}
+                    tool_call_data[tool_call.index] = {"id": "", "name": "", "arguments": ""}
 
                 # Save the ID if present
                 if tool_call.id is not None:
-                    tool_call_data[chunk.index]["id"] = tool_call.id
+                    tool_call_data[tool_call.index]["id"] = tool_call.id
 
                 if tool_call.tool_name is not None:
-                    tool_call_data[chunk.index]["name"] += tool_call.tool_name
+                    tool_call_data[tool_call.index]["name"] += tool_call.tool_name
                 if tool_call.arguments is not None:
-                    tool_call_data[chunk.index]["arguments"] += tool_call.arguments
+                    tool_call_data[tool_call.index]["arguments"] += tool_call.arguments
 
     # Convert accumulated tool call data into ToolCall objects
     sorted_keys = sorted(tool_call_data.keys())
