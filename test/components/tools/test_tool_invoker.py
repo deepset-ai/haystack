@@ -819,8 +819,12 @@ class TestToolInvoker:
         assert state.get("last_tool") in ["tool_1", "tool_2", "tool_3"]  # Should be one of the tool names
 
     def test_call_invoker_two_subsequent_run_calls(self, invoker: ToolInvoker):
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+        tool_calls = [
+            ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Rome"}),
+        ]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
 
         streaming_callback_called = False
 
@@ -831,17 +835,21 @@ class TestToolInvoker:
         # First call
         result_1 = invoker.run(messages=[message], streaming_callback=streaming_callback)
         assert "tool_messages" in result_1
-        assert len(result_1["tool_messages"]) == 1
+        assert len(result_1["tool_messages"]) == 3
 
         # Second call
         result_2 = invoker.run(messages=[message], streaming_callback=streaming_callback)
         assert "tool_messages" in result_2
-        assert len(result_2["tool_messages"]) == 1
+        assert len(result_2["tool_messages"]) == 3
 
     @pytest.mark.asyncio
     async def test_call_invoker_two_subsequent_run_async_calls(self, invoker: ToolInvoker):
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+        tool_calls = [
+            ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Rome"}),
+        ]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
 
         streaming_callback_called = False
 
@@ -852,12 +860,12 @@ class TestToolInvoker:
         # First call
         result_1 = await invoker.run_async(messages=[message], streaming_callback=streaming_callback)
         assert "tool_messages" in result_1
-        assert len(result_1["tool_messages"]) == 1
+        assert len(result_1["tool_messages"]) == 3
 
         # Second call
         result_2 = await invoker.run_async(messages=[message], streaming_callback=streaming_callback)
         assert "tool_messages" in result_2
-        assert len(result_2["tool_messages"]) == 1
+        assert len(result_2["tool_messages"]) == 3
 
 
 class TestMergeToolOutputs:
