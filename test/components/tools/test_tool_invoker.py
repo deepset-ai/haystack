@@ -824,7 +824,7 @@ class TestToolInvoker:
 
         streaming_callback_called = False
 
-        async def streaming_callback(chunk: StreamingChunk) -> None:
+        def streaming_callback(chunk: StreamingChunk) -> None:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 

@@ -717,9 +717,10 @@ class ToolInvoker:
             valid_tool_calls = []
 
             if self._async_executor is not None:
-                executor = self._async_executor
                 for params in tool_call_params:
-                    task = ToolInvoker.invoke_tool_safely(executor, params["tool_to_invoke"], params["final_args"])
+                    task = ToolInvoker.invoke_tool_safely(
+                        self._async_executor, params["tool_to_invoke"], params["final_args"]
+                    )
                     tool_call_tasks.append(task)
                     valid_tool_calls.append((params["tool_call"], params["tool_to_invoke"]))
 
