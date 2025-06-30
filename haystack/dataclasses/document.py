@@ -128,7 +128,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         """
         data = asdict(self)
         if (blob := data.get("blob")) is not None:
-            data["blob"] = {"data": list(blob["data"]), "mime_type": blob["mime_type"]}
+            data["blob"] = blob.to_dict()
 
         if flatten:
             meta = data.pop("meta")
@@ -144,7 +144,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         The `blob` field is converted to its original type.
         """
         if blob := data.get("blob"):
-            data["blob"] = ByteStream(data=bytes(blob["data"]), mime_type=blob["mime_type"])
+            data["blob"] = ByteStream.from_dict(blob)
         if sparse_embedding := data.get("sparse_embedding"):
             data["sparse_embedding"] = SparseEmbedding.from_dict(sparse_embedding)
 
