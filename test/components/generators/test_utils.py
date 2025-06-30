@@ -325,3 +325,63 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
         },
         "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
     }
+
+
+def test_convert_streaming_chunk_to_chat_message_two_tool_calls_in_same_chunk():
+    chunks = [
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "mistral-small-latest",
+                "index": 0,
+                "tool_calls": None,
+                "finish_reason": None,
+                "usage": None,
+            },
+            component_info=ComponentInfo(
+                type="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator",
+                name=None,
+            ),
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "mistral-small-latest",
+                "index": 0,
+                "finish_reason": "tool_calls",
+                "usage": {
+                    "completion_tokens": 35,
+                    "prompt_tokens": 77,
+                    "total_tokens": 112,
+                    "completion_tokens_details": None,
+                    "prompt_tokens_details": None,
+                },
+            },
+            component_info=ComponentInfo(
+                type="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator",
+                name=None,
+            ),
+            index=0,
+            tool_calls=[
+                ToolCallDelta(index=0, tool_name="weather", arguments='{"city": "Paris"}', id="FL1FFlqUG"),
+                ToolCallDelta(index=1, tool_name="weather", arguments='{"city": "Berlin"}', id="xSuhp66iB"),
+            ],
+            start=True,
+            finish_reason="tool_calls",
+        ),
+    ]
+
+    # Convert chunks to a chat message
+    result = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+
+    assert not result.texts
+    assert not result.text
+
+    # Verify both tool calls were found and processed
+    assert len(result.tool_calls) == 2
+    assert result.tool_calls[0].id == "FL1FFlqUG"
+    assert result.tool_calls[0].tool_name == "weather"
+    assert result.tool_calls[0].arguments == {"city": "Paris"}
+    assert result.tool_calls[1].id == "xSuhp66iB"
+    assert result.tool_calls[1].tool_name == "weather"
+    assert result.tool_calls[1].arguments == {"city": "Berlin"}
