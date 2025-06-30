@@ -171,7 +171,6 @@ class ToolInvoker:
         *,
         enable_streaming_callback_passthrough: bool = False,
         max_workers: int = 4,
-        async_executor: Optional[ThreadPoolExecutor] = None,
     ):
         """
         Initialize the ToolInvoker component.
@@ -198,13 +197,6 @@ class ToolInvoker:
         :param max_workers:
             The maximum number of workers to use in the thread pool executor.
             This also decides the maximum number of concurrent tool invocations.
-        :param async_executor:
-            Optional `ThreadPoolExecutor` to use for asynchronous calls.
-            Note: As of Haystack 2.15.0, you no longer need to explicitly pass
-            `async_executor`. Instead, you can provide the `max_workers` parameter,
-            and a `ThreadPoolExecutor` will be created automatically for parallel tool invocations.
-            Support for `async_executor` will be removed in Haystack 2.16.0.
-            Please migrate to using `max_workers` instead.
         :raises ValueError:
             If no tools are provided or if duplicate tool names are found.
         """
@@ -232,30 +224,6 @@ class ToolInvoker:
         self._tools_with_names = dict(zip(tool_names, converted_tools))
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
-        self._async_executor = None
-        if async_executor is not None:
-            warnings.warn(
-                "'async_executor' is deprecated in favor of the 'max_workers' parameter. "
-                "ToolInvoker now creates its own thread pool executor by default using 'max_workers'. "
-                "Support for 'async_executor' will be removed in Haystack 2.16.0. "
-                "Please update your usage to pass 'max_workers' instead.",
-                DeprecationWarning,
-            )
-            self._async_executor = async_executor
-
-    def __del__(self):
-        """
-        Cleanup when the instance is being destroyed.
-        """
-        if hasattr(self, "_async_executor") and self._async_executor is not None:
-            self._async_executor.shutdown(wait=False)
-
-    def shutdown(self):
-        """
-        Explicitly shutdown the executor if we own it.
-        """
-        if self._async_executor is not None:
-            self._async_executor.shutdown(wait=True)
 
     def _handle_error(self, error: Exception) -> str:
         """
@@ -715,11 +683,10 @@ class ToolInvoker:
             tool_call_tasks = []
             valid_tool_calls = []
 
-            if self._async_executor is not None:
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                # 3) Create async tasks for valid tool calls
                 for params in tool_call_params:
-                    task = ToolInvoker.invoke_tool_safely(
-                        self._async_executor, params["tool_to_invoke"], params["final_args"]
-                    )
+                    task = ToolInvoker.invoke_tool_safely(executor, params["tool_to_invoke"], params["final_args"])
                     tool_call_tasks.append(task)
                     valid_tool_calls.append((params["tool_call"], params["tool_to_invoke"]))
 
@@ -776,70 +743,6 @@ class ToolInvoker:
                                     },
                                 )
                             )
-            else:
-                with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                    # 3) Create async tasks for valid tool calls
-                    for params in tool_call_params:
-                        task = ToolInvoker.invoke_tool_safely(executor, params["tool_to_invoke"], params["final_args"])
-                        tool_call_tasks.append(task)
-                        valid_tool_calls.append((params["tool_call"], params["tool_to_invoke"]))
-
-                    if tool_call_tasks:
-                        # 4) Gather results from all tool calls
-                        tool_results = await asyncio.gather(*tool_call_tasks)
-
-                        # 5) Process results
-                        for i, ((tool_call, tool_to_invoke), tool_result) in enumerate(
-                            zip(valid_tool_calls, tool_results)
-                        ):
-                            # Check if the tool_result is a ToolInvocationError (caught by our wrapper)
-                            if isinstance(tool_result, ToolInvocationError):
-                                error_message = self._handle_error(tool_result)
-                                tool_messages.append(
-                                    ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
-                                )
-                                continue
-
-                            # 6) Merge outputs into state
-                            try:
-                                self._merge_tool_outputs(tool_to_invoke, tool_result, state)
-                            except Exception as e:
-                                try:
-                                    error_message = self._handle_error(
-                                        ToolOutputMergeError(
-                                            f"Failed to merge tool outputs from "
-                                            f"tool {tool_call.tool_name} into State: {e}"
-                                        )
-                                    )
-                                    tool_messages.append(
-                                        ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
-                                    )
-                                    continue
-                                except ToolOutputMergeError as propagated_e:
-                                    # Re-raise with proper error chain
-                                    raise propagated_e from e
-
-                            # 7) Prepare the tool result ChatMessage message
-                            tool_messages.append(
-                                self._prepare_tool_result_message(
-                                    result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
-                                )
-                            )
-
-                            # 8) Handle streaming callback
-                            if streaming_callback is not None:
-                                await streaming_callback(
-                                    StreamingChunk(
-                                        content="",
-                                        index=i,
-                                        tool_call_result=tool_messages[-1].tool_call_results[0],
-                                        start=True,
-                                        meta={
-                                            "tool_result": tool_messages[-1].tool_call_results[0].result,
-                                            "tool_call": tool_call,
-                                        },
-                                    )
-                                )
 
         # We stream one more chunk that contains a finish_reason if tool_messages were generated
         if len(tool_messages) > 0 and streaming_callback is not None:
