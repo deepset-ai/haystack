@@ -86,6 +86,8 @@ class ByteStream:
 
         :returns: A dictionary with keys 'data', 'meta', and 'mime_type'.
         """
+        # Note: The data is converted to a list of integers for serialization since JSON does not support bytes
+        # directly.
         return {"data": list(self.data), "meta": self.meta, "mime_type": self.mime_type}
 
     @classmethod
