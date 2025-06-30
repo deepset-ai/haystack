@@ -6,7 +6,7 @@ from typing import Any, Dict, Mapping, Optional, Set, cast
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineRuntimeError
+from haystack.core.errors import PipelineComponentBlockedError, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -214,6 +214,20 @@ class Pipeline(PipelineBase):
                     break
 
                 priority, component_name, component = candidate
+                # If the next component is blocked, we check if there are any expected outputs from the pipeline.
+                if priority == ComponentPriority.BLOCKED:
+                    # If the pipeline expects no outputs, we can exit the loop.
+                    if not self.outputs():
+                        break
+                    # If there are expected outputs, we can exit the loop and return the outputs.
+                    if any(k in pipeline_outputs for k in self.outputs()):
+                        break
+                    # If there are no expected outputs, we raise an error since the pipeline is blocked and most
+                    # likely something is wrong with the pipeline configuration.
+                    raise PipelineComponentBlockedError(
+                        component_name=component_name, component_type=component["instance"].__class__
+                    )
+
                 if len(priority_queue) > 0 and priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]:
                     component_name, topological_sort = self._tiebreak_waiting_components(
                         component_name=component_name,

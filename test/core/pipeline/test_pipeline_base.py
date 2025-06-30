@@ -1492,14 +1492,6 @@ class TestPipelineBase:
         result = pipeline._get_next_runnable_component(queue, component_visits={})
         assert result is None
 
-    def test__get_next_runnable_component_blocked(self):
-        """Test component with BLOCKED priority returns None"""
-        pipeline = PipelineBase()
-        queue = FIFOPriorityQueue()
-        queue.push("blocked_component", ComponentPriority.BLOCKED)
-        result = pipeline._get_next_runnable_component(queue, component_visits={"blocked_component": 0})
-        assert result is None
-
     @patch("haystack.core.pipeline.base.PipelineBase._get_component_with_graph_metadata_and_visits")
     def test__get_next_runnable_component_max_visits(self, mock_get_component_with_graph_metadata_and_visits):
         """Test component exceeding max visits raises exception"""

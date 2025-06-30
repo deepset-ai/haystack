@@ -15,7 +15,6 @@ from haystack import logging, tracing
 from haystack.core.component import Component, InputSocket, OutputSocket, component
 from haystack.core.errors import (
     DeserializationError,
-    PipelineComponentBlockedError,
     PipelineComponentsBlockedError,
     PipelineConnectError,
     PipelineDrawingError,
@@ -1183,15 +1182,10 @@ class PipelineBase:  # noqa: PLW1641
 
         priority, component_name = priority_and_component_name
         comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
-        if priority_and_component_name[0] != ComponentPriority.BLOCKED:
-            if comp["visits"] > self._max_runs_per_component:
-                msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
-                raise PipelineMaxComponentRuns(msg)
-            return priority, component_name, comp
-        else:
-            raise PipelineComponentBlockedError(
-                component_name=component_name, component_type=comp["instance"].__class__
-            )
+        if comp["visits"] > self._max_runs_per_component:
+            msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
+            raise PipelineMaxComponentRuns(msg)
+        return priority, component_name, comp
 
     @staticmethod
     def _add_missing_input_defaults(

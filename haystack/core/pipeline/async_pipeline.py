@@ -8,7 +8,7 @@ from typing import Any, AsyncIterator, Dict, List, Optional, Set
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
+from haystack.core.errors import PipelineComponentBlockedError, PipelineMaxComponentRuns, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -229,7 +229,8 @@ class AsyncPipeline(PipelineBase):
                 Runs a component with HIGHEST priority in isolation.
 
                 We need to run components with HIGHEST priority (i.e. components with GreedyVariadic input socket)
-                because otherwise, downstream components could produce additional inputs for the GreedyVariadic socket.
+                by themselves, without any other components running concurrently. Otherwise, downstream components
+                could produce additional inputs for the GreedyVariadic socket.
 
                 :param component_name: The name of the component.
                 :return: An async iterator of partial outputs.
@@ -363,6 +364,7 @@ class AsyncPipeline(PipelineBase):
                 # 2) Build the priority queue of candidates
                 priority_queue = self._fill_queue(ordered_names, inputs_state, component_visits)
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
+
                 if candidate is None and running_tasks:
                     # We need to wait for one task to finish to make progress and potentially unblock the priority_queue
                     async for partial_res in _wait_for_one_task_to_complete():
@@ -373,7 +375,21 @@ class AsyncPipeline(PipelineBase):
                     # done
                     break
 
-                priority, comp_name, _ = candidate  # type: ignore
+                priority, comp_name, comp = candidate  # type: ignore
+
+                # If the next component is blocked, we check if there are any expected outputs from the pipeline.
+                if priority == ComponentPriority.BLOCKED:
+                    # If the pipeline expects no outputs, we can exit the loop.
+                    if not self.outputs():
+                        break
+                    # If there are expected outputs, we can exit the loop and return the outputs.
+                    if any(k in pipeline_outputs for k in self.outputs()):
+                        break
+                    # If there are no expected outputs, we raise an error since the pipeline is blocked and most
+                    # likely something is wrong with the pipeline configuration.
+                    raise PipelineComponentBlockedError(
+                        component_name=comp_name, component_type=comp["instance"].__class__
+                    )
 
                 if comp_name in scheduled_components:
                     # We need to wait for one task to finish to make progress
