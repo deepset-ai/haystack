@@ -129,9 +129,9 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         data = asdict(self)
 
         # Use `ByteStream` and `SparseEmbedding`'s to_dict methods to convert them to JSON-serializable types.
-        if data.get("blob") is not None:
+        if self.blob is not None:
             data["blob"] = self.blob.to_dict()
-        if data.get("sparse_embedding") is not None:
+        if self.sparse_embedding is not None:
             data["sparse_embedding"] = self.sparse_embedding.to_dict()
 
         if flatten:
