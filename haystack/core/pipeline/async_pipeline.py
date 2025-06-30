@@ -378,7 +378,7 @@ class AsyncPipeline(PipelineBase):
                 priority, comp_name, comp = candidate  # type: ignore
 
                 # If the next component is blocked, we check if there are any expected outputs from the pipeline.
-                if priority == ComponentPriority.BLOCKED:
+                if priority == ComponentPriority.BLOCKED and not running_tasks:
                     # If the pipeline expects no outputs, we can exit the loop.
                     if not self.outputs():
                         break
