@@ -208,6 +208,8 @@ class Pipeline(PipelineBase):
 
             while True:
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
+
+                # If there are no runnable components left, we can exit the loop
                 if candidate is None:
                     break
 

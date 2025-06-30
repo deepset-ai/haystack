@@ -3,12 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, List
 
 import pytest
 
 from haystack.components.joiners import BranchJoiner
+from haystack.components.routers.conditional_router import ConditionalRouter
 from haystack.core.component import component
-from haystack.core.errors import PipelineRuntimeError
+from haystack.core.errors import PipelineRuntimeError, PipelineComponentBlockedError
 from haystack.core.pipeline import Pipeline
 
 
@@ -122,3 +124,43 @@ class TestPipeline:
                 component_visits={"erroring_component": 0},
             )
         assert "Component name: 'erroring_component'" in str(exc_info.value)
+
+    def test_run_is_blocked_not_enough_component_inputs(self, caplog):
+        router = ConditionalRouter(
+            [
+                {
+                    "condition": "{{streams|length < 2}}",
+                    "output": "{{query}}",
+                    "output_type": str,
+                    "output_name": "query",
+                },
+                {
+                    "condition": "{{streams|length >= 2}}",
+                    "output": "{{streams}}",
+                    "output_type": List[int],
+                    "output_name": "streams",
+                },
+            ]
+        )
+
+        # This component requires both `streams` and `query` inputs to run
+        # If one is missing then the pipeline is blocked and cannot run.
+        @component
+        class PayloadBuilder:
+            @component.output_types(payload=Dict[str, Any])
+            def run(self, streams: List[int], query: str):
+                return {"payload": {"streams": streams, "query": query}}
+
+        pipe = Pipeline()
+        pipe.add_component("router", router)
+        pipe.add_component("payload_builder", PayloadBuilder())
+
+        # Since the router only outputs either `streams` or `query` it's impossible to run PayloadBuilder.
+        pipe.connect("router.streams", "payload_builder.streams")
+        pipe.connect("router.query", "payload_builder.query")
+
+        with pytest.raises(
+            PipelineComponentBlockedError,
+            match="Cannot run pipeline - the next component that is meant to run is blocked.",
+        ):
+            _ = pipe.run(data={"router": {"streams": [1, 2, 3], "query": "Haystack"}})
