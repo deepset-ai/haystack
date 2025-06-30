@@ -79,3 +79,24 @@ class ByteStream:
         fields.append(f"mime_type={self.mime_type!r}")
         fields_str = ", ".join(fields)
         return f"{self.__class__.__name__}({fields_str})"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert the ByteStream to a dictionary representation.
+
+        :returns: A dictionary with keys 'data', 'meta', and 'mime_type'.
+        """
+        # Note: The data is converted to a list of integers for serialization since JSON does not support bytes
+        # directly.
+        return {"data": list(self.data), "meta": self.meta, "mime_type": self.mime_type}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ByteStream":
+        """
+        Create a ByteStream from a dictionary representation.
+
+        :param data: A dictionary with keys 'data', 'meta', and 'mime_type'.
+
+        :returns: A ByteStream instance.
+        """
+        return ByteStream(data=bytes(data["data"]), meta=data.get("meta", {}), mime_type=data.get("mime_type"))
