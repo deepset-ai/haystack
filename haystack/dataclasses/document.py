@@ -127,8 +127,12 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
             Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
         """
         data = asdict(self)
-        if (blob := data.get("blob")) is not None:
-            data["blob"] = blob.to_dict()
+
+        # Use `ByteStream` and `SparseEmbedding`'s to_dict methods to convert them to JSON-serializable types.
+        if data.get("blob") is not None:
+            data["blob"] = self.blob.to_dict()
+        if data.get("sparse_embedding") is not None:
+            data["sparse_embedding"] = self.sparse_embedding.to_dict()
 
         if flatten:
             meta = data.pop("meta")
