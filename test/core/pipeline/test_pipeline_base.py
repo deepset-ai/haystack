@@ -175,6 +175,110 @@ class TestPipelineBase:
         pipe.draw(path=image_path)
         assert image_path.read_bytes() == mock_to_mermaid_image.return_value
 
+    def test_find_super_components(self):
+        """
+        Test that the pipeline can find super components in it's pipeline.
+        """
+        from haystack import Pipeline
+        from haystack.components.converters import MultiFileConverter
+        from haystack.components.preprocessors import DocumentPreprocessor
+        from haystack.components.writers import DocumentWriter
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+        multi_file_converter = MultiFileConverter()
+        doc_processor = DocumentPreprocessor()
+
+        pipeline = Pipeline()
+        pipeline.add_component("converter", multi_file_converter)
+        pipeline.add_component("preprocessor", doc_processor)
+        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.connect("converter", "preprocessor")
+        pipeline.connect("preprocessor", "writer")
+
+        result = pipeline._find_super_components()
+
+        assert len(result) == 2
+        assert [("converter", multi_file_converter), ("preprocessor", doc_processor)] == result
+
+    def test_merge_super_component_pipelines(self):
+        from haystack import Pipeline
+        from haystack.components.converters import MultiFileConverter
+        from haystack.components.preprocessors import DocumentPreprocessor
+        from haystack.components.writers import DocumentWriter
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+        multi_file_converter = MultiFileConverter()
+        doc_processor = DocumentPreprocessor()
+
+        pipeline = Pipeline()
+        pipeline.add_component("converter", multi_file_converter)
+        pipeline.add_component("preprocessor", doc_processor)
+        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.connect("converter", "preprocessor")
+        pipeline.connect("preprocessor", "writer")
+
+        merged_graph, super_component_components = pipeline._merge_super_component_pipelines()
+
+        assert super_component_components == {
+            "router": "converter",
+            "docx": "converter",
+            "html": "converter",
+            "json": "converter",
+            "md": "converter",
+            "text": "converter",
+            "pdf": "converter",
+            "pptx": "converter",
+            "xlsx": "converter",
+            "joiner": "converter",
+            "csv": "converter",
+            "splitter": "preprocessor",
+            "cleaner": "preprocessor",
+        }
+
+        expected_nodes = [
+            "cleaner",
+            "csv",
+            "docx",
+            "html",
+            "joiner",
+            "json",
+            "md",
+            "pdf",
+            "pptx",
+            "router",
+            "splitter",
+            "text",
+            "writer",
+            "xlsx",
+        ]
+        assert sorted(merged_graph.nodes) == expected_nodes
+
+        expected_edges = [
+            ("cleaner", "writer"),
+            ("csv", "joiner"),
+            ("docx", "joiner"),
+            ("html", "joiner"),
+            ("joiner", "splitter"),
+            ("json", "joiner"),
+            ("md", "joiner"),
+            ("pdf", "joiner"),
+            ("pptx", "joiner"),
+            ("router", "csv"),
+            ("router", "docx"),
+            ("router", "html"),
+            ("router", "json"),
+            ("router", "md"),
+            ("router", "pdf"),
+            ("router", "pptx"),
+            ("router", "text"),
+            ("router", "xlsx"),
+            ("splitter", "cleaner"),
+            ("text", "joiner"),
+            ("xlsx", "joiner"),
+        ]
+        actual_edges = [(u, v) for u, v, _ in merged_graph.edges]
+        assert sorted(actual_edges) == expected_edges
+
     # UNIT
     def test_add_invalid_component_name(self):
         pipe = PipelineBase()
@@ -1683,7 +1787,7 @@ class TestPipelineBase:
         assert consumed["input1"].equals(DataFrame({"a": [1, 2], "b": [1, 2]}))
 
     @patch("haystack.core.pipeline.draw.requests")
-    def test_pipeline_draw_called_with_positional_args_triggers_a_warning(self, mock_requests, tmp_path):
+    def test_pipeline_draw_called_with_positional_args_triggers_a_warning(self, mock_requests):
         """
         Test that calling the pipeline draw method with positional arguments raises a warning.
         """
@@ -1694,7 +1798,7 @@ class TestPipelineBase:
         mock_response = mock_requests.get.return_value
         mock_response.status_code = 200
         mock_response.content = b"image_data"
-        out_file = tmp_path / "original_pipeline.png"
+        out_file = Path("original_pipeline.png")
         with warnings.catch_warnings(record=True) as w:
             pipeline.draw(out_file, server_url="http://localhost:3000")
             assert len(w) == 1
@@ -1728,7 +1832,7 @@ class TestPipelineBase:
             )
 
     @patch("haystack.core.pipeline.draw.requests")
-    def test_pipeline_draw_called_with_keyword_args_triggers_no_warning(self, mock_requests, tmp_path):
+    def test_pipeline_draw_called_with_keyword_args_triggers_no_warning(self, mock_requests):
         """
         Test that calling the pipeline draw method with keyword arguments does not raise a warning.
         """
@@ -1739,7 +1843,7 @@ class TestPipelineBase:
         mock_response = mock_requests.get.return_value
         mock_response.status_code = 200
         mock_response.content = b"image_data"
-        out_file = tmp_path / "original_pipeline.png"
+        out_file = Path("original_pipeline.png")
 
         with warnings.catch_warnings(record=True) as w:
             pipeline.draw(path=out_file, server_url="http://localhost:3000")
@@ -1763,108 +1867,60 @@ class TestPipelineBase:
             pipeline.show(server_url="http://localhost:3000")
             assert len(w) == 0, "No warning should be triggered when using keyword arguments"
 
-    @pytest.mark.integration
-    def test_find_super_components(self):
-        """
-        Test that the pipeline can find super components in it's pipeline.
-        """
-        from haystack import Pipeline
-        from haystack.components.converters import MultiFileConverter
-        from haystack.components.preprocessors import DocumentPreprocessor
-        from haystack.components.writers import DocumentWriter
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
-        multi_file_converter = MultiFileConverter()
-        doc_processor = DocumentPreprocessor()
+class TestValidateInput:
+    def test_validate_input_valid_data(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", input_types={"x": int}, output_types={"y": int})()
+        pipe.add_component("comp1", comp1)
+        pipe._validate_input(data={"comp1": {"x": 1}})
+        # No exception should be raised
 
-        pipeline = Pipeline()
-        pipeline.add_component("converter", multi_file_converter)
-        pipeline.add_component("preprocessor", doc_processor)
-        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
-        pipeline.connect("converter", "preprocessor")
-        pipeline.connect("preprocessor", "writer")
+    def test_validate_input_missing_mandatory_input(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", input_types={"x": int}, output_types={"y": int})()
+        pipe.add_component("comp1", comp1)
+        with pytest.raises(ValueError, match="Missing mandatory input 'x' for component 'comp1'"):
+            pipe._validate_input(data={"comp1": {}})
 
-        result = pipeline._find_super_components()
+    def test_validate_input_missing_mandatory_input_for_component_not_in_data(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", input_types={"x": int}, output_types={"y": int})()
+        comp2 = component_class("Comp2", input_types={"a": str}, output_types={"b": str})()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2) # comp2 requires 'a' but is not in data
+        with pytest.raises(ValueError, match="Missing mandatory input 'a' for component 'comp2' which was not provided in the input data."):
+            pipe._validate_input(data={"comp1": {"x": 1}})
 
-        assert len(result) == 2
-        assert [("converter", multi_file_converter), ("preprocessor", doc_processor)] == result
 
-    @pytest.mark.integration
-    def test_merge_super_component_pipelines(self):
-        from haystack import Pipeline
-        from haystack.components.converters import MultiFileConverter
-        from haystack.components.preprocessors import DocumentPreprocessor
-        from haystack.components.writers import DocumentWriter
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
+    def test_validate_input_to_already_connected_socket(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", input_types={"x": int}, output_types={"y": int})()
+        comp2 = component_class("Comp2", input_types={"a": int}, output_types={"b": int})()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2)
+        pipe.connect("comp1.y", "comp2.a")
+        with pytest.raises(ValueError, match="Input 'a' for component 'comp2' is already provided by component 'comp1'. Do not provide it directly."):
+            pipe._validate_input(data={"comp2": {"a": 1}})
 
-        multi_file_converter = MultiFileConverter()
-        doc_processor = DocumentPreprocessor()
+    def test_validate_input_for_non_existent_component(self):
+        pipe = PipelineBase()
+        with pytest.raises(ValueError, match="Component 'non_existent' not found in the pipeline. Available components: \\[\\]"):
+            pipe._validate_input(data={"non_existent": {"x": 1}})
 
-        pipeline = Pipeline()
-        pipeline.add_component("converter", multi_file_converter)
-        pipeline.add_component("preprocessor", doc_processor)
-        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
-        pipeline.connect("converter", "preprocessor")
-        pipeline.connect("preprocessor", "writer")
+    def test_validate_input_with_unexpected_input_name(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", input_types={"x": int}, output_types={"y": int})()
+        pipe.add_component("comp1", comp1)
+        with pytest.raises(ValueError, match="Unexpected input 'z' for component 'comp1'. Available inputs: \\['x'\\]"):
+            pipe._validate_input(data={"comp1": {"z": 1}})
 
-        merged_graph, super_component_components = pipeline._merge_super_component_pipelines()
-
-        assert super_component_components == {
-            "router": "converter",
-            "docx": "converter",
-            "html": "converter",
-            "json": "converter",
-            "md": "converter",
-            "text": "converter",
-            "pdf": "converter",
-            "pptx": "converter",
-            "xlsx": "converter",
-            "joiner": "converter",
-            "csv": "converter",
-            "splitter": "preprocessor",
-            "cleaner": "preprocessor",
-        }
-
-        expected_nodes = [
-            "cleaner",
-            "csv",
-            "docx",
-            "html",
-            "joiner",
-            "json",
-            "md",
-            "pdf",
-            "pptx",
-            "router",
-            "splitter",
-            "text",
-            "writer",
-            "xlsx",
-        ]
-        assert sorted(merged_graph.nodes) == expected_nodes
-
-        expected_edges = [
-            ("cleaner", "writer"),
-            ("csv", "joiner"),
-            ("docx", "joiner"),
-            ("html", "joiner"),
-            ("joiner", "splitter"),
-            ("json", "joiner"),
-            ("md", "joiner"),
-            ("pdf", "joiner"),
-            ("pptx", "joiner"),
-            ("router", "csv"),
-            ("router", "docx"),
-            ("router", "html"),
-            ("router", "json"),
-            ("router", "md"),
-            ("router", "pdf"),
-            ("router", "pptx"),
-            ("router", "text"),
-            ("router", "xlsx"),
-            ("splitter", "cleaner"),
-            ("text", "joiner"),
-            ("xlsx", "joiner"),
-        ]
-        actual_edges = [(u, v) for u, v, _ in merged_graph.edges]
-        assert sorted(actual_edges) == expected_edges
+    def test_validate_input_variadic_socket_can_receive_multiple_inputs(self):
+        pipe = PipelineBase()
+        comp1 = component_class("Comp1", output_types={"y": int})()
+        comp2 = component_class("Comp2", input_types={"a": Variadic[int]}, output_types={"b": int})()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2)
+        pipe.connect("comp1.y", "comp2.a")
+        # Should not raise an error, as variadic sockets can accept multiple inputs
+        pipe._validate_input(data={"comp2": {"a": 1}})
