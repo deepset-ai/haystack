@@ -232,6 +232,7 @@ class ToolInvoker:
         self._tools_with_names = dict(zip(tool_names, converted_tools))
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
+        self._async_executor = None
         if async_executor is not None:
             warnings.warn(
                 "'async_executor' is deprecated in favor of the 'max_workers' parameter. "
@@ -241,8 +242,6 @@ class ToolInvoker:
                 DeprecationWarning,
             )
             self._async_executor = async_executor
-        else:
-            self._async_executor = None
 
     def __del__(self):
         """
