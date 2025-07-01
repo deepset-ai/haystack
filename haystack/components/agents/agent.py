@@ -374,7 +374,6 @@ class Agent:
                     component={"instance": self.chat_generator},
                     component_inputs={"messages": messages, **generator_inputs},
                     component_visits=component_visits,
-                    max_runs_per_component=self.max_agent_steps,
                     parent_span=span,
                 )
                 llm_messages = result["replies"]
@@ -397,7 +396,6 @@ class Agent:
                         "streaming_callback": streaming_callback,
                     },
                     component_visits=component_visits,
-                    max_runs_per_component=self.max_agent_steps,
                     parent_span=span,
                 )
                 tool_messages = tool_invoker_result["tool_messages"]

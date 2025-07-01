@@ -31,12 +31,11 @@ class AsyncPipeline(PipelineBase):
     """
 
     @staticmethod
-    async def _run_component_async(  # pylint: disable=too-many-positional-arguments
+    async def _run_component_async(
         component_name: str,
         component: Dict[str, Any],
         component_inputs: Dict[str, Any],
         component_visits: Dict[str, int],
-        max_runs_per_component: int = 100,
         parent_span: Optional[tracing.Span] = None,
     ) -> Dict[str, Any]:
         """
@@ -52,10 +51,8 @@ class AsyncPipeline(PipelineBase):
         :param component_inputs: Inputs for the component.
         :returns: Outputs from the component that can be yielded from run_async_generator.
         """
-        if component_visits[component_name] > max_runs_per_component:
-            raise PipelineMaxComponentRuns(f"Max runs for '{component_name}' reached.")
-
         instance: Component = component["instance"]
+
         with PipelineBase._create_component_span(
             component_name=component_name, instance=instance, inputs=component_inputs, parent_span=parent_span
         ) as span:
@@ -262,7 +259,6 @@ class AsyncPipeline(PipelineBase):
                     component=comp_dict,
                     component_inputs=component_inputs,
                     component_visits=component_visits,
-                    max_runs_per_component=self._max_runs_per_component,
                     parent_span=parent_span,
                 )
 
@@ -308,7 +304,6 @@ class AsyncPipeline(PipelineBase):
                             component=comp_dict,
                             component_inputs=component_inputs,
                             component_visits=component_visits,
-                            max_runs_per_component=self._max_runs_per_component,
                             parent_span=parent_span,
                         )
 
