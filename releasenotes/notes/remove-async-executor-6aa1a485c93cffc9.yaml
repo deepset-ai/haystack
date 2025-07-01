@@ -2,4 +2,5 @@
 upgrade:
   - |
     The deprecated `async_executor` parameter has been removed from the `ToolInvoker` class.
-    Please use the `max_workers` parameter instead.
+    Please use the `max_workers` parameter instead and a `ThreadPoolExecutor` with
+    these workers will be created automatically for parallel tool invocations.
