@@ -44,7 +44,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
                 if chunk.index and tool_call.index > chunk.index:
                     print("\n\n", flush=True, end="")
 
-                print("[TOOL CALL]\nTool: {tool_call.tool_name} \nArguments: ", flush=True, end="")
+                print(f"[TOOL CALL]\nTool: {tool_call.tool_name} \nArguments: ", flush=True, end="")
 
             # print the tool arguments
             if tool_call.arguments:

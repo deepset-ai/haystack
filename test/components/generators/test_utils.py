@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from openai.types.chat import chat_completion_chunk
+from unittest.mock import patch, call
 
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
-from haystack.dataclasses import ComponentInfo, StreamingChunk, ToolCallDelta
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, print_streaming_chunk
+from haystack.dataclasses import ComponentInfo, StreamingChunk, ToolCall, ToolCallDelta, ToolCallResult
 
 
 def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
@@ -385,3 +386,79 @@ def test_convert_streaming_chunk_to_chat_message_two_tool_calls_in_same_chunk():
     assert result.tool_calls[1].id == "xSuhp66iB"
     assert result.tool_calls[1].tool_name == "weather"
     assert result.tool_calls[1].arguments == {"city": "Berlin"}
+
+
+def test_print_streaming_chunk_content_only():
+    chunk = StreamingChunk(
+        content="Hello, world!",
+        meta={"model": "test-model"},
+        component_info=ComponentInfo(name="test", type="test"),
+        start=True,
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        expected_calls = [call("[ASSISTANT]\n", flush=True, end=""), call("Hello, world!", flush=True, end="")]
+        mock_print.assert_has_calls(expected_calls)
+
+
+def test_print_streaming_chunk_tool_call():
+    chunk = StreamingChunk(
+        content="",
+        meta={"model": "test-model"},
+        component_info=ComponentInfo(name="test", type="test"),
+        start=True,
+        index=0,
+        tool_calls=[ToolCallDelta(id="call_123", tool_name="test_tool", arguments='{"param": "value"}', index=0)],
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        expected_calls = [
+            call("[TOOL CALL]\nTool: test_tool \nArguments: ", flush=True, end=""),
+            call('{"param": "value"}', flush=True, end=""),
+        ]
+        mock_print.assert_has_calls(expected_calls)
+
+
+def test_print_streaming_chunk_tool_call_result():
+    chunk = StreamingChunk(
+        content="",
+        meta={"model": "test-model"},
+        component_info=ComponentInfo(name="test", type="test"),
+        index=0,
+        tool_call_result=ToolCallResult(
+            result="Tool execution completed successfully",
+            origin=ToolCall(id="call_123", tool_name="test_tool", arguments={}),
+            error=False,
+        ),
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        expected_calls = [call("[TOOL RESULT]\nTool execution completed successfully", flush=True, end="")]
+        mock_print.assert_has_calls(expected_calls)
+
+
+def test_print_streaming_chunk_with_finish_reason():
+    chunk = StreamingChunk(
+        content="Final content.",
+        meta={"model": "test-model"},
+        component_info=ComponentInfo(name="test", type="test"),
+        start=True,
+        finish_reason="stop",
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        expected_calls = [
+            call("[ASSISTANT]\n", flush=True, end=""),
+            call("Final content.", flush=True, end=""),
+            call("\n\n", flush=True, end=""),
+        ]
+        mock_print.assert_has_calls(expected_calls)
+
+
+def test_print_streaming_chunk_empty_chunk():
+    chunk = StreamingChunk(
+        content="", meta={"model": "test-model"}, component_info=ComponentInfo(name="test", type="test")
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        mock_print.assert_not_called()
