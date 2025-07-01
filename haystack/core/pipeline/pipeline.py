@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Mapping, Optional, Set, cast
+from typing import Any, Dict, Mapping, Optional, Set
 
 from haystack import logging, tracing
 from haystack.core.component import Component
