@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -7,7 +8,21 @@ from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, ContextManager, Dict, Iterator, List, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    ContextManager,
+    Dict,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    TextIO,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import networkx  # type:ignore
 
@@ -1177,18 +1192,15 @@ class PipelineBase:  # noqa: PLW1641
             None if (item := priority_queue.get()) is None else (ComponentPriority(item[0]), str(item[1]))
         )
 
-        if priority_and_component_name is not None and priority_and_component_name[0] != ComponentPriority.BLOCKED:
-            priority, component_name = priority_and_component_name
-            component = self._get_component_with_graph_metadata_and_visits(
-                component_name, component_visits[component_name]
-            )
-            if component["visits"] > self._max_runs_per_component:
-                msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
-                raise PipelineMaxComponentRuns(msg)
+        if priority_and_component_name is None:
+            return None
 
-            return priority, component_name, component
-
-        return None
+        priority, component_name = priority_and_component_name
+        comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
+        if comp["visits"] > self._max_runs_per_component:
+            msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
+            raise PipelineMaxComponentRuns(msg)
+        return priority, component_name, comp
 
     @staticmethod
     def _add_missing_input_defaults(
@@ -1258,11 +1270,11 @@ class PipelineBase:  # noqa: PLW1641
     @staticmethod
     def _write_component_outputs(
         component_name: str,
-        component_outputs: Dict[str, Any],
+        component_outputs: Mapping[str, Any],
         inputs: Dict[str, Any],
         receivers: List[Tuple],
         include_outputs_from: Set[str],
-    ) -> Dict[str, Any]:
+    ) -> Mapping[str, Any]:
         """
         Distributes the outputs of a component to the input sockets that it is connected to.
 

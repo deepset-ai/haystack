@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Mapping, Optional, Set, cast
+from typing import Any, Dict, Mapping, Optional, Set
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineRuntimeError
+from haystack.core.errors import PipelineComponentBlockedError, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -34,7 +34,7 @@ class Pipeline(PipelineBase):
         inputs: Dict[str, Any],
         component_visits: Dict[str, int],
         parent_span: Optional[tracing.Span] = None,
-    ) -> Dict[str, Any]:
+    ) -> Mapping[str, Any]:
         """
         Runs a Component with the given inputs.
 
@@ -56,10 +56,12 @@ class Pipeline(PipelineBase):
             # when we delete them in case they're sent to other Components
             span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(inputs))
             logger.info("Running component {component_name}", component_name=component_name)
+
             try:
                 component_output = instance.run(**inputs)
             except Exception as error:
                 raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
+
             component_visits[component_name] += 1
 
             if not isinstance(component_output, Mapping):
@@ -68,7 +70,7 @@ class Pipeline(PipelineBase):
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
             span.set_content_tag(_COMPONENT_OUTPUT, component_output)
 
-            return cast(Dict[Any, Any], component_output)
+            return component_output
 
     def run(  # noqa: PLR0915, PLR0912
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None
@@ -208,10 +210,26 @@ class Pipeline(PipelineBase):
 
             while True:
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
+
+                # If there are no runnable components left, we can exit the loop
                 if candidate is None:
                     break
 
                 priority, component_name, component = candidate
+                # If the next component is blocked, we check if there are any expected outputs from the pipeline.
+                if priority == ComponentPriority.BLOCKED:
+                    # If the pipeline expects no outputs, we can exit the loop.
+                    if not self.outputs():
+                        break
+                    # If there are expected outputs, we can exit the loop and return the outputs.
+                    if any(k in pipeline_outputs for k in self.outputs()):
+                        break
+                    # If there are no expected outputs, we raise an error since the pipeline is blocked and most
+                    # likely something is wrong with the pipeline configuration.
+                    raise PipelineComponentBlockedError(
+                        component_name=component_name, component_type=component["instance"].__class__
+                    )
+
                 if len(priority_queue) > 0 and priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]:
                     component_name, topological_sort = self._tiebreak_waiting_components(
                         component_name=component_name,

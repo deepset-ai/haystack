@@ -1065,7 +1065,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
         ]
     )
 
-    pipe = pipeline_class(max_runs_per_component=1)
+    pipe = pipeline_class(max_runs_per_component=2)
 
     pipe.add_component("prompt_builder", PromptBuilder(template=template))
     pipe.add_component("generator", FakeGenerator())
@@ -1685,7 +1685,7 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
     llm = FakeGenerator()
     validator = FakeOutputValidator()
 
-    pipeline = pipeline_class(max_runs_per_component=1)
+    pipeline = pipeline_class(max_runs_per_component=2)
     pipeline.add_component("prompt_builder", prompt_builder)
 
     pipeline.add_component("llm", llm)
@@ -5507,7 +5507,7 @@ def pipeline_component_cycle_input_no_input(pipeline_class):
 
     outside_router = ConditionalRouter(routes=outside_routes)
 
-    pp = pipeline_class(max_runs_per_component=1)
+    pp = pipeline_class(max_runs_per_component=2)
 
     pp.add_component("joiner", joiner)
     pp.add_component("router", router)
