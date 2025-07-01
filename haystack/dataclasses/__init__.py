@@ -38,7 +38,6 @@ if TYPE_CHECKING:
     from .chat_message import ToolCallResult as ToolCallResult
     from .document import Document as Document
     from .sparse_embedding import SparseEmbedding as SparseEmbedding
-    from .state import State as State
     from .streaming_chunk import AsyncStreamingCallbackT as AsyncStreamingCallbackT
     from .streaming_chunk import ComponentInfo as ComponentInfo
     from .streaming_chunk import FinishReason as FinishReason
