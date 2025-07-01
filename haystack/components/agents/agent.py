@@ -67,8 +67,9 @@ class Agent:
         exit_conditions: Optional[List[str]] = None,
         state_schema: Optional[Dict[str, Any]] = None,
         max_agent_steps: int = 100,
-        raise_on_tool_invocation_failure: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
+        raise_on_tool_invocation_failure: bool = False,
+        tool_invoker_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -82,10 +83,11 @@ class Agent:
         :param state_schema: The schema for the runtime state used by the tools.
         :param max_agent_steps: Maximum number of steps the agent will run before stopping. Defaults to 100.
             If the agent exceeds this number of steps, it will stop and return the current state.
-        :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
-            If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
+        :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
+            If set to False, the exception will be turned into a chat message and passed to the LLM.
+        :param tool_invoker_kwargs: Additional keyword arguments to pass to the ToolInvoker.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If the exit_conditions are not valid.
         """
@@ -135,9 +137,15 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
+        self.tool_invoker_kwargs = tool_invoker_kwargs
         self._tool_invoker = None
         if self.tools:
-            self._tool_invoker = ToolInvoker(tools=self.tools, raise_on_failure=self.raise_on_tool_invocation_failure)
+            resolved_tool_invoker_kwargs = {
+                "tools": self.tools,
+                "raise_on_failure": self.raise_on_tool_invocation_failure,
+                **(tool_invoker_kwargs or {}),
+            }
+            self._tool_invoker = ToolInvoker(**resolved_tool_invoker_kwargs)
         else:
             logger.warning(
                 "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
@@ -175,8 +183,9 @@ class Agent:
             # We serialize the original state schema, not the resolved one to reflect the original user input
             state_schema=_schema_to_dict(self._state_schema),
             max_agent_steps=self.max_agent_steps,
-            raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
             streaming_callback=streaming_callback,
+            raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
+            tool_invoker_kwargs=self.tool_invoker_kwargs,
         )
 
     @classmethod

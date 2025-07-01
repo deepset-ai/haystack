@@ -174,6 +174,7 @@ class TestAgent:
             tools=[weather_tool, component_tool],
             exit_conditions=["text", "weather_tool"],
             state_schema={"foo": {"type": str}},
+            tool_invoker_kwargs={"max_workers": 5, "enable_streaming_callback_passthrough": True},
         )
         serialized_agent = agent.to_dict()
         assert serialized_agent == {
@@ -236,8 +237,9 @@ class TestAgent:
                 "exit_conditions": ["text", "weather_tool"],
                 "state_schema": {"foo": {"type": "str"}},
                 "max_agent_steps": 100,
-                "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
+                "raise_on_tool_invocation_failure": False,
+                "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
             },
         }
 
@@ -294,6 +296,7 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
+                "tool_invoker_kwargs": None,
             },
         }
 
@@ -361,6 +364,7 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
+                "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
             },
         }
         agent = Agent.from_dict(data)
@@ -375,6 +379,9 @@ class TestAgent:
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": List[ChatMessage]},
         }
+        assert agent.tool_invoker_kwargs == {"max_workers": 5, "enable_streaming_callback_passthrough": True}
+        assert agent._tool_invoker.max_workers == 5
+        assert agent._tool_invoker.enable_streaming_callback_passthrough is True
 
     def test_from_dict_with_toolset(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -426,6 +433,7 @@ class TestAgent:
                 "max_agent_steps": 100,
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
+                "tool_invoker_kwargs": None,
             },
         }
         agent = Agent.from_dict(data)
