@@ -5,7 +5,6 @@
 import asyncio
 import inspect
 import json
-import warnings
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import Any, Dict, List, Optional, Set, Union
