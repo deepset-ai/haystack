@@ -1,53 +1,53 @@
+# ruff: noqa: D103
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import re
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union
-import re
-
-from pytest_bdd import scenarios, given
 from unittest.mock import ANY
+
 import pytest
 from pandas import DataFrame
+from pytest_bdd import given, scenarios
 
 from haystack import Document, component
-from haystack.document_stores.types import DuplicatePolicy
-from haystack.dataclasses import ChatMessage, GeneratedAnswer, TextContent, ByteStream, ChatRole
-from haystack.components.routers import ConditionalRouter, FileTypeRouter
-from haystack.components.routers.conditional_router import Route
-from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
+from haystack.components.builders import AnswerBuilder, ChatPromptBuilder, PromptBuilder
 from haystack.components.converters import (
-    OutputAdapter,
-    JSONConverter,
-    TextFileToDocument,
     CSVToDocument,
     HTMLToDocument,
+    JSONConverter,
+    OutputAdapter,
+    TextFileToDocument,
 )
+from haystack.components.joiners import AnswerJoiner, BranchJoiner, DocumentJoiner, StringJoiner
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner, StringJoiner
+from haystack.components.routers import ConditionalRouter, FileTypeRouter
+from haystack.components.routers.conditional_router import Route
 from haystack.core.component.types import Variadic
+from haystack.dataclasses import ByteStream, ChatMessage, ChatRole, GeneratedAnswer, TextContent
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+from haystack.testing.factory import component_class
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
     Double,
+    FString,
     Greet,
+    Hello,
     Parity,
+    Remainder,
     Repeat,
+    StringListJoiner,
     Subtract,
     Sum,
-    Threshold,
-    Remainder,
-    FString,
-    Hello,
     TextSplitter,
-    StringListJoiner,
+    Threshold,
 )
-from haystack.testing.factory import component_class
-
 from test.core.pipeline.features.conftest import PipelineRunData
 
 pytestmark = [pytest.mark.usefixtures("pipeline_class"), pytest.mark.integration]
@@ -817,6 +817,7 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
     target_fixture="pipeline_data",
 )
 def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_default_input(pipeline_class):
+    # ruff: noqa: D205
     """
     This test verifies that `Pipeline.run()` executes the components in the correct order when
     there's a greedy Component with variadic input right before a Component with at least one default input.
@@ -1027,8 +1028,8 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
     pipeline_class,
 ):
     """
-    This tests verifies that a Pipeline doesn't get stuck running in a loop if
-    it has all the following characteristics:
+    This tests verifies that a Pipeline doesn't get stuck running in a loop if it has all the following characteristics:
+
     - The first Component has all defaults for its inputs
     - The first Component receives one input from the user
     - The first Component receives one input from a loop in the Pipeline
@@ -2912,6 +2913,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
 
 @given("a pipeline that has a cycle that would get it stuck", target_fixture="pipeline_data")
 def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
+    # ruff: noqa: E501
     template = """
     You are an experienced and accurate Turkish CX speacialist that classifies customer comments into pre-defined categories below:\n
     Negative experience labels:
@@ -3152,7 +3154,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "short": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         )
                     ]
                 },
@@ -3169,7 +3172,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         )
                     ]
                 },
@@ -3177,7 +3181,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         )
                     ]
                 },
@@ -3207,7 +3212,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         )
                     ]
                 },
@@ -3215,7 +3221,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         )
                     ]
                 },
@@ -3237,7 +3244,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                         Document(id="5", content=" or this one. Or even this other one."),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         ),
                     ]
                 }
@@ -3247,11 +3255,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         ),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         ),
                     ]
                 },
@@ -3259,11 +3269,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         ),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         ),
                     ]
                 },
@@ -3298,11 +3310,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                         [
                             Document(
                                 id="1000",
-                                content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                                content="This document has so many, sentences. Like this one, or this one. Or even "
+                                "this other one.",
                             ),
                             Document(
                                 id="1000",
-                                content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                                content="This document has so many, sentences. Like this one, or this one. Or even "
+                                "this other one.",
                             ),
                         ],
                     ],
@@ -3312,11 +3326,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                     ]
                 },
@@ -3324,11 +3340,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                     ]
                 },
@@ -3336,11 +3354,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                     ]
                 },
@@ -5169,11 +5189,9 @@ def pipeline_that_converts_files_with_three_joiners(pipeline_class):
     # What does this test?
     # When a component does not produce outputs, and the successors only receive inputs from this component,
     # then the successors will not run.
-    # The successor of the successor would never know that its predecessor did not run if we don't send a signal.
-    # This is why we use PipelineBase._notify_downstream_components to recursively notify successors that
-    # can not run anymore.
-    # This prevents an edge case where multiple lazy variadic components wait for input and the execution order
-    # would otherwise be decided by lexicographical sort.
+    # The successor of the successor would never know that its predecessor did not run.
+    # This tests an edge case where multiple lazy variadic components wait for input and the execution order is
+    # determined by a topological sort.
     html_data = """
 <html><body>Some content</body></html>
     """
@@ -5225,26 +5243,6 @@ def pipeline_that_converts_files_with_three_joiners(pipeline_class):
 
     expected_html_doc = Document(content="Some content", meta={"file_type": "html"})
     expected_txt_doc = Document(content=txt_data, meta={"file_type": "txt"})
-    expected_txt_split_doc = Document(
-        content=txt_data,
-        meta={
-            "file_type": "txt",
-            "source_id": expected_txt_doc.id,
-            "page_number": 1,
-            "split_id": 0,
-            "split_idx_start": 0,
-        },
-    )
-    expected_html_split_doc = Document(
-        content=expected_html_doc.content,
-        meta={
-            "file_type": "html",
-            "source_id": expected_html_doc.id,
-            "page_number": 1,
-            "split_id": 0,
-            "split_idx_start": 0,
-        },
-    )
 
     return (
         pp,
@@ -5277,11 +5275,9 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
     # What does this test?
     # When a component does not produce outputs, and the successors only receive inputs from this component,
     # then the successors will not run.
-    # The successor of the successor would never know that its predecessor did not run if we don't send a signal.
-    # This is why we use PipelineBase._notify_downstream_components to recursively notify successors that
-    # can not run anymore.
-    # This prevents an edge case where multiple lazy variadic components wait for input and the execution order
-    # would otherwise be decided by lexicographical sort.
+    # The successor of the successor would never know that its predecessor did not run.
+    # This tests an edge case where multiple lazy variadic components wait for input and the execution order is
+    # determined by a topological sort.
     @component
     class FakeDataExtractor:
         def __init__(self, metas):
@@ -5510,7 +5506,8 @@ def pipeline_single_component_many_sockets_same_target(pipeline_class):
 
 
 @given(
-    "a pipeline where a component in a cycle provides inputs for a component outside the cycle in one iteration and no input in another iteration",
+    "a pipeline where a component in a cycle provides inputs for a component outside the cycle in one iteration "
+    "and no input in another iteration",
     target_fixture="pipeline_data",
 )
 def pipeline_component_cycle_input_no_input(pipeline_class):
