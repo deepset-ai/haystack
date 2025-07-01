@@ -34,7 +34,7 @@ class Pipeline(PipelineBase):
         inputs: Dict[str, Any],
         component_visits: Dict[str, int],
         parent_span: Optional[tracing.Span] = None,
-    ) -> Dict[str, Any]:
+    ) -> Mapping[str, Any]:
         """
         Runs a Component with the given inputs.
 
@@ -56,10 +56,12 @@ class Pipeline(PipelineBase):
             # when we delete them in case they're sent to other Components
             span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(inputs))
             logger.info("Running component {component_name}", component_name=component_name)
+
             try:
                 component_output = instance.run(**inputs)
             except Exception as error:
                 raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
+
             component_visits[component_name] += 1
 
             if not isinstance(component_output, Mapping):
@@ -68,7 +70,7 @@ class Pipeline(PipelineBase):
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
             span.set_content_tag(_COMPONENT_OUTPUT, component_output)
 
-            return cast(Dict[Any, Any], component_output)
+            return component_output
 
     def run(  # noqa: PLR0915, PLR0912
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None

@@ -7,7 +7,21 @@ from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, ContextManager, Dict, Iterator, List, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    ContextManager,
+    Dict,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    TextIO,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import networkx  # type:ignore
 
@@ -1255,11 +1269,11 @@ class PipelineBase:  # noqa: PLW1641
     @staticmethod
     def _write_component_outputs(
         component_name: str,
-        component_outputs: Dict[str, Any],
+        component_outputs: Mapping[str, Any],
         inputs: Dict[str, Any],
         receivers: List[Tuple],
         include_outputs_from: Set[str],
-    ) -> Dict[str, Any]:
+    ) -> Mapping[str, Any]:
         """
         Distributes the outputs of a component to the input sockets that it is connected to.
 

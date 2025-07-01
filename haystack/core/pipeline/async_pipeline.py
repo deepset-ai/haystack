@@ -4,11 +4,11 @@
 
 import asyncio
 import contextvars
-from typing import Any, AsyncIterator, Dict, List, Optional, Set
+from typing import Any, AsyncIterator, Dict, List, Mapping, Optional, Set
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineComponentBlockedError, PipelineMaxComponentRuns, PipelineRuntimeError
+from haystack.core.errors import PipelineComponentBlockedError, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -37,7 +37,7 @@ class AsyncPipeline(PipelineBase):
         component_inputs: Dict[str, Any],
         component_visits: Dict[str, int],
         parent_span: Optional[tracing.Span] = None,
-    ) -> Dict[str, Any]:
+    ) -> Mapping[str, Any]:
         """
         Executes a single component asynchronously.
 
@@ -56,6 +56,8 @@ class AsyncPipeline(PipelineBase):
         with PipelineBase._create_component_span(
             component_name=component_name, instance=instance, inputs=component_inputs, parent_span=parent_span
         ) as span:
+            # We deepcopy the inputs otherwise we might lose that information
+            # when we delete them in case they're sent to other Components
             span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(component_inputs))
             logger.info("Running component {component_name}", component_name=component_name)
 
@@ -73,7 +75,7 @@ class AsyncPipeline(PipelineBase):
 
             component_visits[component_name] += 1
 
-            if not isinstance(outputs, dict):
+            if not isinstance(outputs, Mapping):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
 
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
