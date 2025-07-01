@@ -8,9 +8,7 @@ from typing import Any, Dict, List, Optional, Union
 from haystack.dataclasses import ByteStream
 
 
-def get_bytestream_from_source(
-    source: Union[str, Path, ByteStream], guess_mime_type: Optional[bool] = False
-) -> ByteStream:
+def get_bytestream_from_source(source: Union[str, Path, ByteStream], guess_mime_type: bool = False) -> ByteStream:
     """
     Creates a ByteStream object from a source.
 
