@@ -834,7 +834,7 @@ class TestHuggingFaceAPIChatGenerator:
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen2.5-72B-Instruct", "provider": "featherless-ai"},
+            api_params={"model": "Qwen/Qwen2.5-72B-Instruct", "provider": "hf-inference"},
             generation_kwargs={"temperature": 0.5},
         )
 
