@@ -91,7 +91,7 @@ dependencies = [
 
   "transformers[torch, sentencepiece]>=4.52.4,<4.53", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.27.0",                          # Hugging Face API Generators and Embedders
-  "sentence-transformers>=4.1.0",                     # Sentence Transformers Embedders, Rankers, and SASEvaluator
+  "sentence-transformers>=4.1.0,<5.0.0",              # Sentence Transformers Embedders, Rankers, and SASEvaluator
   "langdetect",                                       # TextLanguageRouter and DocumentLanguageClassifier
   "openai-whisper>=20231106",                         # LocalWhisperTranscriber
   "arrow>=1.3.0",                                     # Jinja2TimeExtension
