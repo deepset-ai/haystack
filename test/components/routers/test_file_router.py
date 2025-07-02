@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import mimetypes
 import sys
 from unittest.mock import mock_open, patch
 
@@ -395,3 +396,25 @@ class TestFileTypeRouter:
 
         assert output["text_file_converter"]["documents"][0].meta["meta_field_1"] == "meta_value_1"
         assert output["pypdf_converter"]["documents"][0].meta["meta_field_2"] == "meta_value_2"
+
+    def test_additional_mimetypes_integration(self, tmp_path):
+        """
+        Test if the component runs correctly in a pipeline with additional mimetypes correctly.
+        """
+        custom_mime_type = "application/x-spam"
+        custom_extension = ".spam"
+        test_file = tmp_path / f"test.{custom_extension}"
+        test_file.touch()
+
+        # confirm that mimetypes module doesn't know about this extension by default
+        assert custom_mime_type not in mimetypes.types_map.values()
+
+        # make haystack aware of the custom mime type
+        router = FileTypeRouter(
+            mime_types=[custom_mime_type], additional_mimetypes={custom_mime_type: custom_extension}
+        )
+        mappings = router.run(sources=[test_file])
+
+        # assert the file was classified under the custom mime type
+        assert custom_mime_type in mappings
+        assert test_file in mappings[custom_mime_type]
