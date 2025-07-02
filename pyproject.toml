@@ -153,7 +153,7 @@ integration-only-fast = 'pytest --maxfail=5 -m "integration and not slow" {args:
 integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test}'
 all = 'pytest {args:test}'
 
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack}"
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/pipeline/features/test_run.py}"
 lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.e2e]
