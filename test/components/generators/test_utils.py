@@ -388,6 +388,123 @@ def test_convert_streaming_chunk_to_chat_message_two_tool_calls_in_same_chunk():
     assert result.tool_calls[1].arguments == {"city": "Berlin"}
 
 
+def test_convert_streaming_chunk_to_chat_message_empty_tool_call_delta():
+    chunks = [
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "gpt-4o-mini-2024-07-18",
+                "index": 0,
+                "tool_calls": None,
+                "finish_reason": None,
+                "received_at": "2025-02-19T16:02:55.910076",
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "gpt-4o-mini-2024-07-18",
+                "index": 0,
+                "tool_calls": [
+                    chat_completion_chunk.ChoiceDeltaToolCall(
+                        index=0,
+                        id="call_ZOj5l67zhZOx6jqjg7ATQwb6",
+                        function=chat_completion_chunk.ChoiceDeltaToolCallFunction(
+                            arguments='{"query":', name="rag_pipeline_tool"
+                        ),
+                        type="function",
+                    )
+                ],
+                "finish_reason": None,
+                "received_at": "2025-02-19T16:02:55.913919",
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+            index=0,
+            start=True,
+            tool_calls=[
+                ToolCallDelta(
+                    id="call_ZOj5l67zhZOx6jqjg7ATQwb6", tool_name="rag_pipeline_tool", arguments='{"query":', index=0
+                )
+            ],
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "gpt-4o-mini-2024-07-18",
+                "index": 0,
+                "tool_calls": [
+                    chat_completion_chunk.ChoiceDeltaToolCall(
+                        index=0,
+                        function=chat_completion_chunk.ChoiceDeltaToolCallFunction(
+                            arguments=' "Where does Mark live?"}'
+                        ),
+                    )
+                ],
+                "finish_reason": None,
+                "received_at": "2025-02-19T16:02:55.924420",
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+            index=0,
+            tool_calls=[ToolCallDelta(arguments=' "Where does Mark live?"}', index=0)],
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "gpt-4o-mini-2024-07-18",
+                "index": 0,
+                "tool_calls": [
+                    chat_completion_chunk.ChoiceDeltaToolCall(
+                        index=0, function=chat_completion_chunk.ChoiceDeltaToolCallFunction()
+                    )
+                ],
+                "finish_reason": "tool_calls",
+                "received_at": "2025-02-19T16:02:55.948772",
+            },
+            tool_calls=[ToolCallDelta(index=0)],
+            component_info=ComponentInfo(name="test", type="test"),
+            finish_reason="tool_calls",
+            index=0,
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "gpt-4o-mini-2024-07-18",
+                "index": 0,
+                "tool_calls": None,
+                "finish_reason": None,
+                "received_at": "2025-02-19T16:02:55.948772",
+                "usage": {
+                    "completion_tokens": 42,
+                    "prompt_tokens": 282,
+                    "total_tokens": 324,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0,
+                    },
+                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
+                },
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+        ),
+    ]
+
+    # Convert chunks to a chat message
+    result = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+
+    assert not result.texts
+    assert not result.text
+
+    # Verify both tool calls were found and processed
+    assert len(result.tool_calls) == 1
+    assert result.tool_calls[0].id == "call_ZOj5l67zhZOx6jqjg7ATQwb6"
+    assert result.tool_calls[0].tool_name == "rag_pipeline_tool"
+    assert result.tool_calls[0].arguments == {"query": "Where does Mark live?"}
+    assert result.meta["finish_reason"] == "tool_calls"
+
+
 def test_print_streaming_chunk_content_only():
     chunk = StreamingChunk(
         content="Hello, world!",
