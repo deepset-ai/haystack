@@ -848,7 +848,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert "city" in tool_call.arguments
         assert "Paris" in tool_call.arguments["city"]
-        assert message.meta["finish_reason"] == "stop"
+        assert message.meta["finish_reason"] == "tool_calls"
 
         new_messages = chat_messages + [message, ChatMessage.from_tool(tool_result="22° C", origin=tool_call)]
 
