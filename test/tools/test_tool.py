@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+
 import pytest
 
 from haystack.tools import Tool, _check_duplicate_tool_names
@@ -77,7 +78,8 @@ class TestTool:
         with pytest.raises(
             ToolInvocationError,
             match=re.escape(
-                "Failed to invoke Tool `weather` with parameters {}. Error: get_weather_report() missing 1 required positional argument: 'city'"
+                "Failed to invoke Tool `weather` with parameters {}. Error: get_weather_report() missing 1 required "
+                "positional argument: 'city'"
             ),
         ):
             tool.invoke()

@@ -6,6 +6,7 @@ import random
 from typing import List
 
 import pytest
+
 from haystack import Document
 from haystack.components.samplers.top_p import TopPSampler
 

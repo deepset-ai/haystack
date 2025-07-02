@@ -2,17 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass, field
-from typing import Tuple, List, Dict, Any, Set, Union
-from pathlib import Path
-import re
-import pytest
 import asyncio
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Set, Tuple, Union
+
+import pytest
 from pandas import DataFrame
+from pytest_bdd import parsers, then, when
 
-from pytest_bdd import when, then, parsers
-
-from haystack import Pipeline, AsyncPipeline
+from haystack import AsyncPipeline, Pipeline
 
 PIPELINE_NAME_REGEX = re.compile(r"\[(.*)\]")
 
@@ -94,7 +94,7 @@ def run_async_pipeline(
         except Exception as e:
             return e
 
-    return [e for e in zip(results, pipeline_run_data)]
+    return list(zip(results, pipeline_run_data))
 
 
 def run_sync_pipeline(
@@ -128,7 +128,7 @@ def run_sync_pipeline(
             spying_tracer.spans.clear()
         except Exception as e:
             return e
-    return [e for e in zip(results, pipeline_run_data)]
+    return list(zip(results, pipeline_run_data))
 
 
 @then("draw it to file")

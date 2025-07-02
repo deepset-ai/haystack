@@ -3,12 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import random
 from unittest.mock import MagicMock, patch
 
-import random
 import pytest
 from huggingface_hub.utils import RepositoryNotFoundError
 from numpy import array
+
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils.auth import Secret
 from haystack.utils.hf import HFEmbeddingAPIType

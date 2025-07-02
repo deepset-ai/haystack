@@ -7,8 +7,8 @@ import logging
 import pytest
 
 from haystack import Document
-from haystack.dataclasses import ByteStream, SparseEmbedding
 from haystack.components.preprocessors import DocumentCleaner
+from haystack.dataclasses import ByteStream, SparseEmbedding
 
 
 class TestDocumentCleaner:

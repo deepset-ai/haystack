@@ -14,7 +14,7 @@ from haystack.dataclasses import ChatMessage
 
 @pytest.fixture
 def genuine_fc_message():
-    return """[{"id": "call_NJr1NBz2Th7iUWJpRIJZoJIA", "function": {"arguments": "{\\n    \\"basehead\\": \\"main...amzn_chat\\",\\n    \\"owner\\": \\"deepset-ai\\",\\n    \\"repo\\": \\"haystack-core-integrations\\"\\n  }", "name": "compare_branches"}, "type": "function"}]"""
+    return """[{"id": "call_NJr1NBz2Th7iUWJpRIJZoJIA", "function": {"arguments": "{\\n    \\"basehead\\": \\"main...amzn_chat\\",\\n    \\"owner\\": \\"deepset-ai\\",\\n    \\"repo\\": \\"haystack-core-integrations\\"\\n  }", "name": "compare_branches"}, "type": "function"}]"""  # noqa: E501
 
 
 @pytest.fixture

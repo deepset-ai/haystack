@@ -2,35 +2,37 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import patch, ANY, MagicMock
-import pytest
-
-
 import logging
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from unittest.mock import ANY, MagicMock, patch
 
+import pytest
 from openai import OpenAIError
-from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage, ChatCompletionMessageToolCall
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionChunk,
+    ChatCompletionMessage,
+    ChatCompletionMessageToolCall,
+    chat_completion_chunk,
+)
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
-from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 from openai.types.chat.chat_completion_message_tool_call import Function
-from openai.types.chat import chat_completion_chunk
+from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 
 from haystack import component
-from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import StreamingChunk, ToolCallDelta
-from haystack.utils.auth import Secret
-from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.tools import ComponentTool, Tool
 from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
     _check_finish_reason,
     _convert_chat_completion_chunk_to_streaming_chunk,
 )
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, ToolCallDelta
+from haystack.tools import ComponentTool, Tool
 from haystack.tools.toolset import Toolset
+from haystack.utils.auth import Secret
 
 
 @pytest.fixture

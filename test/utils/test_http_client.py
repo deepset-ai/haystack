@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
-from haystack.utils.http_client import init_http_client
 import httpx
+import pytest
+
+from haystack.utils.http_client import init_http_client
 
 
 def test_init_http_client():

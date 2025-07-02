@@ -188,8 +188,10 @@ def test_to_dict_with_custom_parameters_without_flattening():
 
 def test_to_dict_field_precedence():
     """
-    Test that Document's first-level fields take precedence over meta fields
-    when flattening the dictionary representation.
+    Test for Document.to_dict() with flatten=True.
+
+    Test that Document's first-level fields take precedence over meta fields when flattening the dictionary
+    representation.
     """
 
     doc = Document(content="from-content", score=0.9, meta={"content": "from-meta", "score": 0.5, "source": "web"})
@@ -306,6 +308,8 @@ def test_from_dict_with_flat_and_non_flat_meta():
 
 def test_from_dict_with_dataframe():
     """
+    Test for legacy support of Document.from_dict() with dataframe field.
+
     Test that Document.from_dict() can properly deserialize a Document dictionary obtained with
     document.to_dict(flatten=False) in haystack-ai<=2.10.0.
     We make sure that Document.from_dict() does not raise an error and that dataframe is skipped (legacy field).

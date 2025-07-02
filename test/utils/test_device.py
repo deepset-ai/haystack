@@ -36,22 +36,22 @@ def test_device_creation():
 
 
 def test_device_map():
-    map = DeviceMap({"layer1": Device.cpu(), "layer2": Device.gpu(1), "layer3": Device.disk()})
+    device_map = DeviceMap({"layer1": Device.cpu(), "layer2": Device.gpu(1), "layer3": Device.disk()})
 
-    assert all(x in map for x in ["layer1", "layer2", "layer3"])
-    assert len(map) == 3
-    assert map["layer1"] == Device.cpu()
-    assert map["layer2"] == Device.gpu(1)
-    assert map["layer3"] == Device.disk()
+    assert all(x in device_map for x in ["layer1", "layer2", "layer3"])
+    assert len(device_map) == 3
+    assert device_map["layer1"] == Device.cpu()
+    assert device_map["layer2"] == Device.gpu(1)
+    assert device_map["layer3"] == Device.disk()
 
-    for k, d in map:
+    for k, d in device_map:
         assert k in ["layer1", "layer2", "layer3"]
         assert d in [Device.cpu(), Device.gpu(1), Device.disk()]
 
-    map["layer1"] = Device.gpu(0)
-    assert map["layer1"] == Device.gpu(0)
+    device_map["layer1"] = Device.gpu(0)
+    assert device_map["layer1"] == Device.gpu(0)
 
-    map["layer2"] = Device.cpu()
+    device_map["layer2"] = Device.cpu()
     assert DeviceMap.from_hf({"layer1": 0, "layer2": "cpu", "layer3": "disk"}) == DeviceMap(
         {"layer1": Device.gpu(0), "layer2": Device.cpu(), "layer3": Device.disk()}
     )
@@ -59,7 +59,7 @@ def test_device_map():
     with pytest.raises(ValueError, match="unexpected device"):
         DeviceMap.from_hf({"layer1": 0.1})
 
-    assert map.first_device == Device.gpu(0)
+    assert device_map.first_device == Device.gpu(0)
     assert DeviceMap({}).first_device is None
 
 

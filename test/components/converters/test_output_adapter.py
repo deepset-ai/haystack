@@ -2,15 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
 import json
+from typing import List
 
 import pytest
 
 from haystack import Pipeline, component
-from haystack.dataclasses import Document
 from haystack.components.converters import OutputAdapter
 from haystack.components.converters.output_adapter import OutputAdaptationException
+from haystack.dataclasses import Document
 
 
 def custom_filter_to_sede(value):

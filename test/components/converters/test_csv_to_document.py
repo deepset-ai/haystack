@@ -7,8 +7,8 @@ import os
 
 import pytest
 
-from haystack.dataclasses import ByteStream
 from haystack.components.converters.csv import CSVToDocument
+from haystack.dataclasses import ByteStream
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ class TestCSVToDocument:
         output = converter.run(sources=files)
         docs = output["documents"]
         assert len(docs) == 3
-        assert "Name,Age\r\nJohn Doe,27\r\nJane Smith,37\r\nMike Johnson,47\r\n" == docs[0].content
+        assert docs[0].content == "Name,Age\r\nJohn Doe,27\r\nJane Smith,37\r\nMike Johnson,47\r\n"
         assert isinstance(docs[0].content, str)
         assert docs[0].meta == {"file_path": os.path.basename(bytestream.meta["file_path"]), "key": "value"}
         assert docs[1].meta["file_path"] == os.path.basename(files[1])
@@ -50,7 +50,7 @@ class TestCSVToDocument:
         output = converter.run(sources=files)
         docs = output["documents"]
         assert len(docs) == 3
-        assert "Name,Age\r\nJohn Doe,27\r\nJane Smith,37\r\nMike Johnson,47\r\n" == docs[0].content
+        assert docs[0].content == "Name,Age\r\nJohn Doe,27\r\nJane Smith,37\r\nMike Johnson,47\r\n"
         assert isinstance(docs[0].content, str)
         assert docs[0].meta["file_path"] == "sample_1.csv"
         assert docs[0].meta["key"] == "value"

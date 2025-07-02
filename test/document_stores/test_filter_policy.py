@@ -4,12 +4,13 @@
 
 import pytest
 
-from haystack.document_stores.types import apply_filter_policy, FilterPolicy
+from haystack.document_stores.types import FilterPolicy, apply_filter_policy
 
 
 def test_merge_two_comparison_filters():
     """
     Merging two comparison filters
+
     Result: AND operator with both filters
     """
     init_filters = {"field": "meta.date", "operator": ">=", "value": "2015-01-01"}
@@ -27,6 +28,7 @@ def test_merge_two_comparison_filters():
 def test_merge_init_comparison_and_runtime_logical_filters():
     """
     Merging init comparison and runtime logical filters
+
     Result: AND operator with both filters
     """
     init_filters = {"field": "meta.date", "operator": ">=", "value": "2015-01-01"}
@@ -51,6 +53,7 @@ def test_merge_init_comparison_and_runtime_logical_filters():
 def test_merge_runtime_comparison_and_init_logical_filters_with_string_operators():
     """
     Merging a runtime comparison filter with an init logical filter, but with string-based logical operators
+
     Result: AND operator with both filters
     """
     # Test with string-based logical operators
@@ -83,6 +86,7 @@ def test_merge_runtime_comparison_and_init_logical_filters_with_string_operators
 def test_merge_runtime_comparison_and_init_logical_filters():
     """
     Merging a runtime comparison filter with an init logical filter
+
     Result: AND operator with both filters
     """
     init_filters = {
@@ -107,6 +111,7 @@ def test_merge_runtime_comparison_and_init_logical_filters():
 def test_merge_two_logical_filters():
     """
     Merging two logical filters
+
     Result: AND operator with both filters
     """
     init_filters = {
@@ -138,6 +143,7 @@ def test_merge_two_logical_filters():
 def test_merge_with_different_logical_operators():
     """
     Merging with a different logical operator
+
     Result: warnings and runtime filters
     """
     init_filters = {"operator": "AND", "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}]}
@@ -152,6 +158,7 @@ def test_merge_with_different_logical_operators():
 def test_merge_comparison_filters_with_same_field():
     """
     Merging comparison filters with the same field
+
     Result: warnings and runtime filters
     """
     init_filters = {"field": "meta.date", "operator": ">=", "value": "2015-01-01"}
@@ -164,6 +171,7 @@ def test_merge_comparison_filters_with_same_field():
 def test_merge_with_custom_logical_operator(logical_operator: str):
     """
     Merging with a custom logical operator
+
     Result: The given logical operator with both filters
     """
     init_filters = {"field": "meta.date", "operator": ">=", "value": "2015-01-01"}

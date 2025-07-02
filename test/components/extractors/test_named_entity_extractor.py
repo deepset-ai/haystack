@@ -6,11 +6,11 @@
 # Spacy is not installed in the test environment to keep the CI fast.
 # We test the Spacy backend in e2e/pipelines/test_named_entity_extractor.py.
 
-from haystack.utils.auth import Secret
 import pytest
 
 from haystack import ComponentError, DeserializationError, Pipeline
 from haystack.components.extractors import NamedEntityExtractor, NamedEntityExtractorBackend
+from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 
 

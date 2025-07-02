@@ -5,10 +5,10 @@
 import os
 
 import pytest
+from openai.types import CreateEmbeddingResponse, Embedding
 
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
 from haystack.utils.auth import Secret
-from openai.types import CreateEmbeddingResponse, Embedding
 
 
 class TestOpenAITextEmbedder:
@@ -149,8 +149,8 @@ class TestOpenAITextEmbedder:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAITextEmbedder(dimensions=1536)
 
-        input = "The food was delicious"
-        prepared_input = embedder._prepare_input(input)
+        inp = "The food was delicious"
+        prepared_input = embedder._prepare_input(inp)
         assert prepared_input == {
             "model": "text-embedding-ada-002",
             "input": "The food was delicious",

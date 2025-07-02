@@ -2,12 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
-from typing import List, Dict
+from typing import Dict, List
 
+import pytest
+
+from haystack.components.agents.state.state import _schema_from_dict, _schema_to_dict, _validate_schema, merge_lists
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.state import State
-from haystack.components.agents.state.state import _validate_schema, _schema_to_dict, _schema_from_dict, merge_lists
 
 
 @pytest.fixture

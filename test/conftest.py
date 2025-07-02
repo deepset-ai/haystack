@@ -2,18 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
+import time
 from pathlib import Path
-from test.tracing.utils import SpyingTracer
-from typing import Generator, Dict
+from typing import Dict, Generator
 from unittest.mock import Mock
 
 import pytest
-import time
-import asyncio
 
-
-from haystack import tracing, component
+from haystack import component, tracing
 from haystack.testing.test_utils import set_all_seeds
+from test.tracing.utils import SpyingTracer
 
 set_all_seeds(0)
 

@@ -2,18 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime
 import os
+from datetime import datetime
 from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-from haystack import Pipeline
-from haystack.dataclasses import StreamingChunk
-from haystack.utils.auth import Secret
-from haystack.utils.hf import HFGenerationAPIType
-
 from huggingface_hub import (
+    ChatCompletionInputStreamOptions,
     ChatCompletionOutput,
     ChatCompletionOutputComplete,
     ChatCompletionOutputFunctionDefinition,
@@ -23,21 +19,22 @@ from huggingface_hub import (
     ChatCompletionStreamOutput,
     ChatCompletionStreamOutputChoice,
     ChatCompletionStreamOutputDelta,
-    ChatCompletionInputStreamOptions,
     ChatCompletionStreamOutputUsage,
 )
 from huggingface_hub.errors import RepositoryNotFoundError
 
+from haystack import Pipeline
 from haystack.components.generators.chat.hugging_face_api import (
     HuggingFaceAPIChatGenerator,
+    _convert_chat_completion_stream_output_to_streaming_chunk,
     _convert_hfapi_tool_calls,
     _convert_tools_to_hfapi_tools,
-    _convert_chat_completion_stream_output_to_streaming_chunk,
 )
-
+from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
 from haystack.tools import Tool
-from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.toolset import Toolset
+from haystack.utils.auth import Secret
+from haystack.utils.hf import HFGenerationAPIType
 
 
 @pytest.fixture

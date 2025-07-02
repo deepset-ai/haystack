@@ -4,10 +4,11 @@
 
 import pytest
 import requests
-from haystack.core.errors import DeserializationError, SerializationError
+
 from haystack.components.generators.utils import print_streaming_chunk
+from haystack.core.errors import DeserializationError, SerializationError
 from haystack.testing.callable_serialization.random_callable import callable_to_deserialize
-from haystack.utils import serialize_callable, deserialize_callable
+from haystack.utils import deserialize_callable, serialize_callable
 
 
 def some_random_callable_for_testing(some_ignored_arg: str):

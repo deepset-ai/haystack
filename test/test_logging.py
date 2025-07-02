@@ -10,19 +10,17 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Generator
-
-import structlog
-
-from test.tracing.utils import SpyingTracer
 from unittest.mock import ANY
 
 import pytest
+import structlog
 from _pytest.capture import CaptureFixture
 from _pytest.logging import LogCaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
 
 import haystack.utils.jupyter
 from haystack import logging as haystack_logging
+from test.tracing.utils import SpyingTracer
 
 
 @pytest.fixture(autouse=True)
