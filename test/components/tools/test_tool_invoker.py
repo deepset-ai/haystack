@@ -11,12 +11,12 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Pipeline
+from haystack.components.agents.state import State
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.tools.tool_invoker import StringConversionError, ToolInvoker, ToolNotFoundException
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingChunk, ToolCall, ToolCallResult
-from haystack.dataclasses.state import State
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
 
