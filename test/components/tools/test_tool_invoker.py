@@ -14,7 +14,7 @@ from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.tools.tool_invoker import ToolInvoker, ToolNotFoundException, StringConversionError
 from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult, ChatRole
-from haystack.dataclasses.state import State
+from haystack.components.agents.state import State
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
 from haystack.dataclasses import StreamingChunk
