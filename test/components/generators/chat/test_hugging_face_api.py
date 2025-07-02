@@ -754,7 +754,7 @@ class TestHuggingFaceAPIChatGenerator:
     def test_live_run_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "featherless-ai"},
             generation_kwargs={"max_tokens": 20},
         )
 
@@ -789,7 +789,7 @@ class TestHuggingFaceAPIChatGenerator:
     def test_live_run_serverless_streaming(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "featherless-ai"},
             generation_kwargs={"max_tokens": 20},
             streaming_callback=streaming_callback_handler,
         )
@@ -834,7 +834,7 @@ class TestHuggingFaceAPIChatGenerator:
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen2.5-72B-Instruct", "provider": "hf-inference"},
+            api_params={"model": "Qwen/Qwen2.5-72B-Instruct", "provider": "featherless-ai"},
             generation_kwargs={"temperature": 0.5},
         )
 
@@ -1026,7 +1026,7 @@ class TestHuggingFaceAPIChatGenerator:
     async def test_live_run_async_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "featherless-ai"},
             generation_kwargs={"max_tokens": 20},
         )
 
