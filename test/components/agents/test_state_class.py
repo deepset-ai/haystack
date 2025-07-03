@@ -2,21 +2,22 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
+import inspect
 from dataclasses import dataclass
+from typing import Dict, Generic, List, Optional, TypeVar, Union
 
-from haystack.dataclasses import ChatMessage
+import pytest
+
 from haystack.components.agents.state.state import (
     State,
-    _validate_schema,
-    _schema_to_dict,
-    _schema_from_dict,
     _is_list_type,
-    merge_lists,
     _is_valid_type,
+    _schema_from_dict,
+    _schema_to_dict,
+    _validate_schema,
+    merge_lists,
 )
-from typing import List, Dict, Optional, Union, TypeVar, Generic
-import inspect
+from haystack.dataclasses import ChatMessage
 
 
 @pytest.fixture

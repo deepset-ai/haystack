@@ -3,22 +3,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any, List, Union
+from unittest.mock import patch
 
 import pytest
-from haystack import Document, SuperComponent, Pipeline, AsyncPipeline, component, super_component
-from haystack.core.pipeline.base import component_to_dict, component_from_dict
+
+from haystack import AsyncPipeline, Document, Pipeline, SuperComponent, component, super_component
 from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.core.pipeline.base import component_from_dict, component_to_dict
+from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.core.super_component.super_component import InvalidMappingTypeError, InvalidMappingValueError
 from haystack.dataclasses import GeneratedAnswer
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.utils.auth import Secret
-from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.core.super_component.super_component import InvalidMappingTypeError, InvalidMappingValueError
 from haystack.testing.sample_components import AddFixedValue, Double
-from unittest.mock import patch
+from haystack.utils.auth import Secret
 
 
 @pytest.fixture
@@ -396,20 +397,20 @@ class TestSuperComponent:
         @component
         class UnionTypeComponent1:
             @component.output_types(result=Union[int, str])
-            def run(self, input: Union[int, str]):
-                return {"result": input}
+            def run(self, inp: Union[int, str]):
+                return {"result": inp}
 
         @component
         class UnionTypeComponent2:
             @component.output_types(result=Union[float, str])
-            def run(self, input: Union[float, str]):
-                return {"result": input}
+            def run(self, inp: Union[float, str]):
+                return {"result": inp}
 
         pipeline = Pipeline()
         pipeline.add_component("test1", UnionTypeComponent1())
         pipeline.add_component("test2", UnionTypeComponent2())
 
-        input_mapping = {"data": ["test1.input", "test2.input"]}
+        input_mapping = {"data": ["test1.inp", "test2.inp"]}
         output_mapping = {"test2.result": "result"}
         wrapper = SuperComponent(pipeline=pipeline, input_mapping=input_mapping, output_mapping=output_mapping)
 
@@ -439,6 +440,8 @@ class TestSuperComponent:
     @pytest.mark.asyncio
     async def test_super_component_async_serialization_deserialization(self):
         """
+        Test for async SuperComponent serialization and deserialization.
+
         Test that when using the SuperComponent class, a SuperComponent based on an async pipeline can be serialized and
         deserialized correctly.
         """

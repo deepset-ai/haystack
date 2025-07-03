@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from haystack.dataclasses import ChatMessage, Document
 from haystack.dataclasses.answer import Answer, ExtractedAnswer, GeneratedAnswer
-from haystack.dataclasses import Document, ChatMessage
 
 
 class TestExtractedAnswer:

@@ -4,14 +4,13 @@
 
 import sys
 import typing
-from typing import Any, List, Dict, Set, Tuple, Union, Optional, FrozenSet, Deque
 from collections import deque
+from typing import Any, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Union
 
 import pytest
 
 from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
-from haystack.utils.type_serialization import serialize_type, deserialize_type
-
+from haystack.utils.type_serialization import deserialize_type, serialize_type
 
 TYPING_AND_TYPE_TESTS = [
     # Dict

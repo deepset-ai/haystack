@@ -2,12 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import sys
 from unittest.mock import patch
 
 import pytest
-import sys
-from haystack.dataclasses import ByteStream
+
 from haystack.components.converters.tika import TikaDocumentConverter
+from haystack.dataclasses import ByteStream
 
 
 class TestTikaDocumentConverter:

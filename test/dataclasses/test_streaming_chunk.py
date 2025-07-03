@@ -4,9 +4,8 @@
 
 import pytest
 
-from haystack.dataclasses import StreamingChunk, ComponentInfo, ToolCallDelta, ToolCallResult, ToolCall, FinishReason
-from haystack import component
-from haystack import Pipeline
+from haystack import Pipeline, component
+from haystack.dataclasses import ComponentInfo, FinishReason, StreamingChunk, ToolCall, ToolCallDelta, ToolCallResult
 
 
 @component
@@ -97,11 +96,6 @@ def test_tool_call_delta():
     assert tool_call.tool_name == "test_tool"
     assert tool_call.arguments == '{"arg1": "value1"}'
     assert tool_call.index == 0
-
-
-def test_tool_call_delta_with_missing_fields():
-    with pytest.raises(ValueError):
-        _ = ToolCallDelta(id="123", index=0)
 
 
 def test_create_chunk_with_finish_reason():

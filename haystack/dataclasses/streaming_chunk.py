@@ -30,12 +30,6 @@ class ToolCallDelta:
     arguments: Optional[str] = field(default=None)
     id: Optional[str] = field(default=None)  # noqa: A003
 
-    def __post_init__(self):
-        # NOTE: We allow for name and arguments to both be present because some providers like Mistral provide the
-        # name and full arguments in one chunk
-        if self.tool_name is None and self.arguments is None:
-            raise ValueError("At least one of tool_name or arguments must be provided.")
-
 
 @dataclass
 class ComponentInfo:

@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
 import json
 
-from haystack.dataclasses.chat_message import ChatMessage, ChatRole, ToolCall, ToolCallResult, TextContent
+import pytest
+
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent, ToolCall, ToolCallResult
 
 
 def test_tool_call_init():
@@ -245,6 +246,8 @@ def test_from_dict_with_pre29_format_some_fields_missing():
 
 def test_from_dict_with_pre212_format():
     """
+    Test for ChatMessage.from_dict
+
     Test that we can deserialize messages serialized with versions >=2.9.0 and <2.12.0,
     where the serialized message has fields `_role`, `_content`, `_name`, and `_meta`.
     """

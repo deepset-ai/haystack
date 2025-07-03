@@ -253,10 +253,10 @@ def test_set_input_types_overrides_run():
 
     err_msg = "cannot override the parameters of the 'run' method"
     with pytest.raises(ComponentError, match=err_msg):
-        comp = MockComponent(False)
+        _ = MockComponent(False)
 
     with pytest.raises(ComponentError, match=err_msg):
-        comp = MockComponent(True)
+        _ = MockComponent(True)
 
 
 def test_set_output_types():

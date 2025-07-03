@@ -122,7 +122,7 @@ def test_run_empty_retrieved_and_empty_ground_truth():
 def test_run_no_retrieved():
     evaluator = DocumentNDCGEvaluator()
     with pytest.raises(ValueError):
-        result = evaluator.run(ground_truth_documents=[[Document(content="France")]], retrieved_documents=[])
+        _ = evaluator.run(ground_truth_documents=[[Document(content="France")]], retrieved_documents=[])
 
 
 def test_run_no_ground_truth():

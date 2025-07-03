@@ -4,9 +4,10 @@
 
 from unittest.mock import patch
 
+import arrow
 import pytest
 from jinja2 import Environment
-import arrow
+
 from haystack.utils import Jinja2TimeExtension
 
 

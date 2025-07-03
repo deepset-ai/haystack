@@ -3,16 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from unittest.mock import Mock, patch
 
-from openai import APIError
-
-from haystack.utils.auth import Secret
 import pytest
+from openai import APIError
 
 from haystack import Document
 from haystack.components.embedders import AzureOpenAIDocumentEmbedder
+from haystack.utils.auth import Secret
 from haystack.utils.azure import default_azure_ad_token_provider
-from unittest.mock import Mock, patch
 
 
 class TestAzureOpenAIDocumentEmbedder:

@@ -15,6 +15,7 @@ from haystack.core.pipeline import Pipeline
 class TestPipeline:
     """
     This class contains only unit tests for the Pipeline class.
+
     It doesn't test Pipeline.run(), that is done separately in a different way.
     """
 

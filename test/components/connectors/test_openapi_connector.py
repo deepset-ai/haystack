@@ -6,9 +6,10 @@ import os
 from unittest.mock import Mock, patch
 
 import pytest
+
 from haystack import Pipeline
-from haystack.utils import Secret
 from haystack.components.connectors.openapi import OpenAPIConnector
+from haystack.utils import Secret
 
 # Mock OpenAPI spec for testing
 MOCK_OPENAPI_SPEC = """

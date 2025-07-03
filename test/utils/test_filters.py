@@ -476,9 +476,9 @@ document_matches_filter_data = [
 ]
 
 
-@pytest.mark.parametrize("filter, document, expected_result", document_matches_filter_data)
-def test_document_matches_filter(filter, document, expected_result):
-    assert document_matches_filter(filter, document) == expected_result
+@pytest.mark.parametrize("filters, document, expected_result", document_matches_filter_data)
+def test_document_matches_filter(filters, document, expected_result):
+    assert document_matches_filter(filters, document) == expected_result
 
 
 document_matches_filter_raises_error_data = [
@@ -519,8 +519,8 @@ document_matches_filter_raises_error_data = [
 ]
 
 
-@pytest.mark.parametrize("filter", document_matches_filter_raises_error_data)
-def test_document_matches_filter_raises_error(filter):
+@pytest.mark.parametrize("filters", document_matches_filter_raises_error_data)
+def test_document_matches_filter_raises_error(filters):
     with pytest.raises(FilterError):
         document = Document(meta={"page": 10})
-        document_matches_filter(filter, document)
+        document_matches_filter(filters, document)

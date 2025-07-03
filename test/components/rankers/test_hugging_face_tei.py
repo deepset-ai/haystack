@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-import requests
 import httpx
+import pytest
+import requests
 
 from haystack import Document
 from haystack.components.rankers.hugging_face_tei import HuggingFaceTEIRanker, TruncationDirection
