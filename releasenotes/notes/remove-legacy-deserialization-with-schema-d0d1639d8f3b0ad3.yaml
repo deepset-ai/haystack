@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    Remove the deserialize_value_with_schema_legacy function from the base_serialization module.
+    This function was used to deserialize State objects created with Haystack 2.14.0 or older.
+    Support for the old serialization format is removed in Haystack 2.16.0.
