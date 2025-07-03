@@ -7,19 +7,18 @@ import os
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, Mock, patch
 
+import pytest
 import requests
+from openapi3 import OpenAPI
 
 from haystack import Pipeline
-import pytest
+from haystack.components.connectors import OpenAPIServiceConnector
 from haystack.components.converters.openapi_functions import OpenAPIServiceToFunctions
 from haystack.components.converters.output_adapter import OutputAdapter
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses.byte_stream import ByteStream
-from openapi3 import OpenAPI
-
-from haystack.components.connectors import OpenAPIServiceConnector
 from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses.byte_stream import ByteStream
 
 
 @pytest.fixture

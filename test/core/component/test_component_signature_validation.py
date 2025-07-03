@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 import pytest
+
 from haystack.core.component import component
 from haystack.core.component.component import ComponentError
 
@@ -83,7 +85,7 @@ def test_different_default_values():
 
 
 def test_different_param_kinds():
-    with pytest.raises(ComponentError, match="kind \(POSITIONAL, KEYWORD, etc\.\) mismatch: "):
+    with pytest.raises(ComponentError, match=r"kind \(POSITIONAL, KEYWORD, etc\.\) mismatch: "):
         DifferentParamKindComponent()
 
 

@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import gc
 import logging
+import tempfile
 from unittest.mock import patch
 
 import pytest
-import tempfile
-import asyncio
 
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
@@ -116,7 +116,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
 
     def test_bm25_retrieval_with_empty_document_store(self, document_store: InMemoryDocumentStore, caplog):
         caplog.set_level(logging.INFO)
-        # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the DocumentStore.
+        # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the
+        # DocumentStore.
         results = document_store.bm25_retrieval(query="How to test this?", top_k=2)
         assert len(results) == 0
         assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
@@ -426,7 +427,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
 
     @pytest.mark.asyncio
     async def test_filter_documents(self, document_store: InMemoryDocumentStore):
-        filterable_docs = [Document(content=f"1", meta={"number": -10}), Document(content=f"2", meta={"number": 100})]
+        filterable_docs = [Document(content="1", meta={"number": -10}), Document(content="2", meta={"number": 100})]
         await document_store.write_documents_async(filterable_docs)
         result = await document_store.filter_documents_async(
             filters={"field": "meta.number", "operator": "==", "value": 100}

@@ -120,7 +120,7 @@ class TestHierarchicalDocumentSplitter:
             "max_runs_per_component": 100,
             "components": {
                 "hierarchical_document_splitter": {
-                    "type": "haystack.components.preprocessors.hierarchical_document_splitter.HierarchicalDocumentSplitter",
+                    "type": "haystack.components.preprocessors.hierarchical_document_splitter.HierarchicalDocumentSplitter",  # noqa: E501
                     "init_parameters": {"block_sizes": [10, 5, 2], "split_overlap": 0, "split_by": "word"},
                 },
                 "doc_writer": {
@@ -203,7 +203,8 @@ class TestHierarchicalDocumentSplitter:
     def test_hierarchical_splitter_multiple_block_sizes(self):
         # Test with three different block sizes
         doc = Document(
-            content="This is a simple test document with multiple sentences. It should be split into various sizes. This helps test the hierarchy."
+            content="This is a simple test document with multiple sentences. It should be split into various sizes. "
+            "This helps test the hierarchy."
         )
 
         # Using three block sizes: 10, 5, 2 words

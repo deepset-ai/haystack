@@ -2,16 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 import pytest
 
-from haystack import Pipeline, DeserializationError
-from haystack.document_stores.types import FilterPolicy
-from haystack.testing.factory import document_store_class
+from haystack import DeserializationError, Pipeline
 from haystack.components.retrievers.in_memory.embedding_retriever import InMemoryEmbeddingRetriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import FilterPolicy
+from haystack.testing.factory import document_store_class
 
 
 class TestMemoryEmbeddingRetriever:

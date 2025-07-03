@@ -3,16 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import List
+
 import pytest
 
 from haystack import Document, Pipeline
-from haystack.dataclasses import ChatMessage
-from haystack.dataclasses.answer import GeneratedAnswer
 from haystack.components.builders import AnswerBuilder, ChatPromptBuilder
+from haystack.components.embedders import SentenceTransformersTextEmbedder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.joiners.list_joiner import ListJoiner
-from haystack.components.embedders import SentenceTransformersTextEmbedder
 from haystack.core.errors import PipelineConnectError
+from haystack.dataclasses import ChatMessage
+from haystack.dataclasses.answer import GeneratedAnswer
 from haystack.utils.auth import Secret
 
 

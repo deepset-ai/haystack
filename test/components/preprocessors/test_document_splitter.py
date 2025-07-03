@@ -2,9 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
-
 import re
+from typing import List
 
 import pytest
 
@@ -27,8 +26,7 @@ def merge_documents(documents):
         start = doc.meta["split_idx_start"]  # start of the current content
 
         # if the start of the current content is before the end of the last appended content, adjust it
-        if start < last_idx_end:
-            start = last_idx_end
+        start = max(start, last_idx_end)
 
         # append the non-overlapping part to the merged text
         merged_text += doc.content[start - doc.meta["split_idx_start"] :]
@@ -40,7 +38,7 @@ def merge_documents(documents):
 
 
 class TestSplittingByFunctionOrCharacterRegex:
-    def test_non_text_document(self):
+    def test_non_text_document(self, caplog):
         with pytest.raises(
             ValueError, match="DocumentSplitter only works with text documents but content for document ID"
         ):
@@ -110,7 +108,10 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
         text1 = "This is a text with some words. There is a second sentence. And there is a third sentence."
-        text2 = "This is a different text with some words. There is a second sentence. And there is a third sentence. And there is a fourth sentence."
+        text2 = (
+            "This is a different text with some words. There is a second sentence. And there is a third sentence. "
+            "And there is a fourth sentence."
+        )
         splitter.warm_up()
         result = splitter.run(documents=[Document(content=text1), Document(content=text2)])
         docs = result["documents"]
@@ -155,7 +156,10 @@ class TestSplittingByFunctionOrCharacterRegex:
 
     def test_split_by_passage(self):
         splitter = DocumentSplitter(split_by="passage", split_length=1)
-        text = "This is a text with some words. There is a second sentence.\n\nAnd there is a third sentence.\n\n And another passage."
+        text = (
+            "This is a text with some words. There is a second sentence.\n\nAnd there is a third sentence.\n\n "
+            "And another passage."
+        )
         splitter.warm_up()
         result = splitter.run(documents=[Document(content=text)])
         docs = result["documents"]
@@ -172,7 +176,10 @@ class TestSplittingByFunctionOrCharacterRegex:
 
     def test_split_by_page(self):
         splitter = DocumentSplitter(split_by="page", split_length=1)
-        text = "This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+        text = (
+            "This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And "
+            "another passage."
+        )
         splitter.warm_up()
         result = splitter.run(documents=[Document(content=text)])
         docs = result["documents"]
@@ -310,7 +317,8 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_add_page_number_to_metadata_with_no_overlap_passage_split(self):
         splitter = DocumentSplitter(split_by="passage", split_length=1)
         doc1 = Document(
-            content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence.\n\nAnd more passages.\n\n\f And another passage."
+            content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence."
+            "\n\nAnd more passages.\n\n\f And another passage."
         )
         splitter.warm_up()
         result = splitter.run(documents=[doc1])
@@ -322,7 +330,8 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_add_page_number_to_metadata_with_no_overlap_page_split(self):
         splitter = DocumentSplitter(split_by="page", split_length=1)
         doc1 = Document(
-            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f "
+            "And another passage."
         )
         splitter.warm_up()
         result = splitter.run(documents=[doc1])
@@ -332,7 +341,8 @@ class TestSplittingByFunctionOrCharacterRegex:
 
         splitter = DocumentSplitter(split_by="page", split_length=2)
         doc1 = Document(
-            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f "
+            "And another passage."
         )
         splitter.warm_up()
         result = splitter.run(documents=[doc1])
@@ -366,7 +376,8 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_add_page_number_to_metadata_with_overlap_passage_split(self):
         splitter = DocumentSplitter(split_by="passage", split_length=2, split_overlap=1)
         doc1 = Document(
-            content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence.\n\nAnd more passages.\n\n\f And another passage."
+            content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence."
+            "\n\nAnd more passages.\n\n\f And another passage."
         )
         splitter.warm_up()
         result = splitter.run(documents=[doc1])
@@ -378,7 +389,8 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_add_page_number_to_metadata_with_overlap_page_split(self):
         splitter = DocumentSplitter(split_by="page", split_length=2, split_overlap=1)
         doc1 = Document(
-            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f "
+            "And another passage."
         )
         splitter.warm_up()
         result = splitter.run(documents=[doc1])

@@ -2,13 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
 import logging
+from typing import Optional
 
-
+from haystack import Pipeline, component, tracing
 from haystack.tracing.logging_tracer import LoggingTracer
-from haystack import component, Pipeline
-from haystack import tracing
 
 
 @component
@@ -141,7 +139,7 @@ class TestLoggingTracer:
 
         try:
             pipeline.run(data={"word": "world"})
-        except:
+        except Exception:
             pass
 
         records = caplog.records

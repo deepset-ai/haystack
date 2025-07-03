@@ -4,10 +4,11 @@
 
 import os
 from datetime import datetime
+from unittest.mock import MagicMock, patch
+
 import pytest
 from openai import OpenAIError
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
-from unittest.mock import MagicMock, patch
 
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.generators.utils import print_streaming_chunk

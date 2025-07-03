@@ -4,9 +4,9 @@
 
 import pytest
 
+from haystack import default_from_dict
 from haystack.components.evaluators.document_recall import DocumentRecallEvaluator, RecallMode
 from haystack.dataclasses import Document
-from haystack import default_from_dict
 
 
 def test_init_with_unknown_mode_string():

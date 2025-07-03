@@ -5,8 +5,8 @@
 import logging
 import os
 
-from haystack.dataclasses import ByteStream
 from haystack.components.converters.pptx import PPTXToDocument
+from haystack.dataclasses import ByteStream
 
 
 class TestPPTXToDocument:
