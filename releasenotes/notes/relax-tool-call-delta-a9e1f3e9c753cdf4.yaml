@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    We relaxed the requirement that in ToolCallDelta (introduced in Haystack 2.15) which required the parameters arguments or name to be populated to be able to create a ToolCallDelta dataclass. We remove this requirement to be more in line with OpenAI's SDK and since this was causing errors for some hosted versions of open source models following OpenAI's SDK specification.
