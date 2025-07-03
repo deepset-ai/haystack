@@ -385,3 +385,196 @@ def test_convert_streaming_chunk_to_chat_message_two_tool_calls_in_same_chunk():
     assert result.tool_calls[1].id == "xSuhp66iB"
     assert result.tool_calls[1].tool_name == "weather"
     assert result.tool_calls[1].arguments == {"city": "Berlin"}
+
+
+def test_convert_streaming_chunk_to_chat_message_empty_tool_call_delta():
+    chunks = [
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "gpt-4o-mini-2024-07-18",
+                "index": 0,
+                "tool_calls": None,
+                "finish_reason": None,
+                "received_at": "2025-02-19T16:02:55.910076",
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "gpt-4o-mini-2024-07-18",
+                "index": 0,
+                "tool_calls": [
+                    chat_completion_chunk.ChoiceDeltaToolCall(
+                        index=0,
+                        id="call_ZOj5l67zhZOx6jqjg7ATQwb6",
+                        function=chat_completion_chunk.ChoiceDeltaToolCallFunction(
+                            arguments='{"query":', name="rag_pipeline_tool"
+                        ),
+                        type="function",
+                    )
+                ],
+                "finish_reason": None,
+                "received_at": "2025-02-19T16:02:55.913919",
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+            index=0,
+            start=True,
+            tool_calls=[
+                ToolCallDelta(
+                    id="call_ZOj5l67zhZOx6jqjg7ATQwb6", tool_name="rag_pipeline_tool", arguments='{"query":', index=0
+                )
+            ],
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "gpt-4o-mini-2024-07-18",
+                "index": 0,
+                "tool_calls": [
+                    chat_completion_chunk.ChoiceDeltaToolCall(
+                        index=0,
+                        function=chat_completion_chunk.ChoiceDeltaToolCallFunction(
+                            arguments=' "Where does Mark live?"}'
+                        ),
+                    )
+                ],
+                "finish_reason": None,
+                "received_at": "2025-02-19T16:02:55.924420",
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+            index=0,
+            tool_calls=[ToolCallDelta(arguments=' "Where does Mark live?"}', index=0)],
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "gpt-4o-mini-2024-07-18",
+                "index": 0,
+                "tool_calls": [
+                    chat_completion_chunk.ChoiceDeltaToolCall(
+                        index=0, function=chat_completion_chunk.ChoiceDeltaToolCallFunction()
+                    )
+                ],
+                "finish_reason": "tool_calls",
+                "received_at": "2025-02-19T16:02:55.948772",
+            },
+            tool_calls=[ToolCallDelta(index=0)],
+            component_info=ComponentInfo(name="test", type="test"),
+            finish_reason="tool_calls",
+            index=0,
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "gpt-4o-mini-2024-07-18",
+                "index": 0,
+                "tool_calls": None,
+                "finish_reason": None,
+                "received_at": "2025-02-19T16:02:55.948772",
+                "usage": {
+                    "completion_tokens": 42,
+                    "prompt_tokens": 282,
+                    "total_tokens": 324,
+                    "completion_tokens_details": {
+                        "accepted_prediction_tokens": 0,
+                        "audio_tokens": 0,
+                        "reasoning_tokens": 0,
+                        "rejected_prediction_tokens": 0,
+                    },
+                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
+                },
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+        ),
+    ]
+
+    # Convert chunks to a chat message
+    result = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+
+    assert not result.texts
+    assert not result.text
+
+    # Verify both tool calls were found and processed
+    assert len(result.tool_calls) == 1
+    assert result.tool_calls[0].id == "call_ZOj5l67zhZOx6jqjg7ATQwb6"
+    assert result.tool_calls[0].tool_name == "rag_pipeline_tool"
+    assert result.tool_calls[0].arguments == {"query": "Where does Mark live?"}
+    assert result.meta["finish_reason"] == "tool_calls"
+
+
+def test_print_streaming_chunk_content_only():
+    chunk = StreamingChunk(
+        content="Hello, world!",
+        meta={"model": "test-model"},
+        component_info=ComponentInfo(name="test", type="test"),
+        start=True,
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        expected_calls = [call("[ASSISTANT]\n", flush=True, end=""), call("Hello, world!", flush=True, end="")]
+        mock_print.assert_has_calls(expected_calls)
+
+
+def test_print_streaming_chunk_tool_call():
+    chunk = StreamingChunk(
+        content="",
+        meta={"model": "test-model"},
+        component_info=ComponentInfo(name="test", type="test"),
+        start=True,
+        index=0,
+        tool_calls=[ToolCallDelta(id="call_123", tool_name="test_tool", arguments='{"param": "value"}', index=0)],
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        expected_calls = [
+            call("[TOOL CALL]\nTool: test_tool \nArguments: ", flush=True, end=""),
+            call('{"param": "value"}', flush=True, end=""),
+        ]
+        mock_print.assert_has_calls(expected_calls)
+
+
+def test_print_streaming_chunk_tool_call_result():
+    chunk = StreamingChunk(
+        content="",
+        meta={"model": "test-model"},
+        component_info=ComponentInfo(name="test", type="test"),
+        index=0,
+        tool_call_result=ToolCallResult(
+            result="Tool execution completed successfully",
+            origin=ToolCall(id="call_123", tool_name="test_tool", arguments={}),
+            error=False,
+        ),
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        expected_calls = [call("[TOOL RESULT]\nTool execution completed successfully", flush=True, end="")]
+        mock_print.assert_has_calls(expected_calls)
+
+
+def test_print_streaming_chunk_with_finish_reason():
+    chunk = StreamingChunk(
+        content="Final content.",
+        meta={"model": "test-model"},
+        component_info=ComponentInfo(name="test", type="test"),
+        start=True,
+        finish_reason="stop",
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        expected_calls = [
+            call("[ASSISTANT]\n", flush=True, end=""),
+            call("Final content.", flush=True, end=""),
+            call("\n\n", flush=True, end=""),
+        ]
+        mock_print.assert_has_calls(expected_calls)
+
+
+def test_print_streaming_chunk_empty_chunk():
+    chunk = StreamingChunk(
+        content="", meta={"model": "test-model"}, component_info=ComponentInfo(name="test", type="test")
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        mock_print.assert_not_called()

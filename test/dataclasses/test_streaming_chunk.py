@@ -99,11 +99,6 @@ def test_tool_call_delta():
     assert tool_call.index == 0
 
 
-def test_tool_call_delta_with_missing_fields():
-    with pytest.raises(ValueError):
-        _ = ToolCallDelta(id="123", index=0)
-
-
 def test_create_chunk_with_finish_reason():
     """Test creating a chunk with the new finish_reason field."""
     chunk = StreamingChunk(content="Test content", finish_reason="stop")
