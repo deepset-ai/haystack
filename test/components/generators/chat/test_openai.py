@@ -1177,6 +1177,32 @@ class TestChatCompletionChunkConversion:
             assert stream_chunk == haystack_chunk
             previous_chunks.append(stream_chunk)
 
+    def test_convert_chat_completion_chunk_with_empty_tool_calls(self):
+        # This can happen with some LLM providers where tool calls are not present but the pydantic models are still
+        # initialized.
+        chunk = ChatCompletionChunk(
+            id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
+            choices=[
+                chat_completion_chunk.Choice(
+                    delta=chat_completion_chunk.ChoiceDelta(
+                        tool_calls=[ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction())]
+                    ),
+                    index=0,
+                )
+            ],
+            created=1742207200,
+            model="gpt-4o-mini-2024-07-18",
+            object="chat.completion.chunk",
+        )
+        result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])
+        assert result.content == ""
+        assert result.start is False
+        assert result.tool_calls == [ToolCallDelta(index=0)]
+        assert result.tool_call_result is None
+        assert result.index == 0
+        assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
+        assert result.meta["received_at"] is not None
+
     def test_handle_stream_response(self, chat_completion_chunks):
         openai_chunks = chat_completion_chunks
         comp = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
