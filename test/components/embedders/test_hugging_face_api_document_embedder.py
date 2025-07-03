@@ -3,12 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import random
 from unittest.mock import MagicMock, patch
 
-import random
 import pytest
 from huggingface_hub.utils import RepositoryNotFoundError
-
 from numpy import array
 
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
@@ -376,6 +375,10 @@ class TestHuggingFaceAPIDocumentEmbedder:
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    @pytest.mark.skip(
+        reason="HF Inference API is not currently serving these models. "
+        "See https://github.com/deepset-ai/haystack/issues/9586."
     )
     def test_live_run_serverless(self):
         docs = [

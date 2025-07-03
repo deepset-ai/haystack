@@ -5,10 +5,10 @@
 import pytest
 
 from haystack import Document, Pipeline
-from haystack.core.pipeline.base import component_to_dict, component_from_dict
-from haystack.core.component.component import Component
-from haystack.dataclasses import ByteStream
 from haystack.components.converters.multi_file_converter import MultiFileConverter
+from haystack.core.component.component import Component
+from haystack.core.pipeline.base import component_from_dict, component_to_dict
+from haystack.dataclasses import ByteStream
 
 
 @pytest.fixture

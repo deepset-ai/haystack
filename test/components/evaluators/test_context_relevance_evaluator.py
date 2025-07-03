@@ -2,18 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import math
 import os
 from typing import List
-
-import math
 
 import pytest
 
 from haystack import Pipeline
 from haystack.components.evaluators import ContextRelevanceEvaluator
-from haystack.utils.auth import Secret
-from haystack.dataclasses.chat_message import ChatMessage
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.dataclasses.chat_message import ChatMessage
+from haystack.utils.auth import Secret
 
 
 class TestContextRelevanceEvaluator:

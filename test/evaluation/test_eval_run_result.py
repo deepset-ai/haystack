@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.evaluation import EvaluationRunResult
 import pytest
+
+from haystack.evaluation import EvaluationRunResult
 
 
 def test_init_results_evaluator():

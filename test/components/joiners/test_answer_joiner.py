@@ -5,8 +5,8 @@
 import pytest
 
 from haystack import Document
-from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer
 from haystack.components.joiners.answer_joiner import AnswerJoiner, JoinMode
+from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer
 
 
 class TestAnswerJoiner:

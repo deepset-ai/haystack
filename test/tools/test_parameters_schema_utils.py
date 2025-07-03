@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
 from typing import List
 
-from haystack.dataclasses import ByteStream, ChatMessage, Document, TextContent, ToolCall, ToolCallResult
+import pytest
 from pydantic import Field, create_model
-from haystack.tools.parameters_schema_utils import _resolve_type
-from haystack.tools.from_function import _remove_title_from_schema
 
+from haystack.dataclasses import ByteStream, ChatMessage, Document, TextContent, ToolCall, ToolCallResult
+from haystack.tools.from_function import _remove_title_from_schema
+from haystack.tools.parameters_schema_utils import _resolve_type
 
 BYTE_STREAM_SCHEMA = {
     "type": "object",
@@ -52,7 +52,8 @@ DOCUMENT_SCHEMA = {
     "properties": {
         "id": {
             "type": "string",
-            "description": "Unique identifier for the document. When not set, it's generated based on the Document fields' values.",
+            "description": "Unique identifier for the document. When not set, it's generated based on the Document "
+            "fields' values.",
             "default": "",
         },
         "content": {
@@ -63,7 +64,8 @@ DOCUMENT_SCHEMA = {
         "blob": {
             "anyOf": [{"$ref": "#/$defs/ByteStream"}, {"type": "null"}],
             "default": None,
-            "description": "Binary data associated with the document, if the document has any binary data associated with it.",
+            "description": "Binary data associated with the document, if the document has any binary data associated "
+            "with it.",
         },
         "meta": {
             "type": "object",

@@ -4,17 +4,16 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
 
 from haystack import Pipeline
-from haystack.components.fetchers import LinkContentFetcher
-from haystack.dataclasses import Document, ByteStream
 from haystack.components.audio import LocalWhisperTranscriber
+from haystack.components.fetchers import LinkContentFetcher
+from haystack.dataclasses import ByteStream, Document
 from haystack.utils.device import ComponentDevice, Device
-
 
 SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
 
@@ -192,12 +191,12 @@ class TestLocalWhisperTranscriber:
         docs = output["documents"]
         assert len(docs) == 3
 
-        assert all(word in docs[0].content.strip().lower() for word in {"content", "the", "document"}), (
+        assert all(word in docs[0].content.strip().lower() for word in ("content", "the", "document")), (
             f"Expected words not found in: {docs[0].content.strip().lower()}"
         )
         assert test_files_path / "audio" / "this is the content of the document.wav" == docs[0].meta["audio_file"]
 
-        assert all(word in docs[1].content.strip().lower() for word in {"context", "answer"}), (
+        assert all(word in docs[1].content.strip().lower() for word in ("context", "answer")), (
             f"Expected words not found in: {docs[1].content.strip().lower()}"
         )
         path = test_files_path / "audio" / "the context for this answer is here.wav"

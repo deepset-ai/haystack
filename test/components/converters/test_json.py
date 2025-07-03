@@ -3,16 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import os
-from unittest.mock import patch
-from pathlib import Path
 import logging
+import os
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from haystack.components.converters import JSONConverter
 from haystack.dataclasses import ByteStream
-
 
 test_data = [
     {
@@ -23,7 +22,8 @@ test_data = [
                 "id": "674",
                 "firstname": "Dario",
                 "surname": "Fokin",
-                "motivation": "who emulates the jesters of the Middle Ages in scourging authority and upholding the dignity of the downtrodden",
+                "motivation": "who emulates the jesters of the Middle Ages in scourging authority and upholding the "
+                "dignity of the downtrodden",
                 "share": "1",
             }
         ],
@@ -56,7 +56,9 @@ test_data = [
                 "id": "46",
                 "firstname": "Enrico",
                 "surname": "Fermi",
-                "motivation": "for his demonstrations of the existence of new radioactive elements produced by neutron irradiation, and for his related discovery of nuclear reactions brought about by slow neutrons",
+                "motivation": "for his demonstrations of the existence of new radioactive elements produced by neutron "
+                "irradiation, and for his related discovery of nuclear reactions brought about by slow "
+                "neutrons",
                 "share": "1",
             }
         ],
@@ -211,7 +213,8 @@ def test_run_with_non_json_file(tmpdir, caplog):
     assert len(records) == 1
     assert (
         records[0].msg
-        == f"Failed to extract text from {test_file}. Skipping it. Error: parse error: Invalid numeric literal at line 1, column 5"
+        == f"Failed to extract text from {test_file}. Skipping it. Error: parse error: Invalid numeric literal at "
+        f"line 1, column 5"
     )
     assert result == {"documents": []}
 
@@ -481,7 +484,8 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
     assert len(result["documents"]) == 4
     assert (
         result["documents"][0].content
-        == "who emulates the jesters of the Middle Ages in scourging authority and upholding the dignity of the downtrodden"
+        == "who emulates the jesters of the Middle Ages in scourging authority and upholding the dignity of the "
+        "downtrodden"
     )
     assert result["documents"][0].meta == {
         "file_path": os.path.basename(first_test_file),

@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from test.tracing.utils import SpyingSpan, SpyingTracer
 from typing import Optional
 from unittest.mock import ANY
 
@@ -11,6 +10,7 @@ from _pytest.monkeypatch import MonkeyPatch
 
 from haystack import Pipeline, component
 from haystack.tracing.tracer import tracer
+from test.tracing.utils import SpyingSpan, SpyingTracer
 
 
 @component
@@ -18,8 +18,7 @@ class Hello:
     @component.output_types(output=str)
     def run(self, word: Optional[str]):  # use optional to spice up the typing tags
         """
-        Takes a string in input and returns "Hello, <string>!"
-        in output.
+        Takes a string in input and returns "Hello, <string>!" in output.
         """
         return {"output": f"Hello, {word}!"}
 

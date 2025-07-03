@@ -4,11 +4,10 @@
 
 import opentelemetry.trace
 import pytest
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-
-from opentelemetry.sdk.trace import TracerProvider
 
 from haystack.tracing.opentelemetry import OpenTelemetryTracer
 

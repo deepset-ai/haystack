@@ -2,13 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import MagicMock
+
 import pytest
 
-from haystack import Document, DeserializationError
-from haystack.testing.factory import document_store_class
-from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack import DeserializationError, Document
 from haystack.components.caching.cache_checker import CacheChecker
-from unittest.mock import MagicMock
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.testing.factory import document_store_class
 
 
 class TestCacheChecker:

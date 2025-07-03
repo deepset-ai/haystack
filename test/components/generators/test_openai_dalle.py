@@ -2,13 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
 from unittest.mock import Mock, patch
-from haystack.utils import Secret
 
-from openai.types.image import Image
+import pytest
 from openai.types import ImagesResponse
+from openai.types.image import Image
+
 from haystack.components.generators.openai_dalle import DALLEImageGenerator
+from haystack.utils import Secret
 
 
 @pytest.fixture
@@ -30,7 +31,7 @@ class TestDALLEImageGenerator:
         assert component.api_base_url is None
         assert component.organization is None
         assert pytest.approx(component.timeout) == 30.0
-        assert component.max_retries is 5
+        assert component.max_retries == 5
         assert component.http_client_kwargs is None
 
     def test_init_with_params(self, monkeypatch):

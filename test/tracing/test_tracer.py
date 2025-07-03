@@ -10,27 +10,27 @@ import opentelemetry.trace
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from haystack.tracing.datadog import DatadogTracer
 from haystack.tracing.opentelemetry import OpenTelemetryTracer
 from haystack.tracing.tracer import (
-    NullTracer,
-    NullSpan,
-    _auto_configured_opentelemetry_tracer,
-    _auto_configured_datadog_tracer,
-    enable_tracing,
-    Tracer,
-    disable_tracing,
-    is_tracing_enabled,
-    ProxyTracer,
-    auto_enable_tracing,
-    tracer,
     HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR,
+    NullSpan,
+    NullTracer,
+    ProxyTracer,
+    Tracer,
+    _auto_configured_datadog_tracer,
+    _auto_configured_opentelemetry_tracer,
+    auto_enable_tracing,
+    disable_tracing,
+    enable_tracing,
+    is_tracing_enabled,
+    tracer,
 )
-from test.tracing.utils import SpyingTracer, SpyingSpan
+from test.tracing.utils import SpyingSpan, SpyingTracer
 
 
 class TestNullTracer:

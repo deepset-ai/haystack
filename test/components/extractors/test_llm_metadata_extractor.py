@@ -3,17 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from unittest.mock import Mock
 
 import pytest
-from unittest.mock import Mock
+
 from haystack import Document, Pipeline
+from haystack.components.extractors import LLMMetadataExtractor
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-
-
-from haystack.components.extractors import LLMMetadataExtractor
-from haystack.components.generators.chat import OpenAIChatGenerator
 
 
 class TestLLMMetadataExtractor:
@@ -139,7 +138,8 @@ class TestLLMMetadataExtractor:
                     "_name": None,
                     "_content": [
                         {
-                            "text": "some_user_definer_prompt deepset was founded in 2018 in Berlin, and is known for its Haystack framework"
+                            "text": "some_user_definer_prompt deepset was founded in 2018 in Berlin, and is known for "
+                            "its Haystack framework"
                         }
                     ],
                 }
@@ -151,7 +151,8 @@ class TestLLMMetadataExtractor:
                     "_name": None,
                     "_content": [
                         {
-                            "text": "some_user_definer_prompt Hugging Face is a company founded in Paris, France and is known for its Transformers library"
+                            "text": "some_user_definer_prompt Hugging Face is a company founded in Paris, France and "
+                            "is known for its Transformers library"
                         }
                     ],
                 }
@@ -179,7 +180,8 @@ class TestLLMMetadataExtractor:
                     "_name": None,
                     "_content": [
                         {
-                            "text": "some_user_definer_prompt Hugging Face is a company founded in Paris, France and is known for its Transformers library"
+                            "text": "some_user_definer_prompt Hugging Face is a company founded in Paris, "
+                            "France and is known for its Transformers library"
                         }
                     ],
                 }
@@ -195,7 +197,8 @@ class TestLLMMetadataExtractor:
         )
         docs = [
             Document(
-                content="Hugging Face is a company founded in Paris, France and is known for its Transformers library\fPage 2\fPage 3"
+                content="Hugging Face is a company founded in Paris, France and is known for its Transformers "
+                "library\fPage 2\fPage 3"
             )
         ]
         prompts = extractor._prepare_prompts(docs, expanded_range=[1, 2])
@@ -208,7 +211,8 @@ class TestLLMMetadataExtractor:
                     "_name": None,
                     "_content": [
                         {
-                            "text": "some_user_definer_prompt Hugging Face is a company founded in Paris, France and is known for its Transformers library\x0cPage 2\x0c"
+                            "text": "some_user_definer_prompt Hugging Face is a company founded in Paris, France and "
+                            "is known for its Transformers library\x0cPage 2\x0c"
                         }
                     ],
                 }
@@ -305,7 +309,7 @@ entity_types: [company, organization, person, country, product, service]
 text: {{ document.content }}
 ######################
 output:
-"""
+"""  # noqa: E501
 
         doc_store = InMemoryDocumentStore()
         extractor = LLMMetadataExtractor(

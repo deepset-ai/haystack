@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import call, patch
+
 from openai.types.chat import chat_completion_chunk
-from unittest.mock import patch, call
 
 from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, print_streaming_chunk
 from haystack.dataclasses import ComponentInfo, StreamingChunk, ToolCall, ToolCallDelta, ToolCallResult

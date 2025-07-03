@@ -67,7 +67,7 @@ class TestSentenceTransformersDocumentEmbedder:
         component = SentenceTransformersDocumentEmbedder(model="model", device=ComponentDevice.from_str("cpu"))
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",  # noqa: E501
             "init_parameters": {
                 "model": "model",
                 "device": ComponentDevice.from_str("cpu").to_dict(),
@@ -115,7 +115,7 @@ class TestSentenceTransformersDocumentEmbedder:
         data = component.to_dict()
 
         assert data == {
-            "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",  # noqa: E501
             "init_parameters": {
                 "model": "model",
                 "device": ComponentDevice.from_str("cuda:0").to_dict(),
@@ -161,7 +161,7 @@ class TestSentenceTransformersDocumentEmbedder:
         }
         component = SentenceTransformersDocumentEmbedder.from_dict(
             {
-                "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
+                "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",  # noqa: E501
                 "init_parameters": init_parameters,
             }
         )
@@ -186,7 +186,7 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_from_dict_no_default_parameters(self):
         component = SentenceTransformersDocumentEmbedder.from_dict(
             {
-                "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
+                "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",  # noqa: E501
                 "init_parameters": {},
             }
         )
@@ -224,7 +224,7 @@ class TestSentenceTransformersDocumentEmbedder:
         }
         component = SentenceTransformersDocumentEmbedder.from_dict(
             {
-                "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",
+                "type": "haystack.components.embedders.sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder",  # noqa: E501
                 "init_parameters": init_parameters,
             }
         )
@@ -382,9 +382,9 @@ class TestSentenceTransformersDocumentEmbedder:
             model="sentence-transformers/all-MiniLM-L6-v2",
             token=None,
             device=ComponentDevice.from_str("cpu"),
-            model_kwargs={
-                "file_name": "onnx/model.onnx"
-            },  # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to prevent a HF warning
+            # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to prevent
+            # a HF warning
+            model_kwargs={"file_name": "onnx/model.onnx"},
             backend="onnx",
         )
         onnx_embedder.warm_up()
@@ -410,9 +410,9 @@ class TestSentenceTransformersDocumentEmbedder:
             model="sentence-transformers/all-MiniLM-L6-v2",
             token=None,
             device=ComponentDevice.from_str("cpu"),
-            model_kwargs={
-                "file_name": "openvino/openvino_model.xml"
-            },  # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but this is to prevent a HF warning
+            # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but this is
+            # to prevent a HF warning
+            model_kwargs={"file_name": "openvino/openvino_model.xml"},
             backend="openvino",
         )
         openvino_embedder.warm_up()

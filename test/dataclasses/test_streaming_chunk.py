@@ -4,9 +4,8 @@
 
 import pytest
 
-from haystack.dataclasses import StreamingChunk, ComponentInfo, ToolCallDelta, ToolCallResult, ToolCall, FinishReason
-from haystack import component
-from haystack import Pipeline
+from haystack import Pipeline, component
+from haystack.dataclasses import ComponentInfo, FinishReason, StreamingChunk, ToolCall, ToolCallDelta, ToolCallResult
 
 
 @component

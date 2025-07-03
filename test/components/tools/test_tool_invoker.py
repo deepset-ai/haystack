@@ -2,23 +2,23 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import patch
-import pytest
-import json
 import datetime
+import json
 import time
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
+
+import pytest
 
 from haystack import Pipeline
+from haystack.components.agents.state import State
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.components.tools.tool_invoker import ToolInvoker, ToolNotFoundException, StringConversionError
-from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult, ChatRole
-from haystack.components.agents.state import State
+from haystack.components.tools.tool_invoker import StringConversionError, ToolInvoker, ToolNotFoundException
+from haystack.dataclasses import ChatMessage, ChatRole, StreamingChunk, ToolCall, ToolCallResult
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
-from haystack.dataclasses import StreamingChunk
-from concurrent.futures import ThreadPoolExecutor
 
 
 def weather_function(location):
@@ -715,7 +715,7 @@ class TestToolInvoker:
             ToolCall(tool_name="state_tool_3", arguments={}),
         ]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
-        result = invoker.run(messages=[message], state=state)
+        _ = invoker.run(messages=[message], state=state)
 
         # Verify that all three tools were executed
         assert len(execution_log) == 3
@@ -786,7 +786,7 @@ class TestToolInvoker:
             ToolCall(tool_name="state_tool_3", arguments={}),
         ]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
-        result = await invoker.run_async(messages=[message], state=state)
+        _ = await invoker.run_async(messages=[message], state=state)
 
         # Verify that all three tools were executed
         assert len(execution_log) == 3
