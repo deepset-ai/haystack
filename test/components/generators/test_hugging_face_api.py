@@ -297,10 +297,14 @@ class TestHuggingFaceAPIGenerator:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
+    @pytest.mark.skip(
+        reason="HF Inference API is not currently serving these models. "
+        "See https://github.com/deepset-ai/haystack/issues/9586."
+    )
     def test_run_serverless(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-Instruct-v0.3", "provider": "together"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
             generation_kwargs={"max_new_tokens": 20},
         )
 
@@ -330,10 +334,14 @@ class TestHuggingFaceAPIGenerator:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
+    @pytest.mark.skip(
+        reason="HF Inference API is not currently serving these models. "
+        "See https://github.com/deepset-ai/haystack/issues/9586."
+    )
     def test_live_run_streaming_check_completion_start_time(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "mistralai/Mistral-7B-Instruct-v0.3", "provider": "together"},
+            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
             generation_kwargs={"max_new_tokens": 30},
             streaming_callback=streaming_callback_handler,
         )
