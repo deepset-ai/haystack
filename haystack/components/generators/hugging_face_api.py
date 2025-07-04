@@ -41,10 +41,10 @@ class HuggingFaceAPIGenerator:
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
     - [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
-    Note: As of July 2025, the Hugging Face Inference API no longer offers generative models via the
+    **Note:** As of July 2025, the Hugging Face Inference API no longer offers generative models through the
     `text_generation` endpoint. Generative models are now only available through providers supporting the
     `chat_completion` endpoint. As a result, this component might no longer work with the Hugging Face Inference API.
-    Please use the `HuggingFaceAPIChatGenerator` component, which supports the `chat_completion` endpoint.
+    Use the `HuggingFaceAPIChatGenerator` component, which supports the `chat_completion` endpoint.
 
     ### Usage examples
 
@@ -74,8 +74,8 @@ class HuggingFaceAPIGenerator:
 
     #### With the free serverless inference API
 
-    This example might not work, as the Hugging Face Inference API no longer offer models that support the
-    `text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models via the `chat_completion`
+    Be aware that this example might not work as the Hugging Face Inference API no longer offer models that support the
+    `text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models through the `chat_completion`
     endpoint.
 
     ```python
