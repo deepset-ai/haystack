@@ -6,7 +6,7 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Union, cast
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import (
     ComponentInfo,
     FinishReason,
@@ -29,33 +29,26 @@ with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as hugg
     )
 
 
+logger = logging.getLogger(__name__)
+
+
 @component
 class HuggingFaceAPIGenerator:
     """
     Generates text using Hugging Face APIs.
 
     Use it with the following Hugging Face APIs:
-    - [Free Serverless Inference API]((https://huggingface.co/inference-api)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
     - [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
+    **Note:** As of July 2025, the Hugging Face Inference API no longer offers generative models through the
+    `text_generation` endpoint. Generative models are now only available through providers supporting the
+    `chat_completion` endpoint. As a result, this component might no longer work with the Hugging Face Inference API.
+    Use the `HuggingFaceAPIChatGenerator` component, which supports the `chat_completion` endpoint.
+
     ### Usage examples
 
-    #### With the free serverless inference API
-
-    ```python
-    from haystack.components.generators import HuggingFaceAPIGenerator
-    from haystack.utils import Secret
-
-    generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
-                                        api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
-                                        token=Secret.from_token("<your-api-key>"))
-
-    result = generator.run(prompt="What's Natural Language Processing?")
-    print(result)
-    ```
-
-    #### With paid inference endpoints
+    #### With Hugging Face Inference Endpoints
 
     ```python
     from haystack.components.generators import HuggingFaceAPIGenerator
@@ -74,6 +67,24 @@ class HuggingFaceAPIGenerator:
 
     generator = HuggingFaceAPIGenerator(api_type="text_generation_inference",
                                         api_params={"url": "http://localhost:8080"})
+
+    result = generator.run(prompt="What's Natural Language Processing?")
+    print(result)
+    ```
+
+    #### With the free serverless inference API
+
+    Be aware that this example might not work as the Hugging Face Inference API no longer offer models that support the
+    `text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models through the
+    `chat_completion` endpoint.
+
+    ```python
+    from haystack.components.generators import HuggingFaceAPIGenerator
+    from haystack.utils import Secret
+
+    generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
+                                        api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+                                        token=Secret.from_token("<your-api-key>"))
 
     result = generator.run(prompt="What's Natural Language Processing?")
     print(result)
@@ -97,6 +108,8 @@ class HuggingFaceAPIGenerator:
             - `text_generation_inference`: See [TGI](https://github.com/huggingface/text-generation-inference).
             - `inference_endpoints`: See [Inference Endpoints](https://huggingface.co/inference-endpoints).
             - `serverless_inference_api`: See [Serverless Inference API](https://huggingface.co/inference-api).
+              This might no longer work due to changes in the models offered in the Hugging Face Inference API.
+              Please use the `HuggingFaceAPIChatGenerator` component instead.
         :param api_params:
             A dictionary with the following keys:
             - `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
@@ -120,6 +133,11 @@ class HuggingFaceAPIGenerator:
             api_type = HFGenerationAPIType.from_str(api_type)
 
         if api_type == HFGenerationAPIType.SERVERLESS_INFERENCE_API:
+            logger.warning(
+                "Due to changes in the models offered in Hugging Face Inference API, using this component with the "
+                "Serverless Inference API might no longer work. "
+                "Please use the `HuggingFaceAPIChatGenerator` component instead."
+            )
             model = api_params.get("model")
             if model is None:
                 raise ValueError(
