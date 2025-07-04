@@ -75,8 +75,8 @@ class HuggingFaceAPIGenerator:
     #### With the free serverless inference API
 
     Be aware that this example might not work as the Hugging Face Inference API no longer offer models that support the
-    `text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models through the `chat_completion`
-    endpoint.
+    `text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models through the
+    `chat_completion` endpoint.
 
     ```python
     from haystack.components.generators import HuggingFaceAPIGenerator
