@@ -1,0 +1,12 @@
+---
+upgrade:
+  - |
+    HuggingFaceAPIGenerator might no longer work with the Hugging Face Inference API.
+
+    As of July 2025, the Hugging Face Inference API no longer offers generative models that support the text_generation
+    endpoint. Generative models are now only available through providers that support the chat_completion endpoint.
+    As a result, the HuggingFaceAPIGenerator component might not work with the Hugging Face Inference API.
+    It still works with Hugging Face Inference Endpoints and self-hosted TGI instances.
+
+    To use generative models via Hugging Face Inference API, please use the `HuggingFaceAPIChatGenerator` component,
+    which supports the chat_completion endpoint.
