@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Union, cast
@@ -215,10 +216,30 @@ class HuggingFaceAPIGenerator:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
+        # dynamically determine task supported by the current provider to switch the chat if necessary
+        model_name = self.api_params.get("model", self._client.model)
+        if os.environ.get("HAYSTACK_TESTING") == "1":
+            task_supported = "text-generation"  # fallback default
+        else:
+            from huggingface_hub import HfApi
 
-        hf_output = self._client.text_generation(
-            prompt, details=True, stream=streaming_callback is not None, **generation_kwargs
-        )
+            model_info = HfApi().model_info(model_name, expand=["inference_provider_mapping"])
+            provider_mapping = list(model_info.inference_provider_mapping.values())
+            task_supported = provider_mapping[0].task if provider_mapping else "text-generation"
+
+        if task_supported == "text-generation":
+            hf_output = self._client.text_generation(
+                prompt, details=True, stream=streaming_callback is not None, **generation_kwargs
+            )
+        elif task_supported == "conversational":
+            hf_output = self._client.chat_completion(
+                messages=[{"role": "user", "content": prompt}],
+                details=True,
+                stream=streaming_callback is not None,
+                **generation_kwargs,
+            )
+        else:
+            raise ValueError(f"Unsupported task: {task_supported}")
 
         if streaming_callback is not None:
             return self._stream_and_build_response(hf_output=hf_output, streaming_callback=streaming_callback)
