@@ -5620,7 +5620,7 @@ def that_is_blocked_not_enough_component_inputs(pipeline_class):
     @component
     class PayloadBuilder:
         @component.output_types(payload=Dict[str, Any])
-        def run(self, streams: List[int], query: str):
+        def run(self, streams: List[int], query: str) -> Dict[str, Any]:
             return {"payload": {"streams": streams, "query": query}}
 
     pipe = pipeline_class(max_runs_per_component=1)
