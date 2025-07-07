@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from haystack import Document
-
 from haystack.components.preprocessors.csv_document_cleaner import CSVDocumentCleaner
 
 

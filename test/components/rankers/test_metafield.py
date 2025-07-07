@@ -100,8 +100,8 @@ class TestMetaFieldRanker:
         with caplog.at_level(logging.WARNING):
             ranker.run(documents=docs_before)
             assert (
-                "The parameter <meta_field> is currently set to 'rating', but none of the provided Documents with IDs 1 have this meta key."
-                in caplog.text
+                "The parameter <meta_field> is currently set to 'rating', but none of the provided Documents with IDs "
+                "1 have this meta key." in caplog.text
             )
 
     def test_warning_if_some_meta_not_found(self, caplog):
@@ -113,8 +113,8 @@ class TestMetaFieldRanker:
         with caplog.at_level(logging.WARNING):
             ranker.run(documents=docs_before)
             assert (
-                "The parameter <meta_field> is currently set to 'rating' but the Documents with IDs 1 don't have this meta key."
-                in caplog.text
+                "The parameter <meta_field> is currently set to 'rating' but the Documents with IDs 1 don't have "
+                "this meta key." in caplog.text
             )
 
     def test_warning_if_unsortable_values(self, caplog):
@@ -155,8 +155,8 @@ class TestMetaFieldRanker:
             output = ranker.run(documents=docs_before)
             assert len(output["documents"]) == 3
             assert (
-                "The parameter <meta_value_type> is currently set to 'float', but not all of meta values in the provided Documents with IDs 1,2,3 are strings."
-                in caplog.text
+                "The parameter <meta_value_type> is currently set to 'float', but not all of meta values in the "
+                "provided Documents with IDs 1,2,3 are strings." in caplog.text
             )
 
     def test_raises_value_error_if_wrong_ranking_mode(self):

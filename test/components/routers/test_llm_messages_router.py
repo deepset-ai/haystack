@@ -2,15 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 import re
-import pytest
 from typing import Any, Dict, List
 from unittest.mock import Mock
-from haystack.components.routers.llm_messages_router import LLMMessagesRouter
-from haystack.dataclasses import ChatMessage
+
+import pytest
+
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.core.serialization import default_to_dict, default_from_dict
-import os
+from haystack.components.routers.llm_messages_router import LLMMessagesRouter
+from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.dataclasses import ChatMessage
 
 
 class MockChatGenerator:

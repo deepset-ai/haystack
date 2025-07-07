@@ -15,20 +15,6 @@ from haystack.components.embedders.openai_document_embedder import OpenAIDocumen
 from haystack.utils.auth import Secret
 
 
-def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002", **kwargs) -> dict:
-    dict_response = {
-        "object": "list",
-        "data": [
-            {"object": "embedding", "index": i, "embedding": [random.random() for _ in range(1536)]}
-            for i in range(len(input))
-        ],
-        "model": model,
-        "usage": {"prompt_tokens": 4, "total_tokens": 4},
-    }
-
-    return dict_response
-
-
 class TestOpenAIDocumentEmbedder:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")

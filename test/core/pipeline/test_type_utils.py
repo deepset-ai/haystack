@@ -8,9 +8,9 @@ from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Option
 
 import pytest
 
-from haystack.dataclasses import ByteStream, ChatMessage, Document, GeneratedAnswer
 from haystack.core.component.types import Variadic
 from haystack.core.type_utils import _type_name, _types_are_compatible
+from haystack.dataclasses import ByteStream, ChatMessage, Document, GeneratedAnswer
 
 
 class Class1:

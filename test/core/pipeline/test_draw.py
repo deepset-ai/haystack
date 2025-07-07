@@ -96,7 +96,7 @@ comp2["<b>comp2</b><br><small><i>Double</i></small>"]:::component -- "value -> v
 
 classDef component text-align:center;
 
-"""
+"""  # noqa: E501
     )
 
 

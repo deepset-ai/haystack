@@ -60,7 +60,7 @@ class TestSentenceTransformersTextEmbedder:
         component = SentenceTransformersTextEmbedder(model="model", device=ComponentDevice.from_str("cpu"))
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",  # noqa: E501
             "init_parameters": {
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
@@ -103,7 +103,7 @@ class TestSentenceTransformersTextEmbedder:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",  # noqa: E501
             "init_parameters": {
                 "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "model": "model",
@@ -132,7 +132,7 @@ class TestSentenceTransformersTextEmbedder:
 
     def test_from_dict(self):
         data = {
-            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",  # noqa: E501
             "init_parameters": {
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
@@ -170,7 +170,7 @@ class TestSentenceTransformersTextEmbedder:
 
     def test_from_dict_no_default_parameters(self):
         data = {
-            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",  # noqa: E501
             "init_parameters": {},
         }
         component = SentenceTransformersTextEmbedder.from_dict(data)
@@ -189,7 +189,7 @@ class TestSentenceTransformersTextEmbedder:
 
     def test_from_dict_none_device(self):
         data = {
-            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",
+            "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",  # noqa: E501
             "init_parameters": {
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
@@ -283,7 +283,8 @@ class TestSentenceTransformersTextEmbedder:
     @pytest.mark.slow
     def test_run_trunc(self, monkeypatch):
         """
-        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector space
+        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector
+        space
         """
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
@@ -306,7 +307,8 @@ class TestSentenceTransformersTextEmbedder:
     @pytest.mark.slow
     def test_run_quantization(self):
         """
-        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector space
+        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector
+        space
         """
         checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
         text = "a nice text to embed"
@@ -341,9 +343,9 @@ class TestSentenceTransformersTextEmbedder:
             model="sentence-transformers/all-MiniLM-L6-v2",
             token=None,
             device=ComponentDevice.from_str("cpu"),
-            model_kwargs={
-                "file_name": "onnx/model.onnx"
-            },  # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to prevent a HF warning
+            # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to prevent
+            # a HF warning
+            model_kwargs={"file_name": "onnx/model.onnx"},
             backend="onnx",
         )
         onnx_embedder.warm_up()
@@ -369,9 +371,9 @@ class TestSentenceTransformersTextEmbedder:
             model="sentence-transformers/all-MiniLM-L6-v2",
             token=None,
             device=ComponentDevice.from_str("cpu"),
-            model_kwargs={
-                "file_name": "openvino/openvino_model.xml"
-            },  # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but this is to prevent a HF warning
+            # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but
+            # this is to prevent a HF warning
+            model_kwargs={"file_name": "openvino/openvino_model.xml"},
             backend="openvino",
         )
         openvino_embedder.warm_up()

@@ -3,14 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import time
-import pytest
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
 
-from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
-from haystack.components.preprocessors.sentence_tokenizer import QUOTE_SPANS_RE
-
+import pytest
 from pytest import LogCaptureFixture
+
+from haystack.components.preprocessors.sentence_tokenizer import QUOTE_SPANS_RE, SentenceSplitter
 
 
 def test_apply_split_rules_no_join() -> None:
@@ -56,7 +55,7 @@ def mock_file_content():
 def test_read_abbreviations_existing_file(tmp_path, mock_file_content):
     abbrev_dir = tmp_path / "data" / "abbreviations"
     abbrev_dir.mkdir(parents=True)
-    abbrev_file = abbrev_dir / f"en.txt"
+    abbrev_file = abbrev_dir / "en.txt"
     abbrev_file.write_text(mock_file_content)
 
     with patch("haystack.components.preprocessors.sentence_tokenizer.Path") as mock_path:

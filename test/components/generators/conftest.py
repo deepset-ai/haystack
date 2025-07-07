@@ -4,12 +4,11 @@
 
 from datetime import datetime
 from typing import Iterator
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from openai import AsyncStream, Stream
-from openai.types.chat import ChatCompletion, ChatCompletionChunk
-from openai.types.chat import chat_completion_chunk
+from openai.types.chat import ChatCompletion, ChatCompletionChunk, chat_completion_chunk
 
 
 @pytest.fixture

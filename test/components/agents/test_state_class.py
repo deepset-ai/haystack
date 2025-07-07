@@ -2,21 +2,22 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
+import inspect
 from dataclasses import dataclass
+from typing import Dict, Generic, List, Optional, TypeVar, Union
 
-from haystack.dataclasses import ChatMessage
+import pytest
+
 from haystack.components.agents.state.state import (
     State,
-    _validate_schema,
-    _schema_to_dict,
-    _schema_from_dict,
     _is_list_type,
-    merge_lists,
     _is_valid_type,
+    _schema_from_dict,
+    _schema_to_dict,
+    _validate_schema,
+    merge_lists,
 )
-from typing import List, Dict, Optional, Union, TypeVar, Generic
-import inspect
+from haystack.dataclasses import ChatMessage
 
 
 @pytest.fixture
@@ -412,48 +413,6 @@ class TestState:
                             "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}},
                         },
                     },
-                },
-                "serialized_data": {
-                    "numbers": 1,
-                    "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
-                    "dict_of_lists": {"numbers": [1, 2, 3]},
-                },
-            },
-        }
-        state = State.from_dict(state_dict)
-        # Check types are correctly converted
-        assert state.schema["numbers"]["type"] == int
-        assert state.schema["dict_of_lists"]["type"] == dict
-        # Check handlers are functions, not comparing exact functions as they might be different references
-        assert callable(state.schema["numbers"]["handler"])
-        assert callable(state.schema["messages"]["handler"])
-        assert callable(state.schema["dict_of_lists"]["handler"])
-        # Check data is correct
-        assert state.data["numbers"] == 1
-        assert state.data["messages"] == [ChatMessage.from_user(text="Hello, world!")]
-        assert state.data["dict_of_lists"] == {"numbers": [1, 2, 3]}
-
-    def test_state_from_dict_legacy(self):
-        # this is the old format of the state dictionary
-        # it is kept for backward compatibility
-        # it will be removed in Haystack 2.16.0
-        state_dict = {
-            "schema": {
-                "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
-                "messages": {
-                    "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
-                    "handler": "haystack.components.agents.state.state_utils.merge_lists",
-                },
-                "dict_of_lists": {
-                    "type": "dict",
-                    "handler": "haystack.components.agents.state.state_utils.replace_values",
-                },
-            },
-            "data": {
-                "serialization_schema": {
-                    "numbers": {"type": "integer"},
-                    "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
-                    "dict_of_lists": {"type": "object"},
                 },
                 "serialized_data": {
                     "numbers": 1,

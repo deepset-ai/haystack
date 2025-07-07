@@ -3,12 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import random
 from unittest.mock import MagicMock, patch
 
-import random
 import pytest
 from huggingface_hub.utils import RepositoryNotFoundError
 from numpy import array
+
 from haystack.components.embedders import HuggingFaceAPITextEmbedder
 from haystack.utils.auth import Secret
 from haystack.utils.hf import HFEmbeddingAPIType
@@ -213,9 +214,9 @@ class TestHuggingFaceAPITextEmbedder:
             with pytest.raises(ValueError):
                 embedder.run(text="The food was delicious")
 
-    @pytest.mark.flaky(reruns=5, reruns_delay=5)
     @pytest.mark.integration
     @pytest.mark.slow
+    @pytest.mark.flaky(reruns=2, reruns_delay=10)
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
@@ -233,6 +234,7 @@ class TestHuggingFaceAPITextEmbedder:
     @pytest.mark.integration
     @pytest.mark.asyncio
     @pytest.mark.slow
+    @pytest.mark.flaky(reruns=2, reruns_delay=10)
     @pytest.mark.skipif(os.environ.get("HF_API_TOKEN", "") == "", reason="HF_API_TOKEN is not set")
     async def test_live_run_async_serverless(self):
         model_name = "sentence-transformers/all-MiniLM-L6-v2"

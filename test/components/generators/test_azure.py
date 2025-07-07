@@ -4,14 +4,13 @@
 
 import os
 
-from haystack import Pipeline
-from haystack.utils.auth import Secret
-
 import pytest
 from openai import OpenAIError
 
+from haystack import Pipeline
 from haystack.components.generators import AzureOpenAIGenerator
 from haystack.components.generators.utils import print_streaming_chunk
+from haystack.utils.auth import Secret
 from haystack.utils.azure import default_azure_ad_token_provider
 
 

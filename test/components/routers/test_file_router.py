@@ -9,13 +9,13 @@ from pathlib import PosixPath
 from unittest.mock import mock_open, patch
 
 import pytest
+from packaging import version
 
 import haystack
-from packaging import version
-from haystack.components.routers.file_type_router import FileTypeRouter
-from haystack.components.converters import TextFileToDocument, PyPDFToDocument
-from haystack.dataclasses import ByteStream
 from haystack import Pipeline
+from haystack.components.converters import PyPDFToDocument, TextFileToDocument
+from haystack.components.routers.file_type_router import FileTypeRouter
+from haystack.dataclasses import ByteStream
 
 
 @pytest.mark.skipif(

@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from typing import Any, Dict, List, Optional
 from unittest.mock import patch
 
 import arrow
-import logging
 import pytest
 from jinja2 import TemplateSyntaxError
 

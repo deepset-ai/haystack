@@ -328,8 +328,8 @@ class SentenceTransformersDiversityRanker:
 
         # Normalize embeddings to unit length for computing cosine similarity
         if self.similarity == DiversityRankingSimilarity.COSINE:
-            doc_embeddings /= torch.norm(doc_embeddings, p=2, dim=-1).unsqueeze(-1)
-            query_embedding /= torch.norm(query_embedding, p=2, dim=-1).unsqueeze(-1)
+            doc_embeddings = doc_embeddings / torch.norm(doc_embeddings, p=2, dim=-1).unsqueeze(-1)
+            query_embedding = query_embedding / torch.norm(query_embedding, p=2, dim=-1).unsqueeze(-1)
         return doc_embeddings, query_embedding
 
     def _maximum_margin_relevance(
