@@ -8,9 +8,11 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -140,8 +142,7 @@ class FileTypeRouter:
                 source = Path(source)
 
             if isinstance(source, Path):
-                b = ByteStream.from_file_path(source, guess_mime_type=True)
-                mime_type = b.mime_type
+                mime_type = ByteStream._guess_mime_type(source)
             elif isinstance(source, ByteStream):
                 mime_type = source.mime_type
             else:
