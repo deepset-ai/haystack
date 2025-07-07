@@ -2,15 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
-import os
-import logging
-import pytest
 import csv
+import json
+import logging
+import os
 from io import StringIO
 
+import pytest
+
 from haystack import Document, Pipeline
-from haystack.components.converters.docx import DOCXMetadata, DOCXToDocument, DOCXTableFormat, DOCXLinkFormat
+from haystack.components.converters.docx import DOCXLinkFormat, DOCXMetadata, DOCXTableFormat, DOCXToDocument
 from haystack.dataclasses import ByteStream
 
 

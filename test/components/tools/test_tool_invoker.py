@@ -2,23 +2,23 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import patch
-import pytest
-import json
 import datetime
+import json
 import time
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
+
+import pytest
 
 from haystack import Pipeline
+from haystack.components.agents.state import State
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.components.tools.tool_invoker import ToolInvoker, ToolNotFoundException, StringConversionError
-from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult, ChatRole
-from haystack.dataclasses.state import State
+from haystack.components.tools.tool_invoker import StringConversionError, ToolInvoker, ToolNotFoundException
+from haystack.dataclasses import ChatMessage, ChatRole, StreamingChunk, ToolCall, ToolCallResult
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
-from haystack.dataclasses import StreamingChunk
-from concurrent.futures import ThreadPoolExecutor
 
 
 def weather_function(location):
@@ -98,11 +98,6 @@ def invoker(weather_tool):
 @pytest.fixture
 def faulty_invoker(faulty_tool):
     return ToolInvoker(tools=[faulty_tool], raise_on_failure=True, convert_result_to_json_string=False)
-
-
-@pytest.fixture
-def thread_executor():
-    return ThreadPoolExecutor(thread_name_prefix=f"async-test-executor", max_workers=2)
 
 
 class TestToolInvoker:
@@ -227,7 +222,7 @@ class TestToolInvoker:
         assert final_chunk.content == ""
 
     @pytest.mark.asyncio
-    async def test_run_async_with_streaming_callback(self, thread_executor, weather_tool):
+    async def test_run_async_with_streaming_callback(self, weather_tool):
         streaming_callback_called = False
 
         async def streaming_callback(chunk: StreamingChunk) -> None:
@@ -235,12 +230,7 @@ class TestToolInvoker:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
-        tool_invoker = ToolInvoker(
-            tools=[weather_tool],
-            raise_on_failure=True,
-            convert_result_to_json_string=False,
-            async_executor=thread_executor,
-        )
+        tool_invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True, convert_result_to_json_string=False)
 
         tool_calls = [
             ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
@@ -269,18 +259,13 @@ class TestToolInvoker:
         assert streaming_callback_called
 
     @pytest.mark.asyncio
-    async def test_run_async_with_streaming_callback_finish_reason(self, thread_executor, weather_tool):
+    async def test_run_async_with_streaming_callback_finish_reason(self, weather_tool):
         streaming_chunks = []
 
         async def streaming_callback(chunk: StreamingChunk) -> None:
             streaming_chunks.append(chunk)
 
-        tool_invoker = ToolInvoker(
-            tools=[weather_tool],
-            raise_on_failure=True,
-            convert_result_to_json_string=False,
-            async_executor=thread_executor,
-        )
+        tool_invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True, convert_result_to_json_string=False)
 
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
@@ -319,10 +304,8 @@ class TestToolInvoker:
         assert not tool_call_result.error
 
     @pytest.mark.asyncio
-    async def test_run_async_with_toolset(self, tool_set, thread_executor):
-        tool_invoker = ToolInvoker(
-            tools=tool_set, raise_on_failure=True, convert_result_to_json_string=False, async_executor=thread_executor
-        )
+    async def test_run_async_with_toolset(self, tool_set):
+        tool_invoker = ToolInvoker(tools=tool_set, raise_on_failure=True, convert_result_to_json_string=False)
         tool_calls = [
             ToolCall(tool_name="addition_tool", arguments={"num1": 5, "num2": 3}),
             ToolCall(tool_name="addition_tool", arguments={"num1": 5, "num2": 3}),
@@ -732,7 +715,7 @@ class TestToolInvoker:
             ToolCall(tool_name="state_tool_3", arguments={}),
         ]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
-        result = invoker.run(messages=[message], state=state)
+        _ = invoker.run(messages=[message], state=state)
 
         # Verify that all three tools were executed
         assert len(execution_log) == 3
@@ -803,7 +786,7 @@ class TestToolInvoker:
             ToolCall(tool_name="state_tool_3", arguments={}),
         ]
         message = ChatMessage.from_assistant(tool_calls=tool_calls)
-        result = await invoker.run_async(messages=[message], state=state)
+        _ = await invoker.run_async(messages=[message], state=state)
 
         # Verify that all three tools were executed
         assert len(execution_log) == 3
@@ -817,6 +800,55 @@ class TestToolInvoker:
         assert state.has("last_tool")
         assert state.get("counter") in [1, 2, 3]  # Should be one of the tool values
         assert state.get("last_tool") in ["tool_1", "tool_2", "tool_3"]  # Should be one of the tool names
+
+    def test_call_invoker_two_subsequent_run_calls(self, invoker: ToolInvoker):
+        tool_calls = [
+            ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Rome"}),
+        ]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        # First call
+        result_1 = invoker.run(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result_1
+        assert len(result_1["tool_messages"]) == 3
+
+        # Second call
+        result_2 = invoker.run(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result_2
+        assert len(result_2["tool_messages"]) == 3
+
+    @pytest.mark.asyncio
+    async def test_call_invoker_two_subsequent_run_async_calls(self, invoker: ToolInvoker):
+        tool_calls = [
+            ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Rome"}),
+        ]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        streaming_callback_called = False
+
+        async def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        # First call
+        result_1 = await invoker.run_async(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result_1
+        assert len(result_1["tool_messages"]) == 3
+
+        # Second call
+        result_2 = await invoker.run_async(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result_2
+        assert len(result_2["tool_messages"]) == 3
 
 
 class TestMergeToolOutputs:

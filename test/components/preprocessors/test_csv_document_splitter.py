@@ -2,13 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
 import logging
-from pandas import read_csv
 from io import StringIO
+
+import pytest
+from pandas import read_csv
+
 from haystack import Document
-from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.components.preprocessors.csv_document_splitter import CSVDocumentSplitter
+from haystack.core.serialization import component_from_dict, component_to_dict
 
 
 @pytest.fixture

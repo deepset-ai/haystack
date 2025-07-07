@@ -2,19 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import patch
-
 import json
 import os
 from dataclasses import dataclass
 from typing import Dict, List
+from unittest.mock import patch
 
 import pytest
-
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 
-from haystack import Pipeline, component, SuperComponent
+from haystack import Pipeline, SuperComponent, component
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
@@ -23,9 +21,7 @@ from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool
 from haystack.utils.auth import Secret
-
 from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT_SCHEMA, SPARSE_EMBEDDING_SCHEMA
-
 
 # Component and Model Definitions
 
@@ -485,7 +481,9 @@ class TestToolComponentInPipelineWithOpenAI:
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
         message = ChatMessage.from_user(
-            text="Concatenate these documents: First one says 'Hello world' and second one says 'Goodbye world' and third one says 'Hello again', but use top_k=2. Set only content field of the document only. Do not set id, meta, score, embedding, sparse_embedding, dataframe, blob fields."
+            text="Concatenate these documents: First one says 'Hello world' and second one says 'Goodbye world' and "
+            "third one says 'Hello again', but use top_k=2. Set only content field of the document only. Do "
+            "not set id, meta, score, embedding, sparse_embedding, dataframe, blob fields."
         )
 
         result = pipeline.run({"llm": {"messages": [message]}})
@@ -518,7 +516,9 @@ class TestToolComponentInPipelineWithOpenAI:
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
         message = ChatMessage.from_user(
-            text="I have three documents with content: 'First doc', 'Middle doc', and 'Last doc'. Rank them top_k=2. Set only content field of the document only. Do not set id, meta, score, embedding, sparse_embedding, dataframe, blob fields."
+            text="I have three documents with content: 'First doc', 'Middle doc', and 'Last doc'. Rank them top_k=2. "
+            "Set only content field of the document only. Do not set id, meta, score, embedding, "
+            "sparse_embedding, dataframe, blob fields."
         )
 
         result = pipeline.run({"llm": {"messages": [message]}})
@@ -635,8 +635,8 @@ class TestToolComponentInPipelineWithOpenAI:
         pipeline = Pipeline()
         pipeline.add_component("simple", comp)
 
-        # Try to create a tool from the component and it should fail because the component has been added to a pipeline and
-        # thus can't be used as tool
+        # Try to create a tool from the component and it should fail because the component has been added to a pipeline
+        # and thus can't be used as tool
         with pytest.raises(ValueError, match="Component has been added to a pipeline"):
             ComponentTool(component=comp)
 
@@ -684,7 +684,9 @@ class TestToolComponentInPipelineWithOpenAI:
 
             @component.output_types(result=str)
             def run(self, text: str, number: int = 42):
-                """Process inputs and return result.
+                """
+                Process inputs and return result.
+
                 :param text: A detailed description of the text parameter that should be preserved
                 :param number: A detailed description of the number parameter that should be preserved
                 """
@@ -710,11 +712,13 @@ class TestToolComponentInPipelineWithOpenAI:
             "properties": {
                 "input_text": {
                     "type": "string",
-                    "description": "Provided to the 'processor' component as: 'A detailed description of the text parameter that should be preserved'.",
+                    "description": "Provided to the 'processor' component as: 'A detailed description of the text "
+                    "parameter that should be preserved'.",
                 },
                 "input_number": {
                     "type": "integer",
-                    "description": "Provided to the 'processor' component as: 'A detailed description of the number parameter that should be preserved'.",
+                    "description": "Provided to the 'processor' component as: 'A detailed description of the number "
+                    "parameter that should be preserved'.",
                 },
             },
             "required": ["input_text"],
@@ -725,7 +729,9 @@ class TestToolComponentInPipelineWithOpenAI:
         assert result["processed_result"] == "Processed: Hello and 42"
 
     def test_component_tool_with_multiple_mapped_docstrings(self):
-        """Test that ComponentTool combines docstrings from multiple components when a single input maps to multiple components."""
+        """
+        Test ComponentTool combines docstrings from multiple components when a single input maps to multiple components.
+        """
 
         @component
         class ComponentA:
@@ -733,7 +739,9 @@ class TestToolComponentInPipelineWithOpenAI:
 
             @component.output_types(output_a=str)
             def run(self, query: str):
-                """Process query in component A.
+                """
+                Process query in component A.
+
                 :param query: The query string for component A
                 """
                 return {"output_a": f"A processed: {query}"}
@@ -744,7 +752,9 @@ class TestToolComponentInPipelineWithOpenAI:
 
             @component.output_types(output_b=str)
             def run(self, text: str):
-                """Process text in component B.
+                """
+                Process text in component B.
+
                 :param text: Text to process in component B
                 """
                 return {"output_b": f"B processed: {text}"}
@@ -765,11 +775,13 @@ class TestToolComponentInPipelineWithOpenAI:
         # Verify that schema includes combined docstrings from both components
         assert tool.parameters == {
             "type": "object",
-            "description": "A component that combines: 'comp_a': Process query in component A., 'comp_b': Process text in component B.",
+            "description": "A component that combines: 'comp_a': Process query in component A., 'comp_b': Process "
+            "text in component B.",
             "properties": {
                 "combined_input": {
                     "type": "string",
-                    "description": "Provided to the 'comp_a' component as: 'The query string for component A', and Provided to the 'comp_b' component as: 'Text to process in component B'.",
+                    "description": "Provided to the 'comp_a' component as: 'The query string for component A', and "
+                    "Provided to the 'comp_b' component as: 'Text to process in component B'.",
                 }
             },
             "required": ["combined_input"],

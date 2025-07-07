@@ -5,9 +5,8 @@
 from typing import Any, Dict
 
 from haystack import Pipeline
-from haystack.dataclasses import Document
-
 from haystack.components.rankers.meta_field_grouping_ranker import MetaFieldGroupingRanker
+from haystack.dataclasses import Document
 
 DOC_LIST = [
     # regular
@@ -62,8 +61,8 @@ class TestMetaFieldGroupingRanker:
 
     def test_with_group_subgroup_and_sorting(self) -> None:
         """
-        Test the MetaFieldGroupingRanker component with all parameters set, i.e.: grouping by 'group', subgrouping by 'subgroup',
-        and sorting by 'split_id'.
+        Test the MetaFieldGroupingRanker component with all parameters set, i.e.: grouping by 'group', subgrouping by
+        'subgroup', and sorting by 'split_id'.
         """
         ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
         result = ranker.run(documents=DOC_LIST)
@@ -117,7 +116,8 @@ class TestMetaFieldGroupingRanker:
 
     def test_run_missing_metadata_keys(self) -> None:
         """
-        Test the behavior of the MetaFieldGroupingRanker component when some documents are missing the required metadata keys.
+        Test the behavior of the MetaFieldGroupingRanker component when some documents are missing the required
+        metadata keys.
         """
         docs_with_missing_keys = [
             Document(content="Document without group", meta={"split_id": 1, "subgroup": "subA"}),

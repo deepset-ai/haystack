@@ -2,14 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional
-from jinja2 import TemplateSyntaxError
-import arrow
 import logging
-import pytest
+from typing import Any, Dict, List, Optional
 
-from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+import arrow
+import pytest
+from jinja2 import TemplateSyntaxError
+
 from haystack import component
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.dataclasses.document import Document

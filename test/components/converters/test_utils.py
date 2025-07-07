@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+
 from haystack.components.converters.utils import normalize_metadata
 
 

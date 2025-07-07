@@ -193,13 +193,13 @@ class HuggingFaceAPIChatGenerator:
 
     HuggingFaceAPIChatGenerator uses the [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format for input and output. Use it to generate text with Hugging Face APIs:
-    - [Free Serverless Inference API](https://huggingface.co/inference-api)
+    - [Serverless Inference API (Inference Providers)](https://huggingface.co/docs/inference-providers)
     - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
     - [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
     ### Usage examples
 
-    #### With the free serverless inference API
+    #### With the serverless inference API (Inference Providers) - free tier available
 
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -215,7 +215,8 @@ class HuggingFaceAPIChatGenerator:
     api_type = "serverless_inference_api" # this is equivalent to the above
 
     generator = HuggingFaceAPIChatGenerator(api_type=api_type,
-                                            api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+                                            api_params={"model": "microsoft/Phi-3.5-mini-instruct",
+                                                        "provider": "featherless-ai"},
                                             token=Secret.from_token("<your-api-key>"))
 
     result = generator.run(messages)
@@ -273,13 +274,15 @@ class HuggingFaceAPIChatGenerator:
             The type of Hugging Face API to use. Available types:
             - `text_generation_inference`: See [TGI](https://github.com/huggingface/text-generation-inference).
             - `inference_endpoints`: See [Inference Endpoints](https://huggingface.co/inference-endpoints).
-            - `serverless_inference_api`: See [Serverless Inference API](https://huggingface.co/inference-api).
+            - `serverless_inference_api`: See
+            [Serverless Inference API - Inference Providers](https://huggingface.co/docs/inference-providers).
         :param api_params:
             A dictionary with the following keys:
             - `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
+            - `provider`: Provider name. Recommended when `api_type` is `SERVERLESS_INFERENCE_API`.
             - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
             `TEXT_GENERATION_INFERENCE`.
-            - Other parameters specific to the chosen API type, such as `timeout`, `headers`, `provider` etc.
+            - Other parameters specific to the chosen API type, such as `timeout`, `headers`, etc.
         :param token:
             The Hugging Face token to use as HTTP bearer authorization.
             Check your HF token in your [account settings](https://huggingface.co/settings/tokens).

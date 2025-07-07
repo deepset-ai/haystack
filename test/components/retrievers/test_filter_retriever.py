@@ -2,15 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 import pytest
 
-from haystack import Pipeline, DeserializationError
-from haystack.testing.factory import document_store_class
+from haystack import DeserializationError, Pipeline
 from haystack.components.retrievers.filter_retriever import FilterRetriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.testing.factory import document_store_class
 
 
 @pytest.fixture()

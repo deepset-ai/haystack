@@ -6,9 +6,9 @@ import logging
 
 import pytest
 
-from haystack.utils.hf import resolve_hf_device_map, convert_message_to_hf_format
+from haystack.dataclasses import ChatMessage, ChatRole, TextContent, ToolCall
 from haystack.utils.device import ComponentDevice
-from haystack.dataclasses import ChatMessage, ToolCall, ChatRole, TextContent
+from haystack.utils.hf import convert_message_to_hf_format, resolve_hf_device_map
 
 
 def test_resolve_hf_device_map_only_device():

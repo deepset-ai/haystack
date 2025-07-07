@@ -153,7 +153,8 @@ integration-only-fast = 'pytest --maxfail=5 -m "integration and not slow" {args:
 integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test}'
 all = 'pytest {args:test}'
 
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack}"
+# TODO We want to eventually type the whole test folder
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/pipeline/features/test_run.py}"
 lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.e2e]
@@ -288,9 +289,19 @@ exclude = ["proposals"]
 [tool.ruff.format]
 skip-magic-trailing-comma = true
 
+[tool.ruff.lint.per-file-ignores]
+"test/**" = [
+  "D102", # Missing docstring in public method
+  "D103", # Missing docstring in public function
+  "D205", # 1 blank line required between summary line and description
+  "PLC0206", # Extracting value from dictionary without calling `.items()`
+  "SIM105", # try-except-pass instead of contextlib-suppress
+  "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
+]
+
 [tool.ruff.lint]
 isort.split-on-trailing-comma = false
-exclude = ["test/**", "e2e/**"]
+exclude = ["e2e/**"]
 select = [
   "ASYNC", # flake8-async
   "C4",    # flake8-comprehensions

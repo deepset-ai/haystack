@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-
 from unittest.mock import patch
+
 import pytest
 
 from haystack.components.converters.markdown import MarkdownToDocument

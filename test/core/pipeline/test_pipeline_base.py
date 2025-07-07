@@ -7,12 +7,11 @@ from typing import List, Optional
 from unittest.mock import patch
 
 import pytest
-
 from pandas import DataFrame
 
 from haystack import Document
 from haystack.core.component import component
-from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic, _empty
+from haystack.core.component.types import GreedyVariadic, InputSocket, OutputSocket, Variadic, _empty
 from haystack.core.errors import (
     DeserializationError,
     PipelineConnectError,
@@ -21,10 +20,8 @@ from haystack.core.errors import (
     PipelineMaxComponentRuns,
 )
 from haystack.core.pipeline import PredefinedPipeline
-from haystack.core.pipeline.base import PipelineBase
-from haystack.core.pipeline.base import ComponentPriority, _NO_OUTPUT_PRODUCED
+from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
 from haystack.core.pipeline.utils import FIFOPriorityQueue
-
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet
@@ -74,6 +71,7 @@ def lazy_variadic_input_socket():
 class TestPipelineBase:
     """
     This class contains only unit tests for the PipelineBase class.
+
     It doesn't test Pipeline.run(), that is done separately in a different way.
     """
 
@@ -103,7 +101,7 @@ class TestPipelineBase:
         """
 
         with pytest.raises(DeserializationError, match="unmarshalling serialized"):
-            pipeline = PipelineBase.loads(invalid_yaml)
+            _ = PipelineBase.loads(invalid_yaml)
 
         invalid_init_parameter_yaml = """components:
         Comp1:
@@ -121,7 +119,7 @@ class TestPipelineBase:
         """
 
         with pytest.raises(DeserializationError, match=".*Comp1.*unknown.*"):
-            pipeline = PipelineBase.loads(invalid_init_parameter_yaml)
+            _ = PipelineBase.loads(invalid_init_parameter_yaml)
 
     def test_pipeline_dump(self, test_files_path, tmp_path):
         pipeline = PipelineBase(max_runs_per_component=99)
@@ -222,8 +220,8 @@ class TestPipelineBase:
 
         pipe.remove_component("2")
 
-        assert ["1", "3", "4"] == sorted(pipe.graph.nodes)
-        assert [("3", "4")] == sorted([(u, v) for (u, v) in pipe.graph.edges()])
+        assert sorted(pipe.graph.nodes) == ["1", "3", "4"]
+        assert sorted([(u, v) for (u, v) in pipe.graph.edges()]) == [("3", "4")]
 
     def test_remove_component_allows_you_to_reuse_the_component(self):
         pipe = PipelineBase()
@@ -614,7 +612,8 @@ class TestPipelineBase:
             PipelineBase.from_dict(data)
 
         err.match(
-            r"Component '' \(name: 'add_two'\) not imported. Please check that the package is installed and the component path is correct."
+            r"Component '' \(name: 'add_two'\) not imported. Please check that the package is installed and the "
+            r"component path is correct."
         )
 
     def test_from_dict_with_correct_import_but_invalid_type(self):
@@ -707,8 +706,7 @@ class TestPipelineBase:
 
     def test_describe_output_multiple_possible(self):
         """
-        This pipeline has two outputs:
-        {"b": {"output_b": {"type": str}}, "a": {"output_a": {"type": str}}}
+        This pipeline has two outputs: {"b": {"output_b": {"type": str}}, "a": {"output_a": {"type": str}}}
         """
         A = component_class("A", input_types={"input_a": str}, output={"output_a": "str", "output_b": "str"})
         B = component_class("B", input_types={"input_b": str}, output={"output_b": "str"})
@@ -726,8 +724,7 @@ class TestPipelineBase:
 
     def test_describe_output_single(self):
         """
-        This pipeline has one output:
-        {"c": {"z": {"type": int}}}
+        This pipeline has one output: {"c": {"z": {"type": int}}}
         """
         A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
         B = component_class("B", input_types={"y": int}, output={"y": 0})
@@ -748,6 +745,8 @@ class TestPipelineBase:
 
     def test_describe_no_outputs(self):
         """
+        Test for PipelineBase.outputs() method.
+
         This pipeline sets up elaborate connections between three components but in fact it has no outputs:
         Check that p.outputs() == {}
         """
@@ -773,6 +772,8 @@ class TestPipelineBase:
 
     def test_walk_pipeline_with_no_cycles(self):
         """
+        Test for PipelineBase.walk() method.
+
         This pipeline has two source nodes, source1 and source2, one hello3 node in between, and one sink node, joiner.
         pipeline.walk() should return each component exactly once. The order is not guaranteed.
         """
@@ -815,6 +816,7 @@ class TestPipelineBase:
     def test_walk_pipeline_with_cycles(self):
         """
         This pipeline consists of two components, which would run three times in a loop.
+
         pipeline.walk() should return these components exactly once. The order is not guaranteed.
         """
 
@@ -1052,6 +1054,7 @@ class TestPipelineBase:
     def test_connect_same_component_as_sender_and_receiver(self):
         """
         This pipeline consists of one component, which would be connected to itself.
+
         Connecting a component to itself is raises PipelineConnectError.
         """
         pipe = PipelineBase()
@@ -1679,8 +1682,8 @@ class TestPipelineBase:
         """
         Test that calling the pipeline draw method with positional arguments raises a warning.
         """
-        from pathlib import Path
         import warnings
+        from pathlib import Path
 
         pipeline = PipelineBase()
         mock_response = mock_requests.get.return_value
@@ -1724,8 +1727,8 @@ class TestPipelineBase:
         """
         Test that calling the pipeline draw method with keyword arguments does not raise a warning.
         """
-        from pathlib import Path
         import warnings
+        from pathlib import Path
 
         pipeline = PipelineBase()
         mock_response = mock_requests.get.return_value

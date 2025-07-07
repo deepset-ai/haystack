@@ -7,17 +7,17 @@ from unittest.mock import Mock
 
 import pytest
 
-from haystack.core.pipeline import Pipeline
 from haystack.core.component import component
 from haystack.core.errors import DeserializationError, SerializationError
-from haystack.testing import factory
+from haystack.core.pipeline import Pipeline
 from haystack.core.serialization import (
-    default_to_dict,
+    component_to_dict,
     default_from_dict,
+    default_to_dict,
     generate_qualified_class_name,
     import_class_by_name,
-    component_to_dict,
 )
+from haystack.testing import factory
 
 
 def test_default_component_to_dict():

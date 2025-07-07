@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+
 from haystack import Pipeline
+from haystack.components.tools import ToolInvoker
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses import ChatMessage
-from haystack.components.tools import ToolInvoker
 from haystack.dataclasses.chat_message import ToolCall
 from haystack.tools import Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
@@ -468,7 +469,7 @@ class TestToolset:
 
         toolset2 = Toolset([add_tool2])
         with pytest.raises(ValueError, match="Duplicate tool names found"):
-            combined = toolset + toolset2
+            _ = toolset + toolset2
 
 
 class TestToolsetIntegration:

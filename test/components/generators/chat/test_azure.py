@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 import pytest
 from openai import OpenAIError
 
-from haystack import component, Pipeline
+from haystack import Pipeline, component
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall

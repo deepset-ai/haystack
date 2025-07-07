@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.components.joiners.string_joiner import StringJoiner
+from haystack.core.serialization import component_from_dict, component_to_dict
 
 
 class TestStringJoiner:

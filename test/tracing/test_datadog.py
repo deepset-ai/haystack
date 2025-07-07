@@ -4,14 +4,14 @@
 
 import functools
 import json
-from typing import List, Dict
+from typing import Dict, List
 
-from ddtrace.trace import Span as ddSpan
-from ddtrace.trace import Tracer as ddTracer
-from ddtrace._trace.processor import SpanAggregator
 import pytest
 from _pytest.capture import CaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
+from ddtrace._trace.processor import SpanAggregator
+from ddtrace.trace import Span as ddSpan
+from ddtrace.trace import Tracer as ddTracer
 
 from haystack.tracing.datadog import DatadogTracer
 

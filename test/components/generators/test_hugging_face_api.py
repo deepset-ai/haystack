@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import MagicMock, Mock, patch
 from datetime import datetime
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from huggingface_hub import (
@@ -297,6 +297,10 @@ class TestHuggingFaceAPIGenerator:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
+    @pytest.mark.skip(
+        reason="HF Inference API is not currently serving these models. "
+        "See https://github.com/deepset-ai/haystack/issues/9586."
+    )
     def test_run_serverless(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
@@ -307,7 +311,8 @@ class TestHuggingFaceAPIGenerator:
         # You must include the instruction tokens in the prompt. HF does not add them automatically.
         # Without them the model will behave erratically.
         response = generator.run(
-            "<|user|>\nWhat is the capital of France? Be concise only provide the capital, nothing else.<|end|>\n<|assistant|>\n"
+            "<|user|>\nWhat is the capital of France? Be concise only provide the capital, nothing else.<|end|>"
+            "\n<|assistant|>\n"
         )
 
         # Assert that the response contains the generated replies
@@ -329,6 +334,10 @@ class TestHuggingFaceAPIGenerator:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
+    @pytest.mark.skip(
+        reason="HF Inference API is not currently serving these models. "
+        "See https://github.com/deepset-ai/haystack/issues/9586."
+    )
     def test_live_run_streaming_check_completion_start_time(self):
         generator = HuggingFaceAPIGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
@@ -338,7 +347,8 @@ class TestHuggingFaceAPIGenerator:
         )
 
         results = generator.run(
-            "<|user|>\nWhat is the capital of France? Be concise only provide the capital, nothing else.<|end|>\n<|assistant|>\n"
+            "<|user|>\nWhat is the capital of France? Be concise only provide the capital, nothing else."
+            "<|end|>\n<|assistant|>\n"
         )
 
         # Assert that the response contains the generated replies

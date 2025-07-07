@@ -4,20 +4,20 @@
 
 import asyncio
 import gc
-from typing import Optional, List
+from typing import List, Optional
 from unittest.mock import Mock, patch
 
-from haystack.utils.hf import AsyncHFTokenStreamingHandler
 import pytest
 from transformers import PreTrainedTokenizer
 
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
-from haystack.dataclasses.streaming_chunk import StreamingChunk, AsyncStreamingCallbackT
+from haystack.dataclasses.streaming_chunk import AsyncStreamingCallbackT, StreamingChunk
 from haystack.tools import Tool
+from haystack.tools.toolset import Toolset
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
-from haystack.tools.toolset import Toolset
+from haystack.utils.hf import AsyncHFTokenStreamingHandler
 
 
 # used to test serialization of streaming_callback
@@ -558,7 +558,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
             )
 
     def test_executor_shutdown(self, model_info_mock, mock_pipeline_with_tokenizer):
-        with patch("haystack.components.generators.chat.hugging_face_local.pipeline") as mock_pipeline:
+        with patch("haystack.components.generators.chat.hugging_face_local.pipeline"):
             generator = HuggingFaceLocalChatGenerator(model="mocked-model")
             executor = generator.executor
             with patch.object(executor, "shutdown", wraps=executor.shutdown) as mock_shutdown:

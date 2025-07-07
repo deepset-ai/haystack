@@ -5,7 +5,6 @@
 import asyncio
 import inspect
 import json
-import warnings
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import Any, Dict, List, Optional, Set, Union
@@ -171,7 +170,6 @@ class ToolInvoker:
         *,
         enable_streaming_callback_passthrough: bool = False,
         max_workers: int = 4,
-        async_executor: Optional[ThreadPoolExecutor] = None,
     ):
         """
         Initialize the ToolInvoker component.
@@ -197,13 +195,7 @@ class ToolInvoker:
             If False, the `streaming_callback` will not be passed to the tool invocation.
         :param max_workers:
             The maximum number of workers to use in the thread pool executor.
-        :param async_executor:
-            Optional `ThreadPoolExecutor` to use for asynchronous calls.
-            Note: As of Haystack 2.15.0, you no longer need to explicitly pass
-            `async_executor`. Instead, you can provide the `max_workers` parameter,
-            and a `ThreadPoolExecutor` will be created automatically for parallel tool invocations.
-            Support for `async_executor` will be removed in Haystack 2.16.0.
-            Please migrate to using `max_workers` instead.
+            This also decides the maximum number of concurrent tool invocations.
         :raises ValueError:
             If no tools are provided or if duplicate tool names are found.
         """
@@ -231,37 +223,6 @@ class ToolInvoker:
         self._tools_with_names = dict(zip(tool_names, converted_tools))
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
-        self._owns_executor = async_executor is None
-        if self._owns_executor:
-            warnings.warn(
-                "'async_executor' is deprecated in favor of the 'max_workers' parameter. "
-                "ToolInvoker now creates its own thread pool executor by default using 'max_workers'. "
-                "Support for 'async_executor' will be removed in Haystack 2.16.0. "
-                "Please update your usage to pass 'max_workers' instead.",
-                DeprecationWarning,
-            )
-
-        self.executor = (
-            ThreadPoolExecutor(
-                thread_name_prefix=f"async-ToolInvoker-executor-{id(self)}", max_workers=self.max_workers
-            )
-            if async_executor is None
-            else async_executor
-        )
-
-    def __del__(self):
-        """
-        Cleanup when the instance is being destroyed.
-        """
-        if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
-            self.executor.shutdown(wait=True)
-
-    def shutdown(self):
-        """
-        Explicitly shutdown the executor if we own it.
-        """
-        if self._owns_executor:
-            self.executor.shutdown(wait=True)
 
     def _handle_error(self, error: Exception) -> str:
         """
@@ -655,7 +616,7 @@ class ToolInvoker:
             return e
 
     @component.output_types(tool_messages=List[ChatMessage], state=State)
-    async def run_async(
+    async def run_async(  # noqa: PLR0915
         self,
         messages: List[ChatMessage],
         state: Optional[State] = None,
@@ -718,10 +679,10 @@ class ToolInvoker:
 
         # 2) Execute valid tool calls in parallel
         if tool_call_params:
-            with self.executor as executor:
-                tool_call_tasks = []
-                valid_tool_calls = []
+            tool_call_tasks = []
+            valid_tool_calls = []
 
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 # 3) Create async tasks for valid tool calls
                 for params in tool_call_params:
                     task = ToolInvoker.invoke_tool_safely(executor, params["tool_to_invoke"], params["final_args"])
@@ -749,7 +710,7 @@ class ToolInvoker:
                             try:
                                 error_message = self._handle_error(
                                     ToolOutputMergeError(
-                                        f"Failed to merge tool outputs fromtool {tool_call.tool_name} into State: {e}"
+                                        f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
                                     )
                                 )
                                 tool_messages.append(

@@ -43,7 +43,8 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
         "answer": "Satya Nadella",
         "answer_date": "Feb 4, 2014–",
         "link": "https://www.google.com/search?sca_esv=584620230&gl=us&hl=en&q=Satya+Nadella&stick=H4sIAAAAAAAAAONgVuLSz9U3KDQxqMjKesRoyi3w8sc9YSmdSWtOXmNU4-IKzsgvd80rySypFJLgYoOy-KR4uJC08Sxi5Q1OLKlMVPBLTEnNyUkEALvb1RBWAAAA&sa=X&ved=2ahUKEwi89re3_9eCAxU4IUQIHfHeB6MQzIcDKAB6BAgyEAE",
-        "snippet": "Microsoft CEO Satya Nadella speaks during the OpenAI DevDay event on November 06, 2023 in San Francisco, California.",
+        "snippet": "Microsoft CEO Satya Nadella speaks during the OpenAI DevDay event on November 06, 2023 in San "
+        "Francisco, California.",
         "date": "1 day ago",
         "organic_result": {
             "title": "Microsoft CEO Satya Nadella's response to the OpenAI board ...",
@@ -88,7 +89,9 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
         "knowledge_graph_type": "People",
         "title": "Satya Nadella",
         "type": "CEO of Microsoft",
-        "description": "Satya Narayana Nadella is an Indian-American business executive. He is the executive chairman and CEO of Microsoft, succeeding Steve Ballmer in 2014 as CEO and John W. Thompson in 2021 as chairman.",
+        "description": "Satya Narayana Nadella is an Indian-American business executive. He is the executive chairman "
+        "and CEO of Microsoft, succeeding Steve Ballmer in 2014 as CEO and John W. Thompson in 2021 as "
+        "chairman.",
         "source": {"name": "Wikipedia", "link": "https://en.wikipedia.org/wiki/Satya_Nadella"},
         "born": "August 19, 1967 (age 56 years), Hyderabad, India",
         "born_links": [
@@ -118,7 +121,8 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
         "books": "Hit Refresh: The Quest to Rediscover Microsoft's Soul and Imagine a Better Future for Everyone",
         "books_links": [
             {
-                "text": "Hit Refresh: The Quest to Rediscover Microsoft's Soul and Imagine a Better Future for Everyone",
+                "text": "Hit Refresh: The Quest to Rediscover Microsoft's Soul and Imagine a Better Future for "
+                "Everyone",
                 "link": "https://www.google.com/search?sca_esv=584620230&gl=us&hl=en&q=Hit+Refresh&si=ALGXSlZZLz93Q5j8HVkpXyxpTaoqXw8cocmoi-DFAGsSj5diFzM3kSV8cu0gYZuy4n6At7XJ8qKh8mnRaXfDbxUaZoS_kPW87tGFHpw6B9zAS2a52vwJDx-fkzytheyPXaMQENZSl3bwqC9Nz3bqn7-Pglqh0Bik5Ow9AdVr2XI8mdVktN4SkCIaPE4qQfjAurt8rjUVyQzu3OFQx04nfPH3Gv7vP8aKqg%3D%3D&sa=X&ved=2ahUKEwi89re3_9eCAxU4IUQIHfHeB6MQmxMoAHoECGEQAg",
             }
         ],
@@ -162,7 +166,8 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
             "source": "Microsoft",
             "domain": "news.microsoft.com",
             "displayed_link": "https://news.microsoft.com › exec › satya-nadella",
-            "snippet": "Satya Nadella is Chairman and Chief Executive Officer of Microsoft. Before being named CEO in February 2014, Nadella held leadership roles in both ...",
+            "snippet": "Satya Nadella is Chairman and Chief Executive Officer of Microsoft. Before being named CEO "
+            "in February 2014, Nadella held leadership roles in both ...",
             "snippet_highlighted_words": ["Satya Nadella"],
             "cached_page_link": "https://webcache.googleusercontent.com/search?q=cache:jTiZ69Cck7EJ:https://news.microsoft.com/exec/satya-nadella/&hl=en&gl=us",
         },
@@ -173,7 +178,8 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
             "source": "Wikipedia",
             "domain": "en.wikipedia.org",
             "displayed_link": "https://en.wikipedia.org › wiki › Satya_Nadella",
-            "snippet": "Satya Narayana Nadella is an Indian-American business executive. He is the executive chairman and CEO of Microsoft, succeeding Steve Ballmer in 2014 as CEO ...",
+            "snippet": "Satya Narayana Nadella is an Indian-American business executive. He is the executive chairman "
+            "and CEO of Microsoft, succeeding Steve Ballmer in 2014 as CEO ...",
             "snippet_highlighted_words": ["Satya Narayana Nadella"],
             "sitelinks": {
                 "inline": [
@@ -197,7 +203,8 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
             "source": "LinkedIn · Satya Nadella",
             "domain": "www.linkedin.com",
             "displayed_link": "10.5M+ followers",
-            "snippet": "As chairman and CEO of Microsoft, I define my mission and that of my company as empowering… | Learn more about Satya Nadella's work experience, education, ...",
+            "snippet": "As chairman and CEO of Microsoft, I define my mission and that of my company as empowering… "
+            "| Learn more about Satya Nadella's work experience, education, ...",
             "snippet_highlighted_words": ["Satya Nadella's"],
         },
         {
@@ -207,7 +214,8 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
             "source": "Business Standard",
             "domain": "www.business-standard.com",
             "displayed_link": "https://www.business-standard.com › about › who-is-s...",
-            "snippet": "Satya Narayana Nadella is the chief executive officer (CEO) of Microsoft. Under him, Microsoft has more cloud computing revenue than Google, more subscribers ...",
+            "snippet": "Satya Narayana Nadella is the chief executive officer (CEO) of Microsoft. Under him, "
+            "Microsoft has more cloud computing revenue than Google, more subscribers ...",
             "snippet_highlighted_words": ["Satya Narayana Nadella"],
             "cached_page_link": "https://webcache.googleusercontent.com/search?q=cache:yQ0bmLSmP8gJ:https://www.business-standard.com/about/who-is-satya-nadella&hl=en&gl=us",
         },
@@ -229,7 +237,8 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
             "source": "Britannica",
             "domain": "www.britannica.com",
             "displayed_link": "https://www.britannica.com › biography › Satya-Nadella",
-            "snippet": "Satya Nadella (born August 19, 1967, Hyderabad, India) Indian-born business executive who was CEO of the computer software company Microsoft (2014– ).",
+            "snippet": "Satya Nadella (born August 19, 1967, Hyderabad, India) Indian-born business executive who "
+            "was CEO of the computer software company Microsoft (2014– ).",
             "snippet_highlighted_words": ["Satya Nadella"],
             "cached_page_link": "https://webcache.googleusercontent.com/search?q=cache:a0S8ke4I9qgJ:https://www.britannica.com/biography/Satya-Nadella&hl=en&gl=us",
         },
@@ -240,7 +249,8 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
             "source": "Forbes",
             "domain": "www.forbes.com",
             "displayed_link": "https://www.forbes.com › profile › satya-nadella",
-            "snippet": "Satya Nadella replaced billionaire Steve Ballmer as Microsoft CEO in 2014. Prior to that, Nadella was Microsoft EVP of the cloud and enterprise group.",
+            "snippet": "Satya Nadella replaced billionaire Steve Ballmer as Microsoft CEO in 2014. Prior to that, "
+            "Nadella was Microsoft EVP of the cloud and enterprise group.",
             "snippet_highlighted_words": ["Satya Nadella"],
             "cached_page_link": "https://webcache.googleusercontent.com/search?q=cache:q_CXTYNnHSMJ:https://www.forbes.com/profile/satya-nadella/&hl=en&gl=us",
         },
@@ -251,7 +261,8 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
             "source": "Benzinga",
             "domain": "in.benzinga.com",
             "displayed_link": "https://in.benzinga.com › content › 5-facts-you-didnt-...",
-            "snippet": "Satya Nadella's journey at Microsoft underscores the importance of diverse experiences in shaping effective and empathetic leadership in the ...",
+            "snippet": "Satya Nadella's journey at Microsoft underscores the importance of diverse experiences in "
+            "shaping effective and empathetic leadership in the ...",
             "snippet_highlighted_words": ["Satya Nadella's"],
             "date": "8 hours ago",
             "cached_page_link": "https://webcache.googleusercontent.com/search?q=cache:hCbtJUTgvEQJ:https://in.benzinga.com/content/35911756/5-facts-you-didnt-know-about-microsoft-ceo-satya-nadella&hl=en&gl=us",
@@ -263,7 +274,8 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
             "source": "Wall Street Journal",
             "domain": "www.wsj.com",
             "displayed_link": "https://www.wsj.com › video › microsoft-ceo-satya-nadel...",
-            "snippet": "Microsoft CEO Satya Nadella talks about his biggest accomplishment, how to make successful acquisitions and how the tech industry could improve its image ...",
+            "snippet": "Microsoft CEO Satya Nadella talks about his biggest accomplishment, how to make successful "
+            "acquisitions and how the tech industry could improve its image ...",
             "snippet_highlighted_words": ["Microsoft CEO"],
             "video": {"source": "The Wall Street Journal", "channel": "The Wall Street Journal", "date": "Feb 1, 2019"},
         },
@@ -287,7 +299,9 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
         },
         {
             "question": "Who is the CEO of Microsoft 2023?",
-            "answer": "Microsoft Corp. chief executive officer Satya Nadella signaled that he'd be open to Sam Altman going back to OpenAI, rather than joining his company as part of a surprise move announced over the weekend.",
+            "answer": "Microsoft Corp. chief executive officer Satya Nadella signaled that he'd be open to Sam Altman "
+            "going back to OpenAI, rather than joining his company as part of a surprise move announced "
+            "over the weekend.",
             "date": "2 days ago",
             "source": {
                 "title": "Microsoft CEO Satya Nadella signals willingness to have Sam Altman ...",
@@ -303,7 +317,9 @@ EXAMPLE_SEARCHAPI_RESPONSE = {
         },
         {
             "question": "How many degrees does Satya Nadella have?",
-            "answer": "He earned a bachelor's degree in electrical engineering from Mangalore University, a master's degree in computer science from the University of Wisconsin – Milwaukee and a master's degree in business administration from the University of Chicago.",
+            "answer": "He earned a bachelor's degree in electrical engineering from Mangalore University, a master's "
+            "degree in computer science from the University of Wisconsin – Milwaukee and a master's degree "
+            "in business administration from the University of Chicago.",
             "source": {
                 "title": "Satya Nadella - Institutional - BlackRock",
                 "link": "https://www.blackrock.com/institutions/en-zz/biographies/satya-nadella#:~:text=He%20earned%20a%20bachelor's%20degree,from%20the%20University%20of%20Chicago.",

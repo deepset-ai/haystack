@@ -8,8 +8,8 @@ import pytest
 
 from haystack import Pipeline
 from haystack.components.evaluators import LLMEvaluator
-from haystack.dataclasses.chat_message import ChatMessage
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.dataclasses.chat_message import ChatMessage
 
 
 class TestLLMEvaluator:
@@ -349,7 +349,11 @@ class TestLLMEvaluator:
         template = component.prepare_template()
         assert (
             template
-            == 'Instructions:\ntest-instruction\n\nGenerate the response in JSON format with the following keys:\n["score"]\nConsider the instructions and the examples below to determine those values.\n\nExamples:\nInputs:\n{"predicted_answers": "Damn, this is straight outta hell!!!"}\nOutputs:\n{"score": 1}\nInputs:\n{"predicted_answers": "Football is the most popular sport."}\nOutputs:\n{"score": 0}\n\nInputs:\n{"predicted_answers": {{ predicted_answers }}}\nOutputs:\n'
+            == "Instructions:\ntest-instruction\n\nGenerate the response in JSON format with the following keys:"
+            '\n["score"]\nConsider the instructions and the examples below to determine those values.\n\n'
+            'Examples:\nInputs:\n{"predicted_answers": "Damn, this is straight outta hell!!!"}\nOutputs:'
+            '\n{"score": 1}\nInputs:\n{"predicted_answers": "Football is the most popular sport."}\nOutputs:'
+            '\n{"score": 0}\n\nInputs:\n{"predicted_answers": {{ predicted_answers }}}\nOutputs:\n'
         )
 
     def test_invalid_input_parameters(self, monkeypatch):
