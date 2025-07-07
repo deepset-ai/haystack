@@ -10,7 +10,7 @@ import pytest
 from haystack.components.joiners import BranchJoiner
 from haystack.components.routers.conditional_router import ConditionalRouter
 from haystack.core.component import component
-from haystack.core.errors import PipelineRuntimeError, PipelineComponentBlockedError
+from haystack.core.errors import PipelineComponentBlockedError, PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
 
 
