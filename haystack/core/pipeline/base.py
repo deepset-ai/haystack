@@ -1444,6 +1444,27 @@ class PipelineBase:  # noqa: PLW1641
 
         return merged_graph, super_component_mapping
 
+    def _is_pipeline_possibly_blocked(self, current_pipeline_outputs: Dict[str, Any]) -> bool:
+        """
+        Heuristically determines whether the pipeline is possibly blocked based on its current outputs.
+
+        This method checks if the pipeline has produced any of the expected outputs.
+        - If no outputs are expected (i.e., `self.outputs()` returns an empty list), the method assumes the pipeline
+        is not blocked.
+        - If at least one expected output is present in `current_pipeline_outputs`, the pipeline is also assumed to not
+        be blocked.
+        - If none of the expected outputs are present, the pipeline is considered to be possibly blocked.
+
+        Note: This check is not definitive—it is intended as a best-effort guess to detect a stalled or misconfigured
+        pipeline when there are no more runnable components.
+
+        :param current_pipeline_outputs: A dictionary of outputs currently produced by the pipeline.
+        :returns:
+            bool: True if the pipeline is possibly blocked (i.e., expected outputs are missing), False otherwise.
+        """
+        expected_outputs = self.outputs()
+        return bool(expected_outputs) and not any(k in current_pipeline_outputs for k in expected_outputs)
+
 
 def _connections_status(
     sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
