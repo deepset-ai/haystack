@@ -28,6 +28,7 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.routers import ConditionalRouter, FileTypeRouter
 from haystack.components.routers.conditional_router import Route
 from haystack.core.component.types import Variadic
+from haystack.core.errors import PipelineComponentBlockedError
 from haystack.dataclasses import ByteStream, ChatMessage, ChatRole, GeneratedAnswer, TextContent
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
@@ -5598,3 +5599,36 @@ def pipeline_component_cycle_input_no_input(pipeline_class):
             )
         ],
     )
+
+
+@given("a pipeline that is blocked because not enough component inputs", target_fixture="pipeline_data")
+def that_is_blocked_not_enough_component_inputs(pipeline_class):
+    router = ConditionalRouter(
+        [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
+        ]
+    )
+
+    # This component requires both `streams` and `query` inputs to run
+    # If one is missing then the pipeline is blocked and cannot run.
+    @component
+    class PayloadBuilder:
+        @component.output_types(payload=Dict[str, Any])
+        def run(self, streams: List[int], query: str):
+            return {"payload": {"streams": streams, "query": query}}
+
+    pipe = pipeline_class(max_runs_per_component=1)
+    pipe.add_component("router", router)
+    pipe.add_component("payload_builder", PayloadBuilder())
+
+    # Since the router only outputs either `streams` or `query` it's impossible to run PayloadBuilder.
+    pipe.connect("router.streams", "payload_builder.streams")
+    pipe.connect("router.query", "payload_builder.query")
+
+    return (pipe, [PipelineRunData({"router": {"streams": [1, 2, 3], "query": "Haystack"}})])

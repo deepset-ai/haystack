@@ -68,3 +68,4 @@ Feature: Pipeline running
         | that has an infinite loop | PipelineMaxComponentRuns |
         | that has a component that doesn't return a dictionary | PipelineRuntimeError |
         | that has a cycle that would get it stuck | PipelineComponentsBlockedError |
+        | that is blocked because not enough component inputs | PipelineComponentBlockedError |
