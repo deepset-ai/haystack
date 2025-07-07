@@ -362,7 +362,7 @@ class AsyncPipeline(PipelineBase):
                 priority_queue = self._fill_queue(ordered_names, inputs_state, component_visits)
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
 
-                if (candidate is None or (candidate and candidate[0] == ComponentPriority.BLOCKED)) and running_tasks:
+                if (candidate is None or candidate[0] == ComponentPriority.BLOCKED) and running_tasks:
                     # We need to wait for one task to finish to make progress and potentially unblock the priority_queue
                     async for partial_res in _wait_for_one_task_to_complete():
                         yield partial_res
@@ -382,9 +382,8 @@ class AsyncPipeline(PipelineBase):
                         raise PipelineComponentBlockedError(
                             component_name=comp_name, component_type=comp["instance"].__class__
                         )
-                    else:
-                        # Pipeline is not blocked so we can exit the loop.
-                        break
+                    # Pipeline is not blocked so we can exit the loop.
+                    break
 
                 if comp_name in scheduled_components:
                     # We need to wait for one task to finish to make progress

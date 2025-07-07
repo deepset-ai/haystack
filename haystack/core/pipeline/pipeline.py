@@ -225,9 +225,8 @@ class Pipeline(PipelineBase):
                         raise PipelineComponentBlockedError(
                             component_name=component_name, component_type=component["instance"].__class__
                         )
-                    else:
-                        # Pipeline is not blocked so we can exit the loop.
-                        break
+                    # Pipeline is not blocked so we can exit the loop.
+                    break
 
                 if len(priority_queue) > 0 and priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]:
                     component_name, topological_sort = self._tiebreak_waiting_components(
