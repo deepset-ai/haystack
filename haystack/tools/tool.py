@@ -41,7 +41,7 @@ class Tool:
         ```
     :param inputs_from_state:
         Optional dictionary mapping state keys to tool parameter names.
-        Example: {"repository": "repo"} maps state's "repository" to tool's "repo" parameter.
+        Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
     :param outputs_to_state:
         Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
         If the source is provided only the specified output key is sent to the handler.
