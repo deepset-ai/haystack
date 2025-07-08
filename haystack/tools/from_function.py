@@ -68,13 +68,16 @@ def create_tool_from_function(
         To intentionally leave the description empty, pass an empty string.
     :param inputs_from_state:
         Optional dictionary mapping state keys to tool parameter names.
-        Example: {"repository": "repo"} maps state's "repository" to tool's "repo" parameter.
+        Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
     :param outputs_to_state:
         Optional dictionary defining how tool outputs map to state and message handling.
-        Example: {
+        Example:
+        ```python
+        {
             "documents": {"source": "docs", "handler": custom_handler},
             "message": {"source": "summary", "handler": format_summary}
         }
+        ```
     :returns:
         The Tool created from the function.
 
