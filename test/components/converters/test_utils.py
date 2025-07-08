@@ -36,25 +36,27 @@ def test_normalize_metadata_other_type():
 
 
 def test_get_bytestream_from_path_object(tmp_path):
+    bytes_ = b"hello world"
     source = tmp_path / "test.txt"
-    source.write_bytes(b"hello world")
+    source.write_bytes(bytes_)
 
     bs = get_bytestream_from_source(source, guess_mime_type=True)
 
     assert isinstance(bs, ByteStream)
-    assert bs.data == b"hello world"
+    assert bs.data == bytes_
     assert bs.mime_type == "text/plain"
     assert bs.meta["file_path"].endswith("test.txt")
 
 
 def test_get_bytestream_from_string_path(tmp_path):
+    bytes_ = b"hello world"
     source = tmp_path / "test.txt"
-    source.write_bytes(b"hello world")
+    source.write_bytes(bytes_)
 
     bs = get_bytestream_from_source(str(source), guess_mime_type=True)
 
     assert isinstance(bs, ByteStream)
-    assert bs.data == b"hello world"
+    assert bs.data == bytes_
     assert bs.mime_type == "text/plain"
     assert bs.meta["file_path"].endswith("test.txt")
 
