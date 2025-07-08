@@ -116,6 +116,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             "inputs" must be a dictionary with keys "questions" and "contexts".
             "outputs" must be a dictionary with "relevant_statements".
             Expected format:
+            ```python
             [{
                 "inputs": {
                     "questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
@@ -124,6 +125,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                     "relevant_statements": ["Rome is the capital of Italy."],
                 },
             }]
+            ```
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
         :param raise_on_failure:

@@ -75,7 +75,7 @@ class InMemoryDocumentStore:
         :param bm25_tokenization_regex: The regular expression used to tokenize the text for BM25 retrieval.
         :param bm25_algorithm: The BM25 algorithm to use. One of "BM25Okapi", "BM25L", or "BM25Plus".
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
-            For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
+            For example: `{'k1':1.5, 'b':0.75, 'epsilon':0.25}`
             You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25.
         :param embedding_similarity_function: The similarity function used to compare Documents embeddings.
             One of "dot_product" (default) or "cosine". To choose the most appropriate function, look for information
