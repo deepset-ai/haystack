@@ -176,7 +176,7 @@ class PipelineBase:  # noqa: PLW1641
         :param callbacks:
             Callbacks to invoke during deserialization.
         :param kwargs:
-            `components`: a dictionary of {name: instance} to reuse instances of components instead of creating new
+            `components`: a dictionary of `{name: instance}` to reuse instances of components instead of creating new
             ones.
         :returns:
             Deserialized component.

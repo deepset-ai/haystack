@@ -60,6 +60,7 @@ class HuggingFaceAPIGenerator:
 
     result = generator.run(prompt="What's Natural Language Processing?")
     print(result)
+    ```
 
     #### With self-hosted text generation inference
     ```python
