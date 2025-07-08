@@ -1,0 +1,74 @@
+name: Sync docs with Docusaurus
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/pydoc/config_docusaurus/**"
+      - "haystack/**"
+      - ".github/workflows/docusaurus_sync.yml"
+
+env:
+  HATCH_VERSION: "1.14.1"
+  PYTHON_VERSION: "3.9"
+  DOCS_REPO: "deepset-ai/haystack-docs"
+  DOCS_REPO_PATH: "docs/api/haystack-api"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Haystack repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        run: pip install hatch==${{ env.HATCH_VERSION }}
+
+      - name: Generate API docs for Docusaurus
+        # This command simply runs ./.github/utils/pydoc-markdown.sh with a specific config path
+        run: hatch run readme:sync "../config_docusaurus/*"
+
+      - name: Checkout Docusaurus repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.DOCS_REPO }}
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          path: haystack-docs
+
+      - name: Sync generated docs to Docusaurus repo
+        run: |
+          SOURCE_PATH="docs/pydoc/temp"
+          DEST_PATH="haystack-docs/${{ env.DOCS_REPO_PATH }}"
+
+          echo "Syncing from $SOURCE_PATH to $DEST_PATH"
+          mkdir -p $DEST_PATH
+          # Using rsync to copy files. This will also remove files in dest that are no longer in source.
+          rsync -av --delete --exclude='.git/' "$SOURCE_PATH/" "$DEST_PATH/"
+
+      - name: Commit and push changes
+        env:
+            GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          cd haystack-docs
+
+          if [[ -n $(git status -s) ]]; then
+            echo "Syncing docs with Docusaurus..."
+            git add .
+            git commit -m "docs: Sync Haystack API reference"
+            git push
+          else
+            echo "No changes to sync with Docusaurus."
+          fi
