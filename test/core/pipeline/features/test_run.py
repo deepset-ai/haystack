@@ -28,7 +28,6 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.routers import ConditionalRouter, FileTypeRouter
 from haystack.components.routers.conditional_router import Route
 from haystack.core.component.types import Variadic
-from haystack.core.errors import PipelineComponentBlockedError
 from haystack.dataclasses import ByteStream, ChatMessage, ChatRole, GeneratedAnswer, TextContent
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
@@ -5631,4 +5630,16 @@ def that_is_blocked_not_enough_component_inputs(pipeline_class):
     pipe.connect("router.streams", "payload_builder.streams")
     pipe.connect("router.query", "payload_builder.query")
 
-    return (pipe, [PipelineRunData({"router": {"streams": [1, 2, 3], "query": "Haystack"}})])
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"router": {"streams": [1, 2, 3], "query": "Haystack"}},
+                expected_outputs={},
+                expected_component_calls={
+                    ("router", 1): {"streams": [1, 2, 3], "query": "Haystack"}
+                    # PayloadBuilder will not run because it requires both inputs
+                },
+            )
+        ],
+    )

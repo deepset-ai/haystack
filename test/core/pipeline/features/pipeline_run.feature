@@ -57,6 +57,7 @@ Feature: Pipeline running
         | that has components returning dataframes |
         | where a single component connects multiple sockets to the same receiver socket |
         | where a component in a cycle provides inputs for a component outside the cycle in one iteration and no input in another iteration |
+        | that is blocked because not enough component inputs |
 
     Scenario Outline: Running a bad Pipeline
         Given a pipeline <kind>
@@ -68,4 +69,3 @@ Feature: Pipeline running
         | that has an infinite loop | PipelineMaxComponentRuns |
         | that has a component that doesn't return a dictionary | PipelineRuntimeError |
         | that has a cycle that would get it stuck | PipelineComponentsBlockedError |
-        | that is blocked because not enough component inputs | PipelineComponentBlockedError |

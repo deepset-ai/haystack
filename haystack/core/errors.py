@@ -43,18 +43,6 @@ class PipelineRuntimeError(Exception):
         return cls(component_name, component_type, message)
 
 
-class PipelineComponentBlockedError(PipelineRuntimeError):
-    def __init__(self, component_name: str, component_type: Type) -> None:
-        message = (
-            "Cannot run pipeline - the next component that is meant to run is blocked.\n"
-            f"Component name: '{component_name}'\n"
-            f"Component type: '{component_type.__name__}'\n"
-            "This typically happens when the component is unable to receive all of its required inputs.\n"
-            "Check the connections to this component and ensure all required inputs are provided."
-        )
-        super().__init__(component_name, component_type, message)
-
-
 class PipelineComponentsBlockedError(PipelineRuntimeError):
     def __init__(self) -> None:
         message = (

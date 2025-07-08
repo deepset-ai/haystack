@@ -8,7 +8,7 @@ from typing import Any, AsyncIterator, Dict, List, Mapping, Optional, Set
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineComponentBlockedError, PipelineRuntimeError
+from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -379,8 +379,15 @@ class AsyncPipeline(PipelineBase):
                     if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
                         # Pipeline is most likely blocked (most likely a Pipeline configuration issue) so we raise a
                         # PipelineComponentBlockedError.
-                        raise PipelineComponentBlockedError(
-                            component_name=comp_name, component_type=comp["instance"].__class__
+                        logger.warning(
+                            "Cannot run pipeline - the next component that is meant to run is blocked.\n"
+                            "Component name: '{component_name}'\n"
+                            "Component type: '{component_type}'\n"
+                            "This typically happens when the component is unable to receive all of its required "
+                            "inputs.\nCheck the connections to this component and ensure all required inputs are "
+                            "provided.",
+                            component_name=comp_name,
+                            component_type=comp["instance"].__class__.__name__,
                         )
                     # Pipeline is not blocked so we can exit the loop.
                     break
