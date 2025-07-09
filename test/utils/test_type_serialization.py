@@ -149,20 +149,36 @@ def test_output_builtin_type_deserialization():
 
 
 def test_output_type_serialization_nested():
+    # typing
     assert serialize_type(List[Union[str, int]]) == "typing.List[typing.Union[str, int]]"
     assert serialize_type(List[Optional[str]]) == "typing.List[typing.Optional[str]]"
     assert serialize_type(List[Dict[str, int]]) == "typing.List[typing.Dict[str, int]]"
     assert serialize_type(typing.List[Dict[str, int]]) == "typing.List[typing.Dict[str, int]]"
+    # builtins
+    assert serialize_type(list[Union[str, int]]) == "list[typing.Union[str, int]]"
+    assert serialize_type(list[Optional[str]]) == "list[typing.Optional[str]]"
+    assert serialize_type(list[dict[str, int]]) == "list[dict[str, int]]"
+    assert serialize_type(list[list[int]]) == "list[list[int]]"
+    assert serialize_type(list[list[list[int]]]) == "list[list[list[int]]]"
 
 
 def test_output_type_deserialization_nested():
+    # typing
     assert deserialize_type("typing.List[typing.Union[str, int]]") == List[Union[str, int]]
     assert deserialize_type("typing.List[typing.Optional[str]]") == List[Optional[str]]
     assert deserialize_type("typing.List[typing.Dict[str, typing.List[int]]]") == List[Dict[str, List[int]]]
     assert deserialize_type("typing.List[typing.Dict[str, int]]") == typing.List[Dict[str, int]]
+    # builtins
+    assert deserialize_type("list[typing.Union[str, int]]") == list[Union[str, int]]
+    assert deserialize_type("list[typing.Optional[str]]") == list[Optional[str]]
+    assert deserialize_type("list[dict[str, list[int]]]") == list[dict[str, list[int]]]
+    assert deserialize_type("list[dict[str, int]]") == list[dict[str, int]]
+    assert deserialize_type("list[list[int]]") == list[list[int]]
+    assert deserialize_type("list[list[list[int]]]") == list[list[list[int]]]
 
 
 def test_output_type_serialization_haystack_dataclasses():
+    # typing
     # Answer
     assert serialize_type(Answer) == "haystack.dataclasses.answer.Answer"
     assert serialize_type(List[Answer]) == "typing.List[haystack.dataclasses.answer.Answer]"
@@ -184,9 +200,23 @@ def test_output_type_serialization_haystack_dataclasses():
     assert serialize_type(Document) == "haystack.dataclasses.document.Document"
     assert serialize_type(List[Document]) == "typing.List[haystack.dataclasses.document.Document]"
     assert serialize_type(typing.Dict[int, Document]) == "typing.Dict[int, haystack.dataclasses.document.Document]"
+    # builtins
+    # Answer
+    assert serialize_type(list[Answer]) == "list[haystack.dataclasses.answer.Answer]"
+    assert serialize_type(dict[int, Answer]) == "dict[int, haystack.dataclasses.answer.Answer]"
+    # Bytestream
+    assert serialize_type(list[ByteStream]) == "list[haystack.dataclasses.byte_stream.ByteStream]"
+    assert serialize_type(dict[int, ByteStream]) == "dict[int, haystack.dataclasses.byte_stream.ByteStream]"
+    # Chat Message
+    assert serialize_type(list[ChatMessage]) == "list[haystack.dataclasses.chat_message.ChatMessage]"
+    assert serialize_type(dict[int, ChatMessage]) == "dict[int, haystack.dataclasses.chat_message.ChatMessage]"
+    # Document
+    assert serialize_type(list[Document]) == "list[haystack.dataclasses.document.Document]"
+    assert serialize_type(dict[int, Document]) == "dict[int, haystack.dataclasses.document.Document]"
 
 
 def test_output_type_deserialization_haystack_dataclasses():
+    # typing
     # Answer
     assert deserialize_type("haystack.dataclasses.answer.Answer") == Answer
     assert deserialize_type("typing.List[haystack.dataclasses.answer.Answer]") == List[Answer]
@@ -209,13 +239,16 @@ def test_output_type_deserialization_haystack_dataclasses():
     assert deserialize_type("haystack.dataclasses.document.Document") == Document
     assert deserialize_type("typing.List[haystack.dataclasses.document.Document]") == typing.List[Document]
     assert deserialize_type("typing.Dict[int, haystack.dataclasses.document.Document]") == typing.Dict[int, Document]
-
-
-def test_output_type_serialization_pep585():
-    assert serialize_type(list[list[int]]) == "list[list[int]]"
-    assert serialize_type(list[list[list[int]]]) == "list[list[list[int]]]"
-
-
-def test_output_type_deserialization_pep585():
-    assert deserialize_type("list[list[int]]") == list[list[int]]
-    assert deserialize_type("list[list[list[int]]]") == list[list[list[int]]]
+    # builtins
+    # Answer
+    assert deserialize_type("list[haystack.dataclasses.answer.Answer]") == list[Answer]
+    assert deserialize_type("dict[int, haystack.dataclasses.answer.Answer]") == dict[int, Answer]
+    # ByteStream
+    assert deserialize_type("list[haystack.dataclasses.byte_stream.ByteStream]") == list[ByteStream]
+    assert deserialize_type("dict[int, haystack.dataclasses.byte_stream.ByteStream]") == dict[int, ByteStream]
+    # Chat Message
+    assert deserialize_type("list[haystack.dataclasses.chat_message.ChatMessage]") == list[ChatMessage]
+    assert deserialize_type("dict[int, haystack.dataclasses.chat_message.ChatMessage]") == dict[int, ChatMessage]
+    # Document
+    assert deserialize_type("list[haystack.dataclasses.document.Document]") == list[Document]
+    assert deserialize_type("dict[int, haystack.dataclasses.document.Document]") == dict[int, Document]
