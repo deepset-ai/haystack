@@ -34,22 +34,39 @@ class Enum1(Enum):
 primitive_types = [bool, bytes, dict, float, int, list, str, Path]
 class_types = [Class1, Class3]
 container_types = [
+    # haystack
+    Variadic[int],
+    # typing
+    Dict[str, int],
+    Dict[str, Class1],
     Iterable[int],
     List[int],
     List[Class1],
-    Set[str],
-    Dict[str, int],
-    Dict[str, Class1],
-    Sequence[bool],
     Mapping[str, Dict[str, int]],
-    Variadic[int],
+    Set[str],
+    Sequence[bool],
+    Tuple[int],
+    # builtins
+    dict[str, int],
+    dict[str, Class1],
+    list[int],
+    list[Class1],
+    set[str],
+    tuple[int],
 ]
 nested_container_types = [
+    # typing
     List[Set[Sequence[bool]]],
     List[Set[Sequence[Class1]]],
     Dict[str, Mapping[str, Dict[str, int]]],
     Dict[str, Mapping[str, Dict[str, Class1]]],
     Tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])])],
+    # builtins
+    list[set[Sequence[bool]]],
+    list[set[Sequence[Class1]]],
+    dict[str, Mapping[str, dict[str, int]]],
+    dict[str, Mapping[str, dict[str, Class1]]],
+    tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, dict[(int, Class1)])])],
 ]
 literals = [Literal["a", "b", "c"], Literal[Enum1.TEST1]]
 haystack_types = [ByteStream, ChatMessage, Document, GeneratedAnswer]
@@ -104,8 +121,12 @@ def generate_strict_asymmetric_cases():
             pytest.param(Class3, Union[int, Class1], id=generate_id(Class3, Union[int, Class1])),
             # List of Class3 → List of Class1
             pytest.param(List[Class3], List[Class1], id=generate_id(List[Class3], List[Class1])),
+            pytest.param(list[Class3], list[Class1], id=generate_id(list[Class3], list[Class1])),
+            pytest.param(list[Class3], List[Class1], id=generate_id(list[Class3], List[Class1])),
             # Dict of subclass → Dict of superclass
             pytest.param(Dict[str, Class3], Dict[str, Class1], id=generate_id(Dict[str, Class3], Dict[str, Class1])),
+            pytest.param(dict[str, Class3], dict[str, Class1], id=generate_id(dict[str, Class3], dict[str, Class1])),
+            pytest.param(dict[str, Class3], Dict[str, Class1], id=generate_id(dict[str, Class3], Dict[str, Class1])),
         ]
     )
 
