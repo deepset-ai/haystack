@@ -374,11 +374,11 @@ class AsyncPipeline(PipelineBase):
 
                 priority, comp_name, comp = candidate  # type: ignore
 
-                # If the next component is blocked, we do a check to see if the pipeline is possibly blocked.
+                # If the next component is blocked, we do a check to see if the pipeline is possibly blocked and raise
+                # a warning if it is.
                 if priority == ComponentPriority.BLOCKED and not running_tasks:
                     if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
-                        # Pipeline is most likely blocked (most likely a Pipeline configuration issue) so we raise a
-                        # PipelineComponentBlockedError.
+                        # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
                         logger.warning(
                             "Cannot run pipeline - the next component that is meant to run is blocked.\n"
                             "Component name: '{component_name}'\n"
@@ -389,7 +389,7 @@ class AsyncPipeline(PipelineBase):
                             component_name=comp_name,
                             component_type=comp["instance"].__class__.__name__,
                         )
-                    # Pipeline is not blocked so we can exit the loop.
+                    # We still always exit the loop since we cannot run the next component.
                     break
 
                 if comp_name in scheduled_components:
