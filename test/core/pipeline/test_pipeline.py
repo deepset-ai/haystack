@@ -3,14 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, List
 
 import pytest
 
 from haystack.components.joiners import BranchJoiner
-from haystack.components.routers.conditional_router import ConditionalRouter
 from haystack.core.component import component
-from haystack.core.errors import PipelineComponentBlockedError, PipelineRuntimeError
+from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline import Pipeline
 
 
