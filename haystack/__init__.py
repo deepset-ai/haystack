@@ -16,6 +16,7 @@ from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.core.super_component.super_component import SuperComponent, super_component
 from haystack.dataclasses import Answer, Document, ExtractedAnswer, GeneratedAnswer
 from haystack.version import __version__
+from haystack.components.builders.tokenizer_aware_prompt_builder import TokenizerAwarePromptBuilder
 
 # Initialize the logging configuration
 # This is a no-op unless `structlog` is installed
@@ -39,4 +40,5 @@ __all__ = [
     "component",
     "default_from_dict",
     "default_to_dict",
+    "TokenizerAwarePromptBuilder",
 ]
