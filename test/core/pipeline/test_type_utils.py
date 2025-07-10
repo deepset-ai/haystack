@@ -144,7 +144,7 @@ def generate_strict_asymmetric_cases():
         ]
     )
 
-    # Extra container cases
+    # typing Extra container cases
     cases.extend(
         [
             pytest.param((List[int]), (List[Any]), id="list-of-primitive-to-list-of-any"),
@@ -224,6 +224,110 @@ def generate_strict_asymmetric_cases():
         ]
     )
 
+    # builtins Extra container cases
+    cases.extend(
+        [
+            pytest.param((list[int]), (list[Any]), id="list-of-primitive-to-list-of-any"),
+            pytest.param((list[Class1]), (list[Any]), id="list-of-classes-to-list-of-any"),
+            pytest.param(
+                (list[set[Sequence[bool]]]),
+                (list[set[Sequence[Any]]]),
+                id="nested-sequences-of-primitives-to-nested-sequences-of-any",
+            ),
+            pytest.param(
+                (list[set[Sequence[Class3]]]),
+                (list[set[Sequence[Class1]]]),
+                id="nested-sequences-of-subclasses-to-nested-sequences-of-classes",
+            ),
+            pytest.param(
+                (list[set[Sequence[Class1]]]),
+                (list[set[Sequence[Any]]]),
+                id="nested-sequences-of-classes-to-nested-sequences-of-any",
+            ),
+            pytest.param((dict[(str, int)]), (dict[(Any, int)]), id="dict-of-primitives-to-dict-of-any-keys"),
+            pytest.param((dict[(str, int)]), (dict[(str, Any)]), id="dict-of-primitives-to-dict-of-any-values"),
+            pytest.param((dict[(str, int)]), (dict[(Any, Any)]), id="dict-of-primitives-to-dict-of-any-key-and-values"),
+            pytest.param((dict[(str, Class3)]), (dict[(str, Class1)]), id="dict-of-subclasses-to-dict-of-classes"),
+            pytest.param((dict[(str, Class1)]), (dict[(Any, Class1)]), id="dict-of-classes-to-dict-of-any-keys"),
+            pytest.param((dict[(str, Class1)]), (dict[(str, Any)]), id="dict-of-classes-to-dict-of-any-values"),
+            pytest.param((dict[(str, Class1)]), (dict[(Any, Any)]), id="dict-of-classes-to-dict-of-any-key-and-values"),
+            pytest.param(
+                (dict[(str, Mapping[(str, dict[(str, int)])])]),
+                (dict[(str, Mapping[(str, dict[(Any, int)])])]),
+                id="nested-mapping-of-primitives-to-nested-mapping-of-any-keys",
+            ),
+            pytest.param(
+                (dict[(str, Mapping[(str, dict[(str, int)])])]),
+                (dict[(str, Mapping[(Any, dict[(str, int)])])]),
+                id="nested-mapping-of-primitives-to-nested-mapping-of-higher-level-any-keys",
+            ),
+            pytest.param(
+                (dict[(str, Mapping[(str, dict[(str, int)])])]),
+                (dict[(str, Mapping[(str, dict[(str, Any)])])]),
+                id="nested-mapping-of-primitives-to-nested-mapping-of-any-values",
+            ),
+            pytest.param(
+                (dict[(str, Mapping[(str, dict[(str, int)])])]),
+                (dict[(str, Mapping[(Any, dict[(Any, Any)])])]),
+                id="nested-mapping-of-primitives-to-nested-mapping-of-any-keys-and-values",
+            ),
+            pytest.param(
+                (dict[(str, Mapping[(str, dict[(str, Class3)])])]),
+                (dict[(str, Mapping[(str, dict[(str, Class1)])])]),
+                id="nested-mapping-of-subclasses-to-nested-mapping-of-classes",
+            ),
+            pytest.param(
+                (dict[(str, Mapping[(str, dict[(str, Class1)])])]),
+                (dict[(str, Mapping[(str, dict[(Any, Class1)])])]),
+                id="nested-mapping-of-classes-to-nested-mapping-of-any-keys",
+            ),
+            pytest.param(
+                (dict[(str, Mapping[(str, dict[(str, Class1)])])]),
+                (dict[(str, Mapping[(Any, dict[(str, Class1)])])]),
+                id="nested-mapping-of-classes-to-nested-mapping-of-higher-level-any-keys",
+            ),
+            pytest.param(
+                (dict[(str, Mapping[(str, dict[(str, Class1)])])]),
+                (dict[(str, Mapping[(str, dict[(str, Any)])])]),
+                id="nested-mapping-of-classes-to-nested-mapping-of-any-values",
+            ),
+            pytest.param(
+                (dict[(str, Mapping[(str, dict[(str, Class1)])])]),
+                (dict[(str, Mapping[(Any, dict[(Any, Any)])])]),
+                id="nested-mapping-of-classes-to-nested-mapping-of-any-keys-and-values",
+            ),
+            pytest.param(
+                (tuple[Literal["a", "b", "c"], Union[(Path, dict[(int, Class1)])]]),
+                (tuple[Optional[Literal["a", "b", "c"]], Union[(Path, dict[(int, Class1)])]]),
+                id="deeply-nested-complex-type",
+            ),
+        ]
+    )
+
+    # mixing typing and builtins extra container cases
+    cases.extend(
+        [
+            pytest.param((list[int]), (List[Any]), id="list-of-primitive-to-list-of-any"),
+            pytest.param((list[Class1]), (List[Any]), id="list-of-classes-to-list-of-any"),
+            pytest.param(
+                (list[set[Sequence[bool]]]),
+                (List[Set[Sequence[Any]]]),
+                id="nested-sequences-of-primitives-to-nested-sequences-of-any",
+            ),
+            pytest.param((dict[(str, int)]), (Dict[(Any, int)]), id="dict-of-primitives-to-dict-of-any-keys"),
+            pytest.param(
+                (dict[(str, Mapping[(str, dict[(str, int)])])]),
+                (Dict[(str, Mapping[(str, Dict[(Any, int)])])]),
+                id="nested-mapping-of-primitives-to-nested-mapping-of-any-keys",
+            ),
+            pytest.param(
+                (tuple[Literal["a", "b", "c"], Union[(Path, dict[(int, Class1)])]]),
+                (Tuple[Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])]]),
+                id="deeply-nested-complex-type",
+            ),
+        ]
+    )
+
     return cases
 
 
@@ -243,10 +347,17 @@ asymmetric_cases = generate_strict_asymmetric_cases()
         pytest.param((Optional[Class1]), "Optional[Class1]", id="shallow-optional-with-class"),
         pytest.param((Union[(bool, Class1)]), "Union[bool, Class1]", id="shallow-union"),
         pytest.param((List[str]), "List[str]", id="shallow-sequence-of-primitives"),
+        pytest.param((list[str]), "list[str]", id="shallow-sequence-of-primitives"),
         pytest.param((List[Set[Sequence[str]]]), "List[Set[Sequence[str]]]", id="nested-sequence-of-primitives"),
+        pytest.param((list[set[Sequence[str]]]), "list[set[Sequence[str]]]", id="nested-sequence-of-primitives"),
         pytest.param(
             (Optional[List[Set[Sequence[str]]]]),
             "Optional[List[Set[Sequence[str]]]]",
+            id="optional-nested-sequence-of-primitives",
+        ),
+        pytest.param(
+            (Optional[list[set[Sequence[str]]]]),
+            "Optional[list[set[Sequence[str]]]]",
             id="optional-nested-sequence-of-primitives",
         ),
         pytest.param(
@@ -254,12 +365,25 @@ asymmetric_cases = generate_strict_asymmetric_cases()
             "List[Set[Sequence[Optional[str]]]]",
             id="nested-optional-sequence-of-primitives",
         ),
+        pytest.param(
+            (list[set[Sequence[Optional[str]]]]),
+            "list[set[Sequence[Optional[str]]]]",
+            id="nested-optional-sequence-of-primitives",
+        ),
         pytest.param((List[Class1]), "List[Class1]", id="shallow-sequence-of-classes"),
+        pytest.param((list[Class1]), "list[Class1]", id="shallow-sequence-of-classes"),
         pytest.param((List[Set[Sequence[Class1]]]), "List[Set[Sequence[Class1]]]", id="nested-sequence-of-classes"),
+        pytest.param((list[set[Sequence[Class1]]]), "list[set[Sequence[Class1]]]", id="nested-sequence-of-classes"),
         pytest.param((Dict[(str, int)]), "Dict[str, int]", id="shallow-mapping-of-primitives"),
+        pytest.param((dict[(str, int)]), "dict[str, int]", id="shallow-mapping-of-primitives"),
         pytest.param(
             (Dict[(str, Mapping[(str, Dict[(str, int)])])]),
             "Dict[str, Mapping[str, Dict[str, int]]]",
+            id="nested-mapping-of-primitives",
+        ),
+        pytest.param(
+            (dict[(str, Mapping[(str, dict[(str, int)])])]),
+            "dict[str, Mapping[str, dict[str, int]]]",
             id="nested-mapping-of-primitives",
         ),
         pytest.param(
@@ -267,10 +391,21 @@ asymmetric_cases = generate_strict_asymmetric_cases()
             "Dict[str, Mapping[Any, Dict[str, int]]]",
             id="nested-mapping-of-primitives-with-any",
         ),
+        pytest.param(
+            (dict[(str, Mapping[(Any, dict[(str, int)])])]),
+            "dict[str, Mapping[Any, dict[str, int]]]",
+            id="nested-mapping-of-primitives-with-any",
+        ),
         pytest.param((Dict[(str, Class1)]), "Dict[str, Class1]", id="shallow-mapping-of-classes"),
+        pytest.param((dict[(str, Class1)]), "dict[str, Class1]", id="shallow-mapping-of-classes"),
         pytest.param(
             (Dict[(str, Mapping[(str, Dict[(str, Class1)])])]),
             "Dict[str, Mapping[str, Dict[str, Class1]]]",
+            id="nested-mapping-of-classes",
+        ),
+        pytest.param(
+            (dict[(str, Mapping[(str, dict[(str, Class1)])])]),
+            "dict[str, Mapping[str, dict[str, Class1]]]",
             id="nested-mapping-of-classes",
         ),
         pytest.param((Literal["a", "b", "c"]), "Literal['a', 'b', 'c']", id="string-literal"),
@@ -279,6 +414,11 @@ asymmetric_cases = generate_strict_asymmetric_cases()
         pytest.param(
             (Tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, Dict[(int, Class1)])])]),
             "Tuple[Optional[Literal['a', 'b', 'c']], Union[Path, Dict[int, Class1]]]",
+            id="deeply-nested-complex-type",
+        ),
+        pytest.param(
+            (tuple[(Optional[Literal["a", "b", "c"]], Union[(Path, dict[(int, Class1)])])]),
+            "tuple[Optional[Literal['a', 'b', 'c']], Union[Path, dict[int, Class1]]]",
             id="deeply-nested-complex-type",
         ),
     ],
