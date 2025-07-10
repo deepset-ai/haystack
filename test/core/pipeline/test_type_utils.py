@@ -444,32 +444,57 @@ def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
 
 incompatible_type_cases = [
     pytest.param(Tuple[int, str], Tuple[Any], id="tuple-of-primitive-to-tuple-of-any-different-lengths"),
+    pytest.param(tuple[int, str], tuple[Any], id="tuple-of-primitive-to-tuple-of-any-different-lengths"),
     pytest.param(int, str, id="different-primitives"),
     pytest.param(Class1, Class2, id="different-classes"),
     pytest.param((List[int]), (List[str]), id="different-lists-of-primitives"),
+    pytest.param((list[int]), (list[str]), id="different-lists-of-primitives"),
     pytest.param((List[Class1]), (List[Class2]), id="different-lists-of-classes"),
+    pytest.param((list[Class1]), (list[Class2]), id="different-lists-of-classes"),
     pytest.param((Literal["a", "b", "c"]), (Literal["x", "y"]), id="different-literal-of-same-primitive"),
     pytest.param((Literal[Enum1.TEST1]), (Literal[Enum1.TEST2]), id="different-literal-of-same-enum"),
     pytest.param(
         (List[Set[Sequence[str]]]), (List[Set[Sequence[bool]]]), id="nested-sequences-of-different-primitives"
     ),
     pytest.param(
+        (list[set[Sequence[str]]]), (list[set[Sequence[bool]]]), id="nested-sequences-of-different-primitives"
+    ),
+    pytest.param(
         (List[Set[Sequence[str]]]), (Set[List[Sequence[str]]]), id="different-nested-sequences-of-same-primitives"
+    ),
+    pytest.param(
+        (list[set[Sequence[str]]]), (set[list[Sequence[str]]]), id="different-nested-sequences-of-same-primitives"
     ),
     pytest.param(
         (List[Set[Sequence[Class1]]]), (List[Set[Sequence[Class2]]]), id="nested-sequences-of-different-classes"
     ),
     pytest.param(
+        (list[set[Sequence[Class1]]]), (list[set[Sequence[Class2]]]), id="nested-sequences-of-different-classes"
+    ),
+    pytest.param(
         (List[Set[Sequence[Class1]]]), (Set[List[Sequence[Class1]]]), id="different-nested-sequences-of-same-class"
     ),
+    pytest.param(
+        (list[set[Sequence[Class1]]]), (set[list[Sequence[Class1]]]), id="different-nested-sequences-of-same-class"
+    ),
     pytest.param((Dict[(str, int)]), (Dict[(int, int)]), id="different-dict-of-primitive-keys"),
+    pytest.param((dict[(str, int)]), (dict[(int, int)]), id="different-dict-of-primitive-keys"),
     pytest.param((Dict[(str, int)]), (Dict[(str, float)]), id="different-dict-of-primitive-values"),
+    pytest.param((dict[(str, int)]), (dict[(str, float)]), id="different-dict-of-primitive-values"),
     pytest.param((Dict[(str, Class1)]), (Dict[(str, Class2)]), id="different-dict-of-class-values"),
+    pytest.param((dict[(str, Class1)]), (dict[(str, Class2)]), id="different-dict-of-class-values"),
     pytest.param((Dict[(str, Any)]), (Dict[(int, int)]), id="dict-of-Any-values-to-dict-of-primitives"),
+    pytest.param((dict[(str, Any)]), (dict[(int, int)]), id="dict-of-Any-values-to-dict-of-primitives"),
     pytest.param((Dict[(str, Any)]), (Dict[(int, Class1)]), id="dict-of-Any-values-to-dict-of-classes"),
+    pytest.param((dict[(str, Any)]), (dict[(int, Class1)]), id="dict-of-Any-values-to-dict-of-classes"),
     pytest.param(
         (Dict[(str, Mapping[(str, Dict[(str, int)])])]),
         (Mapping[(str, Dict[(str, Dict[(str, int)])])]),
+        id="different-nested-mappings-of-same-primitives",
+    ),
+    pytest.param(
+        (dict[(str, Mapping[(str, dict[(str, int)])])]),
+        (Mapping[(str, dict[(str, dict[(str, int)])])]),
         id="different-nested-mappings-of-same-primitives",
     ),
     pytest.param(
@@ -478,8 +503,18 @@ incompatible_type_cases = [
         id="same-nested-mappings-of-different-primitive-keys",
     ),
     pytest.param(
+        (dict[(str, Mapping[(str, dict[(str, int)])])]),
+        (dict[(str, Mapping[(str, dict[(int, int)])])]),
+        id="same-nested-mappings-of-different-primitive-keys",
+    ),
+    pytest.param(
         (Dict[(str, Mapping[(str, Dict[(str, int)])])]),
         (Dict[(str, Mapping[(int, Dict[(str, int)])])]),
+        id="same-nested-mappings-of-different-higher-level-primitive-keys",
+    ),
+    pytest.param(
+        (dict[(str, Mapping[(str, dict[(str, int)])])]),
+        (dict[(str, Mapping[(int, dict[(str, int)])])]),
         id="same-nested-mappings-of-different-higher-level-primitive-keys",
     ),
     pytest.param(
@@ -488,13 +523,28 @@ incompatible_type_cases = [
         id="same-nested-mappings-of-different-primitive-values",
     ),
     pytest.param(
+        (dict[(str, Mapping[(str, dict[(str, int)])])]),
+        (dict[(str, Mapping[(str, dict[(str, dict)])])]),
+        id="same-nested-mappings-of-different-primitive-values",
+    ),
+    pytest.param(
         (Dict[(str, Mapping[(str, Dict[(str, Class1)])])]),
         (Dict[(str, Mapping[(str, Dict[(str, Class2)])])]),
         id="same-nested-mappings-of-different-class-values",
     ),
     pytest.param(
+        (dict[(str, Mapping[(str, dict[(str, Class1)])])]),
+        (dict[(str, Mapping[(str, dict[(str, Class2)])])]),
+        id="same-nested-mappings-of-different-class-values",
+    ),
+    pytest.param(
         (Dict[(str, Mapping[(str, Dict[(str, Class1)])])]),
         (Dict[(str, Mapping[(str, Dict[(str, Class2)])])]),
+        id="same-nested-mappings-of-class-to-subclass-values",
+    ),
+    pytest.param(
+        (dict[(str, Mapping[(str, dict[(str, Class1)])])]),
+        (dict[(str, Mapping[(str, dict[(str, Class2)])])]),
         id="same-nested-mappings-of-class-to-subclass-values",
     ),
 ]
