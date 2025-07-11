@@ -1079,7 +1079,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
         ]
     )
 
-    pipe = pipeline_class(max_runs_per_component=1)
+    pipe = pipeline_class(max_runs_per_component=2)
 
     pipe.add_component("prompt_builder", PromptBuilder(template=template))
     pipe.add_component("generator", FakeGenerator())
@@ -1710,7 +1710,7 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
     llm = FakeGenerator()
     validator = FakeOutputValidator()
 
-    pipeline = pipeline_class(max_runs_per_component=1)
+    pipeline = pipeline_class(max_runs_per_component=2)
     pipeline.add_component("prompt_builder", prompt_builder)
 
     pipeline.add_component("llm", llm)
@@ -5555,7 +5555,7 @@ def pipeline_component_cycle_input_no_input(pipeline_class):
         ]
     )
 
-    pp = pipeline_class(max_runs_per_component=1)
+    pp = pipeline_class(max_runs_per_component=2)
 
     pp.add_component("joiner", joiner)
     pp.add_component("router", router)
@@ -5594,6 +5594,51 @@ def pipeline_component_cycle_input_no_input(pipeline_class):
                         "template_variables": None,
                         "delayed_input": "iterationiterationiterationiteration",
                     },
+                },
+            )
+        ],
+    )
+
+
+@given("a pipeline that is blocked because not enough component inputs", target_fixture="pipeline_data")
+def that_is_blocked_not_enough_component_inputs(pipeline_class):
+    router = ConditionalRouter(
+        [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": List[int],
+                "output_name": "streams",
+            },
+        ]
+    )
+
+    # This component requires both `streams` and `query` inputs to run
+    # If one is missing then the pipeline is blocked and cannot run.
+    @component
+    class PayloadBuilder:
+        @component.output_types(payload=Dict[str, Any])
+        def run(self, streams: List[int], query: str) -> Dict[str, Any]:
+            return {"payload": {"streams": streams, "query": query}}
+
+    pipe = pipeline_class(max_runs_per_component=1)
+    pipe.add_component("router", router)
+    pipe.add_component("payload_builder", PayloadBuilder())
+
+    # Since the router only outputs either `streams` or `query` it's impossible to run PayloadBuilder.
+    pipe.connect("router.streams", "payload_builder.streams")
+    pipe.connect("router.query", "payload_builder.query")
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"router": {"streams": [1, 2, 3], "query": "Haystack"}},
+                expected_outputs={},
+                expected_component_calls={
+                    ("router", 1): {"streams": [1, 2, 3], "query": "Haystack"}
+                    # PayloadBuilder will not run because it requires both inputs
                 },
             )
         ],
