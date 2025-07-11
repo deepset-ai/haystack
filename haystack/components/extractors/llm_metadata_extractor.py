@@ -49,7 +49,7 @@ class LLMMetadataExtractor:
 
     -Steps-
     1. Identify all entities. For each identified entity, extract the following information:
-    - entity_name: Name of the entity, capitalized
+    - entity: Name of the entity
     - entity_type: One of the following types: [organization, product, service, industry]
     Format each entity as a JSON like: {"entity": <entity_name>, "entity_type": <entity_type>}
 
