@@ -23,6 +23,20 @@ def _types_are_compatible(sender: Type, receiver: Type, type_validation: bool = 
         return True
 
 
+def _safe_get_origin(_type: Type[T]) -> Union[Type[T], None]:
+    """
+    Safely retrieves the origin type of a generic alias or returns the type itself if it's a built-in.
+
+    This function extends the behavior of `typing.get_origin()` by also handling plain built-in types
+    like `list`, `dict`, etc., which `get_origin()` would normally return `None` for.
+
+    :param _type: A type or generic alias (e.g., `list`, `list[int]`, `dict[str, int]`).
+
+    :returns: The origin type (e.g., `list`, `dict`), or `None` if the input is not a type.
+    """
+    return get_origin(_type) or (_type if isinstance(_type, type) else None)
+
+
 def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
     """
     Checks whether the sender type is equal to or a subtype of the receiver type under strict validation.
@@ -48,8 +62,8 @@ def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-
     except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
         pass
 
-    sender_origin = get_origin(sender)
-    receiver_origin = get_origin(receiver)
+    sender_origin = _safe_get_origin(sender)
+    receiver_origin = _safe_get_origin(receiver)
 
     if sender_origin is not Union and receiver_origin is Union:
         return any(_strict_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
