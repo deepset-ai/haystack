@@ -215,8 +215,8 @@ class HuggingFaceAPIChatGenerator:
     api_type = "serverless_inference_api" # this is equivalent to the above
 
     generator = HuggingFaceAPIChatGenerator(api_type=api_type,
-                                            api_params={"model": "microsoft/Phi-3.5-mini-instruct",
-                                                        "provider": "featherless-ai"},
+                                            api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
+                                                        "provider": "together"},
                                             token=Secret.from_token("<your-api-key>"))
 
     result = generator.run(messages)
