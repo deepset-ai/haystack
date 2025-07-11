@@ -567,20 +567,17 @@ def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, rec
 
 
 @pytest.mark.parametrize(
-    "sender_type,receiver_type", [pytest.param((List[int]), list, id="list-of-primitive-to-list-object")]
-)
-def test_list_of_primitive_to_list(sender_type, receiver_type):
-    """This currently doesn't work because we don't handle primitive types."""
-    assert not _types_are_compatible(sender_type, receiver_type)
-
-
-@pytest.mark.parametrize(
     "sender_type,receiver_type",
     [
         pytest.param(List[int], List, id="list-of-primitive-to-bare-list"),
         pytest.param(Dict[str, int], Dict, id="dict-of-primitive-to-bare-dict"),
         pytest.param(Set[float], Set, id="set-of-primitive-to-bare-set"),
         pytest.param(Tuple[int, str], Tuple, id="tuple-of-primitive-to-bare-tuple"),
+        # TODO These tests are failing
+        pytest.param(list[int], list, id="list-of-primitive-to-bare-list"),
+        pytest.param(dict[str, int], dict, id="dict-of-primitive-to-bare-dict"),
+        pytest.param(set[float], set, id="set-of-primitive-to-bare-set"),
+        pytest.param(tuple[int, str], tuple, id="tuple-of-primitive-to-bare-tuple"),
     ],
 )
 def test_container_of_primitive_to_bare_container_strict(sender_type, receiver_type):
@@ -597,6 +594,10 @@ def test_container_of_primitive_to_bare_container_strict(sender_type, receiver_t
         pytest.param(Set[Any], Set, id="set-of-any-to-bare-set"),
         pytest.param(Tuple[Any], Tuple, id="tuple-of-any-to-bare-tuple"),
         pytest.param(Callable[[Any], Any], Callable, id="callable-of-any-to-bare-callable"),
+        pytest.param(list[Any], list, id="list-of-any-to-bare-list"),
+        pytest.param(dict[Any, Any], dict, id="dict-of-any-to-bare-dict"),
+        pytest.param(set[Any], set, id="set-of-any-to-bare-set"),
+        pytest.param(tuple[Any], tuple, id="tuple-of-any-to-bare-tuple"),
     ],
 )
 def test_container_of_any_to_bare_container_strict(sender_type, receiver_type):
@@ -625,15 +626,23 @@ def test_always_incompatible_bare_types(sender_type, receiver_type):
         # Nested Lists
         pytest.param(List[List[int]], List[List], id="nested-list-to-partially-bare-list"),
         pytest.param(List[List[int]], List, id="nested-list-to-bare-list"),
+        pytest.param(list[list[int]], list[list], id="nested-list-to-partially-bare-list"),
+        pytest.param(list[list[int]], list, id="nested-list-to-bare-list"),
         # Nested Dicts
         pytest.param(Dict[str, Dict[str, int]], Dict[str, Dict], id="nested-dict-to-partially-bare-dict"),
         pytest.param(Dict[str, Dict[str, int]], Dict, id="nested-dict-to-bare-dict"),
+        pytest.param(dict[str, dict[str, int]], dict[str, dict], id="nested-dict-to-partially-bare-dict"),
+        pytest.param(dict[str, dict[str, int]], dict, id="nested-dict-to-bare-dict"),
         # Nested Sets
         pytest.param(Set[Set[int]], Set[Set], id="nested-set-to-partially-bare-set"),
         pytest.param(Set[Set[int]], Set, id="nested-set-to-bare-set"),
+        pytest.param(set[set[int]], set[set], id="nested-set-to-partially-bare-set"),
+        pytest.param(set[set[int]], set, id="nested-set-to-bare-set"),
         # Nested Tuples
         pytest.param(Tuple[Tuple[int, str], bool], Tuple[Tuple, bool], id="nested-tuple-to-partially-bare-tuple"),
         pytest.param(Tuple[Tuple[int, str], bool], Tuple, id="nested-tuple-to-bare-tuple"),
+        pytest.param(tuple[tuple[int, str], bool], tuple[tuple, bool], id="nested-tuple-to-partially-bare-tuple"),
+        pytest.param(tuple[tuple[int, str], bool], tuple, id="nested-tuple-to-bare-tuple"),
         # Mixed nesting
         pytest.param(List[Dict[str, int]], List[Dict], id="list-of-dict-to-list-of-bare-dict"),
         pytest.param(Dict[str, List[int]], Dict[str, List], id="dict-with-list-to-dict-with-bare-list"),
@@ -641,10 +650,19 @@ def test_always_incompatible_bare_types(sender_type, receiver_type):
         pytest.param(
             Tuple[List[int], Dict[str, bool]], Tuple[List, Dict], id="tuple-of-containers-to-tuple-of-bare-containers"
         ),
+        pytest.param(list[dict[str, int]], list[dict], id="list-of-dict-to-list-of-bare-dict"),
+        pytest.param(dict[str, list[int]], dict[str, list], id="dict-with-list-to-dict-with-bare-list"),
+        pytest.param(set[tuple[int, str]], set[tuple], id="set-of-tuple-to-set-of-bare-tuple"),
+        pytest.param(
+            tuple[list[int], dict[str, bool]], tuple[list, dict], id="tuple-of-containers-to-tuple-of-bare-containers"
+        ),
         # Triple nesting
         pytest.param(List[List[List[int]]], List[List[List]], id="triple-nested-list-to-partially-bare"),
         pytest.param(List[List[List[int]]], List[List], id="triple-nested-list-to-double-bare"),
         pytest.param(List[List[List[int]]], List, id="triple-nested-list-to-completely-bare"),
+        pytest.param(list[list[list[int]]], list[list[list]], id="triple-nested-list-to-partially-bare"),
+        pytest.param(list[list[list[int]]], list[list], id="triple-nested-list-to-double-bare"),
+        pytest.param(list[list[list[int]]], list, id="triple-nested-list-to-completely-bare"),
     ],
 )
 def test_nested_container_compatibility(sender_type, receiver_type):
@@ -658,6 +676,7 @@ def test_nested_container_compatibility(sender_type, receiver_type):
     [
         pytest.param(Callable[[int, str], bool], Callable, id="callable-to-bare-callable"),
         pytest.param(Callable[[List], int], Callable[[List], Any], id="callable-list-int-to-any"),
+        pytest.param(Callable[[list], int], Callable[[list], Any], id="callable-list-int-to-any"),
     ],
 )
 def test_callable_compatibility(sender_type, receiver_type):
