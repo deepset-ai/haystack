@@ -147,6 +147,7 @@ def test_to_dict():
     chunk = StreamingChunk(
         content="",
         meta={"key": "value"},
+        index=0,
         component_info=component_info,
         tool_call_result=tool_call_result,
         finish_reason="tool_call_results",
@@ -156,6 +157,7 @@ def test_to_dict():
 
     assert d["content"] == ""
     assert d["meta"] == {"key": "value"}
+    assert d["index"] == 0
     assert d["component_info"].type == "test_streaming_chunk.ExampleComponent"
     assert d["component_info"].name == "test_component"
     assert d["tool_call_result"].result == "output"
@@ -171,6 +173,7 @@ def test_from_dict():
     data = {
         "content": "",
         "meta": {"key": "value"},
+        "index": 0,
         "component_info": component_info,
         "tool_call_result": tool_call_result,
         "finish_reason": "tool_call_results",
@@ -180,6 +183,7 @@ def test_from_dict():
 
     assert chunk.content == ""
     assert chunk.meta == {"key": "value"}
+    assert chunk.index == 0
     assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
     assert chunk.component_info.name == "test_component"
     assert chunk.tool_call_result.result == "output"
