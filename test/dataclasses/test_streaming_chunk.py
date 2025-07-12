@@ -135,3 +135,52 @@ def test_finish_reason_tool_call_results():
     assert chunk.finish_reason == "tool_call_results"
     assert chunk.meta["finish_reason"] == "tool_call_results"
     assert chunk.content == ""
+
+
+def test_to_dict():
+    """Test the to_dict method for StreamingChunk."""
+    component = ExampleComponent()
+    component_info = ComponentInfo.from_component(component)
+    tool_call_result = ToolCallResult(
+        result="output", origin=ToolCall(id="123", tool_name="test_tool", arguments={"arg1": "value1"}), error=False
+    )
+    chunk = StreamingChunk(
+        content="",
+        meta={"key": "value"},
+        component_info=component_info,
+        tool_call_result=tool_call_result,
+        finish_reason="tool_call_results",
+    )
+
+    d = chunk.to_dict()
+
+    assert d["content"] == ""
+    assert d["meta"] == {"key": "value"}
+    assert d["component_info"].type == "test_streaming_chunk.ExampleComponent"
+    assert d["component_info"].name == "test_component"
+    assert d["tool_call_result"].result == "output"
+    assert d["finish_reason"] == "tool_call_results"
+
+
+def test_from_dict():
+    """Test the from_dict method for StreamingChunk."""
+    component_info = ComponentInfo(type="test_streaming_chunk.ExampleComponent", name="test_component")
+    tool_call_result = ToolCallResult(
+        result="output", origin=ToolCall(id="123", tool_name="test_tool", arguments={"arg1": "value1"}), error=False
+    )
+    data = {
+        "content": "",
+        "meta": {"key": "value"},
+        "component_info": component_info,
+        "tool_call_result": tool_call_result,
+        "finish_reason": "tool_call_results",
+    }
+
+    chunk = StreamingChunk.from_dict(data)
+
+    assert chunk.content == ""
+    assert chunk.meta == {"key": "value"}
+    assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
+    assert chunk.component_info.name == "test_component"
+    assert chunk.tool_call_result.result == "output"
+    assert chunk.finish_reason == "tool_call_results"
