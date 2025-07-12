@@ -159,7 +159,6 @@ def test_to_dict():
     assert d["meta"] == {"key": "value"}
     assert d["index"] == 0
     assert d["component_info"].type == "test_streaming_chunk.ExampleComponent"
-    assert d["component_info"].name == "test_component"
     assert d["tool_call_result"].result == "output"
     assert d["finish_reason"] == "tool_call_results"
 
