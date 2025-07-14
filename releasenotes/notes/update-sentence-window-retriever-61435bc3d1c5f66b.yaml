@@ -2,3 +2,4 @@
 features:
   - |
     Added `source_id_meta_field` and `split_id_meta_field` to `SentenceWindowRetriever` for customizable metadata field names.
+    Added `raise_on_missing_meta_fields` to control whether a ValueError is raised if any of the documents at runtime are missing the required meta fields (set to True by default). If False, then the documents missing the meta field will be skipped when retrieving their windows, but the original document will still be included in the results.
