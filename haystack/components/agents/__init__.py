@@ -10,7 +10,7 @@ from lazy_imports import LazyImporter
 _import_structure = {"agent": ["Agent"], "state": ["State"]}
 
 if TYPE_CHECKING:
-    from .agent import Agent as Agent
+    from .origina_agent import Agent as Agent
     from .state import State as State
 
 else:
