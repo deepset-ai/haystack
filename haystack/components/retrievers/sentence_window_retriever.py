@@ -4,25 +4,29 @@
 
 from typing import Any, Dict, List, Optional
 
-from haystack import Document, component, default_from_dict, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
 from haystack.utils import deserialize_document_store_in_init_params_inplace
+
+logger = logging.getLogger(__name__)
 
 
 @component
 class SentenceWindowRetriever:
     """
-    Retrieves documents adjacent to a given document in the Document Store.
+    Retrieves neighboring documents from a DocumentStore to provide context for query results.
 
-    During indexing, documents are broken into smaller chunks, or sentences. When you submit a query,
-    the Retriever fetches the most relevant sentence. To provide full context,
-    SentenceWindowRetriever fetches a number of neighboring sentences before and after each
-    relevant one. You can set this number with the `window_size` parameter.
-    It uses `source_id` and `doc.meta['split_id']` to locate the surrounding documents.
+    This component is intended to be used after a Retriever (e.g., BM25Retriever, EmbeddingRetriever).
+    It enhances retrieved results by fetching adjacent document chunks to give
+    additional context for the user.
 
-    This component works with existing Retrievers, like BM25Retriever or
-    EmbeddingRetriever. First, use a Retriever to find documents based on a query and then use
-    SentenceWindowRetriever to get the surrounding documents for context.
+    The documents must include metadata indicating their origin and position:
+    - `source_id` is used to group sentence chunks belonging to the same original document.
+    - `split_id` represents the position/order of the chunk within the document.
+
+    The number of adjacent documents to include on each side of the retrieved document can be configured using the
+    `window_size` parameter. You can also specify which metadata fields to use for source and split ID
+    via `source_id_meta_field` and `split_id_meta_field`.
 
     The SentenceWindowRetriever is compatible with the following DocumentStores:
     - [Astra](https://docs.haystack.deepset.ai/docs/astradocumentstore)
@@ -78,19 +82,35 @@ class SentenceWindowRetriever:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, window_size: int = 3):
+    def __init__(
+        self,
+        document_store: DocumentStore,
+        window_size: int = 3,
+        *,
+        source_id_meta_field: str = "source_id",
+        split_id_meta_field: str = "split_id",
+        raise_on_missing_meta_fields: bool = True,
+    ):
         """
         Creates a new SentenceWindowRetriever component.
 
         :param document_store: The Document Store to retrieve the surrounding documents from.
         :param window_size: The number of documents to retrieve before and after the relevant one.
                 For example, `window_size: 2` fetches 2 preceding and 2 following documents.
+        :param source_id_meta_field: The metadata field that contains the source ID of the document.
+        :param split_id_meta_field: The metadata field that contains the split ID of the document.
+        :param raise_on_missing_meta_fields: If True, raises an error if the documents do not contain the required
+            metadata fields. If False, it will skip retrieving the context for documents that are missing
+            the required metadata fields, but will still include the original document in the results.
         """
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
 
         self.window_size = window_size
         self.document_store = document_store
+        self.source_id_meta_field = source_id_meta_field
+        self.split_id_meta_field = split_id_meta_field
+        self.raise_on_missing_meta_fields = raise_on_missing_meta_fields
 
     @staticmethod
     def merge_documents_text(documents: List[Document]) -> str:
@@ -102,20 +122,27 @@ class SentenceWindowRetriever:
 
         :param documents: List of Documents to merge.
         """
+        if any("split_idx_start" not in doc.meta for doc in documents):
+            # If any of the documents is missing the 'split_idx_start' metadata we just concatenate their content.
+            return "".join(doc.content for doc in documents if doc.content)
+
         sorted_docs = sorted(documents, key=lambda doc: doc.meta["split_idx_start"])
         merged_text = ""
         last_idx_end = 0
         for doc in sorted_docs:
-            start = doc.meta["split_idx_start"]  # start of the current content
+            if doc.content is None:
+                continue
+
+            start = doc.meta.get("split_idx_start", 0)  # start of the current content
 
             # if the start of the current content is before the end of the last appended content, adjust it
             start = max(start, last_idx_end)
 
             # append the non-overlapping part to the merged text
-            merged_text += doc.content[start - doc.meta["split_idx_start"] :]  # type: ignore
+            merged_text += doc.content[start - int(doc.meta["split_idx_start"]) :]
 
             # update the last end index
-            last_idx_end = doc.meta["split_idx_start"] + len(doc.content)  # type: ignore
+            last_idx_end = int(doc.meta["split_idx_start"]) + len(doc.content)
 
         return merged_text
 
@@ -127,7 +154,14 @@ class SentenceWindowRetriever:
             Dictionary with serialized data.
         """
         docstore = self.document_store.to_dict()
-        return default_to_dict(self, document_store=docstore, window_size=self.window_size)
+        return default_to_dict(
+            self,
+            document_store=docstore,
+            window_size=self.window_size,
+            source_id_meta_field=self.source_id_meta_field,
+            split_id_meta_field=self.split_id_meta_field,
+            raise_on_missing_meta_fields=self.raise_on_missing_meta_fields,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SentenceWindowRetriever":
@@ -168,31 +202,50 @@ class SentenceWindowRetriever:
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
 
-        if not all("split_id" in doc.meta for doc in retrieved_documents):
-            raise ValueError("The retrieved documents must have 'split_id' in the metadata.")
+        if (
+            not all(self.split_id_meta_field in doc.meta for doc in retrieved_documents)
+            and self.raise_on_missing_meta_fields
+        ):
+            raise ValueError(f"The retrieved documents must have '{self.split_id_meta_field}' in their metadata.")
 
-        if not all("source_id" in doc.meta for doc in retrieved_documents):
-            raise ValueError("The retrieved documents must have 'source_id' in the metadata.")
+        if (
+            not all(self.source_id_meta_field in doc.meta for doc in retrieved_documents)
+            and self.raise_on_missing_meta_fields
+        ):
+            raise ValueError(f"The retrieved documents must have '{self.source_id_meta_field}' in their metadata.")
 
         context_text = []
         context_documents = []
         for doc in retrieved_documents:
-            source_id = doc.meta["source_id"]
-            split_id = doc.meta["split_id"]
+            source_id = doc.meta.get(self.source_id_meta_field)
+            split_id = doc.meta.get(self.split_id_meta_field)
+
+            if source_id is None or split_id is None:
+                logger.warning(
+                    "Document {doc_id} is missing required metadata fields to be used with "
+                    "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
+                    doc_id=doc.id,
+                    source_id=source_id,
+                    split_id=split_id,
+                )
+                context_text.append(doc.content or "")
+                context_documents.append(doc)
+                continue
+
             min_before = min(list(range(split_id - 1, split_id - window_size - 1, -1)))
             max_after = max(list(range(split_id + 1, split_id + window_size + 1, 1)))
             context_docs = self.document_store.filter_documents(
                 {
                     "operator": "AND",
                     "conditions": [
-                        {"field": "meta.source_id", "operator": "==", "value": source_id},
-                        {"field": "meta.split_id", "operator": ">=", "value": min_before},
-                        {"field": "meta.split_id", "operator": "<=", "value": max_after},
+                        {"field": f"meta.{self.source_id_meta_field}", "operator": "==", "value": source_id},
+                        {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},
+                        {"field": f"meta.{self.split_id_meta_field}", "operator": "<=", "value": max_after},
                     ],
                 }
             )
             context_text.append(self.merge_documents_text(context_docs))
-            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta["split_idx_start"])
+            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
             context_documents.extend(context_docs_sorted)
 
         return {"context_windows": context_text, "context_documents": context_documents}
