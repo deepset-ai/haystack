@@ -81,6 +81,7 @@ class TestSentenceWindowRetriever:
                 "window_size": 3,
                 "source_id_meta_field": "source_id",
                 "split_id_meta_field": "split_id",
+                "raise_on_missing_meta_fields": True,
             },
         }
 
@@ -95,6 +96,7 @@ class TestSentenceWindowRetriever:
                 "window_size": 5,
                 "source_id_meta_field": "source_id_test",
                 "split_id_meta_field": "split_id_test",
+                "raise_on_missing_meta_fields": False,
             },
         }
         component = SentenceWindowRetriever.from_dict(data)
@@ -102,6 +104,7 @@ class TestSentenceWindowRetriever:
         assert component.window_size == 5
         assert component.source_id_meta_field == "source_id_test"
         assert component.split_id_meta_field == "split_id_test"
+        assert not component.raise_on_missing_meta_fields
 
     def test_from_dict_without_docstore(self):
         data = {"type": "SentenceWindowRetriever", "init_parameters": {}}
