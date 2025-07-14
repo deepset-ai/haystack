@@ -4,9 +4,11 @@
 
 from typing import Any, Dict, List, Optional
 
-from haystack import Document, component, default_from_dict, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
 from haystack.utils import deserialize_document_store_in_init_params_inplace
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -115,20 +117,27 @@ class SentenceWindowRetriever:
 
         :param documents: List of Documents to merge.
         """
+        if any("split_idx_start" not in doc.meta for doc in documents):
+            # If any of the documents is missing the 'split_idx_start' metadata we just concatenate their content.
+            return "".join(doc.content for doc in documents if doc.content)
+
         sorted_docs = sorted(documents, key=lambda doc: doc.meta["split_idx_start"])
         merged_text = ""
         last_idx_end = 0
         for doc in sorted_docs:
-            start = doc.meta["split_idx_start"]  # start of the current content
+            if doc.content is None:
+                continue
+
+            start = doc.meta.get("split_idx_start", 0)  # start of the current content
 
             # if the start of the current content is before the end of the last appended content, adjust it
             start = max(start, last_idx_end)
 
             # append the non-overlapping part to the merged text
-            merged_text += doc.content[start - doc.meta["split_idx_start"] :]  # type: ignore
+            merged_text += doc.content[start - int(doc.meta["split_idx_start"]) :]
 
             # update the last end index
-            last_idx_end = doc.meta["split_idx_start"] + len(doc.content)  # type: ignore
+            last_idx_end = int(doc.meta["split_idx_start"]) + len(doc.content)
 
         return merged_text
 
@@ -187,11 +196,11 @@ class SentenceWindowRetriever:
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
 
-        if not all("split_id" in doc.meta for doc in retrieved_documents):
-            raise ValueError("The retrieved documents must have 'split_id' in the metadata.")
+        if not all(self.split_id_meta_field in doc.meta for doc in retrieved_documents):
+            raise ValueError(f"The retrieved documents must have '{self.split_id_meta_field}' in their metadata.")
 
-        if not all("source_id" in doc.meta for doc in retrieved_documents):
-            raise ValueError("The retrieved documents must have 'source_id' in the metadata.")
+        if not all(self.source_id_meta_field in doc.meta for doc in retrieved_documents):
+            raise ValueError(f"The retrieved documents must have '{self.source_id_meta_field}' in their metadata.")
 
         context_text = []
         context_documents = []
@@ -204,14 +213,14 @@ class SentenceWindowRetriever:
                 {
                     "operator": "AND",
                     "conditions": [
-                        {"field": "meta.source_id", "operator": "==", "value": source_id},
-                        {"field": "meta.split_id", "operator": ">=", "value": min_before},
-                        {"field": "meta.split_id", "operator": "<=", "value": max_after},
+                        {"field": f"meta.{self.source_id_meta_field}", "operator": "==", "value": source_id},
+                        {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},
+                        {"field": f"meta.{self.split_id_meta_field}", "operator": "<=", "value": max_after},
                     ],
                 }
             )
             context_text.append(self.merge_documents_text(context_docs))
-            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta["split_idx_start"])
+            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta.get("split_idx_start", 0))
             context_documents.extend(context_docs_sorted)
 
         return {"context_windows": context_text, "context_documents": context_documents}
