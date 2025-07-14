@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import sys
 import typing
 from collections import deque
 from typing import Any, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Union
@@ -13,44 +12,86 @@ from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
 from haystack.utils.type_serialization import deserialize_type, serialize_type
 
 TYPING_AND_TYPE_TESTS = [
-    # Dict
+    # dict
+    pytest.param("dict", dict),
+    pytest.param("dict[str, int]", dict[str, int]),
+    pytest.param("dict[int, str]", dict[int, str]),
+    pytest.param("dict[dict, dict]", dict[dict, dict]),
+    pytest.param("dict[float, float]", dict[float, float]),
+    pytest.param("dict[bool, bool]", dict[bool, bool]),
+    # typing Dict
+    pytest.param("typing.Dict", Dict),
     pytest.param("typing.Dict[str, int]", Dict[str, int]),
     pytest.param("typing.Dict[int, str]", Dict[int, str]),
     pytest.param("typing.Dict[dict, dict]", Dict[dict, dict]),
     pytest.param("typing.Dict[float, float]", Dict[float, float]),
     pytest.param("typing.Dict[bool, bool]", Dict[bool, bool]),
-    # List
+    # list
+    pytest.param("list", list),
+    pytest.param("list[int]", list[int]),
+    pytest.param("list[str]", list[str]),
+    pytest.param("list[dict]", list[dict]),
+    pytest.param("list[float]", list[float]),
+    pytest.param("list[bool]", list[bool]),
+    # typing List
+    pytest.param("typing.List", List),
     pytest.param("typing.List[int]", List[int]),
     pytest.param("typing.List[str]", List[str]),
     pytest.param("typing.List[dict]", List[dict]),
     pytest.param("typing.List[float]", List[float]),
     pytest.param("typing.List[bool]", List[bool]),
-    # Optional
+    # typing Optional
+    pytest.param("typing.Optional", Optional),
     pytest.param("typing.Optional[str]", Optional[str]),
     pytest.param("typing.Optional[int]", Optional[int]),
     pytest.param("typing.Optional[dict]", Optional[dict]),
     pytest.param("typing.Optional[float]", Optional[float]),
     pytest.param("typing.Optional[bool]", Optional[bool]),
-    # Set
+    # set
+    pytest.param("set", set),
+    pytest.param("set[int]", set[int]),
+    pytest.param("set[str]", set[str]),
+    pytest.param("set[dict]", set[dict]),
+    pytest.param("set[float]", set[float]),
+    pytest.param("set[bool]", set[bool]),
+    # typing Set
+    pytest.param("typing.Set", Set),
     pytest.param("typing.Set[int]", Set[int]),
     pytest.param("typing.Set[str]", Set[str]),
     pytest.param("typing.Set[dict]", Set[dict]),
     pytest.param("typing.Set[float]", Set[float]),
     pytest.param("typing.Set[bool]", Set[bool]),
-    # Tuple
+    # tuple
+    pytest.param("tuple", tuple),
+    pytest.param("tuple[int]", tuple[int]),
+    pytest.param("tuple[str]", tuple[str]),
+    pytest.param("tuple[dict]", tuple[dict]),
+    pytest.param("tuple[float]", tuple[float]),
+    pytest.param("tuple[bool]", tuple[bool]),
+    # typing Tuple
+    pytest.param("typing.Tuple", Tuple),
     pytest.param("typing.Tuple[int]", Tuple[int]),
     pytest.param("typing.Tuple[str]", Tuple[str]),
     pytest.param("typing.Tuple[dict]", Tuple[dict]),
     pytest.param("typing.Tuple[float]", Tuple[float]),
     pytest.param("typing.Tuple[bool]", Tuple[bool]),
     # Union
+    pytest.param("typing.Union", Union),
     pytest.param("typing.Union[str, int]", Union[str, int]),
     pytest.param("typing.Union[int, float]", Union[int, float]),
     pytest.param("typing.Union[dict, str]", Union[dict, str]),
     pytest.param("typing.Union[float, bool]", Union[float, bool]),
     pytest.param("typing.Optional[str]", typing.Union[None, str]),  # Union with None becomes Optional
-    # Other
+    # other
+    pytest.param("frozenset", frozenset),
+    pytest.param("frozenset[int]", frozenset[int]),
+    pytest.param("collections.deque", deque),
+    pytest.param("collections.deque[str]", deque[str]),
+    # typing Other
+    pytest.param("typing.Any", Any),
+    pytest.param("typing.FrozenSet", FrozenSet),
     pytest.param("typing.FrozenSet[int]", FrozenSet[int]),
+    pytest.param("typing.Deque", Deque),
     pytest.param("typing.Deque[str]", Deque[str]),
 ]
 
@@ -107,41 +148,37 @@ def test_output_builtin_type_deserialization():
     assert deserialize_type("builtins.bool") == bool
 
 
-def test_output_type_serialization_typing():
-    assert serialize_type(Any) == "typing.Any"
-    assert serialize_type(Dict) == "typing.Dict"
-    assert serialize_type(List) == "typing.List"
-    assert serialize_type(Optional) == "typing.Optional"
-    assert serialize_type(Set) == "typing.Set"
-    assert serialize_type(Tuple) == "typing.Tuple"
-    assert serialize_type(Union) == "typing.Union"
-
-
-def test_output_type_deserialization_typing():
-    assert deserialize_type("typing.Any") == Any
-    assert deserialize_type("typing.Dict") == Dict
-    assert deserialize_type("typing.List") == List
-    assert deserialize_type("typing.Optional") == Optional
-    assert deserialize_type("typing.Set") == Set
-    assert deserialize_type("typing.Tuple") == Tuple
-    assert deserialize_type("typing.Union") == Union
-
-
 def test_output_type_serialization_nested():
+    # typing
     assert serialize_type(List[Union[str, int]]) == "typing.List[typing.Union[str, int]]"
     assert serialize_type(List[Optional[str]]) == "typing.List[typing.Optional[str]]"
     assert serialize_type(List[Dict[str, int]]) == "typing.List[typing.Dict[str, int]]"
     assert serialize_type(typing.List[Dict[str, int]]) == "typing.List[typing.Dict[str, int]]"
+    # builtins
+    assert serialize_type(list[Union[str, int]]) == "list[typing.Union[str, int]]"
+    assert serialize_type(list[Optional[str]]) == "list[typing.Optional[str]]"
+    assert serialize_type(list[dict[str, int]]) == "list[dict[str, int]]"
+    assert serialize_type(list[list[int]]) == "list[list[int]]"
+    assert serialize_type(list[list[list[int]]]) == "list[list[list[int]]]"
 
 
 def test_output_type_deserialization_nested():
+    # typing
     assert deserialize_type("typing.List[typing.Union[str, int]]") == List[Union[str, int]]
     assert deserialize_type("typing.List[typing.Optional[str]]") == List[Optional[str]]
     assert deserialize_type("typing.List[typing.Dict[str, typing.List[int]]]") == List[Dict[str, List[int]]]
     assert deserialize_type("typing.List[typing.Dict[str, int]]") == typing.List[Dict[str, int]]
+    # builtins
+    assert deserialize_type("list[typing.Union[str, int]]") == list[Union[str, int]]
+    assert deserialize_type("list[typing.Optional[str]]") == list[Optional[str]]
+    assert deserialize_type("list[dict[str, list[int]]]") == list[dict[str, list[int]]]
+    assert deserialize_type("list[dict[str, int]]") == list[dict[str, int]]
+    assert deserialize_type("list[list[int]]") == list[list[int]]
+    assert deserialize_type("list[list[list[int]]]") == list[list[list[int]]]
 
 
 def test_output_type_serialization_haystack_dataclasses():
+    # typing
     # Answer
     assert serialize_type(Answer) == "haystack.dataclasses.answer.Answer"
     assert serialize_type(List[Answer]) == "typing.List[haystack.dataclasses.answer.Answer]"
@@ -163,9 +200,23 @@ def test_output_type_serialization_haystack_dataclasses():
     assert serialize_type(Document) == "haystack.dataclasses.document.Document"
     assert serialize_type(List[Document]) == "typing.List[haystack.dataclasses.document.Document]"
     assert serialize_type(typing.Dict[int, Document]) == "typing.Dict[int, haystack.dataclasses.document.Document]"
+    # builtins
+    # Answer
+    assert serialize_type(list[Answer]) == "list[haystack.dataclasses.answer.Answer]"
+    assert serialize_type(dict[int, Answer]) == "dict[int, haystack.dataclasses.answer.Answer]"
+    # Bytestream
+    assert serialize_type(list[ByteStream]) == "list[haystack.dataclasses.byte_stream.ByteStream]"
+    assert serialize_type(dict[int, ByteStream]) == "dict[int, haystack.dataclasses.byte_stream.ByteStream]"
+    # Chat Message
+    assert serialize_type(list[ChatMessage]) == "list[haystack.dataclasses.chat_message.ChatMessage]"
+    assert serialize_type(dict[int, ChatMessage]) == "dict[int, haystack.dataclasses.chat_message.ChatMessage]"
+    # Document
+    assert serialize_type(list[Document]) == "list[haystack.dataclasses.document.Document]"
+    assert serialize_type(dict[int, Document]) == "dict[int, haystack.dataclasses.document.Document]"
 
 
 def test_output_type_deserialization_haystack_dataclasses():
+    # typing
     # Answer
     assert deserialize_type("haystack.dataclasses.answer.Answer") == Answer
     assert deserialize_type("typing.List[haystack.dataclasses.answer.Answer]") == List[Answer]
@@ -188,28 +239,16 @@ def test_output_type_deserialization_haystack_dataclasses():
     assert deserialize_type("haystack.dataclasses.document.Document") == Document
     assert deserialize_type("typing.List[haystack.dataclasses.document.Document]") == typing.List[Document]
     assert deserialize_type("typing.Dict[int, haystack.dataclasses.document.Document]") == typing.Dict[int, Document]
-
-
-@pytest.mark.skipif(sys.version_info < (3, 9), reason="PEP 585 types are only available in Python 3.9+")
-def test_output_type_serialization_pep585():
-    # Only Python 3.9+ supports PEP 585 types and can serialize them
-    # PEP 585 types
-    assert serialize_type(list[int]) == "list[int]"
-    assert serialize_type(list[list[int]]) == "list[list[int]]"
-    assert serialize_type(list[list[list[int]]]) == "list[list[list[int]]]"
-    assert serialize_type(dict[str, int]) == "dict[str, int]"
-    assert serialize_type(frozenset[int]) == "frozenset[int]"
-    assert serialize_type(deque[str]) == "collections.deque[str]"
-
-
-def test_output_type_deserialization_pep585():
-    is_pep585 = sys.version_info >= (3, 9)
-
-    # Although only Python 3.9+ supports PEP 585 types, we can still deserialize them in older Python versions
-    # as their typing equivalents
-    assert deserialize_type("list[int]") == list[int] if is_pep585 else List[int]
-    assert deserialize_type("dict[str, int]") == dict[str, int] if is_pep585 else Dict[str, int]
-    assert deserialize_type("list[list[int]]") == list[list[int]] if is_pep585 else List[List[int]]
-    assert deserialize_type("list[list[list[int]]]") == list[list[list[int]]] if is_pep585 else List[List[List[int]]]
-    assert deserialize_type("frozenset[int]") == frozenset[int] if is_pep585 else FrozenSet[int]
-    assert deserialize_type("collections.deque[str]") == deque[str] if is_pep585 else Deque[str]
+    # builtins
+    # Answer
+    assert deserialize_type("list[haystack.dataclasses.answer.Answer]") == list[Answer]
+    assert deserialize_type("dict[int, haystack.dataclasses.answer.Answer]") == dict[int, Answer]
+    # ByteStream
+    assert deserialize_type("list[haystack.dataclasses.byte_stream.ByteStream]") == list[ByteStream]
+    assert deserialize_type("dict[int, haystack.dataclasses.byte_stream.ByteStream]") == dict[int, ByteStream]
+    # Chat Message
+    assert deserialize_type("list[haystack.dataclasses.chat_message.ChatMessage]") == list[ChatMessage]
+    assert deserialize_type("dict[int, haystack.dataclasses.chat_message.ChatMessage]") == dict[int, ChatMessage]
+    # Document
+    assert deserialize_type("list[haystack.dataclasses.document.Document]") == list[Document]
+    assert deserialize_type("dict[int, haystack.dataclasses.document.Document]") == dict[int, Document]
