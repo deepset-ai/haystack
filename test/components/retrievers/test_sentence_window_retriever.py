@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import ANY
+
 import pytest
 
 from haystack import DeserializationError, Document, Pipeline
@@ -62,12 +64,24 @@ class TestSentenceWindowRetriever:
         window_retriever = SentenceWindowRetriever(InMemoryDocumentStore())
         data = window_retriever.to_dict()
 
-        assert data["type"] == "haystack.components.retrievers.sentence_window_retriever.SentenceWindowRetriever"
-        assert data["init_parameters"]["window_size"] == 3
-        assert (
-            data["init_parameters"]["document_store"]["type"]
-            == "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
-        )
+        assert data == {
+            "type": "haystack.components.retrievers.sentence_window_retriever.SentenceWindowRetriever",
+            "init_parameters": {
+                "document_store": {
+                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                    "init_parameters": {
+                        "bm25_algorithm": "BM25L",
+                        "bm25_parameters": {},
+                        "bm25_tokenization_regex": "(?u)\\b\\w\\w+\\b",
+                        "embedding_similarity_function": "dot_product",
+                        "index": ANY,
+                    },
+                },
+                "window_size": 3,
+                "source_id_meta_field": "source_id",
+                "split_id_meta_field": "split_id",
+            },
+        }
 
     def test_from_dict(self):
         data = {
@@ -78,11 +92,15 @@ class TestSentenceWindowRetriever:
                     "init_parameters": {},
                 },
                 "window_size": 5,
+                "source_id_meta_field": "source_id",
+                "split_id_meta_field": "split_id",
             },
         }
         component = SentenceWindowRetriever.from_dict(data)
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.window_size == 5
+        assert component.source_id_meta_field == "source_id"
+        assert component.split_id_meta_field == "split_id"
 
     def test_from_dict_without_docstore(self):
         data = {"type": "SentenceWindowRetriever", "init_parameters": {}}

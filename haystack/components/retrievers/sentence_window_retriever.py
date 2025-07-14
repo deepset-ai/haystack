@@ -12,17 +12,19 @@ from haystack.utils import deserialize_document_store_in_init_params_inplace
 @component
 class SentenceWindowRetriever:
     """
-    Retrieves documents adjacent to a given document in the Document Store.
+    Retrieves neighboring documents from a DocumentStore to provide context for query results.
 
-    During indexing, documents are broken into smaller chunks, or sentences. When you submit a query,
-    the Retriever fetches the most relevant sentence. To provide full context,
-    SentenceWindowRetriever fetches a number of neighboring sentences before and after each
-    relevant one. You can set this number with the `window_size` parameter.
-    It uses `source_id` and `doc.meta['split_id']` to locate the surrounding documents.
+    This component is intended to be used after a Retriever (e.g., BM25Retriever, EmbeddingRetriever).
+    It enhances retrieved results by fetching adjacent document chunks to give
+    additional context for the user.
 
-    This component works with existing Retrievers, like BM25Retriever or
-    EmbeddingRetriever. First, use a Retriever to find documents based on a query and then use
-    SentenceWindowRetriever to get the surrounding documents for context.
+    The documents must include metadata indicating their origin and position:
+    - `source_id` is used to group sentence chunks belonging to the same original document.
+    - `split_id` represents the position/order of the chunk within the document.
+
+    The number of adjacent documents to include on each side of the retrieved document can be configured using the
+    `window_size` parameter. You can also specify which metadata fields to use for source and split ID
+    via `source_id_meta_field` and `split_id_meta_field`.
 
     The SentenceWindowRetriever is compatible with the following DocumentStores:
     - [Astra](https://docs.haystack.deepset.ai/docs/astradocumentstore)
@@ -78,19 +80,30 @@ class SentenceWindowRetriever:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, window_size: int = 3):
+    def __init__(
+        self,
+        document_store: DocumentStore,
+        window_size: int = 3,
+        *,
+        source_id_meta_field: str = "source_id",
+        split_id_meta_field: str = "split_id",
+    ):
         """
         Creates a new SentenceWindowRetriever component.
 
         :param document_store: The Document Store to retrieve the surrounding documents from.
         :param window_size: The number of documents to retrieve before and after the relevant one.
                 For example, `window_size: 2` fetches 2 preceding and 2 following documents.
+        :param source_id_meta_field: The metadata field that contains the source ID of the document.
+        :param split_id_meta_field: The metadata field that contains the split ID of the document.
         """
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
 
         self.window_size = window_size
         self.document_store = document_store
+        self.source_id_meta_field = source_id_meta_field
+        self.split_id_meta_field = split_id_meta_field
 
     @staticmethod
     def merge_documents_text(documents: List[Document]) -> str:
@@ -127,7 +140,13 @@ class SentenceWindowRetriever:
             Dictionary with serialized data.
         """
         docstore = self.document_store.to_dict()
-        return default_to_dict(self, document_store=docstore, window_size=self.window_size)
+        return default_to_dict(
+            self,
+            document_store=docstore,
+            window_size=self.window_size,
+            source_id_meta_field=self.source_id_meta_field,
+            split_id_meta_field=self.split_id_meta_field,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SentenceWindowRetriever":
@@ -177,8 +196,8 @@ class SentenceWindowRetriever:
         context_text = []
         context_documents = []
         for doc in retrieved_documents:
-            source_id = doc.meta["source_id"]
-            split_id = doc.meta["split_id"]
+            source_id = doc.meta[self.source_id_meta_field]
+            split_id = doc.meta[self.split_id_meta_field]
             min_before = min(list(range(split_id - 1, split_id - window_size - 1, -1)))
             max_after = max(list(range(split_id + 1, split_id + window_size + 1, 1)))
             context_docs = self.document_store.filter_documents(

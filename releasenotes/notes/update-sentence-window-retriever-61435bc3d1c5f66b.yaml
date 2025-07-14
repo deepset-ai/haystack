@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added `source_id_meta_field` and `split_id_meta_field` to `SentenceWindowRetriever` for customizable metadata field names.
