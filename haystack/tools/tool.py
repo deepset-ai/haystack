@@ -33,22 +33,31 @@ class Tool:
         Optional dictionary defining how a tool outputs should be converted into a string.
         If the source is provided only the specified output key is sent to the handler.
         If the source is omitted the whole tool result is sent to the handler.
-        Example: {
+        Example:
+        ```python
+        {
             "source": "docs", "handler": format_documents
         }
+        ```
     :param inputs_from_state:
         Optional dictionary mapping state keys to tool parameter names.
-        Example: {"repository": "repo"} maps state's "repository" to tool's "repo" parameter.
+        Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
     :param outputs_to_state:
         Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
         If the source is provided only the specified output key is sent to the handler.
-        Example: {
+        Example:
+        ```python
+        {
             "documents": {"source": "docs", "handler": custom_handler}
         }
+        ```
         If the source is omitted the whole tool result is sent to the handler.
-        Example: {
+        Example:
+        ```python
+        {
             "documents": {"handler": custom_handler}
         }
+        ```
     """
 
     name: str

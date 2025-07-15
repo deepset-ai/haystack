@@ -103,6 +103,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
             "inputs" must be a dictionary with keys "questions", "contexts", and "predicted_answers".
             "outputs" must be a dictionary with "statements" and "statement_scores".
             Expected format:
+            ```python
             [{
                 "inputs": {
                     "questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
@@ -113,6 +114,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
                     "statement_scores": [1, 0],
                 },
             }]
+            ```
         :param progress_bar:
             Whether to show a progress bar during the evaluation.
         :param raise_on_failure:
