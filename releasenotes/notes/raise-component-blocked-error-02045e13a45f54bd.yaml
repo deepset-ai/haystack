@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Raise a warning when a pipeline can no longer proceed because **all** remaining components are blocked from running **and** no expected pipeline outputs have been produced.
+    This scenario can occur legitimately. For example, in pipelines with mutually exclusive branches where some components are intentionally blocked. To help avoid false positives, the check ensures that none of the expected outputs (as defined by `Pipeline().outputs()`) have been generated during the current run.
