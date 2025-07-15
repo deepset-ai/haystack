@@ -389,7 +389,7 @@ class AsyncPipeline(PipelineBase):
                             component_name=comp_name,
                             component_type=comp["instance"].__class__.__name__,
                         )
-                    # We still always exit the loop since we cannot run the next component.
+                    # We always exit the loop since we cannot run the next component.
                     break
 
                 if comp_name in scheduled_components:

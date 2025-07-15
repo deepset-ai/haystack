@@ -232,7 +232,7 @@ class Pipeline(PipelineBase):
                             component_name=component_name,
                             component_type=component["instance"].__class__.__name__,
                         )
-                    # We still always exit the loop since we cannot run the next component.
+                    # We always exit the loop since we cannot run the next component.
                     break
 
                 if len(priority_queue) > 0 and priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]:
