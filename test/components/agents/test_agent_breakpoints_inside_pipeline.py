@@ -234,17 +234,6 @@ def test_chat_generator_breakpoint_in_pipeline_agent():
             assert e.state is not None
             assert "messages" in e.state
             assert e.results is not None
-        except PipelineRuntimeError as e:
-            # propagated exception to core Pipeline - assure that the cause is a PipelineBreakpointException
-            if hasattr(e, "__cause__") and isinstance(e.__cause__, BreakpointException):
-                original_exception = e.__cause__
-                assert original_exception.component == "chat_generator"
-                assert original_exception.state is not None
-                assert "messages" in original_exception.state
-                assert original_exception.results is not None
-            else:
-                # re-raise if it's a different PipelineRuntimeError - test failed
-                raise
 
         # verify that debug/state file was created
         chat_generator_state_files = list(Path(debug_path).glob("database_agent_chat_generator_*.json"))
@@ -269,17 +258,6 @@ def test_tool_breakpoint_in_pipeline_agent():
             assert e.state is not None
             assert "messages" in e.state
             assert e.results is not None
-        except PipelineRuntimeError as e:
-            # propagated exception to core Pipeline - assure that the cause is a PipelineBreakpointException
-            if hasattr(e, "__cause__") and isinstance(e.__cause__, BreakpointException):
-                original_exception = e.__cause__
-                assert original_exception.component == "tool_invoker"
-                assert original_exception.state is not None
-                assert "messages" in original_exception.state
-                assert original_exception.results is not None
-            else:
-                # re-raise if it's a different PipelineRuntimeError - test failed
-                raise
 
         # verify that debug/state file was created
         tool_invoker_state_files = list(Path(debug_path).glob("database_agent_tool_invoker_*.json"))
@@ -305,16 +283,6 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline():
             assert e.state is not None
             assert "messages" in e.state
             assert e.results is not None
-
-        except PipelineRuntimeError as e:
-            if hasattr(e, "__cause__") and isinstance(e.__cause__, BreakpointException):
-                original_exception = e.__cause__
-                assert original_exception.component == "chat_generator"
-                assert original_exception.state is not None
-                assert "messages" in original_exception.state
-                assert original_exception.results is not None
-            else:
-                raise
 
         # verify that the state file was created
         chat_generator_state_files = list(Path(debug_path).glob("database_agent_chat_generator_*.json"))
@@ -367,16 +335,6 @@ def test_agent_breakpoint_tool_and_resume_pipeline():
             assert e.state is not None
             assert "messages" in e.state
             assert e.results is not None
-
-        except PipelineRuntimeError as e:
-            if hasattr(e, "__cause__") and isinstance(e.__cause__, BreakpointException):
-                original_exception = e.__cause__
-                assert original_exception.component == "tool_invoker"
-                assert original_exception.state is not None
-                assert "messages" in original_exception.state
-                assert original_exception.results is not None
-            else:
-                raise
 
         # verify that the state file was created
         tool_invoker_state_files = list(Path(debug_path).glob("database_agent_tool_invoker_*.json"))

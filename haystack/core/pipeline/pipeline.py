@@ -10,7 +10,7 @@ from typing import Any, Dict, Mapping, Optional, Set, Union, cast
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineInvalidResumeStateError, PipelineRuntimeError
+from haystack.core.errors import BreakpointException, PipelineInvalidResumeStateError, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -71,8 +71,14 @@ class Pipeline(PipelineBase):
             logger.info("Running component {component_name}", component_name=component_name)
             try:
                 component_output = instance.run(**inputs)
+            except BreakpointException as error:
+                # Re-raise BreakpointException to preserve the original exception context
+                # This is important when Agent components internally use Pipeline._run_component
+                # and trigger breakpoints that need to bubble up to the main pipeline
+                raise error
             except Exception as error:
                 raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
+
             component_visits[component_name] += 1
 
             if not isinstance(component_output, Mapping):
