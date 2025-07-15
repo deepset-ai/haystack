@@ -395,7 +395,6 @@ class Agent:
 
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker
-                # Check if the ToolInvoker supports async execution. Currently, it doesn't.
                 tool_invoker_result = await AsyncPipeline._run_component_async(
                     component_name="tool_invoker",
                     component={"instance": self._tool_invoker},
