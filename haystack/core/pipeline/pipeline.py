@@ -47,7 +47,7 @@ class Pipeline(PipelineBase):
         inputs: Dict[str, Any],
         component_visits: Dict[str, int],
         parent_span: Optional[tracing.Span] = None,
-    ) -> Dict[str, Any]:
+    ) -> Mapping[str, Any]:
         """
         Runs a Component with the given inputs.
 
@@ -69,6 +69,7 @@ class Pipeline(PipelineBase):
             # when we delete them in case they're sent to other Components
             span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(inputs))
             logger.info("Running component {component_name}", component_name=component_name)
+
             try:
                 component_output = instance.run(**inputs)
             except BreakpointException as error:
@@ -87,7 +88,7 @@ class Pipeline(PipelineBase):
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
             span.set_content_tag(_COMPONENT_OUTPUT, component_output)
 
-            return cast(Dict[Any, Any], component_output)
+            return component_output
 
     def _handle_resume_state(self, resume_state: Dict[str, Any]) -> tuple[Dict[str, int], Dict[str, Any], bool, list]:
         """
@@ -137,7 +138,7 @@ class Pipeline(PipelineBase):
         data = _deserialize_value_with_schema(resume_state["pipeline_state"]["inputs"])
         return component_visits, data, False, ordered_component_names
 
-    def run(  # noqa: PLR0915, PLR0912
+    def run(  # noqa: PLR0915, PLR0912, C901
         self,
         data: Dict[str, Any],
         include_outputs_from: Optional[Set[str]] = None,
@@ -310,10 +311,30 @@ class Pipeline(PipelineBase):
 
             while True:
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
+
+                # If there are no runnable components left, we can exit the loop
                 if candidate is None:
                     break
 
                 priority, component_name, component = candidate
+
+                # If the next component is blocked, we do a check to see if the pipeline is possibly blocked and raise
+                # a warning if it is.
+                if priority == ComponentPriority.BLOCKED:
+                    if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
+                        # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
+                        logger.warning(
+                            "Cannot run pipeline - the next component that is meant to run is blocked.\n"
+                            "Component name: '{component_name}'\n"
+                            "Component type: '{component_type}'\n"
+                            "This typically happens when the component is unable to receive all of its required "
+                            "inputs.\nCheck the connections to this component and ensure all required inputs are "
+                            "provided.",
+                            component_name=component_name,
+                            component_type=component["instance"].__class__.__name__,
+                        )
+                    # We always exit the loop since we cannot run the next component.
+                    break
 
                 if len(priority_queue) > 0 and priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]:
                     component_name, topological_sort = self._tiebreak_waiting_components(
