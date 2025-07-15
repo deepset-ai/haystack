@@ -6,7 +6,7 @@
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional, Set, Union, cast
+from typing import Any, Dict, Mapping, Optional, Set, Union
 
 from haystack import logging, tracing
 from haystack.core.component import Component
