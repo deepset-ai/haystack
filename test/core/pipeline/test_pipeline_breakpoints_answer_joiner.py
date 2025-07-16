@@ -15,7 +15,7 @@ from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.utils.auth import Secret
-from test.conftest import load_and_resume_pipeline_state
+from test.conftest import load_and_resume_pipeline_snapshot
 
 
 class TestPipelineBreakpoints:
@@ -118,10 +118,10 @@ class TestPipelineBreakpoints:
         except BreakpointException:
             pass
 
-        result = load_and_resume_pipeline_state(
+        result = load_and_resume_pipeline_snapshot(
             pipeline=answer_join_pipeline,
             output_directory=output_directory,
-            component=break_point.component_name,
+            component_name=break_point.component_name,
             data=data,
         )
         assert result["answer_joiner"]

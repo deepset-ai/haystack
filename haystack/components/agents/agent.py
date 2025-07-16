@@ -3,21 +3,19 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.core.component.component import component
-from haystack.core.errors import BreakpointException
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
-from haystack.core.pipeline.breakpoint import _save_state
+from haystack.core.pipeline.breakpoint import _check_chat_generator_breakpoint, _check_tool_invoker_breakpoint
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
-from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
+from haystack.dataclasses.breakpoints import AgentBreakpoint, ToolBreakpoint
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
@@ -249,121 +247,6 @@ class Agent:
         if tool_breakpoint.tool_name is not None and tool_breakpoint.tool_name not in available_tool_names:  # type: ignore # was checked outside function
             raise ValueError(f"Tool '{tool_breakpoint.tool_name}' is not available in the agent's tools")  # type: ignore # was checked outside function
 
-    def _check_chat_generator_breakpoint(
-        self,
-        *,
-        agent_breakpoint: Optional[AgentBreakpoint],
-        component_visits: Dict[str, int],
-        messages: List[ChatMessage],
-        generator_inputs: Dict[str, Any],
-        kwargs: Dict[str, Any],
-        state: State,
-    ) -> None:
-        """
-        Check for breakpoint before calling the ChatGenerator.
-
-        :param agent_breakpoint: AgentBreakpoint object containing breakpoints
-        :param component_visits: Dictionary tracking component visit counts
-        :param messages: Current messages to process
-        :param generator_inputs: Inputs for the chat generator
-        :param kwargs: Additional keyword arguments
-        :param state: Current agent state
-        :raises AgentBreakpointException: If a breakpoint is triggered
-        """
-
-        # We also check component_name since ToolBreakpoint is a subclass of Breakpoint
-        if (
-            agent_breakpoint
-            and isinstance(agent_breakpoint.break_point, Breakpoint)
-            and agent_breakpoint.break_point.component_name == "chat_generator"
-        ):
-            break_point = agent_breakpoint.break_point
-            if component_visits[break_point.component_name] == break_point.visit_count:
-                state_inputs = deepcopy({"messages": messages, **generator_inputs})
-                _save_state(
-                    inputs=state_inputs,
-                    component_name=break_point.component_name,
-                    component_visits=component_visits,  # these are the component visits of the agent components
-                    debug_path=break_point.debug_path,
-                    original_input_data={"messages": messages, **kwargs},
-                    ordered_component_names=["chat_generator", "tool_invoker"],
-                    agent_name=self.__component_name__ if hasattr(self, "__component_name__") else "isolated_agent",
-                    main_pipeline_state=state.data.get("main_pipeline_state", {}),
-                )
-                msg = (
-                    f"Breaking at {break_point.component_name} visit count "
-                    f"{component_visits[break_point.component_name]}"
-                )
-                logger.info(msg)
-                raise BreakpointException(
-                    message=msg, component=break_point.component_name, state=state_inputs, results=state.data
-                )
-
-    def _check_tool_invoker_breakpoint(
-        self,
-        *,
-        agent_breakpoint: Optional[AgentBreakpoint],
-        component_visits: Dict[str, int],
-        llm_messages: List[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT],
-        messages: List[ChatMessage],
-        kwargs: Dict[str, Any],
-        state: State,
-    ) -> None:
-        """
-        Check for breakpoint before calling the ToolInvoker.
-
-        :param agent_breakpoint: AgentBreakpoint object containing breakpoints
-        :param component_visits: Dictionary tracking component visit counts
-        :param llm_messages: Messages from the LLM
-        :param state: Current agent state
-        :param streaming_callback: Streaming callback function
-        :param messages: Original messages
-        :param kwargs: Additional keyword arguments
-        :raises AgentBreakpointException: If a breakpoint is triggered
-        """
-
-        if agent_breakpoint and isinstance(agent_breakpoint.break_point, ToolBreakpoint):
-            tool_breakpoint = agent_breakpoint.break_point
-            # Check if the visit count matches
-            if component_visits[tool_breakpoint.component_name] == tool_breakpoint.visit_count:
-                # Check if we should break for this specific tool or all tools
-                should_break = False
-                if tool_breakpoint.tool_name is None:
-                    # Break for any tool call
-                    should_break = any(msg.tool_call for msg in llm_messages)
-                else:
-                    # Break only for the specific tool
-                    should_break = any(
-                        msg.tool_call and msg.tool_call.tool_name == tool_breakpoint.tool_name for msg in llm_messages
-                    )
-
-                if should_break:
-                    state_inputs = deepcopy(
-                        {"messages": llm_messages, "state": state, "streaming_callback": streaming_callback}
-                    )
-                    _save_state(
-                        inputs=state_inputs,
-                        component_name=tool_breakpoint.component_name,
-                        component_visits=component_visits,
-                        debug_path=tool_breakpoint.debug_path,
-                        original_input_data={"messages": messages, **kwargs},
-                        ordered_component_names=["chat_generator", "tool_invoker"],
-                        agent_name=self.__component_name__ if hasattr(self, "__component_name__") else "isolated_agent",
-                        main_pipeline_state=state.data.get("main_pipeline_state", {}),
-                    )
-                    msg = (
-                        f"Breaking at {tool_breakpoint.component_name} visit count "
-                        f"{component_visits[tool_breakpoint.component_name]}"
-                    )
-                    if tool_breakpoint.tool_name:
-                        msg += f" for tool {tool_breakpoint.tool_name}"
-                    logger.info(msg)
-
-                    raise BreakpointException(
-                        message=msg, component=tool_breakpoint.component_name, state=state_inputs, results=state.data
-                    )
-
     def run(
         self,
         messages: List[ChatMessage],
@@ -445,7 +328,7 @@ class Agent:
 
             while counter < self.max_agent_steps:
                 # check for breakpoint before ChatGenerator
-                self._check_chat_generator_breakpoint(
+                _check_chat_generator_breakpoint(
                     agent_breakpoint=break_point,
                     component_visits=component_visits,
                     messages=messages,
@@ -471,7 +354,7 @@ class Agent:
                     break
 
                 # check for breakpoint before ToolInvoker
-                self._check_tool_invoker_breakpoint(
+                _check_tool_invoker_breakpoint(
                     agent_breakpoint=break_point,
                     component_visits=component_visits,
                     llm_messages=llm_messages,
@@ -602,7 +485,7 @@ class Agent:
 
             while counter < self.max_agent_steps:
                 # Check for breakpoint before ChatGenerator
-                self._check_chat_generator_breakpoint(
+                _check_chat_generator_breakpoint(
                     agent_breakpoint=break_point,
                     component_visits=component_visits,
                     messages=messages,
@@ -628,7 +511,7 @@ class Agent:
                     break
 
                 # Check for breakpoint before ToolInvoker
-                self._check_tool_invoker_breakpoint(
+                _check_tool_invoker_breakpoint(
                     agent_breakpoint=break_point,
                     component_visits=component_visits,
                     llm_messages=llm_messages,

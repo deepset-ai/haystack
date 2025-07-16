@@ -13,7 +13,9 @@ from typing import Any, Dict, List, Optional, Union
 from networkx import MultiDiGraph
 
 from haystack import logging
+from haystack.components.agents.state import State
 from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError
+from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.utils.base_serialization import _serialize_value_with_schema
 
@@ -108,7 +110,7 @@ def _validate_pipeline_snapshot(pipeline_snapshot: Dict[str, Any]) -> None:
     required_top_keys = {"input_data", "pipeline_breakpoint", "pipeline_state"}
     missing_top = required_top_keys - pipeline_snapshot.keys()
     if missing_top:
-        raise ValueError(f"Invalid state file: missing required keys {missing_top}")
+        raise ValueError(f"Invalid pipeline_snapshot: missing required keys {missing_top}")
 
     # pipeline_state has the necessary keys
     pipeline_state = pipeline_snapshot["pipeline_state"]
@@ -131,9 +133,9 @@ def _validate_pipeline_snapshot(pipeline_snapshot: Dict[str, Any]) -> None:
     logger.info("Pipeline snapshot validated successfully.")
 
 
-def load_state(file_path: Union[str, Path]) -> Dict[str, Any]:
+def load_pipeline_snapshot(file_path: Union[str, Path]) -> Dict[str, Any]:
     """
-    Load a saved pipeline state.
+    Load a saved pipeline snapshot.
 
     :param file_path: Path to the pipeline_snapshot file.
     :returns:
@@ -144,7 +146,7 @@ def load_state(file_path: Union[str, Path]) -> Dict[str, Any]:
 
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            state = json.load(f)
+            pipeline_snapshot = json.load(f)
     except FileNotFoundError:
         raise FileNotFoundError(f"File not found: {file_path}")
     except json.JSONDecodeError as e:
@@ -153,12 +155,12 @@ def load_state(file_path: Union[str, Path]) -> Dict[str, Any]:
         raise IOError(f"Error reading {file_path}: {str(e)}")
 
     try:
-        _validate_pipeline_snapshot(pipeline_snapshot=state)
+        _validate_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
     except ValueError as e:
-        raise ValueError(f"Invalid pipeline state from {file_path}: {str(e)}")
+        raise ValueError(f"Invalid pipeline snapshot from {file_path}: {str(e)}")
 
-    logger.info(f"Successfully loaded pipeline state from: {file_path}")
-    return state
+    logger.info(f"Successfully loaded the pipeline snapshot from: {file_path}")
+    return pipeline_snapshot
 
 
 def _process_main_pipeline_state(main_pipeline_state: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -186,23 +188,15 @@ def _process_main_pipeline_state(main_pipeline_state: Optional[Dict[str, Any]]) 
     }
 
 
-def _save_state_to_file(
-    *,
-    state: Dict[str, Any],
-    debug_path: Union[str, Path],
-    dt: datetime,
-    is_agent: bool,
-    agent_name: Optional[str],
-    component_name: str,
+def _save_pipeline_snapshot_to_file(
+    *, pipeline_snapshot: Dict[str, Any], debug_path: Union[str, Path], dt: datetime, component_name: str
 ) -> None:
     """
-    Save state dictionary to a JSON file.
+    Save the pipeline snapshot dictionary to a JSON file.
 
-    :param state: The state dictionary to save.
+    :param pipeline_snapshot: The pipeline snapshot to save.
     :param debug_path: The path where to save the file.
     :param dt: The datetime object for timestamping.
-    :param is_agent: Whether this is an agent pipeline.
-    :param agent_name: Name of the agent (if applicable).
     :param component_name: Name of the component that triggered the breakpoint.
     :raises:
         ValueError: If the debug_path is not a string or a Path object.
@@ -215,21 +209,22 @@ def _save_state_to_file(
     debug_path.mkdir(exist_ok=True)
 
     # Generate filename
-    if is_agent:
-        file_name = f"{agent_name}_{component_name}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+    # We check if the agent_name is provided to differentiate between agent and non-agent breakpoints
+    if pipeline_snapshot["agent_name"] is not None:
+        file_name = f"{pipeline_snapshot['agent_name']}_{component_name}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
     else:
         file_name = f"{component_name}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
 
     try:
         with open(debug_path / file_name, "w") as f_out:
-            json.dump(state, f_out, indent=2)
+            json.dump(pipeline_snapshot, f_out, indent=2)
         logger.info(f"Pipeline state saved at: {file_name}")
     except Exception as e:
         logger.error(f"Failed to save pipeline state: {str(e)}")
         raise
 
 
-def _save_state(
+def _save_snapshot(
     *,
     inputs: Dict[str, Any],
     component_name: str,
@@ -241,7 +236,7 @@ def _save_state(
     main_pipeline_state: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    Save the pipeline state to a file.
+    Save the pipeline snapshot to a file.
 
     :param inputs: The current pipeline state inputs.
     :param component_name: The name of the component that triggered the breakpoint.
@@ -271,7 +266,7 @@ def _save_state(
     transformed_original_input_data = _transform_json_structure(original_input_data)
     transformed_inputs = _transform_json_structure(inputs)
 
-    state = {
+    pipeline_snapshot = {
         # related to the main pipeline where the agent running as a breakpoint - only used with AgentBreakpoint
         "agent_name": agent_name if agent_name else None,
         "main_pipeline_state": _process_main_pipeline_state(main_pipeline_state) if agent_name else None,
@@ -288,19 +283,13 @@ def _save_state(
     }
 
     if not debug_path:
-        return state
+        return pipeline_snapshot
 
-    is_agent = agent_name is not None
-    _save_state_to_file(
-        state=state,
-        debug_path=debug_path,
-        dt=dt,
-        is_agent=is_agent,
-        agent_name=agent_name,
-        component_name=component_name,
+    _save_pipeline_snapshot_to_file(
+        pipeline_snapshot=pipeline_snapshot, debug_path=debug_path, dt=dt, component_name=component_name
     )
 
-    return state
+    return pipeline_snapshot
 
 
 def _transform_json_structure(data: Union[Dict[str, Any], List[Any], Any]) -> Any:
@@ -408,7 +397,7 @@ def _trigger_break_point(
     """
     state_inputs_serialised = deepcopy(inputs)
     state_inputs_serialised[component_name] = deepcopy(component_inputs)
-    _save_state(
+    _save_snapshot(
         inputs=state_inputs_serialised,
         component_name=str(component_name),
         component_visits=component_visits,
@@ -421,3 +410,115 @@ def _trigger_break_point(
     raise BreakpointException(
         message=msg, component=component_name, state=state_inputs_serialised, results=pipeline_outputs
     )
+
+
+def _check_chat_generator_breakpoint(
+    *,
+    agent_breakpoint: Optional[AgentBreakpoint],
+    component_visits: Dict[str, int],
+    messages: List[ChatMessage],
+    generator_inputs: Dict[str, Any],
+    kwargs: Dict[str, Any],
+    state: State,
+) -> None:
+    """
+    Check for breakpoint before calling the ChatGenerator.
+
+    :param agent_breakpoint: AgentBreakpoint object containing breakpoints
+    :param component_visits: Dictionary tracking component visit counts
+    :param messages: Current messages to process
+    :param generator_inputs: Inputs for the chat generator
+    :param kwargs: Additional keyword arguments
+    :param state: Current agent state
+    :raises AgentBreakpointException: If a breakpoint is triggered
+    """
+
+    # We also check component_name since ToolBreakpoint is a subclass of Breakpoint
+    if (
+        agent_breakpoint
+        and isinstance(agent_breakpoint.break_point, Breakpoint)
+        and agent_breakpoint.break_point.component_name == "chat_generator"
+    ):
+        break_point = agent_breakpoint.break_point
+        if component_visits[break_point.component_name] == break_point.visit_count:
+            state_inputs = deepcopy({"messages": messages, **generator_inputs})
+            _save_snapshot(
+                inputs=state_inputs,
+                component_name=break_point.component_name,
+                component_visits=component_visits,  # these are the component visits of the agent components
+                debug_path=break_point.debug_path,
+                original_input_data={"messages": messages, **kwargs},
+                ordered_component_names=["chat_generator", "tool_invoker"],
+                agent_name=agent_breakpoint.agent_name or "isolated_agent",
+                main_pipeline_state=state.data.get("main_pipeline_state", {}),
+            )
+            msg = f"Breaking at {break_point.component_name} visit count {component_visits[break_point.component_name]}"
+            logger.info(msg)
+            raise BreakpointException(
+                message=msg, component=break_point.component_name, state=state_inputs, results=state.data
+            )
+
+
+def _check_tool_invoker_breakpoint(
+    *,
+    agent_breakpoint: Optional[AgentBreakpoint],
+    component_visits: Dict[str, int],
+    llm_messages: List[ChatMessage],
+    streaming_callback: Optional[StreamingCallbackT],
+    messages: List[ChatMessage],
+    kwargs: Dict[str, Any],
+    state: State,
+) -> None:
+    """
+    Check for breakpoint before calling the ToolInvoker.
+
+    :param agent_breakpoint: AgentBreakpoint object containing breakpoints
+    :param component_visits: Dictionary tracking component visit counts
+    :param llm_messages: Messages from the LLM
+    :param state: Current agent state
+    :param streaming_callback: Streaming callback function
+    :param messages: Original messages
+    :param kwargs: Additional keyword arguments
+    :raises AgentBreakpointException: If a breakpoint is triggered
+    """
+
+    if agent_breakpoint and isinstance(agent_breakpoint.break_point, ToolBreakpoint):
+        tool_breakpoint = agent_breakpoint.break_point
+        # Check if the visit count matches
+        if component_visits[tool_breakpoint.component_name] == tool_breakpoint.visit_count:
+            # Check if we should break for this specific tool or all tools
+            should_break = False
+            if tool_breakpoint.tool_name is None:
+                # Break for any tool call
+                should_break = any(msg.tool_call for msg in llm_messages)
+            else:
+                # Break only for the specific tool
+                should_break = any(
+                    msg.tool_call and msg.tool_call.tool_name == tool_breakpoint.tool_name for msg in llm_messages
+                )
+
+            if should_break:
+                state_inputs = deepcopy(
+                    {"messages": llm_messages, "state": state, "streaming_callback": streaming_callback}
+                )
+                _save_snapshot(
+                    inputs=state_inputs,
+                    component_name=tool_breakpoint.component_name,
+                    component_visits=component_visits,
+                    debug_path=tool_breakpoint.debug_path,
+                    original_input_data={"messages": messages, **kwargs},
+                    ordered_component_names=["chat_generator", "tool_invoker"],
+                    agent_name=agent_breakpoint.agent_name or "isolated_agent",
+                    main_pipeline_state=state.data.get("main_pipeline_state", {}),
+                )
+                msg = (
+                    f"Breaking at {tool_breakpoint.component_name} visit count "
+                    f"{component_visits[tool_breakpoint.component_name]}"
+                )
+                if tool_breakpoint.tool_name:
+                    msg += f" for tool {tool_breakpoint.tool_name}"
+                logger.info(msg)
+
+                raise BreakpointException(
+                    message=msg, component=tool_breakpoint.component_name, state=state_inputs, results=state.data
+                )

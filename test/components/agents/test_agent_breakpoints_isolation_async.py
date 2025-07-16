@@ -10,7 +10,7 @@ import pytest
 
 from haystack.components.agents import Agent
 from haystack.core.errors import BreakpointException
-from haystack.core.pipeline.breakpoint import load_state
+from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.tools import Tool
@@ -61,7 +61,7 @@ def agent(mock_chat_generator, weather_tool):
 
 @pytest.fixture
 def debug_path(tmp_path):
-    return str(tmp_path / "debug_states")
+    return str(tmp_path / "debug_snapshots")
 
 
 @pytest.fixture
@@ -114,14 +114,14 @@ async def test_resume_from_chat_generator_async(agent, debug_path):
     except BreakpointException:
         pass
 
-    state_files = list(Path(debug_path).glob(AGENT_NAME + "_chat_generator_*.json"))
+    snapshot_files = list(Path(debug_path).glob(AGENT_NAME + "_chat_generator_*.json"))
 
-    assert len(state_files) > 0
-    latest_state_file = str(max(state_files, key=os.path.getctime))
+    assert len(snapshot_files) > 0
+    latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
     result = await agent.run_async(
         messages=[ChatMessage.from_user("Continue from where we left off.")],
-        pipeline_snapshot=load_state(latest_state_file),
+        pipeline_snapshot=load_pipeline_snapshot(latest_snapshot_file),
     )
 
     assert "messages" in result
@@ -144,14 +144,14 @@ async def test_resume_from_tool_invoker_async(mock_agent_with_tool_calls, debug_
     except BreakpointException:
         pass
 
-    state_files = list(Path(debug_path).glob(AGENT_NAME + "_tool_invoker_*.json"))
+    snapshot_files = list(Path(debug_path).glob(AGENT_NAME + "_tool_invoker_*.json"))
 
-    assert len(state_files) > 0
-    latest_state_file = str(max(state_files, key=os.path.getctime))
+    assert len(snapshot_files) > 0
+    latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
     result = await mock_agent_with_tool_calls.run_async(
         messages=[ChatMessage.from_user("Continue from where we left off.")],
-        pipeline_snapshot=load_state(latest_state_file),
+        pipeline_snapshot=load_pipeline_snapshot(latest_snapshot_file),
     )
 
     assert "messages" in result
@@ -166,7 +166,7 @@ async def test_invalid_combination_breakpoint_and_pipeline_snapshot_async(mock_a
     agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test")
     with pytest.raises(ValueError, match="agent_breakpoint and pipeline_snapshot cannot be provided at the same time"):
         await mock_agent_with_tool_calls.run_async(
-            messages=messages, break_point=agent_breakpoint, pipeline_snapshot={"some": "state"}
+            messages=messages, break_point=agent_breakpoint, pipeline_snapshot={"some": "snapshot"}
         )
 
 

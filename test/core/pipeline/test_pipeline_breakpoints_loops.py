@@ -16,7 +16,7 @@ from haystack import component
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.core.errors import BreakpointException
-from haystack.core.pipeline.breakpoint import load_state
+from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import Breakpoint
@@ -224,7 +224,7 @@ class TestPipelineBreakpointsLoops:
             f_name = Path(full_path).name
             if str(f_name).startswith(break_point.component_name):
                 file_found = True
-                result = validation_loop_pipeline.run(data={}, pipeline_snapshot=load_state(full_path))
+                result = validation_loop_pipeline.run(data={}, pipeline_snapshot=load_pipeline_snapshot(full_path))
                 # Verify the result contains valid output
                 if "output_validator" in result and "valid_replies" in result["output_validator"]:
                     valid_reply = result["output_validator"]["valid_replies"][0].text

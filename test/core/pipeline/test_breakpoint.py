@@ -8,9 +8,8 @@ import pytest
 
 from haystack.core.pipeline.breakpoint import (
     _transform_json_structure,
-    _validate_break_point,
     _validate_pipeline_snapshot,
-    load_state,
+    load_pipeline_snapshot,
 )
 
 
@@ -38,17 +37,17 @@ def test_transform_json_structure_handles_nested_structures():
     assert result == {"key1": "value1", "key2": {"nested": "value2", "direct": "value3"}, "key3": ["value4", "value5"]}
 
 
-def test_validate_resume_state_validates_required_keys():
-    state = {
+def test_validate_pipeline_snapshot_validates_required_keys():
+    pipeline_snapshot = {
         "input_data": {},
         "pipeline_breakpoint": {"component": "comp1", "visits": 0},
         # Missing pipeline_state
     }
 
-    with pytest.raises(ValueError, match="Invalid state file: missing required keys"):
-        _validate_pipeline_snapshot(state)
+    with pytest.raises(ValueError, match="Invalid pipeline_snapshot: missing required keys"):
+        _validate_pipeline_snapshot(pipeline_snapshot)
 
-    state = {
+    pipeline_snapshot = {
         "input_data": {},
         "pipeline_breakpoint": {"component": "comp1", "visits": 0},
         "pipeline_state": {
@@ -59,11 +58,11 @@ def test_validate_resume_state_validates_required_keys():
     }
 
     with pytest.raises(ValueError, match="Invalid pipeline_state: missing required keys"):
-        _validate_pipeline_snapshot(state)
+        _validate_pipeline_snapshot(pipeline_snapshot)
 
 
-def test_validate_resume_state_validates_component_consistency():
-    state = {
+def test_validate_pipeline_snapshot_validates_component_consistency():
+    pipeline_snapshot = {
         "input_data": {},
         "pipeline_breakpoint": {"component": "comp1", "visits": 0},
         "pipeline_state": {
@@ -74,11 +73,11 @@ def test_validate_resume_state_validates_component_consistency():
     }
 
     with pytest.raises(ValueError, match="Inconsistent state: components in pipeline_state"):
-        _validate_pipeline_snapshot(state)
+        _validate_pipeline_snapshot(pipeline_snapshot)
 
 
-def test_validate_resume_state_validates_valid_state():
-    state = {
+def test_validate_pipeline_snapshot_validates_valid_snapshot():
+    pipeline_snapshot = {
         "input_data": {},
         "pipeline_breakpoint": {"component": "comp1", "visits": 0},
         "pipeline_state": {
@@ -88,11 +87,11 @@ def test_validate_resume_state_validates_valid_state():
         },
     }
 
-    _validate_pipeline_snapshot(state)  # should not raise any exception
+    _validate_pipeline_snapshot(pipeline_snapshot)  # should not raise any exception
 
 
-def test_load_state_loads_valid_state(tmp_path):
-    state = {
+def test_load_pipeline_snapshot_loads_valid_snapshot(tmp_path):
+    pipeline_snapshot = {
         "input_data": {},
         "pipeline_breakpoint": {"component": "comp1", "visits": 0},
         "pipeline_state": {
@@ -101,16 +100,16 @@ def test_load_state_loads_valid_state(tmp_path):
             "ordered_component_names": ["comp1", "comp2"],
         },
     }
-    state_file = tmp_path / "state.json"
-    with open(state_file, "w") as f:
-        json.dump(state, f)
+    pipeline_snapshot_file = tmp_path / "state.json"
+    with open(pipeline_snapshot_file, "w") as f:
+        json.dump(pipeline_snapshot, f)
 
-    loaded_state = load_state(state_file)
-    assert loaded_state == state
+    loaded_snapshot = load_pipeline_snapshot(pipeline_snapshot_file)
+    assert loaded_snapshot == pipeline_snapshot
 
 
 def test_load_state_handles_invalid_state(tmp_path):
-    state = {
+    pipeline_snapshot = {
         "input_data": {},
         "pipeline_breakpoint": {"component": "comp1", "visits": 0},
         "pipeline_state": {
@@ -120,9 +119,9 @@ def test_load_state_handles_invalid_state(tmp_path):
         },
     }
 
-    state_file = tmp_path / "invalid_state.json"
-    with open(state_file, "w") as f:
-        json.dump(state, f)
+    pipeline_snapshot_file = tmp_path / "invalid_pipeline_snapshot.json"
+    with open(pipeline_snapshot_file, "w") as f:
+        json.dump(pipeline_snapshot, f)
 
-    with pytest.raises(ValueError, match="Invalid pipeline state from"):
-        load_state(state_file)
+    with pytest.raises(ValueError, match="Invalid pipeline snapshot from"):
+        load_pipeline_snapshot(pipeline_snapshot_file)
