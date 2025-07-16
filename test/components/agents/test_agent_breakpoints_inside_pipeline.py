@@ -3,15 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
+
+import pytest
 
 from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.core.errors import BreakpointException, PipelineRuntimeError
+from haystack.core.errors import BreakpointException
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import load_state
 from haystack.dataclasses import ByteStream, ChatMessage, Document, ToolCall
@@ -77,8 +80,6 @@ class MockHTMLToDocument:
 
             # Simple text extraction - remove HTML tags and extract meaningful content
             # This is a simplified version that extracts the main content
-            import re
-
             # Remove HTML tags
             text_content = re.sub(r"<[^>]+>", " ", html_content)
             # Remove extra whitespace
@@ -101,7 +102,9 @@ def add_database_tool(name: str, surname: str, job_title: Optional[str], other: 
     )
 
 
-def create_pipeline():
+@pytest.fixture
+def pipeline_with_agent(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test_key")
     generator = OpenAIChatGenerator()
     call_count = 0
 
@@ -198,8 +201,7 @@ def create_pipeline():
     return extraction_agent
 
 
-def run_pipeline_without_any_breakpoints():
-    pipeline_with_agent = create_pipeline()
+def run_pipeline_without_any_breakpoints(pipeline_with_agent):
     agent_output = pipeline_with_agent.run(data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}})
 
     # pipeline completed
@@ -215,8 +217,7 @@ def run_pipeline_without_any_breakpoints():
     assert "Chief Technology Officer" in final_message
 
 
-def test_chat_generator_breakpoint_in_pipeline_agent():
-    pipeline_with_agent = create_pipeline()
+def test_chat_generator_breakpoint_in_pipeline_agent(pipeline_with_agent):
     agent_generator_breakpoint = Breakpoint("chat_generator", 0)
     agent_breakpoint = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
 
@@ -240,8 +241,7 @@ def test_chat_generator_breakpoint_in_pipeline_agent():
         assert len(chat_generator_state_files) > 0, f"No chat_generator state files found in {debug_path}"
 
 
-def test_tool_breakpoint_in_pipeline_agent():
-    pipeline_with_agent = create_pipeline()
+def test_tool_breakpoint_in_pipeline_agent(pipeline_with_agent):
     agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, "add_database_tool")
     agent_breakpoints = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
 
@@ -264,8 +264,7 @@ def test_tool_breakpoint_in_pipeline_agent():
         assert len(tool_invoker_state_files) > 0, f"No tool_invoker state files found in {debug_path}"
 
 
-def test_agent_breakpoint_chat_generator_and_resume_pipeline():
-    pipeline_with_agent = create_pipeline()
+def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent):
     agent_generator_breakpoint = Breakpoint("chat_generator", 0)
     agent_breakpoints = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
 
@@ -316,8 +315,7 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline():
         assert any("Milos Rusic" in name for name in person_names)
 
 
-def test_agent_breakpoint_tool_and_resume_pipeline():
-    pipeline_with_agent = create_pipeline()
+def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
     agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, "add_database_tool")
     agent_breakpoints = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
 

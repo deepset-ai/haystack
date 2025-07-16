@@ -250,8 +250,9 @@ class Agent:
         if tool_breakpoint.tool_name is not None and tool_breakpoint.tool_name not in available_tool_names:  # type: ignore # was checked outside function
             raise ValueError(f"Tool '{tool_breakpoint.tool_name}' is not available in the agent's tools")  # type: ignore # was checked outside function
 
-    def _check_chat_generator_breakpoint(  # pylint: disable=too-many-positional-arguments
+    def _check_chat_generator_breakpoint(
         self,
+        *,
         agent_breakpoint: Optional[AgentBreakpoint],
         component_visits: Dict[str, int],
         messages: List[ChatMessage],
@@ -296,8 +297,9 @@ class Agent:
                     message=msg, component=break_point.component_name, state=state_inputs, results=state.data
                 )
 
-    def _check_tool_invoker_breakpoint(  # pylint: disable=too-many-positional-arguments
+    def _check_tool_invoker_breakpoint(
         self,
+        *,
         agent_breakpoint: Optional[AgentBreakpoint],
         component_visits: Dict[str, int],
         llm_messages: List[ChatMessage],
@@ -362,7 +364,7 @@ class Agent:
                         message=msg, component=tool_breakpoint.component_name, state=state_inputs, results=state.data
                     )
 
-    def run(  # noqa: PLR0915
+    def run(
         self,
         messages: List[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
@@ -398,10 +400,9 @@ class Agent:
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
 
         if break_point and resume_state:
-            msg = (
+            raise ValueError(
                 "agent_breakpoint and resume_state cannot be provided at the same time. The agent run will be aborted."
             )
-            raise ValueError(msg)
 
         self._agent_name = self.__component_name__ if hasattr(self, "__component_name__") else "isolated_agent"
 
@@ -454,7 +455,13 @@ class Agent:
             while counter < self.max_agent_steps:
                 # check for breakpoint before ChatGenerator
                 self._check_chat_generator_breakpoint(
-                    break_point, component_visits, messages, generator_inputs, debug_path, kwargs, state
+                    agent_breakpoint=break_point,
+                    component_visits=component_visits,
+                    messages=messages,
+                    generator_inputs=generator_inputs,
+                    debug_path=debug_path,
+                    kwargs=kwargs,
+                    state=state,
                 )
 
                 # 1. Call the ChatGenerator
@@ -475,7 +482,14 @@ class Agent:
 
                 # check for breakpoint before ToolInvoker
                 self._check_tool_invoker_breakpoint(
-                    break_point, component_visits, llm_messages, streaming_callback, debug_path, messages, kwargs, state
+                    agent_breakpoint=break_point,
+                    component_visits=component_visits,
+                    llm_messages=llm_messages,
+                    streaming_callback=streaming_callback,
+                    debug_path=debug_path,
+                    messages=messages,
+                    kwargs=kwargs,
+                    state=state,
                 )
 
                 # 3. Call the ToolInvoker
@@ -615,7 +629,13 @@ class Agent:
             while counter < self.max_agent_steps:
                 # Check for breakpoint before ChatGenerator
                 self._check_chat_generator_breakpoint(
-                    break_point, component_visits, messages, generator_inputs, debug_path, kwargs, state
+                    agent_breakpoint=break_point,
+                    component_visits=component_visits,
+                    messages=messages,
+                    generator_inputs=generator_inputs,
+                    debug_path=debug_path,
+                    kwargs=kwargs,
+                    state=state,
                 )
 
                 # 1. Call the ChatGenerator
@@ -636,7 +656,14 @@ class Agent:
 
                 # Check for breakpoint before ToolInvoker
                 self._check_tool_invoker_breakpoint(
-                    break_point, component_visits, llm_messages, streaming_callback, debug_path, messages, kwargs, state
+                    agent_breakpoint=break_point,
+                    component_visits=component_visits,
+                    llm_messages=llm_messages,
+                    streaming_callback=streaming_callback,
+                    debug_path=debug_path,
+                    messages=messages,
+                    kwargs=kwargs,
+                    state=state,
                 )
 
                 # 3. Call the ToolInvoker
