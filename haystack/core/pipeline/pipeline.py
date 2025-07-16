@@ -363,19 +363,16 @@ class Pipeline(PipelineBase):
                         component_inputs[key] = _deserialize_value_with_schema(value)
 
                 # Scenario 2: an AgentBreakpoint is provided to stop the pipeline at a specific component
-                if isinstance(break_point, AgentBreakpoint):
-                    component_instance = component["instance"]
-                    # Use type checking by class name to avoid circular import
-                    if component_instance.__class__.__name__ == "Agent":
-                        component_inputs = _handle_agent_break_point(
-                            break_point=break_point,
-                            component_name=component_name,
-                            component_inputs=component_inputs,
-                            inputs=inputs,
-                            component_visits=component_visits,
-                            ordered_component_names=ordered_component_names,
-                            data=data,
-                        )
+                if isinstance(break_point, AgentBreakpoint) and component_name == break_point.agent_name:
+                    component_inputs = _handle_agent_break_point(
+                        break_point=break_point,
+                        component_name=component_name,
+                        component_inputs=component_inputs,
+                        inputs=inputs,
+                        component_visits=component_visits,
+                        ordered_component_names=ordered_component_names,
+                        data=data,
+                    )
 
                 # Scenario 3: a regular breakpoint is provided to stop the pipeline at a specific component and
                 # visit count
