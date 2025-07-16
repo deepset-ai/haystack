@@ -362,38 +362,38 @@ class Pipeline(PipelineBase):
                     for key, value in component_inputs.items():
                         component_inputs[key] = _deserialize_value_with_schema(value)
 
-                # Scenario 2: a breakpoint is provided to stop the pipeline at a specific component and visit count
-                breakpoint_triggered = False
-                if break_point is not None:
-                    if isinstance(break_point, AgentBreakpoint):
-                        component_instance = component["instance"]
-                        # Use type checking by class name to avoid circular import
-                        if component_instance.__class__.__name__ == "Agent":
-                            component_inputs = _handle_agent_break_point(
-                                break_point=break_point,
-                                component_name=component_name,
-                                component_inputs=component_inputs,
-                                inputs=inputs,
-                                component_visits=component_visits,
-                                ordered_component_names=ordered_component_names,
-                                data=data,
-                            )
-
-                    if isinstance(break_point, Breakpoint):
-                        breakpoint_triggered = _check_regular_break_point(
-                            break_point=break_point, component_name=component_name, component_visits=component_visits
+                # Scenario 2: an AgentBreakpoint is provided to stop the pipeline at a specific component
+                if isinstance(break_point, AgentBreakpoint):
+                    component_instance = component["instance"]
+                    # Use type checking by class name to avoid circular import
+                    if component_instance.__class__.__name__ == "Agent":
+                        component_inputs = _handle_agent_break_point(
+                            break_point=break_point,
+                            component_name=component_name,
+                            component_inputs=component_inputs,
+                            inputs=inputs,
+                            component_visits=component_visits,
+                            ordered_component_names=ordered_component_names,
+                            data=data,
                         )
-                        if breakpoint_triggered:
-                            _trigger_break_point(
-                                component_name=component_name,
-                                component_inputs=component_inputs,
-                                inputs=inputs,
-                                component_visits=component_visits,
-                                debug_path=break_point.debug_path,
-                                data=data,
-                                ordered_component_names=ordered_component_names,
-                                pipeline_outputs=pipeline_outputs,
-                            )
+
+                # Scenario 3: a regular breakpoint is provided to stop the pipeline at a specific component and
+                # visit count
+                if isinstance(break_point, Breakpoint):
+                    breakpoint_triggered = _check_regular_break_point(
+                        break_point=break_point, component_name=component_name, component_visits=component_visits
+                    )
+                    if breakpoint_triggered:
+                        _trigger_break_point(
+                            component_name=component_name,
+                            component_inputs=component_inputs,
+                            inputs=inputs,
+                            component_visits=component_visits,
+                            debug_path=break_point.debug_path,
+                            data=data,
+                            ordered_component_names=ordered_component_names,
+                            pipeline_outputs=pipeline_outputs,
+                        )
 
                 if resume_agent_in_pipeline:
                     # inject the resume_state into the component (the Agent) inputs
