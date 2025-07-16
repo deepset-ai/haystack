@@ -43,17 +43,17 @@ pip install git+https://github.com/deepset-ai/haystack.git@main
 ```
 
 Haystack supports multiple installation methods including Docker images. For a comprehensive guide please refer
-to the [Documentation](https://docs.haystack.deepset.ai/docs/installation).
+to the [documentation](https://docs.haystack.deepset.ai/docs/installation).
 
 ## Documentation
 
 If you're new to the project, check out ["What is Haystack?"](https://haystack.deepset.ai/overview/intro) then go
 through the ["Get Started Guide"](https://haystack.deepset.ai/overview/quick-start) and build your first LLM application
-in a matter of minutes. Keep learning with the [Tutorials](https://haystack.deepset.ai/tutorials). For more advanced
+in a matter of minutes. Keep learning with the [tutorials](https://haystack.deepset.ai/tutorials). For more advanced
 use cases, or just to get some inspiration, you can browse our Haystack recipes in the
 [Cookbook](https://haystack.deepset.ai/cookbook).
 
-At any given point, hit the [Documentation](https://docs.haystack.deepset.ai/docs/intro) to learn more about Haystack, what can it do for you and the technology behind.
+At any given point, hit the [documentation](https://docs.haystack.deepset.ai/docs/intro) to learn more about Haystack, what can it do for you and the technology behind.
 
 ## Features
 
@@ -83,7 +83,7 @@ Some examples of what you can do with Haystack:
 
 ## 🆕 deepset Studio: Your Development Environment for Haystack
 
-Use **deepset Studio** to visually create, deploy, and test your Haystack pipelines. Learn more about it in our [Announcement Post](https://haystack.deepset.ai/blog/announcing-studio).
+Use **deepset Studio** to visually create, deploy, and test your Haystack pipelines. Learn more about it in our [announcement post](https://haystack.deepset.ai/blog/announcing-studio).
 
 ![studio](https://github.com/user-attachments/assets/e4f09746-20b5-433e-8261-eca224ac23b3)
 
@@ -98,7 +98,7 @@ Read more about telemetry in Haystack or how you can opt out in [Haystack Docs](
 
 ## 🖖 Community
 
-If you have a feature request or a bug report, feel free to open an [Issue in Github](https://github.com/deepset-ai/haystack/issues). We regularly check these and you can expect a quick response. If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project, you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://discord.com/invite/VBpFzsgRVF). We also check [𝕏 (Twitter)](https://twitter.com/haystack_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
+If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues). We regularly check these and you can expect a quick response. If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project, you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://discord.com/invite/VBpFzsgRVF). We also check [𝕏 (Twitter)](https://twitter.com/haystack_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
 
 ## Contributing to Haystack
 
