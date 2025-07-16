@@ -142,9 +142,9 @@ class Pipeline(PipelineBase):
         self,
         data: Dict[str, Any],
         include_outputs_from: Optional[Set[str]] = None,
+        *,
         break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
         resume_state: Optional[Dict[str, Any]] = None,
-        debug_path: Optional[Union[str, Path]] = None,
     ) -> Dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -226,9 +226,6 @@ class Pipeline(PipelineBase):
 
         :param resume_state:
             A dictionary containing the state of a previously saved pipeline execution.
-
-        :param debug_path:
-            Path to the directory where the pipeline state should be saved.
 
         :returns:
             A dictionary where each entry corresponds to a component name
@@ -370,36 +367,38 @@ class Pipeline(PipelineBase):
                 breakpoint_triggered = False
                 if break_point is not None:
                     agent_breakpoint = False
-
                     if isinstance(break_point, AgentBreakpoint):
                         component_instance = component["instance"]
                         # Use type checking by class name to avoid circular import
                         if component_instance.__class__.__name__ == "Agent":
                             component_inputs = _handle_agent_break_point(
-                                break_point,
-                                component_name,
-                                component_inputs,
-                                inputs,
-                                component_visits,
-                                ordered_component_names,
-                                data,
-                                debug_path,
+                                break_point=break_point,
+                                component_name=component_name,
+                                component_inputs=component_inputs,
+                                inputs=inputs,
+                                component_visits=component_visits,
+                                ordered_component_names=ordered_component_names,
+                                data=data,
                             )
+                            debug_path = break_point.break_point.debug_path
                             agent_breakpoint = True
 
                     if not agent_breakpoint and isinstance(break_point, Breakpoint):
-                        breakpoint_triggered = _check_regular_break_point(break_point, component_name, component_visits)
+                        breakpoint_triggered = _check_regular_break_point(
+                            break_point=break_point, component_name=component_name, component_visits=component_visits
+                        )
+                        debug_path = break_point.debug_path
 
                     if breakpoint_triggered:
                         _trigger_break_point(
-                            component_name,
-                            component_inputs,
-                            inputs,
-                            component_visits,
-                            debug_path,
-                            data,
-                            ordered_component_names,
-                            pipeline_outputs,
+                            component_name=component_name,
+                            component_inputs=component_inputs,
+                            inputs=inputs,
+                            component_visits=component_visits,
+                            debug_path=debug_path,
+                            data=data,
+                            ordered_component_names=ordered_component_names,
+                            pipeline_outputs=pipeline_outputs,
                         )
 
                 if resume_agent_in_pipeline:

@@ -198,9 +198,9 @@ class TestPipelineBreakpointsLoops:
 
         return {"schema": json_schema, "passage": passage}
 
-    components = [Breakpoint("prompt_builder", 0), Breakpoint("llm", 0), Breakpoint("output_validator", 0)]
+    BREAKPOINT_COMPONENTS = ["prompt_builder", "llm", "output_validator"]
 
-    @pytest.mark.parametrize("component", components)
+    @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
     def test_pipeline_breakpoints_validation_loop(
         self, validation_loop_pipeline, output_directory, test_data, component
@@ -210,8 +210,11 @@ class TestPipelineBreakpointsLoops:
         """
         data = {"prompt_builder": {"passage": test_data["passage"], "schema": test_data["schema"]}}
 
+        # Create a Breakpoint on-the-fly using the shared output directory
+        break_point = Breakpoint(component_name=component, visit_count=0, debug_path=str(output_directory))
+
         try:
-            _ = validation_loop_pipeline.run(data, break_point=component, debug_path=str(output_directory))
+            _ = validation_loop_pipeline.run(data, break_point=break_point)
         except BreakpointException:
             pass
 
@@ -219,7 +222,7 @@ class TestPipelineBreakpointsLoops:
         file_found = False
         for full_path in all_files:
             f_name = Path(full_path).name
-            if str(f_name).startswith(component.component_name):
+            if str(f_name).startswith(break_point.component_name):
                 file_found = True
                 resume_state = load_state(full_path)
                 result = validation_loop_pipeline.run(data={}, resume_state=resume_state)

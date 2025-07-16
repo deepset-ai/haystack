@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from pathlib import Path
 from typing import List
 from unittest.mock import MagicMock, patch
 
@@ -109,18 +110,12 @@ class TestPipelineBreakpoints:
         return pipe
 
     @pytest.fixture(scope="session")
-    def output_directory(self, tmp_path_factory):
+    def output_directory(self, tmp_path_factory) -> Path:
         return tmp_path_factory.mktemp("output_files")
 
-    components = [
-        Breakpoint("prompt_builder", 0),
-        Breakpoint("llm", 0),
-        Breakpoint("feedback_prompt_builder", 0),
-        Breakpoint("feedback_llm", 0),
-        Breakpoint("list_joiner", 0),
-    ]
+    BREAKPOINT_COMPONENTS = ["prompt_builder", "llm", "feedback_prompt_builder", "feedback_llm", "list_joiner"]
 
-    @pytest.mark.parametrize("component", components)
+    @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
     def test_list_joiner_pipeline(self, list_joiner_pipeline, output_directory, component):
         query = "What is nuclear physics?"
@@ -129,10 +124,18 @@ class TestPipelineBreakpoints:
             "feedback_prompt_builder": {"template_variables": {"query": query}},
         }
 
+        # Create a Breakpoint on-the-fly using the shared output directory
+        break_point = Breakpoint(component_name=component, visit_count=0, debug_path=str(output_directory))
+
         try:
-            _ = list_joiner_pipeline.run(data, break_point=component, debug_path=str(output_directory))
+            _ = list_joiner_pipeline.run(data, break_point=break_point)
         except BreakpointException:
             pass
 
-        result = load_and_resume_pipeline_state(list_joiner_pipeline, output_directory, component.component_name, data)
+        result = load_and_resume_pipeline_state(
+            pipeline=list_joiner_pipeline,
+            output_directory=output_directory,
+            component=break_point.component_name,
+            data=data,
+        )
         assert result["list_joiner"]

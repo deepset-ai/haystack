@@ -323,6 +323,7 @@ def _transform_json_structure(data: Union[Dict[str, Any], List[Any], Any]) -> An
 
 
 def _handle_agent_break_point(
+    *,
     break_point: AgentBreakpoint,
     component_name: str,
     component_inputs: Dict[str, Any],
@@ -330,7 +331,6 @@ def _handle_agent_break_point(
     component_visits: Dict[str, int],
     ordered_component_names: list,
     data: Dict[str, Any],
-    debug_path: Optional[Union[str, Path]],
 ) -> Dict[str, Any]:
     """
     Handle agent-specific breakpoint logic.
@@ -342,11 +342,9 @@ def _handle_agent_break_point(
     :param component_visits: Component visit counts
     :param ordered_component_names: Ordered list of component names
     :param data: Original pipeline data
-    :param debug_path: Path for debug files
     :return: Updated component inputs
     """
     component_inputs["break_point"] = break_point
-    component_inputs["debug_path"] = debug_path
 
     # Store pipeline state for agent resume
     state_inputs_serialised = deepcopy(inputs)
@@ -374,6 +372,7 @@ def _check_regular_break_point(break_point: Breakpoint, component_name: str, com
 
 
 def _trigger_break_point(
+    *,
     component_name: str,
     component_inputs: Dict[str, Any],
     inputs: Dict[str, Any],

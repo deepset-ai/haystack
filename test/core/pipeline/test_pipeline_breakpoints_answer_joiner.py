@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -86,18 +87,12 @@ class TestPipelineBreakpoints:
         return pipeline
 
     @pytest.fixture(scope="session")
-    def output_directory(self, tmp_path_factory):
+    def output_directory(self, tmp_path_factory) -> Path:
         return tmp_path_factory.mktemp("output_files")
 
-    components = [
-        Breakpoint("gpt-4o", 0),
-        Breakpoint("gpt-3", 0),
-        Breakpoint("answer_builder_a", 0),
-        Breakpoint("answer_builder_b", 0),
-        Breakpoint("answer_joiner", 0),
-    ]
+    BREAKPOINT_COMPONENTS = ["gpt-4o", "gpt-3", "answer_builder_a", "answer_builder_b", "answer_joiner"]
 
-    @pytest.mark.parametrize("component", components)
+    @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
     def test_pipeline_breakpoints_answer_joiner(self, answer_join_pipeline, output_directory, component):
         """
@@ -115,10 +110,18 @@ class TestPipelineBreakpoints:
             "answer_builder_b": {"query": query},
         }
 
+        # Create a Breakpoint on-the-fly using the shared output directory
+        break_point = Breakpoint(component_name=component, visit_count=0, debug_path=str(output_directory))
+
         try:
-            _ = answer_join_pipeline.run(data, break_point=component, debug_path=str(output_directory))
+            _ = answer_join_pipeline.run(data, break_point=break_point)
         except BreakpointException:
             pass
 
-        result = load_and_resume_pipeline_state(answer_join_pipeline, output_directory, component.component_name, data)
+        result = load_and_resume_pipeline_state(
+            pipeline=answer_join_pipeline,
+            output_directory=output_directory,
+            component=break_point.component_name,
+            data=data,
+        )
         assert result["answer_joiner"]

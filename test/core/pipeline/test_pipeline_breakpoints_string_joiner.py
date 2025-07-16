@@ -39,27 +39,27 @@ class TestPipelineBreakpoints:
     def output_directory(self, tmp_path_factory):
         return tmp_path_factory.mktemp("output_files")
 
-    components = [
-        Breakpoint("prompt_builder_1", 0),
-        Breakpoint("prompt_builder_2", 0),
-        Breakpoint("adapter_1", 0),
-        Breakpoint("adapter_2", 0),
-        Breakpoint("string_joiner", 0),
-    ]
+    BREAKPOINT_COMPONENTS = ["prompt_builder_1", "prompt_builder_2", "adapter_1", "adapter_2", "string_joiner"]
 
-    @pytest.mark.parametrize("component", components)
+    @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
     def test_string_joiner_pipeline(self, string_joiner_pipeline, output_directory, component):
         string_1 = "What's Natural Language Processing?"
         string_2 = "What is life?"
         data = {"prompt_builder_1": {"query": string_1}, "prompt_builder_2": {"query": string_2}}
 
+        # Create a Breakpoint on-the-fly using the shared output directory
+        break_point = Breakpoint(component_name=component, visit_count=0, debug_path=str(output_directory))
+
         try:
-            _ = string_joiner_pipeline.run(data, break_point=component, debug_path=str(output_directory))
+            _ = string_joiner_pipeline.run(data, break_point=break_point)
         except BreakpointException:
             pass
 
         result = load_and_resume_pipeline_state(
-            string_joiner_pipeline, output_directory, component.component_name, data
+            pipeline=string_joiner_pipeline,
+            output_directory=output_directory,
+            component=break_point.component_name,
+            data=data,
         )
         assert result["string_joiner"]

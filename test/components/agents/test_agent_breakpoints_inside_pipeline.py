@@ -223,9 +223,7 @@ def test_chat_generator_breakpoint_in_pipeline_agent(pipeline_with_agent):
         agent_breakpoint = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
-                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
-                break_point=agent_breakpoint,
-                debug_path=debug_path,
+                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoint
             )
             assert False, "Expected exception was not raised"
 
@@ -246,9 +244,7 @@ def test_tool_breakpoint_in_pipeline_agent(pipeline_with_agent):
         agent_breakpoints = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
-                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
-                break_point=agent_breakpoints,
-                debug_path=debug_path,
+                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoints
             )
             assert False, "Expected exception was not raised"
         except BreakpointException as e:  # this is the exception from the Agent
@@ -268,9 +264,7 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent
         agent_breakpoints = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
-                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
-                break_point=agent_breakpoints,
-                debug_path=debug_path,
+                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoints
             )
             assert False, "Expected PipelineBreakpointException was not raised"
 
@@ -318,9 +312,7 @@ def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
         agent_breakpoints = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
-                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
-                break_point=agent_breakpoints,
-                debug_path=debug_path,
+                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoints
             )
             assert False, "Expected PipelineBreakpointException was not raised"
 
