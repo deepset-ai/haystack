@@ -322,7 +322,7 @@ def _transform_json_structure(data: Union[Dict[str, Any], List[Any], Any]) -> An
     return data
 
 
-def handle_agent_break_point(
+def _handle_agent_break_point(
     break_point: AgentBreakpoint,
     component_name: str,
     component_inputs: Dict[str, Any],
@@ -361,7 +361,7 @@ def handle_agent_break_point(
     return component_inputs
 
 
-def check_regular_break_point(break_point: Breakpoint, component_name: str, component_visits: Dict[str, int]) -> bool:
+def _check_regular_break_point(break_point: Breakpoint, component_name: str, component_visits: Dict[str, int]) -> bool:
     """
     Check if a regular breakpoint should be triggered.
 
@@ -373,7 +373,7 @@ def check_regular_break_point(break_point: Breakpoint, component_name: str, comp
     return break_point.component_name == component_name and break_point.visit_count == component_visits[component_name]
 
 
-def trigger_break_point(
+def _trigger_break_point(
     component_name: str,
     component_inputs: Dict[str, Any],
     inputs: Dict[str, Any],

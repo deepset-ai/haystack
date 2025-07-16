@@ -218,10 +218,9 @@ def run_pipeline_without_any_breakpoints(pipeline_with_agent):
 
 
 def test_chat_generator_breakpoint_in_pipeline_agent(pipeline_with_agent):
-    agent_generator_breakpoint = Breakpoint("chat_generator", 0)
-    agent_breakpoint = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
-
     with tempfile.TemporaryDirectory() as debug_path:
+        agent_generator_breakpoint = Breakpoint("chat_generator", 0, debug_path=debug_path)
+        agent_breakpoint = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
                 data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
@@ -242,10 +241,9 @@ def test_chat_generator_breakpoint_in_pipeline_agent(pipeline_with_agent):
 
 
 def test_tool_breakpoint_in_pipeline_agent(pipeline_with_agent):
-    agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, "add_database_tool")
-    agent_breakpoints = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
-
     with tempfile.TemporaryDirectory() as debug_path:
+        agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, tool_name="add_database_tool", debug_path=debug_path)
+        agent_breakpoints = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
                 data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
@@ -265,10 +263,9 @@ def test_tool_breakpoint_in_pipeline_agent(pipeline_with_agent):
 
 
 def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent):
-    agent_generator_breakpoint = Breakpoint("chat_generator", 0)
-    agent_breakpoints = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
-
     with tempfile.TemporaryDirectory() as debug_path:
+        agent_generator_breakpoint = Breakpoint("chat_generator", 0, debug_path=debug_path)
+        agent_breakpoints = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
                 data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
@@ -316,10 +313,9 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent
 
 
 def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
-    agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, "add_database_tool")
-    agent_breakpoints = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
-
     with tempfile.TemporaryDirectory() as debug_path:
+        agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, tool_name="add_database_tool", debug_path=debug_path)
+        agent_breakpoints = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
                 data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},

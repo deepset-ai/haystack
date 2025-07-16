@@ -10,19 +10,28 @@ from typing import Optional, Union
 class Breakpoint:
     """
     A dataclass to hold a breakpoint for a component.
+
+    :param component_name: The name of the component where the breakpoint is set.
+    :param visit_count: The number of times the component must be visited before the breakpoint is triggered.
+    :param debug_path: Optional path to store the state of the pipeline when the breakpoint is hit.
+        This is useful for debugging purposes, allowing you to inspect the state of the pipeline at the time of the
+        breakpoint and to resume execution from that point.
     """
 
     component_name: str
     visit_count: int = 0
+    debug_path: Optional[str] = None
 
 
 @dataclass(frozen=True)
 class ToolBreakpoint(Breakpoint):
     """
-    A dataclass to hold a breakpoint that can be used to debug a Tool.
+    A dataclass representing a breakpoint specific to tools used within an Agent component.
 
-    If tool_name is None, it means that the breakpoint is for every tool in the component.
-    Otherwise, it means that the breakpoint is for the tool with the given name.
+    Inherits from Breakpoint and adds the ability to target individual tools. If `tool_name` is None,
+    the breakpoint applies to all tools within the Agent component.
+
+    :param tool_name: The name of the tool to target within the Agent component. If None, applies to all tools.
     """
 
     tool_name: Optional[str] = None
@@ -35,7 +44,17 @@ class ToolBreakpoint(Breakpoint):
 @dataclass
 class AgentBreakpoint:
     """
-    A dataclass to hold a breakpoint that can be used to debug an Agent.
+    A dataclass representing a breakpoint tied to an Agent’s execution.
+
+    This allows for debugging either a specific component (e.g., the chat generator) or a tool used by the agent.
+    It enforces constraints on which component names are valid for each breakpoint type.
+
+    :param agent_name: The name of the agent component in a pipeline where the breakpoint is set.
+    :param break_point: An instance of Breakpoint or ToolBreakpoint indicating where to break execution.
+
+    :raises ValueError: If the component_name is invalid for the given breakpoint type:
+        - Breakpoint must have component_name='chat_generator'.
+        - ToolBreakpoint must have component_name='tool_invoker'.
     """
 
     agent_name: str

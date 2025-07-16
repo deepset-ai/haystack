@@ -19,11 +19,11 @@ from haystack.core.pipeline.base import (
     PipelineBase,
 )
 from haystack.core.pipeline.breakpoint import (
+    _check_regular_break_point,
+    _handle_agent_break_point,
+    _trigger_break_point,
     _validate_break_point,
     _validate_components_against_pipeline,
-    check_regular_break_point,
-    handle_agent_break_point,
-    trigger_break_point,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint
@@ -375,7 +375,7 @@ class Pipeline(PipelineBase):
                         component_instance = component["instance"]
                         # Use type checking by class name to avoid circular import
                         if component_instance.__class__.__name__ == "Agent":
-                            component_inputs = handle_agent_break_point(
+                            component_inputs = _handle_agent_break_point(
                                 break_point,
                                 component_name,
                                 component_inputs,
@@ -388,10 +388,10 @@ class Pipeline(PipelineBase):
                             agent_breakpoint = True
 
                     if not agent_breakpoint and isinstance(break_point, Breakpoint):
-                        breakpoint_triggered = check_regular_break_point(break_point, component_name, component_visits)
+                        breakpoint_triggered = _check_regular_break_point(break_point, component_name, component_visits)
 
                     if breakpoint_triggered:
-                        trigger_break_point(
+                        _trigger_break_point(
                             component_name,
                             component_inputs,
                             inputs,

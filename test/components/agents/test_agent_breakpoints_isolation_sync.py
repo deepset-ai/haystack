@@ -10,7 +10,7 @@ import pytest
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline.breakpoint import load_state
 from haystack.dataclasses import ChatMessage
-from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint
+from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from test.components.agents.test_agent_breakpoints_utils import (
     agent_sync,
     create_chat_generator_breakpoint,
@@ -45,12 +45,12 @@ def test_run_with_tool_invoker_breakpoint(mock_agent_with_tool_calls_sync):  # n
 
 def test_resume_from_chat_generator(agent_sync, tmp_path):  # noqa: F811
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
-    chat_generator_bp = create_chat_generator_breakpoint(visit_count=0)
-    agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name=agent_name)
     debug_path = str(tmp_path / "debug_states")
+    chat_generator_bp = Breakpoint(component_name="chat_generator", visit_count=0, debug_path=debug_path)
+    agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name=agent_name)
 
     try:
-        agent_sync.run(messages=messages, break_point=agent_breakpoint, debug_path=debug_path, agent_name=agent_name)
+        agent_sync.run(messages=messages, break_point=agent_breakpoint, agent_name=agent_name)
     except BreakpointException:
         pass
 
@@ -70,14 +70,12 @@ def test_resume_from_chat_generator(agent_sync, tmp_path):  # noqa: F811
 
 def test_resume_from_tool_invoker(mock_agent_with_tool_calls_sync, tmp_path):  # noqa: F811
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
-    tool_bp = create_tool_breakpoint(tool_name="weather_tool", visit_count=0)
-    agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name=agent_name)
     debug_path = str(tmp_path / "debug_states")
+    tool_bp = ToolBreakpoint(component_name="tool_invoker", visit_count=0, tool_name=None, debug_path=debug_path)
+    agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name=agent_name)
 
     try:
-        mock_agent_with_tool_calls_sync.run(
-            messages=messages, break_point=agent_breakpoint, debug_path=debug_path, agent_name=agent_name
-        )
+        mock_agent_with_tool_calls_sync.run(messages=messages, break_point=agent_breakpoint, agent_name=agent_name)
     except BreakpointException:
         pass
 

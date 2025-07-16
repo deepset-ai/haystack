@@ -257,7 +257,6 @@ class Agent:
         component_visits: Dict[str, int],
         messages: List[ChatMessage],
         generator_inputs: Dict[str, Any],
-        debug_path: Optional[Union[str, Path]],
         kwargs: Dict[str, Any],
         state: State,
     ) -> None:
@@ -268,13 +267,17 @@ class Agent:
         :param component_visits: Dictionary tracking component visit counts
         :param messages: Current messages to process
         :param generator_inputs: Inputs for the chat generator
-        :param debug_path: Path for saving debug state
         :param kwargs: Additional keyword arguments
         :param state: Current agent state
         :raises AgentBreakpointException: If a breakpoint is triggered
         """
 
-        if agent_breakpoint and isinstance(agent_breakpoint.break_point, Breakpoint):
+        # We also check component_name since ToolBreakpoint is a subclass of Breakpoint
+        if (
+            agent_breakpoint
+            and isinstance(agent_breakpoint.break_point, Breakpoint)
+            and agent_breakpoint.break_point.component_name == "chat_generator"
+        ):
             break_point = agent_breakpoint.break_point
             if component_visits[break_point.component_name] == break_point.visit_count:
                 state_inputs = deepcopy({"messages": messages, **generator_inputs})
@@ -282,7 +285,7 @@ class Agent:
                     inputs=state_inputs,
                     component_name=break_point.component_name,
                     component_visits=component_visits,  # these are the component visits of the agent components
-                    debug_path=debug_path,
+                    debug_path=break_point.debug_path,
                     original_input_data={"messages": messages, **kwargs},
                     ordered_component_names=["chat_generator", "tool_invoker"],
                     agent_name=self._agent_name,
@@ -304,7 +307,6 @@ class Agent:
         component_visits: Dict[str, int],
         llm_messages: List[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT],
-        debug_path: Optional[Union[str, Path]],
         messages: List[ChatMessage],
         kwargs: Dict[str, Any],
         state: State,
@@ -317,7 +319,6 @@ class Agent:
         :param llm_messages: Messages from the LLM
         :param state: Current agent state
         :param streaming_callback: Streaming callback function
-        :param debug_path: Path for saving debug state
         :param messages: Original messages
         :param kwargs: Additional keyword arguments
         :raises AgentBreakpointException: If a breakpoint is triggered
@@ -346,7 +347,7 @@ class Agent:
                         inputs=state_inputs,
                         component_name=tool_breakpoint.component_name,
                         component_visits=component_visits,
-                        debug_path=debug_path,
+                        debug_path=tool_breakpoint.debug_path,
                         original_input_data={"messages": messages, **kwargs},
                         ordered_component_names=["chat_generator", "tool_invoker"],
                         agent_name=self._agent_name,
@@ -371,7 +372,6 @@ class Agent:
         *,
         break_point: Optional[AgentBreakpoint] = None,
         resume_state: Optional[Dict[str, Any]] = None,
-        debug_path: Optional[Union[str, Path]] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
@@ -459,7 +459,6 @@ class Agent:
                     component_visits=component_visits,
                     messages=messages,
                     generator_inputs=generator_inputs,
-                    debug_path=debug_path,
                     kwargs=kwargs,
                     state=state,
                 )
@@ -486,7 +485,6 @@ class Agent:
                     component_visits=component_visits,
                     llm_messages=llm_messages,
                     streaming_callback=streaming_callback,
-                    debug_path=debug_path,
                     messages=messages,
                     kwargs=kwargs,
                     state=state,
@@ -535,7 +533,6 @@ class Agent:
         *,
         break_point: Optional[AgentBreakpoint] = None,
         resume_state: Optional[Dict[str, Any]] = None,
-        debug_path: Optional[Union[str, Path]] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
@@ -633,7 +630,6 @@ class Agent:
                     component_visits=component_visits,
                     messages=messages,
                     generator_inputs=generator_inputs,
-                    debug_path=debug_path,
                     kwargs=kwargs,
                     state=state,
                 )
@@ -660,7 +656,6 @@ class Agent:
                     component_visits=component_visits,
                     llm_messages=llm_messages,
                     streaming_callback=streaming_callback,
-                    debug_path=debug_path,
                     messages=messages,
                     kwargs=kwargs,
                     state=state,
