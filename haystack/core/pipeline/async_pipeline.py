@@ -4,11 +4,11 @@
 
 import asyncio
 import contextvars
-from typing import Any, AsyncIterator, Dict, List, Optional, Set
+from typing import Any, AsyncIterator, Dict, List, Mapping, Optional, Set
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineMaxComponentRuns, PipelineRuntimeError
+from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -31,14 +31,13 @@ class AsyncPipeline(PipelineBase):
     """
 
     @staticmethod
-    async def _run_component_async(  # pylint: disable=too-many-positional-arguments
+    async def _run_component_async(
         component_name: str,
         component: Dict[str, Any],
         component_inputs: Dict[str, Any],
         component_visits: Dict[str, int],
-        max_runs_per_component: int = 100,
         parent_span: Optional[tracing.Span] = None,
-    ) -> Dict[str, Any]:
+    ) -> Mapping[str, Any]:
         """
         Executes a single component asynchronously.
 
@@ -52,13 +51,13 @@ class AsyncPipeline(PipelineBase):
         :param component_inputs: Inputs for the component.
         :returns: Outputs from the component that can be yielded from run_async_generator.
         """
-        if component_visits[component_name] > max_runs_per_component:
-            raise PipelineMaxComponentRuns(f"Max runs for '{component_name}' reached.")
-
         instance: Component = component["instance"]
+
         with PipelineBase._create_component_span(
             component_name=component_name, instance=instance, inputs=component_inputs, parent_span=parent_span
         ) as span:
+            # We deepcopy the inputs otherwise we might lose that information
+            # when we delete them in case they're sent to other Components
             span.set_content_tag(_COMPONENT_INPUT, _deepcopy_with_exceptions(component_inputs))
             logger.info("Running component {component_name}", component_name=component_name)
 
@@ -76,7 +75,7 @@ class AsyncPipeline(PipelineBase):
 
             component_visits[component_name] += 1
 
-            if not isinstance(outputs, dict):
+            if not isinstance(outputs, Mapping):
                 raise PipelineRuntimeError.from_invalid_output(component_name, instance.__class__, outputs)
 
             span.set_tag(_COMPONENT_VISITS, component_visits[component_name])
@@ -84,7 +83,7 @@ class AsyncPipeline(PipelineBase):
 
             return outputs
 
-    async def run_async_generator(  # noqa: PLR0915,C901
+    async def run_async_generator(  # noqa: PLR0915,C901  # pylint: disable=too-many-statements
         self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None, concurrency_limit: int = 4
     ) -> AsyncIterator[Dict[str, Any]]:
         """
@@ -229,7 +228,8 @@ class AsyncPipeline(PipelineBase):
                 Runs a component with HIGHEST priority in isolation.
 
                 We need to run components with HIGHEST priority (i.e. components with GreedyVariadic input socket)
-                because otherwise, downstream components could produce additional inputs for the GreedyVariadic socket.
+                by themselves, without any other components running concurrently. Otherwise, downstream components
+                could produce additional inputs for the GreedyVariadic socket.
 
                 :param component_name: The name of the component.
                 :return: An async iterator of partial outputs.
@@ -261,7 +261,6 @@ class AsyncPipeline(PipelineBase):
                     component=comp_dict,
                     component_inputs=component_inputs,
                     component_visits=component_visits,
-                    max_runs_per_component=self._max_runs_per_component,
                     parent_span=parent_span,
                 )
 
@@ -307,7 +306,6 @@ class AsyncPipeline(PipelineBase):
                             component=comp_dict,
                             component_inputs=component_inputs,
                             component_visits=component_visits,
-                            max_runs_per_component=self._max_runs_per_component,
                             parent_span=parent_span,
                         )
 
@@ -363,7 +361,8 @@ class AsyncPipeline(PipelineBase):
                 # 2) Build the priority queue of candidates
                 priority_queue = self._fill_queue(ordered_names, inputs_state, component_visits)
                 candidate = self._get_next_runnable_component(priority_queue, component_visits)
-                if candidate is None and running_tasks:
+
+                if (candidate is None or candidate[0] == ComponentPriority.BLOCKED) and running_tasks:
                     # We need to wait for one task to finish to make progress and potentially unblock the priority_queue
                     async for partial_res in _wait_for_one_task_to_complete():
                         yield partial_res
@@ -373,7 +372,25 @@ class AsyncPipeline(PipelineBase):
                     # done
                     break
 
-                priority, comp_name, _ = candidate  # type: ignore
+                priority, comp_name, comp = candidate  # type: ignore
+
+                # If the next component is blocked, we do a check to see if the pipeline is possibly blocked and raise
+                # a warning if it is.
+                if priority == ComponentPriority.BLOCKED and not running_tasks:
+                    if self._is_pipeline_possibly_blocked(current_pipeline_outputs=pipeline_outputs):
+                        # Pipeline is most likely blocked (most likely a configuration issue) so we raise a warning.
+                        logger.warning(
+                            "Cannot run pipeline - the next component that is meant to run is blocked.\n"
+                            "Component name: '{component_name}'\n"
+                            "Component type: '{component_type}'\n"
+                            "This typically happens when the component is unable to receive all of its required "
+                            "inputs.\nCheck the connections to this component and ensure all required inputs are "
+                            "provided.",
+                            component_name=comp_name,
+                            component_type=comp["instance"].__class__.__name__,
+                        )
+                    # We always exit the loop since we cannot run the next component.
+                    break
 
                 if comp_name in scheduled_components:
                     # We need to wait for one task to finish to make progress

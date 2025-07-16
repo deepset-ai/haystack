@@ -14,6 +14,21 @@ LLMs, Transformer models, vector search and more. Whether you want to perform re
 document search, question answering or answer generation, Haystack can orchestrate state-of-the-art embedding models
 and LLMs into pipelines to build end-to-end NLP applications and solve your use case.
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Documentation](#documentation)
+- [Features](#features)
+- [Use Cases](#features)
+- [deepset AI Platform (Managed Solution)](#-tip)
+- [Hayhooks (REST API Deployment)](#-tip-1)
+- [🆕 deepset Studio](#-deepset-studio-your-development-environment-for-haystack)
+- [Telemetry](#telemetry)
+- [🖖 Community](#-community)
+- [Contributing to Haystack](#contributing-to-haystack)
+- [Who Uses Haystack](#who-uses-haystack)
+
+
 ## Installation
 
 The simplest way to get Haystack is via pip:
@@ -58,7 +73,7 @@ Some examples of what you can do with Haystack:
 -   Use **user feedback** to evaluate, benchmark, and continuously improve your models.
 
 > [!TIP]
-><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-platform-logo-alternative.jpeg"  width=30% height=30%>
+><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-platform-logo-alternative.jpeg"  width=20%>
 >
 > Are you looking for a managed solution that benefits from Haystack? [deepset AI Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
 
@@ -68,7 +83,7 @@ Some examples of what you can do with Haystack:
 
 ## 🆕 deepset Studio: Your Development Environment for Haystack
 
-Use **deepset Studio** to visually create, deploy, and test your Haystack pipelines. Learn more about it in [our announcement post](https://haystack.deepset.ai/blog/announcing-studio).
+Use **deepset Studio** to visually create, deploy, and test your Haystack pipelines. Learn more about it in our [announcement post](https://haystack.deepset.ai/blog/announcing-studio).
 
 ![studio](https://github.com/user-attachments/assets/e4f09746-20b5-433e-8261-eca224ac23b3)
 

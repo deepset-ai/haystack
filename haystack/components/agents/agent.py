@@ -383,7 +383,6 @@ class Agent:
                     component={"instance": self.chat_generator},
                     component_inputs={"messages": messages, **generator_inputs},
                     component_visits=component_visits,
-                    max_runs_per_component=self.max_agent_steps,
                     parent_span=span,
                 )
                 llm_messages = result["replies"]
@@ -396,7 +395,6 @@ class Agent:
 
                 # 3. Call the ToolInvoker
                 # We only send the messages from the LLM to the tool invoker
-                # Check if the ToolInvoker supports async execution. Currently, it doesn't.
                 tool_invoker_result = await AsyncPipeline._run_component_async(
                     component_name="tool_invoker",
                     component={"instance": self._tool_invoker},
@@ -406,7 +404,6 @@ class Agent:
                         "streaming_callback": streaming_callback,
                     },
                     component_visits=component_visits,
-                    max_runs_per_component=self.max_agent_steps,
                     parent_span=span,
                 )
                 tool_messages = tool_invoker_result["tool_messages"]
