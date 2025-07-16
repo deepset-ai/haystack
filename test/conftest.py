@@ -11,7 +11,7 @@ from unittest.mock import Mock
 import pytest
 
 from haystack import component, tracing
-from haystack.core.pipeline.breakpoint import load_state
+from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.testing.test_utils import set_all_seeds
 from test.tracing.utils import SpyingTracer
 
@@ -83,20 +83,19 @@ def spying_tracer() -> Generator[SpyingTracer, None, None]:
     tracing.disable_tracing()
 
 
-def load_and_resume_pipeline_state(pipeline, output_directory: Path, component: str, data: Dict = None) -> Dict:
+def load_and_resume_pipeline_snapshot(pipeline, output_directory: Path, component_name: str, data: Dict = None) -> Dict:
     """
-    Utility function to load and resume pipeline state from a breakpoint file.
+    Utility function to load and resume pipeline snapshot from a breakpoint file.
 
-    Args:
-        pipeline: The pipeline instance to resume
-        output_directory: Directory containing the breakpoint files
-        component: Component name to look for in breakpoint files
-        data: Data to pass to the pipeline run (defaults to empty dict)
+    :param pipeline: The pipeline instance to resume
+    :param output_directory: Directory containing the breakpoint files
+    :param component_name: Component name to look for in breakpoint files
+    :param data: Data to pass to the pipeline run (defaults to empty dict)
 
-    Returns:
+    :returns:
         Dict containing the pipeline run results
 
-    Raises:
+    :raises:
         ValueError: If no breakpoint file is found for the given component
     """
     data = data or {}
@@ -105,10 +104,10 @@ def load_and_resume_pipeline_state(pipeline, output_directory: Path, component: 
 
     for full_path in all_files:
         f_name = Path(full_path).name
-        if str(f_name).startswith(component):
-            resume_state = load_state(full_path)
-            return pipeline.run(data=data, resume_state=resume_state)
+        if str(f_name).startswith(component_name):
+            resume_state = load_pipeline_snapshot(full_path)
+            return pipeline.run(data=data, pipeline_snapshot=resume_state)
 
     if not file_found:
-        msg = f"No files found for {component} in {output_directory}."
+        msg = f"No files found for {component_name} in {output_directory}."
         raise ValueError(msg)

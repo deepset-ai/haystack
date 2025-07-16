@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from pathlib import Path
 from typing import List
 from unittest.mock import MagicMock, patch
 
@@ -16,7 +17,7 @@ from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.utils.auth import Secret
-from test.conftest import load_and_resume_pipeline_state
+from test.conftest import load_and_resume_pipeline_snapshot
 
 
 class TestPipelineBreakpoints:
@@ -91,17 +92,12 @@ class TestPipelineBreakpoints:
         return pipe
 
     @pytest.fixture(scope="session")
-    def output_directory(self, tmp_path_factory):
+    def output_directory(self, tmp_path_factory) -> Path:
         return tmp_path_factory.mktemp("output_files")
 
-    components = [
-        Breakpoint("joiner", 0),
-        Breakpoint("fc_llm", 0),
-        Breakpoint("validator", 0),
-        Breakpoint("adapter", 0),
-    ]
+    BREAKPOINT_COMPONENTS = ["joiner", "fc_llm", "validator", "adapter"]
 
-    @pytest.mark.parametrize("component", components)
+    @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
     def test_pipeline_breakpoints_branch_joiner(self, branch_joiner_pipeline, output_directory, component):
         data = {
@@ -109,12 +105,18 @@ class TestPipelineBreakpoints:
             "adapter": {"chat_message": [ChatMessage.from_user("Create JSON from Peter Parker")]},
         }
 
+        # Create a Breakpoint on-the-fly using the shared output directory
+        break_point = Breakpoint(component_name=component, visit_count=0, debug_path=str(output_directory))
+
         try:
-            _ = branch_joiner_pipeline.run(data, break_point=component, debug_path=str(output_directory))
+            _ = branch_joiner_pipeline.run(data, break_point=break_point)
         except BreakpointException:
             pass
 
-        result = load_and_resume_pipeline_state(
-            branch_joiner_pipeline, output_directory, component.component_name, data
+        result = load_and_resume_pipeline_snapshot(
+            pipeline=branch_joiner_pipeline,
+            output_directory=output_directory,
+            component_name=break_point.component_name,
+            data=data,
         )
         assert result["validator"], "The result should be valid according to the schema."

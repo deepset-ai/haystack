@@ -3,17 +3,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
+
+import pytest
 
 from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.core.errors import BreakpointException, PipelineRuntimeError
+from haystack.core.errors import BreakpointException
 from haystack.core.pipeline import Pipeline
-from haystack.core.pipeline.breakpoint import load_state
+from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.dataclasses import ByteStream, ChatMessage, Document, ToolCall
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -77,8 +80,6 @@ class MockHTMLToDocument:
 
             # Simple text extraction - remove HTML tags and extract meaningful content
             # This is a simplified version that extracts the main content
-            import re
-
             # Remove HTML tags
             text_content = re.sub(r"<[^>]+>", " ", html_content)
             # Remove extra whitespace
@@ -101,7 +102,9 @@ def add_database_tool(name: str, surname: str, job_title: Optional[str], other: 
     )
 
 
-def create_pipeline():
+@pytest.fixture
+def pipeline_with_agent(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test_key")
     generator = OpenAIChatGenerator()
     call_count = 0
 
@@ -198,8 +201,7 @@ def create_pipeline():
     return extraction_agent
 
 
-def run_pipeline_without_any_breakpoints():
-    pipeline_with_agent = create_pipeline()
+def run_pipeline_without_any_breakpoints(pipeline_with_agent):
     agent_output = pipeline_with_agent.run(data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}})
 
     # pipeline completed
@@ -215,84 +217,70 @@ def run_pipeline_without_any_breakpoints():
     assert "Chief Technology Officer" in final_message
 
 
-def test_chat_generator_breakpoint_in_pipeline_agent():
-    pipeline_with_agent = create_pipeline()
-    agent_generator_breakpoint = Breakpoint("chat_generator", 0)
-    agent_breakpoint = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
-
+def test_chat_generator_breakpoint_in_pipeline_agent(pipeline_with_agent):
     with tempfile.TemporaryDirectory() as debug_path:
+        agent_generator_breakpoint = Breakpoint("chat_generator", 0, debug_path=debug_path)
+        agent_breakpoint = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
-                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
-                break_point=agent_breakpoint,
-                debug_path=debug_path,
+                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoint
             )
             assert False, "Expected exception was not raised"
 
         except BreakpointException as e:  # this is the exception from the Agent
             assert e.component == "chat_generator"
-            assert e.state is not None
-            assert "messages" in e.state
+            assert e.pipeline_snapshot is not None
+            assert "messages" in e.pipeline_snapshot
             assert e.results is not None
 
-        # verify that debug/state file was created
-        chat_generator_state_files = list(Path(debug_path).glob("database_agent_chat_generator_*.json"))
-        assert len(chat_generator_state_files) > 0, f"No chat_generator state files found in {debug_path}"
+        # verify that snapshot file was created
+        chat_generator_snapshot_files = list(Path(debug_path).glob("database_agent_chat_generator_*.json"))
+        assert len(chat_generator_snapshot_files) > 0, f"No chat_generator snapshot file found in {debug_path}"
 
 
-def test_tool_breakpoint_in_pipeline_agent():
-    pipeline_with_agent = create_pipeline()
-    agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, "add_database_tool")
-    agent_breakpoints = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
-
+def test_tool_breakpoint_in_pipeline_agent(pipeline_with_agent):
     with tempfile.TemporaryDirectory() as debug_path:
+        agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, tool_name="add_database_tool", debug_path=debug_path)
+        agent_breakpoint = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
-                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
-                break_point=agent_breakpoints,
-                debug_path=debug_path,
+                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoint
             )
             assert False, "Expected exception was not raised"
         except BreakpointException as e:  # this is the exception from the Agent
             assert e.component == "tool_invoker"
-            assert e.state is not None
-            assert "messages" in e.state
+            assert e.pipeline_snapshot is not None
+            assert "messages" in e.pipeline_snapshot
             assert e.results is not None
 
-        # verify that debug/state file was created
-        tool_invoker_state_files = list(Path(debug_path).glob("database_agent_tool_invoker_*.json"))
-        assert len(tool_invoker_state_files) > 0, f"No tool_invoker state files found in {debug_path}"
+        # verify that snapshot file was created
+        tool_invoker_snapshot_files = list(Path(debug_path).glob("database_agent_tool_invoker_*.json"))
+        assert len(tool_invoker_snapshot_files) > 0, f"No tool_invoker snapshot file found in {debug_path}"
 
 
-def test_agent_breakpoint_chat_generator_and_resume_pipeline():
-    pipeline_with_agent = create_pipeline()
-    agent_generator_breakpoint = Breakpoint("chat_generator", 0)
-    agent_breakpoints = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
-
+def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent):
     with tempfile.TemporaryDirectory() as debug_path:
+        agent_generator_breakpoint = Breakpoint("chat_generator", 0, debug_path=debug_path)
+        agent_breakpoint = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
-                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
-                break_point=agent_breakpoints,
-                debug_path=debug_path,
+                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoint
             )
             assert False, "Expected PipelineBreakpointException was not raised"
 
         except BreakpointException as e:
             assert e.component == "chat_generator"
-            assert e.state is not None
-            assert "messages" in e.state
+            assert e.pipeline_snapshot is not None
+            assert "messages" in e.pipeline_snapshot
             assert e.results is not None
 
-        # verify that the state file was created
-        chat_generator_state_files = list(Path(debug_path).glob("database_agent_chat_generator_*.json"))
-        assert len(chat_generator_state_files) > 0, f"No chat_generator state files found in {debug_path}"
+        # verify that the snapshot file was created
+        chat_generator_snapshot_files = list(Path(debug_path).glob("database_agent_chat_generator_*.json"))
+        assert len(chat_generator_snapshot_files) > 0, f"No chat_generator snapshot file found in {debug_path}"
 
-        # resume the pipeline from the saved state
-        latest_state_file = max(chat_generator_state_files, key=os.path.getctime)
-        resume_state = load_state(latest_state_file)
-
-        result = pipeline_with_agent.run(data={}, resume_state=resume_state)
+        # resume the pipeline from the saved snapshot
+        latest_snapshot_file = max(chat_generator_snapshot_files, key=os.path.getctime)
+        result = pipeline_with_agent.run(data={}, pipeline_snapshot=load_pipeline_snapshot(latest_snapshot_file))
 
         # pipeline completed successfully after resuming
         assert "database_agent" in result
@@ -316,35 +304,29 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline():
         assert any("Milos Rusic" in name for name in person_names)
 
 
-def test_agent_breakpoint_tool_and_resume_pipeline():
-    pipeline_with_agent = create_pipeline()
-    agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, "add_database_tool")
-    agent_breakpoints = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
-
+def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
     with tempfile.TemporaryDirectory() as debug_path:
+        agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, tool_name="add_database_tool", debug_path=debug_path)
+        agent_breakpoint = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
-                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
-                break_point=agent_breakpoints,
-                debug_path=debug_path,
+                data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoint
             )
             assert False, "Expected PipelineBreakpointException was not raised"
 
         except BreakpointException as e:
             assert e.component == "tool_invoker"
-            assert e.state is not None
-            assert "messages" in e.state
+            assert e.pipeline_snapshot is not None
+            assert "messages" in e.pipeline_snapshot
             assert e.results is not None
 
-        # verify that the state file was created
-        tool_invoker_state_files = list(Path(debug_path).glob("database_agent_tool_invoker_*.json"))
-        assert len(tool_invoker_state_files) > 0, f"No tool_invoker state files found in {debug_path}"
+        # verify that the snapshot file was created
+        tool_invoker_snapshot_files = list(Path(debug_path).glob("database_agent_tool_invoker_*.json"))
+        assert len(tool_invoker_snapshot_files) > 0, f"No tool_invoker snapshot file found in {debug_path}"
 
-        # resume the pipeline from the saved state
-        latest_state_file = max(tool_invoker_state_files, key=os.path.getctime)
-        resume_state = load_state(latest_state_file)
-
-        result = pipeline_with_agent.run(data={}, resume_state=resume_state)
+        # resume the pipeline from the saved snapshot
+        latest_snapshot_file = max(tool_invoker_snapshot_files, key=os.path.getctime)
+        result = pipeline_with_agent.run(data={}, pipeline_snapshot=load_pipeline_snapshot(latest_snapshot_file))
 
         # pipeline completed successfully after resuming
         assert "database_agent" in result

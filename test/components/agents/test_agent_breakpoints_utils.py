@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -10,21 +9,12 @@ import pytest
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.dataclasses.breakpoints import Breakpoint, ToolBreakpoint
 from haystack.tools import Tool
 from test.components.agents.test_agent import (
     MockChatGeneratorWithoutRunAsync,
     MockChatGeneratorWithRunAsync,
     weather_function,
 )
-
-
-def create_chat_generator_breakpoint(visit_count: int = 0) -> Breakpoint:
-    return Breakpoint(component_name="chat_generator", visit_count=visit_count)
-
-
-def create_tool_breakpoint(tool_name: Optional[str] = None, visit_count: int = 0) -> ToolBreakpoint:
-    return ToolBreakpoint(component_name="tool_invoker", visit_count=visit_count, tool_name=tool_name)
 
 
 # Common fixtures
@@ -40,7 +30,7 @@ def weather_tool():
 
 @pytest.fixture
 def debug_path(tmp_path):
-    return str(tmp_path / "debug_states")
+    return str(tmp_path / "debug_snapshots")
 
 
 @pytest.fixture

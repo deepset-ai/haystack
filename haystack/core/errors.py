@@ -100,18 +100,18 @@ class BreakpointException(Exception):
         self,
         message: str,
         component: Optional[str] = None,
-        state: Optional[Dict[str, Any]] = None,
+        pipeline_snapshot: Optional[Dict[str, Any]] = None,
         results: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message)
         self.component = component
-        self.state = state
+        self.pipeline_snapshot = pipeline_snapshot
         self.results = results
 
 
-class PipelineInvalidResumeStateError(Exception):
+class PipelineInvalidPipelineSnapshotError(Exception):
     """
-    Exception raised when a pipeline is resumed from an invalid state.
+    Exception raised when a pipeline is resumed from an invalid snapshot.
     """
 
     def __init__(self, message: str):

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,7 +22,7 @@ from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.auth import Secret
-from test.conftest import load_and_resume_pipeline_state
+from test.conftest import load_and_resume_pipeline_snapshot
 
 
 class TestPipelineBreakpoints:
@@ -251,21 +252,21 @@ class TestPipelineBreakpoints:
         return pipeline
 
     @pytest.fixture(scope="session")
-    def output_directory(self, tmp_path_factory):
+    def output_directory(self, tmp_path_factory) -> Path:
         return tmp_path_factory.mktemp("output_files")
 
-    components = [
-        Breakpoint("bm25_retriever", 0),
-        Breakpoint("query_embedder", 0),
-        Breakpoint("embedding_retriever", 0),
-        Breakpoint("doc_joiner", 0),
-        Breakpoint("ranker", 0),
-        Breakpoint("prompt_builder", 0),
-        Breakpoint("llm", 0),
-        Breakpoint("answer_builder", 0),
+    BREAKPOINT_COMPONENTS = [
+        "bm25_retriever",
+        "query_embedder",
+        "embedding_retriever",
+        "doc_joiner",
+        "ranker",
+        "prompt_builder",
+        "llm",
+        "answer_builder",
     ]
 
-    @pytest.mark.parametrize("component", components)
+    @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
     def test_pipeline_breakpoints_hybrid_rag(
         self, hybrid_rag_pipeline, document_store, output_directory, component, mock_openai_completion
@@ -283,10 +284,18 @@ class TestPipelineBreakpoints:
             "answer_builder": {"query": question},
         }
 
+        # Create a Breakpoint on-the-fly using the shared output directory
+        break_point = Breakpoint(component_name=component, visit_count=0, debug_path=str(output_directory))
+
         try:
-            _ = hybrid_rag_pipeline.run(data, break_point=component, debug_path=str(output_directory))
+            _ = hybrid_rag_pipeline.run(data, break_point=break_point)
         except BreakpointException:
             pass
 
-        result = load_and_resume_pipeline_state(hybrid_rag_pipeline, output_directory, component.component_name, data)
+        result = load_and_resume_pipeline_snapshot(
+            pipeline=hybrid_rag_pipeline,
+            output_directory=output_directory,
+            component_name=break_point.component_name,
+            data=data,
+        )
         assert result["answer_builder"]
