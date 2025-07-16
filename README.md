@@ -94,7 +94,7 @@ Use **deepset Studio** to visually create, deploy, and test your Haystack pipeli
 
 Haystack collects **anonymous** usage statistics of pipeline components. We receive an event every time these components are initialized. This way, we know which components are most relevant to our community.
 
-Read more about telemetry in Haystack or how you can opt out in [Haystack Docs](https://docs.haystack.deepset.ai/docs/telemetry).
+Read more about telemetry in Haystack or how you can opt out in [Haystack docs](https://docs.haystack.deepset.ai/docs/telemetry).
 
 ## 🖖 Community
 
