@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# pylint: disable=too-many-return-statements, too-many-positional-arguments
+# pylint: disable=too-many-return-statements
 
 import json
 from copy import deepcopy
@@ -227,6 +227,7 @@ def _save_state_to_file(
 
 
 def _save_state(
+    *,
     inputs: Dict[str, Any],
     component_name: str,
     component_visits: Dict[str, int],
