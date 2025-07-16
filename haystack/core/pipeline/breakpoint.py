@@ -185,6 +185,7 @@ def _process_main_pipeline_state(main_pipeline_state: Optional[Dict[str, Any]]) 
 
 
 def _save_state_to_file(
+    *,
     state: Dict[str, Any],
     debug_path: Union[str, Path],
     dt: datetime,
@@ -288,7 +289,14 @@ def _save_state(
         return state
 
     is_agent = agent_name is not None
-    _save_state_to_file(state, debug_path, dt, is_agent, agent_name, component_name)
+    _save_state_to_file(
+        state=state,
+        debug_path=debug_path,
+        dt=dt,
+        is_agent=is_agent,
+        agent_name=agent_name,
+        component_name=component_name,
+    )
 
     return state
 

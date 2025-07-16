@@ -287,7 +287,7 @@ class Agent:
                     debug_path=break_point.debug_path,
                     original_input_data={"messages": messages, **kwargs},
                     ordered_component_names=["chat_generator", "tool_invoker"],
-                    agent_name=self._agent_name,
+                    agent_name=self.__component_name__ if hasattr(self, "__component_name__") else "isolated_agent",
                     main_pipeline_state=state.data.get("main_pipeline_state", {}),
                 )
                 msg = (
@@ -349,7 +349,7 @@ class Agent:
                         debug_path=tool_breakpoint.debug_path,
                         original_input_data={"messages": messages, **kwargs},
                         ordered_component_names=["chat_generator", "tool_invoker"],
-                        agent_name=self._agent_name,
+                        agent_name=self.__component_name__ if hasattr(self, "__component_name__") else "isolated_agent",
                         main_pipeline_state=state.data.get("main_pipeline_state", {}),
                     )
                     msg = (
@@ -383,7 +383,6 @@ class Agent:
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
                            for "tool_invoker".
         :param resume_state: A dictionary containing the state of a previously saved agent execution.
-        :param debug_path: Path to the directory where the agent state should be saved.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -403,8 +402,6 @@ class Agent:
                 "agent_breakpoint and resume_state cannot be provided at the same time. The agent run will be aborted."
             )
 
-        self._agent_name = self.__component_name__ if hasattr(self, "__component_name__") else "isolated_agent"
-
         # validate breakpoints
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
             self._validate_tool_breakpoint_is_valid(break_point)
@@ -413,15 +410,11 @@ class Agent:
         if resume_state:
             component_visits = resume_state.get("pipeline_state", {}).get("component_visits", {})
             state_data = resume_state.get("pipeline_state", {}).get("inputs", {}).get("state", {}).get("data", {})
-            state = State(schema=self.state_schema, data=state_data)
 
             # deserialize messages from pipeline state
             raw_messages = resume_state.get("pipeline_state", {}).get("inputs", {}).get("messages", messages)
-
             # convert raw message dictionaries to ChatMessage objects and populate the state
             messages = [ChatMessage.from_dict(msg) if isinstance(msg, dict) else msg for msg in raw_messages]
-            state.set("messages", messages)
-
         else:
             if self.system_prompt is not None:
                 messages = [ChatMessage.from_system(self.system_prompt)] + messages
@@ -432,10 +425,11 @@ class Agent:
                     "Agent will not perform any actions specific to user input. Consider adding user messages to the "
                     "input."
                 )
-
-            state = State(schema=self.state_schema, data=kwargs)
-            state.set("messages", messages)
             component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
+            state_data = kwargs
+
+        state = State(schema=self.state_schema, data=state_data)
+        state.set("messages", messages)
 
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
@@ -447,9 +441,6 @@ class Agent:
                 _deepcopy_with_exceptions({"messages": messages, "streaming_callback": streaming_callback, **kwargs}),
             )
             counter = 0
-
-            if break_point and self._agent_name is None:
-                raise ValueError("When using breakpoints, the agent_name must be provided to save the state correctly.")
 
             while counter < self.max_agent_steps:
                 # check for breakpoint before ChatGenerator
@@ -547,7 +538,6 @@ class Agent:
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
                            for "tool_invoker".
         :param resume_state: A dictionary containing the state of a previously saved agent execution.
-        :param debug_path: Path to the directory where the agent state should be saved.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -568,31 +558,19 @@ class Agent:
             )
             raise ValueError(msg)
 
-        self._agent_name = self.__component_name__ if hasattr(self, "__component_name__") else "isolated_agent"
-
         # validate breakpoints
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
             self._validate_tool_breakpoint_is_valid(break_point)
 
         # Handle resume state if provided
         if resume_state:
-            # Extract component visits from pipeline state
             component_visits = resume_state.get("pipeline_state", {}).get("component_visits", {})
-
-            # Initialize with default values if not present in resume state
-            component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0) | component_visits
-
-            # Extract state data from pipeline state
             state_data = resume_state.get("pipeline_state", {}).get("inputs", {}).get("state", {}).get("data", {})
-            state = State(schema=self.state_schema, data=state_data)
 
             # Extract and deserialize messages from pipeline state
             raw_messages = resume_state.get("pipeline_state", {}).get("inputs", {}).get("messages", messages)
-
             # Convert raw message dictionaries to ChatMessage objects
             messages = [ChatMessage.from_dict(msg) if isinstance(msg, dict) else msg for msg in raw_messages]
-            state.set("messages", messages)
-
         else:
             if self.system_prompt is not None:
                 messages = [ChatMessage.from_system(self.system_prompt)] + messages
@@ -603,10 +581,11 @@ class Agent:
                     "Agent will not perform any actions specific to user input. Consider adding user messages to the "
                     "input."
                 )
-
-            state = State(schema=self.state_schema, data=kwargs)
-            state.set("messages", messages)
             component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
+            state_data = kwargs
+
+        state = State(schema=self.state_schema, data=state_data)
+        state.set("messages", messages)
 
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
@@ -618,9 +597,6 @@ class Agent:
                 _deepcopy_with_exceptions({"messages": messages, "streaming_callback": streaming_callback, **kwargs}),
             )
             counter = 0
-
-            if break_point and self._agent_name is None:
-                raise ValueError("When using breakpoints, the agent_name must be provided to save the state correctly.")
 
             while counter < self.max_agent_steps:
                 # Check for breakpoint before ChatGenerator

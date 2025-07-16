@@ -19,7 +19,7 @@ from test.components.agents.test_agent_breakpoints_utils import (
     weather_tool,
 )
 
-agent_name = "isolated_agent"
+AGENT_NAME = "isolated_agent"
 
 
 def test_run_with_chat_generator_breakpoint(agent_sync):  # noqa: F811
@@ -47,14 +47,14 @@ def test_resume_from_chat_generator(agent_sync, tmp_path):  # noqa: F811
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
     debug_path = str(tmp_path / "debug_states")
     chat_generator_bp = Breakpoint(component_name="chat_generator", visit_count=0, debug_path=debug_path)
-    agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name=agent_name)
+    agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name=AGENT_NAME)
 
     try:
-        agent_sync.run(messages=messages, break_point=agent_breakpoint, agent_name=agent_name)
+        agent_sync.run(messages=messages, break_point=agent_breakpoint, agent_name=AGENT_NAME)
     except BreakpointException:
         pass
 
-    state_files = list(Path(debug_path).glob(agent_name + "_chat_generator_*.json"))
+    state_files = list(Path(debug_path).glob(AGENT_NAME + "_chat_generator_*.json"))
     assert len(state_files) > 0
     latest_state_file = str(max(state_files, key=os.path.getctime))
 
@@ -72,14 +72,14 @@ def test_resume_from_tool_invoker(mock_agent_with_tool_calls_sync, tmp_path):  #
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
     debug_path = str(tmp_path / "debug_states")
     tool_bp = ToolBreakpoint(component_name="tool_invoker", visit_count=0, tool_name=None, debug_path=debug_path)
-    agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name=agent_name)
+    agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name=AGENT_NAME)
 
     try:
-        mock_agent_with_tool_calls_sync.run(messages=messages, break_point=agent_breakpoint, agent_name=agent_name)
+        mock_agent_with_tool_calls_sync.run(messages=messages, break_point=agent_breakpoint, agent_name=AGENT_NAME)
     except BreakpointException:
         pass
 
-    state_files = list(Path(debug_path).glob(agent_name + "_tool_invoker_*.json"))
+    state_files = list(Path(debug_path).glob(AGENT_NAME + "_tool_invoker_*.json"))
     assert len(state_files) > 0
     latest_state_file = str(max(state_files, key=os.path.getctime))
 
