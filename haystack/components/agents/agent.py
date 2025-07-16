@@ -4,7 +4,6 @@
 
 import inspect
 from copy import deepcopy
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from haystack import logging, tracing

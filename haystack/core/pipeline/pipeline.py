@@ -5,7 +5,6 @@
 # pylint: disable=too-many-positional-arguments
 
 from copy import deepcopy
-from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Set, Union
 
 from haystack import logging, tracing
@@ -366,7 +365,6 @@ class Pipeline(PipelineBase):
                 # Scenario 2: a breakpoint is provided to stop the pipeline at a specific component and visit count
                 breakpoint_triggered = False
                 if break_point is not None:
-                    agent_breakpoint = False
                     if isinstance(break_point, AgentBreakpoint):
                         component_instance = component["instance"]
                         # Use type checking by class name to avoid circular import
@@ -380,26 +378,22 @@ class Pipeline(PipelineBase):
                                 ordered_component_names=ordered_component_names,
                                 data=data,
                             )
-                            debug_path = break_point.break_point.debug_path
-                            agent_breakpoint = True
 
-                    if not agent_breakpoint and isinstance(break_point, Breakpoint):
+                    if isinstance(break_point, Breakpoint):
                         breakpoint_triggered = _check_regular_break_point(
                             break_point=break_point, component_name=component_name, component_visits=component_visits
                         )
-                        debug_path = break_point.debug_path
-
-                    if breakpoint_triggered:
-                        _trigger_break_point(
-                            component_name=component_name,
-                            component_inputs=component_inputs,
-                            inputs=inputs,
-                            component_visits=component_visits,
-                            debug_path=debug_path,
-                            data=data,
-                            ordered_component_names=ordered_component_names,
-                            pipeline_outputs=pipeline_outputs,
-                        )
+                        if breakpoint_triggered:
+                            _trigger_break_point(
+                                component_name=component_name,
+                                component_inputs=component_inputs,
+                                inputs=inputs,
+                                component_visits=component_visits,
+                                debug_path=break_point.debug_path,
+                                data=data,
+                                ordered_component_names=ordered_component_names,
+                                pipeline_outputs=pipeline_outputs,
+                            )
 
                 if resume_agent_in_pipeline:
                     # inject the resume_state into the component (the Agent) inputs
@@ -429,7 +423,7 @@ class Pipeline(PipelineBase):
                 if self._is_queue_stale(priority_queue):
                     priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 
-            if break_point and not agent_breakpoint:
+            if isinstance(break_point, Breakpoint):
                 logger.warning(
                     "The given breakpoint {break_point} was never triggered. This is because:\n"
                     "1. The provided component is not a part of the pipeline execution path.\n"
