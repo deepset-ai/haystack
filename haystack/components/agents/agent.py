@@ -370,7 +370,7 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         break_point: Optional[AgentBreakpoint] = None,
-        resume_state: Optional[Dict[str, Any]] = None,
+        pipeline_snapshot: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
@@ -382,7 +382,7 @@ class Agent:
             The same callback can be configured to emit tool results when a tool is called.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
                            for "tool_invoker".
-        :param resume_state: A dictionary containing the state of a previously saved agent execution.
+        :param pipeline_snapshot: A dictionary containing the state of a previously saved agent execution.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -397,22 +397,23 @@ class Agent:
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
 
-        if break_point and resume_state:
+        if break_point and pipeline_snapshot:
             raise ValueError(
-                "agent_breakpoint and resume_state cannot be provided at the same time. The agent run will be aborted."
+                "agent_breakpoint and pipeline_snapshot cannot be provided at the same time. "
+                "The agent run will be aborted."
             )
 
         # validate breakpoints
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
             self._validate_tool_breakpoint_is_valid(break_point)
 
-        # resume state if provided
-        if resume_state:
-            component_visits = resume_state.get("pipeline_state", {}).get("component_visits", {})
-            state_data = resume_state.get("pipeline_state", {}).get("inputs", {}).get("state", {}).get("data", {})
+        # Handle pipeline snapshot if provided
+        if pipeline_snapshot:
+            component_visits = pipeline_snapshot.get("pipeline_state", {}).get("component_visits", {})
+            state_data = pipeline_snapshot.get("pipeline_state", {}).get("inputs", {}).get("state", {}).get("data", {})
 
             # deserialize messages from pipeline state
-            raw_messages = resume_state.get("pipeline_state", {}).get("inputs", {}).get("messages", messages)
+            raw_messages = pipeline_snapshot.get("pipeline_state", {}).get("inputs", {}).get("messages", messages)
             # convert raw message dictionaries to ChatMessage objects and populate the state
             messages = [ChatMessage.from_dict(msg) if isinstance(msg, dict) else msg for msg in raw_messages]
         else:
@@ -522,7 +523,7 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         break_point: Optional[AgentBreakpoint] = None,
-        resume_state: Optional[Dict[str, Any]] = None,
+        pipeline_snapshot: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
@@ -537,7 +538,7 @@ class Agent:
         is streamed from the LLM. The same callback can be configured to emit tool results when a tool is called.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
                            for "tool_invoker".
-        :param resume_state: A dictionary containing the state of a previously saved agent execution.
+        :param pipeline_snapshot: A dictionary containing the state of a previously saved agent execution.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -552,9 +553,10 @@ class Agent:
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run_async()'.")
 
-        if break_point and resume_state:
+        if break_point and pipeline_snapshot:
             msg = (
-                "agent_breakpoint and resume_state cannot be provided at the same time. The agent run will be aborted."
+                "agent_breakpoint and pipeline_snapshot cannot be provided at the same time. "
+                "The agent run will be aborted."
             )
             raise ValueError(msg)
 
@@ -562,13 +564,13 @@ class Agent:
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
             self._validate_tool_breakpoint_is_valid(break_point)
 
-        # Handle resume state if provided
-        if resume_state:
-            component_visits = resume_state.get("pipeline_state", {}).get("component_visits", {})
-            state_data = resume_state.get("pipeline_state", {}).get("inputs", {}).get("state", {}).get("data", {})
+        # Handle pipeline snapshot if provided
+        if pipeline_snapshot:
+            component_visits = pipeline_snapshot.get("pipeline_state", {}).get("component_visits", {})
+            state_data = pipeline_snapshot.get("pipeline_state", {}).get("inputs", {}).get("state", {}).get("data", {})
 
             # Extract and deserialize messages from pipeline state
-            raw_messages = resume_state.get("pipeline_state", {}).get("inputs", {}).get("messages", messages)
+            raw_messages = pipeline_snapshot.get("pipeline_state", {}).get("inputs", {}).get("messages", messages)
             # Convert raw message dictionaries to ChatMessage objects
             messages = [ChatMessage.from_dict(msg) if isinstance(msg, dict) else msg for msg in raw_messages]
         else:

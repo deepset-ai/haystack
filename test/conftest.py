@@ -107,7 +107,7 @@ def load_and_resume_pipeline_state(pipeline, output_directory: Path, component: 
         f_name = Path(full_path).name
         if str(f_name).startswith(component):
             resume_state = load_state(full_path)
-            return pipeline.run(data=data, resume_state=resume_state)
+            return pipeline.run(data=data, pipeline_snapshot=resume_state)
 
     if not file_found:
         msg = f"No files found for {component} in {output_directory}."

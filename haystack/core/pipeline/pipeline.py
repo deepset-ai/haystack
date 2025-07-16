@@ -9,7 +9,7 @@ from typing import Any, Dict, Mapping, Optional, Set, Union
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import BreakpointException, PipelineInvalidResumeStateError, PipelineRuntimeError
+from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -89,52 +89,54 @@ class Pipeline(PipelineBase):
 
             return component_output
 
-    def _handle_resume_state(self, resume_state: Dict[str, Any]) -> tuple[Dict[str, int], Dict[str, Any], bool, list]:
-        """
-        Handle resume state initialization.
-
-        :param resume_state: The resume state to handle
-        :return: Tuple of (component_visits, data, resume_agent_in_pipeline, ordered_component_names)
-        """
-        if resume_state.get("agent_name"):
-            return self._handle_agent_resume_state(resume_state)
-        else:
-            return self._handle_regular_resume_state(resume_state)
-
-    def _handle_agent_resume_state(
-        self, resume_state: Dict[str, Any]
+    def _handle_resume_pipeline(
+        self, pipeline_snapshot: Dict[str, Any]
     ) -> tuple[Dict[str, int], Dict[str, Any], bool, list]:
         """
-        Handle agent-specific resume state.
+        Handle resuming the pipeline from a pipeline snapshot.
 
-        :param resume_state: The resume state to handle
+        :param pipeline_snapshot: The snapshot of the pipeline to resume from.
         :return: Tuple of (component_visits, data, resume_agent_in_pipeline, ordered_component_names)
         """
-        agent_name = resume_state["agent_name"]
+        if pipeline_snapshot.get("agent_name"):
+            return self._handle_resume_from_agent(pipeline_snapshot)
+        else:
+            return self._handle_resume_from_pipeline_snapshot(pipeline_snapshot)
+
+    def _handle_resume_from_agent(
+        self, pipeline_snapshot: Dict[str, Any]
+    ) -> tuple[Dict[str, int], Dict[str, Any], bool, list]:
+        """
+        Handle resuming the pipeline at a specific Agent component.
+
+        :param pipeline_snapshot: The snapshot of the pipeline to resume from.
+        :return: Tuple of (component_visits, data, resume_agent_in_pipeline, ordered_component_names)
+        """
+        agent_name = pipeline_snapshot["agent_name"]
         for name, component in self.graph.nodes.items():
             if component["instance"].__class__.__name__ == "Agent" and name == agent_name:
-                main_pipeline_state = resume_state.get("main_pipeline_state", {})
+                main_pipeline_state = pipeline_snapshot.get("main_pipeline_state", {})
                 component_visits = main_pipeline_state.get("component_visits", {})
                 ordered_component_names = main_pipeline_state.get("ordered_component_names", [])
                 data = _deserialize_value_with_schema(main_pipeline_state.get("inputs", {}))
                 return component_visits, data, True, ordered_component_names
 
         # Fallback to regular resume if agent not found
-        return self._handle_regular_resume_state(resume_state)
+        return self._handle_resume_from_pipeline_snapshot(pipeline_snapshot)
 
-    def _handle_regular_resume_state(
-        self, resume_state: Dict[str, Any]
+    def _handle_resume_from_pipeline_snapshot(
+        self, pipeline_snapshot: Dict[str, Any]
     ) -> tuple[Dict[str, int], Dict[str, Any], bool, list]:
         """
-        Handle regular component resume state.
+        Handle resuming the pipeline from a regular pipeline snapshot.
 
-        :param resume_state: The resume state to handle
+        :param pipeline_snapshot: The snapshot of the pipeline to resume from.
         :return: Tuple of (component_visits, data, resume_agent_in_pipeline, ordered_component_names)
         """
-        component_visits, data, resume_state, ordered_component_names = self.inject_resume_state_into_graph(
-            resume_state=resume_state
+        component_visits, data, pipeline_snapshot, ordered_component_names = self._inject_pipeline_snapshot_into_graph(
+            pipeline_snapshot=pipeline_snapshot
         )
-        data = _deserialize_value_with_schema(resume_state["pipeline_state"]["inputs"])
+        data = _deserialize_value_with_schema(pipeline_snapshot["pipeline_state"]["inputs"])
         return component_visits, data, False, ordered_component_names
 
     def run(  # noqa: PLR0915, PLR0912, C901
@@ -143,7 +145,7 @@ class Pipeline(PipelineBase):
         include_outputs_from: Optional[Set[str]] = None,
         *,
         break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
-        resume_state: Optional[Dict[str, Any]] = None,
+        pipeline_snapshot: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -223,7 +225,7 @@ class Pipeline(PipelineBase):
         :param break_point:
             A set of breakpoints that can be used to debug the pipeline execution.
 
-        :param resume_state:
+        :param pipeline_snapshot:
             A dictionary containing the state of a previously saved pipeline execution.
 
         :returns:
@@ -245,12 +247,12 @@ class Pipeline(PipelineBase):
         """
         pipeline_running(self)
 
-        if break_point and resume_state:
+        if break_point and pipeline_snapshot:
             msg = (
-                "pipeline_breakpoint and resume_state cannot be provided at the same time. "
+                "pipeline_breakpoint and pipeline_snapshot cannot be provided at the same time. "
                 "The pipeline run will be aborted."
             )
-            raise PipelineInvalidResumeStateError(message=msg)
+            raise PipelineInvalidPipelineSnapshotError(message=msg)
 
         # make sure all breakpoints are valid, i.e. reference components in the pipeline
         if break_point:
@@ -263,7 +265,7 @@ class Pipeline(PipelineBase):
         if include_outputs_from is None:
             include_outputs_from = set()
 
-        if not resume_state:
+        if not pipeline_snapshot:
             # normalize `data`
             data = self._prepare_component_input_data(data)
 
@@ -279,9 +281,9 @@ class Pipeline(PipelineBase):
             resume_agent_in_pipeline = False
 
         else:
-            # Handle resume state
-            component_visits, data, resume_agent_in_pipeline, ordered_component_names = self._handle_resume_state(
-                resume_state
+            # Handle resuming the pipeline from a snapshot
+            component_visits, data, resume_agent_in_pipeline, ordered_component_names = self._handle_resume_pipeline(
+                pipeline_snapshot
             )
 
         cached_topological_sort = None
@@ -345,7 +347,9 @@ class Pipeline(PipelineBase):
                         component_name, component_visits[component_name]
                     )
 
-                is_resume = bool(resume_state and resume_state["pipeline_breakpoint"]["component"] == component_name)
+                is_resume = bool(
+                    pipeline_snapshot and pipeline_snapshot["pipeline_breakpoint"]["component"] == component_name
+                )
                 component_inputs = self._consume_component_inputs(
                     component_name=component_name, component=component, inputs=inputs, is_resume=is_resume
                 )
@@ -355,10 +359,10 @@ class Pipeline(PipelineBase):
                 # initialization
                 component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 
-                # Scenario 1: Resume state is provided to resume the pipeline at a specific component
-                # Deserialize the component_inputs if they are passed in resume state
+                # Scenario 1: Pipeline snapshot is provided to resume the pipeline at a specific component
+                # Deserialize the component_inputs if they are passed in the pipeline_snapshot.
                 # this check will prevent other component_inputs generated at runtime from being deserialized
-                if resume_state and component_name in resume_state["pipeline_state"]["inputs"].keys():
+                if pipeline_snapshot and component_name in pipeline_snapshot["pipeline_state"]["inputs"].keys():
                     for key, value in component_inputs.items():
                         component_inputs[key] = _deserialize_value_with_schema(value)
 
@@ -393,8 +397,8 @@ class Pipeline(PipelineBase):
                         )
 
                 if resume_agent_in_pipeline:
-                    # inject the resume_state into the component (the Agent) inputs
-                    component_inputs["resume_state"] = resume_state
+                    # inject the pipeline_snapshot into the component (the Agent) inputs
+                    component_inputs["pipeline_snapshot"] = pipeline_snapshot
                     component_inputs["break_point"] = None
 
                 component_outputs = self._run_component(
@@ -430,25 +434,26 @@ class Pipeline(PipelineBase):
 
             return pipeline_outputs
 
-    def inject_resume_state_into_graph(self, resume_state):
+    def _inject_pipeline_snapshot_into_graph(
+        self, pipeline_snapshot: Dict[str, Any]
+    ) -> tuple[Dict[str, int], Dict[str, Any], Dict[str, Any], list]:
         """
-        Loads the resume state from a file and injects it into the pipeline graph.
-
+        Injects the pipeline snapshot into the current pipeline graph.
         """
-        # We previously check if the resume_state is None but this is needed to prevent a typing error
-        if not resume_state:
-            raise PipelineInvalidResumeStateError("Cannot inject resume state: resume_state is None")
+        # We previously check if the pipeline_snapshot is None but this is needed to prevent a typing error
+        if not pipeline_snapshot:
+            raise PipelineInvalidPipelineSnapshotError("Cannot inject pipeline_snapshot: pipeline_snapshot is None")
 
-        # check if the resume_state is valid for the current pipeline
-        _validate_components_against_pipeline(resume_state, self.graph)
+        # check if the pipeline_snapshot is valid for the current pipeline
+        _validate_components_against_pipeline(pipeline_snapshot, self.graph)
 
-        data = self._prepare_component_input_data(resume_state["pipeline_state"]["inputs"])
-        component_visits = resume_state["pipeline_state"]["component_visits"]
-        ordered_component_names = resume_state["pipeline_state"]["ordered_component_names"]
+        data = self._prepare_component_input_data(pipeline_snapshot["pipeline_state"]["inputs"])
+        component_visits = pipeline_snapshot["pipeline_state"]["component_visits"]
+        ordered_component_names = pipeline_snapshot["pipeline_state"]["ordered_component_names"]
         logger.info(
             "Resuming pipeline from {component} with visit count {visits}",
-            component=resume_state["pipeline_breakpoint"]["component"],
-            visits=resume_state["pipeline_breakpoint"]["visits"],
+            component=pipeline_snapshot["pipeline_breakpoint"]["component"],
+            visits=pipeline_snapshot["pipeline_breakpoint"]["visits"],
         )
 
-        return component_visits, data, resume_state, ordered_component_names
+        return component_visits, data, pipeline_snapshot, ordered_component_names

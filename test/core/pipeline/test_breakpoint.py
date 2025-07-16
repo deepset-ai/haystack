@@ -9,7 +9,7 @@ import pytest
 from haystack.core.pipeline.breakpoint import (
     _transform_json_structure,
     _validate_break_point,
-    _validate_resume_state,
+    _validate_pipeline_snapshot,
     load_state,
 )
 
@@ -46,7 +46,7 @@ def test_validate_resume_state_validates_required_keys():
     }
 
     with pytest.raises(ValueError, match="Invalid state file: missing required keys"):
-        _validate_resume_state(state)
+        _validate_pipeline_snapshot(state)
 
     state = {
         "input_data": {},
@@ -59,7 +59,7 @@ def test_validate_resume_state_validates_required_keys():
     }
 
     with pytest.raises(ValueError, match="Invalid pipeline_state: missing required keys"):
-        _validate_resume_state(state)
+        _validate_pipeline_snapshot(state)
 
 
 def test_validate_resume_state_validates_component_consistency():
@@ -74,7 +74,7 @@ def test_validate_resume_state_validates_component_consistency():
     }
 
     with pytest.raises(ValueError, match="Inconsistent state: components in pipeline_state"):
-        _validate_resume_state(state)
+        _validate_pipeline_snapshot(state)
 
 
 def test_validate_resume_state_validates_valid_state():
@@ -88,7 +88,7 @@ def test_validate_resume_state_validates_valid_state():
         },
     }
 
-    _validate_resume_state(state)  # should not raise any exception
+    _validate_pipeline_snapshot(state)  # should not raise any exception
 
 
 def test_load_state_loads_valid_state(tmp_path):

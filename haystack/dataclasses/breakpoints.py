@@ -13,7 +13,7 @@ class Breakpoint:
 
     :param component_name: The name of the component where the breakpoint is set.
     :param visit_count: The number of times the component must be visited before the breakpoint is triggered.
-    :param debug_path: Optional path to store the state of the pipeline when the breakpoint is hit.
+    :param debug_path: Optional path to store a snapshot of the pipeline when the breakpoint is hit.
         This is useful for debugging purposes, allowing you to inspect the state of the pipeline at the time of the
         breakpoint and to resume execution from that point.
     """

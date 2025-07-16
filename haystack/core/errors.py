@@ -109,9 +109,9 @@ class BreakpointException(Exception):
         self.results = results
 
 
-class PipelineInvalidResumeStateError(Exception):
+class PipelineInvalidPipelineSnapshotError(Exception):
     """
-    Exception raised when a pipeline is resumed from an invalid state.
+    Exception raised when a pipeline is resumed from an invalid snapshot.
     """
 
     def __init__(self, message: str):

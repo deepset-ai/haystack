@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Union
 from networkx import MultiDiGraph
 
 from haystack import logging
-from haystack.core.errors import BreakpointException, PipelineInvalidResumeStateError
+from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.utils.base_serialization import _serialize_value_with_schema
 
@@ -49,54 +49,56 @@ def _validate_break_point(break_point: Union[Breakpoint, AgentBreakpoint], graph
                 )
 
 
-def _validate_components_against_pipeline(resume_state: Dict[str, Any], graph: MultiDiGraph) -> None:
+def _validate_components_against_pipeline(pipeline_snapshot: Dict[str, Any], graph: MultiDiGraph) -> None:
     """
-    Validates that the resume_state contains valid configuration for the current pipeline.
+    Validates that the pipeline_snapshot contains valid configuration for the current pipeline.
 
-    Raises a PipelineInvalidResumeStateError if any component in resume_state is not part of the target pipeline.
+    Raises a PipelineInvalidPipelineSnapshotError if any component in pipeline_snapshot is not part of the
+    target pipeline.
 
-    :param resume_state: The saved state to validate.
+    :param pipeline_snapshot: The saved state to validate.
     """
 
-    pipeline_state = resume_state["pipeline_state"]
+    pipeline_state = pipeline_snapshot["pipeline_state"]
     valid_components = set(graph.nodes.keys())
 
     # Check if the ordered_component_names are valid components in the pipeline
     invalid_ordered_components = set(pipeline_state["ordered_component_names"]) - valid_components
     if invalid_ordered_components:
-        raise PipelineInvalidResumeStateError(
-            f"Invalid resume state: components {invalid_ordered_components} in 'ordered_component_names' "
+        raise PipelineInvalidPipelineSnapshotError(
+            f"Invalid pipeline snapshot: components {invalid_ordered_components} in 'ordered_component_names' "
             f"are not part of the current pipeline."
         )
 
     # Check if the input_data is valid components in the pipeline
-    serialized_input_data = resume_state["input_data"]["serialized_data"]
+    serialized_input_data = pipeline_snapshot["input_data"]["serialized_data"]
     invalid_input_data = set(serialized_input_data.keys()) - valid_components
     if invalid_input_data:
-        raise PipelineInvalidResumeStateError(
-            f"Invalid resume state: components {invalid_input_data} in 'input_data' "
+        raise PipelineInvalidPipelineSnapshotError(
+            f"Invalid pipeline snapshot: components {invalid_input_data} in 'input_data' "
             f"are not part of the current pipeline."
         )
 
     # Validate 'component_visits'
     invalid_component_visits = set(pipeline_state["component_visits"].keys()) - valid_components
     if invalid_component_visits:
-        raise PipelineInvalidResumeStateError(
-            f"Invalid resume state: components {invalid_component_visits} in 'component_visits' "
+        raise PipelineInvalidPipelineSnapshotError(
+            f"Invalid pipeline snapshot: components {invalid_component_visits} in 'component_visits' "
             f"are not part of the current pipeline."
         )
 
     logger.info(
-        f"Resuming pipeline from component: {resume_state['pipeline_breakpoint']['component']} "
-        f"(visit {resume_state['pipeline_breakpoint']['visits']})"
+        f"Resuming pipeline from component: {pipeline_snapshot['pipeline_breakpoint']['component']} "
+        f"(visit {pipeline_snapshot['pipeline_breakpoint']['visits']})"
     )
 
 
-def _validate_resume_state(resume_state: Dict[str, Any]) -> None:
+def _validate_pipeline_snapshot(pipeline_snapshot: Dict[str, Any]) -> None:
     """
-    Validates the loaded pipeline resume_state.
+    Validates the loaded pipeline snapshot.
 
-    Ensures that the resume_state contains required keys: "input_data", "pipeline_breakpoint", and "pipeline_state".
+    Ensures that the pipeline_snapshot contains required keys: "input_data", "pipeline_breakpoint",
+    and "pipeline_state".
 
     Raises:
         ValueError: If required keys are missing or the component sets are inconsistent.
@@ -104,12 +106,12 @@ def _validate_resume_state(resume_state: Dict[str, Any]) -> None:
 
     # top-level state has all required keys
     required_top_keys = {"input_data", "pipeline_breakpoint", "pipeline_state"}
-    missing_top = required_top_keys - resume_state.keys()
+    missing_top = required_top_keys - pipeline_snapshot.keys()
     if missing_top:
         raise ValueError(f"Invalid state file: missing required keys {missing_top}")
 
     # pipeline_state has the necessary keys
-    pipeline_state = resume_state["pipeline_state"]
+    pipeline_state = pipeline_snapshot["pipeline_state"]
 
     required_pipeline_keys = {"inputs", "component_visits", "ordered_component_names"}
     missing_pipeline = required_pipeline_keys - pipeline_state.keys()
@@ -126,16 +128,16 @@ def _validate_resume_state(resume_state: Dict[str, Any]) -> None:
             f"do not match components in ordered_component_names {components_in_order}"
         )
 
-    logger.info("Passed resume state validated successfully.")
+    logger.info("Pipeline snapshot validated successfully.")
 
 
 def load_state(file_path: Union[str, Path]) -> Dict[str, Any]:
     """
     Load a saved pipeline state.
 
-    :param file_path: Path to the resume_state file.
+    :param file_path: Path to the pipeline_snapshot file.
     :returns:
-        Dict containing the loaded resume_state.
+        Dict containing the loaded pipeline_snapshot.
     """
 
     file_path = Path(file_path)
@@ -151,7 +153,7 @@ def load_state(file_path: Union[str, Path]) -> Dict[str, Any]:
         raise IOError(f"Error reading {file_path}: {str(e)}")
 
     try:
-        _validate_resume_state(resume_state=state)
+        _validate_pipeline_snapshot(pipeline_snapshot=state)
     except ValueError as e:
         raise ValueError(f"Invalid pipeline state from {file_path}: {str(e)}")
 

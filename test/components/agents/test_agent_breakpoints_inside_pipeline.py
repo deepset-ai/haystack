@@ -280,9 +280,7 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent
 
         # resume the pipeline from the saved state
         latest_state_file = max(chat_generator_state_files, key=os.path.getctime)
-        resume_state = load_state(latest_state_file)
-
-        result = pipeline_with_agent.run(data={}, resume_state=resume_state)
+        result = pipeline_with_agent.run(data={}, pipeline_snapshot=load_state(latest_state_file))
 
         # pipeline completed successfully after resuming
         assert "database_agent" in result
@@ -328,9 +326,7 @@ def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
 
         # resume the pipeline from the saved state
         latest_state_file = max(tool_invoker_state_files, key=os.path.getctime)
-        resume_state = load_state(latest_state_file)
-
-        result = pipeline_with_agent.run(data={}, resume_state=resume_state)
+        result = pipeline_with_agent.run(data={}, pipeline_snapshot=load_state(latest_state_file))
 
         # pipeline completed successfully after resuming
         assert "database_agent" in result

@@ -224,8 +224,7 @@ class TestPipelineBreakpointsLoops:
             f_name = Path(full_path).name
             if str(f_name).startswith(break_point.component_name):
                 file_found = True
-                resume_state = load_state(full_path)
-                result = validation_loop_pipeline.run(data={}, resume_state=resume_state)
+                result = validation_loop_pipeline.run(data={}, pipeline_snapshot=load_state(full_path))
                 # Verify the result contains valid output
                 if "output_validator" in result and "valid_replies" in result["output_validator"]:
                     valid_reply = result["output_validator"]["valid_replies"][0].text

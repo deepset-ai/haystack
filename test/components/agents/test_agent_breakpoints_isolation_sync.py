@@ -58,9 +58,9 @@ def test_resume_from_chat_generator(agent_sync, tmp_path):  # noqa: F811
     assert len(state_files) > 0
     latest_state_file = str(max(state_files, key=os.path.getctime))
 
-    resume_state = load_state(latest_state_file)
     result = agent_sync.run(
-        messages=[ChatMessage.from_user("Continue from where we left off.")], resume_state=resume_state
+        messages=[ChatMessage.from_user("Continue from where we left off.")],
+        pipeline_snapshot=load_state(latest_state_file),
     )
 
     assert "messages" in result
@@ -83,10 +83,9 @@ def test_resume_from_tool_invoker(mock_agent_with_tool_calls_sync, tmp_path):  #
     assert len(state_files) > 0
     latest_state_file = str(max(state_files, key=os.path.getctime))
 
-    resume_state = load_state(latest_state_file)
-
     result = mock_agent_with_tool_calls_sync.run(
-        messages=[ChatMessage.from_user("Continue from where we left off.")], resume_state=resume_state
+        messages=[ChatMessage.from_user("Continue from where we left off.")],
+        pipeline_snapshot=load_state(latest_state_file),
     )
 
     assert "messages" in result
@@ -94,13 +93,13 @@ def test_resume_from_tool_invoker(mock_agent_with_tool_calls_sync, tmp_path):  #
     assert len(result["messages"]) > 0
 
 
-def test_invalid_combination_breakpoint_and_resume_state(mock_agent_with_tool_calls_sync):  # noqa: F811
+def test_invalid_combination_breakpoint_and_pipeline_snapshot(mock_agent_with_tool_calls_sync):  # noqa: F811
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
     tool_bp = create_tool_breakpoint(tool_name="weather_tool", visit_count=0)
     agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test_agent")
-    with pytest.raises(ValueError, match="agent_breakpoint and resume_state cannot be provided at the same time"):
+    with pytest.raises(ValueError, match="agent_breakpoint and pipeline_snapshot cannot be provided at the same time"):
         mock_agent_with_tool_calls_sync.run(
-            messages=messages, break_point=agent_breakpoint, resume_state={"some": "state"}
+            messages=messages, break_point=agent_breakpoint, pipeline_snapshot={"some": "state"}
         )
 
 
