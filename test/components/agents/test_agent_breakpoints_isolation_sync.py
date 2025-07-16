@@ -27,7 +27,7 @@ def test_run_with_chat_generator_breakpoint(agent_sync):  # noqa: F811
     with pytest.raises(BreakpointException) as exc_info:
         agent_sync.run(messages=messages, break_point=agent_breakpoint, agent_name="test")
     assert exc_info.value.component == "chat_generator"
-    assert "messages" in exc_info.value.state
+    assert "messages" in exc_info.value.pipeline_snapshot
 
 
 def test_run_with_tool_invoker_breakpoint(mock_agent_with_tool_calls_sync):  # noqa: F811
@@ -38,7 +38,7 @@ def test_run_with_tool_invoker_breakpoint(mock_agent_with_tool_calls_sync):  # n
         mock_agent_with_tool_calls_sync.run(messages=messages, break_point=agent_breakpoint, agent_name="test")
 
     assert exc_info.value.component == "tool_invoker"
-    assert "messages" in exc_info.value.state
+    assert "messages" in exc_info.value.pipeline_snapshot
 
 
 def test_resume_from_chat_generator(agent_sync, tmp_path):  # noqa: F811

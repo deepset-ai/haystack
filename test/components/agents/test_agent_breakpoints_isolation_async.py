@@ -86,7 +86,7 @@ async def test_run_async_with_chat_generator_breakpoint(agent):
     with pytest.raises(BreakpointException) as exc_info:
         await agent.run_async(messages=messages, break_point=agent_breakpoint, agent_name=AGENT_NAME)
     assert exc_info.value.component == "chat_generator"
-    assert "messages" in exc_info.value.state
+    assert "messages" in exc_info.value.pipeline_snapshot
 
 
 @pytest.mark.asyncio
@@ -100,7 +100,7 @@ async def test_run_async_with_tool_invoker_breakpoint(mock_agent_with_tool_calls
         )
 
     assert exc_info.value.component == "tool_invoker"
-    assert "messages" in exc_info.value.state
+    assert "messages" in exc_info.value.pipeline_snapshot
 
 
 @pytest.mark.asyncio

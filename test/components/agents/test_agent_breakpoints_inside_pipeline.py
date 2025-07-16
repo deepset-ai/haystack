@@ -229,8 +229,8 @@ def test_chat_generator_breakpoint_in_pipeline_agent(pipeline_with_agent):
 
         except BreakpointException as e:  # this is the exception from the Agent
             assert e.component == "chat_generator"
-            assert e.state is not None
-            assert "messages" in e.state
+            assert e.pipeline_snapshot is not None
+            assert "messages" in e.pipeline_snapshot
             assert e.results is not None
 
         # verify that snapshot file was created
@@ -249,8 +249,8 @@ def test_tool_breakpoint_in_pipeline_agent(pipeline_with_agent):
             assert False, "Expected exception was not raised"
         except BreakpointException as e:  # this is the exception from the Agent
             assert e.component == "tool_invoker"
-            assert e.state is not None
-            assert "messages" in e.state
+            assert e.pipeline_snapshot is not None
+            assert "messages" in e.pipeline_snapshot
             assert e.results is not None
 
         # verify that snapshot file was created
@@ -270,8 +270,8 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent
 
         except BreakpointException as e:
             assert e.component == "chat_generator"
-            assert e.state is not None
-            assert "messages" in e.state
+            assert e.pipeline_snapshot is not None
+            assert "messages" in e.pipeline_snapshot
             assert e.results is not None
 
         # verify that the snapshot file was created
@@ -316,8 +316,8 @@ def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
 
         except BreakpointException as e:
             assert e.component == "tool_invoker"
-            assert e.state is not None
-            assert "messages" in e.state
+            assert e.pipeline_snapshot is not None
+            assert "messages" in e.pipeline_snapshot
             assert e.results is not None
 
         # verify that the snapshot file was created

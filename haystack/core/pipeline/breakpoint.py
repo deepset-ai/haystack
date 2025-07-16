@@ -200,7 +200,7 @@ def _save_pipeline_snapshot_to_file(
     :param component_name: Name of the component that triggered the breakpoint.
     :raises:
         ValueError: If the debug_path is not a string or a Path object.
-        Exception: If saving the JSON state fails.
+        Exception: If saving the JSON snapshot fails.
     """
     debug_path = Path(debug_path) if isinstance(debug_path, str) else debug_path
     if not isinstance(debug_path, Path):
@@ -218,9 +218,9 @@ def _save_pipeline_snapshot_to_file(
     try:
         with open(debug_path / file_name, "w") as f_out:
             json.dump(pipeline_snapshot, f_out, indent=2)
-        logger.info(f"Pipeline state saved at: {file_name}")
+        logger.info(f"Pipeline snapshot saved at: {file_name}")
     except Exception as e:
-        logger.error(f"Failed to save pipeline state: {str(e)}")
+        logger.error(f"Failed to save pipeline snapshot: {str(e)}")
         raise
 
 
@@ -238,17 +238,17 @@ def _save_snapshot(
     """
     Save the pipeline snapshot to a file.
 
-    :param inputs: The current pipeline state inputs.
+    :param inputs: The current pipeline snapshot inputs.
     :param component_name: The name of the component that triggered the breakpoint.
     :param component_visits: The visit count of the component that triggered the breakpoint.
-    :param debug_path: The path to save the state to.
+    :param debug_path: The path to save the snapshot to.
     :param original_input_data: The original input data.
     :param ordered_component_names: The ordered component names.
     :param main_pipeline_state: Dictionary containing main pipeline state with keys: "component_visits",
                                 "ordered_component_names", "original_input_data", and "inputs".
 
     :returns:
-        The dictionary containing the state of the pipeline containing the following keys:
+        The dictionary containing the snapshot of the pipeline containing the following keys:
         - input_data: The original input data passed to the pipeline.
         - timestamp: The timestamp of the breakpoint.
         - pipeline_breakpoint: The component name and visit count that triggered the breakpoint.
@@ -383,7 +383,7 @@ def _trigger_break_point(
     pipeline_outputs: Dict[str, Any],
 ) -> None:
     """
-    Trigger a breakpoint by saving state and raising exception.
+    Trigger a breakpoint by saving a snapshot and raising exception.
 
     :param component_name: Name of the component where breakpoint is triggered
     :param component_inputs: Inputs for the current component
@@ -395,10 +395,10 @@ def _trigger_break_point(
     :param pipeline_outputs: Current pipeline outputs
     :raises PipelineBreakpointException: When breakpoint is triggered
     """
-    state_inputs_serialised = deepcopy(inputs)
-    state_inputs_serialised[component_name] = deepcopy(component_inputs)
+    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
+    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
     _save_snapshot(
-        inputs=state_inputs_serialised,
+        inputs=pipeline_snapshot_inputs_serialised,
         component_name=str(component_name),
         component_visits=component_visits,
         debug_path=debug_path,
@@ -408,7 +408,10 @@ def _trigger_break_point(
 
     msg = f"Breaking at component {component_name} at visit count {component_visits[component_name]}"
     raise BreakpointException(
-        message=msg, component=component_name, state=state_inputs_serialised, results=pipeline_outputs
+        message=msg,
+        component=component_name,
+        pipeline_snapshot=pipeline_snapshot_inputs_serialised,
+        results=pipeline_outputs,
     )
 
 
@@ -429,7 +432,7 @@ def _check_chat_generator_breakpoint(
     :param messages: Current messages to process
     :param generator_inputs: Inputs for the chat generator
     :param kwargs: Additional keyword arguments
-    :param state: Current agent state
+    :param state: The current State of the agent
     :raises AgentBreakpointException: If a breakpoint is triggered
     """
 
@@ -441,9 +444,9 @@ def _check_chat_generator_breakpoint(
     ):
         break_point = agent_breakpoint.break_point
         if component_visits[break_point.component_name] == break_point.visit_count:
-            state_inputs = deepcopy({"messages": messages, **generator_inputs})
+            chat_generator_inputs = deepcopy({"messages": messages, **generator_inputs})
             _save_snapshot(
-                inputs=state_inputs,
+                inputs=chat_generator_inputs,
                 component_name=break_point.component_name,
                 component_visits=component_visits,  # these are the component visits of the agent components
                 debug_path=break_point.debug_path,
@@ -455,7 +458,10 @@ def _check_chat_generator_breakpoint(
             msg = f"Breaking at {break_point.component_name} visit count {component_visits[break_point.component_name]}"
             logger.info(msg)
             raise BreakpointException(
-                message=msg, component=break_point.component_name, state=state_inputs, results=state.data
+                message=msg,
+                component=break_point.component_name,
+                pipeline_snapshot=chat_generator_inputs,
+                results=state.data,
             )
 
 
@@ -498,11 +504,11 @@ def _check_tool_invoker_breakpoint(
                 )
 
             if should_break:
-                state_inputs = deepcopy(
+                tool_invoker_inputs = deepcopy(
                     {"messages": llm_messages, "state": state, "streaming_callback": streaming_callback}
                 )
                 _save_snapshot(
-                    inputs=state_inputs,
+                    inputs=tool_invoker_inputs,
                     component_name=tool_breakpoint.component_name,
                     component_visits=component_visits,
                     debug_path=tool_breakpoint.debug_path,
@@ -520,5 +526,8 @@ def _check_tool_invoker_breakpoint(
                 logger.info(msg)
 
                 raise BreakpointException(
-                    message=msg, component=tool_breakpoint.component_name, state=state_inputs, results=state.data
+                    message=msg,
+                    component=tool_breakpoint.component_name,
+                    pipeline_snapshot=tool_invoker_inputs,
+                    results=state.data,
                 )
