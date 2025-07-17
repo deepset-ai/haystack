@@ -276,6 +276,6 @@ class PipelineSnapshot:
                 if "agent_name" in data["break_point"]
                 else Breakpoint.from_dict(data=data["break_point"])
             ),
-            agent_snapshot=AgentSnapshot.from_dict(data["agent_snapshot"]) if "agent_snapshot" in data else None,
+            agent_snapshot=AgentSnapshot.from_dict(data["agent_snapshot"]) if data.get("agent_snapshot") else None,
             timestamp=datetime.fromisoformat(data["timestamp"]) if data.get("timestamp") else None,
         )
