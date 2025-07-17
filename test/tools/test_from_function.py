@@ -119,15 +119,15 @@ def test_tool_decorator():
 
 # Test function for decorator deserialization
 @tool
-def get_weather_for_deserialization_test(city: str) -> str:
+def weather_tool_with_decorator(city: str) -> str:
     """Get weather report for a city."""
     return f"Weather report for {city}: 20°C, sunny"
 
 
 def test_tool_decorator_deserialization():
-    serialized = get_weather_for_deserialization_test.to_dict()
+    serialized = weather_tool_with_decorator.to_dict()
     deserialized = Tool.from_dict(serialized)
-    assert deserialized.name == "get_weather_for_deserialization_test"
+    assert deserialized.name == "weather_tool_with_decorator"
     assert deserialized.description == "Get weather report for a city."
     assert deserialized.parameters == {
         "type": "object",
