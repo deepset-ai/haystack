@@ -27,7 +27,7 @@ def test_run_with_chat_generator_breakpoint(agent_sync):  # noqa: F811
     with pytest.raises(BreakpointException) as exc_info:
         agent_sync.run(messages=messages, break_point=agent_breakpoint, agent_name="test")
     assert exc_info.value.component == "chat_generator"
-    assert "messages" in exc_info.value.pipeline_snapshot
+    assert "messages" in exc_info.value.inputs["serialized_data"]
 
 
 def test_run_with_tool_invoker_breakpoint(mock_agent_with_tool_calls_sync):  # noqa: F811
@@ -38,7 +38,9 @@ def test_run_with_tool_invoker_breakpoint(mock_agent_with_tool_calls_sync):  # n
         mock_agent_with_tool_calls_sync.run(messages=messages, break_point=agent_breakpoint, agent_name="test")
 
     assert exc_info.value.component == "tool_invoker"
-    assert "messages" in exc_info.value.pipeline_snapshot
+    assert "serialization_schema" in exc_info.value.inputs
+    assert "serialized_data" in exc_info.value.inputs
+    assert "messages" in exc_info.value.inputs["serialized_data"]
 
 
 def test_resume_from_chat_generator(agent_sync, tmp_path):  # noqa: F811
@@ -58,7 +60,7 @@ def test_resume_from_chat_generator(agent_sync, tmp_path):  # noqa: F811
 
     result = agent_sync.run(
         messages=[ChatMessage.from_user("Continue from where we left off.")],
-        pipeline_snapshot=load_pipeline_snapshot(latest_snapshot_file),
+        snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
     )
 
     assert "messages" in result
@@ -83,7 +85,7 @@ def test_resume_from_tool_invoker(mock_agent_with_tool_calls_sync, tmp_path):  #
 
     result = mock_agent_with_tool_calls_sync.run(
         messages=[ChatMessage.from_user("Continue from where we left off.")],
-        pipeline_snapshot=load_pipeline_snapshot(latest_snapshot_file),
+        snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
     )
 
     assert "messages" in result
@@ -95,9 +97,9 @@ def test_invalid_combination_breakpoint_and_pipeline_snapshot(mock_agent_with_to
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
     tool_bp = ToolBreakpoint(component_name="tool_invoker", visit_count=0, tool_name="weather_tool")
     agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test_agent")
-    with pytest.raises(ValueError, match="agent_breakpoint and pipeline_snapshot cannot be provided at the same time"):
+    with pytest.raises(ValueError, match="break_point and snapshot cannot be provided at the same time"):
         mock_agent_with_tool_calls_sync.run(
-            messages=messages, break_point=agent_breakpoint, pipeline_snapshot={"some": "snapshot"}
+            messages=messages, break_point=agent_breakpoint, snapshot={"some": "snapshot"}
         )
 
 

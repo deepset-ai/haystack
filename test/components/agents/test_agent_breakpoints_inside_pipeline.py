@@ -229,8 +229,8 @@ def test_chat_generator_breakpoint_in_pipeline_agent(pipeline_with_agent):
 
         except BreakpointException as e:  # this is the exception from the Agent
             assert e.component == "chat_generator"
-            assert e.pipeline_snapshot is not None
-            assert "messages" in e.pipeline_snapshot
+            assert e.inputs is not None
+            assert "messages" in e.inputs["serialized_data"]
             assert e.results is not None
 
         # verify that snapshot file was created
@@ -249,8 +249,8 @@ def test_tool_breakpoint_in_pipeline_agent(pipeline_with_agent):
             assert False, "Expected exception was not raised"
         except BreakpointException as e:  # this is the exception from the Agent
             assert e.component == "tool_invoker"
-            assert e.pipeline_snapshot is not None
-            assert "messages" in e.pipeline_snapshot
+            assert e.inputs is not None
+            assert "messages" in e.inputs["serialized_data"]
             assert e.results is not None
 
         # verify that snapshot file was created
@@ -270,8 +270,8 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent
 
         except BreakpointException as e:
             assert e.component == "chat_generator"
-            assert e.pipeline_snapshot is not None
-            assert "messages" in e.pipeline_snapshot
+            assert e.inputs is not None
+            assert "messages" in e.inputs["serialized_data"]
             assert e.results is not None
 
         # verify that the snapshot file was created
@@ -316,8 +316,10 @@ def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
 
         except BreakpointException as e:
             assert e.component == "tool_invoker"
-            assert e.pipeline_snapshot is not None
-            assert "messages" in e.pipeline_snapshot
+            assert e.inputs is not None
+            assert "serialization_schema" in e.inputs
+            assert "serialized_data" in e.inputs
+            assert "messages" in e.inputs["serialized_data"]
             assert e.results is not None
 
         # verify that the snapshot file was created
@@ -326,7 +328,8 @@ def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
 
         # resume the pipeline from the saved snapshot
         latest_snapshot_file = max(tool_invoker_snapshot_files, key=os.path.getctime)
-        result = pipeline_with_agent.run(data={}, pipeline_snapshot=load_pipeline_snapshot(latest_snapshot_file))
+        pipeline_snapshot = load_pipeline_snapshot(latest_snapshot_file)
+        result = pipeline_with_agent.run(data={}, pipeline_snapshot=pipeline_snapshot)
 
         # pipeline completed successfully after resuming
         assert "database_agent" in result

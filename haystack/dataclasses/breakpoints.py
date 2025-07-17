@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass
-from typing import Optional, Union
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
+
+from haystack.components.agents.state import State
 
 
 @dataclass(frozen=True)
@@ -21,6 +24,24 @@ class Breakpoint:
     component_name: str
     visit_count: int = 0
     debug_path: Optional[str] = None
+
+    def to_dict(self):
+        """
+        Convert the Breakpoint to a dictionary representation.
+
+        :return: A dictionary containing the component name, visit count, and debug path.
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Breakpoint":
+        """
+        Populate the Breakpoint from a dictionary representation.
+
+        :param data: A dictionary containing the component name, visit count, and debug path.
+        :return: An instance of Breakpoint.
+        """
+        return cls(**data)
 
 
 @dataclass(frozen=True)
@@ -68,3 +89,193 @@ class AgentBreakpoint:
 
         if isinstance(self.break_point, ToolBreakpoint) and self.break_point.component_name != "tool_invoker":
             raise ValueError("If the break_point is a ToolBreakpoint, it must have the component_name 'tool_invoker'.")
+
+    def to_dict(self):
+        """
+        Convert the AgentBreakpoint to a dictionary representation.
+
+        :return: A dictionary containing the agent name and the breakpoint details.
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AgentBreakpoint":
+        """
+        Populate the AgentBreakpoint from a dictionary representation.
+
+        :param data: A dictionary containing the agent name and the breakpoint details.
+        :return: An instance of AgentBreakpoint.
+        """
+        break_point_data = data["break_point"]
+        if "tool_name" in break_point_data:
+            break_point = ToolBreakpoint(**break_point_data)
+        else:
+            break_point = Breakpoint(**break_point_data)
+        return cls(agent_name=data["agent_name"], break_point=break_point)
+
+
+@dataclass
+class AgentState:
+    original_input_data: Dict
+    inputs: Dict
+    state: State
+    component_visits: Dict
+    ordered_component_names: List[str]
+
+    def to_dict(self):
+        """
+        Convert the AgentState to a dictionary representation.
+
+        :return: A dictionary containing the original input data, inputs, state, component visits, and ordered
+            component names.
+        """
+        return {
+            "original_input_data": self.original_input_data,
+            "inputs": self.inputs,
+            "state": self.state.to_dict(),
+            "component_visits": self.component_visits,
+            "ordered_component_names": self.ordered_component_names,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AgentState":
+        """
+        Populate the AgentState from a dictionary representation.
+
+        :param data: A dictionary containing the original input data, inputs, state, component visits, and ordered
+            component names.
+        :return: An instance of AgentState.
+        """
+        return cls(
+            original_input_data=data["original_input_data"],
+            inputs=data["inputs"],
+            state=State.from_dict(data["state"]),
+            component_visits=data["component_visits"],
+            ordered_component_names=data["ordered_component_names"],
+        )
+
+
+@dataclass
+class AgentSnapshot:
+    agent_state: AgentState
+    break_point: AgentBreakpoint
+    timestamp: Optional[datetime] = None
+
+    def to_dict(self):
+        """
+        Convert the AgentSnapshot to a dictionary representation.
+
+        :return: A dictionary containing the agent state, timestamp, and breakpoint.
+        """
+        return {
+            "agent_state": self.agent_state.to_dict(),
+            "break_point": self.break_point.to_dict(),
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AgentSnapshot":
+        """
+        Populate the AgentSnapshot from a dictionary representation.
+
+        :param data: A dictionary containing the agent state, timestamp, and breakpoint.
+        :return: An instance of AgentSnapshot.
+        """
+        return cls(
+            agent_state=AgentState.from_dict(data["agent_state"]),
+            break_point=AgentBreakpoint.from_dict(data["break_point"]),
+            timestamp=datetime.fromisoformat(data["timestamp"]) if data.get("timestamp") else None,
+        )
+
+
+@dataclass
+class PipelineState:
+    """
+    A dataclass to hold the state of the pipeline at a specific point in time.
+
+    :param component_visits: A dictionary mapping component names to their visit counts.
+    :param ordered_component_names: A list of component names in the order they were visited.
+    :param original_input_data: The original input data provided to the pipeline.
+    :param inputs: The inputs processed by the pipeline at the time of the snapshot.
+    """
+
+    original_input_data: Dict[str, Any]
+    inputs: Dict[str, Any]
+    component_visits: Dict[str, int]
+    ordered_component_names: List[str]
+
+    def __post_init__(self):
+        components_in_state = set(self.component_visits.keys())
+        components_in_order = set(self.ordered_component_names)
+
+        if components_in_state != components_in_order:
+            raise ValueError(
+                f"Inconsistent state: components in PipelineState.component_visits {components_in_state} "
+                f"do not match components in PipelineState.ordered_component_names {components_in_order}"
+            )
+
+    def to_dict(self):
+        """
+        Convert the PipelineState to a dictionary representation.
+
+        :return: A dictionary containing the original input data, inputs, component visits, and ordered component names.
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PipelineState":
+        """
+        Populate the PipelineState from a dictionary representation.
+
+        :param data: A dictionary containing the original input data, inputs, component visits, and ordered component
+            names.
+        :return: An instance of PipelineState.
+        """
+        return cls(**data)
+
+
+@dataclass
+class PipelineSnapshot:
+    """
+    A dataclass to hold a snapshot of the pipeline at a specific point in time.
+
+    :param pipeline_state: The state of the pipeline at the time of the snapshot.
+    :param break_point: The breakpoint that triggered the snapshot.
+    :param timestamp: A timestamp indicating when the snapshot was taken.
+    """
+
+    pipeline_state: PipelineState
+    break_point: Union[AgentBreakpoint, Breakpoint]
+    agent_snapshot: Optional[AgentSnapshot] = None
+    timestamp: Optional[datetime] = None
+
+    def to_dict(self):
+        """
+        Convert the PipelineSnapshot to a dictionary representation.
+
+        :return: A dictionary containing the pipeline state, timestamp, and breakpoint.
+        """
+        return {
+            "pipeline_state": self.pipeline_state.to_dict(),
+            "break_point": self.break_point.to_dict(),
+            "agent_snapshot": self.agent_snapshot.to_dict() if self.agent_snapshot else None,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PipelineSnapshot":
+        """
+        Populate the PipelineSnapshot from a dictionary representation.
+
+        :param data: A dictionary containing the pipeline state, timestamp, and breakpoint.
+        """
+        return cls(
+            pipeline_state=PipelineState.from_dict(data=data["pipeline_state"]),
+            break_point=(
+                AgentBreakpoint.from_dict(data=data["break_point"])
+                if "agent_name" in data["break_point"]
+                else Breakpoint.from_dict(data=data["break_point"])
+            ),
+            agent_snapshot=AgentSnapshot.from_dict(data["agent_snapshot"]) if "agent_snapshot" in data else None,
+            timestamp=datetime.fromisoformat(data["timestamp"]) if data.get("timestamp") else None,
+        )

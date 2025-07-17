@@ -86,7 +86,7 @@ async def test_run_async_with_chat_generator_breakpoint(agent):
     with pytest.raises(BreakpointException) as exc_info:
         await agent.run_async(messages=messages, break_point=agent_breakpoint, agent_name=AGENT_NAME)
     assert exc_info.value.component == "chat_generator"
-    assert "messages" in exc_info.value.pipeline_snapshot
+    assert "messages" in exc_info.value.inputs["serialized_data"]
 
 
 @pytest.mark.asyncio
@@ -100,7 +100,7 @@ async def test_run_async_with_tool_invoker_breakpoint(mock_agent_with_tool_calls
         )
 
     assert exc_info.value.component == "tool_invoker"
-    assert "messages" in exc_info.value.pipeline_snapshot
+    assert "messages" in exc_info.value.inputs["serialized_data"]
 
 
 @pytest.mark.asyncio
@@ -121,7 +121,7 @@ async def test_resume_from_chat_generator_async(agent, debug_path):
 
     result = await agent.run_async(
         messages=[ChatMessage.from_user("Continue from where we left off.")],
-        pipeline_snapshot=load_pipeline_snapshot(latest_snapshot_file),
+        snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
     )
 
     assert "messages" in result
@@ -151,7 +151,7 @@ async def test_resume_from_tool_invoker_async(mock_agent_with_tool_calls, debug_
 
     result = await mock_agent_with_tool_calls.run_async(
         messages=[ChatMessage.from_user("Continue from where we left off.")],
-        pipeline_snapshot=load_pipeline_snapshot(latest_snapshot_file),
+        snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
     )
 
     assert "messages" in result
@@ -164,9 +164,9 @@ async def test_invalid_combination_breakpoint_and_pipeline_snapshot_async(mock_a
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
     tool_bp = ToolBreakpoint(component_name="tool_invoker", visit_count=0, tool_name="weather_tool")
     agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test")
-    with pytest.raises(ValueError, match="agent_breakpoint and pipeline_snapshot cannot be provided at the same time"):
+    with pytest.raises(ValueError, match="break_point and snapshot cannot be provided at the same time"):
         await mock_agent_with_tool_calls.run_async(
-            messages=messages, break_point=agent_breakpoint, pipeline_snapshot={"some": "snapshot"}
+            messages=messages, break_point=agent_breakpoint, snapshot={"some": "snapshot"}
         )
 
 
