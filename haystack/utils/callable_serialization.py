@@ -71,6 +71,14 @@ def deserialize_callable(callable_handle: str) -> Callable:
         if isinstance(attr_value, (classmethod, staticmethod)):
             attr_value = attr_value.__func__
 
+        # Handle the case where @tool decorator replaced the function with a Tool object
+        if (
+            hasattr(attr_value, "function")
+            and callable(getattr(attr_value, "function", None))
+            and all(hasattr(attr_value, attr) for attr in ["name", "description", "parameters"])
+        ):
+            attr_value = attr_value.function
+
         if not callable(attr_value):
             raise DeserializationError(f"The final attribute is not callable: {attr_value}")
 
