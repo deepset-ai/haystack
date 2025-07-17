@@ -25,7 +25,7 @@ class Breakpoint:
     visit_count: int = 0
     debug_path: Optional[str] = None
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the Breakpoint to a dictionary representation.
 
@@ -57,7 +57,7 @@ class ToolBreakpoint(Breakpoint):
 
     tool_name: Optional[str] = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         tool_str = f", tool_name={self.tool_name}" if self.tool_name else ", tool_name=ALL_TOOLS"
         return f"ToolBreakpoint(component_name={self.component_name}, visit_count={self.visit_count}{tool_str})"
 
@@ -90,7 +90,7 @@ class AgentBreakpoint:
         if isinstance(self.break_point, ToolBreakpoint) and self.break_point.component_name != "tool_invoker":
             raise ValueError("If the break_point is a ToolBreakpoint, it must have the component_name 'tool_invoker'.")
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the AgentBreakpoint to a dictionary representation.
 
@@ -122,7 +122,7 @@ class AgentState:
     component_visits: Dict
     ordered_component_names: List[str]
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the AgentState to a dictionary representation.
 
@@ -161,7 +161,7 @@ class AgentSnapshot:
     break_point: AgentBreakpoint
     timestamp: Optional[datetime] = None
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the AgentSnapshot to a dictionary representation.
 
@@ -214,7 +214,7 @@ class PipelineState:
                 f"do not match components in PipelineState.ordered_component_names {components_in_order}"
             )
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the PipelineState to a dictionary representation.
 
@@ -249,7 +249,7 @@ class PipelineSnapshot:
     agent_snapshot: Optional[AgentSnapshot] = None
     timestamp: Optional[datetime] = None
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert the PipelineSnapshot to a dictionary representation.
 
