@@ -279,7 +279,7 @@ class Agent:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
-        generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback, generator_inputs=generation_kwargs)
+        generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback, generation_kwargs=generation_kwargs)
         with self._create_agent_span() as span:
             span.set_content_tag(
                 "haystack.agent.input",
