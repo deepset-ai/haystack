@@ -333,7 +333,7 @@ class Agent:
 
             while counter < self.max_agent_steps:
                 # check for breakpoint before ChatGenerator
-                if break_point:
+                if break_point and break_point.break_point.component_name == "chat_generator":
                     agent_snapshot = _create_agent_snapshot(
                         component_visits=component_visits,
                         agent_breakpoint=break_point,
@@ -345,10 +345,9 @@ class Agent:
                     _check_chat_generator_breakpoint(agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot)
 
                 # 1. Call the ChatGenerator
-                # If skip_chat_generator is True, we skip the chat generator and use the messages from the state
-                # This is useful when the agent is resumed from a snapshot where the chat generator already ran.
+                # We skip the chat generator when restarting from a snapshot where we restart at the ToolInvoker.
                 if skip_chat_generator:
-                    llm_messages = state.get("messages", [])[-1:]  # Get the last message from the state
+                    llm_messages = state.get("messages", [])[-1:]
                     # We set it to False to ensure that the next iteration will call the chat generator again
                     skip_chat_generator = False
                 else:
@@ -368,7 +367,7 @@ class Agent:
                     break
 
                 # check for breakpoint before ToolInvoker
-                if break_point:
+                if break_point and break_point.break_point.component_name == "tool_invoker":
                     agent_snapshot = _create_agent_snapshot(
                         component_visits=component_visits,
                         agent_breakpoint=break_point,
@@ -518,7 +517,7 @@ class Agent:
 
             while counter < self.max_agent_steps:
                 # check for breakpoint before ChatGenerator
-                if break_point:
+                if break_point and break_point.break_point.component_name == "chat_generator":
                     agent_snapshot = _create_agent_snapshot(
                         component_visits=component_visits,
                         agent_breakpoint=break_point,
@@ -553,7 +552,7 @@ class Agent:
                     break
 
                 # Check for breakpoint before ToolInvoker
-                if break_point:
+                if break_point and break_point.break_point.component_name == "tool_invoker":
                     agent_snapshot = _create_agent_snapshot(
                         component_visits=component_visits,
                         agent_breakpoint=break_point,

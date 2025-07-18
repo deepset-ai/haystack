@@ -18,8 +18,8 @@ from haystack.core.pipeline.base import (
 from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
     _trigger_break_point,
-    _validate_break_point,
-    _validate_components_against_pipeline,
+    _validate_break_point_against_pipeline,
+    _validate_pipeline_snapshot_against_pipeline,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot
@@ -203,7 +203,7 @@ class Pipeline(PipelineBase):
 
         # make sure all breakpoints are valid, i.e. reference components in the pipeline
         if break_point:
-            _validate_break_point(break_point, self.graph)
+            _validate_break_point_against_pipeline(break_point, self.graph)
 
         # TODO: Remove this warmup once we can check reliably whether a component has been warmed up or not
         # As of now it's here to make sure we don't have failing tests that assume warm_up() is called in run()
@@ -228,7 +228,7 @@ class Pipeline(PipelineBase):
 
         else:
             # Validate the pipeline snapshot against the current pipeline graph
-            _validate_components_against_pipeline(pipeline_snapshot, self.graph)
+            _validate_pipeline_snapshot_against_pipeline(pipeline_snapshot, self.graph)
 
             # Handle resuming the pipeline from a snapshot
             component_visits = pipeline_snapshot.pipeline_state.component_visits
