@@ -102,6 +102,45 @@ class StreamingChunk:
         if (self.tool_calls or self.tool_call_result) and self.index is None:
             raise ValueError("If `tool_call`, or `tool_call_result` is set, `index` must also be set.")
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary representation of the StreamingChunk.
+
+        :returns: Serialized dictionary representation of the calling object.
+        """
+        return {
+            "content": self.content,
+            "meta": self.meta,
+            "component_info": self.component_info,
+            "index": self.index,
+            "tool_calls": self.tool_calls,
+            "tool_call_result": self.tool_call_result,
+            "start": self.start,
+            "finish_reason": self.finish_reason,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "StreamingChunk":
+        """
+        Creates a deserialized StreamingChunk instance from a serialized representation.
+
+        :param data: Dictionary containing the StreamingChunk's attributes.
+        :returns: A StreamingChunk instance.
+        """
+        if "content" not in data:
+            raise ValueError("Missing field 'content' in StreamingChunk deserialization. Field 'content' is required.")
+
+        return StreamingChunk(
+            content=data["content"],
+            meta=data.get("meta", {}),
+            component_info=data.get("component_info"),
+            index=data.get("index"),
+            tool_calls=data.get("tool_calls"),
+            tool_call_result=data.get("tool_call_result"),
+            start=data.get("start"),
+            finish_reason=data.get("finish_reason"),
+        )
+
 
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]
 AsyncStreamingCallbackT = Callable[[StreamingChunk], Awaitable[None]]
