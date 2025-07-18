@@ -3,11 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import mimetypes
 import sys
+from pathlib import PosixPath
 from unittest.mock import mock_open, patch
 
 import pytest
+from packaging import version
 
+import haystack
 from haystack import Pipeline
 from haystack.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.components.routers.file_type_router import FileTypeRouter
@@ -395,3 +399,50 @@ class TestFileTypeRouter:
 
         assert output["text_file_converter"]["documents"][0].meta["meta_field_1"] == "meta_value_1"
         assert output["pypdf_converter"]["documents"][0].meta["meta_field_2"] == "meta_value_2"
+
+    def test_additional_mimetypes_integration(self, tmp_path):
+        """
+        Test if the component runs correctly in a pipeline with additional mimetypes correctly.
+        """
+        custom_mime_type = "application/x-spam"
+        custom_extension = ".spam"
+        test_file = tmp_path / f"test.{custom_extension}"
+        test_file.touch()
+
+        # confirm that mimetypes module doesn't know about this extension by default
+        assert custom_mime_type not in mimetypes.types_map.values()
+
+        # make haystack aware of the custom mime type
+        router = FileTypeRouter(
+            mime_types=[custom_mime_type], additional_mimetypes={custom_mime_type: custom_extension}
+        )
+        mappings = router.run(sources=[test_file])
+
+        # assert the file was classified under the custom mime type
+        assert custom_mime_type in mappings
+        assert test_file in mappings[custom_mime_type]
+
+    @pytest.mark.skipif(
+        version.parse(haystack.__version__) >= version.parse("2.17.0"),
+        reason="https://github.com/deepset-ai/haystack/pull/9573#issuecomment-3045237341",
+    )
+    def test_non_existent_file(self):
+        """
+        Test conditional FileNotFoundError behavior in FileTypeRouter.
+
+        In Haystack versions prior to 2.17.0, `FileTypeRouter` does not raise an error
+        when a non-existent file is passed without `meta`. However, it raises a
+        FileNotFoundError when the same file is passed with `meta` supplied.
+
+        This inconsistent behavior is slated to change in 2.17.0.
+        See: https://github.com/deepset-ai/haystack/pull/9573#issuecomment-3045237341
+        """
+        router = FileTypeRouter(mime_types=[r"text/plain"])
+
+        # No meta - does not raise error
+        result = router.run(sources=["non_existent.txt"])
+        assert result == {"text/plain": [PosixPath("non_existent.txt")]}
+
+        # With meta - raises FileNotFoundError
+        with pytest.raises(FileNotFoundError):
+            router.run(sources=["non_existent.txt"], meta={"spam": "eggs"})
