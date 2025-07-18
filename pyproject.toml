@@ -144,6 +144,7 @@ dependencies = [
   "pip",                     # mypy needs pip to install missing stub packages
   "pylint",
   "ipython",
+  "colorama==0.4.6",         # Pipeline checkpoints test - ToDo: rewrite the test without this lib
 ]
 
 [tool.hatch.envs.test.scripts]
