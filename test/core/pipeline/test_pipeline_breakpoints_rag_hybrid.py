@@ -285,7 +285,7 @@ class TestPipelineBreakpoints:
         }
 
         # Create a Breakpoint on-the-fly using the shared output directory
-        break_point = Breakpoint(component_name=component, visit_count=0, debug_path=str(output_directory))
+        break_point = Breakpoint(component_name=component, visit_count=0, snapshot_file_path=str(output_directory))
 
         try:
             _ = hybrid_rag_pipeline.run(data, break_point=break_point)

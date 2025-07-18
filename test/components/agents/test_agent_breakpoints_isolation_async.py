@@ -86,7 +86,7 @@ async def test_run_async_with_chat_generator_breakpoint(agent):
     with pytest.raises(BreakpointException) as exc_info:
         await agent.run_async(messages=messages, break_point=agent_breakpoint, agent_name=AGENT_NAME)
     assert exc_info.value.component == "chat_generator"
-    assert "messages" in exc_info.value.inputs["serialized_data"]
+    assert "messages" in exc_info.value.inputs["chat_generator"]["serialized_data"]
 
 
 @pytest.mark.asyncio
@@ -100,13 +100,13 @@ async def test_run_async_with_tool_invoker_breakpoint(mock_agent_with_tool_calls
         )
 
     assert exc_info.value.component == "tool_invoker"
-    assert "messages" in exc_info.value.inputs["serialized_data"]
+    assert "messages" in exc_info.value.inputs["tool_invoker"]["serialized_data"]
 
 
 @pytest.mark.asyncio
 async def test_resume_from_chat_generator_async(agent, debug_path):
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
-    chat_generator_bp = Breakpoint(component_name="chat_generator", visit_count=0, debug_path=debug_path)
+    chat_generator_bp = Breakpoint(component_name="chat_generator", visit_count=0, snapshot_file_path=debug_path)
     agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name=AGENT_NAME)
 
     try:
@@ -133,7 +133,7 @@ async def test_resume_from_chat_generator_async(agent, debug_path):
 async def test_resume_from_tool_invoker_async(mock_agent_with_tool_calls, debug_path):
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
     tool_bp = ToolBreakpoint(
-        component_name="tool_invoker", visit_count=0, tool_name="weather_tool", debug_path=debug_path
+        component_name="tool_invoker", visit_count=0, tool_name="weather_tool", snapshot_file_path=debug_path
     )
     agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name=AGENT_NAME)
 

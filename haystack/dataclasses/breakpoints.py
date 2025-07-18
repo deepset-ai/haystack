@@ -16,14 +16,14 @@ class Breakpoint:
 
     :param component_name: The name of the component where the breakpoint is set.
     :param visit_count: The number of times the component must be visited before the breakpoint is triggered.
-    :param debug_path: Optional path to store a snapshot of the pipeline when the breakpoint is hit.
+    :param snapshot_file_path: Optional path to store a snapshot of the pipeline when the breakpoint is hit.
         This is useful for debugging purposes, allowing you to inspect the state of the pipeline at the time of the
         breakpoint and to resume execution from that point.
     """
 
     component_name: str
     visit_count: int = 0
-    debug_path: Optional[str] = None
+    snapshot_file_path: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -62,7 +62,7 @@ class ToolBreakpoint(Breakpoint):
         return f"ToolBreakpoint(component_name={self.component_name}, visit_count={self.visit_count}{tool_str})"
 
 
-@dataclass
+@dataclass(frozen=True)
 class AgentBreakpoint:
     """
     A dataclass representing a breakpoint tied to an Agent’s execution.
@@ -116,49 +116,9 @@ class AgentBreakpoint:
 
 
 @dataclass
-class AgentState:
-    original_input_data: Dict
-    inputs: Dict
-    state: State
-    component_visits: Dict
-    ordered_component_names: List[str]
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert the AgentState to a dictionary representation.
-
-        :return: A dictionary containing the original input data, inputs, state, component visits, and ordered
-            component names.
-        """
-        return {
-            "original_input_data": self.original_input_data,
-            "inputs": self.inputs,
-            "state": self.state.to_dict(),
-            "component_visits": self.component_visits,
-            "ordered_component_names": self.ordered_component_names,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "AgentState":
-        """
-        Populate the AgentState from a dictionary representation.
-
-        :param data: A dictionary containing the original input data, inputs, state, component visits, and ordered
-            component names.
-        :return: An instance of AgentState.
-        """
-        return cls(
-            original_input_data=data["original_input_data"],
-            inputs=data["inputs"],
-            state=State.from_dict(data["state"]),
-            component_visits=data["component_visits"],
-            ordered_component_names=data["ordered_component_names"],
-        )
-
-
-@dataclass
 class AgentSnapshot:
-    agent_state: AgentState
+    component_inputs: Dict[str, Any]
+    component_visits: Dict[str, int]
     break_point: AgentBreakpoint
     timestamp: Optional[datetime] = None
 
@@ -169,7 +129,8 @@ class AgentSnapshot:
         :return: A dictionary containing the agent state, timestamp, and breakpoint.
         """
         return {
-            "agent_state": self.agent_state.to_dict(),
+            "component_inputs": self.component_inputs,
+            "component_visits": self.component_visits,
             "break_point": self.break_point.to_dict(),
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
         }
@@ -183,7 +144,8 @@ class AgentSnapshot:
         :return: An instance of AgentSnapshot.
         """
         return cls(
-            agent_state=AgentState.from_dict(data["agent_state"]),
+            component_inputs=data["component_inputs"],
+            component_visits=data["component_visits"],
             break_point=AgentBreakpoint.from_dict(data["break_point"]),
             timestamp=datetime.fromisoformat(data["timestamp"]) if data.get("timestamp") else None,
         )

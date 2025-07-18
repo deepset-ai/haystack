@@ -27,7 +27,7 @@ def test_run_with_chat_generator_breakpoint(agent_sync):  # noqa: F811
     with pytest.raises(BreakpointException) as exc_info:
         agent_sync.run(messages=messages, break_point=agent_breakpoint, agent_name="test")
     assert exc_info.value.component == "chat_generator"
-    assert "messages" in exc_info.value.inputs["serialized_data"]
+    assert "messages" in exc_info.value.inputs["chat_generator"]["serialized_data"]
 
 
 def test_run_with_tool_invoker_breakpoint(mock_agent_with_tool_calls_sync):  # noqa: F811
@@ -38,15 +38,16 @@ def test_run_with_tool_invoker_breakpoint(mock_agent_with_tool_calls_sync):  # n
         mock_agent_with_tool_calls_sync.run(messages=messages, break_point=agent_breakpoint, agent_name="test")
 
     assert exc_info.value.component == "tool_invoker"
-    assert "serialization_schema" in exc_info.value.inputs
-    assert "serialized_data" in exc_info.value.inputs
-    assert "messages" in exc_info.value.inputs["serialized_data"]
+    assert {"chat_generator", "tool_invoker"} == set(exc_info.value.inputs.keys())
+    assert "serialization_schema" in exc_info.value.inputs["chat_generator"]
+    assert "serialized_data" in exc_info.value.inputs["chat_generator"]
+    assert "messages" in exc_info.value.inputs["chat_generator"]["serialized_data"]
 
 
 def test_resume_from_chat_generator(agent_sync, tmp_path):  # noqa: F811
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
     debug_path = str(tmp_path / "debug_snapshots")
-    chat_generator_bp = Breakpoint(component_name="chat_generator", visit_count=0, debug_path=debug_path)
+    chat_generator_bp = Breakpoint(component_name="chat_generator", visit_count=0, snapshot_file_path=debug_path)
     agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name=AGENT_NAME)
 
     try:
@@ -71,7 +72,9 @@ def test_resume_from_chat_generator(agent_sync, tmp_path):  # noqa: F811
 def test_resume_from_tool_invoker(mock_agent_with_tool_calls_sync, tmp_path):  # noqa: F811
     messages = [ChatMessage.from_user("What's the weather in Berlin?")]
     debug_path = str(tmp_path / "debug_snapshots")
-    tool_bp = ToolBreakpoint(component_name="tool_invoker", visit_count=0, tool_name=None, debug_path=debug_path)
+    tool_bp = ToolBreakpoint(
+        component_name="tool_invoker", visit_count=0, tool_name=None, snapshot_file_path=debug_path
+    )
     agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name=AGENT_NAME)
 
     try:

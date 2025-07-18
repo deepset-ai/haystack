@@ -49,7 +49,7 @@ class TestPipelineBreakpoints:
         data = {"prompt_builder_1": {"query": string_1}, "prompt_builder_2": {"query": string_2}}
 
         # Create a Breakpoint on-the-fly using the shared output directory
-        break_point = Breakpoint(component_name=component, visit_count=0, debug_path=str(output_directory))
+        break_point = Breakpoint(component_name=component, visit_count=0, snapshot_file_path=str(output_directory))
 
         try:
             _ = string_joiner_pipeline.run(data, break_point=break_point)
