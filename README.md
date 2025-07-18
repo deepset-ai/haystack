@@ -128,6 +128,7 @@ world know that you use Haystack!
 -   [Intelijus](https://www.intelijus.ai/)
 -   [Intel Labs](https://github.com/IntelLabs/fastRAG#readme)
 -   [LEGO](https://github.com/larsbaunwall/bricky#readme)
+-   [Meta](https://www.meta.com/about)
 -   [Netflix](https://netflix.com)
 -   [NOS Portugal](https://www.nos.pt/en/welcome)
 -   [Nvidia](https://developer.nvidia.com/blog/reducing-development-time-for-intelligent-virtual-assistants-in-contact-centers/)
