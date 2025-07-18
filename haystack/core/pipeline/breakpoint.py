@@ -183,7 +183,7 @@ def _create_pipeline_snapshot(
     component_visits: Dict[str, int],
     original_input_data: Optional[Dict[str, Any]] = None,
     ordered_component_names: Optional[List[str]] = None,
-):
+) -> PipelineSnapshot:
     """
     Create a snapshot of the pipeline at the point where the breakpoint was triggered.
 

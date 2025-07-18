@@ -107,6 +107,7 @@ class AgentBreakpoint:
         :return: An instance of AgentBreakpoint.
         """
         break_point_data = data["break_point"]
+        break_point: Union[Breakpoint, ToolBreakpoint]
         if "tool_name" in break_point_data:
             break_point = ToolBreakpoint(**break_point_data)
         else:
