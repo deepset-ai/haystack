@@ -746,7 +746,7 @@ class TestAgent:
         chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], max_agent_steps=3)
         agent.warm_up()
-        response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+        response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")], generation_kwargs={"temperature": 0.0})
 
         assert isinstance(response, dict)
         assert "messages" in response
