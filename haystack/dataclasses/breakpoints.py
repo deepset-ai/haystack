@@ -6,8 +6,6 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from haystack.components.agents.state import State
-
 
 @dataclass(frozen=True)
 class Breakpoint:
