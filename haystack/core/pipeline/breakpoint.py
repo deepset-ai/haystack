@@ -293,6 +293,7 @@ def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot, pipeline_output
 
 
 def _create_agent_snapshot(
+    *,
     state: State,
     component_visits: Dict[str, int],
     agent_breakpoint: AgentBreakpoint,

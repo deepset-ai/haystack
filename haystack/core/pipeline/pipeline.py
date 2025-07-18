@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union
+from typing import Any, Dict, Mapping, Optional, Set, Union
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -86,7 +86,7 @@ class Pipeline(PipelineBase):
 
             return component_output
 
-    def run(  # noqa: PLR0915, PLR0912, C901
+    def run(  # noqa: PLR0915, PLR0912, C901, pylint: disable=too-many-branches
         self,
         data: Dict[str, Any],
         include_outputs_from: Optional[Set[str]] = None,
