@@ -105,8 +105,8 @@ def load_and_resume_pipeline_snapshot(pipeline, output_directory: Path, componen
     for full_path in all_files:
         f_name = Path(full_path).name
         if str(f_name).startswith(component_name):
-            resume_state = load_pipeline_snapshot(full_path)
-            return pipeline.run(data=data, pipeline_snapshot=resume_state)
+            pipeline_snapshot = load_pipeline_snapshot(full_path)
+            return pipeline.run(data=data, pipeline_snapshot=pipeline_snapshot)
 
     if not file_found:
         msg = f"No files found for {component_name} in {output_directory}."
