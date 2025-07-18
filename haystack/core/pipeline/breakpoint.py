@@ -138,23 +138,23 @@ def load_pipeline_snapshot(file_path: Union[str, Path]) -> PipelineSnapshot:
 
 
 def _save_pipeline_snapshot_to_file(
-    *, pipeline_snapshot: PipelineSnapshot, debug_path: Union[str, Path], dt: datetime
+    *, pipeline_snapshot: PipelineSnapshot, snapshot_file_path: Union[str, Path], dt: datetime
 ) -> None:
     """
     Save the pipeline snapshot dictionary to a JSON file.
 
     :param pipeline_snapshot: The pipeline snapshot to save.
-    :param debug_path: The path where to save the file.
+    :param snapshot_file_path: The path where to save the file.
     :param dt: The datetime object for timestamping.
     :raises:
-        ValueError: If the debug_path is not a string or a Path object.
+        ValueError: If the snapshot_file_path is not a string or a Path object.
         Exception: If saving the JSON snapshot fails.
     """
-    debug_path = Path(debug_path) if isinstance(debug_path, str) else debug_path
-    if not isinstance(debug_path, Path):
+    snapshot_file_path = Path(snapshot_file_path) if isinstance(snapshot_file_path, str) else snapshot_file_path
+    if not isinstance(snapshot_file_path, Path):
         raise ValueError("Debug path must be a string or a Path object.")
 
-    debug_path.mkdir(exist_ok=True)
+    snapshot_file_path.mkdir(exist_ok=True)
 
     # Generate filename
     # We check if the agent_name is provided to differentiate between agent and non-agent breakpoints
@@ -167,7 +167,7 @@ def _save_pipeline_snapshot_to_file(
         file_name = f"{component_name}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
 
     try:
-        with open(debug_path / file_name, "w") as f_out:
+        with open(snapshot_file_path / file_name, "w") as f_out:
             json.dump(pipeline_snapshot.to_dict(), f_out, indent=2)
         logger.info(f"Pipeline snapshot saved at: {file_name}")
     except Exception as e:
@@ -228,13 +228,15 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot) -> PipelineSnap
     """
     break_point = pipeline_snapshot.break_point
     if isinstance(break_point, AgentBreakpoint):
-        debug_path = break_point.break_point.snapshot_file_path
+        snapshot_file_path = break_point.break_point.snapshot_file_path
     else:
-        debug_path = break_point.snapshot_file_path
+        snapshot_file_path = break_point.snapshot_file_path
 
-    if debug_path is not None:
+    if snapshot_file_path is not None:
         dt = pipeline_snapshot.timestamp or datetime.now()
-        _save_pipeline_snapshot_to_file(pipeline_snapshot=pipeline_snapshot, debug_path=debug_path, dt=dt)
+        _save_pipeline_snapshot_to_file(
+            pipeline_snapshot=pipeline_snapshot, snapshot_file_path=snapshot_file_path, dt=dt
+        )
 
     return pipeline_snapshot
 
@@ -325,6 +327,8 @@ def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools:
 
     available_tool_names = {tool.name for tool in tools}
     tool_breakpoint = agent_breakpoint.break_point
+    # Assert added for mypy to pass, but this is already checked before this function is called
+    assert isinstance(tool_breakpoint, ToolBreakpoint)
     if tool_breakpoint.tool_name and tool_breakpoint.tool_name not in available_tool_names:
         raise ValueError(f"Tool '{tool_breakpoint.tool_name}' is not available in the agent's tools")
 
