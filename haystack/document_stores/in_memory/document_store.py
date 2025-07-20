@@ -567,7 +567,7 @@ class InMemoryDocumentStore:
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         scale_score: bool = False,
-        return_embedding: bool = False,
+        return_embedding: bool = False,  # TODO to be deprecated as we can now use self.return_embedding
     ) -> List[Document]:
         """
         Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -606,7 +606,7 @@ class InMemoryDocumentStore:
         for doc, score in sorted(zip(documents_with_embeddings, scores), key=lambda x: x[1], reverse=True)[:top_k]:
             doc_fields = doc.to_dict()
             doc_fields["score"] = score
-            if return_embedding is False:
+            if self.return_embedding is False:
                 doc_fields["embedding"] = None
             top_documents.append(Document.from_dict(doc_fields))
 
