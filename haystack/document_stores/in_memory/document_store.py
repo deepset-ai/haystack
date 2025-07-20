@@ -429,8 +429,15 @@ class InMemoryDocumentStore:
                 raise ValueError(
                     "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
                 )
-            return [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
-        return list(self.storage.values())
+            docs = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+        else:
+            docs = list(self.storage.values())
+
+        if not self.return_embedding:
+            for doc in docs:
+                doc.embedding = None
+
+        return docs
 
     def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
         """
