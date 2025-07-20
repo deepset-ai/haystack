@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, Literal, Optional, Union, overload
 
 from haystack.core.component import Component
@@ -111,10 +111,10 @@ class StreamingChunk:
         return {
             "content": self.content,
             "meta": self.meta,
-            "component_info": self.component_info,
+            "component_info": asdict(self.component_info) if self.component_info else None,
             "index": self.index,
-            "tool_calls": self.tool_calls,
-            "tool_call_result": self.tool_call_result,
+            "tool_calls": [asdict(tc) for tc in self.tool_calls] if self.tool_calls else None,
+            "tool_call_result": asdict(self.tool_call_result) if self.tool_call_result else None,
             "start": self.start,
             "finish_reason": self.finish_reason,
         }
@@ -130,14 +130,40 @@ class StreamingChunk:
         if "content" not in data:
             raise ValueError("Missing field 'content' in StreamingChunk deserialization. Field 'content' is required.")
 
+        component_info = data.get("component_info")
+        if isinstance(component_info, dict):
+            component_info = ComponentInfo(**component_info)
+        elif not (component_info is None or isinstance(component_info, ComponentInfo)):
+            raise TypeError("component_info must be of type dict or ComponentInfo.")
+
+        tool_calls = data.get("tool_calls")
+        if tool_calls is not None:
+            if not isinstance(tool_calls, list):
+                raise TypeError("tool_calls must be a list of ToolCallDelta.")
+            checked_tool_calls = []
+            for tool_call in tool_calls:
+                if isinstance(tool_call, dict):
+                    checked_tool_calls.append(ToolCallDelta(**tool_call))
+                elif isinstance(tool_call, ToolCallDelta):
+                    checked_tool_calls.append(tool_call)
+                else:
+                    raise TypeError("Each element of tool_calls must be of type dict or ToolCallDelta.")
+            tool_calls = checked_tool_calls
+
+        tool_call_result = data.get("tool_call_result")
+        if isinstance(tool_call_result, dict):
+            tool_call_result = ToolCallResult(**tool_call_result)
+        elif not (tool_call_result is None or isinstance(tool_call_result, ToolCallResult)):
+            raise TypeError("tool_call_result must be of type dict or ToolCallResult.")
+
         return StreamingChunk(
             content=data["content"],
             meta=data.get("meta", {}),
-            component_info=data.get("component_info"),
+            component_info=component_info,
             index=data.get("index"),
-            tool_calls=data.get("tool_calls"),
-            tool_call_result=data.get("tool_call_result"),
-            start=data.get("start"),
+            tool_calls=tool_calls,
+            tool_call_result=tool_call_result,
+            start=data.get("start", False),
             finish_reason=data.get("finish_reason"),
         )
 

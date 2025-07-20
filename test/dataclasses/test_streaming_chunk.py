@@ -144,6 +144,7 @@ def test_to_dict():
     tool_call_result = ToolCallResult(
         result="output", origin=ToolCall(id="123", tool_name="test_tool", arguments={"arg1": "value1"}), error=False
     )
+
     chunk = StreamingChunk(
         content="",
         meta={"key": "value"},
@@ -158,24 +159,24 @@ def test_to_dict():
     assert d["content"] == ""
     assert d["meta"] == {"key": "value"}
     assert d["index"] == 0
-    assert d["component_info"].type == "test_streaming_chunk.ExampleComponent"
-    assert d["tool_call_result"].result == "output"
+    assert d["component_info"]["type"] == "test_streaming_chunk.ExampleComponent"
+    assert d["tool_call_result"]["origin"]["id"] == "123"
+    assert d["tool_call_result"]["origin"]["arguments"]["arg1"] == "value1"
     assert d["finish_reason"] == "tool_call_results"
 
 
 def test_from_dict():
     """Test the from_dict method for StreamingChunk."""
     component_info = ComponentInfo(type="test_streaming_chunk.ExampleComponent", name="test_component")
-    tool_call_result = ToolCallResult(
-        result="output", origin=ToolCall(id="123", tool_name="test_tool", arguments={"arg1": "value1"}), error=False
-    )
+    tool_calls = [{"id": "123", "tool_name": "test_tool", "arguments": '{"arg1": "value1"}', "index": 0}]
+
     data = {
         "content": "",
         "meta": {"key": "value"},
         "index": 0,
         "component_info": component_info,
-        "tool_call_result": tool_call_result,
-        "finish_reason": "tool_call_results",
+        "tool_calls": tool_calls,
+        "finish_reason": "tool_calls",
     }
 
     chunk = StreamingChunk.from_dict(data)
@@ -185,5 +186,5 @@ def test_from_dict():
     assert chunk.index == 0
     assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
     assert chunk.component_info.name == "test_component"
-    assert chunk.tool_call_result.result == "output"
-    assert chunk.finish_reason == "tool_call_results"
+    assert chunk.tool_calls[0].tool_name == "test_tool"
+    assert chunk.finish_reason == "tool_calls"
