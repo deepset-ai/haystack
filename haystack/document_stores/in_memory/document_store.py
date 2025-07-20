@@ -68,6 +68,7 @@ class InMemoryDocumentStore:
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
         index: Optional[str] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
+        return_embedding: bool = False,
     ):
         """
         Initializes the DocumentStore.
@@ -118,6 +119,7 @@ class InMemoryDocumentStore:
             if async_executor is None
             else async_executor
         )
+        self.return_embedding = return_embedding
 
     def __del__(self):
         """
