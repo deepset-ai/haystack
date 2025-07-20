@@ -357,6 +357,7 @@ class InMemoryDocumentStore:
             bm25_parameters=self.bm25_parameters,
             embedding_similarity_function=self.embedding_similarity_function,
             index=self.index,
+            return_embedding=self.return_embedding,
         )
 
     @classmethod
