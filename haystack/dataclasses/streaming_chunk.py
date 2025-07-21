@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, Literal, Optional, Union, overload
 
 from haystack.core.component import Component
