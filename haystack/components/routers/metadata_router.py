@@ -2,9 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Generic, List, Type, TypeVar, Union, cast
-
-from typing_extensions import TypeAlias
+from typing import Any, Dict, Generic, List, Type, TypeVar, cast
 
 from haystack import Document, component
 from haystack.dataclasses.byte_stream import ByteStream

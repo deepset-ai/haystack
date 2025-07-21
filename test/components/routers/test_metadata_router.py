@@ -6,10 +6,11 @@ import pytest
 
 from haystack import Document
 from haystack.components.routers.metadata_router import MetadataRouter
+from haystack.dataclasses.byte_stream import ByteStream
 
 
 class TestMetadataRouter:
-    def test_run(self):
+    def test_run_document(self):
         rules = {
             "edge_1": {
                 "operator": "AND",
@@ -33,6 +34,35 @@ class TestMetadataRouter:
             Document(meta={"created_at": "2023-08-01"}),
         ]
         output = router.run(documents=documents)
+        assert output["edge_1"][0].meta["created_at"] == "2023-02-01"
+        assert output["edge_2"][0].meta["created_at"] == "2023-05-01"
+        assert output["unmatched"][0].meta["created_at"] == "2023-08-01"
+
+    def test_run_bytestream(self):
+        rules = {
+            "edge_1": {
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.created_at", "operator": ">=", "value": "2023-01-01"},
+                    {"field": "meta.created_at", "operator": "<", "value": "2023-04-01"},
+                ],
+            },
+            "edge_2": {
+                "operator": "AND",
+                "conditions": [
+                    {"field": "meta.created_at", "operator": ">=", "value": "2023-04-01"},
+                    {"field": "meta.created_at", "operator": "<", "value": "2023-07-01"},
+                ],
+            },
+        }
+        router = MetadataRouter(rules=rules, output_type=ByteStream)
+        bytestreams = [
+            ByteStream.from_string("Hello, world!", meta={"created_at": "2023-02-01"}),
+            ByteStream.from_string("Hello again!", meta={"created_at": "2023-05-01"}),
+            ByteStream.from_string("Goodbye!", meta={"created_at": "2023-08-01"}),
+        ]
+
+        output = router.run(documents=bytestreams)
         assert output["edge_1"][0].meta["created_at"] == "2023-02-01"
         assert output["edge_2"][0].meta["created_at"] == "2023-05-01"
         assert output["unmatched"][0].meta["created_at"] == "2023-08-01"
