@@ -6,8 +6,11 @@ import json
 
 import pytest
 
+from haystack import component
+from haystack.core.errors import BreakpointException
+from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import _transform_json_structure, load_pipeline_snapshot
-from haystack.dataclasses.breakpoints import PipelineSnapshot
+from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot
 
 
 def test_transform_json_structure_unwraps_sender_value():
@@ -73,20 +76,13 @@ def test_load_state_handles_invalid_state(tmp_path):
         load_pipeline_snapshot(pipeline_snapshot_file)
 
 
-def test_breakpoint_saves_intermediate_outputs():
-    """Test that breakpoints save intermediate outputs from components in include_outputs_from."""
-    from haystack import component
-    from haystack.core.errors import BreakpointException
-    from haystack.core.pipeline import Pipeline
-    from haystack.dataclasses.breakpoints import Breakpoint
-
+def test_breakpoint_saves_intermediate_outputs(tmp_path):
     @component
     class SimpleComponent:
         @component.output_types(result=str)
         def run(self, input_value: str) -> dict[str, str]:
             return {"result": f"processed_{input_value}"}
 
-    # Create a simple pipeline
     pipeline = Pipeline()
     comp1 = SimpleComponent()
     comp2 = SimpleComponent()
@@ -94,17 +90,31 @@ def test_breakpoint_saves_intermediate_outputs():
     pipeline.add_component("comp2", comp2)
     pipeline.connect("comp1", "comp2")
 
-    # Create a breakpoint that will trigger on comp2
-    break_point = Breakpoint(component_name="comp2", visit_count=0, snapshot_file_path="debug_path/")
+    # breakpoint on comp2
+    break_point = Breakpoint(component_name="comp2", visit_count=0, snapshot_file_path=str(tmp_path))
 
     try:
-        # Run with include_outputs_from to capture intermediate outputs
+        # run with include_outputs_from to capture intermediate outputs
         pipeline.run(data={"comp1": {"input_value": "test"}}, include_outputs_from={"comp1"}, break_point=break_point)
     except BreakpointException as e:
-        # The breakpoint should be triggered
+        # breakpoint should be triggered
         assert e.component == "comp2"
 
-        # The snapshot should contain intermediate outputs from comp1
-        # Note: In a real scenario, you would load the snapshot file here
-        # For this test, we just verify the exception was raised
-        pass
+        # verify snapshot file contains the intermediate outputs
+        snapshot_files = list(tmp_path.glob("comp2_*.json"))
+        assert len(snapshot_files) == 1, f"Expected exactly one snapshot file, found {len(snapshot_files)}"
+
+        snapshot_file = snapshot_files[0]
+        loaded_snapshot = load_pipeline_snapshot(snapshot_file)
+
+        # verify the snapshot contains the intermediate outputs from comp1
+        assert loaded_snapshot.intermediate_outputs is not None
+        assert "comp1" in loaded_snapshot.intermediate_outputs
+        assert loaded_snapshot.intermediate_outputs["comp1"]["result"] == "processed_test"
+
+        # verify the whole pipeline state contains the expected data
+        assert loaded_snapshot.pipeline_state.component_visits["comp1"] == 1
+        assert loaded_snapshot.pipeline_state.component_visits["comp2"] == 0
+        assert "comp1" in loaded_snapshot.pipeline_state.include_outputs_from
+        assert loaded_snapshot.break_point.component_name == "comp2"
+        assert loaded_snapshot.break_point.visit_count == 0
