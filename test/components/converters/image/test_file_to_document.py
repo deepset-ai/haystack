@@ -16,20 +16,20 @@ class TestImageFileToDocument:
         converter = ImageFileToDocument()
         assert component_to_dict(converter, "converter") == {
             "init_parameters": {"store_full_path": False},
-            "type": "haystack.components.converters.image.image_to_document.ImageFileToDocument",
+            "type": "haystack.components.converters.image.file_to_document.ImageFileToDocument",
         }
 
     def test_to_dict_not_defaults(self) -> None:
         converter = ImageFileToDocument(store_full_path=True)
         assert component_to_dict(converter, "converter") == {
             "init_parameters": {"store_full_path": True},
-            "type": "haystack.components.converters.image.image_to_document.ImageFileToDocument",
+            "type": "haystack.components.converters.image.file_to_document.ImageFileToDocument",
         }
 
     def test_from_dict(self) -> None:
         data = {
             "init_parameters": {"store_full_path": False},
-            "type": "haystack.components.converters.image.image_to_document.ImageFileToDocument",
+            "type": "haystack.components.converters.image.file_to_document.ImageFileToDocument",
         }
         converter = component_from_dict(ImageFileToDocument, data, "name")
         assert component_to_dict(converter, "converter") == data
