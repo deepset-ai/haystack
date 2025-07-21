@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import logging
 import os
 from datetime import datetime
@@ -29,7 +30,7 @@ from haystack.components.generators.chat.openai import (
     _convert_chat_completion_chunk_to_streaming_chunk,
 )
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, ToolCallDelta
+from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, ToolCall, ToolCallDelta
 from haystack.tools import ComponentTool, Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
@@ -745,6 +746,32 @@ class TestOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_multimodal(self, test_files_path):
+        image_path = test_files_path / "images" / "apple.jpg"
+        with open(image_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+
+        image_content = ImageContent(base64_image=base64_image, mime_type="image/jpeg", detail="low")
+        chat_messages = [ChatMessage.from_user(content_parts=["Describe the image in max 5 words", image_content])]
+
+        generator = OpenAIChatGenerator()
+        results = generator.run(chat_messages)
+
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+
+        assert message.text
+        assert "apple" in message.text.lower()
+
+        assert message.is_from(ChatRole.ASSISTANT)
+        assert not message.tool_calls
+        assert not message.tool_call_results
 
 
 @pytest.fixture
