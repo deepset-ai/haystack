@@ -568,7 +568,7 @@ class InMemoryDocumentStore:
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         scale_score: bool = False,
-        return_embedding: bool = False,  # TODO to be deprecated as we can now use self.return_embedding
+        return_embedding: Optional[bool] = False,
     ) -> List[Document]:
         """
         Retrieves documents that are most similar to the query embedding using a vector similarity metric.
