@@ -167,7 +167,7 @@ def test_to_dict():
 
 def test_from_dict():
     """Test the from_dict method for StreamingChunk."""
-    component_info = ComponentInfo(type="test_streaming_chunk.ExampleComponent", name="test_component")
+    component_info = {"type": "test_streaming_chunk.ExampleComponent", "name": "test_component"}
     tool_calls = [{"id": "123", "tool_name": "test_tool", "arguments": '{"arg1": "value1"}', "index": 0}]
 
     data = {

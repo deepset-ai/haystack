@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, Literal, Optional, Union, overload
 
 from haystack.core.component import Component
@@ -36,7 +36,7 @@ class ToolCallDelta:
 
         :returns: A dictionary with keys 'index', 'tool_name', 'arguments', and 'id'.
         """
-        return {"index": self.index, "tool_name": self.tool_name, "arguments": self.arguments, "id": self.id}
+        return asdict(self)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ToolCallDelta":
@@ -46,11 +46,7 @@ class ToolCallDelta:
         :param data: Dictionary containing ToolCallDelta's attributes.
         :returns: A ToolCallDelta instance.
         """
-        if "index" not in data:
-            raise ValueError("Missing field 'index' in ToolCallDelta deserialization. Field 'index' is required.")
-        return ToolCallDelta(
-            index=data["index"], tool_name=data.get("tool_name"), arguments=data.get("arguments"), id=data.get("id")
-        )
+        return ToolCallDelta(**data)
 
 
 @dataclass
@@ -86,7 +82,7 @@ class ComponentInfo:
 
         :returns: A dictionary with keys 'type' and 'name'.
         """
-        return {"type": self.type, "name": self.name}
+        return asdict(self)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ComponentInfo":
@@ -96,9 +92,7 @@ class ComponentInfo:
         :param data: Dictionary containing ComponentInfo's attributes.
         :returns: A ComponentInfo instance.
         """
-        if "type" not in data:
-            raise ValueError("Missing required field `type` in ComponentInfo deserialization.")
-        return ComponentInfo(type=data["type"], name=data.get("name"))
+        return ComponentInfo(**data)
 
 
 @dataclass
@@ -172,39 +166,15 @@ class StreamingChunk:
         if "content" not in data:
             raise ValueError("Missing required field `content` in StreamingChunk deserialization.")
 
-        component_info = data.get("component_info")
-        if isinstance(component_info, dict):
-            component_info = ComponentInfo.from_dict(component_info)
-        elif not (component_info is None or isinstance(component_info, ComponentInfo)):
-            raise TypeError("`component_info` must be a dict or ComponentInfo.")
-
-        tool_calls = data.get("tool_calls")
-        if tool_calls is not None:
-            if not isinstance(tool_calls, list):
-                raise TypeError("`tool_calls` must be a list of ToolCallDelta.")
-            checked_tool_calls = []
-            for tool_call in tool_calls:
-                if isinstance(tool_call, dict):
-                    checked_tool_calls.append(ToolCallDelta.from_dict(tool_call))
-                elif isinstance(tool_call, ToolCallDelta):
-                    checked_tool_calls.append(tool_call)
-                else:
-                    raise TypeError("Each element of `tool_calls` must be of type dict or ToolCallDelta.")
-            tool_calls = checked_tool_calls
-
-        tool_call_result = data.get("tool_call_result")
-        if isinstance(tool_call_result, dict):
-            tool_call_result = ToolCallResult.from_dict(tool_call_result)
-        elif not (tool_call_result is None or isinstance(tool_call_result, ToolCallResult)):
-            raise TypeError("`tool_call_result` must be of type dict or ToolCallResult.")
-
         return StreamingChunk(
             content=data["content"],
             meta=data.get("meta", {}),
-            component_info=component_info,
+            component_info=ComponentInfo.from_dict(data["component_info"]) if data.get("component_info") else None,
             index=data.get("index"),
-            tool_calls=tool_calls,
-            tool_call_result=tool_call_result,
+            tool_calls=[ToolCallDelta.from_dict(tc) for tc in data["tool_calls"]] if data.get("tool_calls") else None,
+            tool_call_result=ToolCallResult.from_dict(data["tool_call_result"])
+            if data.get("tool_call_result")
+            else None,
             start=data.get("start", False),
             finish_reason=data.get("finish_reason"),
         )

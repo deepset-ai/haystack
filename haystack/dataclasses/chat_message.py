@@ -65,7 +65,7 @@ class ToolCall:
 
         :returns: A dictionary with keys 'tool_name', 'arguments', and 'id'.
         """
-        return {"tool_name": self.tool_name, "arguments": self.arguments, "id": self.id}
+        return asdict(self)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ToolCall":
@@ -77,12 +77,7 @@ class ToolCall:
         :returns:
             The created object.
         """
-        if "tool_name" not in data or "arguments" not in data:
-            raise ValueError(
-                "Fields `tool_name` and `arguments` are required for ToolCall deserialization. "
-                f"Received dictionary with keys: {list(data.keys())}"
-            )
-        return ToolCall(tool_name=data["tool_name"], arguments=data["arguments"], id=data.get("id"))
+        return ToolCall(**data)
 
 
 @dataclass
@@ -105,7 +100,7 @@ class ToolCallResult:
 
         :returns: A dictionary with keys 'result', 'origin', and 'error'.
         """
-        return {"result": self.result, "origin": self.origin.to_dict(), "error": self.error}
+        return asdict(self)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ToolCallResult":
@@ -122,14 +117,7 @@ class ToolCallResult:
                 "Fields `result`, `origin`, `error` are required for ToolCallResult deserialization. "
                 f"Received dictionary with keys {list(data.keys())}"
             )
-
-        origin = data["origin"]
-        if isinstance(origin, dict):
-            origin = ToolCall.from_dict(origin)
-        elif not (origin is None or isinstance(origin, ToolCall)):
-            raise TypeError("`origin` must be a dict or ToolCall.")
-
-        return ToolCallResult(result=data["result"], origin=origin, error=data["error"])
+        return ToolCallResult(result=data["result"], origin=ToolCall.from_dict(data["origin"]), error=data["error"])
 
 
 @dataclass
