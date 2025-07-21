@@ -9,8 +9,8 @@ from lazy_imports import LazyImporter
 
 _import_structure = {
     "document_to_image": ["DocumentToImageContent"],
+    "file_to_document": ["ImageFileToDocument"],
     "file_to_image": ["ImageFileToImageContent"],
-    "image_to_document": ["ImageFileToDocument"],
     "pdf_to_image": ["PDFToImageContent"],
 }
 
