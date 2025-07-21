@@ -68,7 +68,7 @@ class InMemoryDocumentStore:
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
         index: Optional[str] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
-        return_embedding: bool = False,
+        return_embedding: bool = True,
     ):
         """
         Initializes the DocumentStore.
