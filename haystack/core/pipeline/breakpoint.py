@@ -7,7 +7,7 @@ from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 from networkx import MultiDiGraph
 
@@ -184,6 +184,8 @@ def _create_pipeline_snapshot(
     component_visits: Dict[str, int],
     original_input_data: Optional[Dict[str, Any]] = None,
     ordered_component_names: Optional[List[str]] = None,
+    include_outputs_from: Optional[Set[str]] = None,
+    intermediate_outputs: Optional[Dict[str, Any]] = None,
 ) -> PipelineSnapshot:
     """
     Create a snapshot of the pipeline at the point where the breakpoint was triggered.
@@ -193,6 +195,8 @@ def _create_pipeline_snapshot(
     :param component_visits: The visit count of the component that triggered the breakpoint.
     :param original_input_data: The original input data.
     :param ordered_component_names: The ordered component names.
+    :param include_outputs_from: Set of component names whose outputs should be included in the pipeline results.
+    :param intermediate_outputs: Dictionary containing outputs from components that are in the include_outputs_from set.
     """
     dt = datetime.now()
 
@@ -205,9 +209,11 @@ def _create_pipeline_snapshot(
             inputs=_serialize_value_with_schema(transformed_inputs),  # current pipeline inputs
             component_visits=component_visits,
             ordered_component_names=ordered_component_names or [],
+            include_outputs_from=include_outputs_from or set(),
         ),
         timestamp=dt,
         break_point=break_point,
+        intermediate_outputs=intermediate_outputs,
     )
     return pipeline_snapshot
 

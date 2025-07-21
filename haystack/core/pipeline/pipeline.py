@@ -236,12 +236,22 @@ class Pipeline(PipelineBase):
             data = self._prepare_component_input_data(pipeline_snapshot.pipeline_state.inputs)
             data = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.inputs)
 
+            # Use include_outputs_from from the snapshot when resuming
+            include_outputs_from = pipeline_snapshot.pipeline_state.include_outputs_from
+
+            # Use intermediate outputs from the snapshot when resuming
+            if pipeline_snapshot.intermediate_outputs:
+                intermediate_outputs = pipeline_snapshot.intermediate_outputs
+
         cached_topological_sort = None
         # We need to access a component's receivers multiple times during a pipeline run.
         # We store them here for easy access.
         cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
 
         pipeline_outputs: Dict[str, Any] = {}
+        # Track intermediate outputs from components in include_outputs_from set
+        intermediate_outputs: Dict[str, Any] = {}
+
         with tracing.tracer.trace(
             "haystack.pipeline.run",
             tags={
@@ -341,6 +351,8 @@ class Pipeline(PipelineBase):
                         component_visits=component_visits,
                         original_input_data=data,
                         ordered_component_names=ordered_component_names,
+                        include_outputs_from=include_outputs_from,
+                        intermediate_outputs=intermediate_outputs,
                     )
 
                     # Scenario 2.1: an AgentBreakpoint is provided to stop the pipeline at a specific component
@@ -378,6 +390,8 @@ class Pipeline(PipelineBase):
 
                 if component_pipeline_outputs:
                     pipeline_outputs[component_name] = deepcopy(component_pipeline_outputs)
+                    if component_name in include_outputs_from:
+                        intermediate_outputs[component_name] = deepcopy(component_pipeline_outputs)
                 if self._is_queue_stale(priority_queue):
                     priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 
@@ -388,5 +402,9 @@ class Pipeline(PipelineBase):
                     "2. The component did not reach the visit count specified in the pipeline_breakpoint",
                     pipeline_breakpoint=break_point,
                 )
+
+            # If resuming from a snapshot, include intermediate outputs from the snapshot
+            if pipeline_snapshot and pipeline_snapshot.intermediate_outputs:
+                pipeline_outputs.update(pipeline_snapshot.intermediate_outputs)
 
             return pipeline_outputs
