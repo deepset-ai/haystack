@@ -34,15 +34,15 @@ def document_matches_filter(filters: Dict[str, Any], document: Union[ByteStream,
     return _logic_condition(filters, document)
 
 
-def _and(document: Document, conditions: List[Dict[str, Any]]) -> bool:
+def _and(document: Union[ByteStream, Document], conditions: List[Dict[str, Any]]) -> bool:
     return all(_comparison_condition(condition, document) for condition in conditions)
 
 
-def _or(document: Document, conditions: List[Dict[str, Any]]) -> bool:
+def _or(document: Union[ByteStream, Document], conditions: List[Dict[str, Any]]) -> bool:
     return any(_comparison_condition(condition, document) for condition in conditions)
 
 
-def _not(document: Document, conditions: List[Dict[str, Any]]) -> bool:
+def _not(document: Union[ByteStream, Document], conditions: List[Dict[str, Any]]) -> bool:
     return not _and(document, conditions)
 
 

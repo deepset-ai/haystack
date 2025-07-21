@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List, Union
+from typing import Any, Dict, Generic, List, Type, TypeVar, Union, cast
 
 from typing_extensions import TypeAlias
 
@@ -10,9 +10,11 @@ from haystack import Document, component
 from haystack.dataclasses.byte_stream import ByteStream
 from haystack.utils.filters import document_matches_filter
 
+T = TypeVar("T", Document, ByteStream)
+
 
 @component
-class MetadataRouter:
+class MetadataRouter(Generic[T]):
     """
     Routes documents to different connections based on their metadata fields.
 
@@ -37,7 +39,7 @@ class MetadataRouter:
     ```
     """
 
-    def __init__(self, rules: Dict[str, Dict], output_type: TypeAlias = List[Document]):
+    def __init__(self, rules: Dict[str, Dict], output_type: Type[T] = cast(Any, Document)):
         """
         Initializes the MetadataRouter component.
 
@@ -79,15 +81,19 @@ class MetadataRouter:
             ```
         """
         self.rules = rules
-        self.output_type = output_type
+        self.output_type: Type[T] = output_type
         for rule in self.rules.values():
             if "operator" not in rule:
                 raise ValueError(
                     "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
                 )
-        component.set_output_types(self, unmatched=output_type, **dict.fromkeys(rules, output_type))
+        component.set_output_types(
+            self,
+            unmatched=List[output_type],  # type: ignore
+            **dict.fromkeys(rules, List[output_type]),  # type: ignore
+        )
 
-    def run(self, documents: Union[List[ByteStream], List[Document]]):
+    def run(self, documents: List[T]) -> Dict[str, List[T]]:
         """
         Routes the documents.
 
@@ -99,7 +105,7 @@ class MetadataRouter:
             and the values are lists of routed documents.
         """
         unmatched_documents = []
-        output: Union[Dict[str, List[ByteStream]], Dict[str, List[Document]]] = {edge: [] for edge in self.rules}
+        output: Dict[str, List[T]] = {edge: [] for edge in self.rules}
 
         for document in documents:
             cur_document_matched = False
