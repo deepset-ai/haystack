@@ -43,6 +43,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
                 "index": store.index,
+                "return_embedding": True,
             },
         }
 
@@ -53,6 +54,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             bm25_parameters={"key": "value"},
             embedding_similarity_function="cosine",
             index="my_cool_index",
+            return_embedding=True,
         )
         data = store.to_dict()
         assert data == {
@@ -63,6 +65,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
                 "bm25_parameters": {"key": "value"},
                 "embedding_similarity_function": "cosine",
                 "index": "my_cool_index",
+                "return_embedding": True,
             },
         }
 
