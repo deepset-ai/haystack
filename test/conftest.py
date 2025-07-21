@@ -80,3 +80,8 @@ def spying_tracer() -> Generator[SpyingTracer, None, None]:
 
     # Make sure to disable tracing after the test to avoid affecting other tests
     tracing.disable_tracing()
+
+
+@pytest.fixture()
+def base64_image_string():
+    return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
