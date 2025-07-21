@@ -4,11 +4,12 @@
 
 from dataclasses import fields
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import dateutil.parser
 
 from haystack.dataclasses import Document
+from haystack.dataclasses.byte_stream import ByteStream
 from haystack.errors import FilterError
 
 
@@ -21,7 +22,7 @@ def raise_on_invalid_filter_syntax(filters: Optional[Dict[str, Any]] = None) -> 
         raise FilterError(msg)
 
 
-def document_matches_filter(filters: Dict[str, Any], document: Document) -> bool:
+def document_matches_filter(filters: Dict[str, Any], document: Union[ByteStream, Document]) -> bool:
     """
     Return whether `filters` match the Document.
 
@@ -158,7 +159,7 @@ COMPARISON_OPERATORS = {
 }
 
 
-def _logic_condition(condition: Dict[str, Any], document: Document) -> bool:
+def _logic_condition(condition: Dict[str, Any], document: Union[ByteStream, Document]) -> bool:
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
         raise FilterError(msg)
@@ -170,7 +171,7 @@ def _logic_condition(condition: Dict[str, Any], document: Document) -> bool:
     return LOGICAL_OPERATORS[operator](document, conditions)
 
 
-def _comparison_condition(condition: Dict[str, Any], document: Document) -> bool:
+def _comparison_condition(condition: Dict[str, Any], document: Union[ByteStream, Document]) -> bool:
     if "field" not in condition:
         # 'field' key is only found in comparison dictionaries.
         # We assume this is a logic dictionary since it's not present.

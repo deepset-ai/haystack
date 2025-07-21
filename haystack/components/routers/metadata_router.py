@@ -2,9 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List
+from typing import Dict, List, Union
+
+from typing_extensions import TypeAlias
 
 from haystack import Document, component
+from haystack.dataclasses.byte_stream import ByteStream
 from haystack.utils.filters import document_matches_filter
 
 
@@ -34,7 +37,7 @@ class MetadataRouter:
     ```
     """
 
-    def __init__(self, rules: Dict[str, Dict]):
+    def __init__(self, rules: Dict[str, Dict], output_type: TypeAlias = List[Document]):
         """
         Initializes the MetadataRouter component.
 
@@ -76,26 +79,27 @@ class MetadataRouter:
             ```
         """
         self.rules = rules
+        self.output_type = output_type
         for rule in self.rules.values():
             if "operator" not in rule:
                 raise ValueError(
                     "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
                 )
-        component.set_output_types(self, unmatched=List[Document], **dict.fromkeys(rules, List[Document]))
+        component.set_output_types(self, unmatched=output_type, **dict.fromkeys(rules, output_type))
 
-    def run(self, documents: List[Document]):
+    def run(self, documents: Union[List[ByteStream], List[Document]]):
         """
         Routes the documents.
 
         If a document does not match any of the rules, it's routed to a connection named "unmatched".
 
-        :param documents: A list of documents to route.
+        :param documents: A list of documents to route. The documents can be either `ByteStream` or `Document` objects.
 
         :returns: A dictionary where the keys are the names of the output connections (including `"unmatched"`)
             and the values are lists of routed documents.
         """
         unmatched_documents = []
-        output: Dict[str, List[Document]] = {edge: [] for edge in self.rules}
+        output: Union[Dict[str, List[ByteStream]], Dict[str, List[Document]]] = {edge: [] for edge in self.rules}
 
         for document in documents:
             cur_document_matched = False
