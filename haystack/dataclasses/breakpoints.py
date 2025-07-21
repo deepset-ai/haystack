@@ -165,7 +165,7 @@ class PipelineState:
     inputs: Dict[str, Any]
     component_visits: Dict[str, int]
     ordered_component_names: List[str]
-    include_outputs_from: Set[str] = None
+    include_outputs_from: Set[str]
 
     def __post_init__(self):
         components_in_state = set(self.component_visits.keys())
@@ -177,10 +177,6 @@ class PipelineState:
                 f"do not match components in PipelineState.ordered_component_names {components_in_order}"
             )
 
-        # Convert None to empty set for consistency
-        if self.include_outputs_from is None:
-            self.include_outputs_from = set()
-
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the PipelineState to a dictionary representation.
@@ -189,9 +185,8 @@ class PipelineState:
                 and include_outputs_from.
         """
         data = asdict(self)
-        # Convert set to list for JSON serialization
-        if "include_outputs_from" in data and isinstance(data["include_outputs_from"], set):
-            data["include_outputs_from"] = list(data["include_outputs_from"])
+        # we need to convert the include_outputs_from set to list for JSON serialization
+        data["include_outputs_from"] = list(data["include_outputs_from"])
         return data
 
     @classmethod
@@ -203,9 +198,8 @@ class PipelineState:
             names, and include_outputs_from.
         :return: An instance of PipelineState.
         """
-        # Convert list back to set for include_outputs_from
-        if "include_outputs_from" in data and isinstance(data["include_outputs_from"], list):
-            data["include_outputs_from"] = set(data["include_outputs_from"])
+        # convert include_outputs_from list back to set for include_outputs_from
+        data["include_outputs_from"] = set(data["include_outputs_from"])
         return cls(**data)
 
 

@@ -42,6 +42,7 @@ def test_load_pipeline_snapshot_loads_valid_snapshot(tmp_path):
             "inputs": {},
             "component_visits": {"comp1": 0, "comp2": 0},
             "ordered_component_names": ["comp1", "comp2"],
+            "include_outputs_from": ["comp1", "comp2"],
         },
     }
     pipeline_snapshot_file = tmp_path / "state.json"
@@ -59,6 +60,7 @@ def test_load_state_handles_invalid_state(tmp_path):
             "original_input_data": {},
             "inputs": {},
             "component_visits": {"comp1": 0, "comp2": 0},
+            "include_outputs_from": ["comp1", "comp2"],
             "ordered_component_names": ["comp1", "comp3"],  # inconsistent with component_visits
         },
     }

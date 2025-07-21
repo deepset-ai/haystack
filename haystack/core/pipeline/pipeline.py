@@ -212,6 +212,9 @@ class Pipeline(PipelineBase):
         if include_outputs_from is None:
             include_outputs_from = set()
 
+        # track intermediate outputs from components in include_outputs_from to save them to a pipeline snapshot
+        intermediate_outputs: Dict[str, Any] = {}
+
         if not pipeline_snapshot:
             # normalize `data`
             data = self._prepare_component_input_data(data)
@@ -249,8 +252,6 @@ class Pipeline(PipelineBase):
         cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
 
         pipeline_outputs: Dict[str, Any] = {}
-        # Track intermediate outputs from components in include_outputs_from set
-        intermediate_outputs: Dict[str, Any] = {}
 
         with tracing.tracer.trace(
             "haystack.pipeline.run",
