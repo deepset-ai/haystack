@@ -239,10 +239,10 @@ class Pipeline(PipelineBase):
             data = self._prepare_component_input_data(pipeline_snapshot.pipeline_state.inputs)
             data = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.inputs)
 
-            # Use include_outputs_from from the snapshot when resuming
+            # include_outputs_from from the snapshot when resuming
             include_outputs_from = pipeline_snapshot.pipeline_state.include_outputs_from
 
-            # Use intermediate outputs from the snapshot when resuming
+            # also intermediate_outputs from the snapshot when resuming
             if pipeline_snapshot.intermediate_outputs:
                 intermediate_outputs = pipeline_snapshot.intermediate_outputs
 
@@ -404,7 +404,7 @@ class Pipeline(PipelineBase):
                     pipeline_breakpoint=break_point,
                 )
 
-            # If resuming from a snapshot, include intermediate outputs from the snapshot
+            # if we are resuming from a snapshot, include intermediate outputs from the snapshot
             if pipeline_snapshot and pipeline_snapshot.intermediate_outputs:
                 pipeline_outputs.update(pipeline_snapshot.intermediate_outputs)
 
