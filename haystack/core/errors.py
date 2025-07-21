@@ -100,12 +100,12 @@ class BreakpointException(Exception):
         self,
         message: str,
         component: Optional[str] = None,
-        pipeline_snapshot: Optional[Dict[str, Any]] = None,
+        inputs: Optional[Dict[str, Any]] = None,
         results: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(message)
         self.component = component
-        self.pipeline_snapshot = pipeline_snapshot
+        self.inputs = inputs
         self.results = results
 
 

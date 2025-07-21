@@ -6,11 +6,8 @@ import json
 
 import pytest
 
-from haystack.core.pipeline.breakpoint import (
-    _transform_json_structure,
-    _validate_pipeline_snapshot,
-    load_pipeline_snapshot,
-)
+from haystack.core.pipeline.breakpoint import _transform_json_structure, load_pipeline_snapshot
+from haystack.dataclasses.breakpoints import PipelineSnapshot
 
 
 def test_transform_json_structure_unwraps_sender_value():
@@ -37,64 +34,11 @@ def test_transform_json_structure_handles_nested_structures():
     assert result == {"key1": "value1", "key2": {"nested": "value2", "direct": "value3"}, "key3": ["value4", "value5"]}
 
 
-def test_validate_pipeline_snapshot_validates_required_keys():
-    pipeline_snapshot = {
-        "input_data": {},
-        "pipeline_breakpoint": {"component": "comp1", "visits": 0},
-        # Missing pipeline_state
-    }
-
-    with pytest.raises(ValueError, match="Invalid pipeline_snapshot: missing required keys"):
-        _validate_pipeline_snapshot(pipeline_snapshot)
-
-    pipeline_snapshot = {
-        "input_data": {},
-        "pipeline_breakpoint": {"component": "comp1", "visits": 0},
-        "pipeline_state": {
-            "inputs": {},
-            "component_visits": {},
-            # Missing ordered_component_names
-        },
-    }
-
-    with pytest.raises(ValueError, match="Invalid pipeline_state: missing required keys"):
-        _validate_pipeline_snapshot(pipeline_snapshot)
-
-
-def test_validate_pipeline_snapshot_validates_component_consistency():
-    pipeline_snapshot = {
-        "input_data": {},
-        "pipeline_breakpoint": {"component": "comp1", "visits": 0},
-        "pipeline_state": {
-            "inputs": {},
-            "component_visits": {"comp1": 0, "comp2": 0},
-            "ordered_component_names": ["comp1", "comp3"],  # inconsistent with component_visits
-        },
-    }
-
-    with pytest.raises(ValueError, match="Inconsistent state: components in pipeline_state"):
-        _validate_pipeline_snapshot(pipeline_snapshot)
-
-
-def test_validate_pipeline_snapshot_validates_valid_snapshot():
-    pipeline_snapshot = {
-        "input_data": {},
-        "pipeline_breakpoint": {"component": "comp1", "visits": 0},
-        "pipeline_state": {
-            "inputs": {},
-            "component_visits": {"comp1": 0, "comp2": 0},
-            "ordered_component_names": ["comp1", "comp2"],
-        },
-    }
-
-    _validate_pipeline_snapshot(pipeline_snapshot)  # should not raise any exception
-
-
 def test_load_pipeline_snapshot_loads_valid_snapshot(tmp_path):
     pipeline_snapshot = {
-        "input_data": {},
-        "pipeline_breakpoint": {"component": "comp1", "visits": 0},
+        "break_point": {"component_name": "comp1", "visit_count": 0},
         "pipeline_state": {
+            "original_input_data": {},
             "inputs": {},
             "component_visits": {"comp1": 0, "comp2": 0},
             "ordered_component_names": ["comp1", "comp2"],
@@ -105,14 +49,14 @@ def test_load_pipeline_snapshot_loads_valid_snapshot(tmp_path):
         json.dump(pipeline_snapshot, f)
 
     loaded_snapshot = load_pipeline_snapshot(pipeline_snapshot_file)
-    assert loaded_snapshot == pipeline_snapshot
+    assert loaded_snapshot == PipelineSnapshot.from_dict(pipeline_snapshot)
 
 
 def test_load_state_handles_invalid_state(tmp_path):
     pipeline_snapshot = {
-        "input_data": {},
-        "pipeline_breakpoint": {"component": "comp1", "visits": 0},
+        "break_point": {"component_name": "comp1", "visit_count": 0},
         "pipeline_state": {
+            "original_input_data": {},
             "inputs": {},
             "component_visits": {"comp1": 0, "comp2": 0},
             "ordered_component_names": ["comp1", "comp3"],  # inconsistent with component_visits

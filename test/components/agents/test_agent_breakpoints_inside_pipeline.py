@@ -20,7 +20,7 @@ from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.dataclasses import ByteStream, ChatMessage, Document, ToolCall
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.tools import tool
+from haystack.tools import create_tool_from_function
 
 document_store = InMemoryDocumentStore()
 
@@ -95,11 +95,14 @@ class MockHTMLToDocument:
         return {"documents": documents}
 
 
-@tool
-def add_database_tool(name: str, surname: str, job_title: Optional[str], other: Optional[str]):
+def add_database_tool_function(name: str, surname: str, job_title: Optional[str], other: Optional[str]):
     document_store.write_documents(
         [Document(content=name + " " + surname + " " + (job_title or ""), meta={"other": other})]
     )
+
+
+# We use this since the @tool decorator has issues with deserialization
+add_database_tool = create_tool_from_function(add_database_tool_function, name="add_database_tool")
 
 
 @pytest.fixture
@@ -219,7 +222,7 @@ def run_pipeline_without_any_breakpoints(pipeline_with_agent):
 
 def test_chat_generator_breakpoint_in_pipeline_agent(pipeline_with_agent):
     with tempfile.TemporaryDirectory() as debug_path:
-        agent_generator_breakpoint = Breakpoint("chat_generator", 0, debug_path=debug_path)
+        agent_generator_breakpoint = Breakpoint("chat_generator", 0, snapshot_file_path=debug_path)
         agent_breakpoint = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
@@ -229,8 +232,8 @@ def test_chat_generator_breakpoint_in_pipeline_agent(pipeline_with_agent):
 
         except BreakpointException as e:  # this is the exception from the Agent
             assert e.component == "chat_generator"
-            assert e.pipeline_snapshot is not None
-            assert "messages" in e.pipeline_snapshot
+            assert e.inputs is not None
+            assert "messages" in e.inputs["chat_generator"]["serialized_data"]
             assert e.results is not None
 
         # verify that snapshot file was created
@@ -240,7 +243,9 @@ def test_chat_generator_breakpoint_in_pipeline_agent(pipeline_with_agent):
 
 def test_tool_breakpoint_in_pipeline_agent(pipeline_with_agent):
     with tempfile.TemporaryDirectory() as debug_path:
-        agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, tool_name="add_database_tool", debug_path=debug_path)
+        agent_tool_breakpoint = ToolBreakpoint(
+            "tool_invoker", 0, tool_name="add_database_tool", snapshot_file_path=debug_path
+        )
         agent_breakpoint = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
@@ -249,8 +254,8 @@ def test_tool_breakpoint_in_pipeline_agent(pipeline_with_agent):
             assert False, "Expected exception was not raised"
         except BreakpointException as e:  # this is the exception from the Agent
             assert e.component == "tool_invoker"
-            assert e.pipeline_snapshot is not None
-            assert "messages" in e.pipeline_snapshot
+            assert e.inputs is not None
+            assert "messages" in e.inputs["tool_invoker"]["serialized_data"]
             assert e.results is not None
 
         # verify that snapshot file was created
@@ -260,7 +265,7 @@ def test_tool_breakpoint_in_pipeline_agent(pipeline_with_agent):
 
 def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent):
     with tempfile.TemporaryDirectory() as debug_path:
-        agent_generator_breakpoint = Breakpoint("chat_generator", 0, debug_path=debug_path)
+        agent_generator_breakpoint = Breakpoint("chat_generator", 0, snapshot_file_path=debug_path)
         agent_breakpoint = AgentBreakpoint(break_point=agent_generator_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
@@ -270,8 +275,8 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent
 
         except BreakpointException as e:
             assert e.component == "chat_generator"
-            assert e.pipeline_snapshot is not None
-            assert "messages" in e.pipeline_snapshot
+            assert e.inputs is not None
+            assert "messages" in e.inputs["chat_generator"]["serialized_data"]
             assert e.results is not None
 
         # verify that the snapshot file was created
@@ -306,7 +311,9 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent
 
 def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
     with tempfile.TemporaryDirectory() as debug_path:
-        agent_tool_breakpoint = ToolBreakpoint("tool_invoker", 0, tool_name="add_database_tool", debug_path=debug_path)
+        agent_tool_breakpoint = ToolBreakpoint(
+            "tool_invoker", 0, tool_name="add_database_tool", snapshot_file_path=debug_path
+        )
         agent_breakpoint = AgentBreakpoint(break_point=agent_tool_breakpoint, agent_name="database_agent")
         try:
             pipeline_with_agent.run(
@@ -316,8 +323,10 @@ def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
 
         except BreakpointException as e:
             assert e.component == "tool_invoker"
-            assert e.pipeline_snapshot is not None
-            assert "messages" in e.pipeline_snapshot
+            assert e.inputs is not None
+            assert "serialization_schema" in e.inputs["tool_invoker"]
+            assert "serialized_data" in e.inputs["tool_invoker"]
+            assert "messages" in e.inputs["tool_invoker"]["serialized_data"]
             assert e.results is not None
 
         # verify that the snapshot file was created
@@ -326,7 +335,8 @@ def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
 
         # resume the pipeline from the saved snapshot
         latest_snapshot_file = max(tool_invoker_snapshot_files, key=os.path.getctime)
-        result = pipeline_with_agent.run(data={}, pipeline_snapshot=load_pipeline_snapshot(latest_snapshot_file))
+        pipeline_snapshot = load_pipeline_snapshot(latest_snapshot_file)
+        result = pipeline_with_agent.run(data={}, pipeline_snapshot=pipeline_snapshot)
 
         # pipeline completed successfully after resuming
         assert "database_agent" in result
