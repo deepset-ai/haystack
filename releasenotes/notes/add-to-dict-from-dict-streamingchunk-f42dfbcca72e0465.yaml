@@ -1,4 +1,4 @@
 ---
 features:
   - |
-    Add `to_dict` and `from_dict` to StreamingChunk to make it consistent with our other dataclasses in having serialization and deserialization methods.
+    Add `to_dict` and `from_dict` to classes StreamingChunk, ToolCallResult, ToolCall, ComponentInfo, and ToolCallDelta to make it consistent with our other dataclasses in having serialization and deserialization methods.
