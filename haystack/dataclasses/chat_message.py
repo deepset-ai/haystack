@@ -59,6 +59,31 @@ class ToolCall:
     arguments: Dict[str, Any]
     id: Optional[str] = None  # noqa: A003
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert ToolCall into a dictionary.
+
+        :returns: A dictionary with keys 'tool_name', 'arguments', and 'id'.
+        """
+        return {"tool_name": self.tool_name, "arguments": self.arguments, "id": self.id}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ToolCall":
+        """
+        Creates a new ToolCall object from a dictionary.
+
+        :param data:
+            The dictionary to build the ToolCall object.
+        :returns:
+            The created object.
+        """
+        if "tool_name" not in data or "arguments" not in data:
+            raise ValueError(
+                "Fields `tool_name` and `arguments` are required for ToolCall deserialization. "
+                f"Received dictionary with keys: {list(data.keys())}"
+            )
+        return ToolCall(tool_name=data["tool_name"], arguments=data["arguments"], id=data.get("id"))
+
 
 @dataclass
 class ToolCallResult:
@@ -73,6 +98,38 @@ class ToolCallResult:
     result: str
     origin: ToolCall
     error: bool
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts ToolCallResult into a dictionary.
+
+        :returns: A dictionary with keys 'result', 'origin', and 'error'.
+        """
+        return {"result": self.result, "origin": self.origin.to_dict(), "error": self.error}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ToolCallResult":
+        """
+        Creates a ToolCallResult from a dictionary.
+
+        :param data:
+            The dictionary to build the ToolCallResult object.
+        :returns:
+            The created object.
+        """
+        if not all(x in data for x in ["result", "origin", "error"]):
+            raise ValueError(
+                "Fields `result`, `origin`, `error` are required for ToolCallResult deserialization. "
+                f"Received dictionary with keys {list(data.keys())}"
+            )
+
+        origin = data["origin"]
+        if isinstance(origin, dict):
+            origin = ToolCall.from_dict(origin)
+        elif not (origin is None or isinstance(origin, ToolCall)):
+            raise TypeError("`origin` must be a dict or ToolCall.")
+
+        return ToolCallResult(result=data["result"], origin=origin, error=data["error"])
 
 
 @dataclass
