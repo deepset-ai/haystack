@@ -552,10 +552,11 @@ class InMemoryDocumentStore:
 
             doc_fields = doc.to_dict()
             doc_fields["score"] = score
-            return_document = Document.from_dict(doc_fields)
 
-            if not self.return_embedding:
-                return_document.embedding = None
+            if not self.return_embedding and "embedding" in doc_fields:
+                doc_fields.pop("embedding")
+
+            return_document = Document.from_dict(doc_fields)
 
             return_documents.append(return_document)
 
