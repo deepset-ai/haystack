@@ -14,11 +14,12 @@ from haystack.core.serialization import (
     generate_qualified_class_name,
     import_class_by_name,
 )
-from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema
 from haystack.tools.parameters_schema_utils import _get_component_param_descriptions, _resolve_type
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
+
+from .tool import Tool
 
 logger = logging.getLogger(__name__)
 

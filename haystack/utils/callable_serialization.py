@@ -6,6 +6,7 @@ import inspect
 from typing import Any, Callable
 
 from haystack.core.errors import DeserializationError, SerializationError
+from haystack.tools.tool import Tool
 from haystack.utils.type_serialization import thread_safe_import
 
 
@@ -72,10 +73,11 @@ def deserialize_callable(callable_handle: str) -> Callable:
             attr_value = attr_value.__func__
 
         # Handle the case where @tool decorator replaced the function with a Tool object
+        # Use duck typing instead of isinstance to avoid circular import
         if (
             hasattr(attr_value, "function")
             and callable(getattr(attr_value, "function", None))
-            and all(hasattr(attr_value, attr) for attr in ["name", "description", "parameters"])
+            and isinstance(attr_value, Tool)
         ):
             attr_value = attr_value.function
 
