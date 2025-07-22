@@ -41,12 +41,12 @@ def test_load_pipeline_snapshot_loads_valid_snapshot(tmp_path):
     pipeline_snapshot = {
         "break_point": {"component_name": "comp1", "visit_count": 0},
         "pipeline_state": {
-            "original_input_data": {},
             "inputs": {},
             "component_visits": {"comp1": 0, "comp2": 0},
             "intermediate_outputs": {},
             "pipeline_outputs": {},
         },
+        "original_input_data": {},
         "ordered_component_names": ["comp1", "comp2"],
         "include_outputs_from": ["comp1", "comp2"],
     }
@@ -62,12 +62,12 @@ def test_load_state_handles_invalid_state(tmp_path):
     pipeline_snapshot = {
         "break_point": {"component_name": "comp1", "visit_count": 0},
         "pipeline_state": {
-            "original_input_data": {},
             "inputs": {},
             "component_visits": {"comp1": 0, "comp2": 0},
             "intermediate_outputs": {},
             "pipeline_outputs": {},
         },
+        "original_input_data": {},
         "include_outputs_from": ["comp1", "comp2"],
         "ordered_component_names": ["comp1", "comp3"],  # inconsistent with component_visits
     }

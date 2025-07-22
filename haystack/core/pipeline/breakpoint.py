@@ -81,7 +81,7 @@ def _validate_pipeline_snapshot_against_pipeline(pipeline_snapshot: PipelineSnap
         )
 
     # Check if the original_input_data is valid components in the pipeline
-    serialized_input_data = pipeline_snapshot.pipeline_state.original_input_data["serialized_data"]
+    serialized_input_data = pipeline_snapshot.original_input_data["serialized_data"]
     invalid_input_data = set(serialized_input_data.keys()) - valid_components
     if invalid_input_data:
         raise PipelineInvalidPipelineSnapshotError(
@@ -206,7 +206,6 @@ def _create_pipeline_snapshot(
 
     pipeline_snapshot = PipelineSnapshot(
         pipeline_state=PipelineState(
-            original_input_data=_serialize_value_with_schema(transformed_original_input_data),
             inputs=_serialize_value_with_schema(transformed_inputs),  # current pipeline inputs
             component_visits=component_visits,
             intermediate_outputs=intermediate_outputs or {},
@@ -214,6 +213,7 @@ def _create_pipeline_snapshot(
         ),
         timestamp=dt,
         break_point=break_point,
+        original_input_data=_serialize_value_with_schema(transformed_original_input_data),
         ordered_component_names=ordered_component_names or [],
         include_outputs_from=include_outputs_from or set(),
     )
@@ -361,12 +361,11 @@ def _check_chat_generator_breakpoint(
     if parent_snapshot is None:
         # Create an empty pipeline snapshot if no parent snapshot is provided
         final_snapshot = PipelineSnapshot(
-            pipeline_state=PipelineState(
-                original_input_data={}, inputs={}, component_visits={}, intermediate_outputs={}, pipeline_outputs={}
-            ),
+            pipeline_state=PipelineState(inputs={}, component_visits={}, intermediate_outputs={}, pipeline_outputs={}),
             timestamp=agent_snapshot.timestamp,
             break_point=agent_snapshot.break_point,
             agent_snapshot=agent_snapshot,
+            original_input_data={},
             ordered_component_names=[],
             include_outputs_from=set(),
         )
@@ -422,12 +421,11 @@ def _check_tool_invoker_breakpoint(
     if parent_snapshot is None:
         # Create an empty pipeline snapshot if no parent snapshot is provided
         final_snapshot = PipelineSnapshot(
-            pipeline_state=PipelineState(
-                original_input_data={}, inputs={}, component_visits={}, intermediate_outputs={}, pipeline_outputs={}
-            ),
+            pipeline_state=PipelineState(inputs={}, component_visits={}, intermediate_outputs={}, pipeline_outputs={}),
             timestamp=agent_snapshot.timestamp,
             break_point=agent_snapshot.break_point,
             agent_snapshot=agent_snapshot,
+            original_input_data={},
             ordered_component_names=[],
             include_outputs_from=set(),
         )
