@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Introduce the DocumentLengthRouter, a component for routing Documents based on the length of the `content` field.
+
+    A common use case for DocumentLengthRouter is handling documents obtained from PDFs that contain non-text
+    content, such as scanned pages or images. This component can detect empty or low-content documents and route them to
+    components that perform OCR, generate captions, or compute image embeddings.
