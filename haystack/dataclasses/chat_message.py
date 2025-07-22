@@ -60,6 +60,26 @@ class ToolCall:
     arguments: Dict[str, Any]
     id: Optional[str] = None  # noqa: A003
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert ToolCall into a dictionary.
+
+        :returns: A dictionary with keys 'tool_name', 'arguments', and 'id'.
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ToolCall":
+        """
+        Creates a new ToolCall object from a dictionary.
+
+        :param data:
+            The dictionary to build the ToolCall object.
+        :returns:
+            The created object.
+        """
+        return ToolCall(**data)
+
 
 @dataclass
 class ToolCallResult:
@@ -74,6 +94,31 @@ class ToolCallResult:
     result: str
     origin: ToolCall
     error: bool
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts ToolCallResult into a dictionary.
+
+        :returns: A dictionary with keys 'result', 'origin', and 'error'.
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ToolCallResult":
+        """
+        Creates a ToolCallResult from a dictionary.
+
+        :param data:
+            The dictionary to build the ToolCallResult object.
+        :returns:
+            The created object.
+        """
+        if not all(x in data for x in ["result", "origin", "error"]):
+            raise ValueError(
+                "Fields `result`, `origin`, `error` are required for ToolCallResult deserialization. "
+                f"Received dictionary with keys {list(data.keys())}"
+            )
+        return ToolCallResult(result=data["result"], origin=ToolCall.from_dict(data["origin"]), error=data["error"])
 
 
 @dataclass
