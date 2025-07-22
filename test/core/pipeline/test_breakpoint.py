@@ -44,11 +44,11 @@ def test_load_pipeline_snapshot_loads_valid_snapshot(tmp_path):
             "original_input_data": {},
             "inputs": {},
             "component_visits": {"comp1": 0, "comp2": 0},
-            "ordered_component_names": ["comp1", "comp2"],
-            "include_outputs_from": ["comp1", "comp2"],
             "intermediate_outputs": {},
             "pipeline_outputs": {},
         },
+        "ordered_component_names": ["comp1", "comp2"],
+        "include_outputs_from": ["comp1", "comp2"],
     }
     pipeline_snapshot_file = tmp_path / "state.json"
     with open(pipeline_snapshot_file, "w") as f:
@@ -65,11 +65,11 @@ def test_load_state_handles_invalid_state(tmp_path):
             "original_input_data": {},
             "inputs": {},
             "component_visits": {"comp1": 0, "comp2": 0},
-            "include_outputs_from": ["comp1", "comp2"],
-            "ordered_component_names": ["comp1", "comp3"],  # inconsistent with component_visits
             "intermediate_outputs": {},
             "pipeline_outputs": {},
         },
+        "include_outputs_from": ["comp1", "comp2"],
+        "ordered_component_names": ["comp1", "comp3"],  # inconsistent with component_visits
     }
 
     pipeline_snapshot_file = tmp_path / "invalid_pipeline_snapshot.json"
@@ -119,6 +119,6 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path):
         # verify the whole pipeline state contains the expected data
         assert loaded_snapshot.pipeline_state.component_visits["comp1"] == 1
         assert loaded_snapshot.pipeline_state.component_visits["comp2"] == 0
-        assert "comp1" in loaded_snapshot.pipeline_state.include_outputs_from
+        assert "comp1" in loaded_snapshot.include_outputs_from
         assert loaded_snapshot.break_point.component_name == "comp2"
         assert loaded_snapshot.break_point.visit_count == 0
