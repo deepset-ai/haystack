@@ -5,7 +5,8 @@
 import base64
 from dataclasses import dataclass, field
 from io import BytesIO
-from typing import Any, Dict, Literal, Optional
+from pathlib import Path
+from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 import filetype
 
@@ -132,3 +133,99 @@ class ImageContent:
             display(image)
         else:
             image.show()
+
+    @classmethod
+    def from_file_path(
+        cls,
+        file_path: Union[str, Path],
+        *,
+        size: Optional[Tuple[int, int]] = None,
+        detail: Optional[Literal["auto", "high", "low"]] = None,
+        meta: Optional[Dict[str, Any]] = None,
+    ) -> "ImageContent":
+        """
+        Create an ImageContent object from a file path.
+
+        It exposes similar functionality as the `ImageFileToImageContent` component. For PDF to ImageContent conversion,
+        use the `PDFToImageContent` component.
+
+        :param file_path:
+            The path to the image file. PDF files are not supported. For PDF to ImageContent conversion, use the
+            `PDFToImageContent` component.
+        :param size:
+            If provided, resizes the image to fit within the specified dimensions (width, height) while
+            maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
+            when working with models that have resolution constraints or when transmitting images to remote services.
+        :param detail:
+            Optional detail level of the image (only supported by OpenAI). One of "auto", "high", or "low".
+        :param meta:
+            Additional metadata for the image.
+
+        :returns:
+            An ImageContent object.
+        """
+        # to avoid a circular import
+        from haystack.components.converters.image import ImageFileToImageContent
+
+        converter = ImageFileToImageContent(size=size, detail=detail)
+        result = converter.run(sources=[file_path], meta=[meta] if meta else None)
+        return result["image_contents"][0]
+
+    @classmethod
+    def from_url(
+        cls,
+        url: str,
+        *,
+        retry_attempts: int = 2,
+        timeout: int = 10,
+        size: Optional[Tuple[int, int]] = None,
+        detail: Optional[Literal["auto", "high", "low"]] = None,
+        meta: Optional[Dict[str, Any]] = None,
+    ) -> "ImageContent":
+        """
+        Create an ImageContent object from a URL. The image is downloaded and converted to a base64 string.
+
+        For PDF to ImageContent conversion, use the `PDFToImageContent` component.
+
+        :param url:
+            The URL of the image. PDF files are not supported. For PDF to ImageContent conversion, use the
+            `PDFToImageContent` component.
+        :param retry_attempts:
+            The number of times to retry to fetch the URL's content.
+        :param timeout:
+            Timeout in seconds for the request.
+        :param size:
+            If provided, resizes the image to fit within the specified dimensions (width, height) while
+            maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
+            when working with models that have resolution constraints or when transmitting images to remote services.
+        :param detail:
+            Optional detail level of the image (only supported by OpenAI). One of "auto", "high", or "low".
+        :param meta:
+            Additional metadata for the image.
+
+        :raises ValueError:
+            If the URL does not point to an image or if it points to a PDF file.
+
+        :returns:
+            An ImageContent object.
+        """
+        # to avoid circular imports
+        from haystack.components.converters.image import ImageFileToImageContent
+        from haystack.components.fetchers.link_content import LinkContentFetcher
+
+        fetcher = LinkContentFetcher(raise_on_failure=True, retry_attempts=retry_attempts, timeout=timeout)
+        bytestream = fetcher.run(urls=[url])["streams"][0]
+
+        if bytestream.mime_type not in IMAGE_MIME_TYPES:
+            msg = f"The URL does not point to an image. The MIME type of the URL is {bytestream.mime_type}."
+            raise ValueError(msg)
+
+        if bytestream.mime_type == "application/pdf":
+            raise ValueError(
+                "PDF files are not supported. "
+                "For PDF to ImageContent conversion, use the `PDFToImageContent` component."
+            )
+
+        converter = ImageFileToImageContent(size=size, detail=detail)
+        result = converter.run(sources=[bytestream], meta=[meta] if meta else None)
+        return result["image_contents"][0]
