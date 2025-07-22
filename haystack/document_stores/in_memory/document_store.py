@@ -605,7 +605,7 @@ class InMemoryDocumentStore:
             embedding=query_embedding, documents=documents_with_embeddings, scale_score=scale_score
         )
 
-        resolved_return_embedding = return_embedding if return_embedding is not None else self.return_embedding
+        resolved_return_embedding = self.return_embedding if return_embedding is None else return_embedding
 
         # create Documents with the similarity score for the top k results
         top_documents = []
