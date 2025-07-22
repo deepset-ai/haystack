@@ -106,10 +106,9 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
         try:
             arguments = json.loads(tool_call_dict.get("arguments", "{}")) if tool_call_dict.get("arguments") else {}
             tool_calls.append(ToolCall(id=tool_call_dict["id"], tool_name=tool_call_dict["name"], arguments=arguments))
-            print("Tool calls", tool_calls)
         except json.JSONDecodeError:
             logger.warning(
-                "The model returned a malformed JSON string for tool call arguments. This tool call "
+                "The LLM provider returned a malformed JSON string for tool call arguments. This tool call "
                 "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
                 "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
                 _id=tool_call_dict["id"],
