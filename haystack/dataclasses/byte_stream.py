@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import mimetypes
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from haystack.utils.misc import _guess_mime_type
 
 
 @dataclass(repr=False)
@@ -48,7 +49,7 @@ class ByteStream:
         :param guess_mime_type: Whether to guess the mime type from the file.
         """
         if not mime_type and guess_mime_type:
-            mime_type = cls._guess_mime_type(filepath)
+            mime_type = _guess_mime_type(filepath)
         with open(filepath, "rb") as fd:
             return cls(data=fd.read(), mime_type=mime_type, meta=meta or {})
 
@@ -108,26 +109,3 @@ class ByteStream:
         :returns: A ByteStream instance.
         """
         return ByteStream(data=bytes(data["data"]), meta=data.get("meta", {}), mime_type=data.get("mime_type"))
-
-    @staticmethod
-    def _guess_mime_type(path: Path) -> Optional[str]:
-        """
-        Guess the MIME type of the provided file path.
-
-        :param path: The file path to get the MIME type for.
-
-        :returns: The MIME type of the provided file path, or `None` if the MIME type cannot be determined.
-        """
-        custom_mimetypes = {
-            # we add markdown because it is not added by the mimetypes module
-            # see https://github.com/python/cpython/pull/17995
-            ".md": "text/markdown",
-            ".markdown": "text/markdown",
-            # we add msg because it is not added by the mimetypes module
-            ".msg": "application/vnd.ms-outlook",
-        }
-
-        extension = path.suffix.lower()
-        mime_type = mimetypes.guess_type(path.as_posix())[0]
-        # lookup custom mappings if the mime type is not found
-        return custom_mimetypes.get(extension, mime_type)
