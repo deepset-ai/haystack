@@ -754,13 +754,13 @@ class TestOpenAIChatGenerator:
     @pytest.mark.integration
     def test_live_run_multimodal(self, test_files_path):
         image_path = test_files_path / "images" / "apple.jpg"
-        with open(image_path, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
 
-        image_content = ImageContent(base64_image=base64_image, mime_type="image/jpeg", detail="low")
-        chat_messages = [ChatMessage.from_user(content_parts=["Describe the image in max 5 words", image_content])]
+        # we resize the image to keep this test fast (around 1s) - increase the size in case of errors
+        image_content = ImageContent.from_file_path(file_path=image_path, size=(100, 100), detail="low")
 
-        generator = OpenAIChatGenerator()
+        chat_messages = [ChatMessage.from_user(content_parts=["What does this image show? Max 5 words", image_content])]
+
+        generator = OpenAIChatGenerator(model="gpt-4.1-nano")
         results = generator.run(chat_messages)
 
         assert len(results["replies"]) == 1

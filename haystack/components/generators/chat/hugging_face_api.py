@@ -526,7 +526,7 @@ class HuggingFaceAPIChatGenerator:
             messages=messages, tools=tools, **generation_kwargs
         )
 
-        if len(api_chat_output.choices) == 0:
+        if api_chat_output.choices is None or len(api_chat_output.choices) == 0:
             return {"replies": []}
 
         # n is unused, so the API always returns only one choice
@@ -593,7 +593,7 @@ class HuggingFaceAPIChatGenerator:
             messages=messages, tools=tools, **generation_kwargs
         )
 
-        if len(api_chat_output.choices) == 0:
+        if api_chat_output.choices is None or len(api_chat_output.choices) == 0:
             return {"replies": []}
 
         choice = api_chat_output.choices[0]
