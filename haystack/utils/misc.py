@@ -2,9 +2,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, List, Union, overload
+import mimetypes
+from pathlib import Path
+from typing import Any, List, Optional, Union, overload
 
 from numpy import exp, ndarray
+
+CUSTOM_MIMETYPES = {
+    # we add markdown because it is not added by the mimetypes module
+    # see https://github.com/python/cpython/pull/17995
+    ".md": "text/markdown",
+    ".markdown": "text/markdown",
+    # we add msg because it is not added by the mimetypes module
+    ".msg": "application/vnd.ms-outlook",
+}
 
 
 def expand_page_range(page_range: List[Union[str, int]]) -> List[int]:
@@ -56,3 +67,17 @@ def expit(x: Union[float, ndarray[Any, Any]]) -> Union[float, ndarray[Any, Any]]
     :param x: input value. Can be a scalar or a numpy array.
     """
     return 1 / (1 + exp(-x))
+
+
+def _guess_mime_type(path: Path) -> Optional[str]:
+    """
+    Guess the MIME type of the provided file path.
+
+    :param path: The file path to get the MIME type for.
+
+    :returns: The MIME type of the provided file path, or `None` if the MIME type cannot be determined.
+    """
+    extension = path.suffix.lower()
+    mime_type = mimetypes.guess_type(path.as_posix())[0]
+    # lookup custom mappings if the mime type is not found
+    return CUSTOM_MIMETYPES.get(extension, mime_type)

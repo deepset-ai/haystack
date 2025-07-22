@@ -756,7 +756,7 @@ class TestOpenAIChatGenerator:
         image_path = test_files_path / "images" / "apple.jpg"
 
         # we resize the image to keep this test fast (around 1s) - increase the size in case of errors
-        image_content = ImageContent.from_file_path(file_path=image_path, size=(50, 50), detail="low")
+        image_content = ImageContent.from_file_path(file_path=image_path, size=(100, 100), detail="low")
 
         chat_messages = [ChatMessage.from_user(content_parts=["What does this image show? Max 5 words", image_content])]
 
