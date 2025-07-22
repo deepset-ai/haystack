@@ -86,6 +86,7 @@ class InMemoryDocumentStore:
         :param async_executor:
             Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
             executor will be initialized and used.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is True.
         """
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
@@ -577,7 +578,9 @@ class InMemoryDocumentStore:
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved Documents. Default is False.
-        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents.
+            If not provided, the value of the `return_embedding` parameter set at component
+            initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
