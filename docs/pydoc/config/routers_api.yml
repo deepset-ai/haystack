@@ -4,6 +4,7 @@ loaders:
     modules:
       [
         "conditional_router",
+        "document_type_router",
         "file_type_router",
         "llm_messages_router",
         "metadata_router",
