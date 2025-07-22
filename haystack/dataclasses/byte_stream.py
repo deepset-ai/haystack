@@ -118,16 +118,10 @@ class ByteStream:
 
         :returns: The MIME type of the provided file path, or `None` if the MIME type cannot be determined.
         """
-        custom_mimetypes = {
-            # we add markdown because it is not added by the mimetypes module
-            # see https://github.com/python/cpython/pull/17995
-            ".md": "text/markdown",
-            ".markdown": "text/markdown",
-            # we add msg because it is not added by the mimetypes module
-            ".msg": "application/vnd.ms-outlook",
-        }
+        # Importing here to avoid circular imports
+        from haystack.components.routers.file_type_router import CUSTOM_MIMETYPES
 
         extension = path.suffix.lower()
         mime_type = mimetypes.guess_type(path.as_posix())[0]
         # lookup custom mappings if the mime type is not found
-        return custom_mimetypes.get(extension, mime_type)
+        return CUSTOM_MIMETYPES.get(extension, mime_type)
