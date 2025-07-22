@@ -225,7 +225,7 @@ class PipelineSnapshot:
         """
         Convert the PipelineSnapshot to a dictionary representation.
 
-        :return: A dictionary containing the pipeline state, timestamp, breakpoint, and intermediate outputs.
+        :return: A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot and intermediate outputs.
         """
         return {
             "pipeline_state": self.pipeline_state.to_dict(),
