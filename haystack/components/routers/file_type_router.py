@@ -12,14 +12,11 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 
-CUSTOM_MIMETYPES = {
-    # we add markdown because it is not added by the mimetypes module
-    # see https://github.com/python/cpython/pull/17995
-    ".md": "text/markdown",
-    ".markdown": "text/markdown",
-    # we add msg because it is not added by the mimetypes module
-    ".msg": "application/vnd.ms-outlook",
-}
+# We import CUSTOM_MIMETYPES here to prevent breaking change from moving to haystack.utils.misc
+from haystack.utils.misc import (
+    CUSTOM_MIMETYPES,  # pylint: disable=unused-import
+    _guess_mime_type,
+)
 
 
 @component
@@ -149,7 +146,7 @@ class FileTypeRouter:
                 source = Path(source)
 
             if isinstance(source, Path):
-                mime_type = ByteStream._guess_mime_type(source)
+                mime_type = _guess_mime_type(source)
             elif isinstance(source, ByteStream):
                 mime_type = source.mime_type
             else:

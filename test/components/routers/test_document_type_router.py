@@ -224,34 +224,6 @@ class TestDocumentTypeRouter:
         assert len(result["text/markdown"]) == 1
         assert len(result["application/vnd.ms-outlook"]) == 1
 
-    @patch("mimetypes.guess_type")
-    def test_get_mime_type_with_mocked_mimetypes(self, mock_guess_type):
-        mock_guess_type.return_value = ("text/plain", None)
-
-        router = DocumentTypeRouter(file_path_meta_field="file_path", mime_types=["text/plain"])
-
-        mime_type = router._get_mime_type(Path("test.txt"))
-        assert mime_type == "text/plain"
-        mock_guess_type.assert_called_once()
-
-    def test_get_mime_type_with_custom_extensions(self):
-        router = DocumentTypeRouter(file_path_meta_field="file_path", mime_types=["text/markdown"])
-
-        # Test markdown extension (should be in CUSTOM_MIMETYPES)
-        mime_type = router._get_mime_type(Path("readme.md"))
-        assert mime_type == "text/markdown"
-
-        # Test .msg extension
-        mime_type = router._get_mime_type(Path("email.msg"))
-        assert mime_type == "application/vnd.ms-outlook"
-
-    def test_get_mime_type_case_insensitive(self):
-        router = DocumentTypeRouter(file_path_meta_field="file_path", mime_types=["text/markdown"])
-
-        # Test uppercase extension
-        mime_type = router._get_mime_type(Path("README.MD"))
-        assert mime_type == "text/markdown"
-
     def test_serde_in_pipeline(self):
         document_type_router = DocumentTypeRouter(
             mime_type_meta_field="mime_type", mime_types=["text/plain", "application/pdf"]

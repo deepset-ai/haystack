@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from haystack import component
-from haystack.components.routers.file_type_router import CUSTOM_MIMETYPES
 from haystack.dataclasses import Document
+from haystack.utils.misc import _guess_mime_type
 
 
 @component
@@ -131,7 +131,7 @@ class DocumentTypeRouter:
 
             if mime_type is None and file_path:
                 # if mime_type is not provided, try to guess it from the file path
-                mime_type = self._get_mime_type(Path(file_path))
+                mime_type = _guess_mime_type(Path(file_path))
 
             matched = False
             if mime_type:
@@ -144,16 +144,3 @@ class DocumentTypeRouter:
                 mime_types["unclassified"].append(doc)
 
         return dict(mime_types)
-
-    def _get_mime_type(self, path: Path) -> Optional[str]:
-        """
-        Get the MIME type of the provided file path.
-
-        :param path: The file path to get the MIME type for.
-
-        :returns: The MIME type of the provided file path, or `None` if the MIME type cannot be determined.
-        """
-        extension = path.suffix.lower()
-        mime_type = mimetypes.guess_type(path.as_posix())[0]
-        # lookup custom mappings if the mime type is not found
-        return CUSTOM_MIMETYPES.get(extension, mime_type)
