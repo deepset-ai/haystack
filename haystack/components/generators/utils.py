@@ -104,8 +104,9 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
     for key in sorted_keys:
         tool_call_dict = tool_call_data[key]
         try:
-            arguments = json.loads(tool_call_dict.get("arguments")) if tool_call_dict.get("arguments") else {}
+            arguments = json.loads(tool_call_dict.get("arguments", "{}")) if tool_call_dict.get("arguments") else {}
             tool_calls.append(ToolCall(id=tool_call_dict["id"], tool_name=tool_call_dict["name"], arguments=arguments))
+            print("Tool calls", tool_calls)
         except json.JSONDecodeError:
             logger.warning(
                 "The model returned a malformed JSON string for tool call arguments. This tool call "
