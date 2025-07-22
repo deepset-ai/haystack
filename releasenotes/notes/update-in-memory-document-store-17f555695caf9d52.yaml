@@ -2,5 +2,5 @@
 enhancements:
   - |
     - Added `return_embedding` parameter inside `InMemoryDocumentStore::init` method.
-    - Added `self.return_embedding` inside `InMemoryDocumentStore::to_dict`, `InMemoryDocumentStore::bm25_retrieval` method.
+    - Updated methods `bm25_retrieval`, and `filter_documents` to use `self.return_embedding` to determine whether embeddings are returned.
     - Updated tests (test_in_memory & test_in_memory_embedding_retriever) to reflect the changes in the `InMemoryDocumentStore`.
