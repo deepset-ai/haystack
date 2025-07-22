@@ -274,6 +274,26 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         filtered_docs = docstore.filter_documents()
         assert all(doc.embedding is None for doc in filtered_docs)
 
+    def test_embedding_retrieval_override_return_embedding(self):
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine", return_embedding=False)
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+        ]
+        docstore.write_documents(docs)
+
+        # Overriding return_embedding to True should return embeddings
+        # Query for the embedding that matches both documents by cosine similarity
+        results_with_embedding = docstore.embedding_retrieval(
+            query_embedding=[0.1, 0.2, 0.3, 0.4], top_k=2, return_embedding=True
+        )
+
+        # Assert that the retrieved documents have the expected embeddings
+        assert len(results_with_embedding) == 2
+
+        assert results_with_embedding[0].embedding in ([1.0, 1.0, 1.0, 1.0], [0.1, 0.2, 0.3, 0.4])
+        assert results_with_embedding[1].embedding in ([1.0, 1.0, 1.0, 1.0], [0.1, 0.2, 0.3, 0.4])
+
     def test_embedding_retrieval(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
         # Tests if the embedding retrieval method returns the correct document based on the input query embedding.
