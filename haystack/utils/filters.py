@@ -4,11 +4,11 @@
 
 from dataclasses import fields
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import dateutil.parser
 
-from haystack.dataclasses import Document
+from haystack.dataclasses import ByteStream, Document
 from haystack.errors import FilterError
 
 
@@ -29,20 +29,26 @@ def document_matches_filter(filters: Dict[str, Any], document: Document) -> bool
     `DocumentStore.filter_documents()` protocol documentation.
     """
     if "field" in filters:
-        return _comparison_condition(filters, document)
-    return _logic_condition(filters, document)
+        return _comparison_condition(condition=filters, document_or_bytestream=document)
+    return _logic_condition(condition=filters, document_or_bytestream=document)
 
 
-def _and(document: Document, conditions: List[Dict[str, Any]]) -> bool:
-    return all(_comparison_condition(condition, document) for condition in conditions)
+def _and(document_or_bytestream: Union[Document, ByteStream], conditions: List[Dict[str, Any]]) -> bool:
+    return all(
+        _comparison_condition(condition=condition, document_or_bytestream=document_or_bytestream)
+        for condition in conditions
+    )
 
 
-def _or(document: Document, conditions: List[Dict[str, Any]]) -> bool:
-    return any(_comparison_condition(condition, document) for condition in conditions)
+def _or(document_or_bytestream: Union[Document, ByteStream], conditions: List[Dict[str, Any]]) -> bool:
+    return any(
+        _comparison_condition(condition=condition, document_or_bytestream=document_or_bytestream)
+        for condition in conditions
+    )
 
 
-def _not(document: Document, conditions: List[Dict[str, Any]]) -> bool:
-    return not _and(document, conditions)
+def _not(document_or_bytestream: Union[Document, ByteStream], conditions: List[Dict[str, Any]]) -> bool:
+    return not _and(document_or_bytestream=document_or_bytestream, conditions=conditions)
 
 
 LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
@@ -158,7 +164,7 @@ COMPARISON_OPERATORS = {
 }
 
 
-def _logic_condition(condition: Dict[str, Any], document: Document) -> bool:
+def _logic_condition(condition: Dict[str, Any], document_or_bytestream: Union[Document, ByteStream]) -> bool:
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
         raise FilterError(msg)
@@ -167,14 +173,14 @@ def _logic_condition(condition: Dict[str, Any], document: Document) -> bool:
         raise FilterError(msg)
     operator: str = condition["operator"]
     conditions: List[Dict[str, Any]] = condition["conditions"]
-    return LOGICAL_OPERATORS[operator](document, conditions)
+    return LOGICAL_OPERATORS[operator](document_or_bytestream=document_or_bytestream, conditions=conditions)
 
 
-def _comparison_condition(condition: Dict[str, Any], document: Document) -> bool:
+def _comparison_condition(condition: Dict[str, Any], document_or_bytestream: Union[Document, ByteStream]) -> bool:
     if "field" not in condition:
         # 'field' key is only found in comparison dictionaries.
         # We assume this is a logic dictionary since it's not present.
-        return _logic_condition(condition, document)
+        return _logic_condition(condition=condition, document_or_bytestream=document_or_bytestream)
     field: str = condition["field"]
 
     if "operator" not in condition:
@@ -188,23 +194,23 @@ def _comparison_condition(condition: Dict[str, Any], document: Document) -> bool
         # Handles fields formatted like so:
         # 'meta.person.name'
         parts = field.split(".")
-        document_value = getattr(document, parts[0])
+        document_value = getattr(document_or_bytestream, parts[0])
         for part in parts[1:]:
             if part not in document_value:
                 # If a field is not found we treat it as None
                 document_value = None
                 break
             document_value = document_value[part]
-    elif field not in [f.name for f in fields(document)]:
+    elif field not in [f.name for f in fields(document_or_bytestream)]:
         # Converted legacy filters don't add the `meta.` prefix, so we assume
         # that all filter fields that are not actual fields in Document are converted
         # filters.
         #
         # We handle this to avoid breaking compatibility with converted legacy filters.
         # This will be removed as soon as we stop supporting legacy filters.
-        document_value = document.meta.get(field)
+        document_value = document_or_bytestream.meta.get(field)
     else:
-        document_value = getattr(document, field)
+        document_value = getattr(document_or_bytestream, field)
     operator: str = condition["operator"]
     filter_value: Any = condition["value"]
     return COMPARISON_OPERATORS[operator](filter_value=filter_value, document_value=document_value)
