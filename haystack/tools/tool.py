@@ -10,7 +10,6 @@ from jsonschema.exceptions import SchemaError
 
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools.errors import ToolInvocationError
-from haystack.utils import deserialize_callable, serialize_callable
 
 
 @dataclass
@@ -117,6 +116,9 @@ class Tool:
         :returns:
             Dictionary with serialized data.
         """
+        # Import here to avoid circular dependency with utils.callable_serialization
+        from haystack.utils import serialize_callable
+
         data = asdict(self)
         data["function"] = serialize_callable(self.function)
 
@@ -145,6 +147,9 @@ class Tool:
         :returns:
             Deserialized Tool.
         """
+        # Import here to avoid circular dependency with utils.callable_serialization
+        from haystack.utils import deserialize_callable
+
         init_parameters = data["data"]
         init_parameters["function"] = deserialize_callable(init_parameters["function"])
 

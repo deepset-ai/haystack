@@ -23,7 +23,7 @@ from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
-from haystack.tools import ComponentTool, Tool
+from haystack.tools import ComponentTool, Tool, tool
 from haystack.tools.toolset import Toolset
 from haystack.tracing.logging_tracer import LoggingTracer
 from haystack.utils import Secret, serialize_callable
@@ -40,6 +40,12 @@ def weather_function(location):
         "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
     }
     return weather_info.get(location, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
+
+
+@tool
+def weather_tool_with_decorator(location: str) -> str:
+    """Provides weather information for a given location."""
+    return f"Weather report for {location}: 20°C, sunny"
 
 
 @pytest.fixture
@@ -297,6 +303,18 @@ class TestAgent:
                 "tool_invoker_kwargs": None,
             },
         }
+
+    def test_agent_serialization_with_tool_decorator(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool_with_decorator])
+        serialized_agent = agent.to_dict()
+        deserialized_agent = Agent.from_dict(serialized_agent)
+
+        assert deserialized_agent.tools == agent.tools
+        assert isinstance(deserialized_agent.chat_generator, OpenAIChatGenerator)
+        assert deserialized_agent.chat_generator.model == "gpt-4o-mini"
+        assert deserialized_agent.chat_generator.api_key == Secret.from_env_var("OPENAI_API_KEY")
+        assert deserialized_agent.exit_conditions == ["text"]
 
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
