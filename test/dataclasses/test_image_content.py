@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
-from unittest.mock import patch
+import logging
+from unittest.mock import Mock, patch
 
+import httpx
 import pytest
 from PIL import Image
 
@@ -103,3 +105,90 @@ def test_image_content_show_outside_jupyter(test_files_path):
     with patch.object(Image.Image, "show") as mock_show:
         image_content.show()
         mock_show.assert_called_once()
+
+
+def test_image_content_from_file_path(test_files_path):
+    image_content = ImageContent.from_file_path(
+        file_path=test_files_path / "images" / "apple.jpg", size=(100, 100), detail="high", meta={"test": "test"}
+    )
+
+    assert isinstance(image_content.base64_image, str)
+    assert image_content.mime_type == "image/jpeg"
+    assert image_content.detail == "high"
+    assert image_content.meta == {"test": "test", "file_path": str(test_files_path / "images" / "apple.jpg")}
+
+
+def test_image_content_from_file_path_pdf_unsupported(test_files_path, caplog):
+    with pytest.raises(IndexError):
+        ImageContent.from_file_path(
+            file_path=test_files_path / "pdf" / "sample_pdf_1.pdf",
+            size=(100, 100),
+            detail="high",
+            meta={"test": "test"},
+        )
+
+    assert "Could not convert file" in caplog.text
+    assert "PDF" in caplog.text
+
+
+def test_image_content_from_file_path_non_existing(test_files_path, caplog):
+    caplog.set_level(logging.WARNING)
+
+    with pytest.raises(IndexError):
+        ImageContent.from_file_path(file_path=test_files_path / "images" / "non_existing.jpg")
+    assert "No such file" in caplog.text
+
+
+def test_image_content_from_url(test_files_path):
+    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+        with open(test_files_path / "images" / "apple.jpg", "rb") as image_file:
+            image_bytes = image_file.read()
+        mock_response = Mock(status_code=200, content=image_bytes, headers={"Content-Type": "image/jpeg"})
+        mock_get.return_value = mock_response
+
+        image_content = ImageContent.from_url(
+            url="https://example.com/apple.jpg", size=(100, 100), detail="high", meta={"test": "test"}
+        )
+
+    assert isinstance(image_content.base64_image, str)
+    assert image_content.mime_type == "image/jpeg"
+    assert image_content.detail == "high"
+    assert image_content.meta == {"test": "test", "url": "https://example.com/apple.jpg", "content_type": "image/jpeg"}
+
+
+def test_image_content_from_url_bad_request():
+    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+        mock_get.side_effect = httpx.HTTPStatusError("403 Client Error", request=Mock(), response=Mock())
+
+        with pytest.raises(httpx.HTTPStatusError):
+            ImageContent.from_url(url="https://non_existent_website_dot.com/image.jpg", retry_attempts=0, timeout=1)
+
+
+def test_image_content_from_url_wrong_mime_type_text():
+    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+        mock_response = Mock(status_code=200, text="a text", headers={"Content-Type": "text/plain"})
+        mock_get.return_value = mock_response
+
+        with pytest.raises(ValueError):
+            ImageContent.from_url(
+                url="https://example.com/text.txt", size=(100, 100), detail="high", meta={"test": "test"}
+            )
+
+
+def test_image_content_from_url_wrong_mime_type_pdf(test_files_path):
+    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+        with open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb") as pdf_file:
+            pdf_bytes = pdf_file.read()
+        mock_response = Mock(status_code=200, content=pdf_bytes, headers={"Content-Type": "application/pdf"})
+        mock_get.return_value = mock_response
+
+        with pytest.raises(ValueError):
+            ImageContent.from_url(
+                url="https://example.com/sample_pdf_1.pdf", size=(100, 100), detail="high", meta={"test": "test"}
+            )
+
+
+@pytest.mark.integration
+def test_image_content_from_url_wrong_mime_type():
+    with pytest.raises(ValueError):
+        ImageContent.from_url(url="https://example.com", size=(100, 100), detail="high", meta={"test": "test"})
