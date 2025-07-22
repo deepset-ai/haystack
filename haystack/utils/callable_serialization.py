@@ -73,12 +73,7 @@ def deserialize_callable(callable_handle: str) -> Callable:
             attr_value = attr_value.__func__
 
         # Handle the case where @tool decorator replaced the function with a Tool object
-        # Use duck typing instead of isinstance to avoid circular import
-        if (
-            hasattr(attr_value, "function")
-            and callable(getattr(attr_value, "function", None))
-            and isinstance(attr_value, Tool)
-        ):
+        if isinstance(attr_value, Tool):
             attr_value = attr_value.function
 
         if not callable(attr_value):
