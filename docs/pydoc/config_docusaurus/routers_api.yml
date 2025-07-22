@@ -4,6 +4,7 @@ loaders:
     modules:
       [
         "conditional_router",
+        "document_length_router",
         "file_type_router",
         "metadata_router",
         "text_language_router",
