@@ -240,7 +240,7 @@ class PipelineSnapshot:
         """
         Populate the PipelineSnapshot from a dictionary representation.
 
-        :param data: A dictionary containing the pipeline state, timestamp, breakpoint, and intermediate outputs.
+        :param data: A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot and intermediate outputs.
         """
         return cls(
             pipeline_state=PipelineState.from_dict(data=data["pipeline_state"]),
