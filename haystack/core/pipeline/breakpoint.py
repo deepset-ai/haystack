@@ -186,6 +186,7 @@ def _create_pipeline_snapshot(
     ordered_component_names: Optional[List[str]] = None,
     include_outputs_from: Optional[Set[str]] = None,
     intermediate_outputs: Optional[Dict[str, Any]] = None,
+    pipeline_outputs: Optional[Dict[str, Any]] = None,
 ) -> PipelineSnapshot:
     """
     Create a snapshot of the pipeline at the point where the breakpoint was triggered.
@@ -210,10 +211,11 @@ def _create_pipeline_snapshot(
             component_visits=component_visits,
             ordered_component_names=ordered_component_names or [],
             include_outputs_from=include_outputs_from or set(),
+            intermediate_outputs=intermediate_outputs or {},
+            pipeline_outputs=pipeline_outputs or {},
         ),
         timestamp=dt,
         break_point=break_point,
-        intermediate_outputs=intermediate_outputs,
     )
     return pipeline_snapshot
 
@@ -365,6 +367,8 @@ def _check_chat_generator_breakpoint(
                 component_visits={},
                 ordered_component_names=[],
                 include_outputs_from=set(),
+                intermediate_outputs={},
+                pipeline_outputs={},
             ),
             timestamp=agent_snapshot.timestamp,
             break_point=agent_snapshot.break_point,
@@ -428,6 +432,8 @@ def _check_tool_invoker_breakpoint(
                 component_visits={},
                 ordered_component_names=[],
                 include_outputs_from=set(),
+                intermediate_outputs={},
+                pipeline_outputs={},
             ),
             timestamp=agent_snapshot.timestamp,
             break_point=agent_snapshot.break_point,

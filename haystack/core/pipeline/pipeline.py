@@ -354,6 +354,7 @@ class Pipeline(PipelineBase):
                         ordered_component_names=ordered_component_names,
                         include_outputs_from=include_outputs_from,
                         intermediate_outputs=intermediate_outputs,
+                        pipeline_outputs=pipeline_outputs,
                     )
 
                     # Scenario 2.1: an AgentBreakpoint is provided to stop the pipeline at a specific component

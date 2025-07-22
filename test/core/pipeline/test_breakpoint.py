@@ -46,6 +46,8 @@ def test_load_pipeline_snapshot_loads_valid_snapshot(tmp_path):
             "component_visits": {"comp1": 0, "comp2": 0},
             "ordered_component_names": ["comp1", "comp2"],
             "include_outputs_from": ["comp1", "comp2"],
+            "intermediate_outputs": {},
+            "pipeline_outputs": {},
         },
     }
     pipeline_snapshot_file = tmp_path / "state.json"
@@ -65,6 +67,8 @@ def test_load_state_handles_invalid_state(tmp_path):
             "component_visits": {"comp1": 0, "comp2": 0},
             "include_outputs_from": ["comp1", "comp2"],
             "ordered_component_names": ["comp1", "comp3"],  # inconsistent with component_visits
+            "intermediate_outputs": {},
+            "pipeline_outputs": {},
         },
     }
 
@@ -108,9 +112,9 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path):
         loaded_snapshot = load_pipeline_snapshot(snapshot_file)
 
         # verify the snapshot contains the intermediate outputs from comp1
-        assert loaded_snapshot.intermediate_outputs is not None
-        assert "comp1" in loaded_snapshot.intermediate_outputs
-        assert loaded_snapshot.intermediate_outputs["comp1"]["result"] == "processed_test"
+        assert loaded_snapshot.pipeline_state.intermediate_outputs is not None
+        assert "comp1" in loaded_snapshot.pipeline_state.intermediate_outputs
+        assert loaded_snapshot.pipeline_state.intermediate_outputs["comp1"]["result"] == "processed_test"
 
         # verify the whole pipeline state contains the expected data
         assert loaded_snapshot.pipeline_state.component_visits["comp1"] == 1
