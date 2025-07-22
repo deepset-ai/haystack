@@ -137,8 +137,8 @@ def test_finish_reason_tool_call_results():
     assert chunk.content == ""
 
 
-def test_to_dict():
-    """Test the to_dict method for StreamingChunk."""
+def test_to_dict_tool_call_result():
+    """Test the to_dict method for StreamingChunk with tool_call_result."""
     component = ExampleComponent()
     component_info = ComponentInfo.from_component(component)
     tool_call_result = ToolCallResult(
@@ -160,13 +160,77 @@ def test_to_dict():
     assert d["meta"] == {"key": "value"}
     assert d["index"] == 0
     assert d["component_info"]["type"] == "test_streaming_chunk.ExampleComponent"
+    assert d["tool_call_result"]["result"] == "output"
+    assert d["tool_call_result"]["error"] is False
     assert d["tool_call_result"]["origin"]["id"] == "123"
     assert d["tool_call_result"]["origin"]["arguments"]["arg1"] == "value1"
     assert d["finish_reason"] == "tool_call_results"
 
 
-def test_from_dict():
-    """Test the from_dict method for StreamingChunk."""
+def test_to_dict_tool_calls():
+    """Test the to_dict method for StreamingChunk with tool_calls."""
+    component = ExampleComponent()
+    component_info = ComponentInfo.from_component(component)
+    tool_calls = [
+        ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0),
+        ToolCallDelta(id="456", tool_name="another_tool", arguments='{"arg2": "value2"}', index=1),
+    ]
+
+    chunk = StreamingChunk(
+        content="",
+        meta={"key": "value"},
+        index=0,
+        component_info=component_info,
+        tool_calls=tool_calls,
+        finish_reason="tool_calls",
+    )
+
+    d = chunk.to_dict()
+
+    assert d["content"] == ""
+    assert d["meta"] == {"key": "value"}
+    assert d["index"] == 0
+    assert d["component_info"]["type"] == "test_streaming_chunk.ExampleComponent"
+    assert len(d["tool_calls"]) == 2
+    assert d["tool_calls"][0]["id"] == "123"
+    assert d["tool_calls"][0]["index"] == 0
+    assert d["tool_calls"][1]["id"] == "456"
+    assert d["tool_calls"][1]["index"] == 1
+    assert d["finish_reason"] == "tool_calls"
+
+
+def test_from_dict_tool_call_result():
+    """Test the from_dict method for StreamingChunk with tool_call_result."""
+    component_info = {"type": "test_streaming_chunk.ExampleComponent", "name": "test_component"}
+    tool_call_result = {
+        "result": "output",
+        "origin": {"id": "123", "tool_name": "test_tool", "arguments": {"arg1": "value1"}},
+        "error": False,
+    }
+
+    data = {
+        "content": "",
+        "meta": {"key": "value"},
+        "index": 0,
+        "component_info": component_info,
+        "tool_call_result": tool_call_result,
+        "finish_reason": "tool_call_results",
+    }
+
+    chunk = StreamingChunk.from_dict(data)
+
+    assert chunk.content == ""
+    assert chunk.meta == {"key": "value"}
+    assert chunk.index == 0
+    assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
+    assert chunk.component_info.name == "test_component"
+    assert chunk.tool_call_result.result == "output"
+    assert chunk.tool_call_result.error is False
+    assert chunk.tool_call_result.origin.id == "123"
+
+
+def test_from_dict_tool_calls():
+    """Test the from_dict method for StreamingChunk with tool_calls."""
     component_info = {"type": "test_streaming_chunk.ExampleComponent", "name": "test_component"}
     tool_calls = [{"id": "123", "tool_name": "test_tool", "arguments": '{"arg1": "value1"}', "index": 0}]
 
@@ -187,4 +251,5 @@ def test_from_dict():
     assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
     assert chunk.component_info.name == "test_component"
     assert chunk.tool_calls[0].tool_name == "test_tool"
+    assert chunk.tool_calls[0].index == 0
     assert chunk.finish_reason == "tool_calls"
