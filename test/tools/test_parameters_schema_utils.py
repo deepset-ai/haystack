@@ -125,6 +125,44 @@ TOOL_CALL_RESULT_SCHEMA = {
     "required": ["result", "origin", "error"],
 }
 
+IMAGE_CONTENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "base64_image": {"type": "string", "description": "A base64 string representing the image."},
+        "meta": {
+            "type": "object",
+            "default": {},
+            "description": "Optional metadata for the image.",
+            "additionalProperties": True,
+        },
+        "mime_type": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": None,
+            "description": 'The MIME type of the image (e.g. "image/png", "image/jpeg").\n'
+            "Providing this value is recommended, as most LLM providers require it.\n"
+            "If not provided, the MIME type is guessed from the base64 string, "
+            "which can be slow and not always reliable.",
+        },
+        "validation": {
+            "type": "boolean",
+            "default": True,
+            "description": "If True (default), a validation process is performed:\n"
+            "- Check whether the base64 string is valid;\n"
+            "- Guess the MIME type if not provided;\n"
+            "- Check if the MIME type is a valid image MIME type.\n"
+            "Set to False to skip validation and speed up initialization.",
+        },
+        "detail": {
+            "anyOf": [{"enum": ["auto", "high", "low"], "type": "string"}, {"type": "null"}],
+            "default": None,
+            "description": (
+                'Optional detail level of the image (only supported by OpenAI). One of "auto", "high", or "low".'
+            ),
+        },
+    },
+    "required": ["base64_image"],
+}
+
 CHAT_ROLE_SCHEMA = {
     "description": "Enumeration representing the roles within a chat.",
     "enum": ["user", "system", "assistant", "tool"],
@@ -143,6 +181,7 @@ CHAT_MESSAGE_SCHEMA = {
                     {"$ref": "#/$defs/TextContent"},
                     {"$ref": "#/$defs/ToolCall"},
                     {"$ref": "#/$defs/ToolCallResult"},
+                    {"$ref": "#/$defs/ImageContent"},
                 ]
             },
         },
@@ -205,6 +244,7 @@ CHAT_MESSAGE_SCHEMA = {
                 "ToolCall": TOOL_CALL_SCHEMA,
                 "ToolCallResult": TOOL_CALL_RESULT_SCHEMA,
                 "ChatRole": CHAT_ROLE_SCHEMA,
+                "ImageContent": IMAGE_CONTENT_SCHEMA,
             },
         ),
         (
@@ -223,6 +263,7 @@ CHAT_MESSAGE_SCHEMA = {
                 "ToolCall": TOOL_CALL_SCHEMA,
                 "ToolCallResult": TOOL_CALL_RESULT_SCHEMA,
                 "ChatRole": CHAT_ROLE_SCHEMA,
+                "ImageContent": IMAGE_CONTENT_SCHEMA,
             },
         ),
     ],

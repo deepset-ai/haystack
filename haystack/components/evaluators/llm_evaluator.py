@@ -230,17 +230,17 @@ class LLMEvaluator:
 
         Combine instructions, inputs, outputs, and examples into one prompt template with the following format:
         Instructions:
-        <instructions>
+        `<instructions>`
 
         Generate the response in JSON format with the following keys:
-        <list of output keys>
+        `<list of output keys>`
         Consider the instructions and the examples below to determine those values.
 
         Examples:
-        <examples>
+        `<examples>`
 
         Inputs:
-        <inputs>
+        `<inputs>`
         Outputs:
 
         :returns:
