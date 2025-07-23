@@ -21,7 +21,7 @@ from haystack.utils.device import ComponentDevice
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 with LazyImport("Run 'pip install pillow'") as pillow_import:
-    from PIL import Image as PILImage
+    from PIL import Image
 
 
 @component
@@ -259,7 +259,7 @@ class SentenceTransformersDocumentImageEmbedder:
                 pdf_page_infos.append(pdf_page_info)
             else:
                 # Process images directly
-                image = PILImage.open(image_source_info["path"])
+                image = Image.open(image_source_info["path"])
                 images_to_embed[doc_idx] = image
 
         pdf_images_by_doc_idx = _batch_convert_pdf_pages_to_images(pdf_page_infos=pdf_page_infos, return_base64=False)
