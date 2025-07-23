@@ -156,13 +156,11 @@ class PipelineState:
 
     :param component_visits: A dictionary mapping component names to their visit counts.
     :param inputs: The inputs processed by the pipeline at the time of the snapshot.
-    :param intermediate_outputs: Dictionary containing outputs from components that are in the include_outputs_from set.
     :param pipeline_outputs: Dictionary containing the final outputs of the pipeline up to the breakpoint.
     """
 
     inputs: Dict[str, Any]
     component_visits: Dict[str, int]
-    intermediate_outputs: Dict[str, Any]
     pipeline_outputs: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
@@ -198,19 +196,15 @@ class PipelineSnapshot:
     :param original_input_data: The original input data provided to the pipeline.
     :param ordered_component_names: A list of component names in the order they were visited.
     :param include_outputs_from: Set of component names whose outputs should be included in the pipeline results.
-    :param intermediate_outputs: Dictionary containing outputs from components that are in the include_outputs_from set.
-    :param pipeline_outputs: Dictionary containing the final outputs of the pipeline up to the breakpoint.
     """
 
+    original_input_data: Dict[str, Any]
+    ordered_component_names: List[str]
     pipeline_state: PipelineState
     break_point: Union[AgentBreakpoint, Breakpoint]
     agent_snapshot: Optional[AgentSnapshot] = None
     timestamp: Optional[datetime] = None
-    original_input_data: Dict[str, Any] = field(default_factory=dict)
-    ordered_component_names: List[str] = field(default_factory=list)
     include_outputs_from: Set[str] = field(default_factory=set)
-    intermediate_outputs: Optional[Dict[str, Any]] = None
-    pipeline_outputs: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         # Validate consistency between component_visits and ordered_component_names
@@ -238,8 +232,6 @@ class PipelineSnapshot:
             "original_input_data": self.original_input_data,
             "ordered_component_names": self.ordered_component_names,
             "include_outputs_from": list(self.include_outputs_from),
-            "intermediate_outputs": self.intermediate_outputs,
-            "pipeline_outputs": self.pipeline_outputs,
         }
         return data
 
@@ -266,6 +258,4 @@ class PipelineSnapshot:
             original_input_data=data.get("original_input_data", {}),
             ordered_component_names=data.get("ordered_component_names", []),
             include_outputs_from=include_outputs_from,
-            intermediate_outputs=data.get("intermediate_outputs"),
-            pipeline_outputs=data.get("pipeline_outputs"),
         )

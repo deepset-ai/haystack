@@ -212,8 +212,7 @@ class Pipeline(PipelineBase):
         if include_outputs_from is None:
             include_outputs_from = set()
 
-        # track intermediate outputs from components in include_outputs_from to save them to a pipeline snapshot
-        intermediate_outputs: Dict[str, Any] = {}
+        pipeline_outputs: Dict[str, Any] = {}
 
         if not pipeline_snapshot:
             # normalize `data`
@@ -243,15 +242,12 @@ class Pipeline(PipelineBase):
             include_outputs_from = pipeline_snapshot.include_outputs_from
 
             # also intermediate_outputs from the snapshot when resuming
-            if pipeline_snapshot.intermediate_outputs:
-                intermediate_outputs = pipeline_snapshot.intermediate_outputs
+            pipeline_outputs = pipeline_snapshot.pipeline_state.pipeline_outputs
 
         cached_topological_sort = None
         # We need to access a component's receivers multiple times during a pipeline run.
         # We store them here for easy access.
         cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
-
-        pipeline_outputs: Dict[str, Any] = {}
 
         with tracing.tracer.trace(
             "haystack.pipeline.run",
@@ -353,7 +349,6 @@ class Pipeline(PipelineBase):
                         original_input_data=data,
                         ordered_component_names=ordered_component_names,
                         include_outputs_from=include_outputs_from,
-                        intermediate_outputs=intermediate_outputs,
                         pipeline_outputs=pipeline_outputs,
                     )
 
@@ -392,8 +387,6 @@ class Pipeline(PipelineBase):
 
                 if component_pipeline_outputs:
                     pipeline_outputs[component_name] = deepcopy(component_pipeline_outputs)
-                    if component_name in include_outputs_from:
-                        intermediate_outputs[component_name] = deepcopy(component_pipeline_outputs)
                 if self._is_queue_stale(priority_queue):
                     priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 
@@ -404,9 +397,5 @@ class Pipeline(PipelineBase):
                     "2. The component did not reach the visit count specified in the pipeline_breakpoint",
                     pipeline_breakpoint=break_point,
                 )
-
-            # if we are resuming from a snapshot, include intermediate outputs from the snapshot
-            if pipeline_snapshot and pipeline_snapshot.intermediate_outputs:
-                pipeline_outputs.update(pipeline_snapshot.intermediate_outputs)
 
             return pipeline_outputs

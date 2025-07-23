@@ -208,7 +208,6 @@ def _create_pipeline_snapshot(
         pipeline_state=PipelineState(
             inputs=_serialize_value_with_schema(transformed_inputs),  # current pipeline inputs
             component_visits=component_visits,
-            intermediate_outputs=intermediate_outputs or {},
             pipeline_outputs=pipeline_outputs or {},
         ),
         timestamp=dt,
@@ -361,7 +360,7 @@ def _check_chat_generator_breakpoint(
     if parent_snapshot is None:
         # Create an empty pipeline snapshot if no parent snapshot is provided
         final_snapshot = PipelineSnapshot(
-            pipeline_state=PipelineState(inputs={}, component_visits={}, intermediate_outputs={}, pipeline_outputs={}),
+            pipeline_state=PipelineState(inputs={}, component_visits={}, pipeline_outputs={}),
             timestamp=agent_snapshot.timestamp,
             break_point=agent_snapshot.break_point,
             agent_snapshot=agent_snapshot,
@@ -421,7 +420,7 @@ def _check_tool_invoker_breakpoint(
     if parent_snapshot is None:
         # Create an empty pipeline snapshot if no parent snapshot is provided
         final_snapshot = PipelineSnapshot(
-            pipeline_state=PipelineState(inputs={}, component_visits={}, intermediate_outputs={}, pipeline_outputs={}),
+            pipeline_state=PipelineState(inputs={}, component_visits={}, pipeline_outputs={}),
             timestamp=agent_snapshot.timestamp,
             break_point=agent_snapshot.break_point,
             agent_snapshot=agent_snapshot,
