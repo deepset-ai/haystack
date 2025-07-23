@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 
 @dataclass(frozen=True)
@@ -155,31 +155,20 @@ class PipelineState:
     A dataclass to hold the state of the pipeline at a specific point in time.
 
     :param component_visits: A dictionary mapping component names to their visit counts.
-    :param ordered_component_names: A list of component names in the order they were visited.
-    :param original_input_data: The original input data provided to the pipeline.
     :param inputs: The inputs processed by the pipeline at the time of the snapshot.
+    :param pipeline_outputs: Dictionary containing the final outputs of the pipeline up to the breakpoint.
     """
 
-    original_input_data: Dict[str, Any]
     inputs: Dict[str, Any]
     component_visits: Dict[str, int]
-    ordered_component_names: List[str]
-
-    def __post_init__(self):
-        components_in_state = set(self.component_visits.keys())
-        components_in_order = set(self.ordered_component_names)
-
-        if components_in_state != components_in_order:
-            raise ValueError(
-                f"Inconsistent state: components in PipelineState.component_visits {components_in_state} "
-                f"do not match components in PipelineState.ordered_component_names {components_in_order}"
-            )
+    pipeline_outputs: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the PipelineState to a dictionary representation.
 
-        :return: A dictionary containing the original input data, inputs, component visits, and ordered component names.
+        :return: A dictionary containing the inputs, component visits,
+                and pipeline outputs.
         """
         return asdict(self)
 
@@ -188,8 +177,8 @@ class PipelineState:
         """
         Populate the PipelineState from a dictionary representation.
 
-        :param data: A dictionary containing the original input data, inputs, component visits, and ordered component
-            names.
+        :param data: A dictionary containing the inputs, component visits,
+                    and pipeline outputs.
         :return: An instance of PipelineState.
         """
         return cls(**data)
@@ -202,34 +191,61 @@ class PipelineSnapshot:
 
     :param pipeline_state: The state of the pipeline at the time of the snapshot.
     :param break_point: The breakpoint that triggered the snapshot.
+    :param agent_snapshot: Optional agent snapshot if the breakpoint is an agent breakpoint.
     :param timestamp: A timestamp indicating when the snapshot was taken.
+    :param original_input_data: The original input data provided to the pipeline.
+    :param ordered_component_names: A list of component names in the order they were visited.
+    :param include_outputs_from: Set of component names whose outputs should be included in the pipeline results.
     """
 
+    original_input_data: Dict[str, Any]
+    ordered_component_names: List[str]
     pipeline_state: PipelineState
     break_point: Union[AgentBreakpoint, Breakpoint]
     agent_snapshot: Optional[AgentSnapshot] = None
     timestamp: Optional[datetime] = None
+    include_outputs_from: Set[str] = field(default_factory=set)
+
+    def __post_init__(self):
+        # Validate consistency between component_visits and ordered_component_names
+        components_in_state = set(self.pipeline_state.component_visits.keys())
+        components_in_order = set(self.ordered_component_names)
+
+        if components_in_state != components_in_order:
+            raise ValueError(
+                f"Inconsistent state: components in PipelineState.component_visits {components_in_state} "
+                f"do not match components in PipelineSnapshot.ordered_component_names {components_in_order}"
+            )
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the PipelineSnapshot to a dictionary representation.
 
-        :return: A dictionary containing the pipeline state, timestamp, and breakpoint.
+        :return: A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input data,
+                 ordered component names, include_outputs_from, and pipeline outputs.
         """
-        return {
+        data = {
             "pipeline_state": self.pipeline_state.to_dict(),
             "break_point": self.break_point.to_dict(),
             "agent_snapshot": self.agent_snapshot.to_dict() if self.agent_snapshot else None,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "original_input_data": self.original_input_data,
+            "ordered_component_names": self.ordered_component_names,
+            "include_outputs_from": list(self.include_outputs_from),
         }
+        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "PipelineSnapshot":
         """
         Populate the PipelineSnapshot from a dictionary representation.
 
-        :param data: A dictionary containing the pipeline state, timestamp, and breakpoint.
+        :param data: A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input
+                     data, ordered component names, include_outputs_from, and pipeline outputs.
         """
+        # Convert include_outputs_from list back to set for serialization
+        include_outputs_from = set(data.get("include_outputs_from", []))
+
         return cls(
             pipeline_state=PipelineState.from_dict(data=data["pipeline_state"]),
             break_point=(
@@ -239,4 +255,7 @@ class PipelineSnapshot:
             ),
             agent_snapshot=AgentSnapshot.from_dict(data["agent_snapshot"]) if data.get("agent_snapshot") else None,
             timestamp=datetime.fromisoformat(data["timestamp"]) if data.get("timestamp") else None,
+            original_input_data=data.get("original_input_data", {}),
+            ordered_component_names=data.get("ordered_component_names", []),
+            include_outputs_from=include_outputs_from,
         )

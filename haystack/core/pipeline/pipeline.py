@@ -212,6 +212,8 @@ class Pipeline(PipelineBase):
         if include_outputs_from is None:
             include_outputs_from = set()
 
+        pipeline_outputs: Dict[str, Any] = {}
+
         if not pipeline_snapshot:
             # normalize `data`
             data = self._prepare_component_input_data(data)
@@ -232,16 +234,21 @@ class Pipeline(PipelineBase):
 
             # Handle resuming the pipeline from a snapshot
             component_visits = pipeline_snapshot.pipeline_state.component_visits
-            ordered_component_names = pipeline_snapshot.pipeline_state.ordered_component_names
+            ordered_component_names = pipeline_snapshot.ordered_component_names
             data = self._prepare_component_input_data(pipeline_snapshot.pipeline_state.inputs)
             data = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.inputs)
+
+            # include_outputs_from from the snapshot when resuming
+            include_outputs_from = pipeline_snapshot.include_outputs_from
+
+            # also intermediate_outputs from the snapshot when resuming
+            pipeline_outputs = pipeline_snapshot.pipeline_state.pipeline_outputs
 
         cached_topological_sort = None
         # We need to access a component's receivers multiple times during a pipeline run.
         # We store them here for easy access.
         cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
 
-        pipeline_outputs: Dict[str, Any] = {}
         with tracing.tracer.trace(
             "haystack.pipeline.run",
             tags={
@@ -341,6 +348,8 @@ class Pipeline(PipelineBase):
                         component_visits=component_visits,
                         original_input_data=data,
                         ordered_component_names=ordered_component_names,
+                        include_outputs_from=include_outputs_from,
+                        pipeline_outputs=pipeline_outputs,
                     )
 
                     # Scenario 2.1: an AgentBreakpoint is provided to stop the pipeline at a specific component
