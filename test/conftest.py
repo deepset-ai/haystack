@@ -112,6 +112,7 @@ def load_and_resume_pipeline_snapshot(pipeline, output_directory: Path, componen
         msg = f"No files found for {component_name} in {output_directory}."
         raise ValueError(msg)
 
+
 @pytest.fixture()
 def base64_image_string():
     return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
