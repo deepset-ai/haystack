@@ -4,11 +4,11 @@ on:
   pull_request:
     paths:
       - "**/pyproject.toml"
+      - ".github/workflows/license_compliance.yml"
   # Since we test PRs, there is no need to run the workflow at each
   # merge on `main`. Let's use a cron job instead.
   schedule:
     - cron: "0 0 * * *" # every day at midnight
-
 env:
   CORE_DATADOG_API_KEY: ${{ secrets.CORE_DATADOG_API_KEY }}
   PYTHON_VERSION: "3.10"
@@ -35,17 +35,16 @@ jobs:
 
       - name: Check Licenses
         id: license_check_report
-        uses: pilosus/action-pip-license-checker@v2
+        uses: pilosus/action-pip-license-checker@v3
         with:
           github-token: ${{ secrets.GH_ACCESS_TOKEN }}
           requirements: ${{ env.REQUIREMENTS_FILE }}
           fail: "Copyleft,Other,Error"
           # Exclusions in the vanilla distribution must be explicitly motivated
-          # - jsonschema is MIT but, starting from version 4.24.0, pip-license-checker does not recognize it
           # - tqdm is MLP but there are no better alternatives
           # - typing_extensions>=4.13.0 has a Python Software Foundation License 2.0 but pip-license-checker does not recognize it
           #   (https://github.com/pilosus/pip-license-checker/issues/143)
-          exclude: "(?i)^(jsonschema|tqdm|typing_extensions).*"
+          exclude: "(?i)^(tqdm|typing_extensions).*"
 
       # We keep the license inventory on FOSSA
       - name: Send license report to Fossa
