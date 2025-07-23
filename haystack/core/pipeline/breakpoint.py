@@ -185,7 +185,6 @@ def _create_pipeline_snapshot(
     original_input_data: Optional[Dict[str, Any]] = None,
     ordered_component_names: Optional[List[str]] = None,
     include_outputs_from: Optional[Set[str]] = None,
-    intermediate_outputs: Optional[Dict[str, Any]] = None,
     pipeline_outputs: Optional[Dict[str, Any]] = None,
 ) -> PipelineSnapshot:
     """
