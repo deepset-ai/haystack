@@ -68,6 +68,7 @@ class InMemoryDocumentStore:
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
         index: Optional[str] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
+        return_embedding: bool = True,
     ):
         """
         Initializes the DocumentStore.
@@ -85,6 +86,7 @@ class InMemoryDocumentStore:
         :param async_executor:
             Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
             executor will be initialized and used.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is True.
         """
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
@@ -118,6 +120,7 @@ class InMemoryDocumentStore:
             if async_executor is None
             else async_executor
         )
+        self.return_embedding = return_embedding
 
     def __del__(self):
         """
@@ -355,6 +358,7 @@ class InMemoryDocumentStore:
             bm25_parameters=self.bm25_parameters,
             embedding_similarity_function=self.embedding_similarity_function,
             index=self.index,
+            return_embedding=self.return_embedding,
         )
 
     @classmethod
@@ -426,8 +430,15 @@ class InMemoryDocumentStore:
                 raise ValueError(
                     "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
                 )
-            return [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
-        return list(self.storage.values())
+            docs = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+        else:
+            docs = list(self.storage.values())
+
+        if not self.return_embedding:
+            for doc in docs:
+                doc.embedding = None
+
+        return docs
 
     def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
         """
@@ -542,7 +553,12 @@ class InMemoryDocumentStore:
 
             doc_fields = doc.to_dict()
             doc_fields["score"] = score
+
+            if not self.return_embedding and "embedding" in doc_fields:
+                doc_fields.pop("embedding")
+
             return_document = Document.from_dict(doc_fields)
+
             return_documents.append(return_document)
 
         return return_documents
@@ -553,7 +569,7 @@ class InMemoryDocumentStore:
         filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         scale_score: bool = False,
-        return_embedding: bool = False,
+        return_embedding: Optional[bool] = False,
     ) -> List[Document]:
         """
         Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -562,14 +578,24 @@ class InMemoryDocumentStore:
         :param filters: A dictionary with filters to narrow down the search space.
         :param top_k: The number of top documents to retrieve. Default is 10.
         :param scale_score: Whether to scale the scores of the retrieved Documents. Default is False.
-        :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is False.
+        :param return_embedding: Whether to return the embedding of the retrieved Documents.
+            If not provided, the value of the `return_embedding` parameter set at component
+            initialization will be used. Default is False.
         :returns: A list of the top_k documents most relevant to the query.
         """
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
 
-        filters = filters or {}
-        all_documents = self.filter_documents(filters=filters)
+        if filters:
+            if "operator" not in filters and "conditions" not in filters:
+                raise ValueError(
+                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
+                )
+            all_documents = [
+                doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)
+            ]
+        else:
+            all_documents = list(self.storage.values())
 
         documents_with_embeddings = [doc for doc in all_documents if doc.embedding is not None]
         if len(documents_with_embeddings) == 0:
@@ -587,12 +613,14 @@ class InMemoryDocumentStore:
             embedding=query_embedding, documents=documents_with_embeddings, scale_score=scale_score
         )
 
+        resolved_return_embedding = self.return_embedding if return_embedding is None else return_embedding
+
         # create Documents with the similarity score for the top k results
         top_documents = []
         for doc, score in sorted(zip(documents_with_embeddings, scores), key=lambda x: x[1], reverse=True)[:top_k]:
             doc_fields = doc.to_dict()
             doc_fields["score"] = score
-            if return_embedding is False:
+            if resolved_return_embedding is False:
                 doc_fields["embedding"] = None
             top_documents.append(Document.from_dict(doc_fields))
 
