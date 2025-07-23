@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import copy
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.converters.image.image_utils import (
@@ -22,8 +22,6 @@ from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kw
 
 with LazyImport("Run 'pip install pillow'") as pillow_import:
     from PIL import Image as PILImage
-    from PIL.Image import Image
-    from PIL.ImageFile import ImageFile
 
 
 @component
