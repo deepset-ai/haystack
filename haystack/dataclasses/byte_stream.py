@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from haystack.utils.misc import _guess_mime_type
+
 
 @dataclass(repr=False)
 class ByteStream:
@@ -32,7 +34,11 @@ class ByteStream:
 
     @classmethod
     def from_file_path(
-        cls, filepath: Path, mime_type: Optional[str] = None, meta: Optional[Dict[str, Any]] = None
+        cls,
+        filepath: Path,
+        mime_type: Optional[str] = None,
+        meta: Optional[Dict[str, Any]] = None,
+        guess_mime_type: bool = False,
     ) -> "ByteStream":
         """
         Create a ByteStream from the contents read from a file.
@@ -40,7 +46,10 @@ class ByteStream:
         :param filepath: A valid path to a file.
         :param mime_type: The mime type of the file.
         :param meta: Additional metadata to be stored with the ByteStream.
+        :param guess_mime_type: Whether to guess the mime type from the file.
         """
+        if not mime_type and guess_mime_type:
+            mime_type = _guess_mime_type(filepath)
         with open(filepath, "rb") as fd:
             return cls(data=fd.read(), mime_type=mime_type, meta=meta or {})
 

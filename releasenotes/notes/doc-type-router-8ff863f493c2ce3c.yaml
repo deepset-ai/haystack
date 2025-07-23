@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add new component called DocumentTypeRouter which routes documents by their MIME types. MIME types can be extracted directly from document metadata or inferred from file paths using standard or user-supplied MIME type mappings.

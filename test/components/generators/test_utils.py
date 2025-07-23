@@ -506,6 +506,106 @@ def test_convert_streaming_chunk_to_chat_message_empty_tool_call_delta():
     assert result.meta["finish_reason"] == "tool_calls"
 
 
+def test_convert_streaming_chunk_to_chat_message_with_empty_tool_call_arguments():
+    chunks = [
+        # Message start with input tokens
+        StreamingChunk(
+            content="",
+            meta={
+                "type": "message_start",
+                "message": {
+                    "id": "msg_123",
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [],
+                    "model": "claude-sonnet-4-20250514",
+                    "stop_reason": None,
+                    "stop_sequence": None,
+                    "usage": {"input_tokens": 25, "output_tokens": 0},
+                },
+            },
+            index=0,
+            tool_calls=[],
+            tool_call_result=None,
+            start=True,
+            finish_reason=None,
+        ),
+        # Initial text content
+        StreamingChunk(
+            content="",
+            meta={"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}},
+            index=1,
+            tool_calls=[],
+            tool_call_result=None,
+            start=True,
+            finish_reason=None,
+        ),
+        StreamingChunk(
+            content="Let me check",
+            meta={"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Let me check"}},
+            index=2,
+            tool_calls=[],
+            tool_call_result=None,
+            start=False,
+            finish_reason=None,
+        ),
+        StreamingChunk(
+            content=" the weather",
+            meta={"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": " the weather"}},
+            index=3,
+            tool_calls=[],
+            tool_call_result=None,
+            start=False,
+            finish_reason=None,
+        ),
+        # Tool use content
+        StreamingChunk(
+            content="",
+            meta={
+                "type": "content_block_start",
+                "index": 1,
+                "content_block": {"type": "tool_use", "id": "toolu_123", "name": "weather", "input": {}},
+            },
+            index=5,
+            tool_calls=[ToolCallDelta(index=1, id="toolu_123", tool_name="weather", arguments=None)],
+            tool_call_result=None,
+            start=True,
+            finish_reason=None,
+        ),
+        StreamingChunk(
+            content="",
+            meta={"type": "content_block_delta", "index": 1, "delta": {"type": "input_json_delta", "partial_json": ""}},
+            index=7,
+            tool_calls=[ToolCallDelta(index=1, id=None, tool_name=None, arguments="")],
+            tool_call_result=None,
+            start=False,
+            finish_reason=None,
+        ),
+        # Final message delta
+        StreamingChunk(
+            content="",
+            meta={
+                "type": "message_delta",
+                "delta": {"stop_reason": "tool_use", "stop_sequence": None},
+                "usage": {"completion_tokens": 40},
+            },
+            index=8,
+            tool_calls=[],
+            tool_call_result=None,
+            start=False,
+            finish_reason="tool_calls",
+        ),
+    ]
+
+    message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+
+    assert message.texts == ["Let me check the weather"]
+    assert len(message.tool_calls) == 1
+    assert message.tool_calls[0].arguments == {}
+    assert message.tool_calls[0].id == "toolu_123"
+    assert message.tool_calls[0].tool_name == "weather"
+
+
 def test_print_streaming_chunk_content_only():
     chunk = StreamingChunk(
         content="Hello, world!",
