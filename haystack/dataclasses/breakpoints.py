@@ -178,7 +178,7 @@ class PipelineState:
         Populate the PipelineState from a dictionary representation.
 
         :param data: A dictionary containing the inputs, component visits,
-                    intermediate outputs, and pipeline outputs.
+                    and pipeline outputs.
         :return: An instance of PipelineState.
         """
         return cls(**data)
