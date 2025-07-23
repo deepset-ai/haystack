@@ -35,7 +35,7 @@ jobs:
 
       - name: Check Licenses
         id: license_check_report
-        uses: pilosus/action-pip-license-checker@v2
+        uses: pilosus/action-pip-license-checker@v3
         with:
           github-token: ${{ secrets.GH_ACCESS_TOKEN }}
           requirements: ${{ env.REQUIREMENTS_FILE }}
