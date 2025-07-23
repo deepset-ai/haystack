@@ -586,8 +586,16 @@ class InMemoryDocumentStore:
         if len(query_embedding) == 0 or not isinstance(query_embedding[0], float):
             raise ValueError("query_embedding should be a non-empty list of floats.")
 
-        filters = filters or {}
-        all_documents = self.filter_documents(filters=filters)
+        if filters:
+            if "operator" not in filters and "conditions" not in filters:
+                raise ValueError(
+                    "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
+                )
+            all_documents = [
+                doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)
+            ]
+        else:
+            all_documents = list(self.storage.values())
 
         documents_with_embeddings = [doc for doc in all_documents if doc.embedding is not None]
         if len(documents_with_embeddings) == 0:
