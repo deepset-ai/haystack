@@ -191,8 +191,8 @@ class TestSentenceTransformersDocumentImageEmbedder:
     def test_run(self, test_files_path):
         embedder = SentenceTransformersDocumentImageEmbedder(model="model")
         embedder._embedding_backend = MagicMock()
-        embedder._embedding_backend.embed = lambda x, **kwargs: [
-            [random.random() for _ in range(16)] for _ in range(len(x))
+        embedder._embedding_backend.embed = lambda data, **kwargs: [
+            [random.random() for _ in range(16)] for _ in range(len(data))
         ]
 
         image_paths = glob.glob(str(test_files_path / "images" / "*.*")) + glob.glob(
