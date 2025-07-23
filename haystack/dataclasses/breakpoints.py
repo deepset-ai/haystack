@@ -168,7 +168,7 @@ class PipelineState:
         Convert the PipelineState to a dictionary representation.
 
         :return: A dictionary containing the inputs, component visits,
-                intermediate outputs, and pipeline outputs.
+                and pipeline outputs.
         """
         return asdict(self)
 
