@@ -241,7 +241,7 @@ class PipelineSnapshot:
         Populate the PipelineSnapshot from a dictionary representation.
 
         :param data: A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input
-                     data, ordered component names, include_outputs_from, intermediate outputs, and pipeline outputs.
+                     data, ordered component names, include_outputs_from, and pipeline outputs.
         """
         # Convert include_outputs_from list back to set for serialization
         include_outputs_from = set(data.get("include_outputs_from", []))
