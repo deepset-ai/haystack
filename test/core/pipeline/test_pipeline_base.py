@@ -1063,6 +1063,38 @@ class TestPipelineBase:
         with pytest.raises(PipelineConnectError):
             pipe.connect("single_component.out", "single_component.in")
 
+    def test_connect_pep_604_union_type(self):
+        """
+        Test connecting a PEP 604 union type as input and output.
+        """
+
+        # Producer: outputs a plain list of strings
+        @component
+        class StringProducer:
+            @component.output_types(words=list[str])
+            def run(self) -> dict[str, list[str]]:
+                return {"words": ["apple", "banana", "cherry"]}
+
+        @component
+        class StringConsumerOptional:
+            @component.output_types(count=int)
+            def run(self, words: list[str] | None = None) -> dict[str, int]:
+                return {"count": len(words or [])}
+
+        comp1 = StringProducer()
+        comp2 = StringConsumerOptional()
+
+        pipeline = PipelineBase()
+        pipeline.add_component("producer", comp1)
+        pipeline.add_component("consumer_opt", comp2)
+
+        # This should succeed:
+        pipeline.connect("producer.words", "consumer_opt.words")
+
+        assert comp1.__haystack_output__.words.receivers == ["consumer_opt"]
+        assert comp2.__haystack_input__.words.senders == ["producer"]
+        assert list(pipeline.graph.edges) == [("producer", "consumer_opt", "words/words")]
+
     @pytest.mark.parametrize(
         "component_inputs,sockets,expected_inputs",
         [

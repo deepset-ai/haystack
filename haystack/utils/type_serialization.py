@@ -6,6 +6,7 @@ import builtins
 import importlib
 import inspect
 import sys
+import types
 import typing
 from threading import Lock
 from types import ModuleType
@@ -14,6 +15,14 @@ from typing import Any, get_args
 from haystack.core.errors import DeserializationError
 
 _import_lock = Lock()
+
+
+# Sentinel for Python < 3.10
+class _Missing:
+    pass
+
+
+UnionType = getattr(types, "UnionType", _Missing)
 
 
 def serialize_type(target: Any) -> str:
@@ -28,12 +37,17 @@ def serialize_type(target: Any) -> str:
     :return:
         The string representation of the type.
     """
-    name = getattr(target, "__name__", str(target))
+    if target == types.NoneType:
+        return "None"
 
-    # Remove the 'typing.' prefix when using python <3.9
+    args = get_args(target)
+
+    if isinstance(target, UnionType):
+        return " | ".join([serialize_type(a) for a in args])
+
+    name = getattr(target, "__name__", str(target))
     if name.startswith("typing."):
         name = name[7:]
-    # Remove the arguments from the name when using python <3.9
     if "[" in name:
         name = name.split("[")[0]
 
@@ -44,7 +58,6 @@ def serialize_type(target: Any) -> str:
     if module and hasattr(module, "__name__") and module.__name__ != "builtins":
         module_name = f"{module.__name__}"
 
-    args = get_args(target)
     if args:
         args_str = ", ".join([serialize_type(a) for a in args if a is not type(None)])
         return f"{module_name}.{name}[{args_str}]" if module_name else f"{name}[{args_str}]"
