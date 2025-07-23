@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import copy
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.converters.image.image_utils import (
@@ -21,9 +21,7 @@ from haystack.utils.device import ComponentDevice
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 with LazyImport("Run 'pip install pillow'") as pillow_import:
-    from PIL import Image as PILImage
-    from PIL.Image import Image
-    from PIL.ImageFile import ImageFile
+    from PIL import Image
 
 
 @component
@@ -261,7 +259,7 @@ class SentenceTransformersDocumentImageEmbedder:
                 pdf_page_infos.append(pdf_page_info)
             else:
                 # Process images directly
-                image: Union["Image", "ImageFile"] = PILImage.open(image_source_info["path"])
+                image = Image.open(image_source_info["path"])
                 images_to_embed[doc_idx] = image
 
         pdf_images_by_doc_idx = _batch_convert_pdf_pages_to_images(pdf_page_infos=pdf_page_infos, return_base64=False)
@@ -273,9 +271,7 @@ class SentenceTransformersDocumentImageEmbedder:
             raise RuntimeError(f"Conversion failed for some documents. Document IDs: {none_images_doc_ids}.")
 
         embeddings = self._embedding_backend.embed(
-            # TODO: when moving this component to Haystack, adjust the signature of the embedding backend embed method
-            # to also accept a list of PIL images
-            images_to_embed,  # type: ignore[arg-type]
+            data=images_to_embed,
             batch_size=self.batch_size,
             show_progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,

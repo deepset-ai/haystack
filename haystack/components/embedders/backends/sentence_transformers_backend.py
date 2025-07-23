@@ -2,13 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=4.1.0\"'") as sentence_transformers_import:
     from sentence_transformers import SentenceTransformer
+
+with LazyImport(message="Run 'pip install \"pillow\"'") as pillow_import:
+    from PIL.Image import Image
 
 
 class _SentenceTransformersEmbeddingBackendFactory:
@@ -84,6 +87,8 @@ class _SentenceTransformersEmbeddingBackend:
             backend=backend,
         )
 
-    def embed(self, data: List[str], **kwargs) -> List[List[float]]:
-        embeddings = self.model.encode(data, **kwargs).tolist()
+    def embed(self, data: Union[List[str], List["Image"]], **kwargs: Any) -> List[List[float]]:
+        # Sentence Transformers encode can work with Images, but the type hint does not reflect that
+        # https://sbert.net/examples/sentence_transformer/applications/image-search
+        embeddings = self.model.encode(data, **kwargs).tolist()  # type: ignore[arg-type]
         return embeddings
