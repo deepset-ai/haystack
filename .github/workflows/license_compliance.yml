@@ -4,11 +4,11 @@ on:
   pull_request:
     paths:
       - "**/pyproject.toml"
+      - ".github/workflows/license_compliance.yml"
   # Since we test PRs, there is no need to run the workflow at each
   # merge on `main`. Let's use a cron job instead.
   schedule:
     - cron: "0 0 * * *" # every day at midnight
-
 env:
   CORE_DATADOG_API_KEY: ${{ secrets.CORE_DATADOG_API_KEY }}
   PYTHON_VERSION: "3.10"
