@@ -47,12 +47,7 @@ from haystack.core.pipeline.component_checks import (
     is_any_greedy_socket_ready,
     is_socket_lazy_variadic,
 )
-from haystack.core.pipeline.utils import (
-    FIFOPriorityQueue,
-    _deepcopy_with_exceptions,
-    args_deprecated,
-    parse_connect_string,
-)
+from haystack.core.pipeline.utils import FIFOPriorityQueue, _deepcopy_with_exceptions, parse_connect_string
 from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
@@ -690,9 +685,9 @@ class PipelineBase:  # noqa: PLW1641
         }
         return outputs
 
-    @args_deprecated
     def show(
         self,
+        *,
         server_url: str = "https://mermaid.ink",
         params: Optional[dict] = None,
         timeout: int = 30,
@@ -735,24 +730,6 @@ class PipelineBase:  # noqa: PLW1641
             If the function is called outside of a Jupyter notebook or if there is an issue with rendering.
         """
 
-        # Call the internal implementation with keyword arguments
-        self._show_internal(
-            server_url=server_url, params=params, timeout=timeout, super_component_expansion=super_component_expansion
-        )
-
-    def _show_internal(
-        self,
-        *,
-        server_url: str = "https://mermaid.ink",
-        params: Optional[dict] = None,
-        timeout: int = 30,
-        super_component_expansion: bool = False,
-    ) -> None:
-        """
-        Internal implementation of show() that uses keyword-only arguments.
-
-        ToDo: after 2.14.0 release make this the main function and remove the old one.
-        """
         if is_in_jupyter():
             from IPython.display import Image, display  # type: ignore
 
@@ -774,9 +751,9 @@ class PipelineBase:  # noqa: PLW1641
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
             raise PipelineDrawingError(msg)
 
-    @args_deprecated
-    def draw(  # pylint: disable=too-many-positional-arguments
+    def draw(
         self,
+        *,
         path: Path,
         server_url: str = "https://mermaid.ink",
         params: Optional[dict] = None,
@@ -822,29 +799,6 @@ class PipelineBase:  # noqa: PLW1641
             If there is an issue with rendering or saving the image.
         """
 
-        # Call the internal implementation with keyword arguments
-        self._draw_internal(
-            path=path,
-            server_url=server_url,
-            params=params,
-            timeout=timeout,
-            super_component_expansion=super_component_expansion,
-        )
-
-    def _draw_internal(
-        self,
-        *,
-        path: Path,
-        server_url: str = "https://mermaid.ink",
-        params: Optional[dict] = None,
-        timeout: int = 30,
-        super_component_expansion: bool = False,
-    ) -> None:
-        """
-        Internal implementation of draw() that uses keyword-only arguments.
-
-        ToDo: after 2.14.0 release make this the main function and remove the old one.
-        """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
         if super_component_expansion:
