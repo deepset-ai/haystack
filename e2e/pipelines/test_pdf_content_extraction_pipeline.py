@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from pathlib import Path
-
 from haystack import Pipeline
 from haystack.components.converters.pypdf import PyPDFToDocument
 from haystack.components.joiners import DocumentJoiner
