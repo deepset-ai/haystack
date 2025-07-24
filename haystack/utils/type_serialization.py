@@ -37,7 +37,7 @@ def serialize_type(target: Any) -> str:
     :return:
         The string representation of the type.
     """
-    if target == types.NoneType:
+    if target is type(None):
         return "None"
 
     args = get_args(target)

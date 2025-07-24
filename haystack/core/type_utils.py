@@ -127,7 +127,7 @@ def _type_name(type_: Any) -> str:
     if isinstance(type_, str):
         return f"'{type_}'"
 
-    if type_ == types.NoneType:
+    if type_ is type(None):
         return "None"
 
     args = get_args(type_)
