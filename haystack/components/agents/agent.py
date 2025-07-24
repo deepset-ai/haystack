@@ -269,7 +269,7 @@ class Agent:
 
         """
         # kwargs can contain the key parent_snapshot.
-        # We pop it here to avoid passing it into State. We explicitly handle it pass it on if a break point is
+        # We pop it here to avoid passing it into State. We explicitly pass it on if a break point is
         # triggered.
         parent_snapshot = kwargs.pop("parent_snapshot", None)
 
