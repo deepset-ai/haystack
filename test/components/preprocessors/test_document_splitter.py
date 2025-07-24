@@ -444,6 +444,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert serialized["init_parameters"]["split_length"] == 10
         assert serialized["init_parameters"]["split_overlap"] == 2
         assert serialized["init_parameters"]["split_threshold"] == 5
+        assert serialized["init_parameters"]["skip_empty_documents"]
         assert "splitting_function" not in serialized["init_parameters"]
 
     def test_to_dict_with_splitting_function(self):
@@ -457,6 +458,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert serialized["type"] == "haystack.components.preprocessors.document_splitter.DocumentSplitter"
         assert serialized["init_parameters"]["split_by"] == "function"
         assert "splitting_function" in serialized["init_parameters"]
+        assert serialized["init_parameters"]["skip_empty_documents"]
         assert callable(deserialize_callable(serialized["init_parameters"]["splitting_function"]))
 
     def test_from_dict(self):
@@ -465,7 +467,13 @@ class TestSplittingByFunctionOrCharacterRegex:
         """
         data = {
             "type": "haystack.components.preprocessors.document_splitter.DocumentSplitter",
-            "init_parameters": {"split_by": "word", "split_length": 10, "split_overlap": 2, "split_threshold": 5},
+            "init_parameters": {
+                "split_by": "word",
+                "split_length": 10,
+                "split_overlap": 2,
+                "split_threshold": 5,
+                "skip_empty_documents": False,
+            },
         }
         splitter = DocumentSplitter.from_dict(data)
 
@@ -516,7 +524,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert callable(deserialized_splitter.splitting_function)
         assert deserialized_splitter.splitting_function("a.b.c") == ["a", "b", "c"]
 
-    def test_run_empty_document(self):
+    def test_run_empty_document_with_skip_empty_documents_true(self):
         """
         Test if the component runs correctly with an empty document.
         """
@@ -525,6 +533,14 @@ class TestSplittingByFunctionOrCharacterRegex:
         splitter.warm_up()
         results = splitter.run([doc])
         assert results["documents"] == []
+
+    def test_run_empty_document_with_skip_empty_documents_false(self):
+        splitter = DocumentSplitter(skip_empty_documents=False)
+        doc = Document(content="")
+        splitter.warm_up()
+        results = splitter.run([doc])
+        assert len(results["documents"]) == 1
+        assert results["documents"][0].content == ""
 
     def test_run_document_only_whitespaces(self):
         """
