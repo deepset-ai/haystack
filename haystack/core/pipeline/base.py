@@ -1079,7 +1079,9 @@ class PipelineBase:  # noqa: PLW1641
         return inputs
 
     @staticmethod
-    def _consume_component_inputs(component_name: str, component: Dict, inputs: Dict) -> Dict[str, Any]:
+    def _consume_component_inputs(
+        component_name: str, component: Dict, inputs: Dict, is_resume: bool = False
+    ) -> Dict[str, Any]:
         """
         Extracts the inputs needed to run for the component and removes them from the global inputs state.
 
@@ -1094,6 +1096,11 @@ class PipelineBase:  # noqa: PLW1641
         for socket_name, socket in component["input_sockets"].items():
             socket_inputs = component_inputs.get(socket_name, [])
             socket_inputs = [sock["value"] for sock in socket_inputs if sock["value"] is not _NO_OUTPUT_PRODUCED]
+
+            # if we are resuming a component, the inputs are already consumed, so we just return the first input
+            if is_resume:
+                consumed_inputs[socket_name] = socket_inputs[0]
+                continue
             if socket_inputs:
                 if not socket.is_variadic:
                     # We only care about the first input provided to the socket.
