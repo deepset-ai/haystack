@@ -22,7 +22,7 @@ class _Missing:
     pass
 
 
-UnionType = getattr(types, "UnionType", _Missing)
+_UnionType = getattr(types, "UnionType", _Missing)
 
 
 def serialize_type(target: Any) -> str:
@@ -42,7 +42,7 @@ def serialize_type(target: Any) -> str:
 
     args = get_args(target)
 
-    if isinstance(target, UnionType):
+    if isinstance(target, _UnionType):
         return " | ".join([serialize_type(a) for a in args])
 
     name = getattr(target, "__name__", str(target))
