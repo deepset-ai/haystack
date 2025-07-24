@@ -482,6 +482,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert splitter.split_overlap == 2
         assert splitter.split_threshold == 5
         assert splitter.splitting_function is None
+        assert splitter.skip_empty_documents is False
 
     def test_from_dict_with_splitting_function(self):
         """
