@@ -256,7 +256,7 @@ class Agent:
             The same callback can be configured to emit tool results when a tool is called.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
                            for "tool_invoker".
-        :param snapshot: A dictionary containing the state of a previously saved agent execution.
+        :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains the relevant information to restart the Agent execution from where it left off.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
