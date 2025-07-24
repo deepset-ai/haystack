@@ -36,11 +36,11 @@ class DocumentToImageContent:
     ### Usage example
         ```python
         from haystack import Document
-        from haystack.components.image_converters.document_to_image import DocumentToImageContent
+        from haystack.components.converters.image.document_to_image import DocumentToImageContent
 
         converter = DocumentToImageContent(
             file_path_meta_field="file_path",
-            root_path="/data/documents",
+            root_path="/data/files",
             detail="high",
             size=(800, 600)
         )
