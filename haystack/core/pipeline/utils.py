@@ -183,7 +183,6 @@ def args_deprecated(func):
         msg = (
             "Warning: In an upcoming release, this method will require keyword arguments for all parameters. "
             "Please update your code to use keyword arguments to ensure future compatibility. "
-            "Example: pipeline.draw(path='output.png', server_url='https://custom-server.com')"
         )
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
 
