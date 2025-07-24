@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Type
+from typing import Any, Dict, Optional, Type
 
 
 class PipelineError(Exception):
@@ -89,3 +89,30 @@ class DeserializationError(Exception):
 
 class SerializationError(Exception):
     pass
+
+
+class BreakpointException(Exception):
+    """
+    Exception raised when a pipeline breakpoint is triggered.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        component: Optional[str] = None,
+        inputs: Optional[Dict[str, Any]] = None,
+        results: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message)
+        self.component = component
+        self.inputs = inputs
+        self.results = results
+
+
+class PipelineInvalidPipelineSnapshotError(Exception):
+    """
+    Exception raised when a pipeline is resumed from an invalid snapshot.
+    """
+
+    def __init__(self, message: str):
+        super().__init__(message)
