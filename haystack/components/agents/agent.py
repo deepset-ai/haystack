@@ -333,7 +333,11 @@ class Agent:
 
             while counter < self.max_agent_steps:
                 # check for breakpoint before ChatGenerator
-                if break_point and break_point.break_point.component_name == "chat_generator":
+                if (
+                    break_point
+                    and break_point.break_point.component_name == "chat_generator"
+                    and component_visits["chat_generator"] == break_point.break_point.visit_count
+                ):
                     agent_snapshot = _create_agent_snapshot(
                         component_visits=component_visits,
                         agent_breakpoint=break_point,
@@ -367,7 +371,11 @@ class Agent:
                     break
 
                 # check for breakpoint before ToolInvoker
-                if break_point and break_point.break_point.component_name == "tool_invoker":
+                if (
+                    break_point
+                    and break_point.break_point.component_name == "tool_invoker"
+                    and break_point.break_point.visit_count == component_visits["tool_invoker"]
+                ):
                     agent_snapshot = _create_agent_snapshot(
                         component_visits=component_visits,
                         agent_breakpoint=break_point,
@@ -517,7 +525,11 @@ class Agent:
 
             while counter < self.max_agent_steps:
                 # check for breakpoint before ChatGenerator
-                if break_point and break_point.break_point.component_name == "chat_generator":
+                if (
+                    break_point
+                    and break_point.break_point.component_name == "chat_generator"
+                    and component_visits["chat_generator"] == break_point.break_point.visit_count
+                ):
                     agent_snapshot = _create_agent_snapshot(
                         component_visits=component_visits,
                         agent_breakpoint=break_point,
@@ -552,7 +564,11 @@ class Agent:
                     break
 
                 # Check for breakpoint before ToolInvoker
-                if break_point and break_point.break_point.component_name == "tool_invoker":
+                if (
+                    break_point
+                    and break_point.break_point.component_name == "tool_invoker"
+                    and break_point.break_point.visit_count == component_visits["tool_invoker"]
+                ):
                     agent_snapshot = _create_agent_snapshot(
                         component_visits=component_visits,
                         agent_breakpoint=break_point,

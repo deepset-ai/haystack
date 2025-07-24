@@ -353,8 +353,6 @@ def _check_chat_generator_breakpoint(
     """
 
     break_point = agent_snapshot.break_point.break_point
-    if agent_snapshot.component_visits[break_point.component_name] != break_point.visit_count:
-        return
 
     if parent_snapshot is None:
         # Create an empty pipeline snapshot if no parent snapshot is provided
@@ -373,7 +371,7 @@ def _check_chat_generator_breakpoint(
 
     msg = (
         f"Breaking at {break_point.component_name} visit count "
-        "{agent_snapshot.component_visits[break_point.component_name]}"
+        f"{agent_snapshot.component_visits[break_point.component_name]}"
     )
     logger.info(msg)
     raise BreakpointException(
@@ -399,9 +397,6 @@ def _check_tool_invoker_breakpoint(
         return
 
     tool_breakpoint = agent_snapshot.break_point.break_point
-    # Check if the visit count matches
-    if agent_snapshot.component_visits[tool_breakpoint.component_name] != tool_breakpoint.visit_count:
-        return
 
     # Check if we should break for this specific tool or all tools
     if tool_breakpoint.tool_name is None:
