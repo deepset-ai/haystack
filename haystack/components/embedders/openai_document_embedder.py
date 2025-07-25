@@ -213,7 +213,7 @@ class OpenAIDocumentEmbedder:
         for batch in tqdm(
             batched(texts_to_embed.items(), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
-            args: Dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch]}
+            args: Dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch], "encoding_format": "float"}
 
             if self.dimensions is not None:
                 args["dimensions"] = self.dimensions
