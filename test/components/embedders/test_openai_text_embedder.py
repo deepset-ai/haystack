@@ -154,6 +154,7 @@ class TestOpenAITextEmbedder:
         assert prepared_input == {
             "model": "text-embedding-ada-002",
             "input": "The food was delicious",
+            "encoding_format": "float",
             "dimensions": 1536,
         }
 
