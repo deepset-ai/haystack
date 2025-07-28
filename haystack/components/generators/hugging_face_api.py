@@ -240,7 +240,10 @@ class HuggingFaceAPIGenerator:
         )
 
         if streaming_callback is not None:
-            return self._stream_and_build_response(hf_output=hf_output, streaming_callback=streaming_callback)
+            # mypy doesn't know that hf_output is a Iterable[TextGenerationStreamOutput], so we cast it
+            return self._stream_and_build_response(
+                hf_output=cast(Iterable[TextGenerationStreamOutput], hf_output), streaming_callback=streaming_callback
+            )
 
         # mypy doesn't know that hf_output is a TextGenerationOutput, so we cast it
         return self._build_non_streaming_response(cast(TextGenerationOutput, hf_output))
