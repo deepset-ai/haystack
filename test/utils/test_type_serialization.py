@@ -254,9 +254,8 @@ def test_output_type_deserialization_haystack_dataclasses():
     assert deserialize_type("dict[int, haystack.dataclasses.document.Document]") == dict[int, Document]
 
 
-if sys.version_info >= (3, 10):
-
-    def test_output_type_serialization_pep_604():
+        @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
+        def test_output_type_serialization_pep_604():
         # PEP 604 allows for union types to be defined with the `|` operator
         assert serialize_type(str | int) == "str | int"
         assert serialize_type(List[str] | List[int]) == "typing.Union[typing.List[str], typing.List[int]]"
