@@ -5,6 +5,8 @@
 import collections.abc
 from typing import Any, Type, TypeVar, Union, get_args, get_origin
 
+from haystack.utils.type_serialization import _UnionType
+
 T = TypeVar("T")
 
 
@@ -34,7 +36,12 @@ def _safe_get_origin(_type: Type[T]) -> Union[Type[T], None]:
 
     :returns: The origin type (e.g., `list`, `dict`), or `None` if the input is not a type.
     """
-    return get_origin(_type) or (_type if isinstance(_type, type) else None)
+    origin = get_origin(_type) or (_type if isinstance(_type, type) else None)
+    # We want to treat typing.Union and UnionType as the same for compatibility checks.
+    # So we convert UnionType to Union if it is detected.
+    if origin is _UnionType:
+        origin = Union
+    return origin
 
 
 def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
@@ -119,13 +126,20 @@ def _type_name(type_: Any) -> str:
     if isinstance(type_, str):
         return f"'{type_}'"
 
-    name = getattr(type_, "__name__", str(type_))
+    if type_ is type(None):
+        return "None"
 
+    args = get_args(type_)
+
+    if isinstance(type_, _UnionType):
+        return " | ".join([_type_name(a) for a in args])
+
+    name = getattr(type_, "__name__", str(type_))
     if name.startswith("typing."):
         name = name[7:]
     if "[" in name:
         name = name.split("[")[0]
-    args = get_args(type_)
+
     if name == "Union" and type(None) in args and len(args) == 2:
         # Optional is technically a Union of type and None
         # but we want to display it as Optional
