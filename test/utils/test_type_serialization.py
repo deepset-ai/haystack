@@ -254,14 +254,13 @@ def test_output_type_deserialization_haystack_dataclasses():
     assert deserialize_type("dict[int, haystack.dataclasses.document.Document]") == dict[int, Document]
 
 
-        @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
-        def test_output_type_serialization_pep_604():
-        # PEP 604 allows for union types to be defined with the `|` operator
-        assert serialize_type(str | int) == "str | int"
-        assert serialize_type(List[str] | List[int]) == "typing.Union[typing.List[str], typing.List[int]]"
-        assert (
-            serialize_type(Dict[str, int] | Dict[int, str])
-            == "typing.Union[typing.Dict[str, int], typing.Dict[int, str]]"
-        )
-        assert serialize_type(str | None) == "str | None"
-        assert serialize_type(list[str] | None) == "list[str] | None"
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
+def test_output_type_serialization_pep_604():
+    # PEP 604 allows for union types to be defined with the `|` operator
+    assert serialize_type(str | int) == "str | int"
+    assert serialize_type(List[str] | List[int]) == "typing.Union[typing.List[str], typing.List[int]]"
+    assert (
+        serialize_type(Dict[str, int] | Dict[int, str]) == "typing.Union[typing.Dict[str, int], typing.Dict[int, str]]"
+    )
+    assert serialize_type(str | None) == "str | None"
+    assert serialize_type(list[str] | None) == "list[str] | None"
