@@ -37,6 +37,7 @@ class DocumentLengthRouter:
     #     "short_documents": [Document(content="Short", ...)],
     #     "long_documents": [Document(content="Long document ...", ...)],
     # }
+    ```
     """
 
     def __init__(self, *, threshold: int = 10) -> None:

@@ -62,6 +62,8 @@ class DocumentSplitter:
         language: Language = "en",
         use_split_rules: bool = True,
         extend_abbreviations: bool = True,
+        *,
+        skip_empty_documents: bool = True,
     ):
         """
         Initialize DocumentSplitter.
@@ -87,6 +89,9 @@ class DocumentSplitter:
         :param use_split_rules: Choose whether to use additional split rules when splitting by `sentence`.
         :param extend_abbreviations: Choose whether to extend NLTK's PunktTokenizer abbreviations with a list
             of curated abbreviations, if available. This is currently supported for English ("en") and German ("de").
+        :param skip_empty_documents: Choose whether to skip documents with empty content. Default is True.
+            Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
+            from non-textual documents.
         """
 
         self.split_by = split_by
@@ -98,6 +103,7 @@ class DocumentSplitter:
         self.language = language
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
+        self.skip_empty_documents = skip_empty_documents
 
         self._init_checks(
             split_by=split_by,
@@ -194,7 +200,7 @@ class DocumentSplitter:
                 raise ValueError(
                     f"DocumentSplitter only works with text documents but content for document ID {doc.id} is None."
                 )
-            if doc.content == "":
+            if doc.content == "" and self.skip_empty_documents:
                 logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                 continue
 
@@ -287,8 +293,8 @@ class DocumentSplitter:
                 # concatenate the last split with the current one
                 text_splits[-1] += txt
 
-            # NOTE: This line skips documents that have content=""
-            elif len(txt) > 0:
+            # NOTE: If skip_empty_documents is True, this line skips documents that have content=""
+            elif not self.skip_empty_documents or len(txt) > 0:
                 text_splits.append(txt)
                 splits_pages.append(cur_page)
                 splits_start_idxs.append(cur_start_idx)
@@ -375,6 +381,7 @@ class DocumentSplitter:
             language=self.language,
             use_split_rules=self.use_split_rules,
             extend_abbreviations=self.extend_abbreviations,
+            skip_empty_documents=self.skip_empty_documents,
         )
         if self.splitting_function:
             serialized["init_parameters"]["splitting_function"] = serialize_callable(self.splitting_function)
