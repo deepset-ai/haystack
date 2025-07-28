@@ -798,6 +798,7 @@ if sys.version_info >= (3, 10):
     symmetric_cases_pep_604 = generate_symmetric_cases_pep_604()
     asymmetric_cases_pep_604 = generate_strict_asymmetric_cases_pep_604()
 
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
     @pytest.mark.parametrize(
         "type_,repr_",
         [
@@ -823,10 +824,12 @@ if sys.version_info >= (3, 10):
     def test_type_name_pep_604(type_, repr_):
         assert _type_name(type_) == repr_
 
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
     @pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases_pep_604)
     def test_same_types_are_compatible_strict_pep_604(sender_type, receiver_type):
         assert _types_are_compatible(sender_type, receiver_type, True)
 
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
     @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases_pep_604)
     def test_asymmetric_types_are_compatible_strict_pep_604(sender_type, receiver_type):
         assert _types_are_compatible(sender_type, receiver_type, True)
