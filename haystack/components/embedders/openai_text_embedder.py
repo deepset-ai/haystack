@@ -165,7 +165,7 @@ class OpenAITextEmbedder:
 
         text_to_embed = self.prefix + text + self.suffix
 
-        kwargs: Dict[str, Any] = {"model": self.model, "input": text_to_embed}
+        kwargs: Dict[str, Any] = {"model": self.model, "input": text_to_embed, "encoding_format": "float"}
         if self.dimensions is not None:
             kwargs["dimensions"] = self.dimensions
         return kwargs
