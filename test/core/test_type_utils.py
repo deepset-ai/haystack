@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import sys
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
@@ -726,3 +727,109 @@ def test_nested_callable_compatibility(sender_type, receiver_type):
 def test_always_incompatible_callable_types(sender_type, receiver_type):
     assert not _types_are_compatible(sender_type, receiver_type)
     assert not _types_are_compatible(receiver_type, sender_type)
+
+
+if sys.version_info >= (3, 10):
+    nested_container_types = [tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]]
+    extras = [int | str]
+
+    def generate_symmetric_cases_pep_604():
+        return [pytest.param(t, t, id=generate_id(t, t)) for t in nested_container_types + extras]
+
+    def generate_strict_asymmetric_cases_pep_604():
+        cases = []
+
+        # Primitives: UnionType
+        for t in (
+            primitive_types
+            + class_types
+            + container_types
+            + literals
+            + haystack_types
+            + nested_container_types
+            + extras
+        ):
+            cases.append(pytest.param(t, t | None, id=generate_id(t, t | None)))
+            cases.append(pytest.param(t, t | complex, id=generate_id(t, t | complex)))
+
+        # Classes: UnionType
+        for cls in class_types:
+            cases.append(pytest.param(cls, cls | None, id=generate_id(cls, cls | None)))
+            cases.append(pytest.param(cls, cls | complex, id=generate_id(cls, cls | complex)))
+
+        # Subclass → Superclass
+        cases.extend(
+            [
+                # Subclass → Union of Superclass and other type
+                pytest.param(Class3, int | Class1, id=generate_id(Class3, int | Class1))
+            ]
+        )
+
+        # Containers: Optional, Union, and Any compatibility
+        for container in container_types:
+            cases.append(pytest.param(container, container | None, id=generate_id(container, container | None)))
+            cases.append(pytest.param(container, container | int, id=generate_id(container, container | int)))
+
+        # builtins Extra container cases
+        cases.extend(
+            [
+                pytest.param(
+                    (tuple[Literal["a", "b", "c"], Path | dict[int, Class1]]),
+                    (tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]),
+                    id="deeply-nested-complex-type",
+                )
+            ]
+        )
+
+        # mixing typing and builtins extra container cases
+        cases.extend(
+            [
+                pytest.param(
+                    (tuple[Literal["a", "b", "c"], Path | dict[int, Class1]]),
+                    (Tuple[Optional[Literal["a", "b", "c"]], Union[Path, Dict[int, Class1]]]),
+                    id="deeply-nested-complex-type",
+                )
+            ]
+        )
+
+        return cases
+
+    # Precompute test cases for reuse
+    symmetric_cases_pep_604 = generate_symmetric_cases_pep_604()
+    asymmetric_cases_pep_604 = generate_strict_asymmetric_cases_pep_604()
+
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
+    @pytest.mark.parametrize(
+        "type_,repr_",
+        [
+            pytest.param((bool | Class1), "bool | Class1", id="shallow-union"),
+            pytest.param(list[str] | None, "list[str] | None", id="shallow-optional-with-sequence-of-primitives"),
+            pytest.param(
+                (list[set[Sequence[str]]] | None),
+                "list[set[Sequence[str]]] | None",
+                id="optional-nested-sequence-of-primitives",
+            ),
+            pytest.param(
+                (list[set[Sequence[str | None]]]),
+                "list[set[Sequence[Optional[str]]]]",
+                id="nested-optional-sequence-of-primitives",
+            ),
+            pytest.param(
+                (tuple[Literal["a", "b", "c"] | None, Path | dict[int, Class1]]),
+                "tuple[Optional[Literal['a', 'b', 'c']], Path | dict[int, Class1]]",
+                id="deeply-nested-complex-type",
+            ),
+        ],
+    )
+    def test_type_name_pep_604(type_, repr_):
+        assert _type_name(type_) == repr_
+
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
+    @pytest.mark.parametrize("sender_type, receiver_type", symmetric_cases_pep_604)
+    def test_same_types_are_compatible_strict_pep_604(sender_type, receiver_type):
+        assert _types_are_compatible(sender_type, receiver_type, True)
+
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
+    @pytest.mark.parametrize("sender_type, receiver_type", asymmetric_cases_pep_604)
+    def test_asymmetric_types_are_compatible_strict_pep_604(sender_type, receiver_type):
+        assert _types_are_compatible(sender_type, receiver_type, True)

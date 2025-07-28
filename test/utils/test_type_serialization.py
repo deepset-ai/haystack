@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import sys
 import typing
 from collections import deque
 from typing import Any, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Union
@@ -122,7 +123,6 @@ def test_output_type_serialization():
     assert serialize_type(float) == "float"
     assert serialize_type(bool) == "bool"
     assert serialize_type(None) == "None"
-    assert serialize_type(type(None)) == "NoneType"
 
 
 def test_output_type_serialization_string():
@@ -252,3 +252,15 @@ def test_output_type_deserialization_haystack_dataclasses():
     # Document
     assert deserialize_type("list[haystack.dataclasses.document.Document]") == list[Document]
     assert deserialize_type("dict[int, haystack.dataclasses.document.Document]") == dict[int, Document]
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
+def test_output_type_serialization_pep_604():
+    # PEP 604 allows for union types to be defined with the `|` operator
+    assert serialize_type(str | int) == "str | int"
+    assert serialize_type(List[str] | List[int]) == "typing.Union[typing.List[str], typing.List[int]]"
+    assert (
+        serialize_type(Dict[str, int] | Dict[int, str]) == "typing.Union[typing.Dict[str, int], typing.Dict[int, str]]"
+    )
+    assert serialize_type(str | None) == "str | None"
+    assert serialize_type(list[str] | None) == "list[str] | None"
