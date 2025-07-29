@@ -9,25 +9,22 @@ from typing import Dict, List
 import pytest
 from _pytest.capture import CaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
-from ddtrace._trace.processor import SpanAggregator
 from ddtrace.trace import Span as ddSpan
 from ddtrace.trace import Tracer as ddTracer
 
 from haystack.tracing.datadog import DatadogTracer
 
 
-def safe_patch(monkeypatch, target, attr_name, replacement):
-    if hasattr(target, attr_name):
-        attr = getattr(target, attr_name)
-        name = attr.__name__ if callable(attr) and hasattr(attr, "__name__") else attr_name
-        monkeypatch.setattr(target, name, replacement)
-
-
 @pytest.fixture()
 def datadog_tracer(monkeypatch: MonkeyPatch) -> ddTracer:
     # For the purpose of the tests we want to use the log writer
-    safe_patch(monkeypatch, SpanAggregator, "_use_log_writer", lambda *_: True)
-    safe_patch(monkeypatch, ddTracer, "_use_log_writer", lambda *_: True)
+    # Set environment variables to force log writer usage
+    # See https://github.com/DataDog/dd-trace-py/blob/ae4c189ebf8e539f39905f21c7918cc19de69d13/ddtrace/internal/writer/writer.py#L680
+    # for more details.
+    monkeypatch.setenv("DD_AGENT_HOST", "")
+    monkeypatch.setenv("DATADOG_TRACE_AGENT_HOSTNAME", "")
+    monkeypatch.setenv("DD_TRACE_AGENT_URL", "")
+    monkeypatch.setenv("AWS_LAMBDA_FUNCTION_NAME", "test-function")
 
     tracer = ddTracer()
 
