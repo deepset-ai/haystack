@@ -108,6 +108,14 @@ def test_from_user_fails_if_text_and_content_parts():
         ChatMessage.from_user(text="text", content_parts=[TextContent(text="text")])
 
 
+def test_from_user_empty_text():
+    message = ChatMessage.from_user(text="")
+    assert message.role == ChatRole.USER
+    assert message._content == [TextContent(text="")]
+    assert message.text == ""
+    assert message.texts == [""]
+
+
 def test_from_user_with_content_parts(base64_image_string):
     content_parts = [TextContent(text="text"), ImageContent(base64_image=base64_image_string)]
     message = ChatMessage.from_user(content_parts=content_parts)
