@@ -1,0 +1,3 @@
+fixes:
+  - |
+    Return a more informative error message when attempting to connect two components and the sender component does not have any OutputSockets defined.
