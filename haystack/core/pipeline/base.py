@@ -476,9 +476,10 @@ class PipelineBase:  # noqa: PLW1641
             sender_socket = sender_sockets.get(sender_socket_name)
             if not sender_socket:
                 raise PipelineConnectError(
-                    f"'{sender} does not exist. "
-                    f"Output connections of {sender_component_name} are: "
-                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in sender_sockets.items()])
+                    f"'{sender}' does not exist. "
+                    f"The component '{sender_component_name}' doesn't have any output connections. "
+                    "Please check that the output types of ",
+                    f"'{sender_component_name}.run' is set such as using the '@component.output_types' decorator.",
                 )
 
         receiver_socket: Optional[InputSocket] = None
