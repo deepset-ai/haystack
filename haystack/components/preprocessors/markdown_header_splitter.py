@@ -81,9 +81,8 @@ class MarkdownHeaderSplitter:
     """
     A custom component that splits documents at markdown headers with optional secondary splitting.
 
-    :param enforce_first_header: If True, ensures the first header is always included in the parent headers.
-        This is useful for docling outputs where header levels are uniformly detected and the first header
-        is often overwritten. Defaults to False.
+    :param infer_header_levels: If True, attempts to infer and rewrite header levels based on content structure.
+        Useful for documents where all headers use the same level. Defaults to False.
     :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\\f").
     :param secondary_split: Optional secondary split condition after header splitting.
         Options are "none", "word", "passage", "period", "line". Defaults to "none".
@@ -94,21 +93,94 @@ class MarkdownHeaderSplitter:
 
     def __init__(
         self,
-        enforce_first_header: bool = False,
+        infer_header_levels: bool = False,
         page_break_character: str = "\\f",
         secondary_split: Literal["none", "word", "passage", "period", "line"] = "none",
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
     ):
-        self.enforce_first_header = enforce_first_header
+        self.infer_header_levels = infer_header_levels
         self.page_break_character = page_break_character
         self.secondary_split = secondary_split
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
 
-    def _split_by_markdown_headers(self, text: str, enforce_first_header: Optional[bool] = None) -> List[Dict]:
+    def _infer_and_rewrite_header_levels(self, text: str) -> str:
+        """
+        Infer and rewrite header levels in the markdown text.
+
+        This function analyzes the document structure to infer proper header levels:
+        - First header is always level 1
+        - If there's content between headers, the next header stays at the same level
+        - If there's no content between headers, the next header goes one level deeper
+        - Header levels never exceed 6 (the maximum in markdown)
+
+        This is useful for documents where all headers are at the same level, such as
+        output from document conversion tools like docling.
+        """
+        logger.debug("Inferring and rewriting header levels")
+
+        # find headers
+        pattern = r"(?m)^(#{1,6}) (.+)$"
+        matches = list(re.finditer(pattern, text))
+
+        if not matches:
+            logger.info("No headers found in document; skipping header level inference.")
+            return text
+
+        modified_text = text
+        offset = 0  # track offset due to length changes in headers
+
+        # track header structure
+        current_level = 1
+        header_stack = [1]  # always start with level 1
+
+        for i, match in enumerate(matches):
+            original_header = match.group(0)
+            header_text = match.group(2).strip()
+
+            # check if there's content between this header and the previous one
+            has_content = False
+            if i > 0:
+                prev_end = matches[i - 1].end()
+                current_start = match.start()
+                content_between = text[prev_end:current_start].strip()
+                has_content = bool(content_between)
+
+            # first header is always level 1
+            if i == 0:
+                inferred_level = 1
+            elif has_content:
+                # stay at the same level if there's content
+                inferred_level = current_level
+            else:
+                # go one level deeper if there's no content
+                inferred_level = min(current_level + 1, 6)
+
+            # update tracking variables
+            current_level = inferred_level
+            header_stack = header_stack[:inferred_level]
+            while len(header_stack) < inferred_level:
+                header_stack.append(1)
+
+            # new header with inferred level
+            new_prefix = "#" * inferred_level
+            new_header = f"{new_prefix} {header_text}"
+
+            # replace old header
+            start_pos = match.start() + offset
+            end_pos = match.end() + offset
+            modified_text = modified_text[:start_pos] + new_header + modified_text[end_pos:]
+
+            # update offset
+            offset += len(new_header) - len(original_header)
+
+        logger.info(f"Rewrote {len(matches)} headers with inferred levels.")
+        return modified_text
+
+    def _split_by_markdown_headers(self, text: str) -> List[Dict]:
         """Split text by markdown headers and create chunks with appropriate metadata."""
         logger.debug("Splitting text by markdown headers")
 
@@ -125,10 +197,9 @@ class MarkdownHeaderSplitter:
         chunks = []
         header_stack = [None] * 6
         active_parents = []
-        first_header = matches[0].group(2).strip()
 
         for i, match in enumerate(matches):
-            # Extract header info
+            # extract header info
             header_prefix = match.group(1)
             header_text = match.group(2).strip()
             level = len(header_prefix)
@@ -152,10 +223,6 @@ class MarkdownHeaderSplitter:
 
             # get parent headers
             parentheaders = list(active_parents)
-
-            # enforce first header if needed
-            if enforce_first_header and first_header and (not parentheaders or parentheaders[0] != first_header):
-                parentheaders = [first_header] + [h for h in parentheaders if h != first_header]
 
             logger.debug(f"Creating chunk for header '{header_text}' at level {level}")
 
@@ -211,8 +278,6 @@ class MarkdownHeaderSplitter:
             # apply secondary splitting
             temp_doc = Document(content=content_for_splitting, meta=doc.meta)
             secondary_splits = secondary_splitter.run(documents=[temp_doc])["documents"]
-            parent_headers = doc.meta.get("parentheaders", [])
-            first_header = parent_headers[0] if parent_headers else None
             accumulated_page_breaks = 0  # track page breaks
 
             # split processing
@@ -234,13 +299,6 @@ class MarkdownHeaderSplitter:
                     if key in doc.meta:
                         split.meta[key] = doc.meta[key]
 
-                # enforce first header if needed
-                if self.enforce_first_header and first_header:
-                    parentheaders = split.meta.get("parentheaders", [])
-                    if not parentheaders:
-                        split.meta["parentheaders"] = [first_header]
-                    elif parentheaders[0] != first_header:
-                        split.meta["parentheaders"] = [first_header] + [h for h in parentheaders if h != first_header]
                 # preserve primary split ID
                 if "split_id" in doc.meta:
                     split.meta["header_split_id"] = doc.meta["split_id"]
@@ -251,25 +309,34 @@ class MarkdownHeaderSplitter:
         return result_docs
 
     @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document], enforce_first_header: Optional[bool] = None) -> Dict[str, List[Document]]:
+    def run(self, documents: List[Document], infer_header_levels: Optional[bool] = None) -> Dict[str, List[Document]]:
         """
         Run the markdown header splitter with optional secondary splitting.
 
         :param documents: List of documents to split
-        :param enforce_first_header: If True, ensures the first header is included in all parentheaders.
+        :param infer_header_levels: If True, attempts to infer and rewrite header levels before splitting.
             If None, uses the value from initialization.
         """
-        logger.info(f"Processing {len(documents)} documents with enforce_first_header={enforce_first_header}")
+        infer_header_levels = infer_header_levels if infer_header_levels is not None else self.infer_header_levels
+
+        # process documents - preprocess if told to
+        processed_documents = []
+        for doc in documents:
+            if infer_header_levels:
+                content = self._infer_and_rewrite_header_levels(doc.content)
+                processed_documents.append(Document(content=content, meta=doc.meta, id=doc.id))
+            else:
+                processed_documents.append(doc)
 
         # split by markdown headers
         header_splitter = CustomDocumentSplitter(
             split_by="function",
-            splitting_function=lambda text: self._split_by_markdown_headers(text, enforce_first_header),
+            splitting_function=lambda text: self._split_by_markdown_headers(text),
             page_break_character=self.page_break_character,
         )
 
         # get splits
-        header_split_docs = header_splitter.run(documents=documents)["documents"]
+        header_split_docs = header_splitter.run(documents=processed_documents)["documents"]
         logger.info(f"Header splitting produced {len(header_split_docs)} documents")
 
         # apply secondary splitting if requested
@@ -284,7 +351,7 @@ class MarkdownHeaderSplitter:
         """Serialize component to dictionary."""
         return default_to_dict(
             self,
-            enforce_first_header=self.enforce_first_header,
+            infer_header_levels=self.infer_header_levels,
             page_break_character=self.page_break_character,
             secondary_split=self.secondary_split,
             split_length=self.split_length,
@@ -296,3 +363,43 @@ class MarkdownHeaderSplitter:
     def from_dict(cls, data: Dict[str, Any]) -> "MarkdownHeaderSplitter":
         """Deserialize component from dictionary."""
         return default_from_dict(cls, data)
+
+
+# TODO: move to proper test file once ready
+if __name__ == "__main__":
+    print()
+    print("===== Example 1: Regular splitting =====")
+    splitter = MarkdownHeaderSplitter()
+    content = """# Header 1
+## Subheader 1.1
+Content under subheader 1.1.
+## Subheader 1.2
+### Subheader 1.2.1
+Content under subheader 1.2.1."""
+    print("Original content:")
+    print(content)
+    example_doc = Document(content=content)
+    result = splitter.run(documents=[example_doc])
+    for doc in result["documents"]:
+        print("\n---Document---")
+        print(doc.content)
+        print(doc.meta)
+
+    print()
+    print("===== Example 2: Splitting with header inference =====")
+    splitter = MarkdownHeaderSplitter(infer_header_levels=True)
+    content = """## Header 1
+## Subheader 1.1
+Content under subheader 1.1.
+## Subheader 1.2
+## Subheader 1.2.1
+Content under subheader 1.2.1."""
+    print("Original content:")
+    print(content)
+    example_doc = Document(content=content)
+    result = splitter.run(documents=[example_doc])
+    print("\nAfter header inference and splitting:")
+    for doc in result["documents"]:
+        print("\n---Document---")
+        print(doc.content)
+        print(doc.meta)
