@@ -125,7 +125,7 @@ dependencies = [
 
   # Tracing
   "opentelemetry-sdk",
-  "ddtrace",
+  "ddtrace<3.11.0",
 
   # Structured logging
   "structlog",
