@@ -368,9 +368,9 @@ class ChatMessage:
         :param content_parts: A list of content parts to include in the message. Specify this or text.
         :returns: A new ChatMessage instance.
         """
-        if not text and not content_parts:
+        if text is None and content_parts is None:
             raise ValueError("Either text or content_parts must be provided.")
-        if text and content_parts:
+        if text is not None and content_parts is not None:
             raise ValueError("Only one of text or content_parts can be provided.")
 
         content: Sequence[Union[TextContent, ImageContent]] = []
