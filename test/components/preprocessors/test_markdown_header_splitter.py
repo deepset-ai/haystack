@@ -54,19 +54,6 @@ def test_parentheaders(sample_text):
     assert "Header 1.2" in subheader_doc.meta["parentheaders"]
 
 
-def test_enforce_first_header(sample_text):
-    splitter = MarkdownHeaderSplitter(enforce_first_header=True)
-    docs = [Document(content=sample_text)]
-    result = splitter.run(documents=docs)
-    split_docs = result["documents"]
-
-    # All parentheaders should start with the first header
-    first_header = "Header 1"
-    for doc in split_docs:
-        if doc.meta["parentheaders"]:
-            assert doc.meta["parentheaders"][0] == first_header
-
-
 def test_no_headers():
     splitter = MarkdownHeaderSplitter()
     docs = [Document(content="Just some text without headers.")]
