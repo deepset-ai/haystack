@@ -1,9 +1,7 @@
 import pytest
-from haystack import Document
 
-from deepset_cloud_custom_nodes.splitters.markdown_header_splitter import (
-    MarkdownHeaderSplitter,
-)
+from haystack import Document
+from haystack.components.preprocessors.markdown_header_splitter import MarkdownHeaderSplitter
 
 
 @pytest.fixture
@@ -78,10 +76,7 @@ def test_no_headers():
 
 def test_multiple_documents(sample_text):
     splitter = MarkdownHeaderSplitter()
-    docs = [
-        Document(content=sample_text),
-        Document(content="# Another Header\nSome content."),
-    ]
+    docs = [Document(content=sample_text), Document(content="# Another Header\nSome content.")]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
     assert any(doc.meta["header"] == "Another Header" for doc in split_docs)
