@@ -8,4 +8,3 @@
 
 # Documentation
 *.md                    @deepset-ai/documentation @deepset-ai/open-source-engineering
-releasenotes/notes/*    @deepset-ai/documentation @deepset-ai/open-source-engineering
