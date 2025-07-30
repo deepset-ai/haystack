@@ -17,13 +17,10 @@ from haystack.tracing.datadog import DatadogTracer
 
 @pytest.fixture()
 def datadog_tracer(monkeypatch: MonkeyPatch) -> ddTracer:
-    # For the purpose of the tests we want to use the log writer
-    # Set environment variables to force log writer usage
+    # For the purpose of the tests we want to use the log writer.
+    # We simulate being in AWS Lambda, where the log writer is active.
     # See https://github.com/DataDog/dd-trace-py/blob/ae4c189ebf8e539f39905f21c7918cc19de69d13/ddtrace/internal/writer/writer.py#L680
     # for more details.
-    monkeypatch.setenv("DD_AGENT_HOST", "")
-    monkeypatch.setenv("DATADOG_TRACE_AGENT_HOSTNAME", "")
-    monkeypatch.setenv("DD_TRACE_AGENT_URL", "")
     monkeypatch.setenv("AWS_LAMBDA_FUNCTION_NAME", "test-function")
 
     tracer = ddTracer()
