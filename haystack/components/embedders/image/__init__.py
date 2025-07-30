@@ -10,7 +10,9 @@ from lazy_imports import LazyImporter
 _import_structure = {"sentence_transformers_doc_image_embedder": ["SentenceTransformersDocumentImageEmbedder"]}
 
 if TYPE_CHECKING:
-    from .sentence_transformers_doc_image_embedder import SentenceTransformersDocumentImageEmbedder
+    from .sentence_transformers_doc_image_embedder import (
+        SentenceTransformersDocumentImageEmbedder as SentenceTransformersDocumentImageEmbedder,
+    )
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
