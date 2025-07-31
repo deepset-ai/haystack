@@ -46,8 +46,8 @@ class LazyImport(_DeferredImportExceptionContextManager):
         """
         if isinstance(exc_value, ImportError):
             message = (
-                f"Failed to import '{exc_value.name}'. {self.import_error_msg.format(exc_value.name)}. "
-                f"Original error: {exc_value}"
+                f"Haystack failed to import the optional dependency '{exc_value.name}'. "
+                f"{self.import_error_msg.format(exc_value.name)}. Original error: {exc_value}"
             )
             self._deferred = (exc_value, message)
             return True
