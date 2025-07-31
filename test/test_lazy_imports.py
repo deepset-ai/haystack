@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import pytest
 
 from haystack.lazy_imports import DEFAULT_IMPORT_ERROR_MSG, LazyImport
