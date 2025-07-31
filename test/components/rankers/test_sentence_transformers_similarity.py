@@ -4,6 +4,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 import torch
 
@@ -349,6 +350,25 @@ class TestSentenceTransformersSimilarityRanker:
         documents = [Document(content="document number 0"), Document(content="document number 1")]
         out = ranker.run(query="test", documents=documents)
         assert len(out["documents"]) == 1
+
+    def test_scores_cast_to_python_float_when_numpy_scalars_returned(self):
+        mock_cross_encoder = MagicMock()
+        ranker = SentenceTransformersSimilarityRanker(model="model")
+        ranker._cross_encoder = mock_cross_encoder
+
+        # Simulate backend returning numpy scalar types
+        mock_cross_encoder.rank.return_value = [
+            {"score": np.float32(0.123), "corpus_id": 0},
+            {"score": np.float64(0.456), "corpus_id": 1},
+        ]
+
+        documents = [Document(content="doc 0"), Document(content="doc 1")]
+        out = ranker.run(query="test", documents=documents)
+
+        assert len(out["documents"]) == 2
+        for d in out["documents"]:
+            assert isinstance(d.score, float)
+            assert not isinstance(d.score, np.floating)
 
     @pytest.mark.integration
     @pytest.mark.slow

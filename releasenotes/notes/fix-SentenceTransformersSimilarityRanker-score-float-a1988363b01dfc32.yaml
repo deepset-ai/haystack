@@ -1,0 +1,16 @@
+---
+highlights: >
+    Fixed a serialization issue in `SentenceTransformersSimilarityRanker` where
+    document scores were returned as `numpy.float32` instead of standard Python `float`.
+    This ensures better compatibility with tools relying on JSON serialization (e.g. Hayhooks).
+upgrade:
+  - |
+    No upgrade steps are required for this fix.
+issues:
+  - |
+    SentenceTransformersSimilarityRanker returns Documents with numpy score #9664
+fixes:
+  - |
+    Ensure that the `score` field in `SentenceTransformersSimilarityRanker` is
+    returned as a Python `float` instead of `numpy.float32`. This prevents potential
+    serialization issues in downstream integrations.
