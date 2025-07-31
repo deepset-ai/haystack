@@ -31,12 +31,13 @@ class ChatMessageExtension(Extension):
     """
     A Jinja2 extension for creating structured chat messages with mixed content types.
 
-    This extension provides a custom {% message %} tag that allows creating chat messages
+    This extension provides a custom `{% message %}` tag that allows creating chat messages
     with different attributes (role, name, meta) and mixed content types (text, images, etc.).
 
     Inspired by [Banks](https://github.com/masci/banks).
 
     Example:
+    ```
     {% message role="system" %}
     You are a helpful assistant. You like to talk with {{user_name}}.
     {% endmessage %}
@@ -47,9 +48,10 @@ class ChatMessageExtension(Extension):
     {{ image | templatize_part }}
     {% endfor %}
     {% endmessage %}
+    ```
 
     ### How it works
-    1. The {% message %} tag is used to define a chat message.
+    1. The `{% message %}` tag is used to define a chat message.
     2. The message can contain text and other structured content parts.
     3. To include a structured content part in the message, the `| templatize_part` filter is used.
        The filter serializes the content part into a JSON string and wraps it in a `<haystack_content_part>` tag.
@@ -121,7 +123,7 @@ class ChatMessageExtension(Extension):
         """
         Build a ChatMessage object from template content and serialize it to a JSON string.
 
-        This method is called by Jinja2 when processing a {% message %} tag.
+        This method is called by Jinja2 when processing a `{% message %}` tag.
         It takes the rendered content from the template, converts XML blocks into ChatMessageContentT objects,
         creates a ChatMessage object and serializes it to a JSON string.
 
@@ -151,12 +153,12 @@ class ChatMessageExtension(Extension):
 
         This method handles:
         - Plain text content, converted to TextContent objects
-        - Structured content parts wrapped in <haystack_content_part> tags, converted to ChatMessageContentT objects
+        - Structured content parts wrapped in `<haystack_content_part>` tags, converted to ChatMessageContentT objects
 
         :param content: Input string containing mixed text and content parts
         :return: A list of ChatMessageContentT objects
         :raises ValueError: If the content is empty or contains only whitespace characters or if a
-                            <haystack_content_part> tag is found without a matching closing tag.
+                            `<haystack_content_part>` tag is found without a matching closing tag.
         """
         if not content.strip():
             raise ValueError(
