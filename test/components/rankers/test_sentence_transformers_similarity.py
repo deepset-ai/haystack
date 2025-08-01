@@ -368,7 +368,6 @@ class TestSentenceTransformersSimilarityRanker:
         assert len(out["documents"]) == 2
         for d in out["documents"]:
             assert isinstance(d.score, float)
-            assert not isinstance(d.score, np.floating)
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -393,6 +392,9 @@ class TestSentenceTransformersSimilarityRanker:
         assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
         assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
 
+        for doc in docs_after:
+            assert isinstance(doc.score, float)
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_top_k(self):
@@ -413,6 +415,9 @@ class TestSentenceTransformersSimilarityRanker:
         sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
         assert [doc.score for doc in docs_after] == sorted_scores
 
+        for doc in docs_after:
+            assert isinstance(doc.score, float)
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_single_document(self):
@@ -423,3 +428,4 @@ class TestSentenceTransformersSimilarityRanker:
         docs_after = output["documents"]
 
         assert len(docs_after) == 1
+        assert isinstance(docs_after[0].score, float)
