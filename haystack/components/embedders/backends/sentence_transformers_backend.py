@@ -37,33 +37,60 @@ class _SentenceTransformersEmbeddingBackendFactory:
         if embedding_backend_id in _SentenceTransformersEmbeddingBackendFactory._instances:
             return _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id]
 
-        if sparse:
-            embedding_backend = _SentenceTransformersSparseEncoderEmbeddingBackend(
-                model=model,
-                device=device,
-                auth_token=auth_token,
-                trust_remote_code=trust_remote_code,
-                local_files_only=local_files_only,
-                model_kwargs=model_kwargs,
-                tokenizer_kwargs=tokenizer_kwargs,
-                config_kwargs=config_kwargs,
-                backend=backend,
-            )
-        else:
-            embedding_backend = _SentenceTransformersEmbeddingBackend(
-                model=model,
-                device=device,
-                auth_token=auth_token,
-                trust_remote_code=trust_remote_code,
-                local_files_only=local_files_only,
-                truncate_dim=truncate_dim,
-                model_kwargs=model_kwargs,
-                tokenizer_kwargs=tokenizer_kwargs,
-                config_kwargs=config_kwargs,
-                backend=backend,
-            )
+        embedding_backend = _SentenceTransformersEmbeddingBackend(
+            model=model,
+            device=device,
+            auth_token=auth_token,
+            trust_remote_code=trust_remote_code,
+            local_files_only=local_files_only,
+            truncate_dim=truncate_dim,
+            model_kwargs=model_kwargs,
+            tokenizer_kwargs=tokenizer_kwargs,
+            config_kwargs=config_kwargs,
+            backend=backend,
+        )
 
         _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
+        return embedding_backend
+
+
+class _SentenceTransformersSparseEmbeddingBackendFactory:
+    """
+    Factory class to create instances of Sentence Transformers embedding backends.
+    """
+
+    _instances: Dict[str, "_SentenceTransformersSparseEncoderEmbeddingBackend"] = {}
+
+    @staticmethod
+    def get_embedding_backend(  # pylint: disable=too-many-positional-arguments
+        model: str,
+        device: Optional[str] = None,
+        auth_token: Optional[Secret] = None,
+        trust_remote_code: bool = False,
+        local_files_only: bool = False,
+        model_kwargs: Optional[Dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
+        config_kwargs: Optional[Dict[str, Any]] = None,
+        backend: Literal["torch", "onnx", "openvino"] = "torch",
+    ):
+        embedding_backend_id = f"{model}{device}{auth_token}{backend}"
+
+        if embedding_backend_id in _SentenceTransformersSparseEmbeddingBackendFactory._instances:
+            return _SentenceTransformersSparseEmbeddingBackendFactory._instances[embedding_backend_id]
+
+        embedding_backend = _SentenceTransformersSparseEncoderEmbeddingBackend(
+            model=model,
+            device=device,
+            auth_token=auth_token,
+            trust_remote_code=trust_remote_code,
+            local_files_only=local_files_only,
+            model_kwargs=model_kwargs,
+            tokenizer_kwargs=tokenizer_kwargs,
+            config_kwargs=config_kwargs,
+            backend=backend,
+        )
+
+        _SentenceTransformersSparseEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
         return embedding_backend
 
 

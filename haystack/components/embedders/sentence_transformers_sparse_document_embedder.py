@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_backend import (
-    _SentenceTransformersEmbeddingBackendFactory,
+    _SentenceTransformersSparseEmbeddingBackendFactory,
     _SentenceTransformersSparseEncoderEmbeddingBackend,
 )
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
@@ -176,7 +176,7 @@ class SentenceTransformersSparseDocumentEmbedder:
         Initializes the component.
         """
         if self.embedding_backend is None:
-            self.embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
+            self.embedding_backend = _SentenceTransformersSparseEmbeddingBackendFactory.get_embedding_backend(
                 model=self.model,
                 device=self.device.to_torch_str(),
                 auth_token=self.token,

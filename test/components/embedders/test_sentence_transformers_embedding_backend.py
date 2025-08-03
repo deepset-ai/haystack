@@ -8,6 +8,7 @@ import pytest
 
 from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
+    _SentenceTransformersSparseEmbeddingBackendFactory,
 )
 from haystack.utils.auth import Secret
 
@@ -19,6 +20,20 @@ def test_factory_behavior(mock_sentence_transformer):
     )
     same_embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend("my_model", "cpu")
     another_embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
+        model="another_model", device="cpu"
+    )
+
+    assert same_embedding_backend is embedding_backend
+    assert another_embedding_backend is not embedding_backend
+
+
+@patch("haystack.components.embedders.backends.sentence_transformers_backend.SparseEncoder")
+def test_sparse_factory_behavior(mock_sparse_encoder):
+    embedding_backend = _SentenceTransformersSparseEmbeddingBackendFactory.get_embedding_backend(
+        model="my_model", device="cpu"
+    )
+    same_embedding_backend = _SentenceTransformersSparseEmbeddingBackendFactory.get_embedding_backend("my_model", "cpu")
+    another_embedding_backend = _SentenceTransformersSparseEmbeddingBackendFactory.get_embedding_backend(
         model="another_model", device="cpu"
     )
 
@@ -51,6 +66,29 @@ def test_model_initialization(mock_sentence_transformer):
     )
 
 
+@patch("haystack.components.embedders.backends.sentence_transformers_backend.SparseEncoder")
+def test_sparse_model_initialization(mock_sparse_encoder):
+    _SentenceTransformersSparseEmbeddingBackendFactory.get_embedding_backend(
+        model="model",
+        device="cpu",
+        auth_token=Secret.from_token("fake-api-token"),
+        trust_remote_code=True,
+        local_files_only=True,
+        backend="torch",
+    )
+    mock_sparse_encoder.assert_called_once_with(
+        model_name_or_path="model",
+        device="cpu",
+        token="fake-api-token",
+        trust_remote_code=True,
+        local_files_only=True,
+        model_kwargs=None,
+        tokenizer_kwargs=None,
+        config_kwargs=None,
+        backend="torch",
+    )
+
+
 @patch("haystack.components.embedders.backends.sentence_transformers_backend.SentenceTransformer")
 def test_embedding_function_with_kwargs(mock_sentence_transformer):
     embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(model="model")
@@ -59,3 +97,13 @@ def test_embedding_function_with_kwargs(mock_sentence_transformer):
     embedding_backend.embed(data=data, normalize_embeddings=True)
 
     embedding_backend.model.encode.assert_called_once_with(data, normalize_embeddings=True)
+
+
+@patch("haystack.components.embedders.backends.sentence_transformers_backend.SparseEncoder")
+def test_sparse_embedding_function_with_kwargs(mock_sparse_encoder):
+    embedding_backend = _SentenceTransformersSparseEmbeddingBackendFactory.get_embedding_backend(model="model")
+
+    data = ["sentence1", "sentence2"]
+    embedding_backend.embed(data=data, attn_implementation="sdpa")
+
+    embedding_backend.model.encode.assert_called_once_with(data, attn_implementation="sdpa")
