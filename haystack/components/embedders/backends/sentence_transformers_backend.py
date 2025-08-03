@@ -30,7 +30,6 @@ class _SentenceTransformersEmbeddingBackendFactory:
         tokenizer_kwargs: Optional[Dict[str, Any]] = None,
         config_kwargs: Optional[Dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-        sparse: bool = False,
     ):
         embedding_backend_id = f"{model}{device}{auth_token}{truncate_dim}{backend}"
 
