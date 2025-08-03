@@ -4,6 +4,7 @@
 
 from typing import Any, Dict, List, Literal, Optional
 
+from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 
@@ -162,6 +163,19 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
             backend=backend,
         )
 
-    def embed(self, data: List[str], **kwargs) -> List[List[float]]:
-        embeddings = self.model.encode(data, **kwargs).tolist()
-        return embeddings
+    def embed(self, data: List[str], **kwargs) -> List[SparseEmbedding]:
+        embeddings = self.model.encode(data, **kwargs)
+
+        sparse_embeddings = []
+
+        if isinstance(embeddings, list):
+            for embedding in embeddings:
+                sparse_embeddings.append(
+                    SparseEmbedding(indices=embedding.indices.tolist(), values=embedding.values.tolist())
+                )
+        else:
+            sparse_embeddings.append(
+                SparseEmbedding(indices=embeddings.indices.tolist(), values=embeddings.values.tolist())
+            )
+
+        return sparse_embeddings

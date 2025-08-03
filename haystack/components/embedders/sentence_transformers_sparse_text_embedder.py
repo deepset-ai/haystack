@@ -179,7 +179,6 @@ class SentenceTransformersSparseTextEmbedder:
                 tokenizer_kwargs=self.tokenizer_kwargs,
                 config_kwargs=self.config_kwargs,
                 backend=self.backend,
-                sparse=True,
             )
             if self.tokenizer_kwargs and self.tokenizer_kwargs.get("model_max_length"):
                 self.embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]
