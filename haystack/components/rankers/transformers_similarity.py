@@ -56,13 +56,13 @@ class TransformersSimilarityRanker:
         top_k: int = 10,
         query_prefix: str = "",
         document_prefix: str = "",
-        meta_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
         calibration_factor: Optional[float] = 1.0,
         score_threshold: Optional[float] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
         batch_size: int = 16,
     ):
         """
@@ -146,7 +146,7 @@ class TransformersSimilarityRanker:
         if self.top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
@@ -168,7 +168,7 @@ class TransformersSimilarityRanker:
             assert self.model is not None
             self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -197,7 +197,7 @@ class TransformersSimilarityRanker:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TransformersSimilarityRanker":
+    def from_dict(cls, data: dict[str, Any]) -> "TransformersSimilarityRanker":
         """
         Deserializes the component from a dictionary.
 
@@ -215,11 +215,11 @@ class TransformersSimilarityRanker:
 
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(  # pylint: disable=too-many-positional-arguments
         self,
         query: str,
-        documents: List[Document],
+        documents: list[Document],
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         calibration_factor: Optional[float] = None,

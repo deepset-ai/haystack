@@ -156,7 +156,7 @@ class TestMemoryEmbeddingRetriever:
 
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
-        result: Dict[str, Any] = pipeline.run(
+        result: dict[str, Any] = pipeline.run(
             data={"retriever": {"query_embedding": [0.1, 0.1, 0.1, 0.1], "return_embedding": True}}
         )
 

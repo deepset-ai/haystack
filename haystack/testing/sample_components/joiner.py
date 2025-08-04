@@ -23,13 +23,13 @@ class StringJoiner:
 @component
 class StringListJoiner:
     @component.output_types(output=str)
-    def run(self, inputs: Variadic[List[str]]):
+    def run(self, inputs: Variadic[list[str]]):
         """
         Take list of strings from multiple input nodes and join them into a single one returned in output.
 
         Since `input_str` is Variadic, we know we'll receive a List[List[str]].
         """
-        retval: List[str] = []
+        retval: list[str] = []
         for list_of_strings in inputs:
             retval += list_of_strings
 

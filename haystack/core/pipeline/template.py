@@ -87,7 +87,7 @@ class PipelineTemplate:
         self.template_variables = meta.find_undeclared_variables(env.parse(template_content))
         self._template_content = template_content
 
-    def render(self, template_params: Optional[Dict[str, Any]] = None) -> str:
+    def render(self, template_params: Optional[dict[str, Any]] = None) -> str:
         """
         Constructs a `Pipeline` instance based on the template.
 

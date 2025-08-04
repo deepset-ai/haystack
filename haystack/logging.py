@@ -222,7 +222,7 @@ def _patch_structlog_call_information(logger: logging.Logger) -> None:
 
         # completely copied from structlog. We only add `haystack.logging` to the list of ignored frames
         # pylint: disable=unused-variable
-        def findCaller(stack_info: bool = False, stacklevel: int = 1) -> typing.Tuple[str, int, str, Optional[str]]:
+        def findCaller(stack_info: bool = False, stacklevel: int = 1) -> tuple[str, int, str, Optional[str]]:
             try:
                 sinfo: Optional[str]
                 # we need to exclude `haystack.logging` from the stack
@@ -339,7 +339,7 @@ def configure_logging(use_json: Optional[bool] = None) -> None:
             # User gave us an explicit value via environment variable
             use_json = use_json_env_var.lower() == "true"
 
-    shared_processors: List[Processor] = [
+    shared_processors: list[Processor] = [
         # Add the log level to the event_dict for structlog to use
         structlog.stdlib.add_log_level,
         # Adds the current timestamp in ISO format to logs
@@ -360,7 +360,7 @@ def configure_logging(use_json: Optional[bool] = None) -> None:
         wrapper_class=structlog.make_filtering_bound_logger(min_level=logging.root.getEffectiveLevel()),
     )
 
-    renderers: List[Processor]
+    renderers: list[Processor]
     if use_json:
         renderers = [
             ExceptionRenderer(

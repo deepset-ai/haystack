@@ -65,7 +65,7 @@ class ListJoiner:
     ```
     """
 
-    def __init__(self, list_type_: Optional[Type] = None):
+    def __init__(self, list_type_: Optional[type] = None):
         """
         Creates a ListJoiner component.
 
@@ -77,9 +77,9 @@ class ListJoiner:
         if list_type_ is not None:
             component.set_output_types(self, values=list_type_)
         else:
-            component.set_output_types(self, values=List[Any])
+            component.set_output_types(self, values=list[Any])
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -90,7 +90,7 @@ class ListJoiner:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ListJoiner":
+    def from_dict(cls, data: dict[str, Any]) -> "ListJoiner":
         """
         Deserializes the component from a dictionary.
 
@@ -102,7 +102,7 @@ class ListJoiner:
             data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])
         return default_from_dict(cls, data)
 
-    def run(self, values: Variadic[List[Any]]) -> Dict[str, List[Any]]:
+    def run(self, values: Variadic[list[Any]]) -> dict[str, list[Any]]:
         """
         Joins multiple lists into a single flat list.
 

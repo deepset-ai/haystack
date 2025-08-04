@@ -55,8 +55,8 @@ class LLMMessagesRouter:
     def __init__(
         self,
         chat_generator: ChatGenerator,
-        output_names: List[str],
-        output_patterns: List[str],
+        output_names: list[str],
+        output_patterns: list[str],
         system_prompt: Optional[str] = None,
     ):
         """
@@ -85,7 +85,7 @@ class LLMMessagesRouter:
         self._is_warmed_up = False
 
         component.set_output_types(
-            self, **{"chat_generator_text": str, **dict.fromkeys(output_names + ["unmatched"], List[ChatMessage])}
+            self, **{"chat_generator_text": str, **dict.fromkeys(output_names + ["unmatched"], list[ChatMessage])}
         )
 
     def warm_up(self):
@@ -97,7 +97,7 @@ class LLMMessagesRouter:
                 self._chat_generator.warm_up()
             self._is_warmed_up = True
 
-    def run(self, messages: List[ChatMessage]) -> Dict[str, Union[str, List[ChatMessage]]]:
+    def run(self, messages: list[ChatMessage]) -> dict[str, Union[str, list[ChatMessage]]]:
         """
         Classify the messages based on LLM output and route them to the appropriate output connection.
 
@@ -141,7 +141,7 @@ class LLMMessagesRouter:
 
         return output
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -157,7 +157,7 @@ class LLMMessagesRouter:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LLMMessagesRouter":
+    def from_dict(cls, data: dict[str, Any]) -> "LLMMessagesRouter":
         """
         Deserialize this component from a dictionary.
 

@@ -32,7 +32,7 @@ class CSVDocumentSplitter:
         self,
         row_split_threshold: Optional[int] = 2,
         column_split_threshold: Optional[int] = 2,
-        read_csv_kwargs: Optional[Dict[str, Any]] = None,
+        read_csv_kwargs: Optional[dict[str, Any]] = None,
         split_mode: SplitMode = "threshold",
     ) -> None:
         """
@@ -70,8 +70,8 @@ class CSVDocumentSplitter:
         self.read_csv_kwargs = read_csv_kwargs or {}
         self.split_mode = split_mode
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Processes and splits a list of CSV documents into multiple sub-tables.
 
@@ -162,7 +162,7 @@ class CSVDocumentSplitter:
     @staticmethod
     def _find_split_indices(
         df: "pd.DataFrame", split_threshold: int, axis: Literal["row", "column"]
-    ) -> List[Tuple[int, int]]:
+    ) -> list[tuple[int, int]]:
         """
         Finds the indices of consecutive empty rows or columns in a DataFrame.
 
@@ -202,7 +202,7 @@ class CSVDocumentSplitter:
 
     def _split_dataframe(
         self, df: "pd.DataFrame", split_threshold: int, axis: Literal["row", "column"]
-    ) -> List["pd.DataFrame"]:
+    ) -> list["pd.DataFrame"]:
         """
         Splits a DataFrame into sub-tables based on consecutive empty rows or columns exceeding `split_threshold`.
 
@@ -237,7 +237,7 @@ class CSVDocumentSplitter:
 
     def _recursive_split(
         self, df: "pd.DataFrame", row_split_threshold: int, column_split_threshold: int
-    ) -> List["pd.DataFrame"]:
+    ) -> list["pd.DataFrame"]:
         """
         Recursively splits a DataFrame.
 
@@ -272,7 +272,7 @@ class CSVDocumentSplitter:
 
         return result
 
-    def _split_by_row(self, df: "pd.DataFrame") -> List["pd.DataFrame"]:
+    def _split_by_row(self, df: "pd.DataFrame") -> list["pd.DataFrame"]:
         """Split each CSV row into a separate subtable"""
         split_dfs = []
         for idx, row in enumerate(df.itertuples(index=False)):

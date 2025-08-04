@@ -34,10 +34,10 @@ class DocumentNDCGEvaluator:
     ```
     """
 
-    @component.output_types(score=float, individual_scores=List[float])
+    @component.output_types(score=float, individual_scores=list[float])
     def run(
-        self, ground_truth_documents: List[List[Document]], retrieved_documents: List[List[Document]]
-    ) -> Dict[str, Any]:
+        self, ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]
+    ) -> dict[str, Any]:
         """
         Run the DocumentNDCGEvaluator on the given inputs.
 
@@ -68,7 +68,7 @@ class DocumentNDCGEvaluator:
         return {"score": score, "individual_scores": individual_scores}
 
     @staticmethod
-    def validate_inputs(gt_docs: List[List[Document]], ret_docs: List[List[Document]]):
+    def validate_inputs(gt_docs: list[list[Document]], ret_docs: list[list[Document]]):
         """
         Validate the input parameters.
 
@@ -96,7 +96,7 @@ class DocumentNDCGEvaluator:
                 raise ValueError(msg)
 
     @staticmethod
-    def calculate_dcg(gt_docs: List[Document], ret_docs: List[Document]) -> float:
+    def calculate_dcg(gt_docs: list[Document], ret_docs: list[Document]) -> float:
         """
         Calculate the discounted cumulative gain (DCG) of the retrieved documents.
 
@@ -116,7 +116,7 @@ class DocumentNDCGEvaluator:
         return dcg
 
     @staticmethod
-    def calculate_idcg(gt_docs: List[Document]) -> float:
+    def calculate_idcg(gt_docs: list[Document]) -> float:
         """
         Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
 

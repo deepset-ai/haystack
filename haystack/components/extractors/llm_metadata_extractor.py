@@ -127,8 +127,8 @@ class LLMMetadataExtractor:
         self,
         prompt: str,
         chat_generator: ChatGenerator,
-        expected_keys: Optional[List[str]] = None,
-        page_range: Optional[List[Union[str, int]]] = None,
+        expected_keys: Optional[list[str]] = None,
+        page_range: Optional[list[Union[str, int]]] = None,
         raise_on_failure: bool = False,
         max_workers: int = 3,
     ):
@@ -172,7 +172,7 @@ class LLMMetadataExtractor:
         if hasattr(self._chat_generator, "warm_up"):
             self._chat_generator.warm_up()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -191,7 +191,7 @@ class LLMMetadataExtractor:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LLMMetadataExtractor":
+    def from_dict(cls, data: dict[str, Any]) -> "LLMMetadataExtractor":
         """
         Deserializes the component from a dictionary.
 
@@ -204,8 +204,8 @@ class LLMMetadataExtractor:
         deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
         return default_from_dict(cls, data)
 
-    def _extract_metadata(self, llm_answer: str) -> Dict[str, Any]:
-        parsed_metadata: Dict[str, Any] = {}
+    def _extract_metadata(self, llm_answer: str) -> dict[str, Any]:
+        parsed_metadata: dict[str, Any] = {}
 
         try:
             parsed_metadata = json.loads(llm_answer)
@@ -229,9 +229,9 @@ class LLMMetadataExtractor:
         return parsed_metadata
 
     def _prepare_prompts(
-        self, documents: List[Document], expanded_range: Optional[List[int]] = None
-    ) -> List[Union[ChatMessage, None]]:
-        all_prompts: List[Union[ChatMessage, None]] = []
+        self, documents: list[Document], expanded_range: Optional[list[int]] = None
+    ) -> list[Union[ChatMessage, None]]:
+        all_prompts: list[Union[ChatMessage, None]] = []
         for document in documents:
             if not document.content:
                 logger.warning("Document {doc_id} has no content. Skipping metadata extraction.", doc_id=document.id)
@@ -257,7 +257,7 @@ class LLMMetadataExtractor:
 
         return all_prompts
 
-    def _run_on_thread(self, prompt: Optional[ChatMessage]) -> Dict[str, Any]:
+    def _run_on_thread(self, prompt: Optional[ChatMessage]) -> dict[str, Any]:
         # If prompt is None, return an error dictionary
         if prompt is None:
             return {"error": "Document has no content, skipping LLM call."}
@@ -275,8 +275,8 @@ class LLMMetadataExtractor:
             result = {"error": "LLM failed with exception: " + str(e)}
         return result
 
-    @component.output_types(documents=List[Document], failed_documents=List[Document])
-    def run(self, documents: List[Document], page_range: Optional[List[Union[str, int]]] = None):
+    @component.output_types(documents=list[Document], failed_documents=list[Document])
+    def run(self, documents: list[Document], page_range: Optional[list[Union[str, int]]] = None):
         """
         Extract metadata from documents using a Large Language Model.
 

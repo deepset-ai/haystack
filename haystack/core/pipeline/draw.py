@@ -20,7 +20,7 @@ from haystack.core.type_utils import _type_name
 logger = logging.getLogger(__name__)
 
 
-def generate_color_variations(n: int, base_color: Optional[str] = "#3498DB", variation_range: float = 0.4) -> List[str]:
+def generate_color_variations(n: int, base_color: Optional[str] = "#3498DB", variation_range: float = 0.4) -> list[str]:
     """
     Generate n different variations of a base color.
 
@@ -106,7 +106,7 @@ classDef component text-align:center;
 """
 
 
-def _validate_mermaid_params(params: Dict[str, Any]) -> None:
+def _validate_mermaid_params(params: dict[str, Any]) -> None:
     """
     Validates and sets default values for Mermaid parameters.
 
@@ -174,7 +174,7 @@ def _to_mermaid_image(
     server_url: str = "https://mermaid.ink",
     params: Optional[dict] = None,
     timeout: int = 30,
-    super_component_mapping: Optional[Dict[str, str]] = None,
+    super_component_mapping: Optional[dict[str, str]] = None,
 ) -> bytes:
     """
     Renders a pipeline using a Mermaid server.
@@ -257,7 +257,7 @@ def _to_mermaid_image(
 
 
 def _to_mermaid_text(
-    graph: networkx.MultiDiGraph, init_params: str, super_component_mapping: Optional[Dict[str, str]] = None
+    graph: networkx.MultiDiGraph, init_params: str, super_component_mapping: Optional[dict[str, str]] = None
 ) -> str:
     """
     Converts a Networkx graph into Mermaid syntax.

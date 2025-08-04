@@ -27,8 +27,8 @@ document_store = InMemoryDocumentStore()
 
 @component
 class MockLinkContentFetcher:
-    @component.output_types(streams=List[ByteStream])
-    def run(self, urls: List[str]) -> Dict[str, List[ByteStream]]:
+    @component.output_types(streams=list[ByteStream])
+    def run(self, urls: list[str]) -> dict[str, list[ByteStream]]:
         mock_html_content = """
         <!DOCTYPE html>
         <html>
@@ -69,8 +69,8 @@ class MockLinkContentFetcher:
 
 @component
 class MockHTMLToDocument:
-    @component.output_types(documents=List[Document])
-    def run(self, sources: List[ByteStream]) -> Dict[str, List[Document]]:
+    @component.output_types(documents=list[Document])
+    def run(self, sources: list[ByteStream]) -> dict[str, list[Document]]:
         """Mock HTML to Document converter that extracts text content from HTML ByteStreams."""
 
         documents = []

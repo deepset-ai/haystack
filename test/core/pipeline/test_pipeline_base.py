@@ -846,7 +846,7 @@ class TestPipelineBase:
         assert {("hello", hello), ("hello_again", hello_again)} == set(pipeline.walk())
 
     def test__prepare_component_input_data(self):
-        MockComponent = component_class("MockComponent", input_types={"x": List[str], "y": str})
+        MockComponent = component_class("MockComponent", input_types={"x": list[str], "y": str})
         pipe = PipelineBase()
         pipe.add_component("first_mock", MockComponent())
         pipe.add_component("second_mock", MockComponent())
@@ -860,7 +860,7 @@ class TestPipelineBase:
 
     def test__prepare_component_input_data_with_connected_inputs(self):
         MockComponent = component_class(
-            "MockComponent", input_types={"x": List[str], "y": str}, output_types={"z": str}
+            "MockComponent", input_types={"x": list[str], "y": str}, output_types={"z": str}
         )
         pipe = PipelineBase()
         pipe.add_component("first_mock", MockComponent())
@@ -1100,7 +1100,7 @@ class TestPipelineBase:
 
     def test__find_receivers_from(self):
         sentence_builder = component_class(
-            "SentenceBuilder", input_types={"words": List[str]}, output_types={"text": str}
+            "SentenceBuilder", input_types={"words": list[str]}, output_types={"text": str}
         )()
         document_builder = component_class(
             "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}

@@ -37,7 +37,7 @@ class FilterRetriever:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, filters: Optional[Dict[str, Any]] = None):
+    def __init__(self, document_store: DocumentStore, filters: Optional[dict[str, Any]] = None):
         """
         Create the FilterRetriever component.
 
@@ -49,13 +49,13 @@ class FilterRetriever:
         self.document_store = document_store
         self.filters = filters
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
         return {"document_store": type(self.document_store).__name__}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -66,7 +66,7 @@ class FilterRetriever:
         return default_to_dict(self, document_store=docstore, filters=self.filters)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FilterRetriever":
+    def from_dict(cls, data: dict[str, Any]) -> "FilterRetriever":
         """
         Deserializes the component from a dictionary.
 
@@ -80,8 +80,8 @@ class FilterRetriever:
 
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
-    def run(self, filters: Optional[Dict[str, Any]] = None):
+    @component.output_types(documents=list[Document])
+    def run(self, filters: Optional[dict[str, Any]] = None):
         """
         Run the FilterRetriever on the given input data.
 

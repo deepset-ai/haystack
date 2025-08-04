@@ -13,7 +13,7 @@ class TextEmbedder(Protocol):
     Protocol for Text Embedders.
     """
 
-    def run(self, text: str) -> Dict[str, Any]:
+    def run(self, text: str) -> dict[str, Any]:
         """
         Generate embeddings for the input text.
 

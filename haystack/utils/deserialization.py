@@ -8,7 +8,7 @@ from haystack import DeserializationError
 from haystack.core.serialization import component_from_dict, default_from_dict, import_class_by_name
 
 
-def deserialize_document_store_in_init_params_inplace(data: Dict[str, Any], key: str = "document_store") -> None:
+def deserialize_document_store_in_init_params_inplace(data: dict[str, Any], key: str = "document_store") -> None:
     """
     Deserializes a generic document store from the init_parameters of a serialized component in place.
 
@@ -39,7 +39,7 @@ def deserialize_document_store_in_init_params_inplace(data: Dict[str, Any], key:
         data["init_parameters"][key] = default_from_dict(doc_store_class, doc_store_data)
 
 
-def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_generator") -> None:
+def deserialize_chatgenerator_inplace(data: dict[str, Any], key: str = "chat_generator") -> None:
     """
     Deserialize a ChatGenerator in a dictionary inplace.
 
@@ -55,7 +55,7 @@ def deserialize_chatgenerator_inplace(data: Dict[str, Any], key: str = "chat_gen
     deserialize_component_inplace(data, key=key)
 
 
-def deserialize_component_inplace(data: Dict[str, Any], key: str = "chat_generator") -> None:
+def deserialize_component_inplace(data: dict[str, Any], key: str = "chat_generator") -> None:
     """
     Deserialize a Component in a dictionary inplace.
 

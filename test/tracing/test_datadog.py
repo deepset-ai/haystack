@@ -28,7 +28,7 @@ def datadog_tracer(monkeypatch: MonkeyPatch) -> ddTracer:
     return tracer
 
 
-def get_traces_from_console(capfd: CaptureFixture) -> List[Dict]:
+def get_traces_from_console(capfd: CaptureFixture) -> list[dict]:
     output = capfd.readouterr().out
     parsed = json.loads(output)
     nested_traces = parsed["traces"]

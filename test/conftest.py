@@ -26,12 +26,12 @@ def waiting_component():
     @component
     class Waiter:
         @component.output_types(waited_for=int)
-        def run(self, wait_for: int) -> Dict[str, int]:
+        def run(self, wait_for: int) -> dict[str, int]:
             time.sleep(wait_for)
             return {"waited_for": wait_for}
 
         @component.output_types(waited_for=int)
-        async def run_async(self, wait_for: int) -> Dict[str, int]:
+        async def run_async(self, wait_for: int) -> dict[str, int]:
             await asyncio.sleep(wait_for)
             return {"waited_for": wait_for}
 
@@ -83,7 +83,7 @@ def spying_tracer() -> Generator[SpyingTracer, None, None]:
     tracing.disable_tracing()
 
 
-def load_and_resume_pipeline_snapshot(pipeline, output_directory: Path, component_name: str, data: Dict = None) -> Dict:
+def load_and_resume_pipeline_snapshot(pipeline, output_directory: Path, component_name: str, data: dict = None) -> dict:
     """
     Utility function to load and resume pipeline snapshot from a breakpoint file.
 

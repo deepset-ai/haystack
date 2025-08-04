@@ -51,14 +51,14 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         suffix: str = "",
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
         *,
-        default_headers: Optional[Dict[str, str]] = None,
+        default_headers: Optional[dict[str, str]] = None,
         azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
         raise_on_failure: bool = False,
     ):
         """
@@ -146,7 +146,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         self.http_client_kwargs = http_client_kwargs
         self.raise_on_failure = raise_on_failure
 
-        client_args: Dict[str, Any] = {
+        client_args: dict[str, Any] = {
             "api_version": api_version,
             "azure_endpoint": azure_endpoint,
             "azure_deployment": azure_deployment,
@@ -166,7 +166,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
             http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_args
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -200,7 +200,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAIDocumentEmbedder":
+    def from_dict(cls, data: dict[str, Any]) -> "AzureOpenAIDocumentEmbedder":
         """
         Deserializes the component from a dictionary.
 

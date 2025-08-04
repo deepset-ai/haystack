@@ -236,7 +236,7 @@ class TestOpenAPIServiceConnector:
     @pytest.mark.integration
     def test_run_live(self):
         # An OutputAdapter filter we'll use to setup function calling
-        def prepare_fc_params(openai_functions_schema: Dict[str, Any]) -> Dict[str, Any]:
+        def prepare_fc_params(openai_functions_schema: dict[str, Any]) -> dict[str, Any]:
             return {
                 "tools": [{"type": "function", "function": openai_functions_schema}],
                 "tool_choice": {"type": "function", "function": {"name": openai_functions_schema["name"]}},
@@ -249,12 +249,12 @@ class TestOpenAPIServiceConnector:
         pipe.add_component("openapi_container", OpenAPIServiceConnector())
         pipe.add_component(
             "prepare_fc_adapter",
-            OutputAdapter("{{functions[0] | prepare_fc}}", Dict[str, Any], {"prepare_fc": prepare_fc_params}),
+            OutputAdapter("{{functions[0] | prepare_fc}}", dict[str, Any], {"prepare_fc": prepare_fc_params}),
         )
-        pipe.add_component("openapi_spec_adapter", OutputAdapter("{{specs[0]}}", Dict[str, Any], unsafe=True))
+        pipe.add_component("openapi_spec_adapter", OutputAdapter("{{specs[0]}}", dict[str, Any], unsafe=True))
         pipe.add_component(
             "final_prompt_adapter",
-            OutputAdapter("{{system_message + service_response}}", List[ChatMessage], unsafe=True),
+            OutputAdapter("{{system_message + service_response}}", list[ChatMessage], unsafe=True),
         )
         pipe.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", streaming_callback=print_streaming_chunk))
 

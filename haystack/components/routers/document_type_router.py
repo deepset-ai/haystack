@@ -59,10 +59,10 @@ class DocumentTypeRouter:
     def __init__(
         self,
         *,
-        mime_types: List[str],
+        mime_types: list[str],
         mime_type_meta_field: Optional[str] = None,
         file_path_meta_field: Optional[str] = None,
-        additional_mimetypes: Optional[Dict[str, str]] = None,
+        additional_mimetypes: Optional[dict[str, str]] = None,
     ) -> None:
         """
         Initialize the DocumentTypeRouter component.
@@ -106,11 +106,11 @@ class DocumentTypeRouter:
                 raise ValueError(f"Invalid regex pattern '{mime_type}'.")
             self._mime_type_patterns.append(pattern)
 
-        component.set_output_types(self, unclassified=List[Document], **dict.fromkeys(mime_types, List[Document]))
+        component.set_output_types(self, unclassified=list[Document], **dict.fromkeys(mime_types, list[Document]))
         self.mime_types = mime_types
         self.additional_mimetypes = additional_mimetypes
 
-    def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Categorize input documents into groups based on their MIME type.
 

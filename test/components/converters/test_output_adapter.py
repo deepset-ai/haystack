@@ -134,14 +134,14 @@ class TestOutputAdapter:
 
     def test_sede_with_list_output_type_in_pipeline(self):
         pipe = Pipeline()
-        pipe.add_component("adapter", OutputAdapter(template="{{ test }}", output_type=List[str]))
+        pipe.add_component("adapter", OutputAdapter(template="{{ test }}", output_type=list[str]))
         serialized_pipe = pipe.dumps()
 
         # we serialize the pipeline and check if the output type is serialized correctly (as typing.List[str])
         assert "typing.List[str]" in serialized_pipe
 
         deserialized_pipe = Pipeline.loads(serialized_pipe)
-        assert deserialized_pipe.get_component("adapter").output_type == List[str]
+        assert deserialized_pipe.get_component("adapter").output_type == list[str]
 
     def test_output_adapter_from_dict_custom_filters_none(self):
         component = OutputAdapter.from_dict(

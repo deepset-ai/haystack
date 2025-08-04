@@ -72,10 +72,10 @@ class TransformersTextRouter:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str,
-        labels: Optional[List[str]] = None,
+        labels: Optional[list[str]] = None,
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
+        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Initializes the TransformersTextRouter component.
@@ -117,7 +117,7 @@ class TransformersTextRouter:
 
         self.pipeline: Optional["Pipeline"] = None
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
@@ -140,7 +140,7 @@ class TransformersTextRouter:
                 f"Provided labels: {self.labels}. Model labels: {labels}"
             )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -162,7 +162,7 @@ class TransformersTextRouter:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TransformersTextRouter":
+    def from_dict(cls, data: dict[str, Any]) -> "TransformersTextRouter":
         """
         Deserializes the component from a dictionary.
 
@@ -176,7 +176,7 @@ class TransformersTextRouter:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 
-    def run(self, text: str) -> Dict[str, str]:
+    def run(self, text: str) -> dict[str, str]:
         """
         Routes the text strings to different connections based on a category label.
 

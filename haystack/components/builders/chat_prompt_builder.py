@@ -140,9 +140,9 @@ class ChatPromptBuilder:
 
     def __init__(
         self,
-        template: Optional[Union[List[ChatMessage], str]] = None,
-        required_variables: Optional[Union[List[str], Literal["*"]]] = None,
-        variables: Optional[List[str]] = None,
+        template: Optional[Union[list[ChatMessage], str]] = None,
+        required_variables: Optional[Union[list[str], Literal["*"]]] = None,
+        variables: Optional[list[str]] = None,
     ):
         """
         Constructs a ChatPromptBuilder component.
@@ -205,11 +205,11 @@ class ChatPromptBuilder:
             else:
                 component.set_input_type(self, var, Any, "")
 
-    @component.output_types(prompt=List[ChatMessage])
+    @component.output_types(prompt=list[ChatMessage])
     def run(
         self,
-        template: Optional[Union[List[ChatMessage], str]] = None,
-        template_variables: Optional[Dict[str, Any]] = None,
+        template: Optional[Union[list[ChatMessage], str]] = None,
+        template_variables: Optional[dict[str, Any]] = None,
         **kwargs,
     ):
         """
@@ -277,8 +277,8 @@ class ChatPromptBuilder:
         return {"prompt": processed_messages}
 
     def _render_chat_messages_from_str_template(
-        self, template: str, template_variables: Dict[str, Any]
-    ) -> List[ChatMessage]:
+        self, template: str, template_variables: dict[str, Any]
+    ) -> list[ChatMessage]:
         """
         Renders a chat message from a string template.
 
@@ -296,7 +296,7 @@ class ChatPromptBuilder:
 
         return messages
 
-    def _validate_variables(self, provided_variables: Set[str]):
+    def _validate_variables(self, provided_variables: set[str]):
         """
         Checks if all the required template variables are provided.
 
@@ -317,14 +317,14 @@ class ChatPromptBuilder:
                 f"Required variables: {required_variables}. Provided variables: {provided_variables}."
             )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of the component.
 
         :returns:
             Serialized dictionary representation of the component.
         """
-        template: Optional[Union[List[Dict[str, Any]], str]] = None
+        template: Optional[Union[list[dict[str, Any]], str]] = None
         if isinstance(self.template, list):
             template = [m.to_dict() for m in self.template]
         elif isinstance(self.template, str):
@@ -335,7 +335,7 @@ class ChatPromptBuilder:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ChatPromptBuilder":
+    def from_dict(cls, data: dict[str, Any]) -> "ChatPromptBuilder":
         """
         Deserialize this component from a dictionary.
 

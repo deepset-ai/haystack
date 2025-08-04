@@ -101,7 +101,7 @@ class JsonSchemaValidator:
         "JSON string, this is the most important part of the task. Don't use any markdown and don't add any comment."
     )
 
-    def __init__(self, json_schema: Optional[Dict[str, Any]] = None, error_template: Optional[str] = None):
+    def __init__(self, json_schema: Optional[dict[str, Any]] = None, error_template: Optional[str] = None):
         """
         Initialize the JsonSchemaValidator component.
 
@@ -112,13 +112,13 @@ class JsonSchemaValidator:
         self.json_schema = json_schema
         self.error_template = error_template
 
-    @component.output_types(validated=List[ChatMessage], validation_error=List[ChatMessage])
+    @component.output_types(validated=list[ChatMessage], validation_error=list[ChatMessage])
     def run(
         self,
-        messages: List[ChatMessage],
-        json_schema: Optional[Dict[str, Any]] = None,
+        messages: list[ChatMessage],
+        json_schema: Optional[dict[str, Any]] = None,
         error_template: Optional[str] = None,
-    ) -> Dict[str, List[ChatMessage]]:
+    ) -> dict[str, list[ChatMessage]]:
         """
         Validates the last of the provided messages against the specified json schema.
 
@@ -192,7 +192,7 @@ class JsonSchemaValidator:
         error_message: str,
         error_path: str,
         error_schema_path: str,
-        json_schema: Dict[str, Any],
+        json_schema: dict[str, Any],
         failing_json: str,
     ) -> str:
         """
@@ -215,7 +215,7 @@ class JsonSchemaValidator:
             failing_json=failing_json,
         )
 
-    def _is_openai_function_calling_schema(self, json_schema: Dict[str, Any]) -> bool:
+    def _is_openai_function_calling_schema(self, json_schema: dict[str, Any]) -> bool:
         """
         Checks if the provided schema is a valid OpenAI function calling schema.
 

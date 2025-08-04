@@ -113,7 +113,7 @@ class SentenceWindowRetriever:
         self.raise_on_missing_meta_fields = raise_on_missing_meta_fields
 
     @staticmethod
-    def merge_documents_text(documents: List[Document]) -> str:
+    def merge_documents_text(documents: list[Document]) -> str:
         """
         Merge a list of document text into a single string.
 
@@ -146,7 +146,7 @@ class SentenceWindowRetriever:
 
         return merged_text
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -164,7 +164,7 @@ class SentenceWindowRetriever:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceWindowRetriever":
+    def from_dict(cls, data: dict[str, Any]) -> "SentenceWindowRetriever":
         """
         Deserializes the component from a dictionary.
 
@@ -177,8 +177,8 @@ class SentenceWindowRetriever:
         # deserialize the component
         return default_from_dict(cls, data)
 
-    @component.output_types(context_windows=List[str], context_documents=List[Document])
-    def run(self, retrieved_documents: List[Document], window_size: Optional[int] = None):
+    @component.output_types(context_windows=list[str], context_documents=list[Document])
+    def run(self, retrieved_documents: list[Document], window_size: Optional[int] = None):
         """
         Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
 

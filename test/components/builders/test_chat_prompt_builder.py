@@ -33,15 +33,15 @@ class TestChatPromptBuilder:
         # we have inputs that contain: template, template_variables + inferred variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "variable", "variable2"}
-        assert inputs["template"].type == Optional[Union[List[ChatMessage], str]]
-        assert inputs["template_variables"].type == Optional[Dict[str, Any]]
+        assert inputs["template"].type == Optional[Union[list[ChatMessage], str]]
+        assert inputs["template_variables"].type == Optional[dict[str, Any]]
         assert inputs["variable"].type == Any
         assert inputs["variable2"].type == Any
 
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
         assert set(outputs.keys()) == {"prompt"}
-        assert outputs["prompt"].type == List[ChatMessage]
+        assert outputs["prompt"].type == list[ChatMessage]
 
     def test_init_without_template(self):
         variables = ["var1", "var2"]
@@ -54,15 +54,15 @@ class TestChatPromptBuilder:
         # we have inputs that contain: template, template_variables + variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2"}
-        assert inputs["template"].type == Optional[Union[List[ChatMessage], str]]
-        assert inputs["template_variables"].type == Optional[Dict[str, Any]]
+        assert inputs["template"].type == Optional[Union[list[ChatMessage], str]]
+        assert inputs["template_variables"].type == Optional[dict[str, Any]]
         assert inputs["var1"].type == Any
         assert inputs["var2"].type == Any
 
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
         assert set(outputs.keys()) == {"prompt"}
-        assert outputs["prompt"].type == List[ChatMessage]
+        assert outputs["prompt"].type == list[ChatMessage]
 
     def test_init_with_required_variables(self):
         builder = ChatPromptBuilder(
@@ -76,14 +76,14 @@ class TestChatPromptBuilder:
         # we have inputs that contain: template, template_variables + inferred variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
-        assert inputs["template"].type == Optional[Union[List[ChatMessage], str]]
-        assert inputs["template_variables"].type == Optional[Dict[str, Any]]
+        assert inputs["template"].type == Optional[Union[list[ChatMessage], str]]
+        assert inputs["template_variables"].type == Optional[dict[str, Any]]
         assert inputs["variable"].type == Any
 
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
         assert set(outputs.keys()) == {"prompt"}
-        assert outputs["prompt"].type == List[ChatMessage]
+        assert outputs["prompt"].type == list[ChatMessage]
 
     def test_init_with_custom_variables(self):
         variables = ["var1", "var2", "var3"]
@@ -97,8 +97,8 @@ class TestChatPromptBuilder:
         # we have inputs that contain: template, template_variables + variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2", "var3"}
-        assert inputs["template"].type == Optional[Union[List[ChatMessage], str]]
-        assert inputs["template_variables"].type == Optional[Dict[str, Any]]
+        assert inputs["template"].type == Optional[Union[list[ChatMessage], str]]
+        assert inputs["template_variables"].type == Optional[dict[str, Any]]
         assert inputs["var1"].type == Any
         assert inputs["var2"].type == Any
         assert inputs["var3"].type == Any
@@ -106,7 +106,7 @@ class TestChatPromptBuilder:
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
         assert set(outputs.keys()) == {"prompt"}
-        assert outputs["prompt"].type == List[ChatMessage]
+        assert outputs["prompt"].type == list[ChatMessage]
 
     def test_run(self):
         builder = ChatPromptBuilder(template=[ChatMessage.from_user("This is a {{ variable }}")])
@@ -282,7 +282,7 @@ class TestChatPromptBuilder:
 
         @component
         class DocumentProducer:
-            @component.output_types(documents=List[Document])
+            @component.output_types(documents=list[Document])
             def run(self, doc_input: str):
                 return {"documents": [Document(content=doc_input)]}
 

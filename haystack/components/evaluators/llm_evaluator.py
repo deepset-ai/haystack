@@ -54,9 +54,9 @@ class LLMEvaluator:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         instructions: str,
-        inputs: List[Tuple[str, Type[List]]],
-        outputs: List[str],
-        examples: List[Dict[str, Any]],
+        inputs: list[tuple[str, type[list]]],
+        outputs: list[str],
+        examples: list[dict[str, Any]],
         progress_bar: bool = True,
         *,
         raise_on_failure: bool = True,
@@ -111,7 +111,7 @@ class LLMEvaluator:
 
     @staticmethod
     def validate_init_parameters(
-        inputs: List[Tuple[str, Type[List]]], outputs: List[str], examples: List[Dict[str, Any]]
+        inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]]
     ):
         """
         Validate the init parameters.
@@ -164,8 +164,8 @@ class LLMEvaluator:
                 )
                 raise ValueError(msg)
 
-    @component.output_types(results=List[Dict[str, Any]])
-    def run(self, **inputs) -> Dict[str, Any]:
+    @component.output_types(results=list[dict[str, Any]])
+    def run(self, **inputs) -> dict[str, Any]:
         """
         Run the LLM evaluator.
 
@@ -189,7 +189,7 @@ class LLMEvaluator:
         input_names, values = inputs.keys(), list(zip(*inputs.values()))
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
-        results: List[Optional[Dict[str, Any]]] = []
+        results: list[Optional[dict[str, Any]]] = []
         metadata = []
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
@@ -269,7 +269,7 @@ class LLMEvaluator:
             f"Outputs:\n"
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -289,7 +289,7 @@ class LLMEvaluator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LLMEvaluator":
+    def from_dict(cls, data: dict[str, Any]) -> "LLMEvaluator":
         """
         Deserialize this component from a dictionary.
 
@@ -308,7 +308,7 @@ class LLMEvaluator:
         return default_from_dict(cls, data)
 
     @staticmethod
-    def validate_input_parameters(expected: Dict[str, Any], received: Dict[str, Any]) -> None:
+    def validate_input_parameters(expected: dict[str, Any], received: dict[str, Any]) -> None:
         """
         Validate the input parameters.
 
@@ -345,7 +345,7 @@ class LLMEvaluator:
             )
             raise ValueError(msg)
 
-    def is_valid_json_and_has_expected_keys(self, expected: List[str], received: str) -> bool:
+    def is_valid_json_and_has_expected_keys(self, expected: list[str], received: str) -> bool:
         """
         Output must be a valid JSON with the expected keys.
 

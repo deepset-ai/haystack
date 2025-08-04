@@ -82,7 +82,7 @@ class TestRouter:
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": "{{streams}}",
-                "output_type": List[int],
+                "output_type": list[int],
                 "output_name": "streams",
             },
         ]
@@ -104,7 +104,7 @@ class TestRouter:
                 {
                     "condition": "{{streams|length >= 2}}",
                     "output": "{{streams}}",
-                    "output_type": List[int],
+                    "output_type": list[int],
                     "output_name": "streams",
                 },
             ]
@@ -125,13 +125,13 @@ class TestRouter:
                 "condition": "{{streams|length > 2}}",
                 "output": "{{streams}}",
                 "output_name": "enough_streams",
-                "output_type": List[int],
+                "output_type": list[int],
             },
             {
                 "condition": "{{streams|length <= 2}}",
                 "output": "{{streams}}",
                 "output_name": "insufficient_streams",
-                "output_type": List[int],
+                "output_type": list[int],
             },
         ]
         router = ConditionalRouter(routes)
@@ -145,7 +145,7 @@ class TestRouter:
             {
                 "condition": "{{messages[-1].meta.finish_reason == 'function_call'}}",
                 "output": "{{streams}}",
-                "output_type": List[int],
+                "output_type": list[int],
                 "output_name": "streams",
             },
             {
@@ -174,7 +174,7 @@ class TestRouter:
                 {
                     "condition": "{{streams|length >= 5}}",
                     "output": "{{streams}}",
-                    "output_type": List[int],
+                    "output_type": list[int],
                     "output_name": "streams",
                 },
             ]
@@ -190,7 +190,7 @@ class TestRouter:
         """
         routes = [
             {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
-            ["{{streams|length >= 2}}", "streams", List[int]],
+            ["{{streams|length >= 2}}", "streams", list[int]],
         ]
 
         with pytest.raises(ValueError):
@@ -214,7 +214,7 @@ class TestRouter:
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": "{{streams}}",
-                "output_type": List[int],
+                "output_type": list[int],
                 "output_name": "streams",
             },
         ]
@@ -279,7 +279,7 @@ class TestRouter:
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": "{{streams}}",
-                "output_type": List[int],
+                "output_type": list[int],
                 "output_name": "streams",
             },
         ]
@@ -344,7 +344,7 @@ class TestRouter:
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": "{{streams}}",
-                "output_type": List[int],
+                "output_type": list[int],
                 "output_name": "streams",
             },
         ]
@@ -365,7 +365,7 @@ class TestRouter:
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": "{{streams}}",
-                "output_type": List[int],
+                "output_type": list[int],
                 "output_name": "streams",
             },
         ]
@@ -386,7 +386,7 @@ class TestRouter:
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": "{{streams}}",
-                "output_type": List[int],
+                "output_type": list[int],
                 "output_name": "streams",
             },
         ]
@@ -582,13 +582,13 @@ class TestRouter:
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": ["{{streams}}", "{{query}}"],
-                "output_type": [List[int], str],
+                "output_type": [list[int], str],
                 "output_name": ["streams", "query"],
             },
             {
                 "condition": "{{streams|length < 2}}",
                 "output": ["{{streams}}", "{{custom_error_message}}"],
-                "output_type": [List[int], str],
+                "output_type": [list[int], str],
                 "output_name": ["streams", "custom_error_message"],
             },
         ]
@@ -611,7 +611,7 @@ class TestRouter:
                     {
                         "condition": "{{streams|length >= 2}}",
                         "output": ["{{streams}}", "{{query}}"],
-                        "output_type": [List[int]],
+                        "output_type": [list[int]],
                         "output_name": ["streams"],
                     }
                 ]

@@ -22,14 +22,14 @@ class DocumentStore(Protocol):
     you're using.
     """
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes this store to a dictionary.
         """
         ...
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DocumentStore":
+    def from_dict(cls, data: dict[str, Any]) -> "DocumentStore":
         """
         Deserializes the store from a dictionary.
         """
@@ -41,7 +41,7 @@ class DocumentStore(Protocol):
         """
         ...
 
-    def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
+    def filter_documents(self, filters: Optional[dict[str, Any]] = None) -> list[Document]:
         """
         Returns the documents that match the filters provided.
 
@@ -109,7 +109,7 @@ class DocumentStore(Protocol):
         """
         ...
 
-    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
+    def write_documents(self, documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
         """
         Writes Documents into the DocumentStore.
 
@@ -127,7 +127,7 @@ class DocumentStore(Protocol):
         """
         ...
 
-    def delete_documents(self, document_ids: List[str]) -> None:
+    def delete_documents(self, document_ids: list[str]) -> None:
         """
         Deletes all documents with a matching document_ids from the DocumentStore.
 

@@ -17,14 +17,14 @@ class TestLLMEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("predicted_answers", List[str])],
+            inputs=[("predicted_answers", list[str])],
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
             ],
         )
         assert component.instructions == "test-instruction"
-        assert component.inputs == [("predicted_answers", List[str])]
+        assert component.inputs == [("predicted_answers", list[str])]
         assert component.outputs == ["score"]
         assert component.examples == [
             {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -39,7 +39,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[("predicted_answers", List[str])],
+                inputs=[("predicted_answers", list[str])],
                 outputs=["score"],
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -52,7 +52,7 @@ class TestLLMEvaluator:
         component = LLMEvaluator(
             instructions="test-instruction",
             chat_generator=chat_generator,
-            inputs=[("predicted_answers", List[str])],
+            inputs=[("predicted_answers", list[str])],
             outputs=["custom_score"],
             examples=[
                 {"inputs": {"predicted_answers": "answer 1"}, "outputs": {"custom_score": 1}},
@@ -68,7 +68,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs={("predicted_answers", List[str])},
+                inputs={("predicted_answers", list[str])},
                 outputs=["score"],
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -77,7 +77,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[(List[str], "predicted_answers")],
+                inputs=[(list[str], "predicted_answers")],
                 outputs=["score"],
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -86,7 +86,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[List[str]],
+                inputs=[list[str]],
                 outputs=["score"],
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -106,7 +106,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[("predicted_answers", List[str])],
+                inputs=[("predicted_answers", list[str])],
                 outputs="score",
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -115,7 +115,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[("predicted_answers", List[str])],
+                inputs=[("predicted_answers", list[str])],
                 outputs=[["score"]],
                 examples=[
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -126,7 +126,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[("predicted_answers", List[str])],
+                inputs=[("predicted_answers", list[str])],
                 outputs=["score"],
                 examples={
                     "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
@@ -136,7 +136,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[("predicted_answers", List[str])],
+                inputs=[("predicted_answers", list[str])],
                 outputs=["score"],
                 examples=[
                     [
@@ -150,7 +150,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[("predicted_answers", List[str])],
+                inputs=[("predicted_answers", list[str])],
                 outputs=["score"],
                 examples=[
                     {
@@ -162,7 +162,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[("predicted_answers", List[str])],
+                inputs=[("predicted_answers", list[str])],
                 outputs=["score"],
                 examples=[
                     {
@@ -174,7 +174,7 @@ class TestLLMEvaluator:
         with pytest.raises(ValueError):
             LLMEvaluator(
                 instructions="test-instruction",
-                inputs=[("predicted_answers", List[str])],
+                inputs=[("predicted_answers", list[str])],
                 outputs=["score"],
                 examples=[{"inputs": {1: "Damn, this is straight outta hell!!!"}, "outputs": {2: 1}}],
             )
@@ -185,7 +185,7 @@ class TestLLMEvaluator:
 
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("predicted_answers", List[str])],
+            inputs=[("predicted_answers", list[str])],
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -212,7 +212,7 @@ class TestLLMEvaluator:
 
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("predicted_answers", List[str])],
+            inputs=[("predicted_answers", list[str])],
             outputs=["custom_score"],
             examples=[
                 {
@@ -269,7 +269,7 @@ class TestLLMEvaluator:
         assert component._chat_generator.client.api_key == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.instructions == "test-instruction"
-        assert component.inputs == [("predicted_answers", List[str])]
+        assert component.inputs == [("predicted_answers", list[str])]
         assert component.outputs == ["score"]
         assert component.examples == [
             {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -280,7 +280,7 @@ class TestLLMEvaluator:
         pipeline = Pipeline()
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("questions", List[str]), ("predicted_answers", List[List[str]])],
+            inputs=[("questions", list[str]), ("predicted_answers", list[list[str]])],
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -295,7 +295,7 @@ class TestLLMEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("questions", List[str]), ("predicted_answers", List[List[str]])],
+            inputs=[("questions", list[str]), ("predicted_answers", list[list[str]])],
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -320,7 +320,7 @@ class TestLLMEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("questions", List[str]), ("predicted_answers", List[List[str]])],
+            inputs=[("questions", list[str]), ("predicted_answers", list[list[str]])],
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -339,7 +339,7 @@ class TestLLMEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("predicted_answers", List[str])],
+            inputs=[("predicted_answers", list[str])],
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
@@ -360,7 +360,7 @@ class TestLLMEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("predicted_answers", List[str])],
+            inputs=[("predicted_answers", list[str])],
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -369,24 +369,24 @@ class TestLLMEvaluator:
         # None of the expected parameters are received
         with pytest.raises(ValueError):
             component.validate_input_parameters(
-                expected={"predicted_answers": List[str]}, received={"questions": List[str]}
+                expected={"predicted_answers": list[str]}, received={"questions": list[str]}
             )
 
         # Only one but not all the expected parameters are received
         with pytest.raises(ValueError):
             component.validate_input_parameters(
-                expected={"predicted_answers": List[str], "questions": List[str]}, received={"questions": List[str]}
+                expected={"predicted_answers": list[str], "questions": list[str]}, received={"questions": list[str]}
             )
 
         # Received inputs are not lists
         with pytest.raises(ValueError):
-            component.validate_input_parameters(expected={"questions": List[str]}, received={"questions": str})
+            component.validate_input_parameters(expected={"questions": list[str]}, received={"questions": str})
 
     def test_invalid_outputs(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("predicted_answers", List[str])],
+            inputs=[("predicted_answers", list[str])],
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -404,7 +404,7 @@ class TestLLMEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("predicted_answers", List[str])],
+            inputs=[("predicted_answers", list[str])],
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -420,7 +420,7 @@ class TestLLMEvaluator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = LLMEvaluator(
             instructions="test-instruction",
-            inputs=[("predicted_answers", List[str])],
+            inputs=[("predicted_answers", list[str])],
             outputs=["score"],
             examples=[
                 {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}

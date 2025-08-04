@@ -30,8 +30,8 @@ def get_bytestream_from_source(source: Union[str, Path, ByteStream], guess_mime_
 
 
 def normalize_metadata(
-    meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]], sources_count: int
-) -> List[Dict[str, Any]]:
+    meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]], sources_count: int
+) -> list[dict[str, Any]]:
     """
     Normalize the metadata input for a converter.
 

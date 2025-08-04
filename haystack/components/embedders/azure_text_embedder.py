@@ -50,9 +50,9 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         prefix: str = "",
         suffix: str = "",
         *,
-        default_headers: Optional[Dict[str, str]] = None,
+        default_headers: Optional[dict[str, str]] = None,
         azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Creates an AzureOpenAITextEmbedder component.
@@ -127,7 +127,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
 
-        client_kwargs: Dict[str, Any] = {
+        client_kwargs: dict[str, Any] = {
             "api_version": api_version,
             "azure_endpoint": azure_endpoint,
             "azure_deployment": azure_deployment,
@@ -147,7 +147,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
             http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -176,7 +176,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAITextEmbedder":
+    def from_dict(cls, data: dict[str, Any]) -> "AzureOpenAITextEmbedder":
         """
         Deserializes the component from a dictionary.
 

@@ -25,9 +25,9 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
         base_url: str,
         *,
         data: Optional[Any] = None,
-        parameters: Optional[Dict[str, Any]] = None,
+        parameters: Optional[dict[str, Any]] = None,
         raw_response: bool = False,
-        security: Optional[Dict[str, str]] = None,
+        security: Optional[dict[str, str]] = None,
         session: Optional[Any] = None,
         verify: Union[bool, str] = True,
     ) -> Optional[Any]:
@@ -206,13 +206,13 @@ class OpenAPIServiceConnector:
         openapi_imports.check()
         self.ssl_verify = ssl_verify
 
-    @component.output_types(service_response=Dict[str, Any])
+    @component.output_types(service_response=dict[str, Any])
     def run(
         self,
-        messages: List[ChatMessage],
-        service_openapi_spec: Dict[str, Any],
+        messages: list[ChatMessage],
+        service_openapi_spec: dict[str, Any],
         service_credentials: Optional[Union[dict, str]] = None,
-    ) -> Dict[str, List[ChatMessage]]:
+    ) -> dict[str, list[ChatMessage]]:
         """
         Processes a list of chat messages to invoke a method on an OpenAPI service.
 
@@ -261,7 +261,7 @@ class OpenAPIServiceConnector:
 
         return {"service_response": response_messages}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -271,7 +271,7 @@ class OpenAPIServiceConnector:
         return default_to_dict(self, ssl_verify=self.ssl_verify)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAPIServiceConnector":
+    def from_dict(cls, data: dict[str, Any]) -> "OpenAPIServiceConnector":
         """
         Deserializes the component from a dictionary.
 
@@ -337,7 +337,7 @@ class OpenAPIServiceConnector:
                     f"for it. Check the service configuration and credentials."
                 )
 
-    def _invoke_method(self, openapi_service: "OpenAPI", method_invocation_descriptor: Dict[str, Any]) -> Any:
+    def _invoke_method(self, openapi_service: "OpenAPI", method_invocation_descriptor: dict[str, Any]) -> Any:
         """
         Invokes the specified method on the OpenAPI service.
 
@@ -368,7 +368,7 @@ class OpenAPIServiceConnector:
         operation_dict = operation.raw_element
 
         # Pack URL/query parameters under "parameters" key
-        method_call_params: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        method_call_params: dict[str, dict[str, Any]] = defaultdict(dict)
         parameters = operation_dict.get("parameters", [])
         request_body = operation_dict.get("requestBody", {})
 

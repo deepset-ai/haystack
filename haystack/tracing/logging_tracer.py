@@ -18,7 +18,7 @@ RESET_COLOR = "\033[0m"
 @dataclasses.dataclass
 class LoggingSpan(Span):
     operation_name: str
-    tags: Dict[str, Any] = dataclasses.field(default_factory=dict)
+    tags: dict[str, Any] = dataclasses.field(default_factory=dict)
 
     def set_tag(self, key: str, value: Any) -> None:
         """
@@ -35,7 +35,7 @@ class LoggingTracer(Tracer):
     A simple tracer that logs the operation name and tags of a span.
     """
 
-    def __init__(self, tags_color_strings: Optional[Dict[str, str]] = None) -> None:
+    def __init__(self, tags_color_strings: Optional[dict[str, str]] = None) -> None:
         """
         Initialize the LoggingTracer.
 
@@ -51,7 +51,7 @@ class LoggingTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+        self, operation_name: str, tags: Optional[dict[str, Any]] = None, parent_span: Optional[Span] = None
     ) -> Iterator[Span]:
         """
         Trace the execution of a block of code.

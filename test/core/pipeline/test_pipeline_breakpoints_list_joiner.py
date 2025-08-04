@@ -98,7 +98,7 @@ class TestPipelineBreakpoints:
         pipe.add_component("llm", llm)
         pipe.add_component("feedback_prompt_builder", feedback_prompt_builder)
         pipe.add_component("feedback_llm", feedback_llm)
-        pipe.add_component("list_joiner", ListJoiner(List[ChatMessage]))
+        pipe.add_component("list_joiner", ListJoiner(list[ChatMessage]))
 
         pipe.connect("prompt_builder.prompt", "llm.messages")
         pipe.connect("prompt_builder.prompt", "list_joiner")

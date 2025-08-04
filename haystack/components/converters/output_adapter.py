@@ -44,7 +44,7 @@ class OutputAdapter:
         self,
         template: str,
         output_type: TypeAlias,
-        custom_filters: Optional[Dict[str, Callable]] = None,
+        custom_filters: Optional[dict[str, Callable]] = None,
         unsafe: bool = False,
     ):
         """
@@ -68,7 +68,7 @@ class OutputAdapter:
             This should only be used if you trust the source of the template as it can be lead to remote code execution.
         """
         self.custom_filters = {**(custom_filters or {})}
-        input_types: Set[str] = set()
+        input_types: set[str] = set()
 
         self._unsafe = unsafe
 
@@ -137,7 +137,7 @@ class OutputAdapter:
             raise OutputAdaptationException(f"Error adapting {self.template} with {kwargs}: {e}") from e
         return adapted_outputs
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -154,7 +154,7 @@ class OutputAdapter:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OutputAdapter":
+    def from_dict(cls, data: dict[str, Any]) -> "OutputAdapter":
         """
         Deserializes the component from a dictionary.
 
@@ -174,7 +174,7 @@ class OutputAdapter:
             }
         return default_from_dict(cls, data)
 
-    def _extract_variables(self, env: Environment) -> Set[str]:
+    def _extract_variables(self, env: Environment) -> set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 

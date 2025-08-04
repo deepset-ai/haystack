@@ -156,10 +156,10 @@ class MetaFieldRanker:
                 "MetaFieldRanker." % meta_value_type
             )
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(  # pylint: disable=too-many-positional-arguments
         self,
-        documents: List[Document],
+        documents: list[Document],
         top_k: Optional[int] = None,
         weight: Optional[float] = None,
         ranking_mode: Optional[Literal["reciprocal_rank_fusion", "linear_score"]] = None,
@@ -320,8 +320,8 @@ class MetaFieldRanker:
         return {"documents": sorted_documents[:top_k]}
 
     def _parse_meta(
-        self, docs_with_meta_field: List[Document], meta_value_type: Optional[Literal["float", "int", "date"]]
-    ) -> List[Any]:
+        self, docs_with_meta_field: list[Document], meta_value_type: Optional[Literal["float", "int", "date"]]
+    ) -> list[Any]:
         """
         Parse the meta values stored under `self.meta_field` for the Documents provided in `docs_with_meta_field`.
         """
@@ -364,15 +364,15 @@ class MetaFieldRanker:
 
     def _merge_rankings(
         self,
-        documents: List[Document],
-        sorted_documents: List[Document],
+        documents: list[Document],
+        sorted_documents: list[Document],
         weight: float,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
-    ) -> List[Document]:
+    ) -> list[Document]:
         """
         Merge the two different rankings for Documents sorted both by their content and by their meta field.
         """
-        scores_map: Dict = defaultdict(int)
+        scores_map: dict = defaultdict(int)
 
         if ranking_mode == "reciprocal_rank_fusion":
             for i, (document, sorted_doc) in enumerate(zip(documents, sorted_documents)):

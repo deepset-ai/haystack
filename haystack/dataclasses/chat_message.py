@@ -57,10 +57,10 @@ class ToolCall:
     """
 
     tool_name: str
-    arguments: Dict[str, Any]
+    arguments: dict[str, Any]
     id: Optional[str] = None  # noqa: A003
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert ToolCall into a dictionary.
 
@@ -69,7 +69,7 @@ class ToolCall:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ToolCall":
+    def from_dict(cls, data: dict[str, Any]) -> "ToolCall":
         """
         Creates a new ToolCall object from a dictionary.
 
@@ -95,7 +95,7 @@ class ToolCallResult:
     origin: ToolCall
     error: bool
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Converts ToolCallResult into a dictionary.
 
@@ -104,7 +104,7 @@ class ToolCallResult:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ToolCallResult":
+    def from_dict(cls, data: dict[str, Any]) -> "ToolCallResult":
         """
         Creates a ToolCallResult from a dictionary.
 
@@ -135,7 +135,7 @@ class TextContent:
 ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent]
 
 
-def _deserialize_content_part(part: Dict[str, Any]) -> ChatMessageContentT:
+def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
     """
     Deserialize a single content part of a serialized ChatMessage.
 
@@ -161,7 +161,7 @@ def _deserialize_content_part(part: Dict[str, Any]) -> ChatMessageContentT:
     raise ValueError(f"Unsupported content part in the serialized ChatMessage: `{part}`")
 
 
-def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatMessageContentT]:
+def _deserialize_content(serialized_content: list[dict[str, Any]]) -> list[ChatMessageContentT]:
     """
     Deserialize the `content` field of a serialized ChatMessage.
 
@@ -174,7 +174,7 @@ def _deserialize_content(serialized_content: List[Dict[str, Any]]) -> List[ChatM
     return [_deserialize_content_part(part) for part in serialized_content]
 
 
-def _serialize_content_part(part: ChatMessageContentT) -> Dict[str, Any]:
+def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
     """
     Serialize a single content part of a ChatMessage.
 
@@ -207,7 +207,7 @@ class ChatMessage:
     _role: ChatRole
     _content: Sequence[ChatMessageContentT]
     _name: Optional[str] = None
-    _meta: Dict[str, Any] = field(default_factory=dict, hash=False)
+    _meta: dict[str, Any] = field(default_factory=dict, hash=False)
 
     def __new__(cls, *args, **kwargs):
         """
@@ -262,7 +262,7 @@ class ChatMessage:
         return self._role
 
     @property
-    def meta(self) -> Dict[str, Any]:
+    def meta(self) -> dict[str, Any]:
         """
         Returns the metadata associated with the message.
         """
@@ -276,7 +276,7 @@ class ChatMessage:
         return self._name
 
     @property
-    def texts(self) -> List[str]:
+    def texts(self) -> list[str]:
         """
         Returns the list of all texts contained in the message.
         """
@@ -292,7 +292,7 @@ class ChatMessage:
         return None
 
     @property
-    def tool_calls(self) -> List[ToolCall]:
+    def tool_calls(self) -> list[ToolCall]:
         """
         Returns the list of all Tool calls contained in the message.
         """
@@ -308,7 +308,7 @@ class ChatMessage:
         return None
 
     @property
-    def tool_call_results(self) -> List[ToolCallResult]:
+    def tool_call_results(self) -> list[ToolCallResult]:
         """
         Returns the list of all Tool call results contained in the message.
         """
@@ -324,7 +324,7 @@ class ChatMessage:
         return None
 
     @property
-    def images(self) -> List[ImageContent]:
+    def images(self) -> list[ImageContent]:
         """
         Returns the list of all images contained in the message.
         """
@@ -354,7 +354,7 @@ class ChatMessage:
     def from_user(
         cls,
         text: Optional[str] = None,
-        meta: Optional[Dict[str, Any]] = None,
+        meta: Optional[dict[str, Any]] = None,
         name: Optional[str] = None,
         *,
         content_parts: Optional[Sequence[Union[TextContent, str, ImageContent]]] = None,
@@ -391,7 +391,7 @@ class ChatMessage:
         return cls(_role=ChatRole.USER, _content=content, _meta=meta or {}, _name=name)
 
     @classmethod
-    def from_system(cls, text: str, meta: Optional[Dict[str, Any]] = None, name: Optional[str] = None) -> "ChatMessage":
+    def from_system(cls, text: str, meta: Optional[dict[str, Any]] = None, name: Optional[str] = None) -> "ChatMessage":
         """
         Create a message from the system.
 
@@ -406,9 +406,9 @@ class ChatMessage:
     def from_assistant(
         cls,
         text: Optional[str] = None,
-        meta: Optional[Dict[str, Any]] = None,
+        meta: Optional[dict[str, Any]] = None,
         name: Optional[str] = None,
-        tool_calls: Optional[List[ToolCall]] = None,
+        tool_calls: Optional[list[ToolCall]] = None,
     ) -> "ChatMessage":
         """
         Create a message from the assistant.
@@ -419,7 +419,7 @@ class ChatMessage:
         :param name: An optional name for the participant. This field is only supported by OpenAI.
         :returns: A new ChatMessage instance.
         """
-        content: List[ChatMessageContentT] = []
+        content: list[ChatMessageContentT] = []
         if text is not None:
             content.append(TextContent(text=text))
         if tool_calls:
@@ -429,7 +429,7 @@ class ChatMessage:
 
     @classmethod
     def from_tool(
-        cls, tool_result: str, origin: ToolCall, error: bool = False, meta: Optional[Dict[str, Any]] = None
+        cls, tool_result: str, origin: ToolCall, error: bool = False, meta: Optional[dict[str, Any]] = None
     ) -> "ChatMessage":
         """
         Create a message from a Tool.
@@ -446,7 +446,7 @@ class ChatMessage:
             _meta=meta or {},
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Converts ChatMessage into a dictionary.
 
@@ -454,7 +454,7 @@ class ChatMessage:
             Serialized version of the object.
         """
 
-        serialized: Dict[str, Any] = {}
+        serialized: dict[str, Any] = {}
         serialized["role"] = self._role.value
         serialized["meta"] = self._meta
         serialized["name"] = self._name
@@ -463,7 +463,7 @@ class ChatMessage:
         return serialized
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ChatMessage":
+    def from_dict(cls, data: dict[str, Any]) -> "ChatMessage":
         """
         Creates a new ChatMessage object from a dictionary.
 
@@ -481,7 +481,7 @@ class ChatMessage:
             )
 
         if "content" in data:
-            init_params: Dict[str, Any] = {
+            init_params: dict[str, Any] = {
                 "_role": ChatRole(data["role"]),
                 "_name": data.get("name"),
                 "_meta": data.get("meta") or {},
@@ -508,7 +508,7 @@ class ChatMessage:
 
         raise ValueError(f"Missing 'content' or '_content' in serialized ChatMessage: `{data}`")
 
-    def to_openai_dict_format(self, require_tool_call_ids: bool = True) -> Dict[str, Any]:
+    def to_openai_dict_format(self, require_tool_call_ids: bool = True) -> dict[str, Any]:
         """
         Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
 
@@ -535,7 +535,7 @@ class ChatMessage:
                 "For OpenAI compatibility, a `ChatMessage` can only contain one `TextContent` or one `ToolCallResult`."
             )
 
-        openai_msg: Dict[str, Any] = {"role": self._role.value}
+        openai_msg: dict[str, Any] = {"role": self._role.value}
 
         # Add name field if present
         if self._name is not None:
@@ -553,7 +553,7 @@ class ChatMessage:
                 if isinstance(part, TextContent):
                     content.append({"type": "text", "text": part.text})
                 elif isinstance(part, ImageContent):
-                    image_item: Dict[str, Any] = {
+                    image_item: dict[str, Any] = {
                         "type": "image_url",
                         # If no MIME type is provided, default to JPEG.
                         # OpenAI API appears to tolerate MIME type mismatches.
@@ -596,7 +596,7 @@ class ChatMessage:
         return openai_msg
 
     @staticmethod
-    def _validate_openai_message(message: Dict[str, Any]) -> None:
+    def _validate_openai_message(message: dict[str, Any]) -> None:
         """
         Validate that a message dictionary follows OpenAI's Chat API format.
 
@@ -624,7 +624,7 @@ class ChatMessage:
             raise ValueError(f"The `content` field is required for {role} messages.")
 
     @classmethod
-    def from_openai_dict_format(cls, message: Dict[str, Any]) -> "ChatMessage":
+    def from_openai_dict_format(cls, message: dict[str, Any]) -> "ChatMessage":
         """
         Create a ChatMessage from a dictionary in the format expected by OpenAI's Chat API.
 

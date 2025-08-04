@@ -31,8 +31,8 @@ class OutputValidator:
         self.iteration_counter = 0
 
     # Define the component output
-    @component.output_types(valid_replies=List[str], invalid_replies=Optional[List[str]], error_message=Optional[str])
-    def run(self, replies: List[ChatMessage]):
+    @component.output_types(valid_replies=list[str], invalid_replies=Optional[list[str]], error_message=Optional[str])
+    def run(self, replies: list[ChatMessage]):
         self.iteration_counter += 1
 
         ## Try to parse the LLM's reply ##
@@ -65,7 +65,7 @@ class City(BaseModel):
 
 
 class CitiesData(BaseModel):
-    cities: List[City]
+    cities: list[City]
 
 
 class TestPipelineBreakpointsLoops:

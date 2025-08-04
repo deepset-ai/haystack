@@ -69,10 +69,10 @@ class OpenAIGenerator:
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
         system_prompt: Optional[str] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-4o-mini
@@ -141,13 +141,13 @@ class OpenAIGenerator:
             http_client=init_http_client(self.http_client_kwargs, async_client=False),
         )
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
         return {"model": self.model}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -168,7 +168,7 @@ class OpenAIGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "OpenAIGenerator":
         """
         Deserialize this component from a dictionary.
 
@@ -184,13 +184,13 @@ class OpenAIGenerator:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
+    @component.output_types(replies=list[str], meta=list[dict[str, Any]])
     def run(
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
@@ -236,14 +236,14 @@ class OpenAIGenerator:
             **generation_kwargs,
         )
 
-        completions: List[ChatMessage] = []
+        completions: list[ChatMessage] = []
         if streaming_callback is not None:
             num_responses = generation_kwargs.pop("n", 1)
             if num_responses > 1:
                 raise ValueError("Cannot stream multiple responses, please set n=1.")
 
             component_info = ComponentInfo.from_component(self)
-            chunks: List[StreamingChunk] = []
+            chunks: list[StreamingChunk] = []
             for chunk in completion:
                 chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(
                     chunk=chunk,  # type: ignore

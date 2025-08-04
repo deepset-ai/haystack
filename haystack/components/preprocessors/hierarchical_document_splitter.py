@@ -36,7 +36,7 @@ class HierarchicalDocumentSplitter:
 
     def __init__(
         self,
-        block_sizes: Set[int],
+        block_sizes: set[int],
         split_overlap: int = 0,
         split_by: Literal["word", "sentence", "page", "passage"] = "word",
     ):
@@ -49,13 +49,13 @@ class HierarchicalDocumentSplitter:
         """
 
         self.block_sizes = sorted(set(block_sizes), reverse=True)
-        self.splitters: Dict[int, DocumentSplitter] = {}
+        self.splitters: dict[int, DocumentSplitter] = {}
         self.split_overlap = split_overlap
         self.split_by = split_by
         self._build_block_sizes()
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]):
         """
         Builds a hierarchical document structure for each document in a list of documents.
 
@@ -82,7 +82,7 @@ class HierarchicalDocumentSplitter:
         document.meta["__level"] = 0
         return document
 
-    def build_hierarchy_from_doc(self, document: Document) -> List[Document]:
+    def build_hierarchy_from_doc(self, document: Document) -> list[Document]:
         """
         Build a hierarchical tree document structure from a single document.
 
@@ -119,7 +119,7 @@ class HierarchicalDocumentSplitter:
 
         return [root] + all_docs
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of the component.
 
@@ -131,7 +131,7 @@ class HierarchicalDocumentSplitter:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HierarchicalDocumentSplitter":
+    def from_dict(cls, data: dict[str, Any]) -> "HierarchicalDocumentSplitter":
         """
         Deserialize this component from a dictionary.
 

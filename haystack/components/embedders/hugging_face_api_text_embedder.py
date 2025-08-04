@@ -75,7 +75,7 @@ class HuggingFaceAPITextEmbedder:
     def __init__(
         self,
         api_type: Union[HFEmbeddingAPIType, str],
-        api_params: Dict[str, str],
+        api_params: dict[str, str],
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
@@ -171,7 +171,7 @@ class HuggingFaceAPITextEmbedder:
 
         return text_to_embed, truncate, normalize
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -190,7 +190,7 @@ class HuggingFaceAPITextEmbedder:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceAPITextEmbedder":
+    def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceAPITextEmbedder":
         """
         Deserializes the component from a dictionary.
 
@@ -202,7 +202,7 @@ class HuggingFaceAPITextEmbedder:
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
-    @component.output_types(embedding=List[float])
+    @component.output_types(embedding=list[float])
     def run(self, text: str):
         """
         Embeds a single string.
@@ -230,7 +230,7 @@ class HuggingFaceAPITextEmbedder:
 
         return {"embedding": embedding}
 
-    @component.output_types(embedding=List[float])
+    @component.output_types(embedding=list[float])
     async def run_async(self, text: str):
         """
         Embeds a single string asynchronously.

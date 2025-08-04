@@ -86,7 +86,7 @@ class DocumentRecallEvaluator:
         self.mode = mode
 
     @staticmethod
-    def _recall_single_hit(ground_truth_documents: List[Document], retrieved_documents: List[Document]) -> float:
+    def _recall_single_hit(ground_truth_documents: list[Document], retrieved_documents: list[Document]) -> float:
         unique_truths = {g.content for g in ground_truth_documents}
         unique_retrievals = {p.content for p in retrieved_documents}
         retrieved_ground_truths = unique_truths.intersection(unique_retrievals)
@@ -94,7 +94,7 @@ class DocumentRecallEvaluator:
         return float(len(retrieved_ground_truths) > 0)
 
     @staticmethod
-    def _recall_multi_hit(ground_truth_documents: List[Document], retrieved_documents: List[Document]) -> float:
+    def _recall_multi_hit(ground_truth_documents: list[Document], retrieved_documents: list[Document]) -> float:
         unique_truths = {g.content for g in ground_truth_documents}
         unique_retrievals = {p.content for p in retrieved_documents}
         retrieved_ground_truths = unique_truths.intersection(unique_retrievals)
@@ -115,10 +115,10 @@ class DocumentRecallEvaluator:
 
         return len(retrieved_ground_truths) / len(unique_truths)
 
-    @component.output_types(score=float, individual_scores=List[float])
+    @component.output_types(score=float, individual_scores=list[float])
     def run(
-        self, ground_truth_documents: List[List[Document]], retrieved_documents: List[List[Document]]
-    ) -> Dict[str, Any]:
+        self, ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]
+    ) -> dict[str, Any]:
         """
         Run the DocumentRecallEvaluator on the given inputs.
 
@@ -144,7 +144,7 @@ class DocumentRecallEvaluator:
 
         return {"score": sum(scores) / len(retrieved_documents), "individual_scores": scores}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 

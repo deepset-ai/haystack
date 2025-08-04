@@ -46,9 +46,9 @@ class XLSXToDocument:
     def __init__(
         self,
         table_format: Literal["csv", "markdown"] = "csv",
-        sheet_name: Union[str, int, List[Union[str, int]], None] = None,
-        read_excel_kwargs: Optional[Dict[str, Any]] = None,
-        table_format_kwargs: Optional[Dict[str, Any]] = None,
+        sheet_name: Union[str, int, list[Union[str, int]], None] = None,
+        read_excel_kwargs: Optional[dict[str, Any]] = None,
+        table_format_kwargs: Optional[dict[str, Any]] = None,
         *,
         store_full_path: bool = False,
     ):
@@ -79,12 +79,12 @@ class XLSXToDocument:
         self.table_format_kwargs = table_format_kwargs or {}
         self.store_full_path = store_full_path
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(
         self,
-        sources: List[Union[str, Path, ByteStream]],
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-    ) -> Dict[str, List[Document]]:
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+    ) -> dict[str, list[Document]]:
         """
         Converts a XLSX file to a Document.
 
@@ -136,7 +136,7 @@ class XLSXToDocument:
         return {"documents": documents}
 
     @staticmethod
-    def _generate_excel_column_names(n_cols: int) -> List[str]:
+    def _generate_excel_column_names(n_cols: int) -> list[str]:
         result = []
         for i in range(n_cols):
             col_name = ""
@@ -147,7 +147,7 @@ class XLSXToDocument:
             result.append(col_name)
         return result
 
-    def _extract_tables(self, bytestream: ByteStream) -> Tuple[List[str], List[Dict]]:
+    def _extract_tables(self, bytestream: ByteStream) -> tuple[list[str], list[dict]]:
         """
         Extract tables from a Excel file.
         """

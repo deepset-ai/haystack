@@ -40,7 +40,7 @@ class FilterPolicy(Enum):
         return policy
 
 
-def is_comparison_filter(filter_item: Dict[str, Any]) -> bool:
+def is_comparison_filter(filter_item: dict[str, Any]) -> bool:
     """
     Check if the given filter is a comparison filter.
 
@@ -50,7 +50,7 @@ def is_comparison_filter(filter_item: Dict[str, Any]) -> bool:
     return all(key in filter_item for key in ["field", "operator", "value"])
 
 
-def is_logical_filter(filter_item: Dict[str, Any]) -> bool:
+def is_logical_filter(filter_item: dict[str, Any]) -> bool:
     """
     Check if the given filter is a logical filter.
 
@@ -61,8 +61,8 @@ def is_logical_filter(filter_item: Dict[str, Any]) -> bool:
 
 
 def combine_two_logical_filters(
-    init_logical_filter: Dict[str, Any], runtime_logical_filter: Dict[str, Any]
-) -> Dict[str, Any]:
+    init_logical_filter: dict[str, Any], runtime_logical_filter: dict[str, Any]
+) -> dict[str, Any]:
     """
     Combine two logical filters, they must have the same operator.
 
@@ -122,10 +122,10 @@ def combine_two_logical_filters(
 
 
 def combine_init_comparison_and_runtime_logical_filters(
-    init_comparison_filter: Dict[str, Any],
-    runtime_logical_filter: Dict[str, Any],
+    init_comparison_filter: dict[str, Any],
+    runtime_logical_filter: dict[str, Any],
     logical_operator: Literal["AND", "OR", "NOT"],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Combine a runtime logical filter with the init comparison filter using the provided logical_operator.
 
@@ -182,10 +182,10 @@ def combine_init_comparison_and_runtime_logical_filters(
 
 
 def combine_runtime_comparison_and_init_logical_filters(
-    runtime_comparison_filter: Dict[str, Any],
-    init_logical_filter: Dict[str, Any],
+    runtime_comparison_filter: dict[str, Any],
+    init_logical_filter: dict[str, Any],
     logical_operator: Literal["AND", "OR", "NOT"],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Combine an init logical filter with the runtime comparison filter using the provided logical_operator.
 
@@ -240,10 +240,10 @@ def combine_runtime_comparison_and_init_logical_filters(
 
 
 def combine_two_comparison_filters(
-    init_comparison_filter: Dict[str, Any],
-    runtime_comparison_filter: Dict[str, Any],
+    init_comparison_filter: dict[str, Any],
+    runtime_comparison_filter: dict[str, Any],
     logical_operator: Literal["AND", "OR", "NOT"],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Combine a comparison filter with the `init_comparison_filter` using the provided `logical_operator`.
 
@@ -282,10 +282,10 @@ def combine_two_comparison_filters(
 
 def apply_filter_policy(
     filter_policy: FilterPolicy,
-    init_filters: Optional[Dict[str, Any]] = None,
-    runtime_filters: Optional[Dict[str, Any]] = None,
+    init_filters: Optional[dict[str, Any]] = None,
+    runtime_filters: Optional[dict[str, Any]] = None,
     default_logical_operator: Literal["AND", "OR", "NOT"] = "AND",
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     """
     Apply the filter policy to the given initial and runtime filters to determine the final set of filters used.
 

@@ -14,7 +14,7 @@ class _delegate_default:
 T = TypeVar("T")
 
 
-def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> Tuple[bool, Optional[T]]:
+def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> tuple[bool, Optional[T]]:
     """
     Check if two types are compatible (bidirectional/symmetric check).
 
@@ -30,7 +30,7 @@ def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> Tuple[bool
     return _types_are_compatible(type1_unwrapped, type2_unwrapped)
 
 
-def _types_are_compatible(type1: T, type2: T) -> Tuple[bool, Optional[T]]:
+def _types_are_compatible(type1: T, type2: T) -> tuple[bool, Optional[T]]:
     """
     Core type compatibility check implementing symmetric matching.
 
@@ -59,7 +59,7 @@ def _types_are_compatible(type1: T, type2: T) -> Tuple[bool, Optional[T]]:
     return _check_non_union_compatibility(type1, type2, type1_origin, type2_origin)
 
 
-def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> Tuple[bool, Optional[T]]:
+def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> tuple[bool, Optional[T]]:
     """Handle all Union type compatibility cases."""
     if type1_origin is Union and type2_origin is not Union:
         # Find all compatible types from the union
@@ -107,7 +107,7 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
 
 def _check_non_union_compatibility(
     type1: T, type2: T, type1_origin: Any, type2_origin: Any
-) -> Tuple[bool, Optional[T]]:
+) -> tuple[bool, Optional[T]]:
     """Handle non-Union type compatibility cases."""
     # If no origin, compare types directly
     if not type1_origin and not type2_origin:
@@ -237,10 +237,10 @@ def _convert_to_typing_type(t: Any) -> Any:
 
     # Mapping of built-in types to their typing equivalents
     type_converters = {
-        list: lambda: List if not args else List[Any],
-        dict: lambda: Dict if not args else Dict[Any, Any],
-        set: lambda: Set if not args else Set[Any],
-        tuple: lambda: Tuple if not args else Tuple[Any, ...],
+        list: lambda: list if not args else list[Any],
+        dict: lambda: dict if not args else dict[Any, Any],
+        set: lambda: set if not args else set[Any],
+        tuple: lambda: tuple if not args else tuple[Any, ...],
     }
 
     # Recursive argument handling
@@ -248,12 +248,12 @@ def _convert_to_typing_type(t: Any) -> Any:
         result = type_converters[origin]()
         if args:
             if origin == list:
-                return List[_convert_to_typing_type(args[0])]  # type: ignore
+                return list[_convert_to_typing_type(args[0])]  # type: ignore
             if origin == dict:
-                return Dict[_convert_to_typing_type(args[0]), _convert_to_typing_type(args[1])]  # type: ignore
+                return dict[_convert_to_typing_type(args[0]), _convert_to_typing_type(args[1])]  # type: ignore
             if origin == set:
-                return Set[_convert_to_typing_type(args[0])]  # type: ignore
+                return set[_convert_to_typing_type(args[0])]  # type: ignore
             if origin == tuple:
-                return Tuple[tuple(_convert_to_typing_type(arg) for arg in args)]
+                return tuple[tuple(_convert_to_typing_type(arg) for arg in args)]
         return result
     return t

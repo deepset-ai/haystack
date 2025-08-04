@@ -70,7 +70,7 @@ class Jinja2TimeExtension(Extension):
 
         return dt.strftime(datetime_format)
 
-    def parse(self, parser: Any) -> Union[nodes.Node, List[nodes.Node]]:
+    def parse(self, parser: Any) -> Union[nodes.Node, list[nodes.Node]]:
         """
         Parse the template expression to determine how to handle the datetime formatting.
 

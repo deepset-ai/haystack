@@ -57,7 +57,7 @@ class DocumentSplitter:
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
-        splitting_function: Optional[Callable[[str], List[str]]] = None,
+        splitting_function: Optional[Callable[[str], list[str]]] = None,
         respect_sentence_boundary: bool = False,
         language: Language = "en",
         use_split_rules: bool = True,
@@ -168,8 +168,8 @@ class DocumentSplitter:
                 keep_white_spaces=True,
             )
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]):
         """
         Split documents into smaller parts.
 
@@ -194,7 +194,7 @@ class DocumentSplitter:
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("DocumentSplitter expects a List of Documents as input.")
 
-        split_docs: List[Document] = []
+        split_docs: list[Document] = []
         for doc in documents:
             if doc.content is None:
                 raise ValueError(
@@ -207,7 +207,7 @@ class DocumentSplitter:
             split_docs += self._split_document(doc)
         return {"documents": split_docs}
 
-    def _split_document(self, doc: Document) -> List[Document]:
+    def _split_document(self, doc: Document) -> list[Document]:
         if self.split_by == "sentence" or self.respect_sentence_boundary:
             return self._split_by_nltk_sentence(doc)
 
@@ -216,7 +216,7 @@ class DocumentSplitter:
 
         return self._split_by_character(doc)
 
-    def _split_by_nltk_sentence(self, doc: Document) -> List[Document]:
+    def _split_by_nltk_sentence(self, doc: Document) -> list[Document]:
         split_docs = []
 
         result = self.sentence_splitter.split_sentences(doc.content)  # type: ignore # None check is done in run()
@@ -241,7 +241,7 @@ class DocumentSplitter:
 
         return split_docs
 
-    def _split_by_character(self, doc) -> List[Document]:
+    def _split_by_character(self, doc) -> list[Document]:
         split_at = _CHARACTER_SPLIT_BY_MAPPING[self.split_by]
         units = doc.content.split(split_at)
         # Add the delimiter back to all units except the last one
@@ -256,10 +256,10 @@ class DocumentSplitter:
             text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
         )
 
-    def _split_by_function(self, doc) -> List[Document]:
+    def _split_by_function(self, doc) -> list[Document]:
         # the check for None is done already in the run method
         splits = self.splitting_function(doc.content)  # type: ignore
-        docs: List[Document] = []
+        docs: list[Document] = []
         for s in splits:
             meta = deepcopy(doc.meta)
             meta["source_id"] = doc.id
@@ -267,8 +267,8 @@ class DocumentSplitter:
         return docs
 
     def _concatenate_units(
-        self, elements: List[str], split_length: int, split_overlap: int, split_threshold: int
-    ) -> Tuple[List[str], List[int], List[int]]:
+        self, elements: list[str], split_length: int, split_overlap: int, split_threshold: int
+    ) -> tuple[list[str], list[int], list[int]]:
         """
         Concatenates the elements into parts of split_length units.
 
@@ -277,9 +277,9 @@ class DocumentSplitter:
         units with the last split, preventing the creation of excessively small splits.
         """
 
-        text_splits: List[str] = []
-        splits_pages: List[int] = []
-        splits_start_idxs: List[int] = []
+        text_splits: list[str] = []
+        splits_pages: list[int] = []
+        splits_start_idxs: list[int] = []
         cur_start_idx = 0
         cur_page = 1
         segments = windowed(elements, n=split_length, step=split_length - split_overlap)
@@ -312,12 +312,12 @@ class DocumentSplitter:
         return text_splits, splits_pages, splits_start_idxs
 
     def _create_docs_from_splits(
-        self, text_splits: List[str], splits_pages: List[int], splits_start_idxs: List[int], meta: Dict[str, Any]
-    ) -> List[Document]:
+        self, text_splits: list[str], splits_pages: list[int], splits_start_idxs: list[int], meta: dict[str, Any]
+    ) -> list[Document]:
         """
         Creates Document objects from splits enriching them with page number and the metadata of the original document.
         """
-        documents: List[Document] = []
+        documents: list[Document] = []
 
         for i, (txt, split_idx) in enumerate(zip(text_splits, splits_start_idxs)):
             copied_meta = deepcopy(meta)
@@ -367,7 +367,7 @@ class DocumentSplitter:
                 overlapping_range = (0, overlapping_range[1] - overlapping_range[0])
                 previous_doc.meta["_split_overlap"].append({"doc_id": current_doc.id, "range": overlapping_range})
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
         """
@@ -388,7 +388,7 @@ class DocumentSplitter:
         return serialized
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DocumentSplitter":
+    def from_dict(cls, data: dict[str, Any]) -> "DocumentSplitter":
         """
         Deserializes the component from a dictionary.
         """
@@ -402,8 +402,8 @@ class DocumentSplitter:
 
     @staticmethod
     def _concatenate_sentences_based_on_word_amount(
-        sentences: List[str], split_length: int, split_overlap: int
-    ) -> Tuple[List[str], List[int], List[int]]:
+        sentences: list[str], split_length: int, split_overlap: int
+    ) -> tuple[list[str], list[int], list[int]]:
         """
         Groups the sentences into chunks of `split_length` words while respecting sentence boundaries.
 
@@ -419,10 +419,10 @@ class DocumentSplitter:
         chunk_word_count = 0
         chunk_starting_page_number = 1
         chunk_start_idx = 0
-        current_chunk: List[str] = []
+        current_chunk: list[str] = []
         # output lists
         split_start_page_numbers = []
-        list_of_splits: List[List[str]] = []
+        list_of_splits: list[list[str]] = []
         split_start_indices = []
 
         for sentence_idx, sentence in enumerate(sentences):
@@ -470,7 +470,7 @@ class DocumentSplitter:
         return text_splits, split_start_page_numbers, split_start_indices
 
     @staticmethod
-    def _number_of_sentences_to_keep(sentences: List[str], split_length: int, split_overlap: int) -> int:
+    def _number_of_sentences_to_keep(sentences: list[str], split_length: int, split_overlap: int) -> int:
         """
         Returns the number of sentences to keep in the next chunk based on the `split_overlap` and `split_length`.
 

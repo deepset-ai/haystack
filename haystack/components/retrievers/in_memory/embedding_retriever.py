@@ -53,7 +53,7 @@ class InMemoryEmbeddingRetriever:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         document_store: InMemoryDocumentStore,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[dict[str, Any]] = None,
         top_k: int = 10,
         scale_score: bool = False,
         return_embedding: bool = False,
@@ -96,13 +96,13 @@ class InMemoryEmbeddingRetriever:
         self.return_embedding = return_embedding
         self.filter_policy = filter_policy
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
         return {"document_store": type(self.document_store).__name__}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -121,7 +121,7 @@ class InMemoryEmbeddingRetriever:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "InMemoryEmbeddingRetriever":
+    def from_dict(cls, data: dict[str, Any]) -> "InMemoryEmbeddingRetriever":
         """
         Deserializes the component from a dictionary.
 
@@ -142,11 +142,11 @@ class InMemoryEmbeddingRetriever:
         )
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(  # pylint: disable=too-many-positional-arguments
         self,
-        query_embedding: List[float],
-        filters: Optional[Dict[str, Any]] = None,
+        query_embedding: list[float],
+        filters: Optional[dict[str, Any]] = None,
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         return_embedding: Optional[bool] = None,
@@ -193,11 +193,11 @@ class InMemoryEmbeddingRetriever:
 
         return {"documents": docs}
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     async def run_async(  # pylint: disable=too-many-positional-arguments
         self,
-        query_embedding: List[float],
-        filters: Optional[Dict[str, Any]] = None,
+        query_embedding: list[float],
+        filters: Optional[dict[str, Any]] = None,
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         return_embedding: Optional[bool] = None,

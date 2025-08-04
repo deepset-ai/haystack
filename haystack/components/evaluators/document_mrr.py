@@ -42,10 +42,10 @@ class DocumentMRREvaluator:
     """
 
     # Refer to https://www.pinecone.io/learn/offline-evaluation/ for the algorithm.
-    @component.output_types(score=float, individual_scores=List[float])
+    @component.output_types(score=float, individual_scores=list[float])
     def run(
-        self, ground_truth_documents: List[List[Document]], retrieved_documents: List[List[Document]]
-    ) -> Dict[str, Any]:
+        self, ground_truth_documents: list[list[Document]], retrieved_documents: list[list[Document]]
+    ) -> dict[str, Any]:
         """
         Run the DocumentMRREvaluator on the given inputs.
 

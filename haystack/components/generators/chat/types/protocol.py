@@ -21,7 +21,7 @@ class ChatGenerator(Protocol):
     responses using a Language Model. They return a dictionary.
     """
 
-    def run(self, messages: List[ChatMessage]) -> Dict[str, Any]:
+    def run(self, messages: list[ChatMessage]) -> dict[str, Any]:
         """
         Generate messages using the underlying Language Model.
 

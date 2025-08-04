@@ -75,7 +75,7 @@ def tools():
     return [tool]
 
 
-def custom_tool_parser(text: str) -> Optional[List[ToolCall]]:
+def custom_tool_parser(text: str) -> Optional[list[ToolCall]]:
     """Test implementation of a custom tool parser."""
     return [ToolCall(tool_name="weather", arguments={"city": "Berlin"})]
 

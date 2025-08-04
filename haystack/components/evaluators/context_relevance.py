@@ -99,7 +99,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        examples: Optional[List[Dict[str, Any]]] = None,
+        examples: Optional[list[dict[str, Any]]] = None,
         progress_bar: bool = True,
         raise_on_failure: bool = True,
         chat_generator: Optional[ChatGenerator] = None,
@@ -142,7 +142,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             "required to answer the following question. If no relevant sentences are found, or if you "
             "believe the question cannot be answered from the given context, return an empty list, example: []"
         )
-        self.inputs = [("questions", List[str]), ("contexts", List[List[str]])]
+        self.inputs = [("questions", list[str]), ("contexts", list[list[str]])]
         self.outputs = ["relevant_statements"]
         self.examples = examples or _DEFAULT_EXAMPLES
 
@@ -156,8 +156,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             progress_bar=progress_bar,
         )
 
-    @component.output_types(score=float, results=List[Dict[str, Any]])
-    def run(self, **inputs) -> Dict[str, Any]:
+    @component.output_types(score=float, results=list[dict[str, Any]])
+    def run(self, **inputs) -> dict[str, Any]:
         """
         Run the LLM evaluator.
 
@@ -187,7 +187,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
         return result
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -203,7 +203,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ContextRelevanceEvaluator":
+    def from_dict(cls, data: dict[str, Any]) -> "ContextRelevanceEvaluator":
         """
         Deserialize this component from a dictionary.
 

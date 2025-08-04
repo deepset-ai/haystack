@@ -67,9 +67,9 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         system_prompt: Optional[str] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        default_headers: Optional[Dict[str, str]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        default_headers: Optional[dict[str, str]] = None,
         *,
         azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
     ):
@@ -164,7 +164,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             default_headers=self.default_headers,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -194,7 +194,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAIGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "AzureOpenAIGenerator":
         """
         Deserialize this component from a dictionary.
 

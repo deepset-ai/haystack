@@ -42,7 +42,7 @@ class DALLEImageGenerator:
         organization: Optional[str] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
@@ -94,7 +94,7 @@ class DALLEImageGenerator:
                 http_client=init_http_client(self.http_client_kwargs, async_client=False),
             )
 
-    @component.output_types(images=List[str], revised_prompt=str)
+    @component.output_types(images=list[str], revised_prompt=str)
     def run(
         self,
         prompt: str,
@@ -136,7 +136,7 @@ class DALLEImageGenerator:
             revised_prompt = ""
         return {"images": [image_str], "revised_prompt": revised_prompt}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -156,7 +156,7 @@ class DALLEImageGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DALLEImageGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "DALLEImageGenerator":
         """
         Deserialize this component from a dictionary.
 

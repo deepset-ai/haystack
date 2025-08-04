@@ -51,7 +51,7 @@ class CacheChecker:
         self.document_store = document_store
         self.cache_field = cache_field
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -61,7 +61,7 @@ class CacheChecker:
         return default_to_dict(self, document_store=self.document_store.to_dict(), cache_field=self.cache_field)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CacheChecker":
+    def from_dict(cls, data: dict[str, Any]) -> "CacheChecker":
         """
         Deserializes the component from a dictionary.
 
@@ -75,8 +75,8 @@ class CacheChecker:
 
         return default_from_dict(cls, data)
 
-    @component.output_types(hits=List[Document], misses=List)
-    def run(self, items: List[Any]):
+    @component.output_types(hits=list[Document], misses=list)
+    def run(self, items: list[Any]):
         """
         Checks if any document associated with the specified cache field is already present in the store.
 

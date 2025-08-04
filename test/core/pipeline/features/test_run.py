@@ -88,7 +88,7 @@ def pipeline_that_is_linear(pipeline_class):
 
 @given("a pipeline that has an infinite loop", target_fixture="pipeline_data")
 def pipeline_that_has_an_infinite_loop(pipeline_class):
-    routes: List[Route] = [
+    routes: list[Route] = [
         {"condition": "{{number > 2}}", "output": "{{number}}", "output_name": "big_number", "output_type": int},
         {"condition": "{{number <= 2}}", "output": "{{number + 2}}", "output_name": "small_number", "output_type": int},
     ]
@@ -208,7 +208,7 @@ def pipeline_that_has_a_single_component_with_a_default_input(pipeline_class):
     @component
     class WithDefault:
         @component.output_types(b=int)
-        def run(self, a: int, b: int = 2) -> Dict[str, int]:
+        def run(self, a: int, b: int = 2) -> dict[str, int]:
             return {"c": a + b}
 
     pipeline = pipeline_class(max_runs_per_component=1)
@@ -638,8 +638,8 @@ def pipeline_that_has_two_branches_one_of_which_loops_back(pipeline_class):
 def pipeline_that_has_a_component_with_mutable_input(pipeline_class):
     @component
     class InputMangler:
-        @component.output_types(mangled_list=List[str])
-        def run(self, input_list: List[str]) -> Dict[str, List[str]]:
+        @component.output_types(mangled_list=list[str])
+        def run(self, input_list: list[str]) -> dict[str, list[str]]:
             input_list.append("extra_item")
             return {"mangled_list": input_list}
 
@@ -678,21 +678,21 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
     @component
     class PassThroughPromptBuilder:
         # This is a pass-through component that returns the same input
-        @component.output_types(prompt=List[ChatMessage])
-        def run(self, prompt_source: List[ChatMessage]) -> Dict[str, List[ChatMessage]]:
+        @component.output_types(prompt=list[ChatMessage])
+        def run(self, prompt_source: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
             return {"prompt": prompt_source}
 
     @component
     class MessageMerger:
         @component.output_types(merged_message=str)
-        def run(self, messages: List[ChatMessage], metadata: Optional[dict] = None) -> Dict[str, str]:
+        def run(self, messages: list[ChatMessage], metadata: Optional[dict] = None) -> dict[str, str]:
             return {"merged_message": "\n".join(t.text or "" for t in messages)}
 
     @component
     class FakeGenerator:
         # This component is a fake generator that always returns the same message
-        @component.output_types(replies=List[ChatMessage])
-        def run(self, messages: List[ChatMessage]) -> Dict[str, List[ChatMessage]]:
+        @component.output_types(replies=list[ChatMessage])
+        def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
             return {"replies": [ChatMessage.from_assistant("Fake message")]}
 
     prompt_builder = PassThroughPromptBuilder()
@@ -834,7 +834,7 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
     template = "Given this documents: {{ documents|join(', ', attribute='content') }} Answer this question: {{ query }}"
     pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
     pipeline.add_component("prompt_builder", PromptBuilder(template=template))
-    pipeline.add_component("branch_joiner", BranchJoiner(List[Document]))
+    pipeline.add_component("branch_joiner", BranchJoiner(list[Document]))
 
     pipeline.connect("retriever", "branch_joiner")
     pipeline.connect("branch_joiner", "prompt_builder.documents")
@@ -909,7 +909,7 @@ def pipeline_that_has_a_component_that_doesnt_return_a_dictionary(pipeline_class
 @given("a pipeline that has a component with only default inputs", target_fixture="pipeline_data")
 def pipeline_that_has_a_component_with_only_default_inputs(pipeline_class):
     FakeGenerator = component_class(
-        "FakeGenerator", input_types={"prompt": str}, output_types={"replies": List[str]}, output={"replies": ["Paris"]}
+        "FakeGenerator", input_types={"prompt": str}, output_types={"replies": list[str]}, output={"replies": ["Paris"]}
     )
     docs = [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")]
     doc_store = InMemoryDocumentStore()
@@ -1037,8 +1037,8 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
     """
 
     def fake_generator_run(
-        self: Any, generation_kwargs: Optional[Dict[str, Any]] = None, **kwargs: Dict[str, Any]
-    ) -> Dict[str, List[str]]:
+        self: Any, generation_kwargs: Optional[dict[str, Any]] = None, **kwargs: dict[str, Any]
+    ) -> dict[str, list[str]]:
         # Simple hack to simulate a model returning a different reply after the
         # the first time it's called
         if getattr(fake_generator_run, "called", False):
@@ -1049,7 +1049,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
     FakeGenerator = component_class(
         "FakeGenerator",
         input_types={"prompt": str},
-        output_types={"replies": List[str]},
+        output_types={"replies": list[str]},
         extra_fields={"run": fake_generator_run},
     )
     template = (
@@ -1068,13 +1068,13 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
                 "condition": "{{ replies == ['Rome'] }}",
                 "output": "{{ replies }}",
                 "output_name": "correct_replies",
-                "output_type": List[int],
+                "output_type": list[int],
             },
             {
                 "condition": "{{ replies == ['Paris'] }}",
                 "output": "{{ replies }}",
                 "output_name": "incorrect_replies",
-                "output_type": List[int],
+                "output_type": list[int],
             },
         ]
     )
@@ -1336,7 +1336,7 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs_from_multiple_socke
         """
 
         @component.output_types(value=int, original=int)
-        def run(self, value: int) -> Dict[str, int]:
+        def run(self, value: int) -> dict[str, int]:
             return {"value": value * 2, "original": value}
 
     pipeline = pipeline_class(max_runs_per_component=1)
@@ -1441,8 +1441,8 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str) -> Dict[str, List[str]]:
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             if "no_answer" in prompt:
                 return {"replies": ["There's simply no_answer to this question"]}
             return {"replies": ["Some SQL query"]}
@@ -1450,7 +1450,7 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
     @component
     class FakeSQLQuerier:
         @component.output_types(results=str)
-        def run(self, query: str) -> Dict[str, str]:
+        def run(self, query: str) -> dict[str, str]:
             return {"results": "This is the query result", "query": query}
 
     llm = FakeGenerator()
@@ -1693,9 +1693,9 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
     @component
     class FakeOutputValidator:
         @component.output_types(
-            valid_replies=List[str], invalid_replies=Optional[List[str]], error_message=Optional[str]
+            valid_replies=list[str], invalid_replies=Optional[list[str]], error_message=Optional[str]
         )
-        def run(self, replies: List[str]) -> Dict[str, Any]:
+        def run(self, replies: list[str]) -> dict[str, Any]:
             if not getattr(self, "called", False):
                 self.called = True
                 return {"invalid_replies": ["This is an invalid reply"], "error_message": "this is an error message"}
@@ -1703,8 +1703,8 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str) -> Dict[str, List[str]]:
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             return {"replies": ["This is a valid reply"]}
 
     llm = FakeGenerator()
@@ -1869,34 +1869,34 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
 
     @component
     class FakeRetriever:
-        @component.output_types(documents=List[Document])
+        @component.output_types(documents=list[Document])
         def run(
             self,
             query: str,
-            filters: Optional[Dict[str, Any]] = None,
+            filters: Optional[dict[str, Any]] = None,
             top_k: Optional[int] = None,
             scale_score: Optional[bool] = None,
-        ) -> Dict[str, List[Document]]:
+        ) -> dict[str, list[Document]]:
             return {"documents": [Document(content="This is a document")]}
 
     @component
     class FakeRanker:
-        @component.output_types(documents=List[Document])
+        @component.output_types(documents=list[Document])
         def run(
             self,
             query: str,
-            documents: List[Document],
+            documents: list[Document],
             top_k: Optional[int] = None,
             scale_score: Optional[bool] = None,
             calibration_factor: Optional[float] = None,
             score_threshold: Optional[float] = None,
-        ) -> Dict[str, List[Document]]:
+        ) -> dict[str, list[Document]]:
             return {"documents": documents}
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str], meta=Dict[str, Any])
-        def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        @component.output_types(replies=list[str], meta=dict[str, Any])
+        def run(self, prompt: str, generation_kwargs: Optional[dict[str, Any]] = None) -> dict[str, Any]:
             return {"replies": ["This is a reply"], "meta": {"meta_key": "meta_value"}}
 
     pipeline = pipeline_class(max_runs_per_component=1)
@@ -2008,35 +2008,35 @@ def that_is_linear_with_conditional_branching_and_multiple_joins(pipeline_class)
     @component
     class FakeRouter:
         @component.output_types(LEGIT=str, INJECTION=str)
-        def run(self, query: str) -> Dict[str, str]:
+        def run(self, query: str) -> dict[str, str]:
             if "injection" in query:
                 return {"INJECTION": query}
             return {"LEGIT": query}
 
     @component
     class FakeEmbedder:
-        @component.output_types(embeddings=List[float])
-        def run(self, text: str) -> Dict[str, List[float]]:
+        @component.output_types(embeddings=list[float])
+        def run(self, text: str) -> dict[str, list[float]]:
             return {"embeddings": [1.0, 2.0, 3.0]}
 
     @component
     class FakeRanker:
-        @component.output_types(documents=List[Document])
-        def run(self, query: str, documents: List[Document]) -> Dict[str, List[Document]]:
+        @component.output_types(documents=list[Document])
+        def run(self, query: str, documents: list[Document]) -> dict[str, list[Document]]:
             return {"documents": documents}
 
     @component
     class FakeRetriever:
-        @component.output_types(documents=List[Document])
-        def run(self, query: str) -> Dict[str, List[Document]]:
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
             if "injection" in query:
                 return {"documents": []}
             return {"documents": [Document(content="This is a document")]}
 
     @component
     class FakeEmbeddingRetriever:
-        @component.output_types(documents=List[Document])
-        def run(self, query_embedding: List[float]) -> Dict[str, List[Document]]:
+        @component.output_types(documents=list[Document])
+        def run(self, query_embedding: list[float]) -> dict[str, list[Document]]:
             return {"documents": [Document(content="This is another document")]}
 
     pipeline.add_component(name="router", instance=FakeRouter())
@@ -2171,10 +2171,10 @@ def that_is_a_simple_agent(pipeline_class):
     class FakeThoughtActionOpenAIChatGenerator:
         run_counter = 0
 
-        @component.output_types(replies=List[ChatMessage])
+        @component.output_types(replies=list[ChatMessage])
         def run(
-            self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None
-        ) -> Dict[str, List[ChatMessage]]:
+            self, messages: list[ChatMessage], generation_kwargs: Optional[dict[str, Any]] = None
+        ) -> dict[str, list[ChatMessage]]:
             if self.run_counter == 0:
                 self.run_counter += 1
                 return {
@@ -2189,16 +2189,16 @@ def that_is_a_simple_agent(pipeline_class):
 
     @component
     class FakeConclusionOpenAIChatGenerator:
-        @component.output_types(replies=List[ChatMessage])
+        @component.output_types(replies=list[ChatMessage])
         def run(
-            self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None
-        ) -> Dict[str, List[ChatMessage]]:
+            self, messages: list[ChatMessage], generation_kwargs: Optional[dict[str, Any]] = None
+        ) -> dict[str, list[ChatMessage]]:
             return {"replies": [ChatMessage.from_assistant("Tower of Pisa is 55 meters tall\n")]}
 
     @component
     class FakeSerperDevWebSearch:
-        @component.output_types(documents=List[Document])
-        def run(self, query: str) -> Dict[str, List[Document]]:
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
             return {
                 "documents": [
                     Document(content="Eiffel Tower is 300 meters tall"),
@@ -2208,14 +2208,14 @@ def that_is_a_simple_agent(pipeline_class):
 
     # main part
     pipeline = pipeline_class()
-    pipeline.add_component("main_input", BranchJoiner(List[ChatMessage]))
+    pipeline.add_component("main_input", BranchJoiner(list[ChatMessage]))
     pipeline.add_component("prompt_builder", ChatPromptBuilder(variables=["query"]))
     pipeline.add_component("llm", FakeThoughtActionOpenAIChatGenerator())
 
     @component
     class ToolExtractor:
-        @component.output_types(output=List[Optional[str]])
-        def run(self, messages: List[ChatMessage]) -> Dict[str, List[Optional[str]]]:
+        @component.output_types(output=list[Optional[str]])
+        def run(self, messages: list[ChatMessage]) -> dict[str, list[Optional[str]]]:
             prompt = messages[-1].text
             assert isinstance(prompt, str)
             lines = prompt.strip().split("\n")
@@ -2236,8 +2236,8 @@ def that_is_a_simple_agent(pipeline_class):
         def __init__(self, suffix: str = ""):
             self._suffix = suffix
 
-        @component.output_types(output=List[ChatMessage])
-        def run(self, replies: List[ChatMessage], current_prompt: List[ChatMessage]) -> Dict[str, List[ChatMessage]]:
+        @component.output_types(output=list[ChatMessage])
+        def run(self, replies: list[ChatMessage], current_prompt: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
             curr_prompt = current_prompt[-1].text if current_prompt[-1].text else ""
             reply = replies[-1].text if replies[-1].text else ""
             content = curr_prompt + reply + self._suffix
@@ -2245,8 +2245,8 @@ def that_is_a_simple_agent(pipeline_class):
 
     @component
     class SearchOutputAdapter:
-        @component.output_types(output=List[ChatMessage])
-        def run(self, replies: List[ChatMessage]) -> Dict[str, List[ChatMessage]]:
+        @component.output_types(output=list[ChatMessage])
+        def run(self, replies: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
             content = f"Observation: {replies[-1].text}\n"
             return {"output": [ChatMessage.from_assistant(content)]}
 
@@ -2571,8 +2571,8 @@ def that_has_a_variadic_component_that_receives_partial_inputs(pipeline_class):
         def __init__(self, content: str):
             self._content = content
 
-        @component.output_types(documents=List[Document], noop=None)
-        def run(self, create_document: bool = False) -> Dict[str, Union[List[Document], None]]:
+        @component.output_types(documents=list[Document], noop=None)
+        def run(self, create_document: bool = False) -> dict[str, Union[list[Document], None]]:
             if create_document:
                 return {"documents": [Document(id=self._content, content=self._content)]}
             return {"noop": None}
@@ -2652,8 +2652,8 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order(p
         def __init__(self, content: str):
             self._content = content
 
-        @component.output_types(documents=List[Document], noop=None)
-        def run(self, create_document: bool = False) -> Dict[str, Union[List[Document], None]]:
+        @component.output_types(documents=list[Document], noop=None)
+        def run(self, create_document: bool = False) -> dict[str, Union[list[Document], None]]:
             if create_document:
                 return {"documents": [Document(id=self._content, content=self._content)]}
             return {"noop": None}
@@ -2814,8 +2814,8 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
 ):
     @component
     class QueryMetadataExtractor:
-        @component.output_types(filters=Dict[str, Any])
-        def run(self, prompt: str) -> Dict[str, Dict[str, Any]]:
+        @component.output_types(filters=dict[str, Any])
+        def run(self, prompt: str) -> dict[str, dict[str, Any]]:
             metadata = json.loads(prompt)
             filters = []
             for key, value in metadata.items():
@@ -2946,8 +2946,8 @@ def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
 
     @component
     class FakeOutputValidator:
-        @component.output_types(valid_replies=List[str], invalid_replies=List[str], error_message=str)
-        def run(self, replies: List[str]) -> Dict[str, Union[List[str], str]]:
+        @component.output_types(valid_replies=list[str], invalid_replies=list[str], error_message=str)
+        def run(self, replies: list[str]) -> dict[str, Union[list[str], str]]:
             if not getattr(self, "called", False):
                 self.called = True
                 return {"invalid_replies": ["This is an invalid reply"], "error_message": "this is an error message"}
@@ -2955,8 +2955,8 @@ def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str) -> Dict[str, List[str]]:
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             return {"replies": ["This is a valid reply"]}
 
     llm = FakeGenerator()
@@ -2982,8 +2982,8 @@ def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
 def that_has_a_loop_in_the_middle(pipeline_class):
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str) -> Dict[str, List[str]]:
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             replies = []
             if getattr(self, "first_run", True):
                 self.first_run = False
@@ -2995,7 +2995,7 @@ def that_has_a_loop_in_the_middle(pipeline_class):
     @component
     class PromptCleaner:
         @component.output_types(clean_prompt=str)
-        def run(self, prompt: str) -> Dict[str, str]:
+        def run(self, prompt: str) -> dict[str, str]:
             return {"clean_prompt": prompt.strip()}
 
     pipeline = pipeline_class(max_runs_per_component=2)
@@ -3010,13 +3010,13 @@ def that_has_a_loop_in_the_middle(pipeline_class):
                     "condition": "{{ 'No answer' in replies }}",
                     "output": "{{ replies }}",
                     "output_name": "invalid_replies",
-                    "output_type": List[str],
+                    "output_type": list[str],
                 },
                 {
                     "condition": "{{ 'No answer' not in replies }}",
                     "output": "{{ replies }}",
                     "output_name": "valid_replies",
-                    "output_type": List[str],
+                    "output_type": list[str],
                 },
             ]
         ),
@@ -3084,14 +3084,14 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
 
     @component
     class NoOp:
-        @component.output_types(documents=List[Document])
-        def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
+        @component.output_types(documents=list[Document])
+        def run(self, documents: list[Document]) -> dict[str, list[Document]]:
             return {"documents": documents}
 
     @component
     class CommaSplitter:
-        @component.output_types(documents=List[Document])
-        def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
+        @component.output_types(documents=list[Document])
+        def run(self, documents: list[Document]) -> dict[str, list[Document]]:
             res = []
             current_id = 0
             for doc in documents:
@@ -3110,13 +3110,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "condition": "{{ documents|length > 1 }}",
                     "output": "{{ documents }}",
                     "output_name": "long",
-                    "output_type": List[Document],
+                    "output_type": list[Document],
                 },
                 {
                     "condition": "{{ documents|length <= 1 }}",
                     "output": "{{ documents }}",
                     "output_name": "short",
-                    "output_type": List[Document],
+                    "output_type": list[Document],
                 },
             ],
             unsafe=True,
@@ -3416,8 +3416,8 @@ def an_agent_that_can_use_RAG(pipeline_class):
             self.replies = replies
             self.idx = 0
 
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str) -> Dict[str, List[str]]:
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
@@ -3430,8 +3430,8 @@ def an_agent_that_can_use_RAG(pipeline_class):
 
     @component
     class FakeRetriever:
-        @component.output_types(documents=List[Document])
-        def run(self, query: str) -> Dict[str, List[Document]]:
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
             return {
                 "documents": [
                     Document(content="This is a document potentially answering the question.", meta={"access_group": 1})
@@ -3479,7 +3479,7 @@ Documents:
                 "condition": "{{ 'answer:' in replies[0] }}",
                 "output": "{{ replies }}",
                 "output_name": "answer",
-                "output_type": List[str],
+                "output_type": list[str],
             },
         ]
     )
@@ -3671,8 +3671,8 @@ def has_feedback_loop(pipeline_class):
             self.replies = replies
             self.idx = 0
 
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str) -> Dict[str, List[str]]:
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
@@ -3716,7 +3716,7 @@ Provide additional feedback on why it fails.
                 "condition": "{{ 'PASS' in replies[0] }}",
                 "output": "{{ code }}",
                 "output_name": "pass",
-                "output_type": List[str],
+                "output_type": list[str],
             },
         ]
     )
@@ -3841,8 +3841,8 @@ def has_non_standard_order_loop(pipeline_class):
             self.replies = replies
             self.idx = 0
 
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str) -> Dict[str, List[str]]:
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
@@ -3886,7 +3886,7 @@ Provide additional feedback on why it fails.
                 "condition": "{{ 'PASS' in replies[0] }}",
                 "output": "{{ code }}",
                 "output_name": "pass",
-                "output_type": List[str],
+                "output_type": list[str],
             },
         ]
     )
@@ -4012,8 +4012,8 @@ def agent_with_feedback_cycle(pipeline_class):
             self.replies = replies
             self.idx = 0
 
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str) -> Dict[str, List[str]]:
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
@@ -4027,7 +4027,7 @@ def agent_with_feedback_cycle(pipeline_class):
     @component
     class FakeFileEditor:
         @component.output_types(files=str)
-        def run(self, replies: List[str]) -> Dict[str, str]:
+        def run(self, replies: list[str]) -> dict[str, str]:
             return {"files": "This is the edited file content."}
 
     code_prompt_template = """
@@ -4072,7 +4072,7 @@ Provide additional feedback on why it fails.
                 "condition": "{{ 'PASS' in replies[0] }}",
                 "output": "{{ replies }}",
                 "output_name": "pass",
-                "output_type": List[str],
+                "output_type": list[str],
             },
         ]
     )
@@ -4083,13 +4083,13 @@ Provide additional feedback on why it fails.
                 "condition": "{{ 'Edit:' in replies[0] }}",
                 "output": "{{ replies }}",
                 "output_name": "edit",
-                "output_type": List[str],
+                "output_type": list[str],
             },
             {
                 "condition": "{{ 'Task finished!' in replies[0] }}",
                 "output": "{{ replies }}",
                 "output_name": "done",
-                "output_type": List[str],
+                "output_type": list[str],
             },
         ]
     )
@@ -4748,8 +4748,8 @@ def passes_outputs_outside_cycle(pipeline_class):
             self.replies = replies
             self.idx = 0
 
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str) -> Dict[str, Any]:
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, Any]:
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
@@ -4762,8 +4762,8 @@ def passes_outputs_outside_cycle(pipeline_class):
 
     @component
     class AnswerBuilderWithPrompt:
-        @component.output_types(answers=List[GeneratedAnswer])
-        def run(self, replies: List[str], query: str, prompt: Optional[str] = None) -> Dict[str, Any]:
+        @component.output_types(answers=list[GeneratedAnswer])
+        def run(self, replies: list[str], query: str, prompt: Optional[str] = None) -> dict[str, Any]:
             answer = GeneratedAnswer(data=replies[0], query=query, documents=[], meta={"all_messages": replies})
 
             if prompt is not None:
@@ -4806,7 +4806,7 @@ def generate_santa_sleigh():
                 "condition": "{{ 'PASS' in replies[0] }}",
                 "output": "{{ code }}",
                 "output_name": "pass",
-                "output_type": List[str],
+                "output_type": list[str],
             },
         ]
     )
@@ -5053,7 +5053,7 @@ def pipeline_with_variadic_dynamic_defaults(pipeline_class):
             self.input_variable = input_variable
             component.set_input_type(self, input_variable, Variadic[str], default="Parrot doesn't only parrot!")
 
-        @component.output_types(response=List[str])
+        @component.output_types(response=list[str])
         def run(self, **kwargs):
             return {"response": kwargs[self.input_variable]}
 
@@ -5284,8 +5284,8 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
             self.metas = metas
             self.current_idx = 0
 
-        @component.output_types(documents=List[Document])
-        def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
+        @component.output_types(documents=list[Document])
+        def run(self, documents: list[Document]) -> dict[str, list[Document]]:
             sorted_docs = sorted(documents, key=lambda doc: doc.meta["file_type"])
             if self.current_idx >= len(sorted_docs):
                 self.current_idx = 0
@@ -5321,13 +5321,13 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
                 "condition": "{{documents[0].meta['iteration'] == 1}}",
                 "output_name": "continue",
                 "output": "{{documents}}",
-                "output_type": List[Document],
+                "output_type": list[Document],
             },
             {
                 "condition": "{{documents[0].meta['iteration'] == 2}}",
                 "output_name": "stop",
                 "output": "{{documents}}",
-                "output_type": List[Document],
+                "output_type": list[Document],
             },
         ],
         unsafe=True,
@@ -5347,7 +5347,7 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
     pp.add_component("page_splitter", page_splitter)
     pp.add_component("metadata_generator", FakeDataExtractor(metas=[{"iteration": 1}, {"iteration": 2}]))
     pp.add_component("extraction_router", extraction_router)
-    pp.add_component("branch_joiner", BranchJoiner(type_=List[Document]))
+    pp.add_component("branch_joiner", BranchJoiner(type_=list[Document]))
 
     pp.connect("router.text/plain", "txt_converter.sources")
     pp.connect("router.application/json", "json_converter.sources")
@@ -5439,7 +5439,7 @@ def pipeline_has_components_returning_dataframes(pipeline_class):
     @component
     class DataFramer:
         @component.output_types(dataframe=DataFrame)
-        def run(self, dataframe: DataFrame) -> Dict[str, Any]:
+        def run(self, dataframe: DataFrame) -> dict[str, Any]:
             return {"dataframe": get_df()}
 
     pp = pipeline_class(max_runs_per_component=1)
@@ -5608,7 +5608,7 @@ def that_is_blocked_not_enough_component_inputs(pipeline_class):
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": "{{streams}}",
-                "output_type": List[int],
+                "output_type": list[int],
                 "output_name": "streams",
             },
         ]
@@ -5618,8 +5618,8 @@ def that_is_blocked_not_enough_component_inputs(pipeline_class):
     # If one is missing then the pipeline is blocked and cannot run.
     @component
     class PayloadBuilder:
-        @component.output_types(payload=Dict[str, Any])
-        def run(self, streams: List[int], query: str) -> Dict[str, Any]:
+        @component.output_types(payload=dict[str, Any])
+        def run(self, streams: list[int], query: str) -> dict[str, Any]:
             return {"payload": {"streams": streams, "query": query}}
 
     pipe = pipeline_class(max_runs_per_component=1)

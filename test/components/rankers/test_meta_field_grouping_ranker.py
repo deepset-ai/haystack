@@ -176,6 +176,6 @@ class TestMetaFieldGroupingRanker:
         pipeline.add_component("ranker", ranker)
         pipeline_yaml_str = pipeline.dumps()
         pipeline_reloaded = Pipeline().loads(pipeline_yaml_str)
-        result: Dict[str, Any] = pipeline_reloaded.run(data={"documents": DOC_LIST})
+        result: dict[str, Any] = pipeline_reloaded.run(data={"documents": DOC_LIST})
         result = result["ranker"]
         assert result_single == result

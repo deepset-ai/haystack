@@ -29,9 +29,9 @@ class TestFaithfulnessEvaluator:
             "inferred from the provided context or 0 if it cannot be inferred."
         )
         assert component.inputs == [
-            ("questions", List[str]),
-            ("contexts", List[List[str]]),
-            ("predicted_answers", List[str]),
+            ("questions", list[str]),
+            ("contexts", list[list[str]]),
+            ("predicted_answers", list[str]),
         ]
         assert component.outputs == ["statements", "statement_scores"]
         assert component.examples == [

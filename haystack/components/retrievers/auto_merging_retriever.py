@@ -77,7 +77,7 @@ class AutoMergingRetriever:
         self.document_store = document_store
         self.threshold = threshold
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -88,7 +88,7 @@ class AutoMergingRetriever:
         return default_to_dict(self, document_store=docstore, threshold=self.threshold)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AutoMergingRetriever":
+    def from_dict(cls, data: dict[str, Any]) -> "AutoMergingRetriever":
         """
         Deserializes the component from a dictionary.
 
@@ -101,7 +101,7 @@ class AutoMergingRetriever:
         return default_from_dict(cls, data)
 
     @staticmethod
-    def _check_valid_documents(matched_leaf_documents: List[Document]):
+    def _check_valid_documents(matched_leaf_documents: list[Document]):
         # check if the matched leaf documents have the required meta fields
         if not all(doc.meta.get("__parent_id") for doc in matched_leaf_documents):
             raise ValueError("The matched leaf documents do not have the required meta field '__parent_id'")
@@ -112,8 +112,8 @@ class AutoMergingRetriever:
         if not all(doc.meta.get("__block_size") for doc in matched_leaf_documents):
             raise ValueError("The matched leaf documents do not have the required meta field '__block_size'")
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]):
         """
         Run the AutoMergingRetriever.
 
@@ -138,8 +138,8 @@ class AutoMergingRetriever:
 
             return parent_doc
 
-        def _try_merge_level(docs_to_merge: List[Document], docs_to_return: List[Document]) -> List[Document]:
-            parent_doc_id_to_child_docs: Dict[str, List[Document]] = defaultdict(list)  # to group documents by parent
+        def _try_merge_level(docs_to_merge: list[Document], docs_to_return: list[Document]) -> list[Document]:
+            parent_doc_id_to_child_docs: dict[str, list[Document]] = defaultdict(list)  # to group documents by parent
 
             for doc in docs_to_merge:
                 if doc.meta.get("__parent_id"):  # only docs that have parents

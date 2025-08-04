@@ -95,12 +95,12 @@ class TransformersZeroShotTextRouter:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        labels: List[str],
+        labels: list[str],
         multi_label: bool = False,
         model: str = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
+        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Initializes the TransformersZeroShotTextRouter component.
@@ -139,7 +139,7 @@ class TransformersZeroShotTextRouter:
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.pipeline: Optional[HfPipeline] = None
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
@@ -154,7 +154,7 @@ class TransformersZeroShotTextRouter:
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -175,7 +175,7 @@ class TransformersZeroShotTextRouter:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TransformersZeroShotTextRouter":
+    def from_dict(cls, data: dict[str, Any]) -> "TransformersZeroShotTextRouter":
         """
         Deserializes the component from a dictionary.
 
@@ -189,7 +189,7 @@ class TransformersZeroShotTextRouter:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 
-    def run(self, text: str) -> Dict[str, str]:
+    def run(self, text: str) -> dict[str, str]:
         """
         Routes the text strings to different connections based on a category label.
 

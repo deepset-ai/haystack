@@ -61,11 +61,11 @@ class Tool:
 
     name: str
     description: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     function: Callable
-    outputs_to_string: Optional[Dict[str, Any]] = None
-    inputs_from_state: Optional[Dict[str, str]] = None
-    outputs_to_state: Optional[Dict[str, Dict[str, Any]]] = None
+    outputs_to_string: Optional[dict[str, Any]] = None
+    inputs_from_state: Optional[dict[str, str]] = None
+    outputs_to_state: Optional[dict[str, dict[str, Any]]] = None
 
     def __post_init__(self):
         # Check that the parameters define a valid JSON schema
@@ -91,7 +91,7 @@ class Tool:
                 raise ValueError("outputs_to_string handler must be callable")
 
     @property
-    def tool_spec(self) -> Dict[str, Any]:
+    def tool_spec(self) -> dict[str, Any]:
         """
         Return the Tool specification to be used by the Language Model.
         """
@@ -109,7 +109,7 @@ class Tool:
             ) from e
         return result
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the Tool to a dictionary.
 
@@ -138,7 +138,7 @@ class Tool:
         return {"type": generate_qualified_class_name(type(self)), "data": data}
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Tool":
+    def from_dict(cls, data: dict[str, Any]) -> "Tool":
         """
         Deserializes the Tool from a dictionary.
 
@@ -174,7 +174,7 @@ class Tool:
         return cls(**init_parameters)
 
 
-def _check_duplicate_tool_names(tools: Optional[List[Tool]]) -> None:
+def _check_duplicate_tool_names(tools: Optional[list[Tool]]) -> None:
     """
     Checks for duplicate tool names and raises a ValueError if they are found.
 

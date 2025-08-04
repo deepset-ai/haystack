@@ -13,8 +13,8 @@ class Concatenate:
     Concatenates two values
     """
 
-    @component.output_types(value=List[str])
-    def run(self, first: Union[List[str], str], second: Union[List[str], str]):
+    @component.output_types(value=list[str])
+    def run(self, first: Union[list[str], str], second: Union[list[str], str]):
         """
         Concatenates two values
         """

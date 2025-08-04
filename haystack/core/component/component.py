@@ -196,7 +196,7 @@ class Component(Protocol):
 
 class ComponentMeta(type):
     @staticmethod
-    def _positional_to_kwargs(cls_type: Type, args: Tuple[Any, ...]) -> Dict[str, Any]:
+    def _positional_to_kwargs(cls_type: type, args: tuple[Any, ...]) -> dict[str, Any]:
         """
         Convert positional arguments to keyword arguments based on the signature of the `__init__` method.
         """
@@ -239,7 +239,7 @@ class ComponentMeta(type):
             instance.__haystack_output__ = Sockets(instance, deepcopy(output_types_cache), OutputSocket)
 
     @staticmethod
-    def _parse_and_set_input_sockets(component_cls: Type, instance: Any) -> None:
+    def _parse_and_set_input_sockets(component_cls: type, instance: Any) -> None:
         def inner(method, sockets):
             from inspect import Parameter
 
@@ -347,7 +347,7 @@ def _component_repr(component: Component) -> str:
     )
 
 
-def _component_run_has_kwargs(component_cls: Type) -> bool:
+def _component_run_has_kwargs(component_cls: type) -> bool:
     run_method = getattr(component_cls, "run", None)
     if run_method is None:
         return False
@@ -568,7 +568,7 @@ class _Component:
 
         return output_types_decorator
 
-    def _component(self, cls: Type[T]) -> Type[T]:
+    def _component(self, cls: type[T]) -> type[T]:
         """
         Decorator validating the structure of the component and registering it in the components registry.
         """
@@ -593,7 +593,7 @@ class _Component:
         # Recreate the decorated component class so it uses our metaclass.
         # We must explicitly redefine the type of the class to make sure language servers
         # and type checkers understand that the class is of the correct type.
-        new_cls: Type[T] = new_class(cls.__name__, cls.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace)
+        new_cls: type[T] = new_class(cls.__name__, cls.__bases__, {"metaclass": ComponentMeta}, copy_class_namespace)
 
         # Save the component in the class registry (for deserialization)
         class_path = f"{new_cls.__module__}.{new_cls.__name__}"
@@ -620,16 +620,16 @@ class _Component:
 
     # Call signature when the the decorator is usead without parens (@component).
     @overload
-    def __call__(self, cls: Type[T]) -> Type[T]: ...
+    def __call__(self, cls: type[T]) -> type[T]: ...
 
     # Overload allowing the decorator to be used with parens (@component()).
     @overload
-    def __call__(self) -> Callable[[Type[T]], Type[T]]: ...
+    def __call__(self) -> Callable[[type[T]], type[T]]: ...
 
-    def __call__(self, cls: Optional[Type[T]] = None) -> Union[Type[T], Callable[[Type[T]], Type[T]]]:
+    def __call__(self, cls: Optional[type[T]] = None) -> Union[type[T], Callable[[type[T]], type[T]]]:
         # We must wrap the call to the decorator in a function for it to work
         # correctly with or without parens
-        def wrap(cls: Type[T]) -> Type[T]:
+        def wrap(cls: type[T]) -> type[T]:
             return self._component(cls)
 
         if cls:

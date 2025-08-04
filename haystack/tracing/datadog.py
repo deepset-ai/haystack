@@ -41,7 +41,7 @@ class DatadogSpan(Span):
         """
         return self._span
 
-    def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+    def get_correlation_data_for_logs(self) -> dict[str, Any]:
         """Return a dictionary with correlation data for logs."""
         raw_span = self.raw_span()
         if not raw_span:
@@ -65,7 +65,7 @@ class DatadogTracer(Tracer):
         self._tracer = tracer
 
     @staticmethod
-    def _get_span_resource_name(operation_name: str, tags: Optional[Dict[str, Any]]) -> Optional[str]:
+    def _get_span_resource_name(operation_name: str, tags: Optional[dict[str, Any]]) -> Optional[str]:
         """
         Get the resource name for the Datadog span.
         """
@@ -79,7 +79,7 @@ class DatadogTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+        self, operation_name: str, tags: Optional[dict[str, Any]] = None, parent_span: Optional[Span] = None
     ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         resource_name = self._get_span_resource_name(operation_name, tags)

@@ -144,7 +144,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
             self.sentence_tokenizer._params.abbrev_types.update(abbreviations)
         self.keep_white_spaces = keep_white_spaces
 
-    def split_sentences(self, text: str) -> List[Dict[str, Any]]:
+    def split_sentences(self, text: str) -> list[dict[str, Any]]:
         """
         Splits a text into sentences including references to original char positions for each split.
 
@@ -159,7 +159,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         return sentences
 
     @staticmethod
-    def _apply_split_rules(text: str, sentence_spans: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    def _apply_split_rules(text: str, sentence_spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
         """
         Applies additional split rules to the sentence spans.
 
@@ -182,7 +182,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def _needs_join(
-        text: str, span: Tuple[int, int], next_span: Tuple[int, int], quote_spans: List[Tuple[int, int]]
+        text: str, span: tuple[int, int], next_span: tuple[int, int], quote_spans: list[tuple[int, int]]
     ) -> bool:
         """
         Checks if the spans need to be joined as parts of one sentence.
@@ -222,7 +222,7 @@ class SentenceSplitter:  # pylint: disable=too-few-public-methods
         return re.search(r"^\s*[\(\[]", text[next_start:next_end]) is not None
 
     @staticmethod
-    def _read_abbreviations(lang: Language) -> List[str]:
+    def _read_abbreviations(lang: Language) -> list[str]:
         """
         Reads the abbreviations for a given language from the abbreviations file.
 

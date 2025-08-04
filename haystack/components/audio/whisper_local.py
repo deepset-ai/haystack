@@ -54,7 +54,7 @@ class LocalWhisperTranscriber:
         self,
         model: WhisperLocalModel = "large",
         device: Optional[ComponentDevice] = None,
-        whisper_params: Optional[Dict[str, Any]] = None,
+        whisper_params: Optional[dict[str, Any]] = None,
     ):
         """
         Creates an instance of the LocalWhisperTranscriber component.
@@ -84,7 +84,7 @@ class LocalWhisperTranscriber:
         if not self._model:
             self._model = whisper.load_model(self.model, device=self.device.to_torch())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -94,7 +94,7 @@ class LocalWhisperTranscriber:
         return default_to_dict(self, model=self.model, device=self.device.to_dict(), whisper_params=self.whisper_params)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LocalWhisperTranscriber":
+    def from_dict(cls, data: dict[str, Any]) -> "LocalWhisperTranscriber":
         """
         Deserializes the component from a dictionary.
 
@@ -108,8 +108,8 @@ class LocalWhisperTranscriber:
             init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]], whisper_params: Optional[Dict[str, Any]] = None):
+    @component.output_types(documents=list[Document])
+    def run(self, sources: list[Union[str, Path, ByteStream]], whisper_params: Optional[dict[str, Any]] = None):
         """
         Transcribes a list of audio files into a list of documents.
 
@@ -137,7 +137,7 @@ class LocalWhisperTranscriber:
         documents = self.transcribe(sources, **whisper_params)
         return {"documents": documents}
 
-    def transcribe(self, sources: List[Union[str, Path, ByteStream]], **kwargs) -> List[Document]:
+    def transcribe(self, sources: list[Union[str, Path, ByteStream]], **kwargs) -> list[Document]:
         """
         Transcribes the audio files into a list of Documents, one for each input file.
 
@@ -158,7 +158,7 @@ class LocalWhisperTranscriber:
             documents.append(doc)
         return documents
 
-    def _raw_transcribe(self, sources: List[Union[str, Path, ByteStream]], **kwargs) -> Dict[Path, Any]:
+    def _raw_transcribe(self, sources: list[Union[str, Path, ByteStream]], **kwargs) -> dict[Path, Any]:
         """
         Transcribes the given audio files. Returns the output of the model, a dictionary, for each input file.
 

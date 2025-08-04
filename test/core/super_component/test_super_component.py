@@ -57,7 +57,7 @@ def rag_pipeline(document_store):
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
+        @component.output_types(replies=list[str])
         def run(self, prompt: str, **kwargs):
             return {"replies": ["This is a test response about capitals."]}
 
@@ -88,7 +88,7 @@ def async_rag_pipeline(document_store):
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
+        @component.output_types(replies=list[str])
         def run(self, prompt: str, **kwargs):
             return {"replies": ["This is a test response about capitals."]}
 
@@ -185,7 +185,7 @@ class TestSuperComponent:
         wrapper = SuperComponent(pipeline=rag_pipeline, output_mapping=output_mapping)
         output_sockets = wrapper.__haystack_output__._sockets_dict
         assert set(output_sockets.keys()) == {"final_answers"}
-        assert output_sockets["final_answers"].type == List[GeneratedAnswer]
+        assert output_sockets["final_answers"].type == list[GeneratedAnswer]
 
     def test_auto_input_mapping(self, rag_pipeline):
         wrapper = SuperComponent(pipeline=rag_pipeline)
@@ -213,7 +213,7 @@ class TestSuperComponent:
 
         output_sockets = wrapper.__haystack_output__._sockets_dict
         assert set(output_sockets.keys()) == {"answers", "documents"}
-        assert output_sockets["answers"].type == List[GeneratedAnswer]
+        assert output_sockets["answers"].type == list[GeneratedAnswer]
 
         input_sockets = wrapper.__haystack_input__._sockets_dict
         assert set(input_sockets.keys()) == {

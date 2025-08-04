@@ -34,7 +34,7 @@ class HTMLToDocument:
     ```
     """
 
-    def __init__(self, extraction_kwargs: Optional[Dict[str, Any]] = None, store_full_path: bool = False):
+    def __init__(self, extraction_kwargs: Optional[dict[str, Any]] = None, store_full_path: bool = False):
         """
         Create an HTMLToDocument component.
 
@@ -50,7 +50,7 @@ class HTMLToDocument:
         self.extraction_kwargs = extraction_kwargs or {}
         self.store_full_path = store_full_path
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -60,7 +60,7 @@ class HTMLToDocument:
         return default_to_dict(self, extraction_kwargs=self.extraction_kwargs, store_full_path=self.store_full_path)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HTMLToDocument":
+    def from_dict(cls, data: dict[str, Any]) -> "HTMLToDocument":
         """
         Deserializes the component from a dictionary.
 
@@ -71,12 +71,12 @@ class HTMLToDocument:
         """
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(
         self,
-        sources: List[Union[str, Path, ByteStream]],
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-        extraction_kwargs: Optional[Dict[str, Any]] = None,
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+        extraction_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Converts a list of HTML files to Documents.

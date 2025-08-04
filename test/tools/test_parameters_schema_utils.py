@@ -248,13 +248,13 @@ CHAT_MESSAGE_SCHEMA = {
             },
         ),
         (
-            List[Document],
+            list[Document],
             "A list of documents",
             {"type": "array", "description": "A list of documents", "items": {"$ref": "#/$defs/Document"}},
             {"Document": DOCUMENT_SCHEMA, "SparseEmbedding": SPARSE_EMBEDDING_SCHEMA, "ByteStream": BYTE_STREAM_SCHEMA},
         ),
         (
-            List[ChatMessage],
+            list[ChatMessage],
             "A list of chat messages",
             {"type": "array", "description": "A list of chat messages", "items": {"$ref": "#/$defs/ChatMessage"}},
             {

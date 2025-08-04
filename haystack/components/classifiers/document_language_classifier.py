@@ -52,7 +52,7 @@ class DocumentLanguageClassifier:
     ```
     """
 
-    def __init__(self, languages: Optional[List[str]] = None):
+    def __init__(self, languages: Optional[list[str]] = None):
         """
         Initializes the DocumentLanguageClassifier component.
 
@@ -65,8 +65,8 @@ class DocumentLanguageClassifier:
             languages = ["en"]
         self.languages = languages
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]):
         """
         Classifies the language of each document and adds it to its metadata.
 
@@ -86,7 +86,7 @@ class DocumentLanguageClassifier:
                 "In case you want to classify and route a text, please use the TextLanguageRouter."
             )
 
-        output: Dict[str, List[Document]] = {language: [] for language in self.languages}
+        output: dict[str, list[Document]] = {language: [] for language in self.languages}
         output["unmatched"] = []
 
         for document in documents:

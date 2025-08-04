@@ -13,7 +13,7 @@ logger = logging.getLogger(__file__)
 
 
 def request_with_retry(
-    attempts: int = 3, status_codes_to_retry: Optional[List[int]] = None, **kwargs: Any
+    attempts: int = 3, status_codes_to_retry: Optional[list[int]] = None, **kwargs: Any
 ) -> requests.Response:
     """
     Executes an HTTP request with a configurable exponential backoff retry on failures.
@@ -99,7 +99,7 @@ def request_with_retry(
 
 
 async def async_request_with_retry(
-    attempts: int = 3, status_codes_to_retry: Optional[List[int]] = None, **kwargs: Any
+    attempts: int = 3, status_codes_to_retry: Optional[list[int]] = None, **kwargs: Any
 ) -> httpx.Response:
     """
     Executes an asynchronous HTTP request with a configurable exponential backoff retry on failures.

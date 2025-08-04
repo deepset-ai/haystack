@@ -8,8 +8,8 @@ from haystack.core.type_utils import _type_name
 
 from .types import InputSocket, OutputSocket
 
-SocketsDict = Dict[str, Union[InputSocket, OutputSocket]]
-SocketsIOType = Union[Type[InputSocket], Type[OutputSocket]]
+SocketsDict = dict[str, Union[InputSocket, OutputSocket]]
+SocketsIOType = Union[type[InputSocket], type[OutputSocket]]
 
 
 class Sockets:  # noqa: PLW1641

@@ -66,7 +66,7 @@ class HuggingFaceTEIRanker:
         raw_scores: bool = False,
         timeout: Optional[int] = 30,
         max_retries: int = 3,
-        retry_status_codes: Optional[List[int]] = None,
+        retry_status_codes: Optional[list[int]] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ) -> None:
         """
@@ -91,7 +91,7 @@ class HuggingFaceTEIRanker:
         self.retry_status_codes = retry_status_codes
         self.raw_scores = raw_scores
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -109,7 +109,7 @@ class HuggingFaceTEIRanker:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceTEIRanker":
+    def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceTEIRanker":
         """
         Deserializes the component from a dictionary.
 
@@ -122,8 +122,8 @@ class HuggingFaceTEIRanker:
         return default_from_dict(cls, data)
 
     def _compose_response(
-        self, result: Union[Dict[str, str], List[Dict[str, Any]]], top_k: Optional[int], documents: List[Document]
-    ) -> Dict[str, List[Document]]:
+        self, result: Union[dict[str, str], list[dict[str, Any]]], top_k: Optional[int], documents: list[Document]
+    ) -> dict[str, list[Document]]:
         """
         Processes the API response into a structured format.
 
@@ -162,14 +162,14 @@ class HuggingFaceTEIRanker:
             ranked_docs.append(doc_copy)
         return {"documents": ranked_docs}
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(
         self,
         query: str,
-        documents: List[Document],
+        documents: list[Document],
         top_k: Optional[int] = None,
         truncation_direction: Optional[TruncationDirection] = None,
-    ) -> Dict[str, List[Document]]:
+    ) -> dict[str, list[Document]]:
         """
         Reranks the provided documents by relevance to the query using the TEI API.
 
@@ -193,7 +193,7 @@ class HuggingFaceTEIRanker:
 
         # Prepare the payload
         texts = [doc.content for doc in documents]
-        payload: Dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
+        payload: dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
 
@@ -212,18 +212,18 @@ class HuggingFaceTEIRanker:
             status_codes_to_retry=self.retry_status_codes,
         )
 
-        result: Union[Dict[str, str], List[Dict[str, Any]]] = response.json()
+        result: Union[dict[str, str], list[dict[str, Any]]] = response.json()
 
         return self._compose_response(result, top_k, documents)
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     async def run_async(
         self,
         query: str,
-        documents: List[Document],
+        documents: list[Document],
         top_k: Optional[int] = None,
         truncation_direction: Optional[TruncationDirection] = None,
-    ) -> Dict[str, List[Document]]:
+    ) -> dict[str, list[Document]]:
         """
         Asynchronously reranks the provided documents by relevance to the query using the TEI API.
 
@@ -246,7 +246,7 @@ class HuggingFaceTEIRanker:
 
         # Prepare the payload
         texts = [doc.content for doc in documents]
-        payload: Dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
+        payload: dict[str, Any] = {"query": query, "texts": texts, "raw_scores": self.raw_scores}
         if truncation_direction:
             payload.update({"truncate": True, "truncation_direction": truncation_direction.value})
 
@@ -265,6 +265,6 @@ class HuggingFaceTEIRanker:
             status_codes_to_retry=self.retry_status_codes,
         )
 
-        result: Union[Dict[str, str], List[Dict[str, Any]]] = response.json()
+        result: Union[dict[str, str], list[dict[str, Any]]] = response.json()
 
         return self._compose_response(result, top_k, documents)

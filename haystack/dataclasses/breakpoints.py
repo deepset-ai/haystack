@@ -23,7 +23,7 @@ class Breakpoint:
     visit_count: int = 0
     snapshot_file_path: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the Breakpoint to a dictionary representation.
 
@@ -88,7 +88,7 @@ class AgentBreakpoint:
         if isinstance(self.break_point, ToolBreakpoint) and self.break_point.component_name != "tool_invoker":
             raise ValueError("If the break_point is a ToolBreakpoint, it must have the component_name 'tool_invoker'.")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the AgentBreakpoint to a dictionary representation.
 
@@ -115,12 +115,12 @@ class AgentBreakpoint:
 
 @dataclass
 class AgentSnapshot:
-    component_inputs: Dict[str, Any]
-    component_visits: Dict[str, int]
+    component_inputs: dict[str, Any]
+    component_visits: dict[str, int]
     break_point: AgentBreakpoint
     timestamp: Optional[datetime] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the AgentSnapshot to a dictionary representation.
 
@@ -159,11 +159,11 @@ class PipelineState:
     :param pipeline_outputs: Dictionary containing the final outputs of the pipeline up to the breakpoint.
     """
 
-    inputs: Dict[str, Any]
-    component_visits: Dict[str, int]
-    pipeline_outputs: Dict[str, Any]
+    inputs: dict[str, Any]
+    component_visits: dict[str, int]
+    pipeline_outputs: dict[str, Any]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the PipelineState to a dictionary representation.
 
@@ -198,13 +198,13 @@ class PipelineSnapshot:
     :param include_outputs_from: Set of component names whose outputs should be included in the pipeline results.
     """
 
-    original_input_data: Dict[str, Any]
-    ordered_component_names: List[str]
+    original_input_data: dict[str, Any]
+    ordered_component_names: list[str]
     pipeline_state: PipelineState
     break_point: Union[AgentBreakpoint, Breakpoint]
     agent_snapshot: Optional[AgentSnapshot] = None
     timestamp: Optional[datetime] = None
-    include_outputs_from: Set[str] = field(default_factory=set)
+    include_outputs_from: set[str] = field(default_factory=set)
 
     def __post_init__(self):
         # Validate consistency between component_visits and ordered_component_names
@@ -217,7 +217,7 @@ class PipelineSnapshot:
                 f"do not match components in PipelineSnapshot.ordered_component_names {components_in_order}"
             )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the PipelineSnapshot to a dictionary representation.
 

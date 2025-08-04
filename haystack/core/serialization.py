@@ -35,7 +35,7 @@ class DeserializationCallbacks:
     component_pre_init: Optional[Callable] = None
 
 
-def component_to_dict(obj: Any, name: str) -> Dict[str, Any]:
+def component_to_dict(obj: Any, name: str) -> dict[str, Any]:
     """
     Converts a component instance into a dictionary.
 
@@ -84,7 +84,7 @@ def component_to_dict(obj: Any, name: str) -> Dict[str, Any]:
     return data
 
 
-def _validate_component_to_dict_output(component: Any, name: str, data: Dict[str, Any]) -> None:
+def _validate_component_to_dict_output(component: Any, name: str, data: dict[str, Any]) -> None:
     # Ensure that only basic Python types are used in the serde data.
     def is_allowed_type(obj: Any) -> bool:
         return isinstance(obj, (str, int, float, bool, list, dict, set, tuple, type(None)))
@@ -101,7 +101,7 @@ def _validate_component_to_dict_output(component: Any, name: str, data: Dict[str
             elif isinstance(v, dict):
                 check_dict(v)
 
-    def check_dict(d: Dict[str, Any]) -> None:
+    def check_dict(d: dict[str, Any]) -> None:
         if any(not isinstance(k, str) for k in data):
             raise SerializationError(
                 f"Component '{name}' of type '{type(component).__name__}' has a non-string key in the serialized data."
@@ -121,7 +121,7 @@ def _validate_component_to_dict_output(component: Any, name: str, data: Dict[str
     check_dict(data)
 
 
-def generate_qualified_class_name(cls: Type[object]) -> str:
+def generate_qualified_class_name(cls: type[object]) -> str:
     """
     Generates a qualified class name for a class.
 
@@ -134,7 +134,7 @@ def generate_qualified_class_name(cls: Type[object]) -> str:
 
 
 def component_from_dict(
-    cls: Type[object], data: Dict[str, Any], name: str, callbacks: Optional[DeserializationCallbacks] = None
+    cls: type[object], data: dict[str, Any], name: str, callbacks: Optional[DeserializationCallbacks] = None
 ) -> Any:
     """
     Creates a component instance from a dictionary.
@@ -171,7 +171,7 @@ def component_from_dict(
         return do_from_dict()
 
 
-def default_to_dict(obj: Any, **init_parameters: Any) -> Dict[str, Any]:
+def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     """
     Utility function to serialize an object to a dictionary.
 
@@ -212,7 +212,7 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> Dict[str, Any]:
     return {"type": generate_qualified_class_name(type(obj)), "init_parameters": init_parameters}
 
 
-def default_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
+def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     """
     Utility function to deserialize a dictionary to an object.
 
@@ -242,7 +242,7 @@ def default_from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
     return cls(**init_params)
 
 
-def import_class_by_name(fully_qualified_name: str) -> Type[object]:
+def import_class_by_name(fully_qualified_name: str) -> type[object]:
     """
     Utility function to import (load) a class object based on its fully qualified class name.
 

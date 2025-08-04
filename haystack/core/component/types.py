@@ -53,11 +53,11 @@ class InputSocket:
     """
 
     name: str
-    type: Type
+    type: type
     default_value: Any = _empty
     is_variadic: bool = field(init=False)
     is_greedy: bool = field(init=False)
-    senders: List[str] = field(default_factory=list)
+    senders: list[str] = field(default_factory=list)
 
     @property
     def is_mandatory(self):
@@ -98,7 +98,7 @@ class InputSocketTypeDescriptor(TypedDict):
     Describes the type of an `InputSocket`.
     """
 
-    type: Type
+    type: type
     is_mandatory: bool
 
 
@@ -117,4 +117,4 @@ class OutputSocket:
 
     name: str
     type: type
-    receivers: List[str] = field(default_factory=list)
+    receivers: list[str] = field(default_factory=list)

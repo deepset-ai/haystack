@@ -48,14 +48,14 @@ class SentenceTransformersSimilarityRanker:
         top_k: int = 10,
         query_prefix: str = "",
         document_prefix: str = "",
-        meta_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
         score_threshold: Optional[float] = None,
         trust_remote_code: bool = False,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        config_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
         batch_size: int = 16,
     ):
@@ -130,7 +130,7 @@ class SentenceTransformersSimilarityRanker:
         self.backend = backend
         self.batch_size = batch_size
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
@@ -152,7 +152,7 @@ class SentenceTransformersSimilarityRanker:
                 backend=self.backend,
             )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -183,7 +183,7 @@ class SentenceTransformersSimilarityRanker:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersSimilarityRanker":
+    def from_dict(cls, data: dict[str, Any]) -> "SentenceTransformersSimilarityRanker":
         """
         Deserializes the component from a dictionary.
 
@@ -201,16 +201,16 @@ class SentenceTransformersSimilarityRanker:
 
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(
         self,
         *,
         query: str,
-        documents: List[Document],
+        documents: list[Document],
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         score_threshold: Optional[float] = None,
-    ) -> Dict[str, List[Document]]:
+    ) -> dict[str, list[Document]]:
         """
         Returns a list of documents ranked by their similarity to the given query.
 

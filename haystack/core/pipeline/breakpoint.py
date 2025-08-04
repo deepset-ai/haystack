@@ -179,13 +179,13 @@ def _save_pipeline_snapshot_to_file(
 
 def _create_pipeline_snapshot(
     *,
-    inputs: Dict[str, Any],
+    inputs: dict[str, Any],
     break_point: Union[AgentBreakpoint, Breakpoint],
-    component_visits: Dict[str, int],
-    original_input_data: Optional[Dict[str, Any]] = None,
-    ordered_component_names: Optional[List[str]] = None,
-    include_outputs_from: Optional[Set[str]] = None,
-    pipeline_outputs: Optional[Dict[str, Any]] = None,
+    component_visits: dict[str, int],
+    original_input_data: Optional[dict[str, Any]] = None,
+    ordered_component_names: Optional[list[str]] = None,
+    include_outputs_from: Optional[set[str]] = None,
+    pipeline_outputs: Optional[dict[str, Any]] = None,
 ) -> PipelineSnapshot:
     """
     Create a snapshot of the pipeline at the point where the breakpoint was triggered.
@@ -249,7 +249,7 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot) -> PipelineSnap
     return pipeline_snapshot
 
 
-def _transform_json_structure(data: Union[Dict[str, Any], List[Any], Any]) -> Any:
+def _transform_json_structure(data: Union[dict[str, Any], list[Any], Any]) -> Any:
     """
     Transforms a JSON structure by removing the 'sender' key and moving the 'value' to the top level.
 
@@ -279,7 +279,7 @@ def _transform_json_structure(data: Union[Dict[str, Any], List[Any], Any]) -> An
     return data
 
 
-def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot, pipeline_outputs: Dict[str, Any]) -> None:
+def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot, pipeline_outputs: dict[str, Any]) -> None:
     """
     Trigger a breakpoint by saving a snapshot and raising exception.
 
@@ -302,7 +302,7 @@ def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot, pipeline_output
 
 
 def _create_agent_snapshot(
-    *, component_visits: Dict[str, int], agent_breakpoint: AgentBreakpoint, component_inputs: Dict[str, Any]
+    *, component_visits: dict[str, int], agent_breakpoint: AgentBreakpoint, component_inputs: dict[str, Any]
 ) -> AgentSnapshot:
     """
     Create a snapshot of the agent's state.
@@ -322,7 +322,7 @@ def _create_agent_snapshot(
     )
 
 
-def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools: Union[List[Tool], Toolset]) -> None:
+def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools: Union[list[Tool], Toolset]) -> None:
     """
     Validates the AgentBreakpoint passed to the agent.
 
@@ -383,7 +383,7 @@ def _check_chat_generator_breakpoint(
 
 
 def _check_tool_invoker_breakpoint(
-    *, llm_messages: List[ChatMessage], agent_snapshot: AgentSnapshot, parent_snapshot: Optional[PipelineSnapshot]
+    *, llm_messages: list[ChatMessage], agent_snapshot: AgentSnapshot, parent_snapshot: Optional[PipelineSnapshot]
 ) -> None:
     """
     Check for breakpoint before calling the ToolInvoker.

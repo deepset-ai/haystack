@@ -12,7 +12,7 @@ from haystack.dataclasses import Document
 from haystack.errors import FilterError
 
 
-def raise_on_invalid_filter_syntax(filters: Optional[Dict[str, Any]] = None) -> None:
+def raise_on_invalid_filter_syntax(filters: Optional[dict[str, Any]] = None) -> None:
     """
     Raise an error if the filter syntax is invalid.
     """
@@ -21,7 +21,7 @@ def raise_on_invalid_filter_syntax(filters: Optional[Dict[str, Any]] = None) -> 
         raise FilterError(msg)
 
 
-def document_matches_filter(filters: Dict[str, Any], document: Document) -> bool:
+def document_matches_filter(filters: dict[str, Any], document: Document) -> bool:
     """
     Return whether `filters` match the Document.
 
@@ -33,15 +33,15 @@ def document_matches_filter(filters: Dict[str, Any], document: Document) -> bool
     return _logic_condition(filters, document)
 
 
-def _and(document: Document, conditions: List[Dict[str, Any]]) -> bool:
+def _and(document: Document, conditions: list[dict[str, Any]]) -> bool:
     return all(_comparison_condition(condition, document) for condition in conditions)
 
 
-def _or(document: Document, conditions: List[Dict[str, Any]]) -> bool:
+def _or(document: Document, conditions: list[dict[str, Any]]) -> bool:
     return any(_comparison_condition(condition, document) for condition in conditions)
 
 
-def _not(document: Document, conditions: List[Dict[str, Any]]) -> bool:
+def _not(document: Document, conditions: list[dict[str, Any]]) -> bool:
     return not _and(document, conditions)
 
 
@@ -89,7 +89,7 @@ def _parse_date(value):
             raise FilterError(msg) from exc
 
 
-def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime) -> Tuple[datetime, datetime]:
+def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime) -> tuple[datetime, datetime]:
     """Ensure that both dates are either naive or aware."""
     # Both naive
     if date1.tzinfo is None and date2.tzinfo is None:
@@ -158,7 +158,7 @@ COMPARISON_OPERATORS = {
 }
 
 
-def _logic_condition(condition: Dict[str, Any], document: Document) -> bool:
+def _logic_condition(condition: dict[str, Any], document: Document) -> bool:
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
         raise FilterError(msg)
@@ -166,11 +166,11 @@ def _logic_condition(condition: Dict[str, Any], document: Document) -> bool:
         msg = f"'conditions' key missing in {condition}"
         raise FilterError(msg)
     operator: str = condition["operator"]
-    conditions: List[Dict[str, Any]] = condition["conditions"]
+    conditions: list[dict[str, Any]] = condition["conditions"]
     return LOGICAL_OPERATORS[operator](document, conditions)
 
 
-def _comparison_condition(condition: Dict[str, Any], document: Document) -> bool:
+def _comparison_condition(condition: dict[str, Any], document: Document) -> bool:
     if "field" not in condition:
         # 'field' key is only found in comparison dictionaries.
         # We assume this is a logic dictionary since it's not present.

@@ -89,7 +89,7 @@ class BranchJoiner:
     have more than one downstream component.
     """
 
-    def __init__(self, type_: Type):
+    def __init__(self, type_: type):
         """
         Creates a `BranchJoiner` component.
 
@@ -99,7 +99,7 @@ class BranchJoiner:
         component.set_input_types(self, value=GreedyVariadic[type_])  # type: ignore
         component.set_output_types(self, value=type_)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component into a dictionary.
 
@@ -109,7 +109,7 @@ class BranchJoiner:
         return default_to_dict(self, type_=serialize_type(self.type_))
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BranchJoiner":
+    def from_dict(cls, data: dict[str, Any]) -> "BranchJoiner":
         """
         Deserializes a `BranchJoiner` instance from a dictionary.
 
@@ -120,7 +120,7 @@ class BranchJoiner:
         data["init_parameters"]["type_"] = deserialize_type(data["init_parameters"]["type_"])
         return default_from_dict(cls, data)
 
-    def run(self, **kwargs) -> Dict[str, Any]:
+    def run(self, **kwargs) -> dict[str, Any]:
         """
         Executes the `BranchJoiner`, selecting the first available input value and passing it downstream.
 

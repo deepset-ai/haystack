@@ -54,7 +54,7 @@ class Secret(ABC):
         return TokenSecret(_token=token)
 
     @staticmethod
-    def from_env_var(env_vars: Union[str, List[str]], *, strict: bool = True) -> "Secret":
+    def from_env_var(env_vars: Union[str, list[str]], *, strict: bool = True) -> "Secret":
         """
         Create an environment variable-based secret. Accepts one or more environment variables.
 
@@ -71,7 +71,7 @@ class Secret(ABC):
             env_vars = [env_vars]
         return EnvVarSecret(_env_vars=tuple(env_vars), _strict=strict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the secret to a JSON-serializable dictionary.
 
@@ -87,7 +87,7 @@ class Secret(ABC):
         return out
 
     @staticmethod
-    def from_dict(dict: Dict[str, Any]) -> "Secret":  # noqa:A002
+    def from_dict(dict: dict[str, Any]) -> "Secret":  # noqa:A002
         """
         Create a secret from a JSON-serializable dictionary.
 
@@ -119,12 +119,12 @@ class Secret(ABC):
         pass
 
     @abstractmethod
-    def _to_dict(self) -> Dict[str, Any]:
+    def _to_dict(self) -> dict[str, Any]:
         pass
 
     @staticmethod
     @abstractmethod
-    def _from_dict(_: Dict[str, Any]) -> "Secret":
+    def _from_dict(_: dict[str, Any]) -> "Secret":
         pass
 
 
@@ -146,13 +146,13 @@ class TokenSecret(Secret):
         if len(self._token) == 0:
             raise ValueError("Authentication token cannot be empty.")
 
-    def _to_dict(self) -> Dict[str, Any]:
+    def _to_dict(self) -> dict[str, Any]:
         raise ValueError(
             "Cannot serialize token-based secret. Use an alternative secret type like environment variables."
         )
 
     @staticmethod
-    def _from_dict(_: Dict[str, Any]) -> "Secret":
+    def _from_dict(_: dict[str, Any]) -> "Secret":
         raise ValueError(
             "Cannot deserialize token-based secret. Use an alternative secret type like environment variables."
         )
@@ -175,7 +175,7 @@ class EnvVarSecret(Secret):
     Upon resolution, it returns a string token from the first environment variable that is set. Can be serialized.
     """
 
-    _env_vars: Tuple[str, ...]
+    _env_vars: tuple[str, ...]
     _strict: bool = True
     _type: SecretType = SecretType.ENV_VAR
 
@@ -186,11 +186,11 @@ class EnvVarSecret(Secret):
         if len(self._env_vars) == 0:
             raise ValueError("One or more environment variables must be provided for the secret.")
 
-    def _to_dict(self) -> Dict[str, Any]:
+    def _to_dict(self) -> dict[str, Any]:
         return {"env_vars": list(self._env_vars), "strict": self._strict}
 
     @staticmethod
-    def _from_dict(dictionary: Dict[str, Any]) -> "Secret":
+    def _from_dict(dictionary: dict[str, Any]) -> "Secret":
         return EnvVarSecret(tuple(dictionary["env_vars"]), _strict=dictionary["strict"])
 
     def resolve_value(self) -> Optional[Any]:
@@ -211,7 +211,7 @@ class EnvVarSecret(Secret):
         return self._type
 
 
-def deserialize_secrets_inplace(data: Dict[str, Any], keys: Iterable[str], *, recursive: bool = False) -> None:
+def deserialize_secrets_inplace(data: dict[str, Any], keys: Iterable[str], *, recursive: bool = False) -> None:
     """
     Deserialize secrets in a dictionary inplace.
 
