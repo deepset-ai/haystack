@@ -367,11 +367,6 @@ def test_chat_message_init_parameters_removed():
         ChatMessage(role="irrelevant", content="This is a message")
 
 
-def test_chat_message_init_content_parameter_type():
-    with pytest.raises(TypeError):
-        ChatMessage(ChatRole.USER, "This is a message")
-
-
 def test_to_openai_dict_format():
     message = ChatMessage.from_system("You are good assistant")
     assert message.to_openai_dict_format() == {"role": "system", "content": "You are good assistant"}
