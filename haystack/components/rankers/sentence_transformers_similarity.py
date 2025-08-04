@@ -276,7 +276,7 @@ class SentenceTransformersSimilarityRanker:
         ranked_docs = []
         for el in ranking_result:
             index = el["corpus_id"]
-            score = el["score"]
+            score = float(el["score"])
             document = copy(documents[index])
             document.score = score
             ranked_docs.append(document)
