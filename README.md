@@ -78,7 +78,7 @@ Some examples of what you can do with Haystack:
 
 ## Haystack Enterprise: Best Practices and Expert Support
 
-Get expert support from the Haystack team, build faster with enterprise-grade templates, and scale securely with deployment guides for cloud and on-prem environments - all with **Haystack Enterprise**. Read more about it our [announcement post](https://haystack.deepset.ai/blog/announcing-haystack-enterprise)
+Get expert support from the Haystack team, build faster with enterprise-grade templates, and scale securely with deployment guides for cloud and on-prem environments - all with **Haystack Enterprise**. Read more about it our [announcement post](https://haystack.deepset.ai/blog/announcing-haystack-enterprise).
 
 👉 [Get Haystack Enterprise](https://www.deepset.ai/products-and-services/haystack-enterprise) 
 
