@@ -302,6 +302,13 @@ skip-magic-trailing-comma = true
   "SIM105", # try-except-pass instead of contextlib-suppress
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
 ]
+"test/core/test_type_utils.py" = [
+  "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
+]
+"test/utils/test_type_serialization.py" = [
+  "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
+]
+
 
 [tool.ruff.lint]
 isort.split-on-trailing-comma = false
@@ -320,6 +327,7 @@ select = [
   "SIM",   # flake8-simplify
   "SLOT",  # flake8-slots
   "T10",   # flake8-debugger
+  "UP006", # non-pep585-annotation
   "W",     # pycodestyle
   "YTT",   # flake8-2020
   "I",     # isort
