@@ -4,7 +4,7 @@
 
 import json
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pydantic

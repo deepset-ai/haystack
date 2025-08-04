@@ -6,7 +6,7 @@
 import json
 import re
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 from unittest.mock import ANY
 
 import pytest

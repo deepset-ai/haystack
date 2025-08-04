@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Optional, Protocol
 
 from haystack.dataclasses import Document
 from haystack.document_stores.types.policy import DuplicatePolicy

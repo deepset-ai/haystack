@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from enum import Enum
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 from haystack import component, default_to_dict, logging
 from haystack.dataclasses import Document

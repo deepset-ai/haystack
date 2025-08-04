@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import Annotated, Any, Iterable, List, Type, TypedDict, TypeVar, get_args
+from typing import Annotated, Any, Iterable, TypedDict, TypeVar, get_args
 
 from typing_extensions import TypeAlias  # Python 3.9 compatibility
 

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Literal, Optional
 
 from haystack import Document, component, logging
 from haystack.components.converters.image.image_utils import (

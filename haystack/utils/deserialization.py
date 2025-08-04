@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict
+from typing import Any
 
 from haystack import DeserializationError
 from haystack.core.serialization import component_from_dict, default_from_dict, import_class_by_name

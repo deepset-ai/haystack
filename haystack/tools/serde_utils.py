@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization import import_class_by_name

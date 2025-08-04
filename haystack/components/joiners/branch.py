@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Type
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import GreedyVariadic

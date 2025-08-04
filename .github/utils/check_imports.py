@@ -3,7 +3,7 @@ import os
 import sys
 import traceback
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from haystack import logging  # pylint: disable=unused-import  # this is needed to avoid circular imports
 

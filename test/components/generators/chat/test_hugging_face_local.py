@@ -4,7 +4,7 @@
 
 import asyncio
 import gc
-from typing import List, Optional
+from typing import Optional
 from unittest.mock import Mock, patch
 
 import pytest

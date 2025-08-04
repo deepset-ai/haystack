@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Literal, Optional
+from typing import Any, Callable, Literal, Optional
 
 from dateutil.parser import parse as date_parse
 

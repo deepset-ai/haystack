@@ -4,7 +4,7 @@
 
 import contextlib
 import dataclasses
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Iterator, Optional
 
 from haystack import logging
 from haystack.tracing import Span, Tracer

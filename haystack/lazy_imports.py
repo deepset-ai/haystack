@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from types import TracebackType
-from typing import Optional, Type
+from typing import Optional
 
 from lazy_imports.try_import import _DeferredImportExceptionContextManager
 

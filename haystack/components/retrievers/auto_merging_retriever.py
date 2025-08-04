@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from typing import Any, Dict, List
+from typing import Any
 
 from haystack import Document, component, default_to_dict
 from haystack.core.serialization import default_from_dict

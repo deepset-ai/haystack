@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from typing import Any, List, TypeVar, Union, get_origin
+from typing import Any, TypeVar, Union, get_origin
 
 T = TypeVar("T")
 

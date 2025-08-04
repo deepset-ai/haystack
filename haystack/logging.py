@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 import typing
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 if typing.TYPE_CHECKING:
     from structlog.typing import EventDict, Processor, WrappedLogger

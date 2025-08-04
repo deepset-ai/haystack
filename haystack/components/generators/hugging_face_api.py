@@ -4,7 +4,7 @@
 
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Union, cast
+from typing import Any, Iterable, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import (

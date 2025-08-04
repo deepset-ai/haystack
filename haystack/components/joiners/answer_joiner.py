@@ -5,7 +5,7 @@
 import itertools
 from enum import Enum
 from math import inf
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic

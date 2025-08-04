@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
 
 import pytest
 from pydantic import Field, create_model

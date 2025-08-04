@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from openai import OpenAI
 from openai.types.image import Image

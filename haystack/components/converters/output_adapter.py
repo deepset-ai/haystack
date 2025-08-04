@@ -4,7 +4,7 @@
 
 import ast
 import contextlib
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Callable, Optional
 
 import jinja2.runtime
 from jinja2 import Environment, TemplateSyntaxError, meta

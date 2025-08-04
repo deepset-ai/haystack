@@ -4,7 +4,7 @@
 
 import ast
 import contextlib
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, TypedDict, Union, get_args, get_origin
+from typing import Any, Callable, Mapping, Optional, Sequence, TypedDict, Union, get_args, get_origin
 
 from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment

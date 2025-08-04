@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Union
+from typing import Union
 
 from haystack.core.component import component
 

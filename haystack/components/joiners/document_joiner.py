@@ -6,7 +6,7 @@ import itertools
 from collections import defaultdict
 from enum import Enum
 from math import inf
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic

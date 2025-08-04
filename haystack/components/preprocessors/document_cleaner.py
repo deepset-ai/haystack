@@ -6,7 +6,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Generator, List, Literal, Optional, Set
+from typing import Generator, Literal, Optional
 from unicodedata import normalize
 
 from haystack import Document, component, logging

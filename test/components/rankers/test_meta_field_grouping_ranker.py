@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict
+from typing import Any
 
 from haystack import Pipeline
 from haystack.components.rankers.meta_field_grouping_ranker import MetaFieldGroupingRanker

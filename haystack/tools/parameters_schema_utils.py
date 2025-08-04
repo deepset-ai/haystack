@@ -5,7 +5,7 @@
 import collections
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
-from typing import Any, Callable, Dict, List, Sequence, Tuple, Union, get_args, get_origin
+from typing import Any, Callable, Sequence, Union, get_args, get_origin
 
 from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model

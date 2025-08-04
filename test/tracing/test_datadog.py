@@ -4,7 +4,6 @@
 
 import functools
 import json
-from typing import Dict, List
 
 import pytest
 from _pytest.capture import CaptureFixture

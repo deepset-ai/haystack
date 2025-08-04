@@ -3,7 +3,6 @@ import base64
 import os
 import re
 from pathlib import Path
-from typing import List
 
 import requests
 import yaml

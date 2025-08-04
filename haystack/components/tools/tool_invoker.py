@@ -7,7 +7,7 @@ import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Optional, Union
 
 from haystack.components.agents import State
 from haystack.core.component.component import component

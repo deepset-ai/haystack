@@ -4,7 +4,6 @@
 
 import math
 import os
-from typing import List
 
 import pytest
 

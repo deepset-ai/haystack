@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Iterator, Optional
 
 from haystack.lazy_imports import LazyImport
 from haystack.tracing import Span, Tracer

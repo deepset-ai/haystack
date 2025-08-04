@@ -4,7 +4,6 @@
 
 import logging
 from math import ceil, exp
-from typing import List
 from unittest.mock import Mock, patch
 
 import pytest

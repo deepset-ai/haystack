@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List
 
 from haystack import Document, component
 from haystack.utils.filters import document_matches_filter

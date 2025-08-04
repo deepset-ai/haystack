@@ -4,7 +4,7 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 from jinja2 import PackageLoader, TemplateSyntaxError, meta
 from jinja2.sandbox import SandboxedEnvironment

@@ -5,7 +5,7 @@
 import asyncio
 import time
 from pathlib import Path
-from typing import Dict, Generator
+from typing import Generator
 from unittest.mock import Mock
 
 import pytest

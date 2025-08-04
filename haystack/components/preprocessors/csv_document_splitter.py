@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from io import StringIO
-from typing import Any, Dict, List, Literal, Optional, Tuple, get_args
+from typing import Any, Literal, Optional, get_args
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport

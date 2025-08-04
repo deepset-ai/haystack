@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
 
 from haystack.core.component import component
 from haystack.core.component.types import Variadic

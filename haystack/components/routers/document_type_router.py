@@ -6,7 +6,7 @@ import mimetypes
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 from haystack import component
 from haystack.dataclasses import Document

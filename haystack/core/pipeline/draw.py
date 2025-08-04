@@ -7,7 +7,7 @@ import colorsys
 import json
 import random
 import zlib
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import networkx  # type:ignore
 import requests

@@ -5,7 +5,7 @@
 import json
 from collections import defaultdict
 from copy import copy
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole

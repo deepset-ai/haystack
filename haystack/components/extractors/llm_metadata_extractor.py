@@ -5,7 +5,7 @@
 import copy
 import json
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment

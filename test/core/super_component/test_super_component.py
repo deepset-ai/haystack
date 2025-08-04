@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, List, Union
+from typing import Any, Union
 from unittest.mock import patch
 
 import pytest

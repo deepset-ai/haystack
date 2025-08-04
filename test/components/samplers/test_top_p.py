@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import random
-from typing import List
 
 import pytest
 

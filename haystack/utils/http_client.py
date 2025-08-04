@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Literal, Optional, Union, overload
+from typing import Any, Literal, Optional, Union, overload
 
 import httpx
 

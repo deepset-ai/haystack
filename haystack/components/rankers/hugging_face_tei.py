@@ -4,7 +4,7 @@
 
 import copy
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 from urllib.parse import urljoin
 
 from haystack import Document, component, default_from_dict, default_to_dict

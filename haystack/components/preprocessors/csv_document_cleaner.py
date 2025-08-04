@@ -4,7 +4,7 @@
 
 from copy import deepcopy
 from io import StringIO
-from typing import Dict, List, Optional
+from typing import Optional
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport

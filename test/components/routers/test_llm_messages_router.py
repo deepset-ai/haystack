@@ -4,7 +4,7 @@
 
 import os
 import re
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import Mock
 
 import pytest

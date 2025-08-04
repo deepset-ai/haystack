@@ -5,7 +5,7 @@
 import asyncio
 import copy
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import logging
 from haystack.dataclasses import (

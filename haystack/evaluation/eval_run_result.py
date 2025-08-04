@@ -4,7 +4,7 @@
 
 import csv
 from copy import deepcopy
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 from haystack import logging
 from haystack.lazy_imports import LazyImport

@@ -4,7 +4,7 @@
 
 import mimetypes
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal, Optional, Union
 
 from haystack import component, logging
 from haystack.components.converters.image.image_utils import _encode_image_to_base64

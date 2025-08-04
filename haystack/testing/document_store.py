@@ -4,7 +4,6 @@
 
 import random
 from datetime import datetime
-from typing import List
 
 from haystack.dataclasses import Document
 from haystack.document_stores.errors import DuplicateDocumentError

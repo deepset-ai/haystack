@@ -4,7 +4,7 @@
 
 import logging
 import sys
-from typing import List, Optional
+from typing import Optional
 from unittest.mock import patch
 
 import pytest

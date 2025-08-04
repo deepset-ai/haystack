@@ -4,7 +4,7 @@
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Tuple
+from typing import Any, Literal
 
 from haystack import logging
 from haystack.lazy_imports import LazyImport

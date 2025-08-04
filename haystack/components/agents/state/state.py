@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 from haystack.dataclasses import ChatMessage
 from haystack.utils import _deserialize_value_with_schema, _serialize_value_with_schema

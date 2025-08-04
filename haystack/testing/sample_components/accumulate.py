@@ -5,7 +5,7 @@
 import builtins
 import sys
 from importlib import import_module
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 
 from haystack.core.component import component
 from haystack.core.errors import ComponentDeserializationError

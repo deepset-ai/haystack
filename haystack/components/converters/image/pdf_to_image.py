@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal, Optional, Union
 
 from haystack import component, logging
 from haystack.components.converters.image.image_utils import _convert_pdf_to_images, pillow_import, pypdfium2_import

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from statistics import mean
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
