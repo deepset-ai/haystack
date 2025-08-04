@@ -362,7 +362,7 @@ class TestState:
         assert state_dict["schema"] == {
             "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
             "messages": {
-                "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
+                "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
                 "handler": "haystack.components.agents.state.state_utils.merge_lists",
             },
             "dict_of_lists": {"type": "dict", "handler": "haystack.components.agents.state.state_utils.replace_values"},
@@ -391,7 +391,7 @@ class TestState:
             "schema": {
                 "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
                 "messages": {
-                    "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
+                    "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
                     "handler": "haystack.components.agents.state.state_utils.merge_lists",
                 },
                 "dict_of_lists": {

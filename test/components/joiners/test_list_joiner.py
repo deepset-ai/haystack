@@ -35,7 +35,7 @@ class TestListJoiner:
         data = joiner.to_dict()
         assert data == {
             "type": "haystack.components.joiners.list_joiner.ListJoiner",
-            "init_parameters": {"list_type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
+            "init_parameters": {"list_type_": "list[haystack.dataclasses.chat_message.ChatMessage]"},
         }
 
     def test_from_dict_default(self):
@@ -47,7 +47,7 @@ class TestListJoiner:
     def test_from_dict_non_default(self):
         data = {
             "type": "haystack.components.joiners.list_joiner.ListJoiner",
-            "init_parameters": {"list_type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
+            "init_parameters": {"list_type_": "list[haystack.dataclasses.chat_message.ChatMessage]"},
         }
         list_joiner = ListJoiner.from_dict(data)
         assert isinstance(list_joiner, ListJoiner)

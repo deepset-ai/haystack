@@ -196,7 +196,7 @@ class TestLLMEvaluator:
             "init_parameters": {
                 "chat_generator": chat_generator.to_dict(),
                 "instructions": "test-instruction",
-                "inputs": [["predicted_answers", "typing.List[str]"]],
+                "inputs": [["predicted_answers", "list[str]"]],
                 "outputs": ["score"],
                 "progress_bar": True,
                 "examples": [
@@ -230,7 +230,7 @@ class TestLLMEvaluator:
             "init_parameters": {
                 "chat_generator": chat_generator.to_dict(),
                 "instructions": "test-instruction",
-                "inputs": [["predicted_answers", "typing.List[str]"]],
+                "inputs": [["predicted_answers", "list[str]"]],
                 "outputs": ["custom_score"],
                 "progress_bar": True,
                 "examples": [
@@ -255,7 +255,7 @@ class TestLLMEvaluator:
             "init_parameters": {
                 "chat_generator": chat_generator.to_dict(),
                 "instructions": "test-instruction",
-                "inputs": [["predicted_answers", "typing.List[str]"]],
+                "inputs": [["predicted_answers", "list[str]"]],
                 "outputs": ["score"],
                 "examples": [
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
