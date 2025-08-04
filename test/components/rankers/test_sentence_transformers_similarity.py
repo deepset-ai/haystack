@@ -4,6 +4,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 import torch
 
@@ -350,6 +351,24 @@ class TestSentenceTransformersSimilarityRanker:
         out = ranker.run(query="test", documents=documents)
         assert len(out["documents"]) == 1
 
+    def test_scores_cast_to_python_float_when_numpy_scalars_returned(self):
+        mock_cross_encoder = MagicMock()
+        ranker = SentenceTransformersSimilarityRanker(model="model")
+        ranker._cross_encoder = mock_cross_encoder
+
+        # Simulate backend returning numpy scalar types
+        mock_cross_encoder.rank.return_value = [
+            {"score": np.float32(0.123), "corpus_id": 0},
+            {"score": np.float64(0.456), "corpus_id": 1},
+        ]
+
+        documents = [Document(content="doc 0"), Document(content="doc 1")]
+        out = ranker.run(query="test", documents=documents)
+
+        assert len(out["documents"]) == 2
+        for d in out["documents"]:
+            assert isinstance(d.score, float)
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run(self):
@@ -373,6 +392,9 @@ class TestSentenceTransformersSimilarityRanker:
         assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
         assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
 
+        for doc in docs_after:
+            assert isinstance(doc.score, float)
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_top_k(self):
@@ -393,6 +415,9 @@ class TestSentenceTransformersSimilarityRanker:
         sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
         assert [doc.score for doc in docs_after] == sorted_scores
 
+        for doc in docs_after:
+            assert isinstance(doc.score, float)
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_single_document(self):
@@ -403,3 +428,4 @@ class TestSentenceTransformersSimilarityRanker:
         docs_after = output["documents"]
 
         assert len(docs_after) == 1
+        assert isinstance(docs_after[0].score, float)
