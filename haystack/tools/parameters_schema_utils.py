@@ -143,7 +143,7 @@ def _resolve_type(_type: Any) -> Any:
     it encounters into corresponding Pydantic models.
 
     :param _type: The type annotation to resolve. If the type is a dataclass, it will be converted to a Pydantic model.
-        For generic types (like List[SomeDataclass]), the inner types are also resolved recursively.
+        For generic types (like list[SomeDataclass]), the inner types are also resolved recursively.
 
     :returns:
         A fully resolved type, with all dataclass types converted to Pydantic models

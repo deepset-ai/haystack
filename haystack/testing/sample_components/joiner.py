@@ -14,7 +14,7 @@ class StringJoiner:
         """
         Take strings from multiple input nodes and join them into a single one returned in output.
 
-        Since `input_str` is Variadic, we know we'll receive a List[str].
+        Since `input_str` is Variadic, we know we'll receive a list[str].
         """
         return {"output": " ".join(input_str)}
 
@@ -26,7 +26,7 @@ class StringListJoiner:
         """
         Take list of strings from multiple input nodes and join them into a single one returned in output.
 
-        Since `input_str` is Variadic, we know we'll receive a List[List[str]].
+        Since `input_str` is Variadic, we know we'll receive a list[list[str]].
         """
         retval: list[str] = []
         for list_of_strings in inputs:

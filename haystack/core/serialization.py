@@ -25,7 +25,7 @@ class DeserializationCallbacks:
     :param component_pre_init:
         Invoked just before a component instance is
         initialized. Receives the following inputs:
-        `component_name` (`str`), `component_class` (`Type`), `init_params` (`Dict[str, Any]`).
+        `component_name` (`str`), `component_class` (`Type`), `init_params` (`dict[str, Any]`).
 
         The callback is allowed to modify the `init_params`
         dictionary, which contains all the parameters that

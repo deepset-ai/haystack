@@ -122,10 +122,10 @@ class OpenAPIServiceToFunctions:
         suitable for OpenAI function calling.
 
         :param service_openapi_spec: The OpenAPI specification from which functions are to be extracted.
-        :type service_openapi_spec: Dict[str, Any]
+        :type service_openapi_spec: dict[str, Any]
         :return: A list of dictionaries, each representing a function. Each dictionary includes the function's
                  name, description, and a schema of its parameters.
-        :rtype: List[Dict[str, Any]]
+        :rtype: list[dict[str, Any]]
         """
 
         # Doesn't enforce rigid spec validation because that would require a lot of dependencies

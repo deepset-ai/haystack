@@ -139,7 +139,7 @@ class Component(Protocol):
     have a `run` method. The signature of the method and its return value
     won't be checked, i.e. classes with the following methods:
 
-        def run(self, param: str) -> Dict[str, Any]:
+        def run(self, param: str) -> dict[str, Any]:
             ...
 
     and
@@ -157,10 +157,10 @@ class Component(Protocol):
     """
 
     # The following expression defines a run method compatible with any input signature.
-    # Its type is equivalent to Callable[..., Dict[str, Any]].
+    # Its type is equivalent to Callable[..., dict[str, Any]].
     # See https://typing.python.org/en/latest/spec/callables.html#meaning-of-in-callable.
     #
-    # Using `run: Callable[..., Dict[str, Any]]` directly leads to type errors: the protocol would expect a settable
+    # Using `run: Callable[..., dict[str, Any]]` directly leads to type errors: the protocol would expect a settable
     # attribute `run`, while the actual implementation is a read-only method.
     # For example:
     # from haystack import Pipeline, component

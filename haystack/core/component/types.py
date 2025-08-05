@@ -90,8 +90,8 @@ class InputSocket:
             # an iterable of the declared type. For example, Variadic[int]
             # is eventually an alias for Iterable[int]. Since we're interested
             # in getting the inner type `int`, we call `get_args` twice: the
-            # first time to get `List[int]` out of `Variadic`, the second time
-            # to get `int` out of `List[int]`.
+            # first time to get `list[int]` out of `Variadic`, the second time
+            # to get `int` out of `list[int]`.
             self.type = get_args(get_args(self.type)[0])[0]
 
 

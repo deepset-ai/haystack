@@ -14,7 +14,7 @@ def _is_valid_type(obj: Any) -> bool:
 
     Valid types include:
     - Normal classes (str, dict, CustomClass)
-    - Generic types (List[str], Dict[str, int])
+    - Generic types (list[str], dict[str, int])
     - Union types (Union[str, int], Optional[str])
 
     :param obj: The object to check
@@ -23,7 +23,7 @@ def _is_valid_type(obj: Any) -> bool:
     Example usage:
         >>> _is_valid_type(str)
         True
-        >>> _is_valid_type(List[int])
+        >>> _is_valid_type(list[int])
         True
         >>> _is_valid_type(Union[str, int])
         True
