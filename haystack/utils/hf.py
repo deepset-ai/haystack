@@ -12,8 +12,10 @@ from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
+    ImageContent,
     StreamingChunk,
     SyncStreamingCallbackT,
+    TextContent,
 )
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
@@ -278,30 +280,24 @@ def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
         # HF does not provide a way to communicate errors in tool invocations, so we ignore the error field
         return hf_msg
 
-    # Handle multimodal content (text + images) for user messages
-    if images and text_contents:
+    # Handle multimodal content (text + images) preserving order
+    if text_contents or images:
         content_parts: List[Dict[str, Any]] = []
 
-        # Add text parts
-        for text in text_contents:
-            content_parts.append({"type": "text", "text": text})
+        # Process content in order to preserve message structure
+        for part in message._content:
+            if isinstance(part, TextContent):
+                content_parts.append({"type": "text", "text": part.text})
+            elif isinstance(part, ImageContent):
+                image_url = f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}"
+                content_parts.append({"type": "image_url", "image_url": {"url": image_url}})
 
-        # Add image parts using HF VLM format
-        for image in images:
-            image_url = f"data:{image.mime_type or 'image/jpeg'};base64,{image.base64_image}"
-            content_parts.append({"type": "image_url", "image_url": {"url": image_url}})
-
-        hf_msg["content"] = content_parts
-    elif images and not text_contents:
-        # Handle image-only messages
-        image_parts: List[Dict[str, Any]] = []
-        for image in images:
-            image_url = f"data:{image.mime_type or 'image/jpeg'};base64,{image.base64_image}"
-            image_parts.append({"type": "image_url", "image_url": {"url": image_url}})
-        hf_msg["content"] = image_parts
-    elif text_contents:
-        # Handle text-only messages (backward compatibility)
-        hf_msg["content"] = text_contents[0]
+        # If we have multiple content parts or any images, use structured format
+        if len(content_parts) > 1 or images:
+            hf_msg["content"] = content_parts
+        elif len(content_parts) == 1 and not images:
+            # Single text content for backward compatibility
+            hf_msg["content"] = content_parts[0]["text"]
 
     if tool_calls:
         hf_tool_calls = []
