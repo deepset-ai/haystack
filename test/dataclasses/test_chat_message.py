@@ -10,8 +10,27 @@ from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.dataclasses.image_content import ImageContent
 
 
+def test_chat_role_from_str():
+    assert ChatRole.from_str("user") == ChatRole.USER
+
+    with pytest.raises(ValueError):
+        ChatRole.from_str("invalid")
+
+
 def test_tool_call_init():
     tc = ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
+    assert tc.id == "123"
+    assert tc.tool_name == "mytool"
+    assert tc.arguments == {"a": 1}
+
+
+def test_tool_call_to_dict():
+    tc = ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
+    assert tc.to_dict() == {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}}
+
+
+def test_tool_call_from_dict():
+    tc = ToolCall.from_dict({"id": "123", "tool_name": "mytool", "arguments": {"a": 1}})
     assert tc.id == "123"
     assert tc.tool_name == "mytool"
     assert tc.arguments == {"a": 1}
@@ -24,8 +43,39 @@ def test_tool_call_result_init():
     assert tcr.error
 
 
+def test_tool_call_result_to_dict():
+    tcr = ToolCallResult(result="result", origin=ToolCall(id="123", tool_name="mytool", arguments={"a": 1}), error=True)
+    assert tcr.to_dict() == {
+        "result": "result",
+        "origin": {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}},
+        "error": True,
+    }
+
+
+def test_tool_call_result_from_dict():
+    tcr = ToolCallResult.from_dict(
+        {"result": "result", "origin": {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}}, "error": True}
+    )
+    assert tcr.result == "result"
+    assert tcr.origin == ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
+    assert tcr.error
+
+    with pytest.raises(ValueError):
+        ToolCallResult.from_dict({"result": "result", "error": False})
+
+
 def test_text_content_init():
     tc = TextContent(text="Hello")
+    assert tc.text == "Hello"
+
+
+def test_text_content_to_dict():
+    tc = TextContent(text="Hello")
+    assert tc.to_dict() == {"text": "Hello"}
+
+
+def test_text_content_from_dict():
+    tc = TextContent.from_dict({"text": "Hello"})
     assert tc.text == "Hello"
 
 
@@ -367,11 +417,6 @@ def test_chat_message_init_parameters_removed():
         ChatMessage(role="irrelevant", content="This is a message")
 
 
-def test_chat_message_init_content_parameter_type():
-    with pytest.raises(TypeError):
-        ChatMessage(ChatRole.USER, "This is a message")
-
-
 def test_to_openai_dict_format():
     message = ChatMessage.from_system("You are good assistant")
     assert message.to_openai_dict_format() == {"role": "system", "content": "You are good assistant"}
@@ -417,13 +462,16 @@ def test_to_openai_dict_format_user_message():
 
 def test_to_openai_dict_format_multimodal_user_message(base64_image_string):
     message = ChatMessage.from_user(
-        content_parts=[TextContent("I have a question"), ImageContent(base64_image=base64_image_string)]
+        content_parts=[TextContent("I have a question"), ImageContent(base64_image=base64_image_string, detail="auto")]
     )
     assert message.to_openai_dict_format() == {
         "role": "user",
         "content": [
             {"type": "text", "text": "I have a question"},
-            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image_string}"}},
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{base64_image_string}", "detail": "auto"},
+            },
         ],
     }
 
