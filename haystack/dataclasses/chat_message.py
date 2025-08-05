@@ -368,7 +368,7 @@ class ChatMessage:
         if text is not None and content_parts is not None:
             raise ValueError("Only one of text or content_parts can be provided.")
 
-        content: Sequence[Union[TextContent, ImageContent]] = []
+        content: List[Union[TextContent, ImageContent]] = []
 
         if text is not None:
             content = [TextContent(text=text)]
@@ -526,8 +526,8 @@ class ChatMessage:
 
         if not text_contents and not tool_calls and not tool_call_results and not images:
             raise ValueError(
-                "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`,"
-                " `ToolCallResult`, or `ImageContent`."
+                "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, "
+                "`ToolCallResult`, or `ImageContent`."
             )
         if len(text_contents) > 0 and len(tool_call_results) > 0:
             raise ValueError(
