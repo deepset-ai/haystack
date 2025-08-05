@@ -307,7 +307,7 @@ But my favorite subject is Small Language Models.
             jinja_env.from_string(template).render()
 
     def test_templatize_part_filter_with_invalid_type(self):
-        with pytest.raises(ValueError, match="Value must be an instance of one of the following types"):
+        with pytest.raises(TypeError, match="Unsupported type in ChatMessage content"):
             templatize_part(123)
 
     def test_empty_message_content_raises_error(self, jinja_env):
@@ -465,5 +465,5 @@ But my favorite subject is Small Language Models.
         {{ image | templatize_part }}
         {% endmessage %}
         """
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             jinja_env.from_string(template).render(image=image)

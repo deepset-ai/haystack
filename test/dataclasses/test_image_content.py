@@ -24,6 +24,36 @@ def test_image_content_init(base64_image_string):
     assert image_content.validation
 
 
+def test_image_content_to_dict(base64_image_string):
+    image_content = ImageContent(
+        base64_image=base64_image_string, mime_type="image/png", detail="auto", meta={"key": "value"}
+    )
+    assert image_content.to_dict() == {
+        "base64_image": base64_image_string,
+        "mime_type": "image/png",
+        "detail": "auto",
+        "meta": {"key": "value"},
+        "validation": True,
+    }
+
+
+def test_image_content_from_dict(base64_image_string):
+    image_content = ImageContent.from_dict(
+        {
+            "base64_image": base64_image_string,
+            "mime_type": "image/png",
+            "detail": "auto",
+            "meta": {"key": "value"},
+            "validation": False,
+        }
+    )
+    assert image_content.base64_image == base64_image_string
+    assert image_content.mime_type == "image/png"
+    assert image_content.detail == "auto"
+    assert image_content.meta == {"key": "value"}
+    assert not image_content.validation
+
+
 def test_image_content_init_with_invalid_base64_string():
     with pytest.raises(ValueError):
         ImageContent(base64_image="invalid_base64_string")
