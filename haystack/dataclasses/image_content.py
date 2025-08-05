@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Tuple, Union
@@ -133,6 +133,19 @@ class ImageContent:
             display(image)
         else:
             image.show()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert ImageContent into a dictionary.
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ImageContent":
+        """
+        Create an ImageContent from a dictionary.
+        """
+        return ImageContent(**data)
 
     @classmethod
     def from_file_path(

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Callable, List, Optional, Union, get_args
+from typing import Any, Callable, List, Optional, Union
 
 from jinja2 import TemplateSyntaxError, nodes
 from jinja2.ext import Extension
@@ -268,11 +268,4 @@ def templatize_part(value: ChatMessageContentT) -> str:
     :return: A JSON string wrapped in special XML content tags
     :raises ValueError: If the value is not an instance of ChatMessageContentT
     """
-    chat_message_content_types = get_args(ChatMessageContentT)
-    if not isinstance(value, chat_message_content_types):
-        chat_message_content_types_str = ", ".join([t.__name__ for t in chat_message_content_types])
-        raise ValueError(
-            f"Value must be an instance of one of the following types: {chat_message_content_types_str}. "
-            f"Got: {type(value).__name__}"
-        )
     return f"{START_TAG}{json.dumps(_serialize_content_part(value))}{END_TAG}"
