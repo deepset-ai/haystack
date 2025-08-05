@@ -147,7 +147,7 @@ class TextContent:
 
 ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent]
 
-_CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS: dict[type[ChatMessageContentT], str] = {  # type: ignore
+_CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS: dict[type[ChatMessageContentT], str] = {
     TextContent: "text",
     ToolCall: "tool_call",
     ToolCallResult: "tool_call_result",
