@@ -187,7 +187,7 @@ class ComponentMeta(type):
         """
         Convert positional arguments to keyword arguments based on the signature of the `__init__` method.
         """
-        init_signature = inspect.signature(cls_type.__init__)
+        init_signature = inspect.signature(cls_type.__init__)  # type:ignore[misc]
         init_params = {name: info for name, info in init_signature.parameters.items() if name != "self"}
 
         out = {}

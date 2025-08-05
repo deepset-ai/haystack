@@ -40,13 +40,13 @@ def _types_are_compatible(type1: T, type2: T) -> tuple[bool, Optional[T]]:
     """
     # Handle Any type
     if type1 is Any:
-        return True, _convert_to_typing_type(type2)
+        return True, type2
     if type2 is Any:
-        return True, _convert_to_typing_type(type1)
+        return True, type1
 
     # Direct equality
     if type1 == type2:
-        return True, _convert_to_typing_type(type1)
+        return True, type1
 
     type1_origin = get_origin(type1)
     type2_origin = get_origin(type2)
@@ -135,8 +135,7 @@ def _check_non_union_compatibility(
         common_args.append(common)
 
     # Reconstruct the type with common arguments
-    typing_type = _convert_to_typing_type(type1_origin)
-    return True, cast(Optional[T], typing_type[tuple(common_args)])
+    return True, cast(Optional[T], type1_origin[tuple(common_args)])
 
 
 def _unwrap_all(t: T, recursive: bool) -> T:
@@ -217,43 +216,9 @@ def _unwrap_optionals(t: T, recursive: bool) -> T:
 
     args = list(get_args(t))
     args.remove(type(None))
-    result = args[0] if len(args) == 1 else Union[tuple(args)]  # type: ignore
+    result = args[0] if len(args) == 1 else Union[tuple(args)]
 
     # Only recursively unwrap if requested
     if recursive:
         return _unwrap_all(result, recursive)  # type: ignore
     return result  # type: ignore
-
-
-def _convert_to_typing_type(t: Any) -> Any:
-    """
-    Convert built-in Python types to their typing equivalents.
-
-    :param t: Type to convert
-    :return: The type using typing module types
-    """
-    origin = get_origin(t)
-    args = get_args(t)
-
-    # Mapping of built-in types to their typing equivalents
-    type_converters = {
-        list: lambda: list if not args else list[Any],
-        dict: lambda: dict if not args else dict[Any, Any],
-        set: lambda: set if not args else set[Any],
-        tuple: lambda: tuple if not args else tuple[Any, ...],
-    }
-
-    # Recursive argument handling
-    if origin in type_converters:
-        result = type_converters[origin]()
-        if args:
-            if origin == list:
-                return list[_convert_to_typing_type(args[0])]  # type: ignore
-            if origin == dict:
-                return dict[_convert_to_typing_type(args[0]), _convert_to_typing_type(args[1])]  # type: ignore
-            if origin == set:
-                return set[_convert_to_typing_type(args[0])]  # type: ignore
-            if origin == tuple:
-                return tuple[tuple(_convert_to_typing_type(arg) for arg in args)]
-        return result
-    return t

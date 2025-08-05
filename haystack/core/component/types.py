@@ -67,11 +67,13 @@ class InputSocket:
     def __post_init__(self):
         try:
             # __metadata__ is a tuple
-            self.is_variadic = self.type.__metadata__[0] in [
+            self.is_variadic = hasattr(self.type, "__metadata__") and self.type.__metadata__[0] in [
                 HAYSTACK_VARIADIC_ANNOTATION,
                 HAYSTACK_GREEDY_VARIADIC_ANNOTATION,
             ]
-            self.is_greedy = self.type.__metadata__[0] == HAYSTACK_GREEDY_VARIADIC_ANNOTATION
+            self.is_greedy = (
+                hasattr(self.type, "__metadata__") and self.type.__metadata__[0] == HAYSTACK_GREEDY_VARIADIC_ANNOTATION
+            )
         except AttributeError:
             self.is_variadic = False
             self.is_greedy = False

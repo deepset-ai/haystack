@@ -5,7 +5,7 @@
 import contextlib
 import dataclasses
 import uuid
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Iterator, Optional
 
 from haystack.tracing import Span, Tracer
 
