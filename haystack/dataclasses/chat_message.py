@@ -529,9 +529,9 @@ class ChatMessage:
                 "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, "
                 "`ToolCallResult`, or `ImageContent`."
             )
-        if len(text_contents) > 0 and len(tool_call_results) > 0:
+        if len(tool_call_results) > 0 and len(self._content) > 1:
             raise ValueError(
-                "For OpenAI compatibility, a `ChatMessage` cannot contain both `TextContent` and `ToolCallResult`."
+                "For OpenAI compatibility, a `ChatMessage` with a `ToolCallResult` cannot contain any other content."
             )
 
         openai_msg: Dict[str, Any] = {"role": self._role.value}
