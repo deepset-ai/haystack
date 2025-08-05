@@ -255,6 +255,33 @@ class HuggingFaceAPIChatGenerator:
     result = generator.run(messages)
     print(result)
     ```
+
+    #### With vision-language models (VLMs) for multimodal input
+
+    ```python
+    from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+    from haystack.dataclasses import ChatMessage, ImageContent
+    from haystack.utils import Secret
+    from haystack.utils.hf import HFGenerationAPIType
+
+    # Create an image from file path, URL, or base64
+    image = ImageContent.from_file_path("path/to/your/image.jpg")
+
+    # Create a multimodal message with both text and image
+    messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
+
+    generator = HuggingFaceAPIChatGenerator(
+        api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+        api_params={
+            "model": "llava-hf/llava-1.5-7b-hf",  # Example VLM model
+            "provider": "huggingface"
+        },
+        token=Secret.from_token("<your-api-key>")
+    )
+
+    result = generator.run(messages)
+    print(result)
+    ```
     """
 
     def __init__(  # pylint: disable=too-many-positional-arguments

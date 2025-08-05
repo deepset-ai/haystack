@@ -258,9 +258,12 @@ def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
     text_contents = message.texts
     tool_calls = message.tool_calls
     tool_call_results = message.tool_call_results
+    images = message.images
 
-    if not text_contents and not tool_calls and not tool_call_results:
-        raise ValueError("A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, or `ToolCallResult`.")
+    if not text_contents and not tool_calls and not tool_call_results and not images:
+        raise ValueError(
+            "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`, or `ImageContent`."
+        )
     if len(text_contents) + len(tool_call_results) > 1:
         raise ValueError("A `ChatMessage` can only contain one `TextContent` or one `ToolCallResult`.")
 
@@ -275,8 +278,31 @@ def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
         # HF does not provide a way to communicate errors in tool invocations, so we ignore the error field
         return hf_msg
 
-    if text_contents:
+    # Handle multimodal content (text + images) for user messages
+    if images and text_contents:
+        content_parts: List[Dict[str, Any]] = []
+
+        # Add text parts
+        for text in text_contents:
+            content_parts.append({"type": "text", "text": text})
+
+        # Add image parts using HF VLM format
+        for image in images:
+            image_url = f"data:{image.mime_type or 'image/jpeg'};base64,{image.base64_image}"
+            content_parts.append({"type": "image_url", "image_url": {"url": image_url}})
+
+        hf_msg["content"] = content_parts
+    elif images and not text_contents:
+        # Handle image-only messages
+        image_parts: List[Dict[str, Any]] = []
+        for image in images:
+            image_url = f"data:{image.mime_type or 'image/jpeg'};base64,{image.base64_image}"
+            image_parts.append({"type": "image_url", "image_url": {"url": image_url}})
+        hf_msg["content"] = image_parts
+    elif text_contents:
+        # Handle text-only messages (backward compatibility)
         hf_msg["content"] = text_contents[0]
+
     if tool_calls:
         hf_tool_calls = []
         for tc in tool_calls:
