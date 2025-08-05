@@ -19,7 +19,7 @@ with LazyImport("Run 'pip install tika'") as tika_import:
 logger = logging.getLogger(__name__)
 
 
-class XHTMLParser(HTMLParser):
+class XHTMLParser(HTMLParser):  # pylint: disable=abstract-method
     """
     Custom parser to extract pages from Tika XHTML content.
     """
