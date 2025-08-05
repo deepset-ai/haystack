@@ -30,11 +30,10 @@ class LLMEvaluator:
 
     Usage example:
     ```python
-    from typing import List
     from haystack.components.evaluators import LLMEvaluator
     evaluator = LLMEvaluator(
         instructions="Is this answer problematic for children?",
-        inputs=[("predicted_answers", List[str])],
+        inputs=[("predicted_answers", list[str])],
         outputs=["score"],
         examples=[
             {"inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},

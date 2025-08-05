@@ -31,7 +31,6 @@ class BranchJoiner:
     ### Example Usage:
     ```python
     import json
-    from typing import List
 
     from haystack import Pipeline
     from haystack.components.converters import OutputAdapter
@@ -55,10 +54,10 @@ class BranchJoiner:
     pipe = Pipeline()
 
     # Add components to the pipeline
-    pipe.add_component('joiner', BranchJoiner(List[ChatMessage]))
+    pipe.add_component('joiner', BranchJoiner(list[ChatMessage]))
     pipe.add_component('generator', OpenAIChatGenerator(model="gpt-4o-mini"))
     pipe.add_component('validator', JsonSchemaValidator(json_schema=person_schema))
-    pipe.add_component('adapter', OutputAdapter("{{chat_message}}", List[ChatMessage], unsafe=True))
+    pipe.add_component('adapter', OutputAdapter("{{chat_message}}", list[ChatMessage], unsafe=True))
 
     # And connect them
     pipe.connect("adapter", "joiner")
@@ -80,10 +79,10 @@ class BranchJoiner:
     ```
 
     Note that `BranchJoiner` can manage only one data type at a time. In this case, `BranchJoiner` is created for
-    passing `List[ChatMessage]`. This determines the type of data that `BranchJoiner` will receive from the upstream
+    passing `list[ChatMessage]`. This determines the type of data that `BranchJoiner` will receive from the upstream
     connected components and also the type of data that `BranchJoiner` will send through its output.
 
-    In the code example, `BranchJoiner` receives a looped back `List[ChatMessage]` from the `JsonSchemaValidator` and
+    In the code example, `BranchJoiner` receives a looped back `list[ChatMessage]` from the `JsonSchemaValidator` and
     sends it down to the `OpenAIChatGenerator` for re-generation. We can have multiple loopback connections in the
     pipeline. In this instance, the downstream component is only one (the `OpenAIChatGenerator`), but the pipeline could
     have more than one downstream component.

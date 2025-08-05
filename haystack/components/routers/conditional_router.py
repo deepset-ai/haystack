@@ -40,14 +40,13 @@ class ConditionalRouter:
     Each dictionary in this list represents a single route. Each route has these four elements:
     - `condition`: A Jinja2 string expression that determines if the route is selected.
     - `output`: A Jinja2 expression defining the route's output value.
-    - `output_type`: The type of the output data (for example, `str`, `List[int]`).
+    - `output_type`: The type of the output data (for example, `str`, `list[int]`).
     - `output_name`: The name you want to use to publish `output`. This name is used to connect
     the router to other components in the pipeline.
 
     ### Usage example
 
     ```python
-    from typing import List
     from haystack.components.routers import ConditionalRouter
 
     routes = [
@@ -55,13 +54,13 @@ class ConditionalRouter:
             "condition": "{{streams|length > 2}}",
             "output": "{{streams}}",
             "output_name": "enough_streams",
-            "output_type": List[int],
+            "output_type": list[int],
         },
         {
             "condition": "{{streams|length <= 2}}",
             "output": "{{streams}}",
             "output_name": "insufficient_streams",
-            "output_type": List[int],
+            "output_type": list[int],
         },
     ]
     router = ConditionalRouter(routes)
@@ -84,7 +83,6 @@ class ConditionalRouter:
     different components depending on the number of streams fetched:
 
     ```python
-    from typing import List
     from haystack import Pipeline
     from haystack.dataclasses import ByteStream
     from haystack.components.routers import ConditionalRouter
@@ -94,13 +92,13 @@ class ConditionalRouter:
             "condition": "{{streams|length > 2}}",
             "output": "{{streams}}",
             "output_name": "enough_streams",
-            "output_type": List[ByteStream],
+            "output_type": list[ByteStream],
         },
         {
             "condition": "{{streams|length <= 2}}",
             "output": "{{streams}}",
             "output_name": "insufficient_streams",
-            "output_type": List[ByteStream],
+            "output_type": list[ByteStream],
         },
     ]
 
@@ -128,7 +126,7 @@ class ConditionalRouter:
             Each route has these four elements:
             - `condition`: A Jinja2 string expression that determines if the route is selected.
             - `output`: A Jinja2 expression defining the route's output value.
-            - `output_type`: The type of the output data (for example, `str`, `List[int]`).
+            - `output_type`: The type of the output data (for example, `str`, `list[int]`).
             - `output_name`: The name you want to use to publish `output`. This name is used to connect
             the router to other components in the pipeline.
         :param custom_filters: A dictionary of custom Jinja2 filters used in the condition expressions.

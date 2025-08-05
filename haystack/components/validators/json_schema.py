@@ -38,8 +38,6 @@ class JsonSchemaValidator:
     Usage example:
 
     ```python
-    from typing import List
-
     from haystack import Pipeline
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.components.joiners import BranchJoiner
@@ -51,8 +49,8 @@ class JsonSchemaValidator:
     @component
     class MessageProducer:
 
-        @component.output_types(messages=List[ChatMessage])
-        def run(self, messages: List[ChatMessage]) -> dict:
+        @component.output_types(messages=list[ChatMessage])
+        def run(self, messages: list[ChatMessage]) -> dict:
             return {"messages": messages}
 
 
@@ -60,7 +58,7 @@ class JsonSchemaValidator:
     p.add_component("llm", OpenAIChatGenerator(model="gpt-4-1106-preview",
                                                generation_kwargs={"response_format": {"type": "json_object"}}))
     p.add_component("schema_validator", JsonSchemaValidator())
-    p.add_component("joiner_for_llm", BranchJoiner(List[ChatMessage]))
+    p.add_component("joiner_for_llm", BranchJoiner(list[ChatMessage]))
     p.add_component("message_producer", MessageProducer())
 
     p.connect("message_producer.messages", "joiner_for_llm")

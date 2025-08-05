@@ -25,7 +25,6 @@ class ListJoiner:
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
     from haystack.components.joiners import ListJoiner
-    from typing import List
 
 
     user_message = [ChatMessage.from_user("Give a brief answer the following question: {{query}}")]
@@ -48,7 +47,7 @@ class ListJoiner:
     pipe.add_component("llm", llm)
     pipe.add_component("feedback_prompt_builder", feedback_prompt_builder)
     pipe.add_component("feedback_llm", feedback_llm)
-    pipe.add_component("list_joiner", ListJoiner(List[ChatMessage]))
+    pipe.add_component("list_joiner", ListJoiner(list[ChatMessage]))
 
     pipe.connect("prompt_builder.prompt", "llm.messages")
     pipe.connect("prompt_builder.prompt", "list_joiner")
@@ -69,7 +68,7 @@ class ListJoiner:
         """
         Creates a ListJoiner component.
 
-        :param list_type_: The expected type of the lists this component will join (e.g., List[ChatMessage]).
+        :param list_type_: The expected type of the lists this component will join (e.g., list[ChatMessage]).
             If specified, all input lists must conform to this type. If None, the component defaults to handling
             lists of any type including mixed types.
         """

@@ -252,7 +252,7 @@ class TestRouter:
                         {
                             "condition": "{{streams|length >= 2}}",
                             "output": "{{streams}}",
-                            "output_type": "typing.List[int]",
+                            "output_type": "list[int]",
                             "output_name": "streams",
                         },
                     ],
