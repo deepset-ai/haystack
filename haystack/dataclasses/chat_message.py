@@ -188,14 +188,15 @@ def _serialize_content_part(part: ChatMessageContentT) -> Dict[str, Any]:
     :raises TypeError:
         If the part is not a valid ChatMessageContentT object.
     """
-    if type(part) not in _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS:
+    serialization_key = _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS.get(type(part))
+    if serialization_key is None:
         raise TypeError(f"Unsupported type in ChatMessage content: `{type(part).__name__}` for `{part}`.")
 
     # handle flat text format separately
     if isinstance(part, TextContent):
         return part.to_dict()
 
-    return {_CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS[type(part)]: part.to_dict()}
+    return {serialization_key: part.to_dict()}
 
 
 @dataclass
