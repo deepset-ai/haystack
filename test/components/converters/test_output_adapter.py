@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from typing import List
 
 import pytest
 
@@ -141,6 +142,17 @@ class TestOutputAdapter:
 
         deserialized_pipe = Pipeline.loads(serialized_pipe)
         assert deserialized_pipe.get_component("adapter").output_type == list[str]
+
+    def test_sede_with_typing_list_output_type_in_pipeline(self):
+        pipe = Pipeline()
+        pipe.add_component("adapter", OutputAdapter(template="{{ test }}", output_type=List[str]))
+        serialized_pipe = pipe.dumps()
+
+        # we serialize the pipeline and check if the output type is serialized correctly (as list[str])
+        assert "typing.List[str]" in serialized_pipe
+
+        deserialized_pipe = Pipeline.loads(serialized_pipe)
+        assert deserialized_pipe.get_component("adapter").output_type == List[str]
 
     def test_output_adapter_from_dict_custom_filters_none(self):
         component = OutputAdapter.from_dict(

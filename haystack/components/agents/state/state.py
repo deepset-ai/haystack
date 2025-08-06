@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, get_args
 
 from haystack.dataclasses import ChatMessage
 from haystack.utils import _deserialize_value_with_schema, _serialize_value_with_schema
@@ -69,8 +69,13 @@ def _validate_schema(schema: dict[str, Any]) -> None:
             raise ValueError(f"StateSchema: 'type' for key '{param}' must be a Python type, got {definition['type']}")
         if definition.get("handler") is not None and not callable(definition["handler"]):
             raise ValueError(f"StateSchema: 'handler' for key '{param}' must be callable or None")
-        if param == "messages" and definition["type"] != list[ChatMessage]:
-            raise ValueError(f"StateSchema: 'messages' must be of type list[ChatMessage], got {definition['type']}")
+        if param == "messages":  # definition["type"] != list[ChatMessage] but split to cover also List[ChatMessage]
+            if not _is_list_type(definition["type"]):
+                raise ValueError(f"StateSchema: 'messages' must be of type list[ChatMessage], got {definition['type']}")
+            # Check if the list contains ChatMessage elements
+            args = get_args(definition["type"])
+            if not args or args[0] != ChatMessage:
+                raise ValueError(f"StateSchema: 'messages' must be of type list[ChatMessage], got {definition['type']}")
 
 
 class State:

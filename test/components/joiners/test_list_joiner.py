@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import List
 
 import pytest
 
@@ -22,6 +23,11 @@ class TestListJoiner:
         assert isinstance(joiner, ListJoiner)
         assert joiner.list_type_ == list[ChatMessage]
 
+    def test_init_typing_list(self):
+        joiner = ListJoiner(List[ChatMessage])
+        assert isinstance(joiner, ListJoiner)
+        assert joiner.list_type_ == List[ChatMessage]
+
     def test_to_dict_defaults(self):
         joiner = ListJoiner()
         data = joiner.to_dict()
@@ -38,6 +44,14 @@ class TestListJoiner:
             "init_parameters": {"list_type_": "list[haystack.dataclasses.chat_message.ChatMessage]"},
         }
 
+    def test_to_dict_non_default_typing_list(self):
+        joiner = ListJoiner(List[ChatMessage])
+        data = joiner.to_dict()
+        assert data == {
+            "type": "haystack.components.joiners.list_joiner.ListJoiner",
+            "init_parameters": {"list_type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
+        }
+
     def test_from_dict_default(self):
         data = {"type": "haystack.components.joiners.list_joiner.ListJoiner", "init_parameters": {"list_type_": None}}
         list_joiner = ListJoiner.from_dict(data)
@@ -52,6 +66,15 @@ class TestListJoiner:
         list_joiner = ListJoiner.from_dict(data)
         assert isinstance(list_joiner, ListJoiner)
         assert list_joiner.list_type_ == list[ChatMessage]
+
+    def test_from_dict_non_default_typing_list(self):
+        data = {
+            "type": "haystack.components.joiners.list_joiner.ListJoiner",
+            "init_parameters": {"list_type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
+        }
+        list_joiner = ListJoiner.from_dict(data)
+        assert isinstance(list_joiner, ListJoiner)
+        assert list_joiner.list_type_ == List[ChatMessage]
 
     def test_empty_list(self):
         joiner = ListJoiner(list[ChatMessage])

@@ -4,7 +4,7 @@
 
 import inspect
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union
+from typing import Dict, Generic, List, Optional, TypeVar, Union
 
 import pytest
 
@@ -88,9 +88,13 @@ class TestIsValidType:
 
     def test_generic_types(self):
         assert _is_valid_type(list[str]) is True
+        assert _is_valid_type(List[str]) is True
         assert _is_valid_type(dict[str, int]) is True
+        assert _is_valid_type(Dict[str, int]) is True
         assert _is_valid_type(list[dict[str, int]]) is True
+        assert _is_valid_type(List[Dict[str, int]]) is True
         assert _is_valid_type(dict[str, list[int]]) is True
+        assert _is_valid_type(Dict[str, List[int]]) is True
 
     def test_custom_classes(self):
         @dataclass
@@ -109,8 +113,11 @@ class TestIsValidType:
 
         # Test generic types with custom classes
         assert _is_valid_type(list[CustomClass]) is True
+        assert _is_valid_type(List[CustomClass]) is True
         assert _is_valid_type(dict[str, CustomClass]) is True
+        assert _is_valid_type(Dict[str, CustomClass]) is True
         assert _is_valid_type(dict[str, GenericCustomClass[int]]) is True
+        assert _is_valid_type(Dict[str, GenericCustomClass[int]]) is True
 
     def test_invalid_types(self):
         # Test regular values
@@ -178,6 +185,8 @@ class TestIsValidType:
             (int, True),
             (list[int], True),
             (dict[str, int], True),
+            (List[int], True),
+            (Dict[str, int], True),
             (Union[str, int], True),
             (Optional[str], True),
             (42, False),
@@ -392,6 +401,96 @@ class TestState:
                 "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
                 "messages": {
                     "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
+                    "handler": "haystack.components.agents.state.state_utils.merge_lists",
+                },
+                "dict_of_lists": {
+                    "type": "dict",
+                    "handler": "haystack.components.agents.state.state_utils.replace_values",
+                },
+            },
+            "data": {
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {
+                        "numbers": {"type": "integer"},
+                        "messages": {
+                            "type": "array",
+                            "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
+                        },
+                        "dict_of_lists": {
+                            "type": "object",
+                            "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}},
+                        },
+                    },
+                },
+                "serialized_data": {
+                    "numbers": 1,
+                    "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+                    "dict_of_lists": {"numbers": [1, 2, 3]},
+                },
+            },
+        }
+        state = State.from_dict(state_dict)
+        # Check types are correctly converted
+        assert state.schema["numbers"]["type"] == int
+        assert state.schema["dict_of_lists"]["type"] == dict
+        # Check handlers are functions, not comparing exact functions as they might be different references
+        assert callable(state.schema["numbers"]["handler"])
+        assert callable(state.schema["messages"]["handler"])
+        assert callable(state.schema["dict_of_lists"]["handler"])
+        # Check data is correct
+        assert state.data["numbers"] == 1
+        assert state.data["messages"] == [ChatMessage.from_user(text="Hello, world!")]
+        assert state.data["dict_of_lists"] == {"numbers": [1, 2, 3]}
+
+    def test_state_to_dict_typing_list(self):
+        # we test dict, a python type and a haystack dataclass
+        state_schema = {
+            "numbers": {"type": int},
+            "messages": {"type": List[ChatMessage]},
+            "dict_of_lists": {"type": dict},
+        }
+
+        data = {
+            "numbers": 1,
+            "messages": [ChatMessage.from_user(text="Hello, world!")],
+            "dict_of_lists": {"numbers": [1, 2, 3]},
+        }
+        state = State(state_schema, data)
+        state_dict = state.to_dict()
+        assert state_dict["schema"] == {
+            "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
+            "messages": {
+                "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
+                "handler": "haystack.components.agents.state.state_utils.merge_lists",
+            },
+            "dict_of_lists": {"type": "dict", "handler": "haystack.components.agents.state.state_utils.replace_values"},
+        }
+        assert state_dict["data"] == {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {
+                    "numbers": {"type": "integer"},
+                    "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+                    "dict_of_lists": {
+                        "type": "object",
+                        "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}},
+                    },
+                },
+            },
+            "serialized_data": {
+                "numbers": 1,
+                "messages": [{"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]}],
+                "dict_of_lists": {"numbers": [1, 2, 3]},
+            },
+        }
+
+    def test_state_from_dict_typing_list(self):
+        state_dict = {
+            "schema": {
+                "numbers": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"},
+                "messages": {
+                    "type": "typing.List[haystack.dataclasses.chat_message.ChatMessage]",
                     "handler": "haystack.components.agents.state.state_utils.merge_lists",
                 },
                 "dict_of_lists": {

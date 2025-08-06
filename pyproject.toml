@@ -308,6 +308,15 @@ skip-magic-trailing-comma = true
 "test/utils/test_type_serialization.py" = [
   "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
 ]
+"test/components/agents/test_state_class.py" = [
+  "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
+]
+"test/components/converters/test_output_adapter.py" = [
+  "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
+]
+"test/components/joiners/test_list_joiner.py" = [
+  "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
+]
 
 
 [tool.ruff.lint]
