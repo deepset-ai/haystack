@@ -6,7 +6,8 @@ import logging
 
 import pytest
 
-from haystack.dataclasses import ChatMessage, ChatRole, TextContent, ToolCall
+from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, TextContent, ToolCall
+from haystack.dataclasses.chat_message import ToolCallResult
 from haystack.utils.device import ComponentDevice
 from haystack.utils.hf import convert_message_to_hf_format, resolve_hf_device_map
 
@@ -76,8 +77,32 @@ def test_convert_message_to_hf_invalid():
         convert_message_to_hf_format(message)
 
     message = ChatMessage(
-        _role=ChatRole.ASSISTANT,
-        _content=[TextContent(text="I have an answer"), TextContent(text="I have another answer")],
+        _role=ChatRole.USER,
+        _content=[
+            TextContent(text="I have an answer"),
+            ToolCallResult(
+                result="result!",
+                origin=ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"}),
+                error=None,
+            ),
+        ],
     )
     with pytest.raises(ValueError):
         convert_message_to_hf_format(message)
+
+
+def test_convert_message_to_hf_format_with_multiple_images(base64_image_string):
+    image1 = ImageContent(base64_image=base64_image_string)
+    image2 = ImageContent(base64_image=base64_image_string)
+    message = ChatMessage.from_user(content_parts=["Compare these images", image1, image2])
+
+    result = convert_message_to_hf_format(message)
+    expected = {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Compare these images"},
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image_string}"}},
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image_string}"}},
+        ],
+    }
+    assert result == expected

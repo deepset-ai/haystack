@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Added multimodal support to `HuggingFaceAPIChatGenerator` to enable vision-language model (VLM) usage with images and text.
+    Users can now send both text and images to VLM models through Hugging Face APIs. The implementation follows the HF VLM API format
+    specification and maintains full backward compatibility with text-only messages.
