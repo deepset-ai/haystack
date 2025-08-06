@@ -12,8 +12,10 @@ from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
+    ImageContent,
     StreamingChunk,
     SyncStreamingCallbackT,
+    TextContent,
 )
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
@@ -258,11 +260,17 @@ def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
     text_contents = message.texts
     tool_calls = message.tool_calls
     tool_call_results = message.tool_call_results
+    images = message.images
 
-    if not text_contents and not tool_calls and not tool_call_results:
-        raise ValueError("A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, or `ToolCallResult`.")
-    if len(text_contents) + len(tool_call_results) > 1:
-        raise ValueError("A `ChatMessage` can only contain one `TextContent` or one `ToolCallResult`.")
+    if not text_contents and not tool_calls and not tool_call_results and not images:
+        raise ValueError(
+            "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`, or `ImageContent`."
+        )
+    if len(tool_call_results) > 0 and len(message._content) > 1:
+        raise ValueError(
+            "For compatibility with the Hugging Face API, a `ChatMessage` with a `ToolCallResult` "
+            "cannot contain any other content."
+        )
 
     # HF always expects a content field, even if it is empty
     hf_msg: dict[str, Any] = {"role": message._role.value, "content": ""}
@@ -275,8 +283,22 @@ def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
         # HF does not provide a way to communicate errors in tool invocations, so we ignore the error field
         return hf_msg
 
-    if text_contents:
-        hf_msg["content"] = text_contents[0]
+    # Handle multimodal content (text + images) preserving order
+    if text_contents or images:
+        content_parts: list[dict[str, Any]] = []
+        for part in message._content:
+            if isinstance(part, TextContent):
+                content_parts.append({"type": "text", "text": part.text})
+            elif isinstance(part, ImageContent):
+                image_url = f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}"
+                content_parts.append({"type": "image_url", "image_url": {"url": image_url}})
+
+        if len(content_parts) == 1 and not images:
+            # content is a string
+            hf_msg["content"] = content_parts[0]["text"]
+        else:
+            hf_msg["content"] = content_parts
+
     if tool_calls:
         hf_tool_calls = []
         for tc in tool_calls:
