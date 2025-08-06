@@ -223,6 +223,33 @@ class HuggingFaceAPIChatGenerator:
     print(result)
     ```
 
+    #### With the serverless inference API (Inference Providers) and text+image input
+
+    ```python
+    from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+    from haystack.dataclasses import ChatMessage, ImageContent
+    from haystack.utils import Secret
+    from haystack.utils.hf import HFGenerationAPIType
+
+    # Create an image from file path, URL, or base64
+    image = ImageContent.from_file_path("path/to/your/image.jpg")
+
+    # Create a multimodal message with both text and image
+    messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
+
+    generator = HuggingFaceAPIChatGenerator(
+        api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+        api_params={
+            "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
+            "provider": "hyperbolic"
+        },
+        token=Secret.from_token("<your-api-key>")
+    )
+
+    result = generator.run(messages)
+    print(result)
+    ```
+
     #### With paid inference endpoints
 
     ```python
@@ -251,33 +278,6 @@ class HuggingFaceAPIChatGenerator:
 
     generator = HuggingFaceAPIChatGenerator(api_type="text_generation_inference",
                                             api_params={"url": "http://localhost:8080"})
-
-    result = generator.run(messages)
-    print(result)
-    ```
-
-    #### With vision-language models (VLMs) for multimodal input
-
-    ```python
-    from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
-    from haystack.dataclasses import ChatMessage, ImageContent
-    from haystack.utils import Secret
-    from haystack.utils.hf import HFGenerationAPIType
-
-    # Create an image from file path, URL, or base64
-    image = ImageContent.from_file_path("path/to/your/image.jpg")
-
-    # Create a multimodal message with both text and image
-    messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
-
-    generator = HuggingFaceAPIChatGenerator(
-        api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-        api_params={
-            "model": "llava-hf/llava-1.5-7b-hf",  # Example VLM model
-            "provider": "huggingface"
-        },
-        token=Secret.from_token("<your-api-key>")
-    )
 
     result = generator.run(messages)
     print(result)

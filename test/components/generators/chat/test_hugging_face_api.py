@@ -871,9 +871,6 @@ class TestHuggingFaceAPIChatGenerator:
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
     def test_live_run_multimodal(self, test_files_path):
-        """
-        Test multimodal functionality with a vision-language model.
-        """
         image_path = test_files_path / "images" / "apple.jpg"
         # Resize the image to keep this test fast
         image_content = ImageContent.from_file_path(file_path=image_path, size=(100, 100))
@@ -881,7 +878,7 @@ class TestHuggingFaceAPIChatGenerator:
 
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen2-VL-7B-Instruct", "provider": "together"},
+            api_params={"model": "Qwen/Qwen2.5-VL-7B-Instruct", "provider": "hyperbolic"},
             generation_kwargs={"max_tokens": 20},
         )
 
@@ -893,7 +890,6 @@ class TestHuggingFaceAPIChatGenerator:
         message = response["replies"][0]
         assert message.text
         assert len(message.text) > 0
-        # Basic assertion that it recognized the image content
         assert any(word in message.text.lower() for word in ["apple", "fruit", "red"])
 
     @pytest.mark.asyncio

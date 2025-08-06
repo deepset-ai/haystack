@@ -266,8 +266,11 @@ def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
         raise ValueError(
             "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`, or `ImageContent`."
         )
-    if len(text_contents) + len(tool_call_results) > 1:
-        raise ValueError("A `ChatMessage` can only contain one `TextContent` or one `ToolCallResult`.")
+    if len(tool_call_results) > 0 and len(message._content) > 1:
+        raise ValueError(
+            "For compatibility with the Hugging Face API, a `ChatMessage` with a `ToolCallResult` "
+            "cannot contain any other content."
+        )
 
     # HF always expects a content field, even if it is empty
     hf_msg: Dict[str, Any] = {"role": message._role.value, "content": ""}
@@ -283,8 +286,6 @@ def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
     # Handle multimodal content (text + images) preserving order
     if text_contents or images:
         content_parts: List[Dict[str, Any]] = []
-
-        # Process content in order to preserve message structure
         for part in message._content:
             if isinstance(part, TextContent):
                 content_parts.append({"type": "text", "text": part.text})
@@ -292,12 +293,11 @@ def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
                 image_url = f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}"
                 content_parts.append({"type": "image_url", "image_url": {"url": image_url}})
 
-        # If we have multiple content parts or any images, use structured format
-        if len(content_parts) > 1 or images:
-            hf_msg["content"] = content_parts
-        elif len(content_parts) == 1 and not images:
-            # Single text content for backward compatibility
+        if len(content_parts) == 1 and not images:
+            # content is a string
             hf_msg["content"] = content_parts[0]["text"]
+        else:
+            hf_msg["content"] = content_parts
 
     if tool_calls:
         hf_tool_calls = []
