@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Type, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
+from haystack.utils import deserialize_type, serialize_type
 from haystack.utils.filters import document_matches_filter
 
 
@@ -52,7 +53,6 @@ class MetadataRouter:
 
     result = router.run(documents=streams)
     # {'english': [ByteStream(...)], 'unmatched': [ByteStream(...)]}
-
     ```
 
     """
@@ -142,7 +142,7 @@ class MetadataRouter:
         :returns:
             The serialized component as a dictionary.
         """
-        return default_to_dict(self, rules=self.rules, output_type=self.output_type)
+        return default_to_dict(self, rules=self.rules, output_type=serialize_type(self.output_type))
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MetadataRouter":
@@ -154,4 +154,6 @@ class MetadataRouter:
         :returns:
             The deserialized component instance.
         """
+        init_params = data.get("init_parameters", {})
+        init_params["output_type"] = deserialize_type(init_params["output_type"])
         return default_from_dict(cls, data)

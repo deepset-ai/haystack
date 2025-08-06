@@ -61,7 +61,6 @@ class TestMetadataRouter:
             output_type=List[Union[Document, ByteStream]],
         )
         output = router.run(documents=docs)
-        print(output)
         assert output["en"][0].data == byt1.data
         assert output["en"][1].content == "What is this"
         assert output["unmatched"][0].data == byt2.data
@@ -93,3 +92,80 @@ class TestMetadataRouter:
         assert output["edge_1"][0].meta["created_at"] == "2025-02-03T12:45:46.435816Z"
         assert output["edge_1"][1].meta["created_at"] == "2025-02-01T12:45:46.435816Z"
         assert output["unmatched"][0].meta["created_at"] == "2025-01-03T12:45:46.435816Z"
+
+    def test_to_dict(self):
+        rules = {
+            "edge_1": {
+                "operator": "AND",
+                "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
+            }
+        }
+        router = MetadataRouter(rules=rules)
+        expected_dict = {
+            "type": "haystack.components.routers.metadata_router.MetadataRouter",
+            "init_parameters": {"rules": rules, "output_type": "typing.List[haystack.dataclasses.document.Document]"},
+        }
+        assert router.to_dict() == expected_dict
+
+    def test_to_dict_with_parameters(self):
+        rules = {
+            "edge_1": {
+                "operator": "AND",
+                "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
+            }
+        }
+        router = MetadataRouter(rules=rules, output_type=List[Union[ByteStream, Document]])
+        expected_dict = {
+            "type": "haystack.components.routers.metadata_router.MetadataRouter",
+            "init_parameters": {
+                "rules": rules,
+                "output_type": """typing.List[typing.Union[haystack.dataclasses.document.Document,
+                haystack.dataclasses.byte_stream.ByteStream]]""",
+            },
+        }
+        assert router.to_dict() == expected_dict
+
+    def test_from_dict(self):
+        router_dict = {
+            "type": "haystack.components.routers.metadata_router.MetadataRouter",
+            "init_parameters": {
+                "rules": {
+                    "edge_1": {
+                        "operator": "AND",
+                        "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
+                    }
+                },
+                "output_type": "typing.List[haystack.dataclasses.document.Document]",
+            },
+        }
+        router = MetadataRouter.from_dict(router_dict)
+        assert router.rules == {
+            "edge_1": {
+                "operator": "AND",
+                "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
+            }
+        }
+        assert router.output_type == List[Document]
+
+    def test_from_dict_with_parameters(self):
+        router_dict = {
+            "type": "haystack.components.routers.metadata_router.MetadataRouter",
+            "init_parameters": {
+                "rules": {
+                    "edge_1": {
+                        "operator": "AND",
+                        "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
+                    }
+                },
+                "output_type": """typing.List[typing.Union[haystack.dataclasses.document.Document,
+                haystack.dataclasses.byte_stream.ByteStream]]""",
+            },
+        }
+        router = MetadataRouter.from_dict(router_dict)
+        assert router.rules == {
+            "edge_1": {
+                "operator": "AND",
+                "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
+            }
+        }
+        assert router.output_type == List[Union[ByteStream, Document]]
