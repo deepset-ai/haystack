@@ -368,7 +368,7 @@ class ChatMessage:
         if text is not None and content_parts is not None:
             raise ValueError("Only one of text or content_parts can be provided.")
 
-        content: List[Union[TextContent, ImageContent]] = []
+        content: list[Union[TextContent, ImageContent]] = []
 
         if text is not None:
             content = [TextContent(text=text)]
