@@ -11,7 +11,10 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMe
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
-def test_hybrid_doc_search_pipeline(tmp_path):
+def test_hybrid_doc_search_pipeline(tmp_path, monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
     # Create the pipeline
     document_store = InMemoryDocumentStore()
     hybrid_pipeline = Pipeline()
