@@ -368,20 +368,22 @@ class ChatMessage:
         if text is not None and content_parts is not None:
             raise ValueError("Only one of text or content_parts can be provided.")
 
-        content: Sequence[Union[TextContent, ImageContent]] = []
+        content: List[Union[TextContent, ImageContent]] = []
 
         if text is not None:
             content = [TextContent(text=text)]
         elif content_parts is not None:
-            content = [TextContent(el) if isinstance(el, str) else el for el in content_parts]
-            if not any(isinstance(el, TextContent) for el in content):
-                raise ValueError("The user message must contain at least one textual part.")
-
-            unsupported_parts = [el for el in content if not isinstance(el, (ImageContent, TextContent))]
-            if unsupported_parts:
-                raise ValueError(
-                    f"The user message must contain only text or image parts. Unsupported parts: {unsupported_parts}"
-                )
+            for part in content_parts:
+                if isinstance(part, str):
+                    content.append(TextContent(text=part))
+                elif isinstance(part, (TextContent, ImageContent)):
+                    content.append(part)
+                else:
+                    raise ValueError(
+                        f"The user message must contain only text or image parts. Unsupported part: {part}"
+                    )
+            if len(content) == 0:
+                raise ValueError("The user message must contain at least one textual or image part.")
 
         return cls(_role=ChatRole.USER, _content=content, _meta=meta or {}, _name=name)
 
@@ -520,14 +522,16 @@ class ChatMessage:
         text_contents = self.texts
         tool_calls = self.tool_calls
         tool_call_results = self.tool_call_results
+        images = self.images
 
-        if not text_contents and not tool_calls and not tool_call_results:
+        if not text_contents and not tool_calls and not tool_call_results and not images:
             raise ValueError(
-                "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, or `ToolCallResult`."
+                "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, "
+                "`ToolCallResult`, or `ImageContent`."
             )
-        if len(text_contents) + len(tool_call_results) > 1:
+        if len(tool_call_results) > 0 and len(self._content) > 1:
             raise ValueError(
-                "For OpenAI compatibility, a `ChatMessage` can only contain one `TextContent` or one `ToolCallResult`."
+                "For OpenAI compatibility, a `ChatMessage` with a `ToolCallResult` cannot contain any other content."
             )
 
         openai_msg: dict[str, Any] = {"role": self._role.value}
@@ -538,7 +542,7 @@ class ChatMessage:
 
         # user message
         if openai_msg["role"] == "user":
-            if len(self._content) == 1:
+            if len(self._content) == 1 and isinstance(self._content[0], TextContent):
                 openai_msg["content"] = self.text
                 return openai_msg
 
