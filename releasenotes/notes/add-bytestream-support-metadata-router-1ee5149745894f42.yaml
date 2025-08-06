@@ -1,0 +1,4 @@
+---
+features:
+  - Add support for ByteStream objects in MetadataRouter.
+    It can now route lists containing Documents, ByteStreams, or a mix of both.
