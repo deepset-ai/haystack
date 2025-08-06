@@ -21,7 +21,7 @@ def raise_on_invalid_filter_syntax(filters: Optional[Dict[str, Any]] = None) -> 
         raise FilterError(msg)
 
 
-def document_matches_filter(filters: Dict[str, Any], document: Document) -> bool:
+def document_matches_filter(filters: Dict[str, Any], document: Union[Document, ByteStream]) -> bool:
     """
     Return whether `filters` match the Document.
 

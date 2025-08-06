@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import List, Union
+
 import pytest
 
-from haystack import Document
 from haystack.components.routers.metadata_router import MetadataRouter
+from haystack.dataclasses import ByteStream, Document
 
 
 class TestMetadataRouter:
@@ -36,6 +38,34 @@ class TestMetadataRouter:
         assert output["edge_1"][0].meta["created_at"] == "2023-02-01"
         assert output["edge_2"][0].meta["created_at"] == "2023-05-01"
         assert output["unmatched"][0].meta["created_at"] == "2023-08-01"
+
+    def test_run_with_byte_stream(self):
+        byt1 = ByteStream.from_string(text="What is this", meta={"language": "en"})
+        byt2 = ByteStream.from_string(text="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"})
+        docs = [byt1, byt2]
+        router = MetadataRouter(
+            rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}, output_type=List[ByteStream]
+        )
+        output = router.run(documents=docs)
+        assert output["en"][0].data == byt1.data
+        assert output["unmatched"][0].data == byt2.data
+
+    def test_run_with_mixed_documents_and_byte_streams(self):
+        byt1 = ByteStream.from_string(text="What is this", meta={"language": "en"})
+        byt2 = ByteStream.from_string(text="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"})
+        doc1 = Document(content="What is this", meta={"language": "en"})
+        doc2 = Document(content="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"})
+        docs = [byt1, byt2, doc1, doc2]
+        router = MetadataRouter(
+            rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}},
+            output_type=List[Union[Document, ByteStream]],
+        )
+        output = router.run(documents=docs)
+        print(output)
+        assert output["en"][0].data == byt1.data
+        assert output["en"][1].content == "What is this"
+        assert output["unmatched"][0].data == byt2.data
+        assert output["unmatched"][1].content == "Berlin ist die Haupststadt von Deutschland."
 
     def test_run_wrong_filter(self):
         rules = {

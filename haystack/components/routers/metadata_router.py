@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List, Type, Union
+from typing import Any, Dict, List, Type, Union
 
-from haystack import Document, component
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
 from haystack.utils.filters import document_matches_filter
 
@@ -12,13 +12,15 @@ from haystack.utils.filters import document_matches_filter
 @component
 class MetadataRouter:
     """
-    Routes documents to different connections based on their metadata fields.
+    Routes documents or byte streams to different connections based on their metadata fields.
 
     Specify the routing rules in the `init` method.
-    If a document does not match any of the rules, it's routed to a connection named "unmatched".
+    If a document or byte stream does not match any of the rules, it's routed to a connection named "unmatched".
 
-    ### Usage example
 
+    ### Usage examples
+
+    **Routing Documents by metadata:**
     ```python
     from haystack import Document
     from haystack.components.routers import MetadataRouter
@@ -29,10 +31,30 @@ class MetadataRouter:
     router = MetadataRouter(rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}})
 
     print(router.run(documents=docs))
-
     # {'en': [Document(id=..., content: 'Paris is the capital of France.', meta: {'language': 'en'})],
     # 'unmatched': [Document(id=..., content: 'Berlin ist die Haupststadt von Deutschland.', meta: {'language': 'de'})]}
     ```
+
+    **Routing ByteStreams by metadata:**
+    ```python
+    from haystack.dataclasses import ByteStream
+    from haystack.components.routers import MetadataRouter
+
+    streams = [
+        ByteStream.from_string("Hello world", meta={"language": "en"}),
+        ByteStream.from_string("Bonjour le monde", meta={"language": "fr"})
+    ]
+
+    router = MetadataRouter(
+        rules={"english": {"field": "meta.language", "operator": "==", "value": "en"}},
+        output_type=List[ByteStream]
+    )
+
+    result = router.run(documents=streams)
+    # {'english': [ByteStream(...)], 'unmatched': [ByteStream(...)]}
+
+    ```
+
     """
 
     def __init__(self, rules: Dict[str, Dict], output_type: Type = List[Document]) -> None:
@@ -75,19 +97,18 @@ class MetadataRouter:
             },
             }
             ```
+            :param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
         """
         self.rules = rules
+        self.output_type = output_type
         for rule in self.rules.values():
             if "operator" not in rule:
                 raise ValueError(
                     "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
                 )
-        self.output_type = output_type
         component.set_output_types(self, unmatched=self.output_type, **dict.fromkeys(rules, self.output_type))
 
-    def run(
-        self, documents: Union[List[Document], List[ByteStream]]
-    ) -> Dict[str, Union[List[Document], List[ByteStream]]]:
+    def run(self, documents: List[Union[Document, ByteStream]]) -> Dict[str, List[Union[Document, ByteStream]]]:
         """
         Routes documents or byte streams to different connections based on their metadata fields.
 
@@ -99,7 +120,7 @@ class MetadataRouter:
             and the values are lists of `Document` or `ByteStream` objects that matched the corresponding rules.
         """
         unmatched = []
-        output: Dict[str, Union[List[Document], List[ByteStream]]] = {edge: [] for edge in self.rules}
+        output: Dict[str, List[Union[Document, ByteStream]]] = {edge: [] for edge in self.rules}
 
         for doc_or_bytestream in documents:
             current_obj_matched = False
@@ -113,3 +134,24 @@ class MetadataRouter:
 
         output["unmatched"] = unmatched
         return output
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize this component to a dictionary.
+
+        :returns:
+            The serialized component as a dictionary.
+        """
+        return default_to_dict(self, rules=self.rules, output_type=self.output_type)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MetadataRouter":
+        """
+        Deserialize this component from a dictionary.
+
+        :param data:
+            The dictionary representation of this component.
+        :returns:
+            The deserialized component instance.
+        """
+        return default_from_dict(cls, data)
