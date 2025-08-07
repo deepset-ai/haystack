@@ -58,30 +58,30 @@ def _not(document: DocumentT, conditions: list[dict[str, Any]]) -> bool:
 LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
-def _equal(document_value: Any, filter_value: Any) -> bool:
-    return document_value == filter_value
+def _equal(value: Any, filter_value: Any) -> bool:
+    return value == filter_value
 
 
-def _not_equal(document_value: Any, filter_value: Any) -> bool:
-    return not _equal(document_value=document_value, filter_value=filter_value)
+def _not_equal(value: Any, filter_value: Any) -> bool:
+    return not _equal(value=value, filter_value=filter_value)
 
 
-def _greater_than(document_value: Any, filter_value: Any) -> bool:
-    if document_value is None or filter_value is None:
+def _greater_than(value: Any, filter_value: Any) -> bool:
+    if value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    if isinstance(document_value, str) or isinstance(filter_value, str):
+    if isinstance(value, str) or isinstance(filter_value, str):
         try:
-            document_value = _parse_date(document_value)
+            value = _parse_date(value)
             filter_value = _parse_date(filter_value)
-            document_value, filter_value = _ensure_both_dates_naive_or_aware(document_value, filter_value)
+            value, filter_value = _ensure_both_dates_naive_or_aware(value, filter_value)
         except FilterError as exc:
             raise exc
     if isinstance(filter_value, list):
         msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
-    return document_value > filter_value
+    return value > filter_value
 
 
 def _parse_date(value):
@@ -117,43 +117,41 @@ def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime) -> tuple
     return date1, date2
 
 
-def _greater_than_equal(document_value: Any, filter_value: Any) -> bool:
-    if document_value is None or filter_value is None:
+def _greater_than_equal(value: Any, filter_value: Any) -> bool:
+    if value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return _equal(document_value=document_value, filter_value=filter_value) or _greater_than(
-        document_value=document_value, filter_value=filter_value
-    )
+    return _equal(value=value, filter_value=filter_value) or _greater_than(value=value, filter_value=filter_value)
 
 
-def _less_than(document_value: Any, filter_value: Any) -> bool:
-    if document_value is None or filter_value is None:
+def _less_than(value: Any, filter_value: Any) -> bool:
+    if value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return not _greater_than_equal(document_value=document_value, filter_value=filter_value)
+    return not _greater_than_equal(value=value, filter_value=filter_value)
 
 
-def _less_than_equal(document_value: Any, filter_value: Any) -> bool:
-    if document_value is None or filter_value is None:
+def _less_than_equal(value: Any, filter_value: Any) -> bool:
+    if value is None or filter_value is None:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return not _greater_than(document_value=document_value, filter_value=filter_value)
+    return not _greater_than(value=value, filter_value=filter_value)
 
 
-def _in(document_value: Any, filter_value: Any) -> bool:
+def _in(value: Any, filter_value: Any) -> bool:
     if not isinstance(filter_value, list):
         msg = (
             f"Filter value must be a `list` when using operator 'in' or 'not in', received type '{type(filter_value)}'"
         )
         raise FilterError(msg)
-    return any(_equal(e, document_value) for e in filter_value)
+    return any(_equal(e, value) for e in filter_value)
 
 
-def _not_in(document_value: Any, filter_value: Any) -> bool:
-    return not _in(document_value=document_value, filter_value=filter_value)
+def _not_in(value: Any, filter_value: Any) -> bool:
+    return not _in(value=value, filter_value=filter_value)
 
 
 COMPARISON_OPERATORS = {
@@ -225,4 +223,4 @@ def _comparison_condition(condition: dict[str, Any], document: DocumentT) -> boo
         document_value = getattr(document, field)
     operator: str = condition["operator"]
     filter_value: Any = condition["value"]
-    return COMPARISON_OPERATORS[operator](filter_value=filter_value, document_value=document_value)
+    return COMPARISON_OPERATORS[operator](filter_value=filter_value, value=document_value)
