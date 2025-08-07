@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, Awaitable, Callable, Dict, List, Literal, Optional, Union, overload
+from typing import Any, Awaitable, Callable, Literal, Optional, Union, overload
 
 from haystack.core.component import Component
 from haystack.dataclasses.chat_message import ToolCallResult
@@ -30,7 +30,7 @@ class ToolCallDelta:
     arguments: Optional[str] = field(default=None)
     id: Optional[str] = field(default=None)  # noqa: A003
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of the ToolCallDelta.
 
@@ -39,7 +39,7 @@ class ToolCallDelta:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ToolCallDelta":
+    def from_dict(cls, data: dict[str, Any]) -> "ToolCallDelta":
         """
         Creates a ToolCallDelta from a serialized representation.
 
@@ -76,7 +76,7 @@ class ComponentInfo:
         component_name = getattr(component, "__component_name__", None)
         return cls(type=component_type, name=component_name)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of ComponentInfo.
 
@@ -85,7 +85,7 @@ class ComponentInfo:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ComponentInfo":
+    def from_dict(cls, data: dict[str, Any]) -> "ComponentInfo":
         """
         Creates a ComponentInfo from a serialized representation.
 
@@ -117,10 +117,10 @@ class StreamingChunk:
     """
 
     content: str
-    meta: Dict[str, Any] = field(default_factory=dict, hash=False)
+    meta: dict[str, Any] = field(default_factory=dict, hash=False)
     component_info: Optional[ComponentInfo] = field(default=None)
     index: Optional[int] = field(default=None)
-    tool_calls: Optional[List[ToolCallDelta]] = field(default=None)
+    tool_calls: Optional[list[ToolCallDelta]] = field(default=None)
     tool_call_result: Optional[ToolCallResult] = field(default=None)
     start: bool = field(default=False)
     finish_reason: Optional[FinishReason] = field(default=None)
@@ -138,7 +138,7 @@ class StreamingChunk:
         if (self.tool_calls or self.tool_call_result) and self.index is None:
             raise ValueError("If `tool_call`, or `tool_call_result` is set, `index` must also be set.")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of the StreamingChunk.
 
@@ -156,7 +156,7 @@ class StreamingChunk:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "StreamingChunk":
+    def from_dict(cls, data: dict[str, Any]) -> "StreamingChunk":
         """
         Creates a deserialized StreamingChunk instance from a serialized representation.
 

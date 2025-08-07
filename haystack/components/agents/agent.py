@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
@@ -71,14 +71,14 @@ class Agent:
         self,
         *,
         chat_generator: ChatGenerator,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         system_prompt: Optional[str] = None,
-        exit_conditions: Optional[List[str]] = None,
-        state_schema: Optional[Dict[str, Any]] = None,
+        exit_conditions: Optional[list[str]] = None,
+        state_schema: Optional[dict[str, Any]] = None,
         max_agent_steps: int = 100,
         streaming_callback: Optional[StreamingCallbackT] = None,
         raise_on_tool_invocation_failure: bool = False,
-        tool_invoker_kwargs: Optional[Dict[str, Any]] = None,
+        tool_invoker_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -126,7 +126,7 @@ class Agent:
         # Initialize state schema
         resolved_state_schema = _deepcopy_with_exceptions(self._state_schema)
         if resolved_state_schema.get("messages") is None:
-            resolved_state_schema["messages"] = {"type": List[ChatMessage], "handler": merge_lists}
+            resolved_state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
         self.state_schema = resolved_state_schema
 
         self.chat_generator = chat_generator
@@ -172,7 +172,7 @@ class Agent:
                 self.chat_generator.warm_up()
             self._is_warmed_up = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize the component to a dictionary.
 
@@ -198,7 +198,7 @@ class Agent:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Agent":
+    def from_dict(cls, data: dict[str, Any]) -> "Agent":
         """
         Deserialize the agent from a dictionary.
 
@@ -219,9 +219,9 @@ class Agent:
 
         return default_from_dict(cls, data)
 
-    def _prepare_generator_inputs(self, streaming_callback: Optional[StreamingCallbackT] = None) -> Dict[str, Any]:
+    def _prepare_generator_inputs(self, streaming_callback: Optional[StreamingCallbackT] = None) -> dict[str, Any]:
         """Prepare inputs for the chat generator."""
-        generator_inputs: Dict[str, Any] = {"tools": self.tools}
+        generator_inputs: dict[str, Any] = {"tools": self.tools}
         if streaming_callback is not None:
             generator_inputs["streaming_callback"] = streaming_callback
         return generator_inputs
@@ -240,13 +240,13 @@ class Agent:
 
     def run(  # noqa: PLR0915
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Process messages and execute tools until an exit condition is met.
 
@@ -431,13 +431,13 @@ class Agent:
 
     async def run_async(  # noqa: PLR0915
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Asynchronously process messages and execute tools until the exit condition is met.
 
@@ -626,7 +626,7 @@ class Agent:
             result.update({"last_message": all_messages[-1]})
         return result
 
-    def _check_exit_conditions(self, llm_messages: List[ChatMessage], tool_messages: List[ChatMessage]) -> bool:
+    def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:
         """
         Check if any of the LLM messages' tool calls match an exit condition and if there are no errors.
 

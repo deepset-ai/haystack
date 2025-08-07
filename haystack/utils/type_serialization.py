@@ -94,7 +94,7 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
 
     This function will dynamically import the module if it's not already imported
     and then retrieve the type object from it. It also handles nested generic types like
-    `typing.List[typing.Dict[int, str]]`.
+    `list[dict[int, str]]`.
 
     :param type_str:
         The string representation of the type's full import path.

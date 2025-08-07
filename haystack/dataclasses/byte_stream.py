@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from haystack.utils.misc import _guess_mime_type
 
@@ -20,7 +20,7 @@ class ByteStream:
     """
 
     data: bytes
-    meta: Dict[str, Any] = field(default_factory=dict, hash=False)
+    meta: dict[str, Any] = field(default_factory=dict, hash=False)
     mime_type: Optional[str] = field(default=None)
 
     def to_file(self, destination_path: Path) -> None:
@@ -37,7 +37,7 @@ class ByteStream:
         cls,
         filepath: Path,
         mime_type: Optional[str] = None,
-        meta: Optional[Dict[str, Any]] = None,
+        meta: Optional[dict[str, Any]] = None,
         guess_mime_type: bool = False,
     ) -> "ByteStream":
         """
@@ -55,7 +55,7 @@ class ByteStream:
 
     @classmethod
     def from_string(
-        cls, text: str, encoding: str = "utf-8", mime_type: Optional[str] = None, meta: Optional[Dict[str, Any]] = None
+        cls, text: str, encoding: str = "utf-8", mime_type: Optional[str] = None, meta: Optional[dict[str, Any]] = None
     ) -> "ByteStream":
         """
         Create a ByteStream encoding a string.
@@ -89,7 +89,7 @@ class ByteStream:
         fields_str = ", ".join(fields)
         return f"{self.__class__.__name__}({fields_str})"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the ByteStream to a dictionary representation.
 
@@ -100,7 +100,7 @@ class ByteStream:
         return {"data": list(self.data), "meta": self.meta, "mime_type": self.mime_type}
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ByteStream":
+    def from_dict(cls, data: dict[str, Any]) -> "ByteStream":
         """
         Create a ByteStream from a dictionary representation.
 

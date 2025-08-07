@@ -4,7 +4,7 @@
 
 import asyncio
 import contextvars
-from typing import Any, AsyncIterator, Dict, List, Mapping, Optional, Set
+from typing import Any, AsyncIterator, Mapping, Optional
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -33,9 +33,9 @@ class AsyncPipeline(PipelineBase):
     @staticmethod
     async def _run_component_async(
         component_name: str,
-        component: Dict[str, Any],
-        component_inputs: Dict[str, Any],
-        component_visits: Dict[str, int],
+        component: dict[str, Any],
+        component_inputs: dict[str, Any],
+        component_visits: dict[str, int],
         parent_span: Optional[tracing.Span] = None,
     ) -> Mapping[str, Any]:
         """
@@ -84,8 +84,8 @@ class AsyncPipeline(PipelineBase):
             return outputs
 
     async def run_async_generator(  # noqa: PLR0915,C901  # pylint: disable=too-many-statements
-        self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None, concurrency_limit: int = 4
-    ) -> AsyncIterator[Dict[str, Any]]:
+        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+    ) -> AsyncIterator[dict[str, Any]]:
         """
         Executes the pipeline step by step asynchronously, yielding partial outputs when any component finishes.
 
@@ -186,12 +186,12 @@ class AsyncPipeline(PipelineBase):
 
         # 1) Prepare ephemeral state
         ready_sem = asyncio.Semaphore(max(1, concurrency_limit))
-        inputs_state: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
-        pipeline_outputs: Dict[str, Any] = {}
-        running_tasks: Dict[asyncio.Task, str] = {}
+        inputs_state: dict[str, dict[str, list[dict[str, Any]]]] = {}
+        pipeline_outputs: dict[str, Any] = {}
+        running_tasks: dict[asyncio.Task, str] = {}
 
         # A set of component names that have been scheduled but not finished:
-        scheduled_components: Set[str] = set()
+        scheduled_components: set[str] = set()
 
         # 2) Convert input data
         prepared_data = self._prepare_component_input_data(data)
@@ -223,7 +223,7 @@ class AsyncPipeline(PipelineBase):
             # We define some functions here so that they have access to local runtime state
             # (inputs, tasks, scheduled components) via closures.
             # -------------------------------------------------
-            async def _run_highest_in_isolation(component_name: str) -> AsyncIterator[Dict[str, Any]]:
+            async def _run_highest_in_isolation(component_name: str) -> AsyncIterator[dict[str, Any]]:
                 """
                 Runs a component with HIGHEST priority in isolation.
 
@@ -326,7 +326,7 @@ class AsyncPipeline(PipelineBase):
                 task = asyncio.create_task(_runner())
                 running_tasks[task] = component_name
 
-            async def _wait_for_one_task_to_complete() -> AsyncIterator[Dict[str, Any]]:
+            async def _wait_for_one_task_to_complete() -> AsyncIterator[dict[str, Any]]:
                 """
                 Wait for exactly one running task to finish, yield partial outputs.
 
@@ -341,7 +341,7 @@ class AsyncPipeline(PipelineBase):
                         if partial_result:
                             yield {finished_component_name: _deepcopy_with_exceptions(partial_result)}
 
-            async def _wait_for_all_tasks_to_complete() -> AsyncIterator[Dict[str, Any]]:
+            async def _wait_for_all_tasks_to_complete() -> AsyncIterator[dict[str, Any]]:
                 """
                 Wait for all running tasks to finish, yield partial outputs.
                 """
@@ -452,8 +452,8 @@ class AsyncPipeline(PipelineBase):
             yield _deepcopy_with_exceptions(pipeline_outputs)
 
     async def run_async(
-        self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None, concurrency_limit: int = 4
-    ) -> Dict[str, Any]:
+        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+    ) -> dict[str, Any]:
         """
         Provides an asynchronous interface to run the pipeline with provided input data.
 
@@ -561,7 +561,7 @@ class AsyncPipeline(PipelineBase):
         :raises PipelineMaxComponentRuns:
             If a Component reaches the maximum number of times it can be run in this Pipeline.
         """
-        final: Dict[str, Any] = {}
+        final: dict[str, Any] = {}
         async for partial in self.run_async_generator(
             data=data, concurrency_limit=concurrency_limit, include_outputs_from=include_outputs_from
         ):
@@ -569,8 +569,8 @@ class AsyncPipeline(PipelineBase):
         return final or {}
 
     def run(
-        self, data: Dict[str, Any], include_outputs_from: Optional[Set[str]] = None, concurrency_limit: int = 4
-    ) -> Dict[str, Any]:
+        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+    ) -> dict[str, Any]:
         """
         Provides a synchronous interface to run the pipeline with given input data.
 

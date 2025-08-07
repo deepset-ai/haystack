@@ -5,7 +5,7 @@
 import asyncio
 import copy
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import logging
 from haystack.dataclasses import (
@@ -103,7 +103,7 @@ class HFModelType(Enum):
     GENERATION = 2
 
 
-def serialize_hf_model_kwargs(kwargs: Dict[str, Any]) -> None:
+def serialize_hf_model_kwargs(kwargs: dict[str, Any]) -> None:
     """
     Recursively serialize HuggingFace specific model keyword arguments in-place to make them JSON serializable.
 
@@ -120,7 +120,7 @@ def serialize_hf_model_kwargs(kwargs: Dict[str, Any]) -> None:
             serialize_hf_model_kwargs(v)
 
 
-def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]) -> None:
+def deserialize_hf_model_kwargs(kwargs: dict[str, Any]) -> None:
     """
     Recursively deserialize HuggingFace specific model keyword arguments in-place to make them JSON serializable.
 
@@ -140,7 +140,7 @@ def deserialize_hf_model_kwargs(kwargs: Dict[str, Any]) -> None:
             deserialize_hf_model_kwargs(v)
 
 
-def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optional[dict[str, Any]]) -> dict[str, Any]:
     """
     Update `model_kwargs` to include the keyword argument `device_map`.
 
@@ -175,13 +175,13 @@ def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optio
 
 
 def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
-    huggingface_pipeline_kwargs: Dict[str, Any],
+    huggingface_pipeline_kwargs: dict[str, Any],
     model: str,
     task: Optional[str],
-    supported_tasks: List[str],
+    supported_tasks: list[str],
     device: Optional[ComponentDevice],
     token: Optional[Secret],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Resolve the HuggingFace pipeline keyword arguments based on explicit user inputs.
 
@@ -253,7 +253,7 @@ def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Se
         raise ValueError(error_msg)
 
 
-def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
+def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
     """
     Convert a message to the format expected by Hugging Face.
     """
@@ -273,7 +273,7 @@ def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
         )
 
     # HF always expects a content field, even if it is empty
-    hf_msg: Dict[str, Any] = {"role": message._role.value, "content": ""}
+    hf_msg: dict[str, Any] = {"role": message._role.value, "content": ""}
 
     if tool_call_results:
         result = tool_call_results[0]
@@ -285,7 +285,7 @@ def convert_message_to_hf_format(message: ChatMessage) -> Dict[str, Any]:
 
     # Handle multimodal content (text + images) preserving order
     if text_contents or images:
-        content_parts: List[Dict[str, Any]] = []
+        content_parts: list[dict[str, Any]] = []
         for part in message._content:
             if isinstance(part, TextContent):
                 content_parts.append({"type": "text", "text": part.text})
@@ -334,7 +334,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
         def __init__(
             self,
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
-            stop_words: List[str],
+            stop_words: list[str],
             device: Union[str, torch.device] = "cpu",
         ):
             super().__init__()
@@ -387,7 +387,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             self,
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
             stream_handler: SyncStreamingCallbackT,
-            stop_words: Optional[List[str]] = None,
+            stop_words: Optional[list[str]] = None,
             component_info: Optional[ComponentInfo] = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
@@ -421,7 +421,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
             self,
             tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
             stream_handler: AsyncStreamingCallbackT,
-            stop_words: Optional[List[str]] = None,
+            stop_words: Optional[list[str]] = None,
             component_info: Optional[ComponentInfo] = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore

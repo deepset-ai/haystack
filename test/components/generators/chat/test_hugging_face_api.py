@@ -4,7 +4,7 @@
 
 import os
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -45,7 +45,7 @@ def chat_messages():
     ]
 
 
-def get_weather(city: str) -> Dict[str, Any]:
+def get_weather(city: str) -> dict[str, Any]:
     weather_info = {
         "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
         "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},

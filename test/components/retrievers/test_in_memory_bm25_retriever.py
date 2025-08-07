@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -152,7 +152,7 @@ class TestMemoryBM25Retriever:
 
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
-        result: Dict[str, Any] = pipeline.run(data={"retriever": {"query": query}})
+        result: dict[str, Any] = pipeline.run(data={"retriever": {"query": query}})
 
         assert result
         assert "retriever" in result
@@ -176,7 +176,7 @@ class TestMemoryBM25Retriever:
 
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
-        result: Dict[str, Any] = pipeline.run(data={"retriever": {"query": query, "top_k": top_k}})
+        result: dict[str, Any] = pipeline.run(data={"retriever": {"query": query, "top_k": top_k}})
 
         assert result
         assert "retriever" in result

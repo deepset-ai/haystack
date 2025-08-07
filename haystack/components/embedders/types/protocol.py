@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Protocol
+from typing import Any, Protocol
 
 # See https://github.com/pylint-dev/pylint/issues/9319.
 # pylint: disable=unnecessary-ellipsis
@@ -13,7 +13,7 @@ class TextEmbedder(Protocol):
     Protocol for Text Embedders.
     """
 
-    def run(self, text: str) -> Dict[str, Any]:
+    def run(self, text: str) -> dict[str, Any]:
         """
         Generate embeddings for the input text.
 
@@ -24,7 +24,7 @@ class TextEmbedder(Protocol):
             The input text to be embedded.
         :returns:
             A dictionary containing the keys:
-                - 'embedding', which is expected to be a List[float] representing the embedding.
+                - 'embedding', which is expected to be a list[float] representing the embedding.
                 - any optional keys such as 'metadata'.
         """
         ...

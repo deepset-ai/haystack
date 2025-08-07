@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import Annotated, Any, Iterable, List, Type, TypedDict, TypeVar, get_args
+from typing import Annotated, Any, Iterable, TypedDict, TypeVar, get_args
 
 from typing_extensions import TypeAlias  # Python 3.9 compatibility
 
@@ -53,11 +53,11 @@ class InputSocket:
     """
 
     name: str
-    type: Type
+    type: type
     default_value: Any = _empty
     is_variadic: bool = field(init=False)
     is_greedy: bool = field(init=False)
-    senders: List[str] = field(default_factory=list)
+    senders: list[str] = field(default_factory=list)
 
     @property
     def is_mandatory(self):
@@ -67,11 +67,13 @@ class InputSocket:
     def __post_init__(self):
         try:
             # __metadata__ is a tuple
-            self.is_variadic = self.type.__metadata__[0] in [
+            self.is_variadic = hasattr(self.type, "__metadata__") and self.type.__metadata__[0] in [
                 HAYSTACK_VARIADIC_ANNOTATION,
                 HAYSTACK_GREEDY_VARIADIC_ANNOTATION,
             ]
-            self.is_greedy = self.type.__metadata__[0] == HAYSTACK_GREEDY_VARIADIC_ANNOTATION
+            self.is_greedy = (
+                hasattr(self.type, "__metadata__") and self.type.__metadata__[0] == HAYSTACK_GREEDY_VARIADIC_ANNOTATION
+            )
         except AttributeError:
             self.is_variadic = False
             self.is_greedy = False
@@ -88,8 +90,8 @@ class InputSocket:
             # an iterable of the declared type. For example, Variadic[int]
             # is eventually an alias for Iterable[int]. Since we're interested
             # in getting the inner type `int`, we call `get_args` twice: the
-            # first time to get `List[int]` out of `Variadic`, the second time
-            # to get `int` out of `List[int]`.
+            # first time to get `list[int]` out of `Variadic`, the second time
+            # to get `int` out of `list[int]`.
             self.type = get_args(get_args(self.type)[0])[0]
 
 
@@ -98,7 +100,7 @@ class InputSocketTypeDescriptor(TypedDict):
     Describes the type of an `InputSocket`.
     """
 
-    type: Type
+    type: type
     is_mandatory: bool
 
 
@@ -117,4 +119,4 @@ class OutputSocket:
 
     name: str
     type: type
-    receivers: List[str] = field(default_factory=list)
+    receivers: list[str] = field(default_factory=list)

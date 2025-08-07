@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections.abc
-from typing import Any, Type, TypeVar, Union, get_args, get_origin
+from typing import Any, TypeVar, Union, get_args, get_origin
 
 from haystack.utils.type_serialization import _UnionType
 
 T = TypeVar("T")
 
 
-def _types_are_compatible(sender: Type, receiver: Type, type_validation: bool = True) -> bool:
+def _types_are_compatible(sender: type, receiver: type, type_validation: bool = True) -> bool:
     """
     Determines if two types are compatible based on the specified validation mode.
 
@@ -25,7 +25,7 @@ def _types_are_compatible(sender: Type, receiver: Type, type_validation: bool = 
         return True
 
 
-def _safe_get_origin(_type: Type[T]) -> Union[Type[T], None]:
+def _safe_get_origin(_type: type[T]) -> Union[type[T], None]:
     """
     Safely retrieves the origin type of a generic alias or returns the type itself if it's a built-in.
 

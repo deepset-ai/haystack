@@ -6,7 +6,7 @@ import base64
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -83,7 +83,7 @@ def mock_chat_completion_chunk_with_tools(openai_mock_stream):
         yield mock_chat_completion_create
 
 
-def weather_function(city: str) -> Dict[str, Any]:
+def weather_function(city: str) -> dict[str, Any]:
     weather_info = {
         "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
         "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
@@ -94,8 +94,8 @@ def weather_function(city: str) -> Dict[str, Any]:
 
 @component
 class MessageExtractor:
-    @component.output_types(messages=List[str], meta=Dict[str, Any])
-    def run(self, messages: List[ChatMessage], meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    @component.output_types(messages=list[str], meta=dict[str, Any])
+    def run(self, messages: list[ChatMessage], meta: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Extracts the text content of ChatMessage objects
 

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Dict, Mapping, Optional, Set, Union
+from typing import Any, Mapping, Optional, Union
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -39,9 +39,9 @@ class Pipeline(PipelineBase):
     @staticmethod
     def _run_component(
         component_name: str,
-        component: Dict[str, Any],
-        inputs: Dict[str, Any],
-        component_visits: Dict[str, int],
+        component: dict[str, Any],
+        inputs: dict[str, Any],
+        component_visits: dict[str, int],
         parent_span: Optional[tracing.Span] = None,
     ) -> Mapping[str, Any]:
         """
@@ -88,12 +88,12 @@ class Pipeline(PipelineBase):
 
     def run(  # noqa: PLR0915, PLR0912, C901, pylint: disable=too-many-branches
         self,
-        data: Dict[str, Any],
-        include_outputs_from: Optional[Set[str]] = None,
+        data: dict[str, Any],
+        include_outputs_from: Optional[set[str]] = None,
         *,
         break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Runs the Pipeline with given input data.
 
@@ -212,7 +212,7 @@ class Pipeline(PipelineBase):
         if include_outputs_from is None:
             include_outputs_from = set()
 
-        pipeline_outputs: Dict[str, Any] = {}
+        pipeline_outputs: dict[str, Any] = {}
 
         if not pipeline_snapshot:
             # normalize `data`

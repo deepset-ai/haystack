@@ -4,7 +4,7 @@
 
 import mimetypes
 from pathlib import Path
-from typing import Any, List, Optional, Union, overload
+from typing import Any, Optional, Union, overload
 
 from numpy import exp, ndarray
 
@@ -18,7 +18,7 @@ CUSTOM_MIMETYPES = {
 }
 
 
-def expand_page_range(page_range: List[Union[str, int]]) -> List[int]:
+def expand_page_range(page_range: list[Union[str, int]]) -> list[int]:
     """
     Takes a list of page numbers and ranges and expands them into a list of page numbers.
 

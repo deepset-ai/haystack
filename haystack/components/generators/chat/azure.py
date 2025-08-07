@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
 
@@ -80,13 +80,13 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         streaming_callback: Optional[StreamingCallbackT] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        default_headers: Optional[Dict[str, str]] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        default_headers: Optional[dict[str, str]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         tools_strict: bool = False,
         *,
         azure_ad_token_provider: Optional[Union[AzureADTokenProvider, AsyncAzureADTokenProvider]] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Initialize the Azure OpenAI Chat Generator component.
@@ -170,7 +170,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.tools = tools
         self.tools_strict = tools_strict
 
-        client_args: Dict[str, Any] = {
+        client_args: dict[str, Any] = {
             "api_version": api_version,
             "azure_endpoint": azure_endpoint,
             "azure_deployment": azure_deployment,
@@ -190,7 +190,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_args
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -221,7 +221,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAIChatGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "AzureOpenAIChatGenerator":
         """
         Deserialize this component from a dictionary.
 

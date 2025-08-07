@@ -5,7 +5,7 @@
 import itertools
 from enum import Enum
 from math import inf
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
@@ -103,16 +103,16 @@ class AnswerJoiner:
         """
         if isinstance(join_mode, str):
             join_mode = JoinMode.from_str(join_mode)
-        join_mode_functions: Dict[JoinMode, Callable[[List[List[AnswerType]]], List[AnswerType]]] = {
+        join_mode_functions: dict[JoinMode, Callable[[list[list[AnswerType]]], list[AnswerType]]] = {
             JoinMode.CONCATENATE: self._concatenate
         }
-        self.join_mode_function: Callable[[List[List[AnswerType]]], List[AnswerType]] = join_mode_functions[join_mode]
+        self.join_mode_function: Callable[[list[list[AnswerType]]], list[AnswerType]] = join_mode_functions[join_mode]
         self.join_mode = join_mode
         self.top_k = top_k
         self.sort_by_score = sort_by_score
 
-    @component.output_types(answers=List[AnswerType])
-    def run(self, answers: Variadic[List[AnswerType]], top_k: Optional[int] = None):
+    @component.output_types(answers=list[AnswerType])
+    def run(self, answers: Variadic[list[AnswerType]], top_k: Optional[int] = None):
         """
         Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 
@@ -128,7 +128,7 @@ class AnswerJoiner:
         """
         answers_list = list(answers)
         join_function = self.join_mode_function
-        output_answers: List[AnswerType] = join_function(answers_list)
+        output_answers: list[AnswerType] = join_function(answers_list)
 
         if self.sort_by_score:
             output_answers = sorted(
@@ -140,7 +140,7 @@ class AnswerJoiner:
             output_answers = output_answers[:top_k]
         return {"answers": output_answers}
 
-    def _concatenate(self, answer_lists: List[List[AnswerType]]) -> List[AnswerType]:
+    def _concatenate(self, answer_lists: list[list[AnswerType]]) -> list[AnswerType]:
         """
         Concatenate multiple lists of Answers, flattening them into a single list and sorting by score.
 
@@ -148,7 +148,7 @@ class AnswerJoiner:
         """
         return list(itertools.chain.from_iterable(answer_lists))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -158,7 +158,7 @@ class AnswerJoiner:
         return default_to_dict(self, join_mode=str(self.join_mode), top_k=self.top_k, sort_by_score=self.sort_by_score)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AnswerJoiner":
+    def from_dict(cls, data: dict[str, Any]) -> "AnswerJoiner":
         """
         Deserializes the component from a dictionary.
 
