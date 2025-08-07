@@ -1,0 +1,8 @@
+---
+issues:
+  - |
+    Document Embedders modify Documents in place #9505
+fixes:
+  - |
+    Prevented in-place mutation of input `Document` objects in all `DocumentEmbedder` components
+    by using `deepcopy` of the input documents before processing.

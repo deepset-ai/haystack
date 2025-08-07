@@ -4,6 +4,7 @@
 
 import os
 import random
+from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -287,7 +288,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
-
+        docs_copy = deepcopy(docs)
         with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
             mock_embedding_patch.side_effect = mock_embedding_generation
 
@@ -314,6 +315,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
 
         documents_with_embeddings = result["documents"]
 
+        assert docs == docs_copy
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
         for doc in documents_with_embeddings:

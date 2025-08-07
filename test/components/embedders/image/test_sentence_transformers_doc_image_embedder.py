@@ -5,6 +5,7 @@
 import glob
 import random
 import sys
+from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -204,9 +205,11 @@ class TestSentenceTransformersDocumentImageEmbedder:
             if path.endswith(".pdf"):
                 document.meta["page_number"] = 1
             documents.append(document)
+        documents_copy = deepcopy(documents)
 
         result = embedder.run(documents=documents)
 
+        assert documents == documents_copy
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
         for doc in result["documents"]:
