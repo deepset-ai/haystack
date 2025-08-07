@@ -11,8 +11,6 @@ import dateutil.parser
 from haystack.dataclasses import ByteStream, Document
 from haystack.errors import FilterError
 
-ContentItem = Union[Document, ByteStream]
-
 
 def raise_on_invalid_filter_syntax(filters: Optional[dict[str, Any]] = None) -> None:
     """
@@ -31,7 +29,7 @@ def document_matches_filter(filters: dict[str, Any], document: Document) -> bool
 def document_matches_filter(filters: dict[str, Any], document: ByteStream) -> bool: ...
 
 
-def document_matches_filter(filters: dict[str, Any], document: ContentItem) -> bool:
+def document_matches_filter(filters: dict[str, Any], document: Union[Document, ByteStream]) -> bool:
     """
     Return whether `filters` match the Document or the ByteStream.
 
@@ -43,15 +41,15 @@ def document_matches_filter(filters: dict[str, Any], document: ContentItem) -> b
     return _logic_condition(condition=filters, document=document)
 
 
-def _and(document: ContentItem, conditions: list[dict[str, Any]]) -> bool:
+def _and(document: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
     return all(_comparison_condition(condition=condition, document=document) for condition in conditions)
 
 
-def _or(document: ContentItem, conditions: list[dict[str, Any]]) -> bool:
+def _or(document: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
     return any(_comparison_condition(condition=condition, document=document) for condition in conditions)
 
 
-def _not(document: ContentItem, conditions: list[dict[str, Any]]) -> bool:
+def _not(document: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
     return not _and(document=document, conditions=conditions)
 
 
@@ -166,7 +164,7 @@ COMPARISON_OPERATORS = {
 }
 
 
-def _logic_condition(condition: dict[str, Any], document: ContentItem) -> bool:
+def _logic_condition(condition: dict[str, Any], document: Union[Document, ByteStream]) -> bool:
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
         raise FilterError(msg)
@@ -186,7 +184,7 @@ def _comparison_condition(condition: dict[str, Any], document: Document) -> bool
 def _comparison_condition(condition: dict[str, Any], document: ByteStream) -> bool: ...
 
 
-def _comparison_condition(condition: dict[str, Any], document: ContentItem) -> bool:
+def _comparison_condition(condition: dict[str, Any], document: Union[Document, ByteStream]) -> bool:
     if "field" not in condition:
         # 'field' key is only found in comparison dictionaries.
         # We assume this is a logic dictionary since it's not present.
