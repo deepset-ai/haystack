@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
 from typing import Any, Optional, Union
 
 from tqdm import tqdm
@@ -328,10 +329,11 @@ class HuggingFaceAPIDocumentEmbedder:
 
         embeddings = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
-        for doc, emb in zip(documents, embeddings):
+        documents_copy = deepcopy(documents)
+        for doc, emb in zip(documents_copy, embeddings):
             doc.embedding = emb
 
-        return {"documents": documents}
+        return {"documents": documents_copy}
 
     @component.output_types(documents=list[Document])
     async def run_async(self, documents: list[Document]):
@@ -355,7 +357,8 @@ class HuggingFaceAPIDocumentEmbedder:
 
         embeddings = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
-        for doc, emb in zip(documents, embeddings):
+        documents_copy = deepcopy(documents)
+        for doc, emb in zip(documents_copy, embeddings):
             doc.embedding = emb
 
-        return {"documents": documents}
+        return {"documents": documents_copy}
