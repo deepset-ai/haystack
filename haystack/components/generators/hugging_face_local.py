@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal, Optional, cast
+from typing import Any, Literal, Optional
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ComponentInfo, StreamingCallbackT, select_streaming_callback
@@ -153,7 +153,7 @@ class HuggingFaceLocalGenerator:
             return
 
         if self.pipeline is None:
-            self.pipeline = cast(HfPipeline, pipeline(**self.huggingface_pipeline_kwargs))
+            self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
         if self.stop_words:
             # text-generation and text2text-generation pipelines always have a non-None tokenizer

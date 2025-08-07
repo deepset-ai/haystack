@@ -161,7 +161,7 @@ def _resolve_type(_type: Any) -> Any:
         return Sequence[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
 
     if origin is Union:
-        return Union[tuple(_resolve_type(a) for a in args)]  # type: ignore[misc]
+        return Union[tuple(_resolve_type(a) for a in args)]
 
     if origin is dict:
         return dict[args[0] if args else Any, _resolve_type(args[1]) if args else Any]  # type: ignore[misc]

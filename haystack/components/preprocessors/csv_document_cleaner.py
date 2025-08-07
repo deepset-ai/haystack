@@ -80,7 +80,7 @@ class CSVDocumentCleaner:
         cleaned_documents = []
         for document in documents:
             try:
-                df = pd.read_csv(StringIO(document.content), header=None, dtype=object)  # type: ignore
+                df = pd.read_csv(StringIO(document.content), header=None, dtype=object)
             except Exception as e:
                 logger.error(
                     "Error processing document {id}. Keeping it, but skipping cleaning. Error: {error}",

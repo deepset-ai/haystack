@@ -95,7 +95,7 @@ class AzureOCRDocumentConverter:
 
         self.document_analysis_client = DocumentAnalysisClient(
             endpoint=endpoint, credential=AzureKeyCredential(api_key.resolve_value() or "")
-        )  # type: ignore
+        )
         self.endpoint = endpoint
         self.model_id = model_id
         self.api_key = api_key
@@ -383,10 +383,10 @@ class AzureOCRDocumentConverter:
             if all(line.polygon is not None for line in lines):
                 for i in range(len(lines)):  # pylint: disable=consider-using-enumerate
                     # left_upi, right_upi, right_lowi, left_lowi = lines[i].polygon
-                    left_upi, _, _, _ = lines[i].polygon  # type: ignore
+                    left_upi, _, _, _ = lines[i].polygon
                     pairs_by_page[page_idx].append([i, i])
                     for j in range(i + 1, len(lines)):  # pylint: disable=invalid-name
-                        left_upj, _, _, _ = lines[j].polygon  # type: ignore
+                        left_upj, _, _, _ = lines[j].polygon
                         close_on_y_axis = abs(left_upi[1] - left_upj[1]) < threshold_y
                         if close_on_y_axis:
                             pairs_by_page[page_idx].append([i, j])
@@ -422,13 +422,13 @@ class AzureOCRDocumentConverter:
         for page_idx, _ in enumerate(result.pages):
             sorted_rows = []
             for row_of_lines in merged_lines_by_page[page_idx]:
-                sorted_rows.append(sorted(row_of_lines, key=lambda x: x.polygon[0][0]))  # type: ignore
+                sorted_rows.append(sorted(row_of_lines, key=lambda x: x.polygon[0][0]))
             x_sorted_lines_by_page[page_idx] = sorted_rows
 
         # Sort each row within the page by the y-value of the upper left bounding box coordinate
         y_sorted_lines_by_page = {}
         for page_idx, _ in enumerate(result.pages):
-            sorted_rows = sorted(x_sorted_lines_by_page[page_idx], key=lambda x: x[0].polygon[0][1])  # type: ignore
+            sorted_rows = sorted(x_sorted_lines_by_page[page_idx], key=lambda x: x[0].polygon[0][1])
             y_sorted_lines_by_page[page_idx] = sorted_rows
 
         # Construct the text to write
