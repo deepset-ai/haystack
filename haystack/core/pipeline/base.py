@@ -10,7 +10,7 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Any, ContextManager, Iterator, Mapping, Optional, TextIO, TypeVar, Union
 
-import networkx  # type:ignore
+import networkx
 
 from haystack import logging, tracing
 from haystack.core.component import Component, InputSocket, OutputSocket, component
@@ -123,7 +123,7 @@ class PipelineBase:  # noqa: PLW1641
                 res += f"  - {k}: {v}\n"
 
         res += "🚅 Components\n"
-        for name, instance in self.graph.nodes(data="instance"):  # type: ignore # type wrongly defined in networkx
+        for name, instance in self.graph.nodes(data="instance"):
             res += f"  - {name}: {instance.__class__.__name__}\n"
 
         res += "🛤️ Connections\n"
@@ -144,7 +144,7 @@ class PipelineBase:  # noqa: PLW1641
             Dictionary with serialized data.
         """
         components = {}
-        for name, instance in self.graph.nodes(data="instance"):  # type:ignore
+        for name, instance in self.graph.nodes(data="instance"):
             components[name] = component_to_dict(instance, name)
 
         connections = []
@@ -619,7 +619,7 @@ class PipelineBase:  # noqa: PLW1641
         :returns:
             The name of the Component instance.
         """
-        for name, inst in self.graph.nodes(data="instance"):  # type: ignore # type wrongly defined in networkx
+        for name, inst in self.graph.nodes(data="instance"):
             if inst == instance:
                 return name
         return ""
@@ -717,7 +717,7 @@ class PipelineBase:  # noqa: PLW1641
         """
 
         if is_in_jupyter():
-            from IPython.display import Image, display  # type: ignore
+            from IPython.display import Image, display
 
             if super_component_expansion:
                 graph, super_component_mapping = self._merge_super_component_pipelines()
@@ -811,7 +811,7 @@ class PipelineBase:  # noqa: PLW1641
         :returns:
             An iterator of tuples of component name and component instance.
         """
-        for component_name, instance in self.graph.nodes(data="instance"):  # type: ignore # type is wrong in networkx
+        for component_name, instance in self.graph.nodes(data="instance"):
             yield component_name, instance
 
     def warm_up(self) -> None:

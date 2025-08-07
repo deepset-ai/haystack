@@ -416,7 +416,7 @@ class OpenAIChatGenerator:
 
         return {
             "model": self.model,
-            "messages": openai_formatted_messages,  # type: ignore[arg-type] # openai expects list of specific message types
+            "messages": openai_formatted_messages,
             "stream": streaming_callback is not None,
             "n": num_responses,
             **openai_tools,

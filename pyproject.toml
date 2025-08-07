@@ -276,10 +276,12 @@ asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
 python_version = "3.9"
-disallow_incomplete_defs = true
-warn_return_any = false
-ignore_missing_imports = true
 check_untyped_defs = true
+disallow_incomplete_defs = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = false
 
 [[tool.mypy.overrides]]
 # TODO: Fix component typings

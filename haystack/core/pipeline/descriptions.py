@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-import networkx  # type:ignore
+import networkx
 
 from haystack.core.component.types import InputSocket, InputSocketTypeDescriptor, OutputSocket
 from haystack.core.type_utils import _type_name

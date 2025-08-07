@@ -9,7 +9,7 @@ import random
 import zlib
 from typing import Any, Optional
 
-import networkx  # type:ignore
+import networkx
 import requests
 
 from haystack import logging
