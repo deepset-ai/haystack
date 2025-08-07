@@ -119,8 +119,8 @@ class TestMetadataRouter:
             "type": "haystack.components.routers.metadata_router.MetadataRouter",
             "init_parameters": {
                 "rules": rules,
-                "output_type": """typing.List[typing.Union[haystack.dataclasses.document.Document,
-                haystack.dataclasses.byte_stream.ByteStream]]""",
+                "output_type": "typing.List[typing.Union[haystack.dataclasses.document.Document, "
+                "haystack.dataclasses.byte_stream.ByteStream]]",
             },
         }
         assert router.to_dict() == expected_dict
