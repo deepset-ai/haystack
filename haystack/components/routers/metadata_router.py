@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
@@ -48,7 +48,7 @@ class MetadataRouter:
 
     router = MetadataRouter(
         rules={"english": {"field": "meta.language", "operator": "==", "value": "en"}},
-        output_type=List[ByteStream]
+        output_type=list[ByteStream]
     )
 
     result = router.run(documents=streams)
@@ -56,8 +56,7 @@ class MetadataRouter:
     ```
     """
 
-    def __init__(self, rules: Dict[str, Dict], output_type: Type = List[Document]) -> None:
-
+    def __init__(self, rules: dict[str, dict], output_type: type = list[Document]) -> None:
         """
         Initializes the MetadataRouter component.
 
@@ -108,8 +107,7 @@ class MetadataRouter:
                 )
         component.set_output_types(self, unmatched=self.output_type, **dict.fromkeys(rules, self.output_type))
 
-    def run(self, documents: List[Union[Document, ByteStream]]) -> Dict[str, List[Union[Document, ByteStream]]]:
-      
+    def run(self, documents: list[Union[Document, ByteStream]]) -> dict[str, list[Union[Document, ByteStream]]]:
         """
         Routes documents or byte streams to different connections based on their metadata fields.
 
@@ -120,9 +118,9 @@ class MetadataRouter:
         :returns: A dictionary where the keys are the names of the output connections (including `"unmatched"`)
             and the values are lists of `Document` or `ByteStream` objects that matched the corresponding rules.
         """
-        
+
         unmatched = []
-        output: Dict[str, List[Union[Document, ByteStream]]] = {edge: [] for edge in self.rules}
+        output: dict[str, list[Union[Document, ByteStream]]] = {edge: [] for edge in self.rules}
 
         for doc_or_bytestream in documents:
             current_obj_matched = False
@@ -137,7 +135,7 @@ class MetadataRouter:
         output["unmatched"] = unmatched
         return output
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -147,7 +145,7 @@ class MetadataRouter:
         return default_to_dict(self, rules=self.rules, output_type=serialize_type(self.output_type))
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MetadataRouter":
+    def from_dict(cls, data: dict[str, Any]) -> "MetadataRouter":
         """
         Deserialize this component from a dictionary.
 

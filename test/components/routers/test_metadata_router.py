@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Union
+from typing import Union
 
 import pytest
 
@@ -44,7 +44,7 @@ class TestMetadataRouter:
         byt2 = ByteStream.from_string(text="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"})
         docs = [byt1, byt2]
         router = MetadataRouter(
-            rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}, output_type=List[ByteStream]
+            rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}, output_type=list[ByteStream]
         )
         output = router.run(documents=docs)
         assert output["en"][0].data == byt1.data
@@ -58,7 +58,7 @@ class TestMetadataRouter:
         docs = [byt1, byt2, doc1, doc2]
         router = MetadataRouter(
             rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}},
-            output_type=List[Union[Document, ByteStream]],
+            output_type=list[Union[Document, ByteStream]],
         )
         output = router.run(documents=docs)
         assert output["en"][0].data == byt1.data
@@ -103,7 +103,7 @@ class TestMetadataRouter:
         router = MetadataRouter(rules=rules)
         expected_dict = {
             "type": "haystack.components.routers.metadata_router.MetadataRouter",
-            "init_parameters": {"rules": rules, "output_type": "typing.List[haystack.dataclasses.document.Document]"},
+            "init_parameters": {"rules": rules, "output_type": "list[haystack.dataclasses.document.Document]"},
         }
         assert router.to_dict() == expected_dict
 
@@ -114,13 +114,13 @@ class TestMetadataRouter:
                 "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
             }
         }
-        router = MetadataRouter(rules=rules, output_type=List[Union[ByteStream, Document]])
+        router = MetadataRouter(rules=rules, output_type=list[Union[ByteStream, Document]])
         expected_dict = {
             "type": "haystack.components.routers.metadata_router.MetadataRouter",
             "init_parameters": {
                 "rules": rules,
-                "output_type": "typing.List[typing.Union[haystack.dataclasses.document.Document, "
-                "haystack.dataclasses.byte_stream.ByteStream]]",
+                "output_type": "list[typing.Union[haystack.dataclasses.byte_stream.ByteStream, "
+                "haystack.dataclasses.document.Document]]",
             },
         }
         assert router.to_dict() == expected_dict
@@ -135,7 +135,7 @@ class TestMetadataRouter:
                         "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
                     }
                 },
-                "output_type": "typing.List[haystack.dataclasses.document.Document]",
+                "output_type": "list[haystack.dataclasses.document.Document]",
             },
         }
         router = MetadataRouter.from_dict(router_dict)
@@ -145,7 +145,7 @@ class TestMetadataRouter:
                 "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
             }
         }
-        assert router.output_type == List[Document]
+        assert router.output_type == list[Document]
 
     def test_from_dict_with_parameters(self):
         router_dict = {
@@ -157,8 +157,8 @@ class TestMetadataRouter:
                         "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
                     }
                 },
-                "output_type": """typing.List[typing.Union[haystack.dataclasses.document.Document,
-                haystack.dataclasses.byte_stream.ByteStream]]""",
+                "output_type": "list[typing.Union[haystack.dataclasses.document.Document, "
+                "haystack.dataclasses.byte_stream.ByteStream]]",
             },
         }
         router = MetadataRouter.from_dict(router_dict)
@@ -168,4 +168,4 @@ class TestMetadataRouter:
                 "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
             }
         }
-        assert router.output_type == List[Union[ByteStream, Document]]
+        assert router.output_type == list[Union[ByteStream, Document]]

@@ -4,7 +4,7 @@
 
 from dataclasses import fields
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import dateutil.parser
 
@@ -21,8 +21,7 @@ def raise_on_invalid_filter_syntax(filters: Optional[dict[str, Any]] = None) -> 
         raise FilterError(msg)
 
 
-def document_matches_filter(filters: Dict[str, Any], document: Union[Document, ByteStream]) -> bool:
-
+def document_matches_filter(filters: dict[str, Any], document: Union[Document, ByteStream]) -> bool:
     """
     Return whether `filters` match the Document.
 
@@ -34,21 +33,21 @@ def document_matches_filter(filters: Dict[str, Any], document: Union[Document, B
     return _logic_condition(condition=filters, document_or_bytestream=document)
 
 
-def _and(document_or_bytestream: Union[Document, ByteStream], conditions: List[Dict[str, Any]]) -> bool:
+def _and(document_or_bytestream: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
     return all(
         _comparison_condition(condition=condition, document_or_bytestream=document_or_bytestream)
         for condition in conditions
     )
 
 
-def _or(document_or_bytestream: Union[Document, ByteStream], conditions: List[Dict[str, Any]]) -> bool:
+def _or(document_or_bytestream: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
     return any(
         _comparison_condition(condition=condition, document_or_bytestream=document_or_bytestream)
         for condition in conditions
     )
 
 
-def _not(document_or_bytestream: Union[Document, ByteStream], conditions: List[Dict[str, Any]]) -> bool:
+def _not(document_or_bytestream: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
     return not _and(document_or_bytestream=document_or_bytestream, conditions=conditions)
 
 
@@ -165,7 +164,7 @@ COMPARISON_OPERATORS = {
 }
 
 
-def _logic_condition(condition: Dict[str, Any], document_or_bytestream: Union[Document, ByteStream]) -> bool:
+def _logic_condition(condition: dict[str, Any], document_or_bytestream: Union[Document, ByteStream]) -> bool:
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
         raise FilterError(msg)
@@ -173,12 +172,11 @@ def _logic_condition(condition: Dict[str, Any], document_or_bytestream: Union[Do
         msg = f"'conditions' key missing in {condition}"
         raise FilterError(msg)
     operator: str = condition["operator"]
-    conditions: List[Dict[str, Any]] = condition["conditions"]
+    conditions: list[dict[str, Any]] = condition["conditions"]
     return LOGICAL_OPERATORS[operator](document_or_bytestream=document_or_bytestream, conditions=conditions)
 
 
-def _comparison_condition(condition: Dict[str, Any], document_or_bytestream: Union[Document, ByteStream]) -> bool:
-
+def _comparison_condition(condition: dict[str, Any], document_or_bytestream: Union[Document, ByteStream]) -> bool:
     if "field" not in condition:
         # 'field' key is only found in comparison dictionaries.
         # We assume this is a logic dictionary since it's not present.
