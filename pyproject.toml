@@ -302,21 +302,12 @@ skip-magic-trailing-comma = true
   "SIM105", # try-except-pass instead of contextlib-suppress
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
 ]
-"test/core/test_type_utils.py" = [
-  "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
-]
-"test/utils/test_type_serialization.py" = [
-  "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
-]
-"test/components/agents/test_state_class.py" = [
-  "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
-]
-"test/components/converters/test_output_adapter.py" = [
-  "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
-]
-"test/components/joiners/test_list_joiner.py" = [
-  "UP006", # non-pep585-annotation - keep old typing imports for compatibility testing
-]
+# in the following files, we still allow type hints like typing.List because we want to test both old and new types
+"test/core/test_type_utils.py" = ["UP006"]
+"test/utils/test_type_serialization.py" = ["UP006"]
+"test/components/agents/test_state_class.py" = ["UP006"]
+"test/components/converters/test_output_adapter.py" = ["UP006"]
+"test/components/joiners/test_list_joiner.py" = ["UP006"]
 
 
 [tool.ruff.lint]
