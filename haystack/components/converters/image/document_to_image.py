@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Literal, Optional
 
 from haystack import Document, component, logging
 from haystack.components.converters.image.image_utils import (
@@ -36,11 +36,11 @@ class DocumentToImageContent:
     ### Usage example
         ```python
         from haystack import Document
-        from haystack.components.image_converters.document_to_image import DocumentToImageContent
+        from haystack.components.converters.image.document_to_image import DocumentToImageContent
 
         converter = DocumentToImageContent(
             file_path_meta_field="file_path",
-            root_path="/data/documents",
+            root_path="/data/files",
             detail="high",
             size=(800, 600)
         )
@@ -68,7 +68,7 @@ class DocumentToImageContent:
         file_path_meta_field: str = "file_path",
         root_path: Optional[str] = None,
         detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[Tuple[int, int]] = None,
+        size: Optional[tuple[int, int]] = None,
     ):
         """
         Initialize the DocumentToImageContent component.
@@ -90,8 +90,8 @@ class DocumentToImageContent:
         self.detail = detail
         self.size = size
 
-    @component.output_types(image_contents=List[Optional[ImageContent]])
-    def run(self, documents: List[Document]) -> Dict[str, List[Optional[ImageContent]]]:
+    @component.output_types(image_contents=list[Optional[ImageContent]])
+    def run(self, documents: list[Document]) -> dict[str, list[Optional[ImageContent]]]:
         """
         Convert documents with image or PDF sources into ImageContent objects.
 
@@ -117,9 +117,9 @@ class DocumentToImageContent:
             documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
         )
 
-        image_contents: List[Optional[ImageContent]] = [None] * len(documents)
+        image_contents: list[Optional[ImageContent]] = [None] * len(documents)
 
-        pdf_page_infos: List[_PDFPageInfo] = []
+        pdf_page_infos: list[_PDFPageInfo] = []
 
         for doc_idx, image_source_info in enumerate(images_source_info):
             mime_type = image_source_info["mime_type"]
@@ -142,7 +142,7 @@ class DocumentToImageContent:
                 )
 
         # efficiently convert PDF pages to images: each PDF is opened and processed only once
-        pdf_page_infos_by_doc_idx: Dict[int, _PDFPageInfo] = {
+        pdf_page_infos_by_doc_idx: dict[int, _PDFPageInfo] = {
             pdf_page_info["doc_idx"]: pdf_page_info for pdf_page_info in pdf_page_infos
         }
         pdf_images_by_doc_idx = _batch_convert_pdf_pages_to_images(

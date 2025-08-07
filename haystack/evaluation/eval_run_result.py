@@ -4,7 +4,7 @@
 
 import csv
 from copy import deepcopy
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 from haystack import logging
 from haystack.lazy_imports import LazyImport
@@ -20,7 +20,7 @@ class EvaluationRunResult:
     Contains the inputs and the outputs of an evaluation pipeline and provides methods to inspect them.
     """
 
-    def __init__(self, run_name: str, inputs: Dict[str, List[Any]], results: Dict[str, Dict[str, Any]]):
+    def __init__(self, run_name: str, inputs: dict[str, list[Any]], results: dict[str, dict[str, Any]]):
         """
         Initialize a new evaluation run result.
 
@@ -61,7 +61,7 @@ class EvaluationRunResult:
                 )
 
     @staticmethod
-    def _write_to_csv(csv_file: str, data: Dict[str, List[Any]]) -> str:
+    def _write_to_csv(csv_file: str, data: dict[str, list[Any]]) -> str:
         """
         Write data to a CSV file.
 
@@ -98,8 +98,8 @@ class EvaluationRunResult:
 
     @staticmethod
     def _handle_output(
-        data: Dict[str, List[Any]], output_format: Literal["json", "csv", "df"] = "csv", csv_file: Optional[str] = None
-    ) -> Union[str, "DataFrame", Dict[str, List[Any]]]:
+        data: dict[str, list[Any]], output_format: Literal["json", "csv", "df"] = "csv", csv_file: Optional[str] = None
+    ) -> Union[str, "DataFrame", dict[str, list[Any]]]:
         """
         Handles output formatting based on `output_format`.
 
@@ -122,7 +122,7 @@ class EvaluationRunResult:
 
     def aggregated_report(
         self, output_format: Literal["json", "csv", "df"] = "json", csv_file: Optional[str] = None
-    ) -> Union[Dict[str, List[Any]], "DataFrame", str]:
+    ) -> Union[dict[str, list[Any]], "DataFrame", str]:
         """
         Generates a report with aggregated scores for each metric.
 
@@ -139,7 +139,7 @@ class EvaluationRunResult:
 
     def detailed_report(
         self, output_format: Literal["json", "csv", "df"] = "json", csv_file: Optional[str] = None
-    ) -> Union[Dict[str, List[Any]], "DataFrame", str]:
+    ) -> Union[dict[str, list[Any]], "DataFrame", str]:
         """
         Generates a report with detailed scores for each metric.
 
@@ -166,7 +166,7 @@ class EvaluationRunResult:
     def comparative_detailed_report(
         self,
         other: "EvaluationRunResult",
-        keep_columns: Optional[List[str]] = None,
+        keep_columns: Optional[list[str]] = None,
         output_format: Literal["json", "csv", "df"] = "json",
         csv_file: Optional[str] = None,
     ) -> Union[str, "DataFrame", None]:

@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import List, Optional
+import sys
+from typing import Optional
 from unittest.mock import patch
 
 import pytest
@@ -845,7 +846,7 @@ class TestPipelineBase:
         assert {("hello", hello), ("hello_again", hello_again)} == set(pipeline.walk())
 
     def test__prepare_component_input_data(self):
-        MockComponent = component_class("MockComponent", input_types={"x": List[str], "y": str})
+        MockComponent = component_class("MockComponent", input_types={"x": list[str], "y": str})
         pipe = PipelineBase()
         pipe.add_component("first_mock", MockComponent())
         pipe.add_component("second_mock", MockComponent())
@@ -859,7 +860,7 @@ class TestPipelineBase:
 
     def test__prepare_component_input_data_with_connected_inputs(self):
         MockComponent = component_class(
-            "MockComponent", input_types={"x": List[str], "y": str}, output_types={"z": str}
+            "MockComponent", input_types={"x": list[str], "y": str}, output_types={"z": str}
         )
         pipe = PipelineBase()
         pipe.add_component("first_mock", MockComponent())
@@ -1099,7 +1100,7 @@ class TestPipelineBase:
 
     def test__find_receivers_from(self):
         sentence_builder = component_class(
-            "SentenceBuilder", input_types={"words": List[str]}, output_types={"text": str}
+            "SentenceBuilder", input_types={"words": list[str]}, output_types={"text": str}
         )()
         document_builder = component_class(
             "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
@@ -1677,87 +1678,6 @@ class TestPipelineBase:
 
         assert consumed["input1"].equals(DataFrame({"a": [1, 2], "b": [1, 2]}))
 
-    @patch("haystack.core.pipeline.draw.requests")
-    def test_pipeline_draw_called_with_positional_args_triggers_a_warning(self, mock_requests, tmp_path):
-        """
-        Test that calling the pipeline draw method with positional arguments raises a warning.
-        """
-        import warnings
-        from pathlib import Path
-
-        pipeline = PipelineBase()
-        mock_response = mock_requests.get.return_value
-        mock_response.status_code = 200
-        mock_response.content = b"image_data"
-        out_file = tmp_path / "original_pipeline.png"
-        with warnings.catch_warnings(record=True) as w:
-            pipeline.draw(out_file, server_url="http://localhost:3000")
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert (
-                "Warning: In an upcoming release, this method will require keyword arguments for all parameters"
-                in str(w[0].message)
-            )
-
-    @patch("haystack.core.pipeline.draw.requests")
-    @patch("haystack.core.pipeline.base.is_in_jupyter")
-    def test_pipeline_show_called_with_positional_args_triggers_a_warning(self, mock_is_in_jupyter, mock_requests):
-        """
-        Test that calling the pipeline show method with positional arguments raises a warning.
-        """
-        import warnings
-
-        pipeline = PipelineBase()
-        mock_response = mock_requests.get.return_value
-        mock_response.status_code = 200
-        mock_response.content = b"image_data"
-        mock_is_in_jupyter.return_value = True
-
-        with warnings.catch_warnings(record=True) as w:
-            pipeline.show("http://localhost:3000")
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert (
-                "Warning: In an upcoming release, this method will require keyword arguments for all parameters"
-                in str(w[0].message)
-            )
-
-    @patch("haystack.core.pipeline.draw.requests")
-    def test_pipeline_draw_called_with_keyword_args_triggers_no_warning(self, mock_requests, tmp_path):
-        """
-        Test that calling the pipeline draw method with keyword arguments does not raise a warning.
-        """
-        import warnings
-        from pathlib import Path
-
-        pipeline = PipelineBase()
-        mock_response = mock_requests.get.return_value
-        mock_response.status_code = 200
-        mock_response.content = b"image_data"
-        out_file = tmp_path / "original_pipeline.png"
-
-        with warnings.catch_warnings(record=True) as w:
-            pipeline.draw(path=out_file, server_url="http://localhost:3000")
-            assert len(w) == 0, "No warning should be triggered when using keyword arguments"
-
-    @patch("haystack.core.pipeline.draw.requests")
-    @patch("haystack.core.pipeline.base.is_in_jupyter")
-    def test_pipeline_show_called_with_keyword_args_triggers_no_warning(self, mock_is_in_jupyter, mock_requests):
-        """
-        Test that calling the pipeline show method with keyword arguments does not raise a warning.
-        """
-        import warnings
-
-        pipeline = PipelineBase()
-        mock_response = mock_requests.get.return_value
-        mock_response.status_code = 200
-        mock_response.content = b"image_data"
-        mock_is_in_jupyter.return_value = True
-
-        with warnings.catch_warnings(record=True) as w:
-            pipeline.show(server_url="http://localhost:3000")
-            assert len(w) == 0, "No warning should be triggered when using keyword arguments"
-
     @pytest.mark.integration
     def test_find_super_components(self):
         """
@@ -1863,3 +1783,37 @@ class TestPipelineBase:
         ]
         actual_edges = [(u, v) for u, v, _ in merged_graph.edges]
         assert sorted(actual_edges) == expected_edges
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
+def test_connect_pep_604_union_type():
+    """
+    Test connecting a PEP 604 union type as input and output.
+    """
+
+    # Producer: outputs a plain list of strings
+    @component
+    class StringProducer:
+        @component.output_types(words=list[str])
+        def run(self) -> dict[str, list[str]]:
+            return {"words": ["apple", "banana", "cherry"]}
+
+    @component
+    class StringConsumerOptional:
+        @component.output_types(count=int)
+        def run(self, words: list[str] | None = None) -> dict[str, int]:
+            return {"count": len(words or [])}
+
+    comp1 = StringProducer()
+    comp2 = StringConsumerOptional()
+
+    pipeline = PipelineBase()
+    pipeline.add_component("producer", comp1)
+    pipeline.add_component("consumer_opt", comp2)
+
+    # This should succeed:
+    pipeline.connect("producer.words", "consumer_opt.words")
+
+    assert comp1.__haystack_output__.words.receivers == ["consumer_opt"]
+    assert comp2.__haystack_input__.words.senders == ["producer"]
+    assert list(pipeline.graph.edges) == [("producer", "consumer_opt", "words/words")]

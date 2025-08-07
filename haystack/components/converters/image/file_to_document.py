@@ -4,7 +4,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -52,13 +52,13 @@ class ImageFileToDocument:
         """
         self.store_full_path = store_full_path
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(
         self,
         *,
-        sources: List[Union[str, Path, ByteStream]],
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-    ) -> Dict[str, List[Document]]:
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+    ) -> dict[str, list[Document]]:
         """
         Convert image files into empty Document objects with metadata.
 

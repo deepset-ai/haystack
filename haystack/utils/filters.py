@@ -12,7 +12,7 @@ from haystack.dataclasses import ByteStream, Document
 from haystack.errors import FilterError
 
 
-def raise_on_invalid_filter_syntax(filters: Optional[Dict[str, Any]] = None) -> None:
+def raise_on_invalid_filter_syntax(filters: Optional[dict[str, Any]] = None) -> None:
     """
     Raise an error if the filter syntax is invalid.
     """
@@ -22,6 +22,7 @@ def raise_on_invalid_filter_syntax(filters: Optional[Dict[str, Any]] = None) -> 
 
 
 def document_matches_filter(filters: Dict[str, Any], document: Union[Document, ByteStream]) -> bool:
+
     """
     Return whether `filters` match the Document.
 
@@ -95,7 +96,7 @@ def _parse_date(value):
             raise FilterError(msg) from exc
 
 
-def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime) -> Tuple[datetime, datetime]:
+def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime) -> tuple[datetime, datetime]:
     """Ensure that both dates are either naive or aware."""
     # Both naive
     if date1.tzinfo is None and date2.tzinfo is None:
@@ -177,6 +178,7 @@ def _logic_condition(condition: Dict[str, Any], document_or_bytestream: Union[Do
 
 
 def _comparison_condition(condition: Dict[str, Any], document_or_bytestream: Union[Document, ByteStream]) -> bool:
+
     if "field" not in condition:
         # 'field' key is only found in comparison dictionaries.
         # We assume this is a logic dictionary since it's not present.

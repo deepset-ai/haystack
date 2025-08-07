@@ -7,7 +7,7 @@ import mimetypes
 from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, TypedDict, Union
+from typing import Optional, TypedDict, Union
 
 from typing_extensions import NotRequired
 
@@ -29,8 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 def _encode_image_to_base64(
-    bytestream: ByteStream, size: Optional[Tuple[int, int]] = None
-) -> Tuple[Optional[str], str]:
+    bytestream: ByteStream, size: Optional[tuple[int, int]] = None
+) -> tuple[Optional[str], str]:
     """
     Encode an image from a ByteStream into a base64-encoded string.
 
@@ -118,9 +118,9 @@ def _convert_pdf_to_images(
     *,
     bytestream: ByteStream,
     return_base64: bool = False,
-    page_range: Optional[List[int]] = None,
-    size: Optional[Tuple[int, int]] = None,
-) -> Union[List[Tuple[int, "Image"]], List[Tuple[int, str]]]:
+    page_range: Optional[list[int]] = None,
+    size: Optional[tuple[int, int]] = None,
+) -> Union[list[tuple[int, "Image"]], list[tuple[int, str]]]:
     """
     Convert a PDF file into a list of PIL Image objects or base64-encoded images.
 
@@ -225,8 +225,8 @@ class _ImageSourceInfo(TypedDict):
 
 
 def _extract_image_sources_info(
-    documents: List[Document], file_path_meta_field: str, root_path: str
-) -> List[_ImageSourceInfo]:
+    documents: list[Document], file_path_meta_field: str, root_path: str
+) -> list[_ImageSourceInfo]:
     """
     Extracts the image source information from the documents.
 
@@ -240,7 +240,7 @@ def _extract_image_sources_info(
     :raises ValueError: If the document is missing the file_path_meta_field key in its metadata, the file path is
         invalid, the MIME type is not supported, or the page number is missing for a PDF document.
     """
-    images_source_info: List[_ImageSourceInfo] = []
+    images_source_info: list[_ImageSourceInfo] = []
     for doc in documents:
         file_path = doc.meta.get(file_path_meta_field)
         if file_path is None:
@@ -289,8 +289,8 @@ class _PDFPageInfo(TypedDict):
 
 
 def _batch_convert_pdf_pages_to_images(
-    *, pdf_page_infos: List[_PDFPageInfo], return_base64: bool = False, size: Optional[Tuple[int, int]] = None
-) -> Union[Dict[int, str], Dict[int, "Image"]]:
+    *, pdf_page_infos: list[_PDFPageInfo], return_base64: bool = False, size: Optional[tuple[int, int]] = None
+) -> Union[dict[int, str], dict[int, "Image"]]:
     """
     Converts selected PDF pages to images, returning a mapping from document indices to images (PIL or base64).
 

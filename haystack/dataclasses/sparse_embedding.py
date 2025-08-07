@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List
+from typing import Any
 
 
 @dataclass
@@ -15,8 +15,8 @@ class SparseEmbedding:
     :param values: List of values of non-zero elements in the embedding.
     """
 
-    indices: List[int]
-    values: List[float]
+    indices: list[int]
+    values: list[float]
 
     def __post_init__(self):
         """
@@ -27,7 +27,7 @@ class SparseEmbedding:
         if len(self.indices) != len(self.values):
             raise ValueError("Length of indices and values must be the same.")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the SparseEmbedding object to a dictionary.
 
@@ -37,7 +37,7 @@ class SparseEmbedding:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, sparse_embedding_dict: Dict[str, Any]) -> "SparseEmbedding":
+    def from_dict(cls, sparse_embedding_dict: dict[str, Any]) -> "SparseEmbedding":
         """
         Deserializes the sparse embedding from a dictionary.
 

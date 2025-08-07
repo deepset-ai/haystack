@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from more_itertools import batched
 from openai import APIError, AsyncOpenAI, OpenAI
@@ -50,11 +50,11 @@ class OpenAIDocumentEmbedder:
         suffix: str = "",
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
         *,
         raise_on_failure: bool = False,
     ):
@@ -127,7 +127,7 @@ class OpenAIDocumentEmbedder:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
-        client_kwargs: Dict[str, Any] = {
+        client_kwargs: dict[str, Any] = {
             "api_key": api_key.resolve_value(),
             "organization": organization,
             "base_url": api_base_url,
@@ -140,13 +140,13 @@ class OpenAIDocumentEmbedder:
             http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
         )
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
         return {"model": self.model}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -173,7 +173,7 @@ class OpenAIDocumentEmbedder:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIDocumentEmbedder":
+    def from_dict(cls, data: dict[str, Any]) -> "OpenAIDocumentEmbedder":
         """
         Deserializes the component from a dictionary.
 
@@ -185,7 +185,7 @@ class OpenAIDocumentEmbedder:
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
-    def _prepare_texts_to_embed(self, documents: List[Document]) -> Dict[str, str]:
+    def _prepare_texts_to_embed(self, documents: list[Document]) -> dict[str, str]:
         """
         Prepare the texts to embed by concatenating the Document text with the metadata fields to embed.
         """
@@ -202,18 +202,18 @@ class OpenAIDocumentEmbedder:
         return texts_to_embed
 
     def _embed_batch(
-        self, texts_to_embed: Dict[str, str], batch_size: int
-    ) -> Tuple[Dict[str, List[float]], Dict[str, Any]]:
+        self, texts_to_embed: dict[str, str], batch_size: int
+    ) -> tuple[dict[str, list[float]], dict[str, Any]]:
         """
         Embed a list of texts in batches.
         """
 
-        doc_ids_to_embeddings: Dict[str, List[float]] = {}
-        meta: Dict[str, Any] = {}
+        doc_ids_to_embeddings: dict[str, list[float]] = {}
+        meta: dict[str, Any] = {}
         for batch in tqdm(
             batched(texts_to_embed.items(), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
-            args: Dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch]}
+            args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch], "encoding_format": "float"}
 
             if self.dimensions is not None:
                 args["dimensions"] = self.dimensions
@@ -242,21 +242,21 @@ class OpenAIDocumentEmbedder:
         return doc_ids_to_embeddings, meta
 
     async def _embed_batch_async(
-        self, texts_to_embed: Dict[str, str], batch_size: int
-    ) -> Tuple[Dict[str, List[float]], Dict[str, Any]]:
+        self, texts_to_embed: dict[str, str], batch_size: int
+    ) -> tuple[dict[str, list[float]], dict[str, Any]]:
         """
         Embed a list of texts in batches asynchronously.
         """
 
-        doc_ids_to_embeddings: Dict[str, List[float]] = {}
-        meta: Dict[str, Any] = {}
+        doc_ids_to_embeddings: dict[str, list[float]] = {}
+        meta: dict[str, Any] = {}
 
         batches = list(batched(texts_to_embed.items(), batch_size))
         if self.progress_bar:
             batches = async_tqdm(batches, desc="Calculating embeddings")
 
         for batch in batches:
-            args: Dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch]}
+            args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch]}
 
             if self.dimensions is not None:
                 args["dimensions"] = self.dimensions
@@ -284,8 +284,8 @@ class OpenAIDocumentEmbedder:
 
         return doc_ids_to_embeddings, meta
 
-    @component.output_types(documents=List[Document], meta=Dict[str, Any])
-    def run(self, documents: List[Document]):
+    @component.output_types(documents=list[Document], meta=dict[str, Any])
+    def run(self, documents: list[Document]):
         """
         Embeds a list of documents.
 
@@ -313,8 +313,8 @@ class OpenAIDocumentEmbedder:
 
         return {"documents": list(doc_id_to_document.values()), "meta": meta}
 
-    @component.output_types(documents=List[Document], meta=Dict[str, Any])
-    async def run_async(self, documents: List[Document]):
+    @component.output_types(documents=list[Document], meta=dict[str, Any])
+    async def run_async(self, documents: list[Document]):
         """
         Embeds a list of documents asynchronously.
 

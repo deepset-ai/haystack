@@ -6,7 +6,7 @@ import base64
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -83,7 +83,7 @@ def mock_chat_completion_chunk_with_tools(openai_mock_stream):
         yield mock_chat_completion_create
 
 
-def weather_function(city: str) -> Dict[str, Any]:
+def weather_function(city: str) -> dict[str, Any]:
     weather_info = {
         "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
         "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
@@ -94,8 +94,8 @@ def weather_function(city: str) -> Dict[str, Any]:
 
 @component
 class MessageExtractor:
-    @component.output_types(messages=List[str], meta=Dict[str, Any])
-    def run(self, messages: List[ChatMessage], meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    @component.output_types(messages=list[str], meta=dict[str, Any])
+    def run(self, messages: list[ChatMessage], meta: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Extracts the text content of ChatMessage objects
 
@@ -754,13 +754,13 @@ class TestOpenAIChatGenerator:
     @pytest.mark.integration
     def test_live_run_multimodal(self, test_files_path):
         image_path = test_files_path / "images" / "apple.jpg"
-        with open(image_path, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
 
-        image_content = ImageContent(base64_image=base64_image, mime_type="image/jpeg", detail="low")
-        chat_messages = [ChatMessage.from_user(content_parts=["Describe the image in max 5 words", image_content])]
+        # we resize the image to keep this test fast (around 1s) - increase the size in case of errors
+        image_content = ImageContent.from_file_path(file_path=image_path, size=(100, 100), detail="low")
 
-        generator = OpenAIChatGenerator()
+        chat_messages = [ChatMessage.from_user(content_parts=["What does this image show? Max 5 words", image_content])]
+
+        generator = OpenAIChatGenerator(model="gpt-4.1-nano")
         results = generator.run(chat_messages)
 
         assert len(results["replies"]) == 1

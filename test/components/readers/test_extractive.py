@@ -4,7 +4,6 @@
 
 import logging
 from math import ceil, exp
-from typing import List
 from unittest.mock import Mock, patch
 
 import pytest
@@ -28,8 +27,8 @@ def initialized_token(monkeypatch: MonkeyPatch) -> Secret:
 @pytest.fixture
 def mock_tokenizer():
     def mock_tokenize(
-        texts: List[str],
-        text_pairs: List[str],
+        texts: list[str],
+        text_pairs: list[str],
         padding: bool,
         truncation: bool,
         max_length: int,

@@ -54,10 +54,10 @@ class MetadataRouter:
     result = router.run(documents=streams)
     # {'english': [ByteStream(...)], 'unmatched': [ByteStream(...)]}
     ```
-
     """
 
     def __init__(self, rules: Dict[str, Dict], output_type: Type = List[Document]) -> None:
+
         """
         Initializes the MetadataRouter component.
 
@@ -109,6 +109,7 @@ class MetadataRouter:
         component.set_output_types(self, unmatched=self.output_type, **dict.fromkeys(rules, self.output_type))
 
     def run(self, documents: List[Union[Document, ByteStream]]) -> Dict[str, List[Union[Document, ByteStream]]]:
+      
         """
         Routes documents or byte streams to different connections based on their metadata fields.
 
@@ -119,6 +120,7 @@ class MetadataRouter:
         :returns: A dictionary where the keys are the names of the output connections (including `"unmatched"`)
             and the values are lists of `Document` or `ByteStream` objects that matched the corresponding rules.
         """
+        
         unmatched = []
         output: Dict[str, List[Union[Document, ByteStream]]] = {edge: [] for edge in self.rules}
 
