@@ -3,4 +3,3 @@ enhancements:
   - |
     Adopted modern type hinting syntax using PEP 585 throughout the codebase.
     This improves readability and removes unnecessary imports from the `typing` module.
-    excluding `test/core/test_type_utils.py` and `test/utils/test_type_serialization.py` to preserve compatibility testing.
