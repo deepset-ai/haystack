@@ -33,7 +33,7 @@ def document_matches_filter(filters: dict[str, Any], document: ByteStream) -> bo
 
 def document_matches_filter(filters: dict[str, Any], document: DocumentT) -> bool:
     """
-    Return whether `filters` match the Document.
+    Return whether `filters` match the Document or the ByteStream.
 
     For a detailed specification of the filters, refer to the
     `DocumentStore.filter_documents()` protocol documentation.

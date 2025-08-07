@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, TypeVar, Union
+from typing import Any, TypeVar
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
