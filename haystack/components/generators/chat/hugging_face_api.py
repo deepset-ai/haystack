@@ -602,7 +602,7 @@ class HuggingFaceAPIChatGenerator:
                 chunk=chunk, previous_chunks=streaming_chunks, component_info=component_info
             )
             streaming_chunks.append(stream_chunk)
-            await streaming_callback(stream_chunk)  # type: ignore
+            await streaming_callback(stream_chunk)
 
         message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
         if message.meta.get("usage") is None:

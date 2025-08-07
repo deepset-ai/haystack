@@ -37,7 +37,7 @@ class Accumulate:
             import it at need. This is also a parameter.
         """
         self.state = 0
-        self.function: Callable = _default_function if function is None else function  # type: ignore
+        self.function: Callable = _default_function if function is None else function
 
     def to_dict(self) -> dict[str, Any]:
         """Converts the component to a dictionary"""

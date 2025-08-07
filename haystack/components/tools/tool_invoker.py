@@ -529,7 +529,7 @@ class ToolInvoker:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 futures = []
                 for params in tool_call_params:
-                    future = executor.submit(self._execute_single_tool_call, **params)  # type: ignore[arg-type]
+                    future = executor.submit(self._execute_single_tool_call, **params)
                     futures.append(future)
 
                 # 3) Process results in the order they are submitted

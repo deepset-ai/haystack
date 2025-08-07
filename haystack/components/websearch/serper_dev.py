@@ -110,7 +110,7 @@ class SerperDevWebSearch:
         headers = {"X-API-KEY": self.api_key.resolve_value(), "Content-Type": "application/json"}
 
         try:
-            response = requests.post(SERPERDEV_BASE_URL, headers=headers, data=payload, timeout=30)  # type: ignore
+            response = requests.post(SERPERDEV_BASE_URL, headers=headers, data=payload, timeout=30)
             response.raise_for_status()  # Will raise an HTTPError for bad responses
         except requests.Timeout as error:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error

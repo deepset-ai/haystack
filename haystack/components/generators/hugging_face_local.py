@@ -153,7 +153,7 @@ class HuggingFaceLocalGenerator:
             return
 
         if self.pipeline is None:
-            self.pipeline = cast(HfPipeline, pipeline(**self.huggingface_pipeline_kwargs))
+            self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
         if self.stop_words:
             # text-generation and text2text-generation pipelines always have a non-None tokenizer

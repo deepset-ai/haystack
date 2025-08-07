@@ -292,7 +292,7 @@ class TransformersSimilarityRanker:
             def __getitem__(self, item):
                 return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
 
-        batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(  # type: ignore
+        batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(
             self.device.first_device.to_torch()
         )
         dataset = _Dataset(batch_enc)
@@ -301,7 +301,7 @@ class TransformersSimilarityRanker:
         similarity_scores = []
         with torch.inference_mode():
             for features in inp_dataloader:
-                model_preds = self.model(**features).logits.squeeze(dim=1)  # type: ignore
+                model_preds = self.model(**features).logits.squeeze(dim=1)
                 similarity_scores.extend(model_preds)
         similarity_scores = torch.stack(similarity_scores)
 
@@ -310,7 +310,7 @@ class TransformersSimilarityRanker:
 
         _, sorted_indices = torch.sort(similarity_scores, descending=True)
 
-        sorted_indices = sorted_indices.cpu().tolist()  # type: ignore
+        sorted_indices = sorted_indices.cpu().tolist()
         similarity_scores = similarity_scores.cpu().tolist()
         ranked_docs = []
         for sorted_index in sorted_indices:

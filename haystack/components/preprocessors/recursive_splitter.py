@@ -289,7 +289,7 @@ class RecursiveDocumentSplitter:
         if self._chunk_length(text) <= self.split_length:
             return [text]
 
-        for curr_separator in self.separators:  # type: ignore # the caller already checked that separators is not None
+        for curr_separator in self.separators:
             if curr_separator == "sentence":
                 # re. ignore: correct SentenceSplitter initialization is checked at the initialization of the component
                 sentence_with_spans = self.nltk_tokenizer.split_sentences(text)  # type: ignore

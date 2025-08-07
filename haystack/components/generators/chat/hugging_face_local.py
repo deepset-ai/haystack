@@ -473,8 +473,7 @@ class HuggingFaceLocalChatGenerator:
         if streaming_callback:
             async_handler = AsyncHFTokenStreamingHandler(
                 tokenizer=prepared_inputs["tokenizer"],
-                # Cast to AsyncStreamingCallbackT since we know streaming_callback is async
-                stream_handler=cast(AsyncStreamingCallbackT, streaming_callback),
+                stream_handler=streaming_callback,
                 stop_words=prepared_inputs["stop_words"],
                 component_info=ComponentInfo.from_component(self),
             )

@@ -143,7 +143,7 @@ class DALLEImageGenerator:
         :returns:
             The serialized component as a dictionary.
         """
-        return default_to_dict(  # type: ignore
+        return default_to_dict(
             self,
             model=self.model,
             quality=self.quality,
@@ -167,4 +167,4 @@ class DALLEImageGenerator:
         """
         init_params = data.get("init_parameters", {})
         deserialize_secrets_inplace(init_params, keys=["api_key"])
-        return default_from_dict(cls, data)  # type: ignore
+        return default_from_dict(cls, data)
