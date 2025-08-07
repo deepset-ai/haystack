@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from jinja2 import TemplateSyntaxError, nodes
 from jinja2.ext import Extension
@@ -65,7 +65,7 @@ class ChatMessageExtension(Extension):
 
     tags = {"message"}
 
-    def parse(self, parser: Any) -> Union[nodes.Node, List[nodes.Node]]:
+    def parse(self, parser: Any) -> Union[nodes.Node, list[nodes.Node]]:
         """
         Parse the message tag and its attributes in the Jinja2 template.
 
@@ -147,7 +147,7 @@ class ChatMessageExtension(Extension):
         return json.dumps(chat_message.to_dict()) + "\n"
 
     @staticmethod
-    def _parse_content_parts(content: str) -> List[ChatMessageContentT]:
+    def _parse_content_parts(content: str) -> list[ChatMessageContentT]:
         """
         Parse a string into a sequence of ChatMessageContentT objects.
 
@@ -165,7 +165,7 @@ class ChatMessageExtension(Extension):
                 f"Message content in template is empty or contains only whitespace characters. Content: {content!r}"
             )
 
-        parts: List[ChatMessageContentT] = []
+        parts: list[ChatMessageContentT] = []
         cursor = 0
         total_length = len(content)
 
@@ -204,7 +204,7 @@ class ChatMessageExtension(Extension):
 
     @staticmethod
     def _validate_build_chat_message(
-        parts: List[ChatMessageContentT], role: str, meta: dict, name: Optional[str] = None
+        parts: list[ChatMessageContentT], role: str, meta: dict, name: Optional[str] = None
     ) -> ChatMessage:
         """
         Validate the parts of a chat message and build a ChatMessage object.

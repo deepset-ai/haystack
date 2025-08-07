@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from numpy import mean as np_mean
 
@@ -86,7 +86,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        examples: Optional[List[Dict[str, Any]]] = None,
+        examples: Optional[list[dict[str, Any]]] = None,
         progress_bar: bool = True,
         raise_on_failure: bool = True,
         chat_generator: Optional[ChatGenerator] = None,
@@ -132,7 +132,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
             "statement made in the predicted answer. The score is 1 if the statement can be "
             "inferred from the provided context or 0 if it cannot be inferred."
         )
-        self.inputs = [("questions", List[str]), ("contexts", List[List[str]]), ("predicted_answers", List[str])]
+        self.inputs = [("questions", list[str]), ("contexts", list[list[str]]), ("predicted_answers", list[str])]
         self.outputs = ["statements", "statement_scores"]
         self.examples = examples or _DEFAULT_EXAMPLES
 
@@ -146,8 +146,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
             progress_bar=progress_bar,
         )
 
-    @component.output_types(individual_scores=List[int], score=float, results=List[Dict[str, Any]])
-    def run(self, **inputs) -> Dict[str, Any]:
+    @component.output_types(individual_scores=list[int], score=float, results=list[dict[str, Any]])
+    def run(self, **inputs) -> dict[str, Any]:
         """
         Run the LLM evaluator.
 
@@ -181,7 +181,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
 
         return result
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -197,7 +197,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FaithfulnessEvaluator":
+    def from_dict(cls, data: dict[str, Any]) -> "FaithfulnessEvaluator":
         """
         Deserialize this component from a dictionary.
 

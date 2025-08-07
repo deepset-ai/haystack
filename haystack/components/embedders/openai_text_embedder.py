@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from openai import AsyncOpenAI, OpenAI
 from openai.types import CreateEmbeddingResponse
@@ -48,7 +48,7 @@ class OpenAITextEmbedder:
         suffix: str = "",
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Creates an OpenAITextEmbedder component.
@@ -103,7 +103,7 @@ class OpenAITextEmbedder:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
-        client_kwargs: Dict[str, Any] = {
+        client_kwargs: dict[str, Any] = {
             "api_key": api_key.resolve_value(),
             "organization": organization,
             "base_url": api_base_url,
@@ -116,13 +116,13 @@ class OpenAITextEmbedder:
             http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
         )
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
         return {"model": self.model}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -144,7 +144,7 @@ class OpenAITextEmbedder:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAITextEmbedder":
+    def from_dict(cls, data: dict[str, Any]) -> "OpenAITextEmbedder":
         """
         Deserializes the component from a dictionary.
 
@@ -156,7 +156,7 @@ class OpenAITextEmbedder:
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
-    def _prepare_input(self, text: str) -> Dict[str, Any]:
+    def _prepare_input(self, text: str) -> dict[str, Any]:
         if not isinstance(text, str):
             raise TypeError(
                 "OpenAITextEmbedder expects a string as an input."
@@ -165,15 +165,15 @@ class OpenAITextEmbedder:
 
         text_to_embed = self.prefix + text + self.suffix
 
-        kwargs: Dict[str, Any] = {"model": self.model, "input": text_to_embed, "encoding_format": "float"}
+        kwargs: dict[str, Any] = {"model": self.model, "input": text_to_embed, "encoding_format": "float"}
         if self.dimensions is not None:
             kwargs["dimensions"] = self.dimensions
         return kwargs
 
-    def _prepare_output(self, result: CreateEmbeddingResponse) -> Dict[str, Any]:
+    def _prepare_output(self, result: CreateEmbeddingResponse) -> dict[str, Any]:
         return {"embedding": result.data[0].embedding, "meta": {"model": result.model, "usage": dict(result.usage)}}
 
-    @component.output_types(embedding=List[float], meta=Dict[str, Any])
+    @component.output_types(embedding=list[float], meta=dict[str, Any])
     def run(self, text: str):
         """
         Embeds a single string.
@@ -190,7 +190,7 @@ class OpenAITextEmbedder:
         response = self.client.embeddings.create(**create_kwargs)
         return self._prepare_output(result=response)
 
-    @component.output_types(embedding=List[float], meta=Dict[str, Any])
+    @component.output_types(embedding=list[float], meta=dict[str, Any])
     async def run_async(self, text: str):
         """
         Asynchronously embed a single string.

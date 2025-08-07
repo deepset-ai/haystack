@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from pathlib import Path
-from typing import List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -79,10 +78,10 @@ class TestPipelineBreakpoints:
         }
 
         pipe = Pipeline()
-        pipe.add_component("joiner", BranchJoiner(List[ChatMessage]))
+        pipe.add_component("joiner", BranchJoiner(list[ChatMessage]))
         pipe.add_component("fc_llm", mock_openai_chat_generator("gpt-4o-mini"))
         pipe.add_component("validator", JsonSchemaValidator(json_schema=person_schema))
-        pipe.add_component("adapter", OutputAdapter("{{chat_message}}", List[ChatMessage], unsafe=True))
+        pipe.add_component("adapter", OutputAdapter("{{chat_message}}", list[ChatMessage], unsafe=True))
 
         pipe.connect("adapter", "joiner")
         pipe.connect("joiner", "fc_llm")

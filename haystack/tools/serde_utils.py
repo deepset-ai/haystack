@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization import import_class_by_name
@@ -11,8 +11,8 @@ from haystack.tools.toolset import Toolset
 
 
 def serialize_tools_or_toolset(
-    tools: Union[Toolset, List[Tool], None],
-) -> Union[Dict[str, Any], List[Dict[str, Any]], None]:
+    tools: Union[Toolset, list[Tool], None],
+) -> Union[dict[str, Any], list[dict[str, Any]], None]:
     """
     Serialize a Toolset or a list of Tools to a dictionary or a list of tool dictionaries.
 
@@ -26,7 +26,7 @@ def serialize_tools_or_toolset(
     return [tool.to_dict() for tool in tools]
 
 
-def deserialize_tools_or_toolset_inplace(data: Dict[str, Any], key: str = "tools") -> None:
+def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools") -> None:
     """
     Deserialize a list of Tools or a Toolset in a dictionary inplace.
 

@@ -5,7 +5,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Union
+from typing import Any, Literal, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -93,7 +93,7 @@ class JSONConverter:
         self,
         jq_schema: Optional[str] = None,
         content_key: Optional[str] = None,
-        extra_meta_fields: Optional[Union[Set[str], Literal["*"]]] = None,
+        extra_meta_fields: Optional[Union[set[str], Literal["*"]]] = None,
         store_full_path: bool = False,
     ):
         """
@@ -149,7 +149,7 @@ class JSONConverter:
             msg = "No `jq_schema` nor `content_key` specified. Set either or both to extract data."
             raise ValueError(msg)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -165,7 +165,7 @@ class JSONConverter:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "JSONConverter":
+    def from_dict(cls, data: dict[str, Any]) -> "JSONConverter":
         """
         Deserializes the component from a dictionary.
 
@@ -176,7 +176,7 @@ class JSONConverter:
         """
         return default_from_dict(cls, data)
 
-    def _get_content_and_meta(self, source: ByteStream) -> List[Tuple[str, Dict[str, Any]]]:
+    def _get_content_and_meta(self, source: ByteStream) -> list[tuple[str, dict[str, Any]]]:
         """
         Utility function to extract text and metadata from a JSON file.
 
@@ -246,11 +246,11 @@ class JSONConverter:
 
         return result
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(
         self,
-        sources: List[Union[str, Path, ByteStream]],
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
     ):
         """
         Converts a list of JSON files to documents.

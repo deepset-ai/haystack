@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from typing import List
 
 import pytest
 
@@ -565,7 +564,7 @@ class TestSplittingNLTKSentenceSplitter:
             (["Sun", "Moon"], 1),  # Ignores the first sentence even if its inclusion would be < split_overlap
         ],
     )
-    def test_number_of_sentences_to_keep(self, sentences: List[str], expected_num_sentences: int) -> None:
+    def test_number_of_sentences_to_keep(self, sentences: list[str], expected_num_sentences: int) -> None:
         num_sentences = DocumentSplitter._number_of_sentences_to_keep(
             sentences=sentences, split_length=5, split_overlap=2
         )

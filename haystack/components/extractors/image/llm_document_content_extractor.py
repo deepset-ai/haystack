@@ -4,7 +4,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal, Optional, Union
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -92,7 +92,7 @@ class LLMDocumentContentExtractor:
         file_path_meta_field: str = "file_path",
         root_path: Optional[str] = None,
         detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[Tuple[int, int]] = None,
+        size: Optional[tuple[int, int]] = None,
         raise_on_failure: bool = False,
         max_workers: int = 3,
     ):
@@ -147,7 +147,7 @@ class LLMDocumentContentExtractor:
                 self._chat_generator.warm_up()
             self._is_warmed_up = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -168,7 +168,7 @@ class LLMDocumentContentExtractor:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LLMDocumentContentExtractor":
+    def from_dict(cls, data: dict[str, Any]) -> "LLMDocumentContentExtractor":
         """
         Deserializes the component from a dictionary.
 
@@ -180,7 +180,7 @@ class LLMDocumentContentExtractor:
         deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
         return default_from_dict(cls, data)
 
-    def _run_on_thread(self, message: Optional[ChatMessage]) -> Dict[str, Any]:
+    def _run_on_thread(self, message: Optional[ChatMessage]) -> dict[str, Any]:
         """
         Execute the LLM inference in a separate thread for each document.
 
@@ -205,8 +205,8 @@ class LLMDocumentContentExtractor:
             result = {"error": "LLM failed with exception: " + str(e)}
         return result
 
-    @component.output_types(documents=List[Document], failed_documents=List[Document])
-    def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
+    @component.output_types(documents=list[Document], failed_documents=list[Document])
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Run content extraction on a list of image-based documents using a vision-capable LLM.
 
@@ -225,7 +225,7 @@ class LLMDocumentContentExtractor:
 
         # Create ChatMessage prompts for each document
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
-        all_messages: List[Union[ChatMessage, None]] = []
+        all_messages: list[Union[ChatMessage, None]] = []
         for image_content in image_contents:
             if image_content is None:
                 # If the image content is None, it means the document could not be converted to an image.

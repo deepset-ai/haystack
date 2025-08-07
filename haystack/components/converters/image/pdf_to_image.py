@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal, Optional, Union
 
 from haystack import component, logging
 from haystack.components.converters.image.image_utils import _convert_pdf_to_images, pillow_import, pypdfium2_import
@@ -43,8 +43,8 @@ class PDFToImageContent:
         self,
         *,
         detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[Tuple[int, int]] = None,
-        page_range: Optional[List[Union[str, int]]] = None,
+        size: Optional[tuple[int, int]] = None,
+        page_range: Optional[list[Union[str, int]]] = None,
     ):
         """
         Create the PDFToImageContent component.
@@ -66,16 +66,16 @@ class PDFToImageContent:
         pypdfium2_import.check()
         pillow_import.check()
 
-    @component.output_types(image_contents=List[ImageContent])
+    @component.output_types(image_contents=list[ImageContent])
     def run(
         self,
-        sources: List[Union[str, Path, ByteStream]],
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
         *,
         detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[Tuple[int, int]] = None,
-        page_range: Optional[List[Union[str, int]]] = None,
-    ) -> Dict[str, List[ImageContent]]:
+        size: Optional[tuple[int, int]] = None,
+        page_range: Optional[list[Union[str, int]]] = None,
+    ) -> dict[str, list[ImageContent]]:
         """
         Converts files to ImageContent objects.
 

@@ -4,7 +4,7 @@
 
 from copy import deepcopy
 from io import StringIO
-from typing import Dict, List, Optional
+from typing import Optional
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -54,8 +54,8 @@ class CSVDocumentCleaner:
         self.keep_id = keep_id
         pandas_import.check()
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Cleans CSV documents by removing empty rows and columns while preserving specified ignored rows and columns.
 

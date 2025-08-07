@@ -4,7 +4,6 @@
 
 import functools
 import json
-from typing import Dict, List
 
 import pytest
 from _pytest.capture import CaptureFixture
@@ -28,7 +27,7 @@ def datadog_tracer(monkeypatch: MonkeyPatch) -> ddTracer:
     return tracer
 
 
-def get_traces_from_console(capfd: CaptureFixture) -> List[Dict]:
+def get_traces_from_console(capfd: CaptureFixture) -> list[dict]:
     output = capfd.readouterr().out
     parsed = json.loads(output)
     nested_traces = parsed["traces"]
