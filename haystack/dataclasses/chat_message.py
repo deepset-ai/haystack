@@ -148,7 +148,7 @@ class TextContent:
 @dataclass
 class ReasoningContent:
     """
-    Represents a the optional reasoning content prepared by the model, usually contained in an assistant message.
+    Represents the optional reasoning content prepared by the model, usually contained in an assistant message.
 
     :param reasoning_text: The reasoning text produced by the model.
     :param extra: Dictionary of extra information about the reasoning content. Use to store provider-specific
