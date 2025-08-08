@@ -108,7 +108,7 @@ class TestContentParts:
 
 
 class TestChatMessage:
-    def test_from_assistant_with_valid_content(self):
+    def test_from_assistant_with_text(self):
         text = "Hello, how can I assist you?"
         message = ChatMessage.from_assistant(text)
 
@@ -125,6 +125,8 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
 
     def test_from_assistant_with_tool_calls(self):
         tool_calls = [
@@ -211,6 +213,8 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
 
     def test_from_user_with_name(self):
         text = "I have a question."
@@ -280,6 +284,8 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
 
     def test_from_tool_with_valid_content(self):
         tool_result = "Tool result"
@@ -300,6 +306,8 @@ class TestChatMessage:
         assert not message.text
         assert not message.images
         assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
 
     def test_multiple_text_segments(self):
         texts = [TextContent(text="Hello"), TextContent(text="World")]
@@ -339,10 +347,13 @@ class TestChatMessage:
             meta={"key": "value"},
             validation=True,
         )
+        reasoning_content = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
         meta = {"some": "info"}
 
         message = ChatMessage(
-            _role=role, _content=[text_content, tool_call, tool_call_result, image_content], _meta=meta
+            _role=role,
+            _content=[text_content, tool_call, tool_call_result, image_content, reasoning_content],
+            _meta=meta,
         )
 
         serialized_message = message.to_dict()
@@ -366,6 +377,7 @@ class TestChatMessage:
                         "validation": True,
                     }
                 },
+                {"reasoning": {"reasoning_text": "Let me think about it...", "extra": {"key": "value"}}},
             ],
             "role": "assistant",
             "name": None,
