@@ -477,7 +477,10 @@ def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice:
     message: ChatCompletionMessage = choice.message
     text = message.content
     tool_calls = []
-    if openai_tool_calls := message.tool_calls:
+    if message.tool_calls:
+        # we currently only support function tools (not custom tools)
+        # https://platform.openai.com/docs/guides/function-calling#custom-tools
+        openai_tool_calls = [tc for tc in message.tool_calls if tc.type == "function"]
         for openai_tc in openai_tool_calls:
             arguments_str = openai_tc.function.arguments
             try:
