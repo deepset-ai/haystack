@@ -12,7 +12,7 @@ from jinja2 import TemplateSyntaxError
 from haystack import component
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.core.pipeline.pipeline import Pipeline
-from haystack.dataclasses.chat_message import ChatMessage, ImageContent
+from haystack.dataclasses.chat_message import ChatMessage, ImageContent, ReasoningContent
 from haystack.dataclasses.document import Document
 
 
@@ -889,6 +889,26 @@ Third line.
             ChatMessage.from_user(
                 content_parts=["Hello! I am John. What's the difference between the following images?", *images]
             )
+        ]
+
+    def test_run_reasoning(self):
+        template = """
+        {% message role="user" %}
+        Hello! I am {{user_name}}. How much is 2 + 2?
+        {% endmessage %}
+
+        {% message role="assistant" %}
+        {{ reasoning | templatize_part }}
+        The answer is 4.
+        {% endmessage %}
+        """
+        builder = ChatPromptBuilder(template=template)
+        reasoning = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
+        result = builder.run(user_name="John", reasoning=reasoning)
+
+        assert result["prompt"] == [
+            ChatMessage.from_user(text="Hello! I am John. How much is 2 + 2?"),
+            ChatMessage.from_assistant(reasoning=reasoning, text="The answer is 4."),
         ]
 
     def test_to_dict(self):

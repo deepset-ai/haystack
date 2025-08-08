@@ -9,7 +9,7 @@ import pytest
 from jinja2 import TemplateSyntaxError
 from jinja2.sandbox import SandboxedEnvironment
 
-from haystack.dataclasses.chat_message import ImageContent, ToolCall, ToolCallResult
+from haystack.dataclasses.chat_message import ImageContent, ReasoningContent, ToolCall, ToolCallResult
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
 
 
@@ -119,6 +119,27 @@ class TestChatMessageExtension:
                         "id": "search_1",
                     }
                 },
+            ],
+            "name": None,
+            "meta": {},
+        }
+        assert output == expected
+
+    def test_assistant_message_with_reasoning(self, jinja_env):
+        template = """
+        {% message role="assistant" %}
+        {{ reasoning | templatize_part }}
+        The answer is 4.
+        {% endmessage %}
+        """
+        reasoning = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
+        rendered = jinja_env.from_string(template).render(reasoning=reasoning)
+        output = json.loads(rendered.strip())
+        expected = {
+            "role": "assistant",
+            "content": [
+                {"reasoning": {"reasoning_text": "Let me think about it...", "extra": {"key": "value"}}},
+                {"text": "The answer is 4."},
             ],
             "name": None,
             "meta": {},

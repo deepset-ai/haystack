@@ -124,6 +124,23 @@ TOOL_CALL_RESULT_SCHEMA = {
     "required": ["result", "origin", "error"],
 }
 
+REASONING_CONTENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "reasoning_text": {"type": "string", "description": "The reasoning text produced by the model."},
+        "extra": {
+            "type": "object",
+            "default": {},
+            "description": (
+                "Dictionary of extra information about the reasoning content. Use to store "
+                "provider-specific\ninformation. To avoid serialization issues, values should be JSON serializable."
+            ),
+            "additionalProperties": True,
+        },
+    },
+    "required": ["reasoning_text"],
+}
+
 IMAGE_CONTENT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -181,6 +198,7 @@ CHAT_MESSAGE_SCHEMA = {
                     {"$ref": "#/$defs/ToolCall"},
                     {"$ref": "#/$defs/ToolCallResult"},
                     {"$ref": "#/$defs/ImageContent"},
+                    {"$ref": "#/$defs/ReasoningContent"},
                 ]
             },
         },
@@ -244,6 +262,7 @@ CHAT_MESSAGE_SCHEMA = {
                 "ToolCallResult": TOOL_CALL_RESULT_SCHEMA,
                 "ChatRole": CHAT_ROLE_SCHEMA,
                 "ImageContent": IMAGE_CONTENT_SCHEMA,
+                "ReasoningContent": REASONING_CONTENT_SCHEMA,
             },
         ),
         (
@@ -263,14 +282,16 @@ CHAT_MESSAGE_SCHEMA = {
                 "ToolCallResult": TOOL_CALL_RESULT_SCHEMA,
                 "ChatRole": CHAT_ROLE_SCHEMA,
                 "ImageContent": IMAGE_CONTENT_SCHEMA,
+                "ReasoningContent": REASONING_CONTENT_SCHEMA,
             },
         ),
     ],
 )
 def test_create_parameters_schema_haystack_dataclasses(python_type, description, expected_schema, expected_defs_schema):
     resolved_type = _resolve_type(python_type)
-    fields = {"input_name": (resolved_type, Field(default=..., description=description))}
-    model = create_model("run", __doc__="A test function", **fields)
+    model = create_model(
+        "run", __doc__="A test function", input_name=(resolved_type, Field(default=..., description=description))
+    )
     parameters_schema = model.model_json_schema()
     _remove_title_from_schema(parameters_schema)
 

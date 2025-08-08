@@ -6,7 +6,14 @@ import json
 
 import pytest
 
-from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent, ToolCall, ToolCallResult
+from haystack.dataclasses.chat_message import (
+    ChatMessage,
+    ChatRole,
+    ReasoningContent,
+    TextContent,
+    ToolCall,
+    ToolCallResult,
+)
 from haystack.dataclasses.image_content import ImageContent
 
 
@@ -80,9 +87,28 @@ class TestContentParts:
         tc = TextContent.from_dict({"text": "Hello"})
         assert tc.text == "Hello"
 
+    def test_reasoning_content_init(self):
+        rc = ReasoningContent(reasoning_text="Let me think about it...")
+
+        assert rc.reasoning_text == "Let me think about it..."
+        assert rc.extra == {}
+
+        rc = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
+        assert rc.reasoning_text == "Let me think about it..."
+        assert rc.extra == {"key": "value"}
+
+    def test_reasoning_content_to_dict(self):
+        rc = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
+        assert rc.to_dict() == {"reasoning_text": "Let me think about it...", "extra": {"key": "value"}}
+
+    def test_reasoning_content_from_dict(self):
+        rc = ReasoningContent.from_dict({"reasoning_text": "Let me think about it...", "extra": {"key": "value"}})
+        assert rc.reasoning_text == "Let me think about it..."
+        assert rc.extra == {"key": "value"}
+
 
 class TestChatMessage:
-    def test_from_assistant_with_valid_content(self):
+    def test_from_assistant_with_text(self):
         text = "Hello, how can I assist you?"
         message = ChatMessage.from_assistant(text)
 
@@ -99,6 +125,8 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
 
     def test_from_assistant_with_tool_calls(self):
         tool_calls = [
@@ -120,6 +148,53 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.reasoning
+        assert not message.reasonings
+
+    def test_from_assistant_with_reasoning_object(self):
+        reasoning = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
+        text = "After thinking about it, I can say that the answer is 42."
+        message = ChatMessage.from_assistant(text=text, reasoning=reasoning)
+
+        assert message.role == ChatRole.ASSISTANT
+        assert message._content == [reasoning, TextContent(text=text)]
+
+        assert message.texts == [text]
+        assert message.text == text
+        assert message.reasoning == reasoning
+        assert message.reasonings == [reasoning]
+
+        assert not message.tool_calls
+        assert not message.tool_call
+        assert not message.tool_call_results
+        assert not message.tool_call_result
+        assert not message.images
+        assert not message.image
+
+    def test_from_assistant_with_reasoning_string(self):
+        reasoning = "Let me think about it..."
+        text = "After thinking about it, I can say that the answer is 42."
+        message = ChatMessage.from_assistant(text=text, reasoning=reasoning)
+
+        expected_reasoning_content = ReasoningContent(reasoning_text=reasoning)
+        assert message.role == ChatRole.ASSISTANT
+        assert message._content == [expected_reasoning_content, TextContent(text=text)]
+
+        assert message.texts == [text]
+        assert message.text == text
+        assert message.reasoning == expected_reasoning_content
+        assert message.reasonings == [expected_reasoning_content]
+
+        assert not message.tool_calls
+        assert not message.tool_call
+        assert not message.tool_call_results
+        assert not message.tool_call_result
+        assert not message.images
+        assert not message.image
+
+    def test_from_assistant_with_invalid_reasoning(self):
+        with pytest.raises(TypeError):
+            ChatMessage.from_assistant(text="text", reasoning=123)
 
     def test_from_user_with_valid_content(self):
         text = "I have a question."
@@ -138,6 +213,8 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
 
     def test_from_user_with_name(self):
         text = "I have a question."
@@ -207,6 +284,8 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
 
     def test_from_tool_with_valid_content(self):
         tool_result = "Tool result"
@@ -227,6 +306,8 @@ class TestChatMessage:
         assert not message.text
         assert not message.images
         assert not message.image
+        assert not message.reasonings
+        assert not message.reasoning
 
     def test_multiple_text_segments(self):
         texts = [TextContent(text="Hello"), TextContent(text="World")]
@@ -266,10 +347,13 @@ class TestChatMessage:
             meta={"key": "value"},
             validation=True,
         )
+        reasoning_content = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
         meta = {"some": "info"}
 
         message = ChatMessage(
-            _role=role, _content=[text_content, tool_call, tool_call_result, image_content], _meta=meta
+            _role=role,
+            _content=[text_content, tool_call, tool_call_result, image_content, reasoning_content],
+            _meta=meta,
         )
 
         serialized_message = message.to_dict()
@@ -293,6 +377,7 @@ class TestChatMessage:
                         "validation": True,
                     }
                 },
+                {"reasoning": {"reasoning_text": "Let me think about it...", "extra": {"key": "value"}}},
             ],
             "role": "assistant",
             "name": None,
