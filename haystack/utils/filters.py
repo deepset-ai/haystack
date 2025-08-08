@@ -164,6 +164,14 @@ COMPARISON_OPERATORS = {
 }
 
 
+@overload
+def _logic_condition(condition: dict[str, Any], document: Document) -> bool: ...
+
+
+@overload
+def _logic_condition(condition: dict[str, Any], document: ByteStream) -> bool: ...
+
+
 def _logic_condition(condition: dict[str, Any], document: Union[Document, ByteStream]) -> bool:
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
