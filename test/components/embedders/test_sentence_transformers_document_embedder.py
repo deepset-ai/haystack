@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import random
+from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -288,9 +289,11 @@ class TestSentenceTransformersDocumentEmbedder:
         ]
 
         documents = [Document(content=f"document number {i}") for i in range(5)]
+        documents_copy = deepcopy(documents)
 
         result = embedder.run(documents=documents)
 
+        assert documents == documents_copy
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
         for doc in result["documents"]:

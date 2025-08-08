@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from copy import deepcopy
 from unittest.mock import Mock, patch
 
 import pytest
@@ -251,6 +252,7 @@ class TestAzureOpenAIDocumentEmbedder:
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
+        docs_copy = deepcopy(docs)
         # the default model is text-embedding-ada-002 even if we don't specify it, but let's be explicit
         embedder = AzureOpenAIDocumentEmbedder(
             azure_deployment="text-embedding-ada-002",
@@ -263,6 +265,7 @@ class TestAzureOpenAIDocumentEmbedder:
         documents_with_embeddings = result["documents"]
         metadata = result["meta"]
 
+        assert docs == docs_copy
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
         for doc in documents_with_embeddings:

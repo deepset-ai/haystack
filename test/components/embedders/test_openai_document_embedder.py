@@ -4,6 +4,7 @@
 
 import os
 import random
+from copy import deepcopy
 from unittest.mock import Mock, patch
 
 import pytest
@@ -271,6 +272,7 @@ class TestOpenAIDocumentEmbedder:
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
+        docs_copy = deepcopy(docs)
 
         model = "text-embedding-ada-002"
 
@@ -279,6 +281,7 @@ class TestOpenAIDocumentEmbedder:
         result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]
 
+        assert docs == docs_copy
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
         for doc in documents_with_embeddings:
