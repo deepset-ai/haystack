@@ -14,6 +14,7 @@ from haystack.dataclasses.chat_message import (
     ChatMessageContentT,
     ChatRole,
     ImageContent,
+    ReasoningContent,
     TextContent,
     ToolCall,
     ToolCallResult,
@@ -236,14 +237,19 @@ class ChatMessageExtension(Extension):
         if role == "assistant":
             texts = [part.text for part in parts if isinstance(part, TextContent)]
             tool_calls = [part for part in parts if isinstance(part, ToolCall)]
+            reasoning = [part for part in parts if isinstance(part, ReasoningContent)]
             if len(texts) > 1:
                 raise ValueError("Assistant message must contain one text part at most.")
             if len(texts) == 0 and len(tool_calls) == 0:
                 raise ValueError("Assistant message must contain at least one text or tool call part.")
-            if len(parts) > len(texts) + len(tool_calls):
-                raise ValueError("Assistant message must contain only text or tool call parts.")
+            if len(parts) > len(texts) + len(tool_calls) + len(reasoning):
+                raise ValueError("Assistant message must contain only text, tool call or reasoning parts.")
             return ChatMessage.from_assistant(
-                meta=meta, name=name, text=texts[0] if texts else None, tool_calls=tool_calls or None
+                meta=meta,
+                name=name,
+                text=texts[0] if texts else None,
+                tool_calls=tool_calls or None,
+                reasoning=reasoning[0] if reasoning else None,
             )
 
         if role == "tool":

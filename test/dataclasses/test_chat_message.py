@@ -6,7 +6,14 @@ import json
 
 import pytest
 
-from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent, ToolCall, ToolCallResult
+from haystack.dataclasses.chat_message import (
+    ChatMessage,
+    ChatRole,
+    ReasoningContent,
+    TextContent,
+    ToolCall,
+    ToolCallResult,
+)
 from haystack.dataclasses.image_content import ImageContent
 
 
@@ -80,6 +87,25 @@ class TestContentParts:
         tc = TextContent.from_dict({"text": "Hello"})
         assert tc.text == "Hello"
 
+    def test_reasoning_content_init(self):
+        rc = ReasoningContent(reasoning_text="Let me think about it...")
+
+        assert rc.reasoning_text == "Let me think about it..."
+        assert rc.extra == {}
+
+        rc = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
+        assert rc.reasoning_text == "Let me think about it..."
+        assert rc.extra == {"key": "value"}
+
+    def test_reasoning_content_to_dict(self):
+        rc = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
+        assert rc.to_dict() == {"reasoning_text": "Let me think about it...", "extra": {"key": "value"}}
+
+    def test_reasoning_content_from_dict(self):
+        rc = ReasoningContent.from_dict({"reasoning_text": "Let me think about it...", "extra": {"key": "value"}})
+        assert rc.reasoning_text == "Let me think about it..."
+        assert rc.extra == {"key": "value"}
+
 
 class TestChatMessage:
     def test_from_assistant_with_valid_content(self):
@@ -120,6 +146,53 @@ class TestChatMessage:
         assert not message.tool_call_result
         assert not message.images
         assert not message.image
+        assert not message.reasoning
+        assert not message.reasonings
+
+    def test_from_assistant_with_reasoning_object(self):
+        reasoning = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
+        text = "After thinking about it, I can say that the answer is 42."
+        message = ChatMessage.from_assistant(text=text, reasoning=reasoning)
+
+        assert message.role == ChatRole.ASSISTANT
+        assert message._content == [reasoning, TextContent(text=text)]
+
+        assert message.texts == [text]
+        assert message.text == text
+        assert message.reasoning == reasoning
+        assert message.reasonings == [reasoning]
+
+        assert not message.tool_calls
+        assert not message.tool_call
+        assert not message.tool_call_results
+        assert not message.tool_call_result
+        assert not message.images
+        assert not message.image
+
+    def test_from_assistant_with_reasoning_string(self):
+        reasoning = "Let me think about it..."
+        text = "After thinking about it, I can say that the answer is 42."
+        message = ChatMessage.from_assistant(text=text, reasoning=reasoning)
+
+        expected_reasoning_content = ReasoningContent(reasoning_text=reasoning)
+        assert message.role == ChatRole.ASSISTANT
+        assert message._content == [expected_reasoning_content, TextContent(text=text)]
+
+        assert message.texts == [text]
+        assert message.text == text
+        assert message.reasoning == expected_reasoning_content
+        assert message.reasonings == [expected_reasoning_content]
+
+        assert not message.tool_calls
+        assert not message.tool_call
+        assert not message.tool_call_results
+        assert not message.tool_call_result
+        assert not message.images
+        assert not message.image
+
+    def test_from_assistant_with_invalid_reasoning(self):
+        with pytest.raises(TypeError):
+            ChatMessage.from_assistant(text="text", reasoning=123)
 
     def test_from_user_with_valid_content(self):
         text = "I have a question."

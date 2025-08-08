@@ -145,13 +145,48 @@ class TextContent:
         return TextContent(**data)
 
 
-ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent]
+@dataclass
+class ReasoningContent:
+    """
+    Represents a the optional reasoning content prepared by the model, usually contained in an assistant message.
+
+    :param reasoning_text: The reasoning text produced by the model.
+    :param extra: Dictionary of extra information about the reasoning content. Use to store provider-specific
+        information. To avoid serialization issues, values should be JSON serializable.
+    """
+
+    reasoning_text: str
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Convert ReasoningContent into a dictionary.
+
+        :returns: A dictionary with keys 'reasoning_text', and 'extra'.
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ReasoningContent":
+        """
+        Creates a new ReasoningContent object from a dictionary.
+
+        :param data:
+            The dictionary to build the ReasoningContent object.
+        :returns:
+            The created object.
+        """
+        return ReasoningContent(**data)
+
+
+ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent, ReasoningContent]
 
 _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS: dict[type[ChatMessageContentT], str] = {
     TextContent: "text",
     ToolCall: "tool_call",
     ToolCallResult: "tool_call_result",
     ImageContent: "image",
+    ReasoningContent: "reasoning",
 }
 
 
@@ -334,6 +369,22 @@ class ChatMessage:
             return images[0]
         return None
 
+    @property
+    def reasonings(self) -> list[ReasoningContent]:
+        """
+        Returns the list of all reasoning contents contained in the message.
+        """
+        return [content for content in self._content if isinstance(content, ReasoningContent)]
+
+    @property
+    def reasoning(self) -> Optional[ReasoningContent]:
+        """
+        Returns the first reasoning content contained in the message.
+        """
+        if reasonings := self.reasonings:
+            return reasonings[0]
+        return None
+
     def is_from(self, role: Union[ChatRole, str]) -> bool:
         """
         Check if the message is from a specific role.
@@ -406,17 +457,27 @@ class ChatMessage:
         meta: Optional[dict[str, Any]] = None,
         name: Optional[str] = None,
         tool_calls: Optional[list[ToolCall]] = None,
+        *,
+        reasoning: Optional[Union[str, ReasoningContent]] = None,
     ) -> "ChatMessage":
         """
         Create a message from the assistant.
 
         :param text: The text content of the message.
         :param meta: Additional metadata associated with the message.
-        :param tool_calls: The Tool calls to include in the message.
         :param name: An optional name for the participant. This field is only supported by OpenAI.
+        :param tool_calls: The Tool calls to include in the message.
+        :param reasoning: The reasoning content to include in the message.
         :returns: A new ChatMessage instance.
         """
         content: list[ChatMessageContentT] = []
+        if reasoning:
+            if isinstance(reasoning, str):
+                content.append(ReasoningContent(reasoning_text=reasoning))
+            elif isinstance(reasoning, ReasoningContent):
+                content.append(reasoning)
+            else:
+                raise TypeError(f"reasoning must be a string or a ReasoningContent object, got {type(reasoning)}")
         if text is not None:
             content.append(TextContent(text=text))
         if tool_calls:
@@ -576,6 +637,7 @@ class ChatMessage:
             return openai_msg
 
         # system and assistant messages
+        # OpenAI Chat Completions API does not support reasoning content, so we ignore it
         if text_contents:
             openai_msg["content"] = text_contents[0]
         if tool_calls:
