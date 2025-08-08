@@ -21,14 +21,6 @@ def raise_on_invalid_filter_syntax(filters: Optional[dict[str, Any]] = None) -> 
         raise FilterError(msg)
 
 
-@overload
-def document_matches_filter(filters: dict[str, Any], document: Document) -> bool: ...
-
-
-@overload
-def document_matches_filter(filters: dict[str, Any], document: ByteStream) -> bool: ...
-
-
 def document_matches_filter(filters: dict[str, Any], document: Union[Document, ByteStream]) -> bool:
     """
     Return whether `filters` match the Document or the ByteStream.
@@ -41,36 +33,12 @@ def document_matches_filter(filters: dict[str, Any], document: Union[Document, B
     return _logic_condition(condition=filters, document=document)
 
 
-@overload
-def _and(document: Document, conditions: list[dict[str, Any]]) -> bool: ...
-
-
-@overload
-def _and(document: ByteStream, conditions: list[dict[str, Any]]) -> bool: ...
-
-
 def _and(document: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
     return all(_comparison_condition(condition=condition, document=document) for condition in conditions)
 
 
-@overload
-def _or(document: Document, conditions: list[dict[str, Any]]) -> bool: ...
-
-
-@overload
-def _or(document: ByteStream, conditions: list[dict[str, Any]]) -> bool: ...
-
-
 def _or(document: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
     return any(_comparison_condition(condition=condition, document=document) for condition in conditions)
-
-
-@overload
-def _not(document: Document, conditions: list[dict[str, Any]]) -> bool: ...
-
-
-@overload
-def _not(document: ByteStream, conditions: list[dict[str, Any]]) -> bool: ...
 
 
 def _not(document: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
@@ -188,14 +156,6 @@ COMPARISON_OPERATORS = {
 }
 
 
-@overload
-def _logic_condition(condition: dict[str, Any], document: Document) -> bool: ...
-
-
-@overload
-def _logic_condition(condition: dict[str, Any], document: ByteStream) -> bool: ...
-
-
 def _logic_condition(condition: dict[str, Any], document: Union[Document, ByteStream]) -> bool:
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
@@ -206,14 +166,6 @@ def _logic_condition(condition: dict[str, Any], document: Union[Document, ByteSt
     operator: str = condition["operator"]
     conditions: list[dict[str, Any]] = condition["conditions"]
     return LOGICAL_OPERATORS[operator](document=document, conditions=conditions)
-
-
-@overload
-def _comparison_condition(condition: dict[str, Any], document: Document) -> bool: ...
-
-
-@overload
-def _comparison_condition(condition: dict[str, Any], document: ByteStream) -> bool: ...
 
 
 def _comparison_condition(condition: dict[str, Any], document: Union[Document, ByteStream]) -> bool:

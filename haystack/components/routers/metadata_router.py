@@ -119,18 +119,20 @@ class MetadataRouter:
             and the values are lists of `Document` or `ByteStream` objects that matched the corresponding rules.
         """
 
-        unmatched = []
-        output: dict[str, Union[list[Document], list[ByteStream]]] = {edge: [] for edge in self.rules}  # type: ignore
+        unmatched: Union[list[Document], list[ByteStream]] = []
+        output: dict[str, Union[list[Document], list[ByteStream]]] = {edge: [] for edge in self.rules}
 
         for doc_or_bytestream in documents:
             current_obj_matched = False
             for edge, rule in self.rules.items():
                 if document_matches_filter(filters=rule, document=doc_or_bytestream):
-                    output[edge].append(doc_or_bytestream)
+                    # we need to ignore the arg-type here because the underlying
+                    # filter methods use type Union[Document, ByteStream]
+                    output[edge].append(doc_or_bytestream)  # type: ignore[arg-type]
                     current_obj_matched = True
 
             if not current_obj_matched:
-                unmatched.append(doc_or_bytestream)
+                unmatched.append(doc_or_bytestream)  # type: ignore[arg-type]
 
         output["unmatched"] = unmatched
         return output
