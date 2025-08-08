@@ -41,12 +41,36 @@ def document_matches_filter(filters: dict[str, Any], document: Union[Document, B
     return _logic_condition(condition=filters, document=document)
 
 
+@overload
+def _and(document: Document, conditions: list[dict[str, Any]]) -> bool: ...
+
+
+@overload
+def _and(document: ByteStream, conditions: list[dict[str, Any]]) -> bool: ...
+
+
 def _and(document: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
     return all(_comparison_condition(condition=condition, document=document) for condition in conditions)
 
 
+@overload
+def _or(document: Document, conditions: list[dict[str, Any]]) -> bool: ...
+
+
+@overload
+def _or(document: ByteStream, conditions: list[dict[str, Any]]) -> bool: ...
+
+
 def _or(document: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:
     return any(_comparison_condition(condition=condition, document=document) for condition in conditions)
+
+
+@overload
+def _not(document: Document, conditions: list[dict[str, Any]]) -> bool: ...
+
+
+@overload
+def _not(document: ByteStream, conditions: list[dict[str, Any]]) -> bool: ...
 
 
 def _not(document: Union[Document, ByteStream], conditions: list[dict[str, Any]]) -> bool:

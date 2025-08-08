@@ -120,7 +120,7 @@ class MetadataRouter:
         """
 
         unmatched = []
-        output: dict[str, Union[list[Document], list[ByteStream]]] = {edge: [] for edge in self.rules}
+        output: dict[str, Union[list[Document], list[ByteStream]]] = {edge: [] for edge in self.rules}  # type: ignore
 
         for doc_or_bytestream in documents:
             current_obj_matched = False
