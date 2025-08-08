@@ -6,8 +6,12 @@ from typing import Union
 
 import pytest
 
+from haystack import Pipeline
+from haystack.components.classifiers import DocumentLanguageClassifier
 from haystack.components.routers.metadata_router import MetadataRouter
+from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ByteStream, Document
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestMetadataRouter:
@@ -169,3 +173,21 @@ class TestMetadataRouter:
             }
         }
         assert router.output_type == list[Union[ByteStream, Document]]
+
+    def test_metadata_router_in_pipeline(self):
+        document_store = InMemoryDocumentStore()
+        p = Pipeline()
+        docs = [
+            Document(content="Hello, welcome to the world of Haystack!", meta={"language": "en"}),
+            Document(content="Hallo, willkommen in der Welt von Haystack!", meta={"language": "de"}),
+        ]
+        p.add_component(instance=DocumentLanguageClassifier(), name="language_classifier")
+        p.add_component(
+            instance=MetadataRouter(rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}),
+            name="router",
+        )
+        p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+        p.connect("language_classifier.documents", "router.documents")
+        p.connect("router.en", "writer.documents")
+        p.run({"language_classifier": {"documents": docs}})
+        assert document_store.filter_documents() == [docs[0]]

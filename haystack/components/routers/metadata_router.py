@@ -2,14 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, TypeVar
+from typing import Any, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
 from haystack.utils import deserialize_type, serialize_type
 from haystack.utils.filters import document_matches_filter
-
-T = TypeVar("T", Document, ByteStream)
 
 
 @component
@@ -109,7 +107,7 @@ class MetadataRouter:
                 )
         component.set_output_types(self, unmatched=self.output_type, **dict.fromkeys(rules, self.output_type))
 
-    def run(self, documents: list[T]) -> dict[str, list[T]]:
+    def run(self, documents: Union[list[Document], list[ByteStream]]):
         """
         Routes documents or byte streams to different connections based on their metadata fields.
 
@@ -121,8 +119,8 @@ class MetadataRouter:
             and the values are lists of `Document` or `ByteStream` objects that matched the corresponding rules.
         """
 
-        unmatched: list[T] = []
-        output: dict[str, list[T]] = {edge: [] for edge in self.rules}
+        unmatched = []
+        output: dict[str, list[Union[Document, ByteStream]]] = {edge: [] for edge in self.rules}
 
         for doc_or_bytestream in documents:
             current_obj_matched = False
