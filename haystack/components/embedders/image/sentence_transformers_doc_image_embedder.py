@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from copy import deepcopy
+from dataclasses import replace
 from typing import Any, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -281,10 +281,12 @@ class SentenceTransformersDocumentImageEmbedder:
 
         docs_with_embeddings = []
         for doc, emb in zip(documents, embeddings):
-            copied_doc = deepcopy(doc)
-            copied_doc.embedding = emb
             # we store this information for later inspection
-            copied_doc.meta["embedding_source"] = {"type": "image", "file_path_meta_field": self.file_path_meta_field}
-            docs_with_embeddings.append(copied_doc)
+            new_meta = {
+                **doc.meta,
+                "embedding_source": {"type": "image", "file_path_meta_field": self.file_path_meta_field},
+            }
+            new_doc = replace(doc, meta=new_meta, embedding=emb)
+            docs_with_embeddings.append(new_doc)
 
         return {"documents": docs_with_embeddings}

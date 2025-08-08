@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from copy import deepcopy
+from dataclasses import replace
 from typing import Any, Optional
 
 from more_itertools import batched
@@ -308,12 +308,14 @@ class OpenAIDocumentEmbedder:
 
         doc_ids_to_embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
-        documents_copy = deepcopy(documents)
-        doc_id_to_document = {doc.id: doc for doc in documents_copy}
-        for doc_id, emb in doc_ids_to_embeddings.items():
-            doc_id_to_document[doc_id].embedding = emb
+        new_documents = []
+        for doc in documents:
+            if doc.id in doc_ids_to_embeddings:
+                new_documents.append(replace(doc, embedding=doc_ids_to_embeddings[doc.id]))
+            else:
+                new_documents.append(replace(doc))
 
-        return {"documents": list(doc_id_to_document.values()), "meta": meta}
+        return {"documents": new_documents, "meta": meta}
 
     @component.output_types(documents=list[Document], meta=dict[str, Any])
     async def run_async(self, documents: list[Document]):
@@ -340,9 +342,11 @@ class OpenAIDocumentEmbedder:
             texts_to_embed=texts_to_embed, batch_size=self.batch_size
         )
 
-        documents_copy = deepcopy(documents)
-        doc_id_to_document = {doc.id: doc for doc in documents_copy}
-        for doc_id, emb in doc_ids_to_embeddings.items():
-            doc_id_to_document[doc_id].embedding = emb
+        new_documents = []
+        for doc in documents:
+            if doc.id in doc_ids_to_embeddings:
+                new_documents.append(replace(doc, embedding=doc_ids_to_embeddings[doc.id]))
+            else:
+                new_documents.append(replace(doc))
 
-        return {"documents": list(doc_id_to_document.values()), "meta": meta}
+        return {"documents": new_documents, "meta": meta}
