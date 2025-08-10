@@ -421,7 +421,7 @@ class SentenceTransformersDiversityRanker:
 
         if top_k is None:
             top_k = self.top_k
-        elif not 0 < top_k <= len(documents):
+        if not 0 < top_k <= len(documents):
             raise ValueError(f"top_k must be between 1 and {len(documents)}, but got {top_k}")
 
         if self.strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE:
