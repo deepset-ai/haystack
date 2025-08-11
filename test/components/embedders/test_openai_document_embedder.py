@@ -281,11 +281,13 @@ class TestOpenAIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc in documents_with_embeddings:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 1536
-            assert all(isinstance(x, float) for x in doc.embedding)
+        for doc, new_doc in zip(docs, documents_with_embeddings):
+            assert doc.embedding is None
+            assert new_doc is not doc
+            assert isinstance(new_doc, Document)
+            assert isinstance(new_doc.embedding, list)
+            assert len(new_doc.embedding) == 1536
+            assert all(isinstance(x, float) for x in new_doc.embedding)
 
         assert "text" in result["meta"]["model"] and "ada" in result["meta"]["model"], (
             "The model name does not contain 'text' and 'ada'"
@@ -311,11 +313,13 @@ class TestOpenAIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc in documents_with_embeddings:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 1536
-            assert all(isinstance(x, float) for x in doc.embedding)
+        for doc, new_doc in zip(docs, documents_with_embeddings):
+            assert doc.embedding is None
+            assert new_doc is not doc
+            assert isinstance(new_doc, Document)
+            assert isinstance(new_doc.embedding, list)
+            assert len(new_doc.embedding) == 1536
+            assert all(isinstance(x, float) for x in new_doc.embedding)
 
         assert "text" in result["meta"]["model"] and "ada" in result["meta"]["model"], (
             "The model name does not contain 'text' and 'ada'"
