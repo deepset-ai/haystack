@@ -2,6 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+
+import pytest
+
 from haystack import Pipeline
 from haystack.components.converters.pypdf import PyPDFToDocument
 from haystack.components.joiners import DocumentJoiner
@@ -13,6 +17,10 @@ from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.routers.document_length_router import DocumentLengthRouter
 
 
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
 def test_pdf_content_extraction_pipeline():
     """
     Test a pipeline that processes PDFs with the following steps:

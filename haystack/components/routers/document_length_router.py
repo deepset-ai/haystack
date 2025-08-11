@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List
 
 from haystack import component
 from haystack.dataclasses import Document
@@ -52,8 +51,8 @@ class DocumentLengthRouter:
         """
         self.threshold = threshold
 
-    @component.output_types(short_documents=List[Document], long_documents=List[Document])
-    def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
+    @component.output_types(short_documents=list[Document], long_documents=list[Document])
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Categorize input documents into groups based on the length of the `content` field.
 

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Iterator, Optional
 
 from haystack.lazy_imports import LazyImport
 from haystack.tracing import Span, Tracer
@@ -36,7 +36,7 @@ class OpenTelemetrySpan(Span):
         """
         return self._span
 
-    def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+    def get_correlation_data_for_logs(self) -> dict[str, Any]:
         """Return a dictionary with correlation data for logs."""
         span_context = self._span.get_span_context()
         return {"trace_id": span_context.trace_id, "span_id": span_context.span_id}
@@ -49,7 +49,7 @@ class OpenTelemetryTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+        self, operation_name: str, tags: Optional[dict[str, Any]] = None, parent_span: Optional[Span] = None
     ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         with self._tracer.start_as_current_span(operation_name) as raw_span:

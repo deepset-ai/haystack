@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Dict, List
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
@@ -69,7 +68,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
         print("\n\n", flush=True, end="")
 
 
-def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> ChatMessage:
+def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> ChatMessage:
     """
     Connects the streaming chunks into a single ChatMessage.
 
@@ -81,7 +80,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
     tool_calls = []
 
     # Process tool calls if present in any chunk
-    tool_call_data: Dict[int, Dict[str, str]] = {}  # Track tool calls by index
+    tool_call_data: dict[int, dict[str, str]] = {}  # Track tool calls by index
     for chunk in chunks:
         if chunk.tool_calls:
             for tool_call in chunk.tool_calls:

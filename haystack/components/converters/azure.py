@@ -6,7 +6,7 @@ import copy
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import networkx as nx
 
@@ -95,7 +95,7 @@ class AzureOCRDocumentConverter:
 
         self.document_analysis_client = DocumentAnalysisClient(
             endpoint=endpoint, credential=AzureKeyCredential(api_key.resolve_value() or "")
-        )  # type: ignore
+        )
         self.endpoint = endpoint
         self.model_id = model_id
         self.api_key = api_key
@@ -108,8 +108,8 @@ class AzureOCRDocumentConverter:
         if self.page_layout == "single_column" and self.threshold_y is None:
             self.threshold_y = 0.05
 
-    @component.output_types(documents=List[Document], raw_azure_response=List[Dict])
-    def run(self, sources: List[Union[str, Path, ByteStream]], meta: Optional[List[Dict[str, Any]]] = None):
+    @component.output_types(documents=list[Document], raw_azure_response=list[dict])
+    def run(self, sources: list[Union[str, Path, ByteStream]], meta: Optional[list[dict[str, Any]]] = None):
         """
         Convert a list of files to Documents using Azure's Document Intelligence service.
 
@@ -129,7 +129,7 @@ class AzureOCRDocumentConverter:
         """
         documents = []
         azure_output = []
-        meta_list: List[Dict[str, Any]] = normalize_metadata(meta=meta, sources_count=len(sources))
+        meta_list: list[dict[str, Any]] = normalize_metadata(meta=meta, sources_count=len(sources))
         for source, metadata in zip(sources, meta_list):
             try:
                 bytestream = get_bytestream_from_source(source=source)
@@ -152,7 +152,7 @@ class AzureOCRDocumentConverter:
 
         return {"documents": documents, "raw_azure_response": azure_output}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -173,7 +173,7 @@ class AzureOCRDocumentConverter:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AzureOCRDocumentConverter":
+    def from_dict(cls, data: dict[str, Any]) -> "AzureOCRDocumentConverter":
         """
         Deserializes the component from a dictionary.
 
@@ -186,7 +186,7 @@ class AzureOCRDocumentConverter:
         return default_from_dict(cls, data)
 
     # pylint: disable=line-too-long
-    def _convert_tables_and_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> List[Document]:
+    def _convert_tables_and_text(self, result: "AnalyzeResult", meta: Optional[dict[str, Any]]) -> list[Document]:
         """
         Converts the tables and text extracted by Azure's Document Intelligence service into Haystack Documents.
 
@@ -205,7 +205,7 @@ class AzureOCRDocumentConverter:
         docs = [*tables, text]
         return docs
 
-    def _convert_tables(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> List[Document]:
+    def _convert_tables(self, result: "AnalyzeResult", meta: Optional[dict[str, Any]]) -> list[Document]:
         """
         Converts the tables extracted by Azure's Document Intelligence service into Haystack Documents.
 
@@ -214,7 +214,7 @@ class AzureOCRDocumentConverter:
 
         :returns: List of Documents containing the tables extracted from the AnalyzeResult object.
         """
-        converted_tables: List[Document] = []
+        converted_tables: list[Document] = []
 
         if not result.tables:
             return converted_tables
@@ -312,7 +312,7 @@ class AzureOCRDocumentConverter:
 
         return converted_tables
 
-    def _convert_to_natural_text(self, result: "AnalyzeResult", meta: Optional[Dict[str, Any]]) -> Document:
+    def _convert_to_natural_text(self, result: "AnalyzeResult", meta: Optional[dict[str, Any]]) -> Document:
         """
         This converts the `AnalyzeResult` object into a single document.
 
@@ -329,7 +329,7 @@ class AzureOCRDocumentConverter:
 
         texts = []
         if result.paragraphs:
-            paragraphs_to_pages: Dict[int, str] = defaultdict(str)
+            paragraphs_to_pages: dict[int, str] = defaultdict(str)
             for paragraph in result.paragraphs:
                 if paragraph.bounding_regions:
                     # If paragraph spans multiple pages we group it with the first page number
@@ -357,7 +357,7 @@ class AzureOCRDocumentConverter:
         return Document(content=all_text, meta=meta if meta else {})
 
     def _convert_to_single_column_text(
-        self, result: "AnalyzeResult", meta: Optional[Dict[str, str]], threshold_y: float = 0.05
+        self, result: "AnalyzeResult", meta: Optional[dict[str, str]], threshold_y: float = 0.05
     ) -> Document:
         """
         This converts the `AnalyzeResult` object into a single Haystack Document.
@@ -383,10 +383,10 @@ class AzureOCRDocumentConverter:
             if all(line.polygon is not None for line in lines):
                 for i in range(len(lines)):  # pylint: disable=consider-using-enumerate
                     # left_upi, right_upi, right_lowi, left_lowi = lines[i].polygon
-                    left_upi, _, _, _ = lines[i].polygon  # type: ignore
+                    left_upi, _, _, _ = lines[i].polygon
                     pairs_by_page[page_idx].append([i, i])
                     for j in range(i + 1, len(lines)):  # pylint: disable=invalid-name
-                        left_upj, _, _, _ = lines[j].polygon  # type: ignore
+                        left_upj, _, _, _ = lines[j].polygon
                         close_on_y_axis = abs(left_upi[1] - left_upj[1]) < threshold_y
                         if close_on_y_axis:
                             pairs_by_page[page_idx].append([i, j])
@@ -422,13 +422,13 @@ class AzureOCRDocumentConverter:
         for page_idx, _ in enumerate(result.pages):
             sorted_rows = []
             for row_of_lines in merged_lines_by_page[page_idx]:
-                sorted_rows.append(sorted(row_of_lines, key=lambda x: x.polygon[0][0]))  # type: ignore
+                sorted_rows.append(sorted(row_of_lines, key=lambda x: x.polygon[0][0]))
             x_sorted_lines_by_page[page_idx] = sorted_rows
 
         # Sort each row within the page by the y-value of the upper left bounding box coordinate
         y_sorted_lines_by_page = {}
         for page_idx, _ in enumerate(result.pages):
-            sorted_rows = sorted(x_sorted_lines_by_page[page_idx], key=lambda x: x[0].polygon[0][1])  # type: ignore
+            sorted_rows = sorted(x_sorted_lines_by_page[page_idx], key=lambda x: x[0].polygon[0][1])
             y_sorted_lines_by_page[page_idx] = sorted_rows
 
         # Construct the text to write
@@ -446,7 +446,7 @@ class AzureOCRDocumentConverter:
         all_text = "\f".join(texts)
         return Document(content=all_text, meta=meta if meta else {})
 
-    def _collect_table_spans(self, result: "AnalyzeResult") -> Dict:
+    def _collect_table_spans(self, result: "AnalyzeResult") -> dict:
         """
         Collect the spans of all tables by page number.
 

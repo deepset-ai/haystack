@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Callable, List, Optional, Union, get_args
+from typing import Any, Callable, Optional, Union
 
 from jinja2 import TemplateSyntaxError, nodes
 from jinja2.ext import Extension
@@ -14,6 +14,7 @@ from haystack.dataclasses.chat_message import (
     ChatMessageContentT,
     ChatRole,
     ImageContent,
+    ReasoningContent,
     TextContent,
     ToolCall,
     ToolCallResult,
@@ -31,12 +32,13 @@ class ChatMessageExtension(Extension):
     """
     A Jinja2 extension for creating structured chat messages with mixed content types.
 
-    This extension provides a custom {% message %} tag that allows creating chat messages
+    This extension provides a custom `{% message %}` tag that allows creating chat messages
     with different attributes (role, name, meta) and mixed content types (text, images, etc.).
 
     Inspired by [Banks](https://github.com/masci/banks).
 
     Example:
+    ```
     {% message role="system" %}
     You are a helpful assistant. You like to talk with {{user_name}}.
     {% endmessage %}
@@ -47,9 +49,10 @@ class ChatMessageExtension(Extension):
     {{ image | templatize_part }}
     {% endfor %}
     {% endmessage %}
+    ```
 
     ### How it works
-    1. The {% message %} tag is used to define a chat message.
+    1. The `{% message %}` tag is used to define a chat message.
     2. The message can contain text and other structured content parts.
     3. To include a structured content part in the message, the `| templatize_part` filter is used.
        The filter serializes the content part into a JSON string and wraps it in a `<haystack_content_part>` tag.
@@ -63,7 +66,7 @@ class ChatMessageExtension(Extension):
 
     tags = {"message"}
 
-    def parse(self, parser: Any) -> Union[nodes.Node, List[nodes.Node]]:
+    def parse(self, parser: Any) -> Union[nodes.Node, list[nodes.Node]]:
         """
         Parse the message tag and its attributes in the Jinja2 template.
 
@@ -121,7 +124,7 @@ class ChatMessageExtension(Extension):
         """
         Build a ChatMessage object from template content and serialize it to a JSON string.
 
-        This method is called by Jinja2 when processing a {% message %} tag.
+        This method is called by Jinja2 when processing a `{% message %}` tag.
         It takes the rendered content from the template, converts XML blocks into ChatMessageContentT objects,
         creates a ChatMessage object and serializes it to a JSON string.
 
@@ -145,25 +148,25 @@ class ChatMessageExtension(Extension):
         return json.dumps(chat_message.to_dict()) + "\n"
 
     @staticmethod
-    def _parse_content_parts(content: str) -> List[ChatMessageContentT]:
+    def _parse_content_parts(content: str) -> list[ChatMessageContentT]:
         """
         Parse a string into a sequence of ChatMessageContentT objects.
 
         This method handles:
         - Plain text content, converted to TextContent objects
-        - Structured content parts wrapped in <haystack_content_part> tags, converted to ChatMessageContentT objects
+        - Structured content parts wrapped in `<haystack_content_part>` tags, converted to ChatMessageContentT objects
 
         :param content: Input string containing mixed text and content parts
         :return: A list of ChatMessageContentT objects
         :raises ValueError: If the content is empty or contains only whitespace characters or if a
-                            <haystack_content_part> tag is found without a matching closing tag.
+                            `<haystack_content_part>` tag is found without a matching closing tag.
         """
         if not content.strip():
             raise ValueError(
                 f"Message content in template is empty or contains only whitespace characters. Content: {content!r}"
             )
 
-        parts: List[ChatMessageContentT] = []
+        parts: list[ChatMessageContentT] = []
         cursor = 0
         total_length = len(content)
 
@@ -202,7 +205,7 @@ class ChatMessageExtension(Extension):
 
     @staticmethod
     def _validate_build_chat_message(
-        parts: List[ChatMessageContentT], role: str, meta: dict, name: Optional[str] = None
+        parts: list[ChatMessageContentT], role: str, meta: dict, name: Optional[str] = None
     ) -> ChatMessage:
         """
         Validate the parts of a chat message and build a ChatMessage object.
@@ -234,14 +237,19 @@ class ChatMessageExtension(Extension):
         if role == "assistant":
             texts = [part.text for part in parts if isinstance(part, TextContent)]
             tool_calls = [part for part in parts if isinstance(part, ToolCall)]
+            reasoning = [part for part in parts if isinstance(part, ReasoningContent)]
             if len(texts) > 1:
                 raise ValueError("Assistant message must contain one text part at most.")
             if len(texts) == 0 and len(tool_calls) == 0:
                 raise ValueError("Assistant message must contain at least one text or tool call part.")
-            if len(parts) > len(texts) + len(tool_calls):
-                raise ValueError("Assistant message must contain only text or tool call parts.")
+            if len(parts) > len(texts) + len(tool_calls) + len(reasoning):
+                raise ValueError("Assistant message must contain only text, tool call or reasoning parts.")
             return ChatMessage.from_assistant(
-                meta=meta, name=name, text=texts[0] if texts else None, tool_calls=tool_calls or None
+                meta=meta,
+                name=name,
+                text=texts[0] if texts else None,
+                tool_calls=tool_calls or None,
+                reasoning=reasoning[0] if reasoning else None,
             )
 
         if role == "tool":
@@ -266,11 +274,4 @@ def templatize_part(value: ChatMessageContentT) -> str:
     :return: A JSON string wrapped in special XML content tags
     :raises ValueError: If the value is not an instance of ChatMessageContentT
     """
-    chat_message_content_types = get_args(ChatMessageContentT)
-    if not isinstance(value, chat_message_content_types):
-        chat_message_content_types_str = ", ".join([t.__name__ for t in chat_message_content_types])
-        raise ValueError(
-            f"Value must be an instance of one of the following types: {chat_message_content_types_str}. "
-            f"Got: {type(value).__name__}"
-        )
     return f"{START_TAG}{json.dumps(_serialize_content_part(value))}{END_TAG}"

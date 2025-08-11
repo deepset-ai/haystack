@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Annotated, Any, Dict, List, Optional, Set, Tuple, TypeVar, Union, cast, get_args, get_origin
+from typing import Annotated, Any, Optional, TypeVar, Union, cast, get_args, get_origin
 
 from haystack.core.component.types import HAYSTACK_GREEDY_VARIADIC_ANNOTATION, HAYSTACK_VARIADIC_ANNOTATION
 
@@ -14,7 +14,7 @@ class _delegate_default:
 T = TypeVar("T")
 
 
-def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> Tuple[bool, Optional[T]]:
+def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> tuple[bool, Optional[T]]:
     """
     Check if two types are compatible (bidirectional/symmetric check).
 
@@ -30,7 +30,7 @@ def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> Tuple[bool
     return _types_are_compatible(type1_unwrapped, type2_unwrapped)
 
 
-def _types_are_compatible(type1: T, type2: T) -> Tuple[bool, Optional[T]]:
+def _types_are_compatible(type1: T, type2: T) -> tuple[bool, Optional[T]]:
     """
     Core type compatibility check implementing symmetric matching.
 
@@ -40,13 +40,13 @@ def _types_are_compatible(type1: T, type2: T) -> Tuple[bool, Optional[T]]:
     """
     # Handle Any type
     if type1 is Any:
-        return True, _convert_to_typing_type(type2)
+        return True, type2
     if type2 is Any:
-        return True, _convert_to_typing_type(type1)
+        return True, type1
 
     # Direct equality
     if type1 == type2:
-        return True, _convert_to_typing_type(type1)
+        return True, type1
 
     type1_origin = get_origin(type1)
     type2_origin = get_origin(type2)
@@ -59,7 +59,7 @@ def _types_are_compatible(type1: T, type2: T) -> Tuple[bool, Optional[T]]:
     return _check_non_union_compatibility(type1, type2, type1_origin, type2_origin)
 
 
-def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> Tuple[bool, Optional[T]]:
+def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> tuple[bool, Optional[T]]:
     """Handle all Union type compatibility cases."""
     if type1_origin is Union and type2_origin is not Union:
         # Find all compatible types from the union
@@ -107,7 +107,7 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
 
 def _check_non_union_compatibility(
     type1: T, type2: T, type1_origin: Any, type2_origin: Any
-) -> Tuple[bool, Optional[T]]:
+) -> tuple[bool, Optional[T]]:
     """Handle non-Union type compatibility cases."""
     # If no origin, compare types directly
     if not type1_origin and not type2_origin:
@@ -135,8 +135,7 @@ def _check_non_union_compatibility(
         common_args.append(common)
 
     # Reconstruct the type with common arguments
-    typing_type = _convert_to_typing_type(type1_origin)
-    return True, cast(Optional[T], typing_type[tuple(common_args)])
+    return True, cast(Optional[T], type1_origin[tuple(common_args)])
 
 
 def _unwrap_all(t: T, recursive: bool) -> T:
@@ -217,43 +216,9 @@ def _unwrap_optionals(t: T, recursive: bool) -> T:
 
     args = list(get_args(t))
     args.remove(type(None))
-    result = args[0] if len(args) == 1 else Union[tuple(args)]  # type: ignore
+    result = args[0] if len(args) == 1 else Union[tuple(args)]
 
     # Only recursively unwrap if requested
     if recursive:
         return _unwrap_all(result, recursive)  # type: ignore
     return result  # type: ignore
-
-
-def _convert_to_typing_type(t: Any) -> Any:
-    """
-    Convert built-in Python types to their typing equivalents.
-
-    :param t: Type to convert
-    :return: The type using typing module types
-    """
-    origin = get_origin(t)
-    args = get_args(t)
-
-    # Mapping of built-in types to their typing equivalents
-    type_converters = {
-        list: lambda: List if not args else List[Any],
-        dict: lambda: Dict if not args else Dict[Any, Any],
-        set: lambda: Set if not args else Set[Any],
-        tuple: lambda: Tuple if not args else Tuple[Any, ...],
-    }
-
-    # Recursive argument handling
-    if origin in type_converters:
-        result = type_converters[origin]()
-        if args:
-            if origin == list:
-                return List[_convert_to_typing_type(args[0])]  # type: ignore
-            if origin == dict:
-                return Dict[_convert_to_typing_type(args[0]), _convert_to_typing_type(args[1])]  # type: ignore
-            if origin == set:
-                return Set[_convert_to_typing_type(args[0])]  # type: ignore
-            if origin == tuple:
-                return Tuple[tuple(_convert_to_typing_type(arg) for arg in args)]
-        return result
-    return t

@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import List
 
 import pytest
 
@@ -174,7 +173,7 @@ class TestJsonSchemaValidator:
     def test_schema_validator_in_pipeline_validated(self, json_schema_github_compare, genuine_fc_message):
         @component
         class ChatMessageProducer:
-            @component.output_types(messages=List[ChatMessage])
+            @component.output_types(messages=list[ChatMessage])
             def run(self):
                 return {"messages": [ChatMessage.from_assistant(genuine_fc_message)]}
 
@@ -190,7 +189,7 @@ class TestJsonSchemaValidator:
     def test_schema_validator_in_pipeline_validation_error(self, json_schema_github_compare):
         @component
         class ChatMessageProducer:
-            @component.output_types(messages=List[ChatMessage])
+            @component.output_types(messages=list[ChatMessage])
             def run(self):
                 # example json string that is not valid
                 simple_invalid_json = '{"key": "value"}'

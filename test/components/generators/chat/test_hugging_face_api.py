@@ -4,7 +4,7 @@
 
 import os
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -30,7 +30,7 @@ from haystack.components.generators.chat.hugging_face_api import (
     _convert_hfapi_tool_calls,
     _convert_tools_to_hfapi_tools,
 )
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, ImageContent, StreamingChunk, ToolCall
 from haystack.tools import Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
@@ -45,7 +45,7 @@ def chat_messages():
     ]
 
 
-def get_weather(city: str) -> Dict[str, Any]:
+def get_weather(city: str) -> dict[str, Any]:
     weather_info = {
         "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
         "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
@@ -587,7 +587,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert response["replies"][0].tool_calls[0].arguments == {"city": "Paris"}
         assert response["replies"][0].tool_calls[0].id == "0"
         assert response["replies"][0].meta == {
-            "finish_reason": "stop",
+            "finish_reason": "tool_calls",
             "index": 0,
             "model": "meta-llama/Llama-3.1-70B-Instruct",
             "usage": {"completion_tokens": 30, "prompt_tokens": 426},
@@ -864,6 +864,34 @@ class TestHuggingFaceAPIChatGenerator:
         assert len(final_message.text) > 0
         assert "paris" in final_message.text.lower() and "22" in final_message.text
 
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    def test_live_run_multimodal(self, test_files_path):
+        image_path = test_files_path / "images" / "apple.jpg"
+        # Resize the image to keep this test fast
+        image_content = ImageContent.from_file_path(file_path=image_path, size=(100, 100))
+        messages = [ChatMessage.from_user(content_parts=["What does this image show? Max 5 words", image_content])]
+
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "Qwen/Qwen2.5-VL-7B-Instruct", "provider": "hyperbolic"},
+            generation_kwargs={"max_tokens": 20},
+        )
+
+        response = generator.run(messages=messages)
+
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) > 0
+        message = response["replies"][0]
+        assert message.text
+        assert len(message.text) > 0
+        assert any(word in message.text.lower() for word in ["apple", "fruit", "red"])
+
     @pytest.mark.asyncio
     async def test_run_async(self, mock_check_valid_model, mock_chat_completion_async, chat_messages):
         generator = HuggingFaceAPIChatGenerator(
@@ -1012,7 +1040,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert response["replies"][0].tool_calls[0].arguments == {"city": "Paris"}
         assert response["replies"][0].tool_calls[0].id == "0"
         assert response["replies"][0].meta == {
-            "finish_reason": "stop",
+            "finish_reason": "tool_calls",
             "index": 0,
             "model": "meta-llama/Llama-3.1-70B-Instruct",
             "usage": {"completion_tokens": 30, "prompt_tokens": 426},

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 import arrow
 import pytest
@@ -12,7 +12,7 @@ from jinja2 import TemplateSyntaxError
 from haystack import component
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.core.pipeline.pipeline import Pipeline
-from haystack.dataclasses.chat_message import ChatMessage, ImageContent
+from haystack.dataclasses.chat_message import ChatMessage, ImageContent, ReasoningContent
 from haystack.dataclasses.document import Document
 
 
@@ -33,15 +33,15 @@ class TestChatPromptBuilder:
         # we have inputs that contain: template, template_variables + inferred variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "variable", "variable2"}
-        assert inputs["template"].type == Optional[Union[List[ChatMessage], str]]
-        assert inputs["template_variables"].type == Optional[Dict[str, Any]]
+        assert inputs["template"].type == Optional[Union[list[ChatMessage], str]]
+        assert inputs["template_variables"].type == Optional[dict[str, Any]]
         assert inputs["variable"].type == Any
         assert inputs["variable2"].type == Any
 
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
         assert set(outputs.keys()) == {"prompt"}
-        assert outputs["prompt"].type == List[ChatMessage]
+        assert outputs["prompt"].type == list[ChatMessage]
 
     def test_init_without_template(self):
         variables = ["var1", "var2"]
@@ -54,15 +54,15 @@ class TestChatPromptBuilder:
         # we have inputs that contain: template, template_variables + variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2"}
-        assert inputs["template"].type == Optional[Union[List[ChatMessage], str]]
-        assert inputs["template_variables"].type == Optional[Dict[str, Any]]
+        assert inputs["template"].type == Optional[Union[list[ChatMessage], str]]
+        assert inputs["template_variables"].type == Optional[dict[str, Any]]
         assert inputs["var1"].type == Any
         assert inputs["var2"].type == Any
 
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
         assert set(outputs.keys()) == {"prompt"}
-        assert outputs["prompt"].type == List[ChatMessage]
+        assert outputs["prompt"].type == list[ChatMessage]
 
     def test_init_with_required_variables(self):
         builder = ChatPromptBuilder(
@@ -76,14 +76,14 @@ class TestChatPromptBuilder:
         # we have inputs that contain: template, template_variables + inferred variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
-        assert inputs["template"].type == Optional[Union[List[ChatMessage], str]]
-        assert inputs["template_variables"].type == Optional[Dict[str, Any]]
+        assert inputs["template"].type == Optional[Union[list[ChatMessage], str]]
+        assert inputs["template_variables"].type == Optional[dict[str, Any]]
         assert inputs["variable"].type == Any
 
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
         assert set(outputs.keys()) == {"prompt"}
-        assert outputs["prompt"].type == List[ChatMessage]
+        assert outputs["prompt"].type == list[ChatMessage]
 
     def test_init_with_custom_variables(self):
         variables = ["var1", "var2", "var3"]
@@ -97,8 +97,8 @@ class TestChatPromptBuilder:
         # we have inputs that contain: template, template_variables + variables
         inputs = builder.__haystack_input__._sockets_dict
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2", "var3"}
-        assert inputs["template"].type == Optional[Union[List[ChatMessage], str]]
-        assert inputs["template_variables"].type == Optional[Dict[str, Any]]
+        assert inputs["template"].type == Optional[Union[list[ChatMessage], str]]
+        assert inputs["template_variables"].type == Optional[dict[str, Any]]
         assert inputs["var1"].type == Any
         assert inputs["var2"].type == Any
         assert inputs["var3"].type == Any
@@ -106,7 +106,7 @@ class TestChatPromptBuilder:
         # response is always prompt
         outputs = builder.__haystack_output__._sockets_dict
         assert set(outputs.keys()) == {"prompt"}
-        assert outputs["prompt"].type == List[ChatMessage]
+        assert outputs["prompt"].type == list[ChatMessage]
 
     def test_run(self):
         builder = ChatPromptBuilder(template=[ChatMessage.from_user("This is a {{ variable }}")])
@@ -282,7 +282,7 @@ class TestChatPromptBuilder:
 
         @component
         class DocumentProducer:
-            @component.output_types(documents=List[Document])
+            @component.output_types(documents=list[Document])
             def run(self, doc_input: str):
                 return {"documents": [Document(content=doc_input)]}
 
@@ -889,6 +889,26 @@ Third line.
             ChatMessage.from_user(
                 content_parts=["Hello! I am John. What's the difference between the following images?", *images]
             )
+        ]
+
+    def test_run_reasoning(self):
+        template = """
+        {% message role="user" %}
+        Hello! I am {{user_name}}. How much is 2 + 2?
+        {% endmessage %}
+
+        {% message role="assistant" %}
+        {{ reasoning | templatize_part }}
+        The answer is 4.
+        {% endmessage %}
+        """
+        builder = ChatPromptBuilder(template=template)
+        reasoning = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
+        result = builder.run(user_name="John", reasoning=reasoning)
+
+        assert result["prompt"] == [
+            ChatMessage.from_user(text="Hello! I am John. How much is 2 + 2?"),
+            ChatMessage.from_assistant(reasoning=reasoning, text="The answer is 4."),
         ]
 
     def test_to_dict(self):
