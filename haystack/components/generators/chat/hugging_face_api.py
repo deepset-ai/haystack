@@ -40,6 +40,7 @@ with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"
         ChatCompletionInputStreamOptions,
         ChatCompletionInputTool,
         ChatCompletionOutput,
+        ChatCompletionOutputComplete,
         ChatCompletionOutputToolCall,
         ChatCompletionStreamOutput,
         ChatCompletionStreamOutputChoice,
@@ -112,7 +113,9 @@ def _convert_tools_to_hfapi_tools(
     return hf_tools
 
 
-def _map_hf_finish_reason_to_haystack(choice: "ChatCompletionStreamOutputChoice") -> Optional[FinishReason]:
+def _map_hf_finish_reason_to_haystack(
+    choice: Union["ChatCompletionStreamOutputChoice", "ChatCompletionOutputComplete"],
+) -> Optional[FinishReason]:
     """
     Map HuggingFace finish reasons to Haystack FinishReason literals.
 
@@ -133,7 +136,10 @@ def _map_hf_finish_reason_to_haystack(choice: "ChatCompletionStreamOutputChoice"
         return None
 
     # Check if this choice contains tool call information
-    has_tool_calls = choice.delta.tool_calls is not None or choice.delta.tool_call_id is not None
+    if isinstance(choice, ChatCompletionStreamOutputChoice):
+        has_tool_calls = choice.delta.tool_calls is not None or choice.delta.tool_call_id is not None
+    else:
+        has_tool_calls = choice.message.tool_calls is not None or choice.message.tool_call_id is not None
 
     # If we detect tool calls, override the finish reason
     if has_tool_calls:
@@ -565,9 +571,10 @@ class HuggingFaceAPIChatGenerator:
 
         tool_calls = _convert_hfapi_tool_calls(choice.message.tool_calls)
 
+        mapped_finish_reason = _map_hf_finish_reason_to_haystack(choice) if choice.finish_reason else None
         meta: dict[str, Any] = {
             "model": self._client.model,
-            "finish_reason": choice.finish_reason,
+            "finish_reason": mapped_finish_reason,
             "index": choice.index,
         }
 
@@ -629,9 +636,10 @@ class HuggingFaceAPIChatGenerator:
 
         tool_calls = _convert_hfapi_tool_calls(choice.message.tool_calls)
 
+        mapped_finish_reason = _map_hf_finish_reason_to_haystack(choice) if choice.finish_reason else None
         meta: dict[str, Any] = {
             "model": self._async_client.model,
-            "finish_reason": choice.finish_reason,
+            "finish_reason": mapped_finish_reason,
             "index": choice.index,
         }
 
