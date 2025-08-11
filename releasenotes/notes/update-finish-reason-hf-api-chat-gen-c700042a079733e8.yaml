@@ -2,8 +2,7 @@
 upgrade:
   - |
     The `finish_reason` field behavior in `HuggingFaceAPIChatGenerator` has been
-    updated. Previously, the new `finish_reason` mapping (introduced in an earlier
-    release) was only applied when streaming was enabled. When streaming was disabled,
+    updated. Previously, the new `finish_reason` mapping (introduced in Haystack 2.15.0 release) was only applied when streaming was enabled. When streaming was disabled,
     the old `finish_reason` was still returned. This change ensures the updated
     `finish_reason` values are consistently returned regardless of streaming mode.
 
