@@ -422,7 +422,7 @@ class ToolInvoker:
         state: State,
         streaming_callback: Optional[StreamingCallbackT],
         enable_streaming_passthrough: bool,
-    ) -> tuple[list[dict[str, Any]], list[ChatMessage]]:
+    ) -> tuple[list[ToolCall], list[dict[str, Any]], list[ChatMessage]]:
         """
         Prepare tool call parameters for execution and collect any error messages.
 
@@ -430,10 +430,11 @@ class ToolInvoker:
         :param state: The current state for argument injection
         :param streaming_callback: Optional streaming callback to inject
         :param enable_streaming_passthrough: Whether to pass streaming callback to tools
-        :returns: Tuple of (tool_call_params, error_messages)
+        :returns: Tuple of (tool_calls, tool_call_params, error_messages)
         """
         tool_call_params = []
         error_messages = []
+        tool_calls = []
 
         for message in messages_with_tool_calls:
             for tool_call in message.tool_calls:
@@ -464,11 +465,10 @@ class ToolInvoker:
                 ):
                     final_args["streaming_callback"] = streaming_callback
 
-                tool_call_params.append(
-                    {"tool_call": tool_call, "tool_to_invoke": tool_to_invoke, "final_args": final_args}
-                )
+                tool_call_params.append({"tool_to_invoke": tool_to_invoke, "final_args": final_args})
+                tool_calls.append(tool_call)
 
-        return tool_call_params, error_messages
+        return tool_calls, tool_call_params, error_messages
 
     @component.output_types(tool_messages=list[ChatMessage], state=State)
     def run(
@@ -525,7 +525,7 @@ class ToolInvoker:
         tool_messages = []
 
         # 1) Collect all tool calls and their parameters for parallel execution
-        tool_call_params, error_messages = self._prepare_tool_call_params(
+        tool_calls, tool_call_params, error_messages = self._prepare_tool_call_params(
             messages_with_tool_calls, state, streaming_callback, resolved_enable_streaming_passthrough
         )
         tool_messages.extend(error_messages)
@@ -535,25 +535,22 @@ class ToolInvoker:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 futures = []
                 for params in tool_call_params:
-                    future = executor.submit(
-                        ToolInvoker._execute_single_tool_call, params["tool_to_invoke"], params["final_args"]
-                    )
+                    future = executor.submit(ToolInvoker._execute_single_tool_call, **params)
                     futures.append(future)
 
                 # 3) Gather and process results: handle errors and merge outputs into state
-                for future, params in zip(futures, tool_call_params):
+                for future, params, tool_call in zip(futures, tool_call_params, tool_calls):
                     result = future.result()
 
                     if isinstance(result, ToolInvocationError):
                         # a) This is an error, create error Tool message
                         error_message = self._handle_error(result)
                         error_chat_message = ChatMessage.from_tool(
-                            tool_result=error_message, origin=params["tool_call"], error=True
+                            tool_result=error_message, origin=tool_call, error=True
                         )
                         tool_messages.append(error_chat_message)
                     else:
                         # b) In case of success, merge outputs into state
-                        tool_call = params["tool_call"]
                         tool_to_invoke = params["tool_to_invoke"]
                         tool_result = result
 
@@ -677,7 +674,7 @@ class ToolInvoker:
         tool_messages = []
 
         # 1) Collect all tool calls and their parameters for parallel execution
-        tool_call_params, error_messages = self._prepare_tool_call_params(
+        tool_calls, tool_call_params, error_messages = self._prepare_tool_call_params(
             messages_with_tool_calls, state, streaming_callback, resolved_enable_streaming_passthrough
         )
         tool_messages.extend(error_messages)
@@ -687,23 +684,22 @@ class ToolInvoker:
             tool_call_tasks = []
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 for params in tool_call_params:
-                    task = ToolInvoker.invoke_tool_safely(executor, params["tool_to_invoke"], params["final_args"])
+                    task = ToolInvoker.invoke_tool_safely(executor, **params)
                     tool_call_tasks.append(task)
 
                 # 3) Gather and process results: handle errors and merge outputs into state
                 if tool_call_tasks:
                     tool_results = await asyncio.gather(*tool_call_tasks)
-                    for params, tool_result in zip(tool_call_params, tool_results):
+                    for params, tool_result, tool_call in zip(tool_call_params, tool_results, tool_calls):
                         if isinstance(tool_result, ToolInvocationError):
                             # a) This is an error, create error Tool message
                             error_message = self._handle_error(tool_result)
                             error_chat_message = ChatMessage.from_tool(
-                                tool_result=error_message, origin=params["tool_call"], error=True
+                                tool_result=error_message, origin=tool_call, error=True
                             )
                             tool_messages.append(error_chat_message)
                         else:
                             # b) In case of success, merge outputs into state
-                            tool_call = params["tool_call"]
                             tool_to_invoke = params["tool_to_invoke"]
                             try:
                                 self._merge_tool_outputs(tool=tool_to_invoke, result=tool_result, state=state)
