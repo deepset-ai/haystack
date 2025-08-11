@@ -470,6 +470,13 @@ class PipelineBase:  # noqa: PLW1641
         except KeyError as exc:
             raise ValueError(f"Component named {receiver_component_name} not found in the pipeline.") from exc
 
+        if not sender_sockets:
+            raise PipelineConnectError(
+                f"'{sender_component_name}' does not have any output connections. "
+                f"Please check that the output types of '{sender_component_name}.run' are set, "
+                f"for example by using the '@component.output_types' decorator."
+            )
+
         # If the name of either socket is given, get the socket
         sender_socket: Optional[OutputSocket] = None
         if sender_socket_name:
@@ -477,9 +484,8 @@ class PipelineBase:  # noqa: PLW1641
             if not sender_socket:
                 raise PipelineConnectError(
                     f"'{sender}' does not exist. "
-                    f"The component '{sender_component_name}' doesn't have any output connections. "
-                    "Please check that the output types of ",
-                    f"'{sender_component_name}.run' is set such as using the '@component.output_types' decorator.",
+                    f"Output connections of {sender_component_name} are: "
+                    + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in sender_sockets.items()])
                 )
 
         receiver_socket: Optional[InputSocket] = None
