@@ -6,7 +6,7 @@ import asyncio
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple, Union
+from typing import Any, Union
 
 import pytest
 from pandas import DataFrame
@@ -32,10 +32,10 @@ class PipelineRunData:
     Holds the inputs and expected outputs for a single Pipeline run.
     """
 
-    inputs: Dict[str, Any]
-    include_outputs_from: Set[str] = field(default_factory=set)
-    expected_outputs: Dict[str, Any] = field(default_factory=dict)
-    expected_component_calls: Dict[Tuple[str, int], Dict[str, Any]] = field(default_factory=dict)
+    inputs: dict[str, Any]
+    include_outputs_from: set[str] = field(default_factory=set)
+    expected_outputs: dict[str, Any] = field(default_factory=dict)
+    expected_component_calls: dict[tuple[str, int], dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -44,14 +44,14 @@ class _PipelineResult:
     Holds the outputs and the run order of a single Pipeline run.
     """
 
-    outputs: Dict[str, Any]
-    component_calls: Dict[Tuple[str, int], Dict[str, Any]] = field(default_factory=dict)
+    outputs: dict[str, Any]
+    component_calls: dict[tuple[str, int], dict[str, Any]] = field(default_factory=dict)
 
 
 @when("I run the Pipeline", target_fixture="pipeline_result")
 def run_pipeline(
-    pipeline_data: Tuple[Union[AsyncPipeline, Pipeline], List[PipelineRunData]], spying_tracer
-) -> Union[List[Tuple[_PipelineResult, PipelineRunData]], Exception]:
+    pipeline_data: tuple[Union[AsyncPipeline, Pipeline], list[PipelineRunData]], spying_tracer
+) -> Union[list[tuple[_PipelineResult, PipelineRunData]], Exception]:
     if isinstance(pipeline_data[0], AsyncPipeline):
         return run_async_pipeline(pipeline_data, spying_tracer)
     else:
@@ -59,8 +59,8 @@ def run_pipeline(
 
 
 def run_async_pipeline(
-    pipeline_data: Tuple[Union[AsyncPipeline], List[PipelineRunData]], spying_tracer
-) -> Union[List[Tuple[_PipelineResult, PipelineRunData]], Exception]:
+    pipeline_data: tuple[Union[AsyncPipeline], list[PipelineRunData]], spying_tracer
+) -> Union[list[tuple[_PipelineResult, PipelineRunData]], Exception]:
     """
     Attempts to run a pipeline with the given inputs.
     `pipeline_data` is a tuple that must contain:
@@ -72,7 +72,7 @@ def run_async_pipeline(
     """
     pipeline, pipeline_run_data = pipeline_data[0], pipeline_data[1]
 
-    results: List[_PipelineResult] = []
+    results: list[_PipelineResult] = []
 
     async def run_inner(data, include_outputs_from):
         """Wrapper function to call pipeline.run_async method with required params."""
@@ -98,8 +98,8 @@ def run_async_pipeline(
 
 
 def run_sync_pipeline(
-    pipeline_data: Tuple[Pipeline, List[PipelineRunData]], spying_tracer
-) -> Union[List[Tuple[_PipelineResult, PipelineRunData]], Exception]:
+    pipeline_data: tuple[Pipeline, list[PipelineRunData]], spying_tracer
+) -> Union[list[tuple[_PipelineResult, PipelineRunData]], Exception]:
     """
     Attempts to run a pipeline with the given inputs.
     `pipeline_data` is a tuple that must contain:
@@ -111,7 +111,7 @@ def run_sync_pipeline(
     """
     pipeline, pipeline_run_data = pipeline_data[0], pipeline_data[1]
 
-    results: List[_PipelineResult] = []
+    results: list[_PipelineResult] = []
 
     for data in pipeline_run_data:
         try:
@@ -132,7 +132,7 @@ def run_sync_pipeline(
 
 
 @then("draw it to file")
-def draw_pipeline(pipeline_data: Tuple[Pipeline, List[PipelineRunData]], request):
+def draw_pipeline(pipeline_data: tuple[Pipeline, list[PipelineRunData]], request):
     """
     Draw the pipeline to a file with the same name as the test.
     """
@@ -145,13 +145,13 @@ def draw_pipeline(pipeline_data: Tuple[Pipeline, List[PipelineRunData]], request
 
 
 @then("it should return the expected result")
-def check_pipeline_result(pipeline_result: List[Tuple[_PipelineResult, PipelineRunData]]):
+def check_pipeline_result(pipeline_result: list[tuple[_PipelineResult, PipelineRunData]]):
     for res, data in pipeline_result:
         compare_outputs_with_dataframes(res.outputs, data.expected_outputs)
 
 
 @then("components are called with the expected inputs")
-def check_component_calls(pipeline_result: List[Tuple[_PipelineResult, PipelineRunData]]):
+def check_component_calls(pipeline_result: list[tuple[_PipelineResult, PipelineRunData]]):
     for res, data in pipeline_result:
         assert compare_outputs_with_dataframes(res.component_calls, data.expected_component_calls)
 
@@ -161,7 +161,7 @@ def check_pipeline_raised(pipeline_result: Exception, exception_class_name: str)
     assert pipeline_result.__class__.__name__ == exception_class_name
 
 
-def compare_outputs_with_dataframes(actual: Dict, expected: Dict) -> bool:
+def compare_outputs_with_dataframes(actual: dict, expected: dict) -> bool:
     """
     Compare two component_calls or pipeline outputs dictionaries where values may contain DataFrames.
     """

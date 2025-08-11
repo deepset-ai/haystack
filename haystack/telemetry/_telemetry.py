@@ -8,7 +8,7 @@ import os
 import uuid
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import posthog
 import yaml
@@ -96,7 +96,7 @@ class Telemetry:
 
         self.event_properties = collect_system_specs()
 
-    def send_event(self, event_name: str, event_properties: Optional[Dict[str, Any]] = None) -> None:
+    def send_event(self, event_name: str, event_properties: Optional[dict[str, Any]] = None) -> None:
         """
         Sends a telemetry event.
 
@@ -135,7 +135,7 @@ def send_telemetry(func):
 
 
 @send_telemetry
-def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> Optional[Tuple[str, Dict[str, Any]]]:
+def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> Optional[tuple[str, dict[str, Any]]]:
     """
     Collects telemetry data for a pipeline run and sends it to Posthog.
 
@@ -154,7 +154,7 @@ def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> Optional[T
     pipeline._last_telemetry_sent = datetime.datetime.now()
 
     # Collect info about components
-    components: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    components: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for component_name, instance in pipeline.walk():
         component_qualified_class_name = generate_qualified_class_name(type(instance))
         if hasattr(instance, "_get_telemetry_data"):
@@ -177,7 +177,7 @@ def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> Optional[T
 
 
 @send_telemetry
-def tutorial_running(tutorial_id: str) -> Tuple[str, Dict[str, Any]]:
+def tutorial_running(tutorial_id: str) -> tuple[str, dict[str, Any]]:
     """
     Send a telemetry event for a tutorial, if telemetry is enabled.
 

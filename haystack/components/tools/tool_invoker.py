@@ -7,7 +7,7 @@ import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Optional, Union
 
 from haystack.components.agents import State
 from haystack.core.component.component import component
@@ -40,7 +40,7 @@ class ToolInvokerError(Exception):
 class ToolNotFoundException(ToolInvokerError):
     """Exception raised when a tool is not found in the list of available tools."""
 
-    def __init__(self, tool_name: str, available_tools: List[str]):
+    def __init__(self, tool_name: str, available_tools: list[str]):
         message = f"Tool '{tool_name}' not found. Available tools: {', '.join(available_tools)}"
         super().__init__(message)
 
@@ -164,7 +164,7 @@ class ToolInvoker:
 
     def __init__(
         self,
-        tools: Union[List[Tool], Toolset],
+        tools: Union[list[Tool], Toolset],
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
@@ -319,7 +319,7 @@ class ToolInvoker:
                 raise conversion_error from e
         return ChatMessage.from_tool(tool_result=tool_result_str, error=error, origin=tool_call)
 
-    def _get_func_params(self, tool: Tool) -> Set:
+    def _get_func_params(self, tool: Tool) -> set:
         """
         Returns the function parameters of the tool's invoke method.
 
@@ -338,7 +338,7 @@ class ToolInvoker:
 
         return func_params
 
-    def _inject_state_args(self, tool: Tool, llm_args: Dict[str, Any], state: State) -> Dict[str, Any]:
+    def _inject_state_args(self, tool: Tool, llm_args: dict[str, Any], state: State) -> dict[str, Any]:
         """
         Combine LLM-provided arguments (llm_args) with state-based arguments.
 
@@ -411,11 +411,11 @@ class ToolInvoker:
 
     def _prepare_tool_call_params(
         self,
-        messages_with_tool_calls: List[ChatMessage],
+        messages_with_tool_calls: list[ChatMessage],
         state: State,
         streaming_callback: Optional[StreamingCallbackT],
         enable_streaming_passthrough: bool,
-    ) -> tuple[List[Dict[str, Any]], List[ChatMessage]]:
+    ) -> tuple[list[dict[str, Any]], list[ChatMessage]]:
         """
         Prepare tool call parameters for execution and collect any error messages.
 
@@ -464,15 +464,15 @@ class ToolInvoker:
 
         return tool_call_params, error_messages
 
-    @component.output_types(tool_messages=List[ChatMessage], state=State)
+    @component.output_types(tool_messages=list[ChatMessage], state=State)
     def run(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         state: Optional[State] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: Optional[bool] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
 
@@ -529,7 +529,7 @@ class ToolInvoker:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 futures = []
                 for params in tool_call_params:
-                    future = executor.submit(self._execute_single_tool_call, **params)  # type: ignore[arg-type]
+                    future = executor.submit(self._execute_single_tool_call, **params)
                     futures.append(future)
 
                 # 3) Process results in the order they are submitted
@@ -591,7 +591,7 @@ class ToolInvoker:
 
         return {"tool_messages": tool_messages, "state": state}
 
-    def _execute_single_tool_call(self, tool_call: ToolCall, tool_to_invoke: Tool, final_args: Dict[str, Any]):
+    def _execute_single_tool_call(self, tool_call: ToolCall, tool_to_invoke: Tool, final_args: dict[str, Any]):
         """
         Execute a single tool call. This method is designed to be run in a thread pool.
 
@@ -608,7 +608,7 @@ class ToolInvoker:
             return ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
 
     @staticmethod
-    async def invoke_tool_safely(executor: ThreadPoolExecutor, tool_to_invoke: Tool, final_args: Dict[str, Any]) -> Any:
+    async def invoke_tool_safely(executor: ThreadPoolExecutor, tool_to_invoke: Tool, final_args: dict[str, Any]) -> Any:
         """Safely invoke a tool with proper exception handling."""
         loop = asyncio.get_running_loop()
         try:
@@ -616,15 +616,15 @@ class ToolInvoker:
         except ToolInvocationError as e:
             return e
 
-    @component.output_types(tool_messages=List[ChatMessage], state=State)
+    @component.output_types(tool_messages=list[ChatMessage], state=State)
     async def run_async(  # noqa: PLR0915
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         state: Optional[State] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: Optional[bool] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Asynchronously processes ChatMessage objects containing tool calls.
 
@@ -754,7 +754,7 @@ class ToolInvoker:
 
         return {"tool_messages": tool_messages, "state": state}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -776,7 +776,7 @@ class ToolInvoker:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ToolInvoker":
+    def from_dict(cls, data: dict[str, Any]) -> "ToolInvoker":
         """
         Deserializes the component from a dictionary.
 

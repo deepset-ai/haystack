@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import copy
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.converters.image.image_utils import (
@@ -70,11 +70,11 @@ class SentenceTransformersDocumentImageEmbedder:
         normalize_embeddings: bool = False,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        config_kwargs: Optional[dict[str, Any]] = None,
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
-        encode_kwargs: Optional[Dict[str, Any]] = None,
+        encode_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ) -> None:
         """
@@ -152,7 +152,7 @@ class SentenceTransformersDocumentImageEmbedder:
         self.backend = backend
         self._embedding_backend: Optional[_SentenceTransformersEmbeddingBackend] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -183,7 +183,7 @@ class SentenceTransformersDocumentImageEmbedder:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersDocumentImageEmbedder":
+    def from_dict(cls, data: dict[str, Any]) -> "SentenceTransformersDocumentImageEmbedder":
         """
         Deserializes the component from a dictionary.
 
@@ -219,8 +219,8 @@ class SentenceTransformersDocumentImageEmbedder:
             if self.tokenizer_kwargs and self.tokenizer_kwargs.get("model_max_length"):
                 self._embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]) -> Dict[str, List[Document]]:
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Embed a list of documents.
 
@@ -243,8 +243,8 @@ class SentenceTransformersDocumentImageEmbedder:
             documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
         )
 
-        images_to_embed: List = [None] * len(documents)
-        pdf_page_infos: List[_PDFPageInfo] = []
+        images_to_embed: list = [None] * len(documents)
+        pdf_page_infos: list[_PDFPageInfo] = []
 
         for doc_idx, image_source_info in enumerate(images_source_info):
             if image_source_info["mime_type"] == "application/pdf":

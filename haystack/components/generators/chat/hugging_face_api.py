@@ -4,7 +4,7 @@
 
 import json
 from datetime import datetime
-from typing import Any, AsyncIterable, Dict, Iterable, List, Optional, Union
+from typing import Any, AsyncIterable, Iterable, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
@@ -48,7 +48,7 @@ with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"
     )
 
 
-def _convert_hfapi_tool_calls(hfapi_tool_calls: Optional[List["ChatCompletionOutputToolCall"]]) -> List[ToolCall]:
+def _convert_hfapi_tool_calls(hfapi_tool_calls: Optional[list["ChatCompletionOutputToolCall"]]) -> list[ToolCall]:
     """
     Convert HuggingFace API tool calls to a list of Haystack ToolCall.
 
@@ -94,8 +94,8 @@ def _convert_hfapi_tool_calls(hfapi_tool_calls: Optional[List["ChatCompletionOut
 
 
 def _convert_tools_to_hfapi_tools(
-    tools: Optional[Union[List[Tool], Toolset]],
-) -> Optional[List["ChatCompletionInputTool"]]:
+    tools: Optional[Union[list[Tool], Toolset]],
+) -> Optional[list["ChatCompletionInputTool"]]:
     if not tools:
         return None
 
@@ -146,7 +146,7 @@ def _map_hf_finish_reason_to_haystack(
         return "tool_calls"
 
     # Map HuggingFace finish reasons to Haystack standard ones
-    mapping: Dict[str, FinishReason] = {
+    mapping: dict[str, FinishReason] = {
         "length": "length",  # Direct match
         "eos_token": "stop",  # EOS token means natural stop
         "stop_sequence": "stop",  # Stop sequence means natural stop
@@ -157,7 +157,7 @@ def _map_hf_finish_reason_to_haystack(
 
 def _convert_chat_completion_stream_output_to_streaming_chunk(
     chunk: "ChatCompletionStreamOutput",
-    previous_chunks: List[StreamingChunk],
+    previous_chunks: list[StreamingChunk],
     component_info: Optional[ComponentInfo] = None,
 ) -> StreamingChunk:
     """
@@ -229,6 +229,33 @@ class HuggingFaceAPIChatGenerator:
     print(result)
     ```
 
+    #### With the serverless inference API (Inference Providers) and text+image input
+
+    ```python
+    from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+    from haystack.dataclasses import ChatMessage, ImageContent
+    from haystack.utils import Secret
+    from haystack.utils.hf import HFGenerationAPIType
+
+    # Create an image from file path, URL, or base64
+    image = ImageContent.from_file_path("path/to/your/image.jpg")
+
+    # Create a multimodal message with both text and image
+    messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
+
+    generator = HuggingFaceAPIChatGenerator(
+        api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+        api_params={
+            "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
+            "provider": "hyperbolic"
+        },
+        token=Secret.from_token("<your-api-key>")
+    )
+
+    result = generator.run(messages)
+    print(result)
+    ```
+
     #### With paid inference endpoints
 
     ```python
@@ -266,12 +293,12 @@ class HuggingFaceAPIChatGenerator:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_type: Union[HFGenerationAPIType, str],
-        api_params: Dict[str, str],
+        api_params: dict[str, str],
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        stop_words: Optional[List[str]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        stop_words: Optional[list[str]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
     ):
         """
         Initialize the HuggingFaceAPIChatGenerator instance.
@@ -351,7 +378,7 @@ class HuggingFaceAPIChatGenerator:
         self.generation_kwargs = generation_kwargs
         self.streaming_callback = streaming_callback
 
-        resolved_api_params: Dict[str, Any] = {k: v for k, v in api_params.items() if k != "model" and k != "url"}
+        resolved_api_params: dict[str, Any] = {k: v for k, v in api_params.items() if k != "model" and k != "url"}
         self._client = InferenceClient(
             model_or_url, token=token.resolve_value() if token else None, **resolved_api_params
         )
@@ -360,7 +387,7 @@ class HuggingFaceAPIChatGenerator:
         )
         self.tools = tools
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -379,7 +406,7 @@ class HuggingFaceAPIChatGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceAPIChatGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceAPIChatGenerator":
         """
         Deserialize this component from a dictionary.
         """
@@ -391,12 +418,12 @@ class HuggingFaceAPIChatGenerator:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[ChatMessage])
+    @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: List[ChatMessage],
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        messages: list[ChatMessage],
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
@@ -442,12 +469,12 @@ class HuggingFaceAPIChatGenerator:
 
         return self._run_non_streaming(formatted_messages, generation_kwargs, hf_tools)
 
-    @component.output_types(replies=List[ChatMessage])
+    @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: List[ChatMessage],
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        messages: list[ChatMessage],
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
@@ -496,8 +523,8 @@ class HuggingFaceAPIChatGenerator:
 
     def _run_streaming(
         self,
-        messages: List[Dict[str, str]],
-        generation_kwargs: Dict[str, Any],
+        messages: list[dict[str, str]],
+        generation_kwargs: dict[str, Any],
         streaming_callback: SyncStreamingCallbackT,
     ):
         api_output: Iterable[ChatCompletionStreamOutput] = self._client.chat_completion(
@@ -508,7 +535,7 @@ class HuggingFaceAPIChatGenerator:
         )
 
         component_info = ComponentInfo.from_component(self)
-        streaming_chunks: List[StreamingChunk] = []
+        streaming_chunks: list[StreamingChunk] = []
         for chunk in api_output:
             streaming_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
                 chunk=chunk, previous_chunks=streaming_chunks, component_info=component_info
@@ -524,10 +551,10 @@ class HuggingFaceAPIChatGenerator:
 
     def _run_non_streaming(
         self,
-        messages: List[Dict[str, str]],
-        generation_kwargs: Dict[str, Any],
-        tools: Optional[List["ChatCompletionInputTool"]] = None,
-    ) -> Dict[str, List[ChatMessage]]:
+        messages: list[dict[str, str]],
+        generation_kwargs: dict[str, Any],
+        tools: Optional[list["ChatCompletionInputTool"]] = None,
+    ) -> dict[str, list[ChatMessage]]:
         api_chat_output: ChatCompletionOutput = self._client.chat_completion(
             messages=messages, tools=tools, **generation_kwargs
         )
@@ -545,7 +572,7 @@ class HuggingFaceAPIChatGenerator:
         tool_calls = _convert_hfapi_tool_calls(choice.message.tool_calls)
 
         mapped_finish_reason = _map_hf_finish_reason_to_haystack(choice) if choice.finish_reason else None
-        meta: Dict[str, Any] = {
+        meta: dict[str, Any] = {
             "model": self._client.model,
             "finish_reason": mapped_finish_reason,
             "index": choice.index,
@@ -564,8 +591,8 @@ class HuggingFaceAPIChatGenerator:
 
     async def _run_streaming_async(
         self,
-        messages: List[Dict[str, str]],
-        generation_kwargs: Dict[str, Any],
+        messages: list[dict[str, str]],
+        generation_kwargs: dict[str, Any],
         streaming_callback: AsyncStreamingCallbackT,
     ):
         api_output: AsyncIterable[ChatCompletionStreamOutput] = await self._async_client.chat_completion(
@@ -576,13 +603,13 @@ class HuggingFaceAPIChatGenerator:
         )
 
         component_info = ComponentInfo.from_component(self)
-        streaming_chunks: List[StreamingChunk] = []
+        streaming_chunks: list[StreamingChunk] = []
         async for chunk in api_output:
             stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
                 chunk=chunk, previous_chunks=streaming_chunks, component_info=component_info
             )
             streaming_chunks.append(stream_chunk)
-            await streaming_callback(stream_chunk)  # type: ignore
+            await streaming_callback(stream_chunk)
 
         message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
         if message.meta.get("usage") is None:
@@ -592,10 +619,10 @@ class HuggingFaceAPIChatGenerator:
 
     async def _run_non_streaming_async(
         self,
-        messages: List[Dict[str, str]],
-        generation_kwargs: Dict[str, Any],
-        tools: Optional[List["ChatCompletionInputTool"]] = None,
-    ) -> Dict[str, List[ChatMessage]]:
+        messages: list[dict[str, str]],
+        generation_kwargs: dict[str, Any],
+        tools: Optional[list["ChatCompletionInputTool"]] = None,
+    ) -> dict[str, list[ChatMessage]]:
         api_chat_output: ChatCompletionOutput = await self._async_client.chat_completion(
             messages=messages, tools=tools, **generation_kwargs
         )
@@ -609,7 +636,7 @@ class HuggingFaceAPIChatGenerator:
 
         tool_calls = _convert_hfapi_tool_calls(choice.message.tool_calls)
 
-        meta: Dict[str, Any] = {
+        meta: dict[str, Any] = {
             "model": self._async_client.model,
             "finish_reason": choice.finish_reason,
             "index": choice.index,

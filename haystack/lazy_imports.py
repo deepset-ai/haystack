@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from types import TracebackType
-from typing import Optional, Type
+from typing import Optional
 
 from lazy_imports.try_import import _DeferredImportExceptionContextManager
 
@@ -26,7 +26,7 @@ class LazyImport(_DeferredImportExceptionContextManager):
         self.import_error_msg = message
 
     def __exit__(
-        self, exc_type: Optional[Type[Exception]], exc_value: Optional[Exception], traceback: Optional[TracebackType]
+        self, exc_type: Optional[type[Exception]], exc_value: Optional[Exception], traceback: Optional[TracebackType]
     ) -> Optional[bool]:
         """
         Exit the context manager.

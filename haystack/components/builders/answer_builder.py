@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import Document, GeneratedAnswer, component, logging
 from haystack.dataclasses.chat_message import ChatMessage
@@ -64,13 +64,13 @@ class AnswerBuilder:
         self.reference_pattern = reference_pattern
         self.last_message_only = last_message_only
 
-    @component.output_types(answers=List[GeneratedAnswer])
+    @component.output_types(answers=list[GeneratedAnswer])
     def run(  # pylint: disable=too-many-positional-arguments
         self,
         query: str,
-        replies: Union[List[str], List[ChatMessage]],
-        meta: Optional[List[Dict[str, Any]]] = None,
-        documents: Optional[List[Document]] = None,
+        replies: Union[list[str], list[ChatMessage]],
+        meta: Optional[list[dict[str, Any]]] = None,
+        documents: Optional[list[Document]] = None,
         pattern: Optional[str] = None,
         reference_pattern: Optional[str] = None,
     ):
@@ -184,7 +184,7 @@ class AnswerBuilder:
         return ""
 
     @staticmethod
-    def _extract_reference_idxs(reply: str, reference_pattern: str) -> List[int]:
+    def _extract_reference_idxs(reply: str, reference_pattern: str) -> list[int]:
         document_idxs = re.findall(reference_pattern, reply)
         return [int(idx) - 1 for idx in document_idxs]
 

@@ -8,10 +8,10 @@ import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
-from typing import Any, Callable, Dict, List, Literal, Optional, Union, cast
+from typing import Any, Callable, Literal, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.dataclasses import AsyncStreamingCallbackT, ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
+from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
 from haystack.dataclasses.streaming_chunk import select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
@@ -57,7 +57,7 @@ DEFAULT_TOOL_PATTERN = (
 )
 
 
-def default_tool_parser(text: str) -> Optional[List[ToolCall]]:
+def default_tool_parser(text: str) -> Optional[list[ToolCall]]:
     """
     Default implementation for parsing tool calls from model output text.
 
@@ -131,12 +131,12 @@ class HuggingFaceLocalChatGenerator:
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         chat_template: Optional[str] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
-        stop_words: Optional[List[str]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
+        stop_words: Optional[list[str]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
-        tool_parsing_function: Optional[Callable[[str], Optional[List[ToolCall]]]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tool_parsing_function: Optional[Callable[[str], Optional[list[ToolCall]]]] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
     ) -> None:
         """
@@ -263,7 +263,7 @@ class HuggingFaceLocalChatGenerator:
         if self._owns_executor:
             self.executor.shutdown(wait=True)
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
@@ -278,7 +278,7 @@ class HuggingFaceLocalChatGenerator:
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -304,7 +304,7 @@ class HuggingFaceLocalChatGenerator:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceLocalChatGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceLocalChatGenerator":
         """
         Deserializes the component from a dictionary.
 
@@ -329,14 +329,14 @@ class HuggingFaceLocalChatGenerator:
         deserialize_hf_model_kwargs(huggingface_pipeline_kwargs)
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[ChatMessage])
+    @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: List[ChatMessage],
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        messages: list[ChatMessage],
+        generation_kwargs: Optional[dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
-    ) -> Dict[str, List[ChatMessage]]:
+        tools: Optional[Union[list[Tool], Toolset]] = None,
+    ) -> dict[str, list[ChatMessage]]:
         """
         Invoke text generation inference based on the provided messages and generation parameters.
 
@@ -380,7 +380,7 @@ class HuggingFaceLocalChatGenerator:
         index: int,
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
         prompt: str,
-        generation_kwargs: Dict[str, Any],
+        generation_kwargs: dict[str, Any],
         parse_tool_calls: bool = False,
     ) -> ChatMessage:
         """
@@ -424,7 +424,7 @@ class HuggingFaceLocalChatGenerator:
         return ChatMessage.from_assistant(tool_calls=tool_calls, text=None if tool_calls else text, meta=meta)
 
     @staticmethod
-    def _validate_stop_words(stop_words: Optional[List[str]]) -> Optional[List[str]]:
+    def _validate_stop_words(stop_words: Optional[list[str]]) -> Optional[list[str]]:
         """
         Validates the provided stop words.
 
@@ -441,14 +441,14 @@ class HuggingFaceLocalChatGenerator:
 
         return list(set(stop_words or []))
 
-    @component.output_types(replies=List[ChatMessage])
+    @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: List[ChatMessage],
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        messages: list[ChatMessage],
+        generation_kwargs: Optional[dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
-    ) -> Dict[str, List[ChatMessage]]:
+        tools: Optional[Union[list[Tool], Toolset]] = None,
+    ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes text generation inference based on the provided messages and generation parameters.
 
@@ -473,8 +473,7 @@ class HuggingFaceLocalChatGenerator:
         if streaming_callback:
             async_handler = AsyncHFTokenStreamingHandler(
                 tokenizer=prepared_inputs["tokenizer"],
-                # Cast to AsyncStreamingCallbackT since we know streaming_callback is async
-                stream_handler=cast(AsyncStreamingCallbackT, streaming_callback),
+                stream_handler=streaming_callback,
                 stop_words=prepared_inputs["stop_words"],
                 component_info=ComponentInfo.from_component(self),
             )
@@ -518,11 +517,11 @@ class HuggingFaceLocalChatGenerator:
 
     def _prepare_inputs(
         self,
-        messages: List[ChatMessage],
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        messages: list[ChatMessage],
+        generation_kwargs: Optional[dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
-    ) -> Dict[str, Any]:
+        tools: Optional[Union[list[Tool], Toolset]] = None,
+    ) -> dict[str, Any]:
         """
         Prepares the inputs for the Hugging Face pipeline.
 
@@ -601,13 +600,13 @@ class HuggingFaceLocalChatGenerator:
     def _convert_hf_output_to_chat_messages(
         self,
         *,
-        hf_pipeline_output: List[Dict[str, Any]],
+        hf_pipeline_output: list[dict[str, Any]],
         prepared_prompt: str,
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
-        generation_kwargs: Dict[str, Any],
-        stop_words: Optional[List[str]],
-        tools: Optional[Union[List[Tool], Toolset]] = None,
-    ) -> List[ChatMessage]:
+        generation_kwargs: dict[str, Any],
+        stop_words: Optional[list[str]],
+        tools: Optional[Union[list[Tool], Toolset]] = None,
+    ) -> list[ChatMessage]:
         """
         Converts the HuggingFace pipeline output into a List of ChatMessages
 

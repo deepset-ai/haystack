@@ -276,10 +276,12 @@ asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
 python_version = "3.9"
-disallow_incomplete_defs = true
-warn_return_any = false
-ignore_missing_imports = true
 check_untyped_defs = true
+disallow_incomplete_defs = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = false
 
 [[tool.mypy.overrides]]
 # TODO: Fix component typings
@@ -302,6 +304,13 @@ skip-magic-trailing-comma = true
   "SIM105", # try-except-pass instead of contextlib-suppress
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
 ]
+# in the following files, we still allow type hints like typing.List because we want to test both old and new types
+"test/core/test_type_utils.py" = ["UP006"]
+"test/utils/test_type_serialization.py" = ["UP006"]
+"test/components/agents/test_state_class.py" = ["UP006"]
+"test/components/converters/test_output_adapter.py" = ["UP006"]
+"test/components/joiners/test_list_joiner.py" = ["UP006"]
+
 
 [tool.ruff.lint]
 isort.split-on-trailing-comma = false
@@ -320,6 +329,7 @@ select = [
   "SIM",   # flake8-simplify
   "SLOT",  # flake8-slots
   "T10",   # flake8-debugger
+  "UP006", # non-pep585-annotation
   "W",     # pycodestyle
   "YTT",   # flake8-2020
   "I",     # isort

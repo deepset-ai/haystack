@@ -6,7 +6,7 @@ import mimetypes
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -56,7 +56,7 @@ class FileTypeRouter:
     ```
     """
 
-    def __init__(self, mime_types: List[str], additional_mimetypes: Optional[Dict[str, str]] = None):
+    def __init__(self, mime_types: list[str], additional_mimetypes: Optional[dict[str, str]] = None):
         """
         Initialize the FileTypeRouter component.
 
@@ -84,17 +84,17 @@ class FileTypeRouter:
                 raise ValueError(f"Invalid regex pattern '{mime_type}'.")
             self.mime_type_patterns.append(pattern)
 
-        # the actual output type is List[Union[Path, ByteStream]],
+        # the actual output type is list[Union[Path, ByteStream]],
         # but this would cause PipelineConnectError with Converters
         component.set_output_types(
             self,
-            unclassified=List[Union[str, Path, ByteStream]],
-            **dict.fromkeys(mime_types, List[Union[str, Path, ByteStream]]),
+            unclassified=list[Union[str, Path, ByteStream]],
+            **dict.fromkeys(mime_types, list[Union[str, Path, ByteStream]]),
         )
         self.mime_types = mime_types
         self._additional_mimetypes = additional_mimetypes
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -104,7 +104,7 @@ class FileTypeRouter:
         return default_to_dict(self, mime_types=self.mime_types, additional_mimetypes=self._additional_mimetypes)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FileTypeRouter":
+    def from_dict(cls, data: dict[str, Any]) -> "FileTypeRouter":
         """
         Deserializes the component from a dictionary.
 
@@ -117,9 +117,9 @@ class FileTypeRouter:
 
     def run(
         self,
-        sources: List[Union[str, Path, ByteStream]],
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-    ) -> Dict[str, List[Union[ByteStream, Path]]]:
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+    ) -> dict[str, list[Union[ByteStream, Path]]]:
         """
         Categorize files or byte streams according to their MIME types.
 
