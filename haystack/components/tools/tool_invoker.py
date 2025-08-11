@@ -405,6 +405,17 @@ class ToolInvoker:
             # Merge other outputs into the state
             state.set(state_key, output_value, handler_override=config.get("handler"))
 
+    @staticmethod
+    def _create_tool_result_streaming_chunk(tool_messages: list[ChatMessage], tool_call: ToolCall) -> StreamingChunk:
+        """Create a streaming chunk for a tool result."""
+        return StreamingChunk(
+            content="",
+            index=len(tool_messages) - 1,
+            tool_call_result=tool_messages[-1].tool_call_results[0],
+            start=True,
+            meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
+        )
+
     def _prepare_tool_call_params(
         self,
         messages_with_tool_calls: list[ChatMessage],
@@ -529,62 +540,48 @@ class ToolInvoker:
                     )
                     futures.append(future)
 
-                # 3) Process results in the order they are submitted
+                # 3) Gather and process results: handle errors and merge outputs into state
                 for future, params in zip(futures, tool_call_params):
                     result = future.result()
 
                     if isinstance(result, ToolInvocationError):
-                        # This is an error, create error message
+                        # a) This is an error, create error Tool message
                         error_message = self._handle_error(result)
                         error_chat_message = ChatMessage.from_tool(
                             tool_result=error_message, origin=params["tool_call"], error=True
                         )
                         tool_messages.append(error_chat_message)
-                        continue
+                    else:
+                        # b) In case of success, merge outputs into state
+                        tool_call = params["tool_call"]
+                        tool_to_invoke = params["tool_to_invoke"]
+                        tool_result = result
 
-                    # 4) In case of success, merge outputs into state
-                    tool_call = params["tool_call"]
-                    tool_to_invoke = params["tool_to_invoke"]
-                    tool_result = result
-
-                    try:
-                        self._merge_tool_outputs(tool=tool_to_invoke, result=tool_result, state=state)
-                    except Exception as e:
                         try:
-                            error_message = self._handle_error(
-                                ToolOutputMergeError(
-                                    f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
+                            self._merge_tool_outputs(tool=tool_to_invoke, result=tool_result, state=state)
+                        except Exception as e:
+                            try:
+                                error_message = self._handle_error(
+                                    ToolOutputMergeError(
+                                        f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
+                                    )
                                 )
+                                tool_messages.append(
+                                    ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
+                                )
+                                continue
+                            except ToolOutputMergeError as propagated_e:
+                                # Re-raise with proper error chain
+                                raise propagated_e from e
+                        tool_messages.append(
+                            self._prepare_tool_result_message(
+                                result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
                             )
-                            tool_messages.append(
-                                ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
-                            )
-                            continue
-                        except ToolOutputMergeError as propagated_e:
-                            # Re-raise with proper error chain
-                            raise propagated_e from e
-
-                    # 5) Prepare the tool result ChatMessage message
-                    tool_messages.append(
-                        self._prepare_tool_result_message(
-                            result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
                         )
-                    )
 
-                    # 6) Handle streaming callback
+                    # c) Handle streaming callback
                     if streaming_callback is not None:
-                        streaming_callback(
-                            StreamingChunk(
-                                content="",
-                                index=len(tool_messages) - 1,
-                                tool_call_result=tool_messages[-1].tool_call_results[0],
-                                start=True,
-                                meta={
-                                    "tool_result": tool_messages[-1].tool_call_results[0].result,
-                                    "tool_call": tool_call,
-                                },
-                            )
-                        )
+                        streaming_callback(self._create_tool_result_streaming_chunk(tool_messages, tool_call))
 
         # We stream one more chunk that contains a finish_reason if tool_messages were generated
         if len(tool_messages) > 0 and streaming_callback is not None:
@@ -679,7 +676,7 @@ class ToolInvoker:
 
         tool_messages = []
 
-        # 1) Prepare tool call parameters for execution
+        # 1) Collect all tool calls and their parameters for parallel execution
         tool_call_params, error_messages = self._prepare_tool_call_params(
             messages_with_tool_calls, state, streaming_callback, resolved_enable_streaming_passthrough
         )
@@ -688,74 +685,54 @@ class ToolInvoker:
         # 2) Execute valid tool calls in parallel
         if tool_call_params:
             tool_call_tasks = []
-
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                # 3) Create async tasks for valid tool calls
                 for params in tool_call_params:
                     task = ToolInvoker.invoke_tool_safely(executor, params["tool_to_invoke"], params["final_args"])
                     tool_call_tasks.append(task)
 
+                # 3) Gather and process results: handle errors and merge outputs into state
                 if tool_call_tasks:
-                    # 4) Gather results from all tool calls
                     tool_results = await asyncio.gather(*tool_call_tasks)
-
-                    # 5) Process results
                     for params, tool_result in zip(tool_call_params, tool_results):
-                        # Check if the tool_result is a ToolInvocationError
                         if isinstance(tool_result, ToolInvocationError):
+                            # a) This is an error, create error Tool message
                             error_message = self._handle_error(tool_result)
                             error_chat_message = ChatMessage.from_tool(
                                 tool_result=error_message, origin=params["tool_call"], error=True
                             )
                             tool_messages.append(error_chat_message)
-                            continue
-
-                        # 6) Merge outputs into state
-                        try:
-                            self._merge_tool_outputs(params["tool_to_invoke"], tool_result, state)
-                        except Exception as e:
+                        else:
+                            # b) In case of success, merge outputs into state
+                            tool_call = params["tool_call"]
+                            tool_to_invoke = params["tool_to_invoke"]
                             try:
-                                error_message = self._handle_error(
-                                    ToolOutputMergeError(
-                                        f"Failed to merge tool outputs from tool {params['tool_call'].tool_name} into "
-                                        f"State: {e}"
+                                self._merge_tool_outputs(tool=tool_to_invoke, result=tool_result, state=state)
+                            except Exception as e:
+                                try:
+                                    error_message = self._handle_error(
+                                        ToolOutputMergeError(
+                                            f"Failed to merge tool outputs from tool {tool_call.tool_name} "
+                                            f"into State: {e}"
+                                        )
                                     )
-                                )
-                                tool_messages.append(
-                                    ChatMessage.from_tool(
-                                        tool_result=error_message, origin=params["tool_call"], error=True
+                                    tool_messages.append(
+                                        ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
                                     )
+                                    continue
+                                except ToolOutputMergeError as propagated_e:
+                                    # Re-raise with proper error chain
+                                    raise propagated_e from e
+                            tool_messages.append(
+                                self._prepare_tool_result_message(
+                                    result=tool_result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
                                 )
-                                continue
-                            except ToolOutputMergeError as propagated_e:
-                                # Re-raise with proper error chain
-                                raise propagated_e from e
-
-                        # 7) Prepare the tool result ChatMessage message
-                        tool_messages.append(
-                            self._prepare_tool_result_message(
-                                result=tool_result,
-                                tool_call=params["tool_call"],
-                                tool_to_invoke=params["tool_to_invoke"],
                             )
-                        )
 
-                        # 8) Handle streaming callback
+                        # c) Handle streaming callback
                         if streaming_callback is not None:
-                            await streaming_callback(
-                                StreamingChunk(
-                                    content="",
-                                    index=len(tool_messages) - 1,
-                                    tool_call_result=tool_messages[-1].tool_call_results[0],
-                                    start=True,
-                                    meta={
-                                        "tool_result": tool_messages[-1].tool_call_results[0].result,
-                                        "tool_call": params["tool_call"],
-                                    },
-                                )
-                            )
+                            await streaming_callback(self._create_tool_result_streaming_chunk(tool_messages, tool_call))
 
-        # We stream one more chunk that contains a finish_reason if tool_messages were generated
+        # 4) We stream one more chunk that contains a finish_reason if tool_messages were generated
         if len(tool_messages) > 0 and streaming_callback is not None:
             await streaming_callback(
                 StreamingChunk(
