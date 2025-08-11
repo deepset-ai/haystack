@@ -636,9 +636,10 @@ class HuggingFaceAPIChatGenerator:
 
         tool_calls = _convert_hfapi_tool_calls(choice.message.tool_calls)
 
+        mapped_finish_reason = _map_hf_finish_reason_to_haystack(choice) if choice.finish_reason else None
         meta: dict[str, Any] = {
             "model": self._async_client.model,
-            "finish_reason": choice.finish_reason,
+            "finish_reason": mapped_finish_reason,
             "index": choice.index,
         }
 
