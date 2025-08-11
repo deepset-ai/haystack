@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import random
-from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -289,17 +288,17 @@ class TestSentenceTransformersDocumentEmbedder:
         ]
 
         documents = [Document(content=f"document number {i}") for i in range(5)]
-        documents_copy = deepcopy(documents)
 
         result = embedder.run(documents=documents)
 
-        assert documents == documents_copy
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
-        for doc in result["documents"]:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert isinstance(doc.embedding[0], float)
+        for doc, new_doc in zip(documents, result["documents"]):
+            assert new_doc is not doc
+            assert doc.embedding is None
+            assert isinstance(new_doc, Document)
+            assert isinstance(new_doc.embedding, list)
+            assert isinstance(new_doc.embedding[0], float)
 
     def test_run_wrong_input_format(self):
         embedder = SentenceTransformersDocumentEmbedder(model="model")

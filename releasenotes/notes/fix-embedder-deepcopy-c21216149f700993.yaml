@@ -1,8 +1,5 @@
 ---
-issues:
-  - |
-    Document Embedders modify Documents in place #9505
 fixes:
   - |
     Prevented in-place mutation of input `Document` objects in all `DocumentEmbedder` components
-    by using `from dataclasses import replace` of the input documents before processing.
+    by creating copies with `dataclasses.replace` before processing.

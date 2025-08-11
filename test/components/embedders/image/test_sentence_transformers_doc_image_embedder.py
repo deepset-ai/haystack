@@ -5,7 +5,6 @@
 import glob
 import random
 import sys
-from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -205,20 +204,21 @@ class TestSentenceTransformersDocumentImageEmbedder:
             if path.endswith(".pdf"):
                 document.meta["page_number"] = 1
             documents.append(document)
-        documents_copy = deepcopy(documents)
 
         result = embedder.run(documents=documents)
 
-        assert documents == documents_copy
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
-        for doc in result["documents"]:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert isinstance(doc.embedding[0], float)
-            assert "embedding_source" in doc.meta
-            assert doc.meta["embedding_source"]["type"] == "image"
-            assert "file_path_meta_field" in doc.meta["embedding_source"]
+        for doc, new_doc in zip(documents, result["documents"]):
+            assert doc.embedding is None
+            assert new_doc is not doc
+            assert isinstance(new_doc, Document)
+            assert isinstance(new_doc.embedding, list)
+            assert isinstance(new_doc.embedding[0], float)
+            assert "embedding_source" not in doc.meta
+            assert "embedding_source" in new_doc.meta
+            assert new_doc.meta["embedding_source"]["type"] == "image"
+            assert "file_path_meta_field" in new_doc.meta["embedding_source"]
 
     def test_run_no_warmup(self):
         embedder = SentenceTransformersDocumentImageEmbedder(model="model")
@@ -341,11 +341,14 @@ class TestSentenceTransformersDocumentImageEmbedder:
 
         result = embedder.run(documents=documents)
         assert len(result["documents"]) == len(documents)
-        for doc in result["documents"]:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 512
-            assert all(isinstance(x, float) for x in doc.embedding)
-            assert "embedding_source" in doc.meta
-            assert doc.meta["embedding_source"]["type"] == "image"
-            assert "file_path_meta_field" in doc.meta["embedding_source"]
+        for doc, new_doc in zip(documents, result["documents"]):
+            assert doc.embedding is None
+            assert new_doc is not doc
+            assert isinstance(new_doc, Document)
+            assert isinstance(new_doc.embedding, list)
+            assert len(new_doc.embedding) == 512
+            assert all(isinstance(x, float) for x in new_doc.embedding)
+            assert "embedding_source" not in doc.meta
+            assert "embedding_source" in new_doc.meta
+            assert new_doc.meta["embedding_source"]["type"] == "image"
+            assert "file_path_meta_field" in new_doc.meta["embedding_source"]
