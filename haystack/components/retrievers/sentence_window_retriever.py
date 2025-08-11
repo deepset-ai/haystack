@@ -98,6 +98,8 @@ class SentenceWindowRetriever:
         :param window_size: The number of documents to retrieve before and after the relevant one.
                 For example, `window_size: 2` fetches 2 preceding and 2 following documents.
         :param source_id_meta_field: The metadata field that contains the source ID of the document.
+            This can be a single field or a list of fields. If multiple fields are provided, the retriever will
+            consider the document as part of the same source if all the fields match.
         :param split_id_meta_field: The metadata field that contains the split ID of the document.
         :param raise_on_missing_meta_fields: If True, raises an error if the documents do not contain the required
             metadata fields. If False, it will skip retrieving the context for documents that are missing
