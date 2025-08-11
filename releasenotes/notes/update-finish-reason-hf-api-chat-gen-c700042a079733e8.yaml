@@ -1,0 +1,19 @@
+---
+upgrade:
+  - |
+    The `finish_reason` field behavior in `HuggingFaceAPIChatGenerator` has been
+    updated. Previously, the new `finish_reason` mapping (introduced in an earlier
+    release) was only applied when streaming was enabled. When streaming was disabled,
+    the old `finish_reason` was still returned. This change ensures the updated
+    `finish_reason` values are consistently returned regardless of streaming mode.
+
+    **How to know if you're affected:**
+    If you rely on `finish_reason` in responses from `HuggingFaceAPIChatGenerator`
+    with streaming disabled, you may see different values after this upgrade.
+
+    **What to do:**
+    Review the updated mapping:
+      - `length` → `length`
+      - `eos_token` → `stop`
+      - `stop_sequence` → `stop`
+      - If tool calls are present → `tool_calls`
