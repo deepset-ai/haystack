@@ -236,6 +236,33 @@ class TestSentenceWindowRetriever:
         result = retriever.run(retrieved_documents=[doc for doc in docs if doc.content == "Sentence 4."])
         assert len(result["context_documents"]) == 7
 
+    def test_run_with_multiple_source_ids(self):
+        docs = [
+            Document(content="This is the first chunk.", meta={"section": "1", "split_id": 0, "source_id": "source1"}),
+            Document(content="This is the second chunk.", meta={"section": "1", "split_id": 1, "source_id": "source1"}),
+            Document(content="This is the third chunk.", meta={"section": "1", "split_id": 2, "source_id": "source1"}),
+            Document(
+                content="This is a chunk from section 2.", meta={"section": "2", "split_id": 3, "source_id": "source1"}
+            ),
+        ]
+        doc_store = InMemoryDocumentStore()
+        doc_store.write_documents(docs)
+
+        retriever = SentenceWindowRetriever(
+            document_store=doc_store, window_size=3, source_id_meta_field=["section", "source_id"]
+        )
+        result = retriever.run(
+            retrieved_documents=[
+                Document(
+                    content="This is the second chunk.", meta={"section": "1", "split_id": 1, "source_id": "source1"}
+                )
+            ]
+        )
+
+        assert len(result["context_windows"]) == 1
+        assert len(result["context_documents"]) == 3
+        assert all(doc.meta["section"] == "1" for doc in result["context_documents"])
+
     @pytest.mark.integration
     def test_run_with_pipeline(self):
         splitter = DocumentSplitter(split_length=1, split_overlap=0, split_by="period")
