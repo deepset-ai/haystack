@@ -249,7 +249,7 @@ class TestSentenceWindowRetriever:
         doc_store.write_documents(docs)
 
         retriever = SentenceWindowRetriever(
-            document_store=doc_store, window_size=3, source_id_meta_field=["section", "source_id"]
+            document_store=doc_store, window_size=5, source_id_meta_field=["section", "source_id"]
         )
         result = retriever.run(
             retrieved_documents=[
