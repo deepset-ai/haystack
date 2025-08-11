@@ -220,7 +220,7 @@ class SentenceWindowRetriever:
                 if source_id_meta_field not in doc.meta:
                     all_source_id_meta_fields_present = False
                     break
-        if all_source_id_meta_fields_present and self.raise_on_missing_meta_fields:
+        if not all_source_id_meta_fields_present and self.raise_on_missing_meta_fields:
             raise ValueError(f"The retrieved documents must have '{self.source_id_meta_field}' in their metadata.")
 
         context_text = []
@@ -247,15 +247,12 @@ class SentenceWindowRetriever:
                 {"field": f"meta.{source_id_meta_field}", "operator": "==", "value": source_id}
                 for source_id_meta_field, source_id in zip(self._source_id_meta_fields, source_ids)
             ]
-            context_docs = self.document_store.filter_documents(
-                {
-                    "operator": "AND",
-                    "conditions": [
-                        {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},
-                        {"field": f"meta.{self.split_id_meta_field}", "operator": "<=", "value": max_after},
-                    ].extend(source_id_filters),
-                }
-            )
+            conditions = [
+                {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},
+                {"field": f"meta.{self.split_id_meta_field}", "operator": "<=", "value": max_after},
+                *source_id_filters,
+            ]
+            context_docs = self.document_store.filter_documents({"operator": "AND", "conditions": conditions})
             context_text.append(self.merge_documents_text(context_docs))
             context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
             context_documents.extend(context_docs_sorted)
