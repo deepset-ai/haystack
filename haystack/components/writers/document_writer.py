@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore, DuplicatePolicy
@@ -44,13 +44,13 @@ class DocumentWriter:
         self.document_store = document_store
         self.policy = policy
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
         return {"document_store": type(self.document_store).__name__}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -60,7 +60,7 @@ class DocumentWriter:
         return default_to_dict(self, document_store=self.document_store.to_dict(), policy=self.policy.name)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DocumentWriter":
+    def from_dict(cls, data: dict[str, Any]) -> "DocumentWriter":
         """
         Deserializes the component from a dictionary.
 
@@ -80,7 +80,7 @@ class DocumentWriter:
         return default_from_dict(cls, data)
 
     @component.output_types(documents_written=int)
-    def run(self, documents: List[Document], policy: Optional[DuplicatePolicy] = None):
+    def run(self, documents: list[Document], policy: Optional[DuplicatePolicy] = None):
         """
         Run the DocumentWriter on the given input data.
 
@@ -101,7 +101,7 @@ class DocumentWriter:
         return {"documents_written": documents_written}
 
     @component.output_types(documents_written=int)
-    async def run_async(self, documents: List[Document], policy: Optional[DuplicatePolicy] = None):
+    async def run_async(self, documents: list[Document], policy: Optional[DuplicatePolicy] = None):
         """
         Asynchronously run the DocumentWriter on the given input data.
 

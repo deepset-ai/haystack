@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -45,7 +45,7 @@ class OpenAPIConnector:
     """
 
     def __init__(
-        self, openapi_spec: str, credentials: Optional[Secret] = None, service_kwargs: Optional[Dict[str, Any]] = None
+        self, openapi_spec: str, credentials: Optional[Secret] = None, service_kwargs: Optional[dict[str, Any]] = None
     ):
         """
         Initialize the OpenAPIConnector with a specification and optional credentials.
@@ -66,7 +66,7 @@ class OpenAPIConnector:
             **self.service_kwargs,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
         """
@@ -78,15 +78,15 @@ class OpenAPIConnector:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAPIConnector":
+    def from_dict(cls, data: dict[str, Any]) -> "OpenAPIConnector":
         """
         Deserialize this component from a dictionary.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["credentials"])
         return default_from_dict(cls, data)
 
-    @component.output_types(response=Dict[str, Any])
-    def run(self, operation_id: str, arguments: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    @component.output_types(response=dict[str, Any])
+    def run(self, operation_id: str, arguments: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Invokes a REST endpoint specified in the OpenAPI specification.
 

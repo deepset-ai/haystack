@@ -5,12 +5,13 @@
 import asyncio
 import time
 from pathlib import Path
-from typing import Dict, Generator
+from typing import Generator
 from unittest.mock import Mock
 
 import pytest
 
 from haystack import component, tracing
+from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.testing.test_utils import set_all_seeds
 from test.tracing.utils import SpyingTracer
 
@@ -25,12 +26,12 @@ def waiting_component():
     @component
     class Waiter:
         @component.output_types(waited_for=int)
-        def run(self, wait_for: int) -> Dict[str, int]:
+        def run(self, wait_for: int) -> dict[str, int]:
             time.sleep(wait_for)
             return {"waited_for": wait_for}
 
         @component.output_types(waited_for=int)
-        async def run_async(self, wait_for: int) -> Dict[str, int]:
+        async def run_async(self, wait_for: int) -> dict[str, int]:
             await asyncio.sleep(wait_for)
             return {"waited_for": wait_for}
 
@@ -80,3 +81,38 @@ def spying_tracer() -> Generator[SpyingTracer, None, None]:
 
     # Make sure to disable tracing after the test to avoid affecting other tests
     tracing.disable_tracing()
+
+
+def load_and_resume_pipeline_snapshot(pipeline, output_directory: Path, component_name: str, data: dict = None) -> dict:
+    """
+    Utility function to load and resume pipeline snapshot from a breakpoint file.
+
+    :param pipeline: The pipeline instance to resume
+    :param output_directory: Directory containing the breakpoint files
+    :param component_name: Component name to look for in breakpoint files
+    :param data: Data to pass to the pipeline run (defaults to empty dict)
+
+    :returns:
+        Dict containing the pipeline run results
+
+    :raises:
+        ValueError: If no breakpoint file is found for the given component
+    """
+    data = data or {}
+    all_files = list(output_directory.glob("*"))
+    file_found = False
+
+    for full_path in all_files:
+        f_name = Path(full_path).name
+        if str(f_name).startswith(component_name):
+            pipeline_snapshot = load_pipeline_snapshot(full_path)
+            return pipeline.run(data=data, pipeline_snapshot=pipeline_snapshot)
+
+    if not file_found:
+        msg = f"No files found for {component_name} in {output_directory}."
+        raise ValueError(msg)
+
+
+@pytest.fixture()
+def base64_image_string():
+    return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="

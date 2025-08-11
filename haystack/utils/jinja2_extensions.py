@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 from jinja2 import Environment, nodes
 from jinja2.ext import Extension
@@ -70,7 +70,7 @@ class Jinja2TimeExtension(Extension):
 
         return dt.strftime(datetime_format)
 
-    def parse(self, parser: Any) -> Union[nodes.Node, List[nodes.Node]]:
+    def parse(self, parser: Any) -> Union[nodes.Node, list[nodes.Node]]:
         """
         Parse the template expression to determine how to handle the datetime formatting.
 

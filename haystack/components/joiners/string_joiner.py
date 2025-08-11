@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
 
 from haystack import component
 from haystack.core.component.types import Variadic
@@ -40,7 +39,7 @@ class StringJoiner:
     ```
     """
 
-    @component.output_types(strings=List[str])
+    @component.output_types(strings=list[str])
     def run(self, strings: Variadic[str]):
         """
         Joins strings into a list of strings

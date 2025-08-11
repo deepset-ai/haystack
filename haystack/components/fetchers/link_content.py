@@ -6,7 +6,7 @@ import asyncio
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
-from typing import Callable, Dict, List, Optional, Tuple, cast
+from typing import Callable, Optional, cast
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -95,11 +95,11 @@ class LinkContentFetcher:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         raise_on_failure: bool = True,
-        user_agents: Optional[List[str]] = None,
+        user_agents: Optional[list[str]] = None,
         retry_attempts: int = 2,
         timeout: int = 3,
         http2: bool = False,
-        client_kwargs: Optional[Dict] = None,
+        client_kwargs: Optional[dict] = None,
     ):
         """
         Initializes the component.
@@ -149,7 +149,7 @@ class LinkContentFetcher:
         self._async_client = httpx.AsyncClient(**client_kwargs)
 
         # register default content handlers that extract data from the response
-        self.handlers: Dict[str, Callable[[httpx.Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
+        self.handlers: dict[str, Callable[[httpx.Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
         self.handlers["text/*"] = _text_content_handler
         self.handlers["text/html"] = _binary_content_handler
         self.handlers["application/json"] = _text_content_handler
@@ -193,8 +193,8 @@ class LinkContentFetcher:
             # Suppress any exceptions during cleanup
             pass
 
-    @component.output_types(streams=List[ByteStream])
-    def run(self, urls: List[str]):
+    @component.output_types(streams=list[ByteStream])
+    def run(self, urls: list[str]):
         """
         Fetches content from a list of URLs and returns a list of extracted content streams.
 
@@ -211,7 +211,7 @@ class LinkContentFetcher:
             In all other scenarios, any retrieval errors are logged, and a list of successfully retrieved `ByteStream`
              objects is returned.
         """
-        streams: List[ByteStream] = []
+        streams: list[ByteStream] = []
         if not urls:
             return {"streams": streams}
 
@@ -233,8 +233,8 @@ class LinkContentFetcher:
 
         return {"streams": streams}
 
-    @component.output_types(streams=List[ByteStream])
-    async def run_async(self, urls: List[str]):
+    @component.output_types(streams=list[ByteStream])
+    async def run_async(self, urls: list[str]):
         """
         Asynchronously fetches content from a list of URLs and returns a list of extracted content streams.
 
@@ -243,7 +243,7 @@ class LinkContentFetcher:
         :param urls: A list of URLs to fetch content from.
         :returns: `ByteStream` objects representing the extracted content.
         """
-        streams: List[ByteStream] = []
+        streams: list[ByteStream] = []
         if not urls:
             return {"streams": streams}
 
@@ -269,7 +269,7 @@ class LinkContentFetcher:
             # At this point, result is not an exception, so we need to cast it to the correct type for mypy
             if not isinstance(result, Exception):  # Runtime check
                 # Use cast to tell mypy that result is the tuple type returned by _fetch_async
-                result_tuple = cast(Tuple[Optional[Dict[str, str]], Optional[ByteStream]], result)
+                result_tuple = cast(tuple[Optional[dict[str, str]], Optional[ByteStream]], result)
                 stream_metadata, stream = result_tuple
                 if stream_metadata is not None and stream is not None:
                     stream.meta.update(stream_metadata)
@@ -278,7 +278,7 @@ class LinkContentFetcher:
 
         return {"streams": streams}
 
-    def _fetch(self, url: str) -> Tuple[Dict[str, str], ByteStream]:
+    def _fetch(self, url: str) -> tuple[dict[str, str], ByteStream]:
         """
         Fetches content from a URL and returns it as a ByteStream.
 
@@ -312,7 +312,7 @@ class LinkContentFetcher:
 
     async def _fetch_async(
         self, url: str, client: httpx.AsyncClient
-    ) -> Tuple[Optional[Dict[str, str]], Optional[ByteStream]]:
+    ) -> tuple[Optional[dict[str, str]], Optional[ByteStream]]:
         """
         Asynchronously fetches content from a URL and returns it as a ByteStream.
 
@@ -322,7 +322,7 @@ class LinkContentFetcher:
         """
         content_type: str = "text/html"
         stream: Optional[ByteStream] = None
-        metadata: Optional[Dict[str, str]] = None
+        metadata: Optional[dict[str, str]] = None
 
         try:
             response = await self._get_response_async(url, client)
@@ -342,7 +342,7 @@ class LinkContentFetcher:
 
         return metadata, stream
 
-    def _fetch_with_exception_suppression(self, url: str) -> Tuple[Optional[Dict[str, str]], Optional[ByteStream]]:
+    def _fetch_with_exception_suppression(self, url: str) -> tuple[Optional[dict[str, str]], Optional[ByteStream]]:
         """
         Fetches content from a URL and returns it as a ByteStream.
 

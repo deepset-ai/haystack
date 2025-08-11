@@ -5,7 +5,7 @@
 import os
 import platform
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from haystack.version import __version__
 
@@ -68,7 +68,7 @@ def _is_containerized() -> Optional[bool]:
     return _IS_DOCKER_CACHE
 
 
-def collect_system_specs() -> Dict[str, Any]:
+def collect_system_specs() -> dict[str, Any]:
     """
     Collects meta-data about the setup that is used with Haystack.
 

@@ -15,7 +15,10 @@ from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
-def test_dense_doc_search_pipeline(tmp_path, samples_path):
+def test_dense_doc_search_pipeline(tmp_path, samples_path, monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
     # Create the indexing pipeline
     indexing_pipeline = Pipeline()
     indexing_pipeline.add_component(

@@ -6,7 +6,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Generator, List, Literal, Optional, Set
+from typing import Generator, Literal, Optional
 from unicodedata import normalize
 
 from haystack import Document, component, logging
@@ -44,7 +44,7 @@ class DocumentCleaner:
         remove_extra_whitespaces: bool = True,
         remove_repeated_substrings: bool = False,
         keep_id: bool = False,
-        remove_substrings: Optional[List[str]] = None,
+        remove_substrings: Optional[list[str]] = None,
         remove_regex: Optional[str] = None,
         unicode_normalization: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
         ascii_only: bool = False,
@@ -89,8 +89,8 @@ class DocumentCleaner:
         if unicode_normalization and unicode_normalization not in ["NFC", "NFKC", "NFD", "NFKD"]:
             raise ValueError("unicode_normalization must be one of 'NFC', 'NFKC', 'NFD', 'NFKD'.")
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]):
         """
         Cleans up the documents.
 
@@ -204,7 +204,7 @@ class DocumentCleaner:
         cleaned_text = [re.sub(regex, "", text).strip() for text in texts]
         return "\f".join(cleaned_text)
 
-    def _remove_substrings(self, text: str, substrings: List[str]) -> str:
+    def _remove_substrings(self, text: str, substrings: list[str]) -> str:
         """
         Remove all specified substrings from the text.
 
@@ -287,7 +287,7 @@ class DocumentCleaner:
 
         return ngrams
 
-    def _allngram(self, seq: str, min_ngram: int, max_ngram: int) -> Set[str]:
+    def _allngram(self, seq: str, min_ngram: int, max_ngram: int) -> set[str]:
         """
         Generates all possible ngrams from a given sequence of text.
 
@@ -303,7 +303,7 @@ class DocumentCleaner:
         res = set(chain.from_iterable(ngrams))
         return res
 
-    def _find_longest_common_ngram(self, sequences: List[str], min_ngram: int = 3, max_ngram: int = 30) -> str:
+    def _find_longest_common_ngram(self, sequences: list[str], min_ngram: int = 3, max_ngram: int = 30) -> str:
         """
         Find the longest common ngram across a list of text sequences (e.g. start of pages).
 

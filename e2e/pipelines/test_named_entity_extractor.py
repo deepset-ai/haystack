@@ -47,7 +47,10 @@ def spacy_annotations():
     ]
 
 
-def test_ner_extractor_init():
+def test_ner_extractor_init(monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
 
     with pytest.raises(RuntimeError, match=r"not warmed up"):
@@ -59,7 +62,10 @@ def test_ner_extractor_init():
 
 
 @pytest.mark.parametrize("batch_size", [1, 3])
-def test_ner_extractor_hf_backend(raw_texts, hf_annotations, batch_size):
+def test_ner_extractor_hf_backend(raw_texts, hf_annotations, batch_size, monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
     extractor.warm_up()
 
@@ -87,7 +93,10 @@ def test_ner_extractor_spacy_backend(raw_texts, spacy_annotations, batch_size):
 
 
 @pytest.mark.parametrize("batch_size", [1, 3])
-def test_ner_extractor_in_pipeline(raw_texts, hf_annotations, batch_size):
+def test_ner_extractor_in_pipeline(raw_texts, hf_annotations, batch_size, monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
     pipeline = Pipeline()
     pipeline.add_component(
         name="ner_extractor",

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Made the lazy import error message clearer explaining that the optional dependency is missing.

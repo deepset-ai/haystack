@@ -14,6 +14,21 @@ LLMs, Transformer models, vector search and more. Whether you want to perform re
 document search, question answering or answer generation, Haystack can orchestrate state-of-the-art embedding models
 and LLMs into pipelines to build end-to-end NLP applications and solve your use case.
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Documentation](#documentation)
+- [Features](#features)
+- [Use Cases](#features)
+- [Hayhooks (REST API Deployment)](#-tip-1)
+- [Haystack Enterprise](#haystack-enterprise-best-practices-and-expert-support)
+- [deepset Studio](#-deepset-studio-your-development-environment-for-haystack)
+- [Telemetry](#telemetry)
+- [🖖 Community](#-community)
+- [Contributing to Haystack](#contributing-to-haystack)
+- [Who Uses Haystack](#who-uses-haystack)
+
+
 ## Installation
 
 The simplest way to get Haystack is via pip:
@@ -58,22 +73,27 @@ Some examples of what you can do with Haystack:
 -   Use **user feedback** to evaluate, benchmark, and continuously improve your models.
 
 > [!TIP]
-><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-platform-logo-alternative.jpeg"  width=30% height=30%>
->
-> Are you looking for a managed solution that benefits from Haystack? [deepset AI Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
-
-> [!TIP]
 >
 > Would you like to deploy and serve Haystack pipelines as REST APIs yourself? [Hayhooks](https://github.com/deepset-ai/hayhooks) provides a simple way to wrap your pipelines with custom logic and expose them via HTTP endpoints, including OpenAI-compatible chat completion endpoints and compatibility with fully-featured chat interfaces like [open-webui](https://openwebui.com/).
 
-## 🆕 deepset Studio: Your Development Environment for Haystack
+## Haystack Enterprise: Best Practices and Expert Support
 
-Use **deepset Studio** to visually create, deploy, and test your Haystack pipelines. Learn more about it in [our announcement post](https://haystack.deepset.ai/blog/announcing-studio).
+Get expert support from the Haystack team, build faster with enterprise-grade templates, and scale securely with deployment guides for cloud and on-prem environments - all with **Haystack Enterprise**. Read more about it our [announcement post](https://haystack.deepset.ai/blog/announcing-haystack-enterprise).
+
+👉 [Get Haystack Enterprise](https://www.deepset.ai/products-and-services/haystack-enterprise?utm_source=github.com&utm_medium=referral&utm_campaign=haystack_enterprise) 
+
+## deepset Studio: Your Development Environment for Haystack
+
+Use **deepset Studio** to visually create, deploy, and test your Haystack pipelines. Learn more about it in our [announcement post](https://haystack.deepset.ai/blog/announcing-studio).
 
 ![studio](https://github.com/user-attachments/assets/e4f09746-20b5-433e-8261-eca224ac23b3)
 
-
 👉 [Sign up](https://landing.deepset.ai/deepset-studio-signup)!
+
+> [!TIP]
+><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-platform-logo-alternative.jpeg"  width=20%>
+>
+> Are you looking for a managed solution that benefits from Haystack? [deepset AI Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
 
 ## Telemetry
 
@@ -113,6 +133,7 @@ world know that you use Haystack!
 -   [Intelijus](https://www.intelijus.ai/)
 -   [Intel Labs](https://github.com/IntelLabs/fastRAG#readme)
 -   [LEGO](https://github.com/larsbaunwall/bricky#readme)
+-   [Meta](https://www.meta.com/about)
 -   [Netflix](https://netflix.com)
 -   [NOS Portugal](https://www.nos.pt/en/welcome)
 -   [Nvidia](https://developer.nvidia.com/blog/reducing-development-time-for-intelligent-virtual-assistants-in-contact-centers/)

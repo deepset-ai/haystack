@@ -6,6 +6,7 @@ import inspect
 from typing import Any, Callable
 
 from haystack.core.errors import DeserializationError, SerializationError
+from haystack.tools.tool import Tool
 from haystack.utils.type_serialization import thread_safe_import
 
 
@@ -70,6 +71,10 @@ def deserialize_callable(callable_handle: str) -> Callable:
         # when the attribute is a classmethod, we need the underlying function
         if isinstance(attr_value, (classmethod, staticmethod)):
             attr_value = attr_value.__func__
+
+        # Handle the case where @tool decorator replaced the function with a Tool object
+        if isinstance(attr_value, Tool):
+            attr_value = attr_value.function
 
         if not callable(attr_value):
             raise DeserializationError(f"The final attribute is not callable: {attr_value}")

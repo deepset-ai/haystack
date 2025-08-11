@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The Pipeline and the Agent now support breakpoints, a feature useful for debugging. A breakpoint is associated with a component and it stops the execution of a Pipeline/Agent generating a JSON file with the execution status, which can be inspected
+    edited and later used to resume the execution.

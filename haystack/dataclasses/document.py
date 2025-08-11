@@ -4,7 +4,7 @@
 
 import hashlib
 from dataclasses import asdict, dataclass, field, fields
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from numpy import ndarray
 
@@ -62,9 +62,9 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
     id: str = field(default="")
     content: Optional[str] = field(default=None)
     blob: Optional[ByteStream] = field(default=None)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
     score: Optional[float] = field(default=None)
-    embedding: Optional[List[float]] = field(default=None)
+    embedding: Optional[list[float]] = field(default=None)
     sparse_embedding: Optional[SparseEmbedding] = field(default=None)
 
     def __repr__(self):
@@ -117,7 +117,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         data = f"{text}{dataframe}{blob!r}{mime_type}{meta}{embedding}{sparse_embedding}"
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
-    def to_dict(self, flatten: bool = True) -> Dict[str, Any]:
+    def to_dict(self, flatten: bool = True) -> dict[str, Any]:
         """
         Converts Document into a dictionary.
 
@@ -141,7 +141,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Document":
+    def from_dict(cls, data: dict[str, Any]) -> "Document":
         """
         Creates a new Document object from a dictionary.
 

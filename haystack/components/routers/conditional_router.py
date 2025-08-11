@@ -4,7 +4,7 @@
 
 import ast
 import contextlib
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, TypedDict, Union, get_args, get_origin
+from typing import Any, Callable, Mapping, Optional, Sequence, TypedDict, Union, get_args, get_origin
 
 from jinja2 import Environment, TemplateSyntaxError, meta
 from jinja2.nativetypes import NativeEnvironment
@@ -26,9 +26,9 @@ class RouteConditionException(Exception):
 
 class Route(TypedDict):
     condition: str
-    output: Union[str, List[str]]
-    output_name: Union[str, List[str]]
-    output_type: Union[type, List[type]]
+    output: Union[str, list[str]]
+    output_name: Union[str, list[str]]
+    output_type: Union[type, list[type]]
 
 
 @component
@@ -40,14 +40,13 @@ class ConditionalRouter:
     Each dictionary in this list represents a single route. Each route has these four elements:
     - `condition`: A Jinja2 string expression that determines if the route is selected.
     - `output`: A Jinja2 expression defining the route's output value.
-    - `output_type`: The type of the output data (for example, `str`, `List[int]`).
+    - `output_type`: The type of the output data (for example, `str`, `list[int]`).
     - `output_name`: The name you want to use to publish `output`. This name is used to connect
     the router to other components in the pipeline.
 
     ### Usage example
 
     ```python
-    from typing import List
     from haystack.components.routers import ConditionalRouter
 
     routes = [
@@ -55,13 +54,13 @@ class ConditionalRouter:
             "condition": "{{streams|length > 2}}",
             "output": "{{streams}}",
             "output_name": "enough_streams",
-            "output_type": List[int],
+            "output_type": list[int],
         },
         {
             "condition": "{{streams|length <= 2}}",
             "output": "{{streams}}",
             "output_name": "insufficient_streams",
-            "output_type": List[int],
+            "output_type": list[int],
         },
     ]
     router = ConditionalRouter(routes)
@@ -84,7 +83,6 @@ class ConditionalRouter:
     different components depending on the number of streams fetched:
 
     ```python
-    from typing import List
     from haystack import Pipeline
     from haystack.dataclasses import ByteStream
     from haystack.components.routers import ConditionalRouter
@@ -94,13 +92,13 @@ class ConditionalRouter:
             "condition": "{{streams|length > 2}}",
             "output": "{{streams}}",
             "output_name": "enough_streams",
-            "output_type": List[ByteStream],
+            "output_type": list[ByteStream],
         },
         {
             "condition": "{{streams|length <= 2}}",
             "output": "{{streams}}",
             "output_name": "insufficient_streams",
-            "output_type": List[ByteStream],
+            "output_type": list[ByteStream],
         },
     ]
 
@@ -115,11 +113,11 @@ class ConditionalRouter:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        routes: List[Route],
-        custom_filters: Optional[Dict[str, Callable]] = None,
+        routes: list[Route],
+        custom_filters: Optional[dict[str, Callable]] = None,
         unsafe: bool = False,
         validate_output_type: bool = False,
-        optional_variables: Optional[List[str]] = None,
+        optional_variables: Optional[list[str]] = None,
     ):
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
@@ -128,7 +126,7 @@ class ConditionalRouter:
             Each route has these four elements:
             - `condition`: A Jinja2 string expression that determines if the route is selected.
             - `output`: A Jinja2 expression defining the route's output value.
-            - `output_type`: The type of the output data (for example, `str`, `List[int]`).
+            - `output_type`: The type of the output data (for example, `str`, `list[int]`).
             - `output_name`: The name you want to use to publish `output`. This name is used to connect
             the router to other components in the pipeline.
         :param custom_filters: A dictionary of custom Jinja2 filters used in the condition expressions.
@@ -186,7 +184,7 @@ class ConditionalRouter:
             - Some variables are only needed for specific routing conditions
             - You're building flexible pipelines where not all inputs are guaranteed to be present
         """
-        self.routes: List[Route] = routes
+        self.routes: list[Route] = routes
         self.custom_filters = custom_filters or {}
         self._unsafe = unsafe
         self._validate_output_type = validate_output_type
@@ -205,8 +203,8 @@ class ConditionalRouter:
 
         self._validate_routes(routes)
         # Inspect the routes to determine input and output types.
-        input_types: Set[str] = set()  # let's just store the name, type will always be Any
-        output_types: Dict[str, Union[type, List[type]]] = {}
+        input_types: set[str] = set()  # let's just store the name, type will always be Any
+        output_types: dict[str, Union[type, list[type]]] = {}
 
         for route in routes:
             # extract inputs
@@ -246,7 +244,7 @@ class ConditionalRouter:
         # set output types
         component.set_output_types(self, **output_types)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -272,7 +270,7 @@ class ConditionalRouter:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ConditionalRouter":
+    def from_dict(cls, data: dict[str, Any]) -> "ConditionalRouter":
         """
         Deserializes the component from a dictionary.
 
@@ -369,7 +367,7 @@ class ConditionalRouter:
 
         raise NoRouteSelectedException(f"No route fired. Routes: {self.routes}")
 
-    def _validate_routes(self, routes: List[Route]):
+    def _validate_routes(self, routes: list[Route]):
         """
         Validates a list of routes.
 
@@ -405,7 +403,7 @@ class ConditionalRouter:
                 if not self._validate_template(self._env, output):
                     raise ValueError(f"Invalid template for output: {output}")
 
-    def _extract_variables(self, env: Environment, templates: List[str]) -> Set[str]:
+    def _extract_variables(self, env: Environment, templates: list[str]) -> set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 

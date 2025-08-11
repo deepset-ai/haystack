@@ -293,10 +293,12 @@ class TestSentenceTransformersDocumentEmbedder:
 
         assert isinstance(result["documents"], list)
         assert len(result["documents"]) == len(documents)
-        for doc in result["documents"]:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert isinstance(doc.embedding[0], float)
+        for doc, new_doc in zip(documents, result["documents"]):
+            assert new_doc is not doc
+            assert doc.embedding is None
+            assert isinstance(new_doc, Document)
+            assert isinstance(new_doc.embedding, list)
+            assert isinstance(new_doc.embedding[0], float)
 
     def test_run_wrong_input_format(self):
         embedder = SentenceTransformersDocumentEmbedder(model="model")

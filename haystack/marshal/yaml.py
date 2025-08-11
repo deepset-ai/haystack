@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 import yaml
 
@@ -25,7 +25,7 @@ YamlLoader.add_constructor("tag:yaml.org,2002:python/tuple", YamlLoader.construc
 
 
 class YamlMarshaller:
-    def marshal(self, dict_: Dict[str, Any]) -> str:
+    def marshal(self, dict_: dict[str, Any]) -> str:
         """Return a YAML representation of the given dictionary."""
         try:
             return yaml.dump(dict_, Dumper=YamlDumper)
@@ -34,7 +34,7 @@ class YamlMarshaller:
                 "Error dumping pipeline to YAML - Ensure that all pipeline components only serialize basic Python types"
             ) from e
 
-    def unmarshal(self, data_: Union[str, bytes, bytearray]) -> Dict[str, Any]:
+    def unmarshal(self, data_: Union[str, bytes, bytearray]) -> dict[str, Any]:
         """Return a dictionary from the given YAML data."""
         try:
             return yaml.load(data_, Loader=YamlLoader)

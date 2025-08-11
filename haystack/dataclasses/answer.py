@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Optional, Protocol, runtime_checkable
 
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, Document
@@ -14,13 +14,13 @@ from haystack.dataclasses import ChatMessage, Document
 class Answer(Protocol):
     data: Any
     query: str
-    meta: Dict[str, Any]
+    meta: dict[str, Any]
 
-    def to_dict(self) -> Dict[str, Any]:  # noqa: D102
+    def to_dict(self) -> dict[str, Any]:  # noqa: D102
         ...
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Answer":  # noqa: D102
+    def from_dict(cls, data: dict[str, Any]) -> "Answer":  # noqa: D102
         ...
 
 
@@ -33,14 +33,14 @@ class ExtractedAnswer:
     context: Optional[str] = None
     document_offset: Optional["Span"] = None
     context_offset: Optional["Span"] = None
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
 
     @dataclass
     class Span:
         start: int
         end: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize the object to a dictionary.
 
@@ -63,7 +63,7 @@ class ExtractedAnswer:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ExtractedAnswer":
+    def from_dict(cls, data: dict[str, Any]) -> "ExtractedAnswer":
         """
         Deserialize the object from a dictionary.
 
@@ -88,10 +88,10 @@ class ExtractedAnswer:
 class GeneratedAnswer:
     data: str
     query: str
-    documents: List[Document]
-    meta: Dict[str, Any] = field(default_factory=dict)
+    documents: list[Document]
+    meta: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize the object to a dictionary.
 
@@ -111,7 +111,7 @@ class GeneratedAnswer:
         return default_to_dict(self, data=self.data, query=self.query, documents=documents, meta=meta)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GeneratedAnswer":
+    def from_dict(cls, data: dict[str, Any]) -> "GeneratedAnswer":
         """
         Deserialize the object from a dictionary.
 

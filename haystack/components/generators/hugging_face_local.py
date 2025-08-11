@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Literal, Optional, cast
+from typing import Any, Literal, Optional
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ComponentInfo, StreamingCallbackT, select_streaming_callback
@@ -61,9 +61,9 @@ class HuggingFaceLocalGenerator:
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
-        stop_words: Optional[List[str]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
+        stop_words: Optional[list[str]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
@@ -131,7 +131,7 @@ class HuggingFaceLocalGenerator:
         self.stopping_criteria_list: Optional[StoppingCriteriaList] = None
         self.streaming_callback = streaming_callback
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
@@ -153,7 +153,7 @@ class HuggingFaceLocalGenerator:
             return
 
         if self.pipeline is None:
-            self.pipeline = cast(HfPipeline, pipeline(**self.huggingface_pipeline_kwargs))
+            self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
         if self.stop_words:
             # text-generation and text2text-generation pipelines always have a non-None tokenizer
@@ -164,7 +164,7 @@ class HuggingFaceLocalGenerator:
             )
             self.stopping_criteria_list = StoppingCriteriaList([stop_words_criteria])
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -188,7 +188,7 @@ class HuggingFaceLocalGenerator:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceLocalGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceLocalGenerator":
         """
         Deserializes the component from a dictionary.
 
@@ -207,12 +207,12 @@ class HuggingFaceLocalGenerator:
         deserialize_hf_model_kwargs(huggingface_pipeline_kwargs)
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[str])
+    @component.output_types(replies=list[str])
     def run(
         self,
         prompt: str,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Run the text generation model on the given prompt.

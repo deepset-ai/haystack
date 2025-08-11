@@ -26,6 +26,52 @@ def test_from_file_path(tmp_path, request):
     assert b.meta == {"foo": "bar"}
 
 
+@pytest.mark.parametrize(
+    "file_path, expected_mime_types",
+    [
+        ("spam.jpeg", {"image/jpeg"}),
+        ("spam.jpg", {"image/jpeg"}),
+        ("spam.png", {"image/png"}),
+        ("spam.gif", {"image/gif"}),
+        ("spam.svg", {"image/svg+xml"}),
+        ("spam.js", {"text/javascript", "application/javascript"}),
+        ("spam.txt", {"text/plain"}),
+        ("spam.html", {"text/html"}),
+        ("spam.htm", {"text/html"}),
+        ("spam.css", {"text/css"}),
+        ("spam.csv", {"text/csv"}),
+        ("spam.md", {"text/markdown"}),  # custom mapping
+        ("spam.markdown", {"text/markdown"}),  # custom mapping
+        ("spam.msg", {"application/vnd.ms-outlook"}),  # custom mapping
+        ("spam.pdf", {"application/pdf"}),
+        ("spam.xml", {"application/xml", "text/xml"}),
+        ("spam.json", {"application/json"}),
+        ("spam.doc", {"application/msword"}),
+        ("spam.docx", {"application/vnd.openxmlformats-officedocument.wordprocessingml.document"}),
+        ("spam.xls", {"application/vnd.ms-excel"}),
+        ("spam.xlsx", {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
+        ("spam.ppt", {"application/vnd.ms-powerpoint"}),
+        ("spam.pptx", {"application/vnd.openxmlformats-officedocument.presentationml.presentation"}),
+    ],
+)
+def test_from_file_path_guess_mime_type(file_path, expected_mime_types, tmp_path):
+    test_file = tmp_path / file_path
+    test_file.touch()
+
+    b = ByteStream.from_file_path(test_file, guess_mime_type=True)
+    assert b.mime_type in expected_mime_types
+
+
+def test_explicit_mime_type_is_not_overwritten_by_guessing(tmp_path):
+    # create empty file with correct extension
+    test_file = tmp_path / "sample.md"
+    test_file.touch()
+
+    explicit_mime_type = "text/x-rst"
+    b = ByteStream.from_file_path(test_file, mime_type=explicit_mime_type, guess_mime_type=True)
+    assert b.mime_type == explicit_mime_type
+
+
 def test_from_string():
     test_string = "Hello, world!"
     b = ByteStream.from_string(test_string)

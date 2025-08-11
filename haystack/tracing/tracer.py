@@ -5,7 +5,7 @@
 import abc
 import contextlib
 import os
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Iterator, Optional
 
 from haystack import logging
 
@@ -31,7 +31,7 @@ class Span(abc.ABC):
         """
         pass
 
-    def set_tags(self, tags: Dict[str, Any]) -> None:
+    def set_tags(self, tags: dict[str, Any]) -> None:
         """
         Set multiple tags on the span.
 
@@ -69,7 +69,7 @@ class Span(abc.ABC):
         if tracer.is_content_tracing_enabled:
             self.set_tag(key, value)
 
-    def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+    def get_correlation_data_for_logs(self) -> dict[str, Any]:
         """
         Return a dictionary with correlation data for logs.
 
@@ -84,7 +84,7 @@ class Tracer(abc.ABC):
     @abc.abstractmethod
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+        self, operation_name: str, tags: Optional[dict[str, Any]] = None, parent_span: Optional[Span] = None
     ) -> Iterator[Span]:
         """
         Trace the execution of a block of code.
@@ -122,7 +122,7 @@ class ProxyTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+        self, operation_name: str, tags: Optional[dict[str, Any]] = None, parent_span: Optional[Span] = None
     ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         with self.actual_tracer.trace(operation_name, tags=tags, parent_span=parent_span) as span:
@@ -146,7 +146,7 @@ class NullTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+        self, operation_name: str, tags: Optional[dict[str, Any]] = None, parent_span: Optional[Span] = None
     ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         yield NullSpan()

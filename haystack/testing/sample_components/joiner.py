@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
 
 from haystack.core.component import component
 from haystack.core.component.types import Variadic
@@ -15,7 +14,7 @@ class StringJoiner:
         """
         Take strings from multiple input nodes and join them into a single one returned in output.
 
-        Since `input_str` is Variadic, we know we'll receive a List[str].
+        Since `input_str` is Variadic, we know we'll receive a list[str].
         """
         return {"output": " ".join(input_str)}
 
@@ -23,13 +22,13 @@ class StringJoiner:
 @component
 class StringListJoiner:
     @component.output_types(output=str)
-    def run(self, inputs: Variadic[List[str]]):
+    def run(self, inputs: Variadic[list[str]]):
         """
         Take list of strings from multiple input nodes and join them into a single one returned in output.
 
-        Since `input_str` is Variadic, we know we'll receive a List[List[str]].
+        Since `input_str` is Variadic, we know we'll receive a list[list[str]].
         """
-        retval: List[str] = []
+        retval: list[str] = []
         for list_of_strings in inputs:
             retval += list_of_strings
 

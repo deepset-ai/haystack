@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -14,12 +15,12 @@ from openai.types.chat import (
     ChatCompletion,
     ChatCompletionChunk,
     ChatCompletionMessage,
-    ChatCompletionMessageToolCall,
+    ChatCompletionMessageFunctionToolCall,
     chat_completion_chunk,
 )
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
-from openai.types.chat.chat_completion_message_tool_call import Function
+from openai.types.chat.chat_completion_message_function_tool_call import Function
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 
 from haystack import component
@@ -29,7 +30,7 @@ from haystack.components.generators.chat.openai import (
     _convert_chat_completion_chunk_to_streaming_chunk,
 )
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall, ToolCallDelta
+from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, ToolCall, ToolCallDelta
 from haystack.tools import ComponentTool, Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
@@ -82,7 +83,7 @@ def mock_chat_completion_chunk_with_tools(openai_mock_stream):
         yield mock_chat_completion_create
 
 
-def weather_function(city: str) -> Dict[str, Any]:
+def weather_function(city: str) -> dict[str, Any]:
     weather_info = {
         "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
         "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
@@ -93,8 +94,8 @@ def weather_function(city: str) -> Dict[str, Any]:
 
 @component
 class MessageExtractor:
-    @component.output_types(messages=List[str], meta=Dict[str, Any])
-    def run(self, messages: List[ChatMessage], meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    @component.output_types(messages=list[str], meta=dict[str, Any])
+    def run(self, messages: list[ChatMessage], meta: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Extracts the text content of ChatMessage objects
 
@@ -474,7 +475,7 @@ class TestOpenAIChatGenerator:
                         message=ChatCompletionMessage(
                             role="assistant",
                             tool_calls=[
-                                ChatCompletionMessageToolCall(
+                                ChatCompletionMessageFunctionToolCall(
                                     id="123",
                                     type="function",
                                     function=Function(name="weather", arguments='{"city": "Paris"}'),
@@ -569,7 +570,7 @@ class TestOpenAIChatGenerator:
                         message=ChatCompletionMessage(
                             role="assistant",
                             tool_calls=[
-                                ChatCompletionMessageToolCall(
+                                ChatCompletionMessageFunctionToolCall(
                                     id="1",
                                     type="function",
                                     function=Function(name="weather", arguments='"invalid": "json"'),
@@ -745,6 +746,32 @@ class TestOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_multimodal(self, test_files_path):
+        image_path = test_files_path / "images" / "apple.jpg"
+
+        # we resize the image to keep this test fast (around 1s) - increase the size in case of errors
+        image_content = ImageContent.from_file_path(file_path=image_path, size=(100, 100), detail="low")
+
+        chat_messages = [ChatMessage.from_user(content_parts=["What does this image show? Max 5 words", image_content])]
+
+        generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        results = generator.run(chat_messages)
+
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+
+        assert message.text
+        assert "apple" in message.text.lower()
+
+        assert message.is_from(ChatRole.ASSISTANT)
+        assert not message.tool_calls
+        assert not message.tool_call_results
 
 
 @pytest.fixture

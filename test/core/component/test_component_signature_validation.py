@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -12,55 +12,55 @@ from haystack.core.component.component import ComponentError
 
 @component
 class ValidComponent:
-    def run(self, text: str) -> Dict[str, Any]:
+    def run(self, text: str) -> dict[str, Any]:
         return {"result": text}
 
-    async def run_async(self, text: str) -> Dict[str, Any]:
+    async def run_async(self, text: str) -> dict[str, Any]:
         return {"result": text}
 
 
 @component
 class DifferentParamNameComponent:
-    def run(self, text: str) -> Dict[str, Any]:
+    def run(self, text: str) -> dict[str, Any]:
         return {"result": text}
 
-    async def run_async(self, input_text: str) -> Dict[str, Any]:
+    async def run_async(self, input_text: str) -> dict[str, Any]:
         return {"result": input_text}
 
 
 @component
 class DifferentParamTypeComponent:
-    def run(self, text: str) -> Dict[str, Any]:
+    def run(self, text: str) -> dict[str, Any]:
         return {"result": text}
 
-    async def run_async(self, text: List[str]) -> Dict[str, Any]:
+    async def run_async(self, text: list[str]) -> dict[str, Any]:
         return {"result": text[0]}
 
 
 @component
 class DifferentDefaultValueComponent:
-    def run(self, text: str = "default") -> Dict[str, Any]:
+    def run(self, text: str = "default") -> dict[str, Any]:
         return {"result": text}
 
-    async def run_async(self, text: str = "different") -> Dict[str, Any]:
+    async def run_async(self, text: str = "different") -> dict[str, Any]:
         return {"result": text}
 
 
 @component
 class DifferentParamKindComponent:
-    def run(self, text: str) -> Dict[str, Any]:
+    def run(self, text: str) -> dict[str, Any]:
         return {"result": text}
 
-    async def run_async(self, *, text: str) -> Dict[str, Any]:
+    async def run_async(self, *, text: str) -> dict[str, Any]:
         return {"result": text}
 
 
 @component
 class DifferentParamCountComponent:
-    def run(self, text: str) -> Dict[str, Any]:
+    def run(self, text: str) -> dict[str, Any]:
         return {"result": text}
 
-    async def run_async(self, text: str, extra: str) -> Dict[str, Any]:
+    async def run_async(self, text: str, extra: str) -> dict[str, Any]:
         return {"result": text + extra}
 
 

@@ -5,7 +5,6 @@
 import json
 import os
 from dataclasses import dataclass
-from typing import Dict, List
 from unittest.mock import patch
 
 import pytest
@@ -31,7 +30,7 @@ class SimpleComponentUsingChatMessages:
     """A simple component that generates text."""
 
     @component.output_types(reply=str)
-    def run(self, messages: List[ChatMessage]) -> Dict[str, str]:
+    def run(self, messages: list[ChatMessage]) -> dict[str, str]:
         """
         A simple component that generates text.
 
@@ -46,7 +45,7 @@ class SimpleComponent:
     """A simple component that generates text."""
 
     @component.output_types(reply=str)
-    def run(self, text: str) -> Dict[str, str]:
+    def run(self, text: str) -> dict[str, str]:
         """
         A simple component that generates text.
 
@@ -73,7 +72,7 @@ class UserGreeter:
     """A simple component that processes a User."""
 
     @component.output_types(message=str)
-    def run(self, user: User) -> Dict[str, str]:
+    def run(self, user: User) -> dict[str, str]:
         """
         A simple component that processes a User.
 
@@ -88,7 +87,7 @@ class ListProcessor:
     """A component that processes a list of strings."""
 
     @component.output_types(concatenated=str)
-    def run(self, texts: List[str]) -> Dict[str, str]:
+    def run(self, texts: list[str]) -> dict[str, str]:
         """
         Concatenates a list of strings into a single string.
 
@@ -119,7 +118,7 @@ class PersonProcessor:
     """A component that processes a Person with nested Address."""
 
     @component.output_types(info=str)
-    def run(self, person: Person) -> Dict[str, str]:
+    def run(self, person: Person) -> dict[str, str]:
         """
         Creates information about the person.
 
@@ -134,7 +133,7 @@ class DocumentProcessor:
     """A component that processes a list of Documents."""
 
     @component.output_types(concatenated=str)
-    def run(self, documents: List[Document], top_k: int = 5) -> Dict[str, str]:
+    def run(self, documents: list[Document], top_k: int = 5) -> dict[str, str]:
         """
         Concatenates the content of multiple documents with newlines.
 

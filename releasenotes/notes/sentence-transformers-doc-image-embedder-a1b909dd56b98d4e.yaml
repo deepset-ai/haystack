@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Introduce the SentenceTransformersDocumentImageEmbedder, a component for computing Document embeddings from
+    images using Sentence Transformers models such as OpenAI CLIP or Jina CLIP.
+    Each Document must have a meta field that specifies the path an image or PDF file.
+    The resulting embedding will be stored in the `embedding` field of the Document.

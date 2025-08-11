@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import List
 
 import pytest
 
@@ -30,7 +29,7 @@ from haystack.dataclasses import ChatMessage
 EMBEDDINGS_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
-def indexing_pipeline(documents: List[Document]):
+def indexing_pipeline(documents: list[Document]):
     """Indexing the documents"""
     document_store = InMemoryDocumentStore()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)

@@ -14,7 +14,7 @@ env:
   HATCH_VERSION: "1.14.1"
   PYTHON_VERSION: "3.9"
   DOCS_REPO: "deepset-ai/haystack-docs"
-  DOCS_REPO_PATH: "docs/api/haystack-api"
+  DOCS_REPO_PATH: "reference/haystack-api"
 
 jobs:
   sync:

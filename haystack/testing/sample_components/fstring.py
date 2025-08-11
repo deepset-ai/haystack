@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from haystack.core.component import component
 
@@ -13,7 +13,7 @@ class FString:
     Takes a template string and a list of variables in input and returns the formatted string in output.
     """
 
-    def __init__(self, template: str, variables: Optional[List[str]] = None):
+    def __init__(self, template: str, variables: Optional[list[str]] = None):
         self.template = template
         self.variables = variables or []
         if "template" in self.variables:

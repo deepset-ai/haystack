@@ -4,7 +4,7 @@
 
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Union, cast
+from typing import Any, Iterable, Optional, Union, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import (
@@ -95,10 +95,10 @@ class HuggingFaceAPIGenerator:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_type: Union[HFGenerationAPIType, str],
-        api_params: Dict[str, str],
+        api_params: dict[str, str],
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        stop_words: Optional[List[str]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        stop_words: Optional[list[str]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
@@ -173,12 +173,12 @@ class HuggingFaceAPIGenerator:
         self.generation_kwargs = generation_kwargs
         self.streaming_callback = streaming_callback
 
-        resolved_api_params: Dict[str, Any] = {k: v for k, v in api_params.items() if k != "model" and k != "url"}
+        resolved_api_params: dict[str, Any] = {k: v for k, v in api_params.items() if k != "model" and k != "url"}
         self._client = InferenceClient(
             model_or_url, token=token.resolve_value() if token else None, **resolved_api_params
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -196,7 +196,7 @@ class HuggingFaceAPIGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceAPIGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceAPIGenerator":
         """
         Deserialize this component from a dictionary.
         """
@@ -207,12 +207,12 @@ class HuggingFaceAPIGenerator:
             init_params["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[str], meta=List[Dict[str, Any]])
+    @component.output_types(replies=list[str], meta=list[dict[str, Any]])
     def run(
         self,
         prompt: str,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Invoke the text generation inference for the given prompt and generation parameters.
@@ -240,7 +240,10 @@ class HuggingFaceAPIGenerator:
         )
 
         if streaming_callback is not None:
-            return self._stream_and_build_response(hf_output=hf_output, streaming_callback=streaming_callback)
+            # mypy doesn't know that hf_output is a Iterable[TextGenerationStreamOutput], so we cast it
+            return self._stream_and_build_response(
+                hf_output=cast(Iterable[TextGenerationStreamOutput], hf_output), streaming_callback=streaming_callback
+            )
 
         # mypy doesn't know that hf_output is a TextGenerationOutput, so we cast it
         return self._build_non_streaming_response(cast(TextGenerationOutput, hf_output))
@@ -248,7 +251,7 @@ class HuggingFaceAPIGenerator:
     def _stream_and_build_response(
         self, hf_output: Iterable["TextGenerationStreamOutput"], streaming_callback: SyncStreamingCallbackT
     ):
-        chunks: List[StreamingChunk] = []
+        chunks: list[StreamingChunk] = []
         first_chunk_time = None
 
         component_info = ComponentInfo.from_component(self)
@@ -261,7 +264,7 @@ class HuggingFaceAPIGenerator:
             if first_chunk_time is None:
                 first_chunk_time = datetime.now().isoformat()
 
-            mapping: Dict[str, FinishReason] = {
+            mapping: dict[str, FinishReason] = {
                 "length": "length",  # Direct match
                 "eos_token": "stop",  # EOS token means natural stop
                 "stop_sequence": "stop",  # Stop sequence means natural stop

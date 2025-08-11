@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from jsonschema import ValidationError, validate
 
@@ -38,8 +38,6 @@ class JsonSchemaValidator:
     Usage example:
 
     ```python
-    from typing import List
-
     from haystack import Pipeline
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.components.joiners import BranchJoiner
@@ -51,8 +49,8 @@ class JsonSchemaValidator:
     @component
     class MessageProducer:
 
-        @component.output_types(messages=List[ChatMessage])
-        def run(self, messages: List[ChatMessage]) -> dict:
+        @component.output_types(messages=list[ChatMessage])
+        def run(self, messages: list[ChatMessage]) -> dict:
             return {"messages": messages}
 
 
@@ -60,7 +58,7 @@ class JsonSchemaValidator:
     p.add_component("llm", OpenAIChatGenerator(model="gpt-4-1106-preview",
                                                generation_kwargs={"response_format": {"type": "json_object"}}))
     p.add_component("schema_validator", JsonSchemaValidator())
-    p.add_component("joiner_for_llm", BranchJoiner(List[ChatMessage]))
+    p.add_component("joiner_for_llm", BranchJoiner(list[ChatMessage]))
     p.add_component("message_producer", MessageProducer())
 
     p.connect("message_producer.messages", "joiner_for_llm")
@@ -101,7 +99,7 @@ class JsonSchemaValidator:
         "JSON string, this is the most important part of the task. Don't use any markdown and don't add any comment."
     )
 
-    def __init__(self, json_schema: Optional[Dict[str, Any]] = None, error_template: Optional[str] = None):
+    def __init__(self, json_schema: Optional[dict[str, Any]] = None, error_template: Optional[str] = None):
         """
         Initialize the JsonSchemaValidator component.
 
@@ -112,13 +110,13 @@ class JsonSchemaValidator:
         self.json_schema = json_schema
         self.error_template = error_template
 
-    @component.output_types(validated=List[ChatMessage], validation_error=List[ChatMessage])
+    @component.output_types(validated=list[ChatMessage], validation_error=list[ChatMessage])
     def run(
         self,
-        messages: List[ChatMessage],
-        json_schema: Optional[Dict[str, Any]] = None,
+        messages: list[ChatMessage],
+        json_schema: Optional[dict[str, Any]] = None,
         error_template: Optional[str] = None,
-    ) -> Dict[str, List[ChatMessage]]:
+    ) -> dict[str, list[ChatMessage]]:
         """
         Validates the last of the provided messages against the specified json schema.
 
@@ -192,7 +190,7 @@ class JsonSchemaValidator:
         error_message: str,
         error_path: str,
         error_schema_path: str,
-        json_schema: Dict[str, Any],
+        json_schema: dict[str, Any],
         failing_json: str,
     ) -> str:
         """
@@ -215,7 +213,7 @@ class JsonSchemaValidator:
             failing_json=failing_json,
         )
 
-    def _is_openai_function_calling_schema(self, json_schema: Dict[str, Any]) -> bool:
+    def _is_openai_function_calling_schema(self, json_schema: dict[str, Any]) -> bool:
         """
         Checks if the provided schema is a valid OpenAI function calling schema.
 

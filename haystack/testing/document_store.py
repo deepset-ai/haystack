@@ -4,7 +4,6 @@
 
 import random
 from datetime import datetime
-from typing import List
 
 from haystack.dataclasses import Document
 from haystack.document_stores.errors import DuplicateDocumentError
@@ -31,7 +30,7 @@ TEST_EMBEDDING_2 = _random_embeddings(768)
 
 
 class AssertDocumentsEqualMixin:
-    def assert_documents_are_equal(self, received: List[Document], expected: List[Document]):
+    def assert_documents_are_equal(self, received: list[Document], expected: list[Document]):
         """
         Assert that two lists of Documents are equal.
 
@@ -172,7 +171,7 @@ class DeleteDocumentsTest:
         assert document_store.count_documents() == 1
 
 
-def create_filterable_docs() -> List[Document]:
+def create_filterable_docs() -> list[Document]:
     """
     Create a list of filterable documents to be used in the filterable_docs fixture.
     """
@@ -239,7 +238,7 @@ class FilterableDocsFixtureMixin:
     """
 
     @pytest.fixture
-    def filterable_docs(self) -> List[Document]:
+    def filterable_docs(self) -> list[Document]:
         """Fixture that returns a list of Documents that can be used to test filtering."""
         return create_filterable_docs()
 

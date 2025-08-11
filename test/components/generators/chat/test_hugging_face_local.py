@@ -4,7 +4,7 @@
 
 import asyncio
 import gc
-from typing import List, Optional
+from typing import Optional
 from unittest.mock import Mock, patch
 
 import pytest
@@ -75,7 +75,7 @@ def tools():
     return [tool]
 
 
-def custom_tool_parser(text: str) -> Optional[List[ToolCall]]:
+def custom_tool_parser(text: str) -> Optional[list[ToolCall]]:
     """Test implementation of a custom tool parser."""
     return [ToolCall(tool_name="weather", arguments={"city": "Berlin"})]
 

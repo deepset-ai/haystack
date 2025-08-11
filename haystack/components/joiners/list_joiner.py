@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from itertools import chain
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Optional
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
@@ -25,7 +25,6 @@ class ListJoiner:
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
     from haystack.components.joiners import ListJoiner
-    from typing import List
 
 
     user_message = [ChatMessage.from_user("Give a brief answer the following question: {{query}}")]
@@ -48,7 +47,7 @@ class ListJoiner:
     pipe.add_component("llm", llm)
     pipe.add_component("feedback_prompt_builder", feedback_prompt_builder)
     pipe.add_component("feedback_llm", feedback_llm)
-    pipe.add_component("list_joiner", ListJoiner(List[ChatMessage]))
+    pipe.add_component("list_joiner", ListJoiner(list[ChatMessage]))
 
     pipe.connect("prompt_builder.prompt", "llm.messages")
     pipe.connect("prompt_builder.prompt", "list_joiner")
@@ -65,11 +64,11 @@ class ListJoiner:
     ```
     """
 
-    def __init__(self, list_type_: Optional[Type] = None):
+    def __init__(self, list_type_: Optional[type] = None):
         """
         Creates a ListJoiner component.
 
-        :param list_type_: The expected type of the lists this component will join (e.g., List[ChatMessage]).
+        :param list_type_: The expected type of the lists this component will join (e.g., list[ChatMessage]).
             If specified, all input lists must conform to this type. If None, the component defaults to handling
             lists of any type including mixed types.
         """
@@ -77,9 +76,9 @@ class ListJoiner:
         if list_type_ is not None:
             component.set_output_types(self, values=list_type_)
         else:
-            component.set_output_types(self, values=List[Any])
+            component.set_output_types(self, values=list[Any])
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -90,7 +89,7 @@ class ListJoiner:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ListJoiner":
+    def from_dict(cls, data: dict[str, Any]) -> "ListJoiner":
         """
         Deserializes the component from a dictionary.
 
@@ -102,7 +101,7 @@ class ListJoiner:
             data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])
         return default_from_dict(cls, data)
 
-    def run(self, values: Variadic[List[Any]]) -> Dict[str, List[Any]]:
+    def run(self, values: Variadic[list[Any]]) -> dict[str, list[Any]]:
         """
         Joins multiple lists into a single flat list.
 

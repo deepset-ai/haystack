@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add `guess_mime_type` parameter to `Bytestream.from_file_path()`

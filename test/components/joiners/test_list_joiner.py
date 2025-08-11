@@ -19,6 +19,11 @@ from haystack.utils.auth import Secret
 
 class TestListJoiner:
     def test_init(self):
+        joiner = ListJoiner(list[ChatMessage])
+        assert isinstance(joiner, ListJoiner)
+        assert joiner.list_type_ == list[ChatMessage]
+
+    def test_init_typing_list(self):
         joiner = ListJoiner(List[ChatMessage])
         assert isinstance(joiner, ListJoiner)
         assert joiner.list_type_ == List[ChatMessage]
@@ -32,6 +37,14 @@ class TestListJoiner:
         }
 
     def test_to_dict_non_default(self):
+        joiner = ListJoiner(list[ChatMessage])
+        data = joiner.to_dict()
+        assert data == {
+            "type": "haystack.components.joiners.list_joiner.ListJoiner",
+            "init_parameters": {"list_type_": "list[haystack.dataclasses.chat_message.ChatMessage]"},
+        }
+
+    def test_to_dict_non_default_typing_list(self):
         joiner = ListJoiner(List[ChatMessage])
         data = joiner.to_dict()
         assert data == {
@@ -48,6 +61,15 @@ class TestListJoiner:
     def test_from_dict_non_default(self):
         data = {
             "type": "haystack.components.joiners.list_joiner.ListJoiner",
+            "init_parameters": {"list_type_": "list[haystack.dataclasses.chat_message.ChatMessage]"},
+        }
+        list_joiner = ListJoiner.from_dict(data)
+        assert isinstance(list_joiner, ListJoiner)
+        assert list_joiner.list_type_ == list[ChatMessage]
+
+    def test_from_dict_non_default_typing_list(self):
+        data = {
+            "type": "haystack.components.joiners.list_joiner.ListJoiner",
             "init_parameters": {"list_type_": "typing.List[haystack.dataclasses.chat_message.ChatMessage]"},
         }
         list_joiner = ListJoiner.from_dict(data)
@@ -55,23 +77,23 @@ class TestListJoiner:
         assert list_joiner.list_type_ == List[ChatMessage]
 
     def test_empty_list(self):
-        joiner = ListJoiner(List[ChatMessage])
+        joiner = ListJoiner(list[ChatMessage])
         result = joiner.run([])
         assert result == {"values": []}
 
     def test_list_of_empty_lists(self):
-        joiner = ListJoiner(List[ChatMessage])
+        joiner = ListJoiner(list[ChatMessage])
         result = joiner.run([[], []])
         assert result == {"values": []}
 
     def test_single_list_of_chat_messages(self):
-        joiner = ListJoiner(List[ChatMessage])
+        joiner = ListJoiner(list[ChatMessage])
         messages = [ChatMessage.from_user("Hello"), ChatMessage.from_assistant("Hi there")]
         result = joiner.run([messages])
         assert result == {"values": messages}
 
     def test_multiple_lists_of_chat_messages(self):
-        joiner = ListJoiner(List[ChatMessage])
+        joiner = ListJoiner(list[ChatMessage])
         messages1 = [ChatMessage.from_user("Hello")]
         messages2 = [ChatMessage.from_assistant("Hi there")]
         messages3 = [ChatMessage.from_system("System message")]
@@ -79,7 +101,7 @@ class TestListJoiner:
         assert result == {"values": messages1 + messages2 + messages3}
 
     def test_list_of_generated_answers(self):
-        joiner = ListJoiner(List[GeneratedAnswer])
+        joiner = ListJoiner(list[GeneratedAnswer])
         answers1 = [GeneratedAnswer(query="q1", data="a1", meta={}, documents=[Document(content="d1")])]
         answers2 = [GeneratedAnswer(query="q2", data="a2", meta={}, documents=[Document(content="d2")])]
         result = joiner.run([answers1, answers2])
@@ -91,7 +113,7 @@ class TestListJoiner:
         assert result == {"values": ["a", "b", 1, 2]}
 
     def test_mixed_empty_and_non_empty_lists(self):
-        joiner = ListJoiner(List[ChatMessage])
+        joiner = ListJoiner(list[ChatMessage])
         messages = [ChatMessage.from_user("Hello")]
         result = joiner.run([messages, [], messages])
         assert result == {"values": messages + messages}
@@ -107,7 +129,7 @@ class TestListJoiner:
         assert pipe is not None
 
     def test_pipeline_connection_validation_list_chatmessage(self):
-        joiner = ListJoiner(List[ChatMessage])
+        joiner = ListJoiner(list[ChatMessage])
         llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("test-api-key"))
         pipe = Pipeline()
         pipe.add_component("joiner", joiner)
@@ -126,7 +148,7 @@ class TestListJoiner:
 
     def test_pipeline_bad_connection_different_list_types(self):
         with pytest.raises(PipelineConnectError):
-            joiner = ListJoiner(List[str])
+            joiner = ListJoiner(list[str])
             llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("test-api-key"))
             pipe = Pipeline()
             pipe.add_component("joiner", joiner)

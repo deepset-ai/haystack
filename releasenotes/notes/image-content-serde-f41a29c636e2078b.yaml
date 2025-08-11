@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added serialization/deserialization methods for `TextContent` and `ImageContent` parts of `ChatMessage`.

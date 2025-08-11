@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Literal, Optional, Set, Union
+from typing import Any, Literal, Optional, Union
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -141,8 +141,8 @@ class PromptBuilder:
     def __init__(
         self,
         template: str,
-        required_variables: Optional[Union[List[str], Literal["*"]]] = None,
-        variables: Optional[List[str]] = None,
+        required_variables: Optional[Union[list[str], Literal["*"]]] = None,
+        variables: Optional[list[str]] = None,
     ):
         """
         Constructs a PromptBuilder component.
@@ -198,7 +198,7 @@ class PromptBuilder:
             else:
                 component.set_input_type(self, var, Any, "")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of the component.
 
@@ -210,7 +210,7 @@ class PromptBuilder:
         )
 
     @component.output_types(prompt=str)
-    def run(self, template: Optional[str] = None, template_variables: Optional[Dict[str, Any]] = None, **kwargs):
+    def run(self, template: Optional[str] = None, template_variables: Optional[dict[str, Any]] = None, **kwargs):
         """
         Renders the prompt template with the provided variables.
 
@@ -244,7 +244,7 @@ class PromptBuilder:
         result = compiled_template.render(template_variables_combined)
         return {"prompt": result}
 
-    def _validate_variables(self, provided_variables: Set[str]):
+    def _validate_variables(self, provided_variables: set[str]):
         """
         Checks if all the required template variables are provided.
 

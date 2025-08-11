@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -37,7 +37,7 @@ def sample_document_store(sample_docs):
 
 class TestFilterRetriever:
     @classmethod
-    def _documents_equal(cls, docs1: List[Document], docs2: List[Document]) -> bool:
+    def _documents_equal(cls, docs1: list[Document], docs2: list[Document]) -> bool:
         # # Order doesn't matter; we sort before comparing
         docs1.sort(key=lambda x: x.id)
         docs2.sort(key=lambda x: x.id)
@@ -127,7 +127,7 @@ class TestFilterRetriever:
 
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
-        result: Dict[str, Any] = pipeline.run(data={"retriever": {}})
+        result: dict[str, Any] = pipeline.run(data={"retriever": {}})
 
         assert result
         assert "retriever" in result
@@ -135,7 +135,7 @@ class TestFilterRetriever:
         assert results_docs
         assert TestFilterRetriever._documents_equal(results_docs, sample_docs["de_docs"])
 
-        result: Dict[str, Any] = pipeline.run(
+        result: dict[str, Any] = pipeline.run(
             data={"retriever": {"filters": {"field": "lang", "operator": "==", "value": "en"}}}
         )
 

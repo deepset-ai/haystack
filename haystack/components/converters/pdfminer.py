@@ -6,7 +6,7 @@ import io
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Iterator, Optional, Union
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -130,7 +130,7 @@ class PDFMinerToDocument:
 
         return delimited_pages
 
-    def detect_undecoded_cid_characters(self, text: str) -> Dict[str, Any]:
+    def detect_undecoded_cid_characters(self, text: str) -> dict[str, Any]:
         """
         Look for character sequences of CID, i.e.: characters that haven't been properly decoded from their CID format.
 
@@ -156,11 +156,11 @@ class PDFMinerToDocument:
 
         return {"total_chars": total_chars, "cid_chars": cid_chars, "percentage": round(percentage, 2)}
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(
         self,
-        sources: List[Union[str, Path, ByteStream]],
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
     ):
         """
         Converts PDF files to Documents.

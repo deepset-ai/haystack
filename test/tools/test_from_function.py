@@ -8,6 +8,7 @@ import pytest
 
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema, create_tool_from_function, tool
+from haystack.tools.tool import Tool
 
 
 def function_with_docstring(city: str) -> str:
@@ -114,6 +115,25 @@ def test_tool_decorator():
     }
     assert callable(get_weather.function)
     assert get_weather.function("Berlin") == "Weather report for Berlin: 20°C, sunny"
+
+
+# Test function for decorator deserialization
+@tool
+def weather_tool_with_decorator(city: str) -> str:
+    """Get weather report for a city."""
+    return f"Weather report for {city}: 20°C, sunny"
+
+
+def test_tool_decorator_deserialization():
+    serialized = weather_tool_with_decorator.to_dict()
+    deserialized = Tool.from_dict(serialized)
+    assert deserialized.name == "weather_tool_with_decorator"
+    assert deserialized.description == "Get weather report for a city."
+    assert deserialized.parameters == {
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+    }
 
 
 def test_tool_decorator_with_annotated_params():

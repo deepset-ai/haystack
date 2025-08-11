@@ -8,7 +8,10 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
-def test_extractive_qa_pipeline(tmp_path):
+def test_extractive_qa_pipeline(tmp_path, monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
     # Create the pipeline
     qa_pipeline = Pipeline()
     qa_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")

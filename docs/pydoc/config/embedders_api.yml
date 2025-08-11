@@ -11,6 +11,7 @@ loaders:
         "openai_text_embedder",
         "sentence_transformers_document_embedder",
         "sentence_transformers_text_embedder",
+        "image/sentence_transformers_doc_image_embedder",
       ]
     ignore_when_discovered: ["__init__"]
 processors:

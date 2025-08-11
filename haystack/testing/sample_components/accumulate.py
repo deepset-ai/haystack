@@ -5,7 +5,7 @@
 import builtins
 import sys
 from importlib import import_module
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 
 from haystack.core.component import component
 from haystack.core.errors import ComponentDeserializationError
@@ -37,9 +37,9 @@ class Accumulate:
             import it at need. This is also a parameter.
         """
         self.state = 0
-        self.function: Callable = _default_function if function is None else function  # type: ignore
+        self.function: Callable = _default_function if function is None else function
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Converts the component to a dictionary"""
         module = sys.modules.get(self.function.__module__)
         if not module:
@@ -52,7 +52,7 @@ class Accumulate:
         return default_to_dict(self, function=function_name)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Accumulate":
+    def from_dict(cls, data: dict[str, Any]) -> "Accumulate":
         """Loads the component from a dictionary"""
         if "type" not in data:
             raise ComponentDeserializationError("Missing 'type' in component serialization data")

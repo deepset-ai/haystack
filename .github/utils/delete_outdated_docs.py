@@ -3,7 +3,6 @@ import base64
 import os
 import re
 from pathlib import Path
-from typing import List
 
 import requests
 import yaml
@@ -30,7 +29,7 @@ def create_headers(version: str):
     return {"authorization": f"Basic {readme_token()}", "x-readme-version": version}
 
 
-def get_docs_in_category(category_slug: str, version: str) -> List[str]:
+def get_docs_in_category(category_slug: str, version: str) -> list[str]:
     """
     Returns the slugs of all documents in a category for the specific version.
     """

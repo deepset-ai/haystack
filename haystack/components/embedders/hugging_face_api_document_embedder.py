@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from dataclasses import replace
+from typing import Any, Optional, Union
 
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
@@ -92,7 +93,7 @@ class HuggingFaceAPIDocumentEmbedder:
     def __init__(
         self,
         api_type: Union[HFEmbeddingAPIType, str],
-        api_params: Dict[str, str],
+        api_params: dict[str, str],
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
@@ -100,7 +101,7 @@ class HuggingFaceAPIDocumentEmbedder:
         normalize: Optional[bool] = False,
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
     ):  # pylint: disable=too-many-positional-arguments
         """
@@ -168,7 +169,7 @@ class HuggingFaceAPIDocumentEmbedder:
             msg = f"Unknown api_type {api_type}"
             raise ValueError(msg)
 
-        client_args: Dict[str, Any] = {"model": model_or_url, "token": token.resolve_value() if token else None}
+        client_args: dict[str, Any] = {"model": model_or_url, "token": token.resolve_value() if token else None}
 
         self.api_type = api_type
         self.api_params = api_params
@@ -184,7 +185,7 @@ class HuggingFaceAPIDocumentEmbedder:
         self._client = InferenceClient(**client_args)
         self._async_client = AsyncInferenceClient(**client_args)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -207,7 +208,7 @@ class HuggingFaceAPIDocumentEmbedder:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "HuggingFaceAPIDocumentEmbedder":
+    def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceAPIDocumentEmbedder":
         """
         Deserializes the component from a dictionary.
 
@@ -219,7 +220,7 @@ class HuggingFaceAPIDocumentEmbedder:
         deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
-    def _prepare_texts_to_embed(self, documents: List[Document]) -> List[str]:
+    def _prepare_texts_to_embed(self, documents: list[Document]) -> list[str]:
         """
         Prepare the texts to embed by concatenating the Document text with the metadata fields to embed.
         """
@@ -239,7 +240,7 @@ class HuggingFaceAPIDocumentEmbedder:
     @staticmethod
     def _adjust_api_parameters(
         truncate: Optional[bool], normalize: Optional[bool], api_type: HFEmbeddingAPIType
-    ) -> Tuple[Optional[bool], Optional[bool]]:
+    ) -> tuple[Optional[bool], Optional[bool]]:
         """
         Adjust the truncate and normalize parameters based on the API type.
         """
@@ -254,13 +255,13 @@ class HuggingFaceAPIDocumentEmbedder:
                 normalize = None
         return truncate, normalize
 
-    def _embed_batch(self, texts_to_embed: List[str], batch_size: int) -> List[List[float]]:
+    def _embed_batch(self, texts_to_embed: list[str], batch_size: int) -> list[list[float]]:
         """
         Embed a list of texts in batches.
         """
         truncate, normalize = self._adjust_api_parameters(self.truncate, self.normalize, self.api_type)
 
-        all_embeddings: List = []
+        all_embeddings: list = []
         for i in tqdm(
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
@@ -280,13 +281,13 @@ class HuggingFaceAPIDocumentEmbedder:
 
         return all_embeddings
 
-    async def _embed_batch_async(self, texts_to_embed: List[str], batch_size: int) -> List[List[float]]:
+    async def _embed_batch_async(self, texts_to_embed: list[str], batch_size: int) -> list[list[float]]:
         """
         Embed a list of texts in batches asynchronously.
         """
         truncate, normalize = self._adjust_api_parameters(self.truncate, self.normalize, self.api_type)
 
-        all_embeddings: List = []
+        all_embeddings: list = []
         for i in async_tqdm(
             range(0, len(texts_to_embed), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
@@ -306,8 +307,8 @@ class HuggingFaceAPIDocumentEmbedder:
 
         return all_embeddings
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]):
         """
         Embeds a list of documents.
 
@@ -328,13 +329,14 @@ class HuggingFaceAPIDocumentEmbedder:
 
         embeddings = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
+        new_documents = []
         for doc, emb in zip(documents, embeddings):
-            doc.embedding = emb
+            new_documents.append(replace(doc, embedding=emb))
 
-        return {"documents": documents}
+        return {"documents": new_documents}
 
-    @component.output_types(documents=List[Document])
-    async def run_async(self, documents: List[Document]):
+    @component.output_types(documents=list[Document])
+    async def run_async(self, documents: list[Document]):
         """
         Embeds a list of documents asynchronously.
 
@@ -355,7 +357,8 @@ class HuggingFaceAPIDocumentEmbedder:
 
         embeddings = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
+        new_documents = []
         for doc, emb in zip(documents, embeddings):
-            doc.embedding = emb
+            new_documents.append(replace(doc, embedding=emb))
 
-        return {"documents": documents}
+        return {"documents": new_documents}

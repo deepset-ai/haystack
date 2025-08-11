@@ -1,0 +1,27 @@
+---
+features:
+  - |
+    `ChatPromptBuilder` now supports special string templates in addition to a list of `ChatMessage` objects.
+
+    This new format is more flexible and allows to include structured parts like images in the templatized
+    `ChatMessage`.
+
+    ```python
+    from haystack.components.builders import ChatPromptBuilder
+    from haystack.dataclasses.chat_message import ImageContent
+
+    template = """
+    {% message role="user" %}
+    Hello! I am {{user_name}}. What's the difference between the following images?
+    {% for image in images %}
+    {{ image | templatize_part }}
+    {% endfor %}
+    {% endmessage %}
+    """
+
+    images=[ImageContent.from_file_path("apple-fruit.jpg"),
+            ImageContent.from_file_path("apple-logo.jpg")]
+
+    builder = ChatPromptBuilder(template=template)
+    builder.run(user_name="John", images=images)
+    ```

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List
+from typing import Any
 
 from haystack.core.component import component
 
@@ -35,8 +35,8 @@ class AnswerExactMatchEvaluator:
     ```
     """
 
-    @component.output_types(individual_scores=List[int], score=float)
-    def run(self, ground_truth_answers: List[str], predicted_answers: List[str]) -> Dict[str, Any]:
+    @component.output_types(individual_scores=list[int], score=float)
+    def run(self, ground_truth_answers: list[str], predicted_answers: list[str]) -> dict[str, Any]:
         """
         Run the AnswerExactMatchEvaluator on the given inputs.
 

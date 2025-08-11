@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Add the init parameter `skip_empty_documents` to the `DocumentSplitter` component. The default value is True.
+    Setting it to False can be useful when downstream components in the Pipeline (like `LLMDocumentContentExtractor`)
+    can extract text from non-textual documents.

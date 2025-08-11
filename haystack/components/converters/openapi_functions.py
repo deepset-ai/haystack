@@ -5,7 +5,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 import yaml
 
@@ -52,8 +52,8 @@ class OpenAPIServiceToFunctions:
         """
         openapi_imports.check()
 
-    @component.output_types(functions=List[Dict[str, Any]], openapi_specs=List[Dict[str, Any]])
-    def run(self, sources: List[Union[str, Path, ByteStream]]) -> Dict[str, Any]:
+    @component.output_types(functions=list[dict[str, Any]], openapi_specs=list[dict[str, Any]])
+    def run(self, sources: list[Union[str, Path, ByteStream]]) -> dict[str, Any]:
         """
         Converts OpenAPI definitions in OpenAI function calling format.
 
@@ -70,7 +70,7 @@ class OpenAPIServiceToFunctions:
         :raises ValueError:
             If the source type is not recognized or no functions are found in the OpenAPI definitions.
         """
-        all_extracted_fc_definitions: List[Dict[str, Any]] = []
+        all_extracted_fc_definitions: list[dict[str, Any]] = []
         all_openapi_specs = []
         for source in sources:
             openapi_spec_content = None
@@ -101,7 +101,7 @@ class OpenAPIServiceToFunctions:
             if openapi_spec_content:
                 try:
                     service_openapi_spec = self._parse_openapi_spec(openapi_spec_content)
-                    functions: List[Dict[str, Any]] = self._openapi_to_functions(service_openapi_spec)
+                    functions: list[dict[str, Any]] = self._openapi_to_functions(service_openapi_spec)
                     all_extracted_fc_definitions.extend(functions)
                     all_openapi_specs.append(service_openapi_spec)
                 except Exception as e:
@@ -114,7 +114,7 @@ class OpenAPIServiceToFunctions:
 
         return {"functions": all_extracted_fc_definitions, "openapi_specs": all_openapi_specs}
 
-    def _openapi_to_functions(self, service_openapi_spec: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _openapi_to_functions(self, service_openapi_spec: dict[str, Any]) -> list[dict[str, Any]]:
         """
         OpenAPI to OpenAI function conversion.
 
@@ -122,10 +122,10 @@ class OpenAPIServiceToFunctions:
         suitable for OpenAI function calling.
 
         :param service_openapi_spec: The OpenAPI specification from which functions are to be extracted.
-        :type service_openapi_spec: Dict[str, Any]
+        :type service_openapi_spec: dict[str, Any]
         :return: A list of dictionaries, each representing a function. Each dictionary includes the function's
                  name, description, and a schema of its parameters.
-        :rtype: List[Dict[str, Any]]
+        :rtype: list[dict[str, Any]]
         """
 
         # Doesn't enforce rigid spec validation because that would require a lot of dependencies
@@ -142,7 +142,7 @@ class OpenAPIServiceToFunctions:
                 f"at least {OpenAPIServiceToFunctions.MIN_REQUIRED_OPENAPI_SPEC_VERSION}."
             )
 
-        functions: List[Dict[str, Any]] = []
+        functions: list[dict[str, Any]] = []
         for paths in service_openapi_spec["paths"].values():
             for path_spec in paths.values():
                 function_dict = self._parse_endpoint_spec(path_spec)
@@ -150,7 +150,7 @@ class OpenAPIServiceToFunctions:
                     functions.append(function_dict)
         return functions
 
-    def _parse_endpoint_spec(self, resolved_spec: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _parse_endpoint_spec(self, resolved_spec: dict[str, Any]) -> Optional[dict[str, Any]]:
         if not isinstance(resolved_spec, dict):
             logger.warning("Invalid OpenAPI spec format provided. Could not extract function.")
             return {}
@@ -158,7 +158,7 @@ class OpenAPIServiceToFunctions:
         function_name = resolved_spec.get("operationId")
         description = resolved_spec.get("description") or resolved_spec.get("summary", "")
 
-        schema: Dict[str, Any] = {"type": "object", "properties": {}}
+        schema: dict[str, Any] = {"type": "object", "properties": {}}
 
         # requestBody section
         req_body_schema = (
@@ -191,8 +191,8 @@ class OpenAPIServiceToFunctions:
             return {}
 
     def _parse_property_attributes(
-        self, property_schema: Dict[str, Any], include_attributes: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+        self, property_schema: dict[str, Any], include_attributes: Optional[list[str]] = None
+    ) -> dict[str, Any]:
         """
         Parses the attributes of a property schema.
 
@@ -229,7 +229,7 @@ class OpenAPIServiceToFunctions:
 
         return parsed_schema
 
-    def _parse_openapi_spec(self, content: str) -> Dict[str, Any]:
+    def _parse_openapi_spec(self, content: str) -> dict[str, Any]:
         """
         Parses OpenAPI specification content, supporting both JSON and YAML formats.
 

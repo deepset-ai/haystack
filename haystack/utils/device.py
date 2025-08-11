@@ -5,7 +5,7 @@
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 from haystack.lazy_imports import LazyImport
 
@@ -162,7 +162,7 @@ class DeviceMap:
         Dictionary mapping strings to devices.
     """
 
-    mapping: Dict[str, Device] = field(default_factory=dict, hash=False)
+    mapping: dict[str, Device] = field(default_factory=dict, hash=False)
 
     def __getitem__(self, key: str) -> Device:
         return self.mapping[key]
@@ -179,7 +179,7 @@ class DeviceMap:
     def __iter__(self):
         return iter(self.mapping.items())
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """
         Serialize the mapping to a JSON-serializable dictionary.
 
@@ -202,7 +202,7 @@ class DeviceMap:
             return next(iter(self.mapping.values()))
 
     @staticmethod
-    def from_dict(dict: Dict[str, str]) -> "DeviceMap":  # noqa:A002
+    def from_dict(dict: dict[str, str]) -> "DeviceMap":  # noqa:A002
         """
         Create a generic device map from a JSON-serialized dictionary.
 
@@ -217,7 +217,7 @@ class DeviceMap:
         return DeviceMap(mapping)
 
     @staticmethod
-    def from_hf(hf_device_map: Dict[str, Union[int, str, "torch.device"]]) -> "DeviceMap":
+    def from_hf(hf_device_map: dict[str, Union[int, str, "torch.device"]]) -> "DeviceMap":
         """
         Create a generic device map from a HuggingFace device map.
 
@@ -364,7 +364,7 @@ class ComponentDevice:
         else:
             return -1
 
-    def to_hf(self) -> Union[Union[int, str], Dict[str, Union[int, str]]]:
+    def to_hf(self) -> Union[Union[int, str], dict[str, Union[int, str]]]:
         """
         Convert the component device representation to HuggingFace format.
 
@@ -386,7 +386,7 @@ class ComponentDevice:
         assert self._multiple_devices is not None
         return {key: convert_device(device, gpu_id_only=True) for key, device in self._multiple_devices.mapping.items()}
 
-    def update_hf_kwargs(self, hf_kwargs: Dict[str, Any], *, overwrite: bool) -> Dict[str, Any]:
+    def update_hf_kwargs(self, hf_kwargs: dict[str, Any], *, overwrite: bool) -> dict[str, Any]:
         """
         Convert the component device representation to HuggingFace format.
 
@@ -455,7 +455,7 @@ class ComponentDevice:
 
         return device
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the component device representation to a JSON-serializable dictionary.
 
@@ -471,7 +471,7 @@ class ComponentDevice:
             assert False
 
     @classmethod
-    def from_dict(cls, dict: Dict[str, Any]) -> "ComponentDevice":  # noqa:A002
+    def from_dict(cls, dict: dict[str, Any]) -> "ComponentDevice":  # noqa:A002
         """
         Create a component device representation from a JSON-serialized dictionary.
 
@@ -528,7 +528,7 @@ def _get_default_device() -> Device:
         return Device.cpu()
 
 
-def _split_device_string(string: str) -> Tuple[str, Optional[int]]:
+def _split_device_string(string: str) -> tuple[str, Optional[int]]:
     """
     Split a device string into device type and device id.
 

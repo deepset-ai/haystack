@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Improved validation in the `ChatMessage.from_user` class method. The method now raises an error if neither
+    `text` nor `content_parts` are provided. It does not raise an error if `text` is an empty string.

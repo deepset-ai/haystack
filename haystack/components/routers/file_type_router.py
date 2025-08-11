@@ -6,20 +6,16 @@ import mimetypes
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 
-CUSTOM_MIMETYPES = {
-    # we add markdown because it is not added by the mimetypes module
-    # see https://github.com/python/cpython/pull/17995
-    ".md": "text/markdown",
-    ".markdown": "text/markdown",
-    # we add msg because it is not added by the mimetypes module
-    ".msg": "application/vnd.ms-outlook",
-}
+from haystack.utils.misc import _guess_mime_type  # ruff: isort: skip
+
+# We import CUSTOM_MIMETYPES here to prevent breaking change from moving to haystack.utils.misc
+from haystack.utils.misc import CUSTOM_MIMETYPES  # pylint: disable=unused-import
 
 
 @component
@@ -60,7 +56,7 @@ class FileTypeRouter:
     ```
     """
 
-    def __init__(self, mime_types: List[str], additional_mimetypes: Optional[Dict[str, str]] = None):
+    def __init__(self, mime_types: list[str], additional_mimetypes: Optional[dict[str, str]] = None):
         """
         Initialize the FileTypeRouter component.
 
@@ -88,17 +84,17 @@ class FileTypeRouter:
                 raise ValueError(f"Invalid regex pattern '{mime_type}'.")
             self.mime_type_patterns.append(pattern)
 
-        # the actual output type is List[Union[Path, ByteStream]],
+        # the actual output type is list[Union[Path, ByteStream]],
         # but this would cause PipelineConnectError with Converters
         component.set_output_types(
             self,
-            unclassified=List[Union[str, Path, ByteStream]],
-            **dict.fromkeys(mime_types, List[Union[str, Path, ByteStream]]),
+            unclassified=list[Union[str, Path, ByteStream]],
+            **dict.fromkeys(mime_types, list[Union[str, Path, ByteStream]]),
         )
         self.mime_types = mime_types
         self._additional_mimetypes = additional_mimetypes
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -108,7 +104,7 @@ class FileTypeRouter:
         return default_to_dict(self, mime_types=self.mime_types, additional_mimetypes=self._additional_mimetypes)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FileTypeRouter":
+    def from_dict(cls, data: dict[str, Any]) -> "FileTypeRouter":
         """
         Deserializes the component from a dictionary.
 
@@ -121,9 +117,9 @@ class FileTypeRouter:
 
     def run(
         self,
-        sources: List[Union[str, Path, ByteStream]],
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-    ) -> Dict[str, List[Union[ByteStream, Path]]]:
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+    ) -> dict[str, list[Union[ByteStream, Path]]]:
         """
         Categorize files or byte streams according to their MIME types.
 
@@ -149,7 +145,7 @@ class FileTypeRouter:
                 source = Path(source)
 
             if isinstance(source, Path):
-                mime_type = self._get_mime_type(source)
+                mime_type = _guess_mime_type(source)
             elif isinstance(source, ByteStream):
                 mime_type = source.mime_type
             else:
@@ -171,16 +167,3 @@ class FileTypeRouter:
                 mime_types["unclassified"].append(source)
 
         return dict(mime_types)
-
-    def _get_mime_type(self, path: Path) -> Optional[str]:
-        """
-        Get the MIME type of the provided file path.
-
-        :param path: The file path to get the MIME type for.
-
-        :returns: The MIME type of the provided file path, or `None` if the MIME type cannot be determined.
-        """
-        extension = path.suffix.lower()
-        mime_type = mimetypes.guess_type(path.as_posix())[0]
-        # lookup custom mappings if the mime type is not found
-        return CUSTOM_MIMETYPES.get(extension, mime_type)

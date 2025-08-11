@@ -6,7 +6,7 @@ import io
 import os
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -19,7 +19,7 @@ with LazyImport("Run 'pip install tika'") as tika_import:
 logger = logging.getLogger(__name__)
 
 
-class XHTMLParser(HTMLParser):
+class XHTMLParser(HTMLParser):  # pylint: disable=abstract-method
     """
     Custom parser to extract pages from Tika XHTML content.
     """
@@ -28,9 +28,9 @@ class XHTMLParser(HTMLParser):
         super().__init__()
         self.ingest = True
         self.page = ""
-        self.pages: List[str] = []
+        self.pages: list[str] = []
 
-    def handle_starttag(self, tag: str, attrs: List[tuple]):
+    def handle_starttag(self, tag: str, attrs: list[tuple]):
         """Identify the start of a page div."""
         if tag == "div" and any(attr == "class" and value == "page" for attr, value in attrs):
             self.ingest = True
@@ -88,11 +88,11 @@ class TikaDocumentConverter:
         self.tika_url = tika_url
         self.store_full_path = store_full_path
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(
         self,
-        sources: List[Union[str, Path, ByteStream]],
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
     ):
         """
         Converts files to Documents.
