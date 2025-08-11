@@ -109,23 +109,20 @@ class TestToolInvoker:
         assert invoker.raise_on_failure
         assert not invoker.convert_result_to_json_string
 
-    def test_init_with_toolset(self, tool_set):
-        tool_invoker = ToolInvoker(tools=tool_set)
-        assert tool_invoker.tools == tool_set
-        assert tool_invoker._tools_with_names == {"weather_tool": tool_set.tools[0], "addition_tool": tool_set.tools[1]}
+    def test_validate_and_prepare_tools(self, weather_tool, faulty_tool):
+        result = ToolInvoker._validate_and_prepare_tools([weather_tool, faulty_tool])
+        assert result == {"weather_tool": weather_tool, "faulty_tool": faulty_tool}
 
-    def test_init_fails_wo_tools(self):
-        with pytest.raises(ValueError):
-            ToolInvoker(tools=[])
+        toolset = Toolset([weather_tool, faulty_tool])
+        result = ToolInvoker._validate_and_prepare_tools(toolset)
+        assert result == {"weather_tool": weather_tool, "faulty_tool": faulty_tool}
 
-    def test_init_fails_with_duplicate_tool_names(self, weather_tool, faulty_tool):
+    def test_validate_and_prepare_tools_validation_failures(self, weather_tool):
         with pytest.raises(ValueError):
-            ToolInvoker(tools=[weather_tool, weather_tool])
+            ToolInvoker._validate_and_prepare_tools([])
 
-        new_tool = faulty_tool
-        new_tool.name = "weather_tool"
         with pytest.raises(ValueError):
-            ToolInvoker(tools=[weather_tool, new_tool])
+            ToolInvoker._validate_and_prepare_tools([weather_tool, weather_tool])
 
     def test_inject_state_args_no_tool_inputs(self, invoker):
         weather_tool = Tool(
