@@ -251,11 +251,13 @@ class TestLLMMetadataExtractor:
         assert failed_doc_none.id == doc_with_none_content.id
         assert "metadata_extraction_error" in failed_doc_none.meta
         assert failed_doc_none.meta["metadata_extraction_error"] == "Document has no content, skipping LLM call."
+        assert "metadata_extraction_error" not in doc_with_none_content.meta
 
         failed_doc_empty = result["failed_documents"][1]
         assert failed_doc_empty.id == doc_with_empty_content.id
         assert "metadata_extraction_error" in failed_doc_empty.meta
         assert failed_doc_empty.meta["metadata_extraction_error"] == "Document has no content, skipping LLM call."
+        assert "metadata_extraction_error" not in doc_with_empty_content.meta
 
         # Ensure no attempt was made to call the LLM
         mock_chat_generator.run.assert_not_called()
