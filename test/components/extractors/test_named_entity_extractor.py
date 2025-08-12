@@ -6,10 +6,12 @@
 # Spacy is not installed in the test environment to keep the CI fast.
 # We test the Spacy backend in e2e/pipelines/test_named_entity_extractor.py.
 
+from unittest.mock import patch
+
 import pytest
 
-from haystack import ComponentError, DeserializationError, Pipeline
-from haystack.components.extractors import NamedEntityExtractor, NamedEntityExtractorBackend
+from haystack import ComponentError, DeserializationError, Document, Pipeline
+from haystack.components.extractors import NamedEntityAnnotation, NamedEntityExtractor, NamedEntityExtractorBackend
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 
@@ -132,3 +134,47 @@ def test_named_entity_extractor_serde_none_device():
     assert type(new_extractor._backend) == type(extractor._backend)
     assert new_extractor._backend.model_name == extractor._backend.model_name
     assert new_extractor._backend.device == extractor._backend.device
+
+
+def test_named_entity_extractor_run():
+    """Test the NamedEntityExtractor.run method with mocked model interaction."""
+    documents = [Document(content="My name is Clara and I live in Berkeley, California.")]
+
+    expected_annotations = [
+        [
+            NamedEntityAnnotation(entity="PER", start=11, end=16, score=0.95),
+            NamedEntityAnnotation(entity="LOC", start=31, end=39, score=0.88),
+            NamedEntityAnnotation(entity="LOC", start=41, end=51, score=0.92),
+        ]
+    ]
+
+    extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
+
+    with patch.object(extractor._backend, "annotate", return_value=expected_annotations) as mock_annotate:
+        with patch.object(type(extractor._backend), "initialized", property(lambda self: True)):
+            extractor._warmed_up = True
+
+            result = extractor.run(documents=documents, batch_size=2)
+
+            mock_annotate.assert_called_once_with(
+                ["My name is Clara and I live in Berkeley, California."], batch_size=2
+            )
+
+            assert "documents" in result
+            assert len(result["documents"]) == 1
+
+            assert isinstance(result["documents"][0], Document)
+            assert result["documents"][0].content == documents[0].content
+            assert "named_entities" in result["documents"][0].meta
+            assert result["documents"][0].meta["named_entities"] == expected_annotations[0]
+            assert "named_entities" not in documents[0].meta
+
+
+def test_named_entity_extractor_run_not_warmed_up():
+    """Test that run method raises error when not warmed up."""
+    extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
+
+    documents = [Document(content="Test document")]
+
+    with pytest.raises(RuntimeError, match="The component NamedEntityExtractor was not warmed up"):
+        extractor.run(documents=documents)
