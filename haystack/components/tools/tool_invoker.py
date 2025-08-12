@@ -207,7 +207,7 @@ class ToolInvoker:
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
 
-        self._tools_with_names = ToolInvoker._validate_and_prepare_tools(tools)
+        self._tools_with_names = self._validate_and_prepare_tools(tools)
 
     @staticmethod
     def _validate_and_prepare_tools(tools: Union[list[Tool], Toolset]) -> dict[str, Tool]:
@@ -418,6 +418,7 @@ class ToolInvoker:
 
     def _prepare_tool_call_params(
         self,
+        *,
         messages_with_tool_calls: list[ChatMessage],
         state: State,
         streaming_callback: Optional[StreamingCallbackT],
@@ -530,7 +531,11 @@ class ToolInvoker:
 
         # 1) Collect all tool calls and their parameters for parallel execution
         tool_calls, tool_call_params, error_messages = self._prepare_tool_call_params(
-            messages_with_tool_calls, state, streaming_callback, resolved_enable_streaming_passthrough, tools_with_names
+            messages_with_tool_calls=messages_with_tool_calls,
+            state=state,
+            streaming_callback=streaming_callback,
+            enable_streaming_passthrough=resolved_enable_streaming_passthrough,
+            tools_with_names=tools_with_names,
         )
         tool_messages.extend(error_messages)
 
@@ -539,7 +544,7 @@ class ToolInvoker:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 futures = []
                 for params in tool_call_params:
-                    future = executor.submit(ToolInvoker._execute_single_tool_call, **params)
+                    future = executor.submit(self._execute_single_tool_call, **params)
                     futures.append(future)
 
                 # 3) Gather and process results: handle errors and merge outputs into state
@@ -602,7 +607,7 @@ class ToolInvoker:
 
         :param tool_to_invoke: The Tool object that should be invoked.
         :param final_args: The final arguments to pass to the tool.
-        :returns: Either a ToolInvocationError or the actual tool result
+        :returns: Either a ToolInvocationError or the actual tool result.
         """
         try:
             tool_result = tool_to_invoke.invoke(**final_args)
@@ -685,7 +690,11 @@ class ToolInvoker:
 
         # 1) Collect all tool calls and their parameters for parallel execution
         tool_calls, tool_call_params, error_messages = self._prepare_tool_call_params(
-            messages_with_tool_calls, state, streaming_callback, resolved_enable_streaming_passthrough, tools_with_names
+            messages_with_tool_calls=messages_with_tool_calls,
+            state=state,
+            streaming_callback=streaming_callback,
+            enable_streaming_passthrough=resolved_enable_streaming_passthrough,
+            tools_with_names=tools_with_names,
         )
         tool_messages.extend(error_messages)
 
@@ -694,7 +703,7 @@ class ToolInvoker:
             tool_call_tasks = []
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 for params in tool_call_params:
-                    task = ToolInvoker.invoke_tool_safely(executor, **params)
+                    task = self.invoke_tool_safely(executor, **params)
                     tool_call_tasks.append(task)
 
                 # 3) Gather and process results: handle errors and merge outputs into state
