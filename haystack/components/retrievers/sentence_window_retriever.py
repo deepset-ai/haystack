@@ -214,13 +214,10 @@ class SentenceWindowRetriever:
         ):
             raise ValueError(f"The retrieved documents must have '{self.split_id_meta_field}' in their metadata.")
 
-        all_source_id_meta_fields_present = True
-        for doc in retrieved_documents:
-            for source_id_meta_field in self._source_id_meta_fields:
-                if source_id_meta_field not in doc.meta:
-                    all_source_id_meta_fields_present = False
-                    break
-        if not all_source_id_meta_fields_present and self.raise_on_missing_meta_fields:
+        if (
+            not all(field in doc.meta for doc in retrieved_documents for field in self._source_id_meta_fields)
+            and self.raise_on_missing_meta_fields
+        ):
             raise ValueError(f"The retrieved documents must have '{self.source_id_meta_field}' in their metadata.")
 
         context_text = []

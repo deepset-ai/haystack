@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import random
+import re
 from unittest.mock import ANY
 
 import pytest
@@ -140,12 +141,32 @@ class TestSentenceWindowRetriever:
         docs = [
             Document(content="This is a text with some words. There is a ", meta={"id": "doc_0", "split_id": 0}),
             Document(
-                content="some words. There is a second sentence. And there is ", meta={"id": "doc_1", "split_id": 1}
+                content="some words. There is a second sentence. And there is ",
+                meta={"id": "doc_1", "split_id": 1, "source_id_test": "source1"},
             ),
         ]
         with pytest.raises(ValueError, match="The retrieved documents must have 'source_id_test' in their metadata."):
             retriever = SentenceWindowRetriever(
                 document_store=InMemoryDocumentStore(), window_size=3, source_id_meta_field="source_id_test"
+            )
+            retriever.run(retrieved_documents=docs)
+
+    def test_document_without_all_source_ids(self):
+        docs = [
+            Document(
+                content="These are words from the first section",
+                meta={"id": "doc_1", "split_id": 0, "section_id": "section1"},
+            ),
+            Document(
+                content="These are words from the second section, but missing section_id",
+                meta={"id": "doc_0", "split_id": 0},
+            ),
+        ]
+        with pytest.raises(
+            ValueError, match=re.escape("The retrieved documents must have '['id', 'section_id']' in their metadata.")
+        ):
+            retriever = SentenceWindowRetriever(
+                document_store=InMemoryDocumentStore(), window_size=3, source_id_meta_field=["id", "section_id"]
             )
             retriever.run(retrieved_documents=docs)
 
