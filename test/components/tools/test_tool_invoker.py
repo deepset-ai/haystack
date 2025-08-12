@@ -116,7 +116,7 @@ def faulty_invoker(faulty_tool):
     return ToolInvoker(tools=[faulty_tool], raise_on_failure=True, convert_result_to_json_string=False)
 
 
-class TestToolInvoker:
+class TestToolInvokerCore:
     def test_init(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool])
 
@@ -183,408 +183,8 @@ class TestToolInvoker:
         args = invoker._inject_state_args(tool=weather_tool, llm_args={"location": "Paris"}, state=state)
         assert args == {"location": "Paris"}
 
-    def test_run_with_streaming_callback(self, invoker):
-        streaming_callback_called = False
 
-        def streaming_callback(chunk: StreamingChunk) -> None:
-            nonlocal streaming_callback_called
-            streaming_callback_called = True
-
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        result = invoker.run(messages=[message], streaming_callback=streaming_callback)
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 1
-
-        # check we called the streaming callback
-        assert streaming_callback_called
-
-        tool_message = result["tool_messages"][0]
-        assert isinstance(tool_message, ChatMessage)
-        assert tool_message.is_from(ChatRole.TOOL)
-
-        assert tool_message.tool_call_results
-        tool_call_result = tool_message.tool_call_result
-
-        assert isinstance(tool_call_result, ToolCallResult)
-        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
-        assert tool_call_result.origin == tool_call
-        assert not tool_call_result.error
-
-    def test_run_with_streaming_callback_finish_reason(self, invoker):
-        streaming_chunks = []
-
-        def streaming_callback(chunk: StreamingChunk) -> None:
-            streaming_chunks.append(chunk)
-
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        result = invoker.run(messages=[message], streaming_callback=streaming_callback)
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 1
-
-        # Check that we received streaming chunks
-        assert len(streaming_chunks) >= 2  # At least one for tool result and one for finish reason
-
-        # The last chunk should have finish_reason set to "tool_call_results"
-        final_chunk = streaming_chunks[-1]
-        assert final_chunk.finish_reason == "tool_call_results"
-        assert final_chunk.meta["finish_reason"] == "tool_call_results"
-        assert final_chunk.content == ""
-
-    @pytest.mark.asyncio
-    async def test_run_async_with_streaming_callback(self, weather_tool):
-        streaming_callback_called = False
-
-        async def streaming_callback(chunk: StreamingChunk) -> None:
-            print(f"Streaming callback called with chunk: {chunk}")
-            nonlocal streaming_callback_called
-            streaming_callback_called = True
-
-        tool_invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True, convert_result_to_json_string=False)
-
-        tool_calls = [
-            ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
-            ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
-            ToolCall(tool_name="weather_tool", arguments={"location": "Rome"}),
-        ]
-
-        message = ChatMessage.from_assistant(tool_calls=tool_calls)
-
-        result = await tool_invoker.run_async(messages=[message], streaming_callback=streaming_callback)
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 3
-
-        for i, tool_message in enumerate(result["tool_messages"]):
-            assert isinstance(tool_message, ChatMessage)
-            assert tool_message.is_from(ChatRole.TOOL)
-
-            assert tool_message.tool_call_results
-            tool_call_result = tool_message.tool_call_result
-
-            assert isinstance(tool_call_result, ToolCallResult)
-            assert not tool_call_result.error
-            assert tool_call_result.origin == tool_calls[i]
-
-        # check we called the streaming callback
-        assert streaming_callback_called
-
-    @pytest.mark.asyncio
-    async def test_run_async_with_streaming_callback_finish_reason(self, weather_tool):
-        streaming_chunks = []
-
-        async def streaming_callback(chunk: StreamingChunk) -> None:
-            streaming_chunks.append(chunk)
-
-        tool_invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True, convert_result_to_json_string=False)
-
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        result = await tool_invoker.run_async(messages=[message], streaming_callback=streaming_callback)
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 1
-
-        # Check that we received streaming chunks
-        assert len(streaming_chunks) >= 2  # At least one for tool result and one for finish reason
-
-        # The last chunk should have finish_reason set to "tool_call_results"
-        final_chunk = streaming_chunks[-1]
-        assert final_chunk.finish_reason == "tool_call_results"
-        assert final_chunk.meta["finish_reason"] == "tool_call_results"
-        assert final_chunk.content == ""
-
-    def test_run_with_toolset(self, tool_set):
-        tool_invoker = ToolInvoker(tools=tool_set, raise_on_failure=True, convert_result_to_json_string=False)
-        tool_call = ToolCall(tool_name="addition_tool", arguments={"num1": 5, "num2": 3})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        result = tool_invoker.run(messages=[message])
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 1
-
-        tool_message = result["tool_messages"][0]
-        assert isinstance(tool_message, ChatMessage)
-        assert tool_message.is_from(ChatRole.TOOL)
-        assert tool_message.tool_call_results
-
-        tool_call_result = tool_message.tool_call_result
-        assert isinstance(tool_call_result, ToolCallResult)
-        assert tool_call_result.result == str(8)
-        assert tool_call_result.origin == tool_call
-        assert not tool_call_result.error
-
-    @pytest.mark.asyncio
-    async def test_run_async_with_toolset(self, tool_set):
-        tool_invoker = ToolInvoker(tools=tool_set, raise_on_failure=True, convert_result_to_json_string=False)
-        tool_calls = [
-            ToolCall(tool_name="addition_tool", arguments={"num1": 5, "num2": 3}),
-            ToolCall(tool_name="addition_tool", arguments={"num1": 5, "num2": 3}),
-            ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
-        ]
-        message = ChatMessage.from_assistant(tool_calls=tool_calls)
-
-        result = await tool_invoker.run_async(messages=[message])
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 3
-
-        for i, tool_message in enumerate(result["tool_messages"]):
-            assert isinstance(tool_message, ChatMessage)
-            assert tool_message.is_from(ChatRole.TOOL)
-
-            assert tool_message.tool_call_results
-            tool_call_result = tool_message.tool_call_result
-
-            assert isinstance(tool_call_result, ToolCallResult)
-            assert not tool_call_result.error
-            assert tool_call_result.origin == tool_calls[i]
-        assert not tool_call_result.error
-
-    def test_run_no_messages(self, invoker):
-        result = invoker.run(messages=[])
-        assert result["tool_messages"] == []
-
-    def test_run_no_tool_calls(self, invoker):
-        user_message = ChatMessage.from_user(text="Hello!")
-        assistant_message = ChatMessage.from_assistant(text="How can I help you?")
-
-        result = invoker.run(messages=[user_message, assistant_message])
-        assert result["tool_messages"] == []
-
-    def test_run_multiple_tool_calls(self, invoker):
-        tool_calls = [
-            ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
-            ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
-            ToolCall(tool_name="weather_tool", arguments={"location": "Rome"}),
-        ]
-        message = ChatMessage.from_assistant(tool_calls=tool_calls)
-
-        result = invoker.run(messages=[message])
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 3
-
-        for i, tool_message in enumerate(result["tool_messages"]):
-            assert isinstance(tool_message, ChatMessage)
-            assert tool_message.is_from(ChatRole.TOOL)
-
-            assert tool_message.tool_call_results
-            tool_call_result = tool_message.tool_call_result
-
-            assert isinstance(tool_call_result, ToolCallResult)
-            assert not tool_call_result.error
-            assert tool_call_result.origin == tool_calls[i]
-
-    def test_run_tool_calls_with_empty_args(self):
-        hello_world_tool = Tool(
-            name="hello_world",
-            description="A tool that returns a greeting.",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "Hello, world!",
-        )
-        invoker = ToolInvoker(tools=[hello_world_tool])
-
-        tool_call = ToolCall(tool_name="hello_world", arguments={})
-        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        result = invoker.run(messages=[tool_call_message])
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 1
-
-        tool_message = result["tool_messages"][0]
-        assert isinstance(tool_message, ChatMessage)
-        assert tool_message.is_from(ChatRole.TOOL)
-
-        assert tool_message.tool_call_results
-        tool_call_result = tool_message.tool_call_result
-
-        assert isinstance(tool_call_result, ToolCallResult)
-        assert not tool_call_result.error
-
-        assert tool_call_result.result == "Hello, world!"
-
-    def test_run_with_tools_override(self, weather_tool, faulty_tool):
-        """Tests that tools passed to run override the tools passed in init"""
-        invoker = ToolInvoker(tools=[faulty_tool])
-        assert invoker._tools_with_names == {"faulty_tool": faulty_tool}
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        result = invoker.run(messages=[message], tools=[weather_tool])
-
-        tool_message = result["tool_messages"][0]
-        tool_call_result = tool_message.tool_call_result
-        assert not tool_call_result.error
-        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
-        assert tool_call_result.origin == tool_call
-
-    @pytest.mark.asyncio
-    async def test_run_async_with_tools_override(self, weather_tool, faulty_tool):
-        """Tests that tools passed to run_async override the tools passed in init"""
-        invoker = ToolInvoker(tools=[faulty_tool])
-        assert invoker._tools_with_names == {"faulty_tool": faulty_tool}
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        result = await invoker.run_async(messages=[message], tools=[weather_tool])
-        tool_message = result["tool_messages"][0]
-        tool_call_result = tool_message.tool_call_result
-        assert not tool_call_result.error
-        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
-        assert tool_call_result.origin == tool_call
-
-    def test_run_state_merge_error_handled_gracefully(self, weather_tool_with_outputs_to_state):
-        class ProblematicState(State):
-            def set(self, key: str, value: Any, handler_override=None):
-                # Simulate a State error during merging
-                raise ValueError("State set operation failed")
-
-        state = ProblematicState(schema={"test_key": {"type": str}})
-        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=False)
-
-        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-        message = ChatMessage.from_assistant(tool_calls=tool_calls)
-
-        result = invoker.run(messages=[message], state=state)
-
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 1
-        assert result["tool_messages"][0].tool_call_results[0].error is True
-        assert (
-            "Failed to merge tool outputs from tool weather_tool into State"
-            in result["tool_messages"][0].tool_call_results[0].result
-        )
-
-    def test_run_state_merge_error_raises_when_configured(self, weather_tool_with_outputs_to_state):
-        class ProblematicState(State):
-            def set(self, key: str, value: Any, handler_override=None):
-                # Simulate a State error during merging
-                raise ValueError("State set operation failed")
-
-        state = ProblematicState(schema={"test_key": {"type": str}})
-        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=True)
-
-        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-        message = ChatMessage.from_assistant(tool_calls=tool_calls)
-
-        with pytest.raises(ToolOutputMergeError, match="Failed to merge"):
-            invoker.run(messages=[message], state=state)
-
-    @pytest.mark.asyncio
-    async def test_run_async_state_merge_error_handled_gracefully(self, weather_tool_with_outputs_to_state):
-        class ProblematicState(State):
-            def set(self, key: str, value: Any, handler_override=None):
-                # Simulate a State error during merging
-                raise ValueError("State set operation failed")
-
-        state = ProblematicState(schema={"test_key": {"type": str}})
-        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=False)
-
-        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-        message = ChatMessage.from_assistant(tool_calls=tool_calls)
-
-        result = await invoker.run_async(messages=[message], state=state)
-
-        assert "tool_messages" in result
-        assert len(result["tool_messages"]) == 1
-        assert result["tool_messages"][0].tool_call_results[0].error is True
-        assert (
-            "Failed to merge tool outputs from tool weather_tool into State"
-            in result["tool_messages"][0].tool_call_results[0].result
-        )
-
-    @pytest.mark.asyncio
-    async def test_run_async_state_merge_error_raises_when_configured(self, weather_tool_with_outputs_to_state):
-        class ProblematicState(State):
-            def set(self, key: str, value: Any, handler_override=None):
-                # Simulate a State error during merging
-                raise ValueError("State set operation failed")
-
-        state = ProblematicState(schema={"test_key": {"type": str}})
-        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=True)
-
-        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-        message = ChatMessage.from_assistant(tool_calls=tool_calls)
-
-        with pytest.raises(ToolOutputMergeError, match="Failed to merge"):
-            await invoker.run_async(messages=[message], state=state)
-
-    def test_tool_not_found_error(self, invoker):
-        tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
-        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        with pytest.raises(ToolNotFoundException):
-            invoker.run(messages=[tool_call_message])
-
-    def test_tool_not_found_does_not_raise_exception(self, weather_tool):
-        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False, convert_result_to_json_string=False)
-
-        tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
-        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        result = invoker.run(messages=[tool_call_message])
-        tool_message = result["tool_messages"][0]
-
-        assert tool_message.tool_call_results[0].error
-        assert "not found" in tool_message.tool_call_results[0].result
-
-    def test_tool_invocation_error(self, faulty_invoker):
-        tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
-        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        with pytest.raises(ToolInvocationError):
-            faulty_invoker.run(messages=[tool_call_message])
-
-    def test_tool_invocation_error_does_not_raise_exception(self, faulty_tool):
-        faulty_invoker = ToolInvoker(tools=[faulty_tool], raise_on_failure=False, convert_result_to_json_string=False)
-
-        tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
-        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
-
-        result = faulty_invoker.run(messages=[tool_call_message])
-        tool_message = result["tool_messages"][0]
-        assert tool_message.tool_call_results[0].error
-        assert "Failed to invoke" in tool_message.tool_call_results[0].result
-
-    def test_string_conversion_error(self):
-        weather_tool = Tool(
-            name="weather_tool",
-            description="Provides weather information for a given location.",
-            parameters=weather_parameters,
-            function=weather_function,
-            # Pass custom handler that will throw an error when trying to convert tool_result
-            outputs_to_string={"handler": lambda x: json.dumps(x)},
-        )
-        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
-
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-
-        tool_result = datetime.datetime.now()
-        with pytest.raises(StringConversionError):
-            invoker._prepare_tool_result_message(result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool)
-
-    def test_string_conversion_error_does_not_raise_exception(self):
-        weather_tool = Tool(
-            name="weather_tool",
-            description="Provides weather information for a given location.",
-            parameters=weather_parameters,
-            function=weather_function,
-            # Pass custom handler that will throw an error when trying to convert tool_result
-            outputs_to_string={"handler": lambda x: json.dumps(x)},
-        )
-        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False)
-
-        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-
-        tool_result = datetime.datetime.now()
-        tool_message = invoker._prepare_tool_result_message(
-            result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool
-        )
-
-        assert tool_message.tool_call_results[0].error
-        assert "Failed to convert" in tool_message.tool_call_results[0].result
-
+class TestToolInvokerSerde:
     def test_to_dict(self, invoker, weather_tool):
         data = invoker.to_dict()
         assert data == {
@@ -722,6 +322,55 @@ class TestToolInvoker:
         new_pipeline = Pipeline.loads(pipeline_yaml)
         assert new_pipeline == pipeline
 
+
+class TestToolInvokerRun:
+    def test_run_with_streaming_callback_finish_reason(self, invoker):
+        streaming_chunks = []
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            streaming_chunks.append(chunk)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        # Check that we received streaming chunks
+        assert len(streaming_chunks) >= 2  # At least one for tool result and one for finish reason
+
+        # The last chunk should have finish_reason set to "tool_call_results"
+        final_chunk = streaming_chunks[-1]
+        assert final_chunk.finish_reason == "tool_call_results"
+        assert final_chunk.meta["finish_reason"] == "tool_call_results"
+        assert final_chunk.content == ""
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_streaming_callback_finish_reason(self, weather_tool):
+        streaming_chunks = []
+
+        async def streaming_callback(chunk: StreamingChunk) -> None:
+            streaming_chunks.append(chunk)
+
+        tool_invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True, convert_result_to_json_string=False)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = await tool_invoker.run_async(messages=[message], streaming_callback=streaming_callback)
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        # Check that we received streaming chunks
+        assert len(streaming_chunks) >= 2  # At least one for tool result and one for finish reason
+
+        # The last chunk should have finish_reason set to "tool_call_results"
+        final_chunk = streaming_chunks[-1]
+        assert final_chunk.finish_reason == "tool_call_results"
+        assert final_chunk.meta["finish_reason"] == "tool_call_results"
+        assert final_chunk.content == ""
+
     def test_enable_streaming_callback_passthrough(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key")
         llm_tool = ComponentTool(
@@ -778,6 +427,98 @@ class TestToolInvoker:
                 enable_streaming_callback_passthrough=False,
             )
             mock_run.assert_called_once_with(messages=[ChatMessage.from_user(text="Hello!")])
+
+    def test_run_no_messages(self, invoker):
+        result = invoker.run(messages=[])
+        assert result["tool_messages"] == []
+
+    def test_run_no_tool_calls(self, invoker):
+        user_message = ChatMessage.from_user(text="Hello!")
+        assistant_message = ChatMessage.from_assistant(text="How can I help you?")
+
+        result = invoker.run(messages=[user_message, assistant_message])
+        assert result["tool_messages"] == []
+
+    def test_run_multiple_tool_calls(self, invoker):
+        tool_calls = [
+            ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
+            ToolCall(tool_name="weather_tool", arguments={"location": "Rome"}),
+        ]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        result = invoker.run(messages=[message])
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 3
+
+        for i, tool_message in enumerate(result["tool_messages"]):
+            assert isinstance(tool_message, ChatMessage)
+            assert tool_message.is_from(ChatRole.TOOL)
+
+            assert tool_message.tool_call_results
+            tool_call_result = tool_message.tool_call_result
+
+            assert isinstance(tool_call_result, ToolCallResult)
+            assert not tool_call_result.error
+            assert tool_call_result.origin == tool_calls[i]
+
+    def test_run_tool_calls_with_empty_args(self):
+        hello_world_tool = Tool(
+            name="hello_world",
+            description="A tool that returns a greeting.",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "Hello, world!",
+        )
+        invoker = ToolInvoker(tools=[hello_world_tool])
+
+        tool_call = ToolCall(tool_name="hello_world", arguments={})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[tool_call_message])
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+
+        tool_message = result["tool_messages"][0]
+        assert isinstance(tool_message, ChatMessage)
+        assert tool_message.is_from(ChatRole.TOOL)
+
+        assert tool_message.tool_call_results
+        tool_call_result = tool_message.tool_call_result
+
+        assert isinstance(tool_call_result, ToolCallResult)
+        assert not tool_call_result.error
+
+        assert tool_call_result.result == "Hello, world!"
+
+    def test_run_with_tools_override(self, weather_tool, faulty_tool):
+        """Tests that tools passed to run override the tools passed in init"""
+        invoker = ToolInvoker(tools=[faulty_tool])
+        assert invoker._tools_with_names == {"faulty_tool": faulty_tool}
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message], tools=[weather_tool])
+
+        tool_message = result["tool_messages"][0]
+        tool_call_result = tool_message.tool_call_result
+        assert not tool_call_result.error
+        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
+        assert tool_call_result.origin == tool_call
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_tools_override(self, weather_tool, faulty_tool):
+        """Tests that tools passed to run_async override the tools passed in init"""
+        invoker = ToolInvoker(tools=[faulty_tool])
+        assert invoker._tools_with_names == {"faulty_tool": faulty_tool}
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = await invoker.run_async(messages=[message], tools=[weather_tool])
+        tool_message = result["tool_messages"][0]
+        tool_call_result = tool_message.tool_call_result
+        assert not tool_call_result.error
+        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
+        assert tool_call_result.origin == tool_call
 
     def test_parallel_tool_calling_with_state_updates(self):
         """Test that parallel tool execution with state updates works correctly with the state lock."""
@@ -970,7 +711,160 @@ class TestToolInvoker:
         assert len(result_2["tool_messages"]) == 3
 
 
-class TestDefaultOutputToStringHandler:
+class TestToolInvokerErrorHandling:
+    def test_tool_not_found_error(self, invoker):
+        tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        with pytest.raises(ToolNotFoundException):
+            invoker.run(messages=[tool_call_message])
+
+    def test_tool_not_found_does_not_raise_exception(self, weather_tool):
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False, convert_result_to_json_string=False)
+
+        tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[tool_call_message])
+        tool_message = result["tool_messages"][0]
+
+        assert tool_message.tool_call_results[0].error
+        assert "not found" in tool_message.tool_call_results[0].result
+
+    def test_tool_invocation_error(self, faulty_invoker):
+        tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        with pytest.raises(ToolInvocationError):
+            faulty_invoker.run(messages=[tool_call_message])
+
+    def test_tool_invocation_error_does_not_raise_exception(self, faulty_tool):
+        faulty_invoker = ToolInvoker(tools=[faulty_tool], raise_on_failure=False, convert_result_to_json_string=False)
+
+        tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = faulty_invoker.run(messages=[tool_call_message])
+        tool_message = result["tool_messages"][0]
+        assert tool_message.tool_call_results[0].error
+        assert "Failed to invoke" in tool_message.tool_call_results[0].result
+
+    def test_string_conversion_error(self):
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            # Pass custom handler that will throw an error when trying to convert tool_result
+            outputs_to_string={"handler": lambda x: json.dumps(x)},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        tool_result = datetime.datetime.now()
+        with pytest.raises(StringConversionError):
+            invoker._prepare_tool_result_message(result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool)
+
+    def test_string_conversion_error_does_not_raise_exception(self):
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            # Pass custom handler that will throw an error when trying to convert tool_result
+            outputs_to_string={"handler": lambda x: json.dumps(x)},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        tool_result = datetime.datetime.now()
+        tool_message = invoker._prepare_tool_result_message(
+            result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool
+        )
+
+        assert tool_message.tool_call_results[0].error
+        assert "Failed to convert" in tool_message.tool_call_results[0].result
+
+    def test_run_state_merge_error_handled_gracefully(self, weather_tool_with_outputs_to_state):
+        class ProblematicState(State):
+            def set(self, key: str, value: Any, handler_override=None):
+                # Simulate a State error during merging
+                raise ValueError("State set operation failed")
+
+        state = ProblematicState(schema={"test_key": {"type": str}})
+        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=False)
+
+        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        result = invoker.run(messages=[message], state=state)
+
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+        assert result["tool_messages"][0].tool_call_results[0].error is True
+        assert (
+            "Failed to merge tool outputs from tool weather_tool into State"
+            in result["tool_messages"][0].tool_call_results[0].result
+        )
+
+    def test_run_state_merge_error_raises_when_configured(self, weather_tool_with_outputs_to_state):
+        class ProblematicState(State):
+            def set(self, key: str, value: Any, handler_override=None):
+                # Simulate a State error during merging
+                raise ValueError("State set operation failed")
+
+        state = ProblematicState(schema={"test_key": {"type": str}})
+        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=True)
+
+        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        with pytest.raises(ToolOutputMergeError, match="Failed to merge"):
+            invoker.run(messages=[message], state=state)
+
+    @pytest.mark.asyncio
+    async def test_run_async_state_merge_error_handled_gracefully(self, weather_tool_with_outputs_to_state):
+        class ProblematicState(State):
+            def set(self, key: str, value: Any, handler_override=None):
+                # Simulate a State error during merging
+                raise ValueError("State set operation failed")
+
+        state = ProblematicState(schema={"test_key": {"type": str}})
+        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=False)
+
+        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        result = await invoker.run_async(messages=[message], state=state)
+
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+        assert result["tool_messages"][0].tool_call_results[0].error is True
+        assert (
+            "Failed to merge tool outputs from tool weather_tool into State"
+            in result["tool_messages"][0].tool_call_results[0].result
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_async_state_merge_error_raises_when_configured(self, weather_tool_with_outputs_to_state):
+        class ProblematicState(State):
+            def set(self, key: str, value: Any, handler_override=None):
+                # Simulate a State error during merging
+                raise ValueError("State set operation failed")
+
+        state = ProblematicState(schema={"test_key": {"type": str}})
+        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=True)
+
+        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        with pytest.raises(ToolOutputMergeError, match="Failed to merge"):
+            await invoker.run_async(messages=[message], state=state)
+
+
+class TestToolInvokerUtilities:
     def test_default_output_to_string_handler_basic_types(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool], convert_result_to_json_string=False)
 
@@ -1014,8 +908,6 @@ class TestDefaultOutputToStringHandler:
         assert "test_value" in result
         assert "value" in result
 
-
-class TestMergeToolOutputs:
     def test_merge_tool_outputs_result_not_a_dict(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool])
         state = State(schema={"weather": {"type": str}})
