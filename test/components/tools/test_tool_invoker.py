@@ -5,7 +5,7 @@
 import datetime
 import json
 import time
-from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +15,12 @@ from haystack.components.agents.state import State
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.components.tools.tool_invoker import StringConversionError, ToolInvoker, ToolNotFoundException
+from haystack.components.tools.tool_invoker import (
+    StringConversionError,
+    ToolInvoker,
+    ToolNotFoundException,
+    ToolOutputMergeError,
+)
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingChunk, ToolCall, ToolCallResult
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
@@ -40,6 +45,17 @@ def weather_tool():
         description="Provides weather information for a given location.",
         parameters=weather_parameters,
         function=weather_function,
+    )
+
+
+@pytest.fixture
+def weather_tool_with_outputs_to_state():
+    return Tool(
+        name="weather_tool",
+        description="Provides weather information for a given location.",
+        parameters=weather_parameters,
+        function=weather_function,
+        outputs_to_state={"weather": {"source": "weather"}},
     )
 
 
@@ -388,6 +404,112 @@ class TestToolInvoker:
 
         assert tool_call_result.result == "Hello, world!"
 
+    def test_run_with_tools_override(self, weather_tool, faulty_tool):
+        """Tests that tools passed to run override the tools passed in init"""
+        invoker = ToolInvoker(tools=[faulty_tool])
+        assert invoker._tools_with_names == {"faulty_tool": faulty_tool}
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message], tools=[weather_tool])
+
+        tool_message = result["tool_messages"][0]
+        tool_call_result = tool_message.tool_call_result
+        assert not tool_call_result.error
+        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
+        assert tool_call_result.origin == tool_call
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_tools_override(self, weather_tool, faulty_tool):
+        """Tests that tools passed to run_async override the tools passed in init"""
+        invoker = ToolInvoker(tools=[faulty_tool])
+        assert invoker._tools_with_names == {"faulty_tool": faulty_tool}
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = await invoker.run_async(messages=[message], tools=[weather_tool])
+        tool_message = result["tool_messages"][0]
+        tool_call_result = tool_message.tool_call_result
+        assert not tool_call_result.error
+        assert tool_call_result.result == str({"weather": "mostly sunny", "temperature": 7, "unit": "celsius"})
+        assert tool_call_result.origin == tool_call
+
+    def test_run_state_merge_error_handled_gracefully(self, weather_tool_with_outputs_to_state):
+        class ProblematicState(State):
+            def set(self, key: str, value: Any, handler_override=None):
+                # Simulate a State error during merging
+                raise ValueError("State set operation failed")
+
+        state = ProblematicState(schema={"test_key": {"type": str}})
+        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=False)
+
+        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        result = invoker.run(messages=[message], state=state)
+
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+        assert result["tool_messages"][0].tool_call_results[0].error is True
+        assert (
+            "Failed to merge tool outputs from tool weather_tool into State"
+            in result["tool_messages"][0].tool_call_results[0].result
+        )
+
+    def test_run_state_merge_error_raises_when_configured(self, weather_tool_with_outputs_to_state):
+        class ProblematicState(State):
+            def set(self, key: str, value: Any, handler_override=None):
+                # Simulate a State error during merging
+                raise ValueError("State set operation failed")
+
+        state = ProblematicState(schema={"test_key": {"type": str}})
+        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=True)
+
+        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        with pytest.raises(ToolOutputMergeError, match="Failed to merge"):
+            invoker.run(messages=[message], state=state)
+
+    @pytest.mark.asyncio
+    async def test_run_async_state_merge_error_handled_gracefully(self, weather_tool_with_outputs_to_state):
+        class ProblematicState(State):
+            def set(self, key: str, value: Any, handler_override=None):
+                # Simulate a State error during merging
+                raise ValueError("State set operation failed")
+
+        state = ProblematicState(schema={"test_key": {"type": str}})
+        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=False)
+
+        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        result = await invoker.run_async(messages=[message], state=state)
+
+        assert "tool_messages" in result
+        assert len(result["tool_messages"]) == 1
+        assert result["tool_messages"][0].tool_call_results[0].error is True
+        assert (
+            "Failed to merge tool outputs from tool weather_tool into State"
+            in result["tool_messages"][0].tool_call_results[0].result
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_async_state_merge_error_raises_when_configured(self, weather_tool_with_outputs_to_state):
+        class ProblematicState(State):
+            def set(self, key: str, value: Any, handler_override=None):
+                # Simulate a State error during merging
+                raise ValueError("State set operation failed")
+
+        state = ProblematicState(schema={"test_key": {"type": str}})
+        invoker = ToolInvoker(tools=[weather_tool_with_outputs_to_state], raise_on_failure=True)
+
+        tool_calls = [ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        message = ChatMessage.from_assistant(tool_calls=tool_calls)
+
+        with pytest.raises(ToolOutputMergeError, match="Failed to merge"):
+            await invoker.run_async(messages=[message], state=state)
+
     def test_tool_not_found_error(self, invoker):
         tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
@@ -663,17 +785,17 @@ class TestToolInvoker:
         execution_log = []
 
         def function_1():
-            time.sleep(0.1)
+            time.sleep(0.01)
             execution_log.append("tool_1_executed")
             return {"counter": 1, "tool_name": "tool_1"}
 
         def function_2():
-            time.sleep(0.1)
+            time.sleep(0.01)
             execution_log.append("tool_2_executed")
             return {"counter": 2, "tool_name": "tool_2"}
 
         def function_3():
-            time.sleep(0.1)
+            time.sleep(0.01)
             execution_log.append("tool_3_executed")
             return {"counter": 3, "tool_name": "tool_3"}
 
@@ -734,17 +856,17 @@ class TestToolInvoker:
         execution_log = []
 
         def function_1():
-            time.sleep(0.1)
+            time.sleep(0.01)
             execution_log.append("tool_1_executed")
             return {"counter": 1, "tool_name": "tool_1"}
 
         def function_2():
-            time.sleep(0.1)
+            time.sleep(0.01)
             execution_log.append("tool_2_executed")
             return {"counter": 2, "tool_name": "tool_2"}
 
         def function_3():
-            time.sleep(0.1)
+            time.sleep(0.01)
             execution_log.append("tool_3_executed")
             return {"counter": 3, "tool_name": "tool_3"}
 
@@ -846,6 +968,51 @@ class TestToolInvoker:
         result_2 = await invoker.run_async(messages=[message], streaming_callback=streaming_callback)
         assert "tool_messages" in result_2
         assert len(result_2["tool_messages"]) == 3
+
+
+class TestDefaultOutputToStringHandler:
+    def test_default_output_to_string_handler_basic_types(self, weather_tool):
+        invoker = ToolInvoker(tools=[weather_tool], convert_result_to_json_string=False)
+
+        assert invoker._default_output_to_string_handler("hello") == "hello"
+        assert invoker._default_output_to_string_handler(42) == "42"
+        assert invoker._default_output_to_string_handler(3.14) == "3.14"
+        assert invoker._default_output_to_string_handler(True) == "True"
+        assert invoker._default_output_to_string_handler(None) == "None"
+
+        assert invoker._default_output_to_string_handler([1, 2, 3]) == "[1, 2, 3]"
+        assert invoker._default_output_to_string_handler({"key": "value"}) == "{'key': 'value'}"
+
+    def test_default_output_to_string_handler_json_string_mode(self, weather_tool):
+        invoker = ToolInvoker(tools=[weather_tool], convert_result_to_json_string=True)
+
+        assert invoker._default_output_to_string_handler("hello") == '"hello"'
+        assert invoker._default_output_to_string_handler(42) == "42"
+        assert invoker._default_output_to_string_handler(True) == "true"
+        assert invoker._default_output_to_string_handler(None) == "null"
+
+        assert invoker._default_output_to_string_handler([1, 2, 3]) == "[1, 2, 3]"
+        assert invoker._default_output_to_string_handler({"key": "value"}) == '{"key": "value"}'
+
+        assert invoker._default_output_to_string_handler("Hello 🌍") == '"Hello 🌍"'
+
+    def test_default_output_to_string_handler_with_serializable_objects(self, weather_tool):
+        invoker = ToolInvoker(tools=[weather_tool], convert_result_to_json_string=False)
+
+        # Create a mock object with to_dict method
+        class MockObject:
+            def __init__(self, value):
+                self.value = value
+
+            def to_dict(self):
+                return {"value": self.value}
+
+        mock_obj = MockObject("test_value")
+        result = invoker._default_output_to_string_handler(mock_obj)
+
+        # Should convert to string representation of the dict
+        assert "test_value" in result
+        assert "value" in result
 
 
 class TestMergeToolOutputs:
