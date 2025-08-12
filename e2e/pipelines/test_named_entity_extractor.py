@@ -116,6 +116,8 @@ def _extract_and_check_predictions(extractor, texts, expected, batch_size):
     assert all(id(a) == id(b) for a, b in zip(docs, outputs))
     predicted = [NamedEntityExtractor.get_stored_annotations(doc) for doc in outputs]
 
+    for doc in docs:
+        assert not doc.meta
     _check_predictions(predicted, expected)
 
 
