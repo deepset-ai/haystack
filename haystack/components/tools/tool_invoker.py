@@ -510,7 +510,12 @@ class ToolInvoker:
         :raises ToolOutputMergeError:
             If merging tool outputs into state fails and `raise_on_failure` is True.
         """
-        tools_with_names = self._validate_and_prepare_tools(tools) if tools is not None else self._tools_with_names
+        tools_with_names = self._tools_with_names
+        if tools is not None:
+            tools_with_names = self._validate_and_prepare_tools(tools)
+            logger.debug(
+                f"For this invocation, overriding constructor tools with: {', '.join(tools_with_names.keys())}"
+            )
 
         if state is None:
             state = State(schema={})
@@ -669,7 +674,12 @@ class ToolInvoker:
             If merging tool outputs into state fails and `raise_on_failure` is True.
         """
 
-        tools_with_names = self._validate_and_prepare_tools(tools) if tools is not None else self._tools_with_names
+        tools_with_names = self._tools_with_names
+        if tools is not None:
+            tools_with_names = self._validate_and_prepare_tools(tools)
+            logger.debug(
+                f"For this invocation, overriding constructor tools with: {', '.join(tools_with_names.keys())}"
+            )
 
         if state is None:
             state = State(schema={})
