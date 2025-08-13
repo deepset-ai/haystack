@@ -417,7 +417,7 @@ class PipelineBase:  # noqa: PLW1641
 
         return instance
 
-    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915 PLR0912
+    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915 PLR0912 C901 pylint: disable=too-many-branches
         """
         Connects two components together.
 
@@ -456,13 +456,20 @@ class PipelineBase:  # noqa: PLW1641
         except KeyError as exc:
             raise ValueError(f"Component named {receiver_component_name} not found in the pipeline.") from exc
 
+        if not sender_sockets:
+            raise PipelineConnectError(
+                f"'{sender_component_name}' does not have any output connections. "
+                f"Please check that the output types of '{sender_component_name}.run' are set, "
+                f"for example by using the '@component.output_types' decorator."
+            )
+
         # If the name of either socket is given, get the socket
         sender_socket: Optional[OutputSocket] = None
         if sender_socket_name:
             sender_socket = sender_sockets.get(sender_socket_name)
             if not sender_socket:
                 raise PipelineConnectError(
-                    f"'{sender} does not exist. "
+                    f"'{sender}' does not exist. "
                     f"Output connections of {sender_component_name} are: "
                     + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in sender_sockets.items()])
                 )
