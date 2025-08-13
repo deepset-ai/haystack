@@ -4,6 +4,7 @@
 
 import mimetypes
 import re
+import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -56,7 +57,12 @@ class FileTypeRouter:
     ```
     """
 
-    def __init__(self, mime_types: list[str], additional_mimetypes: Optional[dict[str, str]] = None):
+    def __init__(
+        self,
+        mime_types: list[str],
+        additional_mimetypes: Optional[dict[str, str]] = None,
+        raise_on_failure: bool = False,  # Set to True in 2.18 release and remove warning below
+    ):
         """
         Initialize the FileTypeRouter component.
 
@@ -65,12 +71,28 @@ class FileTypeRouter:
             (for example: `["text/plain", "audio/x-wav", "image/jpeg"]`).
 
         :param additional_mimetypes:
-            A dictionary containing the MIME type to add to the mimetypes package to prevent unsupported or non native
+            A dictionary containing the MIME type to add to the mimetypes package to prevent unsupported or non-native
             packages from being unclassified.
             (for example: `{"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"}`).
+
+        :param raise_on_failure:
+            If True, raises FileNotFoundError when a file path doesn't exist, regardless of whether metadata is
+            provided.
+            If False (default), only raises FileNotFoundError when metadata is provided (current behavior).
+            This parameter will be removed in a future release where consistent behavior will be enforced.
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
+
+        # Deprecation warning for inconsistent FileNotFoundError behavior
+        warnings.warn(
+            "FileTypeRouter currently has inconsistent behavior: FileNotFoundError is only raised when "
+            "metadata is provided. "
+            "This will be changed in a future release to always raise FileNotFoundError for non-existent files. "
+            "Set raise_on_failure=True to opt into the future behavior.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
         if additional_mimetypes:
             for mime, ext in additional_mimetypes.items():
@@ -93,6 +115,7 @@ class FileTypeRouter:
         )
         self.mime_types = mime_types
         self._additional_mimetypes = additional_mimetypes
+        self._raise_on_failure = raise_on_failure
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -101,7 +124,12 @@ class FileTypeRouter:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, mime_types=self.mime_types, additional_mimetypes=self._additional_mimetypes)
+        return default_to_dict(
+            self,
+            mime_types=self.mime_types,
+            additional_mimetypes=self._additional_mimetypes,
+            raise_on_failure=self._raise_on_failure,
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FileTypeRouter":
@@ -145,6 +173,10 @@ class FileTypeRouter:
                 source = Path(source)
 
             if isinstance(source, Path):
+                # Check if file exists when raise_on_failure is True
+                if self._raise_on_failure and not source.exists():
+                    raise FileNotFoundError(f"File not found: {source}")
+
                 mime_type = _guess_mime_type(source)
             elif isinstance(source, ByteStream):
                 mime_type = source.mime_type
