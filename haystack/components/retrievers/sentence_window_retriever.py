@@ -238,8 +238,8 @@ class SentenceWindowRetriever:
                 context_documents.append(doc)
                 continue
 
-            min_before = min(list(range(split_id - 1, split_id - window_size - 1, -1)))
-            max_after = max(list(range(split_id + 1, split_id + window_size + 1, 1)))
+            min_before = split_id - window_size
+            max_after = split_id + window_size
             source_id_filters = [
                 {"field": f"meta.{source_id_meta_field}", "operator": "==", "value": source_id}
                 for source_id_meta_field, source_id in zip(self._source_id_meta_fields, source_ids)
