@@ -318,7 +318,8 @@ class ToolInvoker:
                 raise conversion_error from e
         return ChatMessage.from_tool(tool_result=tool_result_str, error=error, origin=tool_call)
 
-    def _get_func_params(self, tool: Tool) -> set:
+    @staticmethod
+    def _get_func_params(tool: Tool) -> set:
         """
         Returns the function parameters of the tool's invoke method.
 
@@ -337,7 +338,8 @@ class ToolInvoker:
 
         return func_params
 
-    def _inject_state_args(self, tool: Tool, llm_args: dict[str, Any], state: State) -> dict[str, Any]:
+    @staticmethod
+    def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> dict[str, Any]:
         """
         Combine LLM-provided arguments (llm_args) with state-based arguments.
 
@@ -347,7 +349,7 @@ class ToolInvoker:
           - function signature name matching
         """
         final_args = dict(llm_args)  # start with LLM-provided
-        func_params = self._get_func_params(tool)
+        func_params = ToolInvoker._get_func_params(tool)
 
         # Determine the source of parameter mappings (explicit tool inputs or direct function parameters)
         # Typically, a "Tool" might have .inputs_from_state = {"state_key": "tool_param_name"}
