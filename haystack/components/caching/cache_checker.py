@@ -9,6 +9,7 @@ from haystack.document_stores.types import DocumentStore
 from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 
+# TRIGGER
 @component
 class CacheChecker:
     """
