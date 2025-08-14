@@ -676,7 +676,20 @@ class AsyncPipeline(PipelineBase):
             Or if a Component fails or returns output in an unsupported type.
         :raises PipelineMaxComponentRuns:
             If a Component reaches the maximum number of times it can be run in this Pipeline.
+        :raises RuntimeError:
+            If called from within an async context. Use `run_async` instead.
         """
-        return asyncio.run(
-            self.run_async(data=data, include_outputs_from=include_outputs_from, concurrency_limit=concurrency_limit)
-        )
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop: safe to use asyncio.run()
+            return asyncio.run(
+                self.run_async(
+                    data=data, include_outputs_from=include_outputs_from, concurrency_limit=concurrency_limit
+                )
+            )
+        else:
+            # Running loop present: do not create the coroutine and do not call asyncio.run()
+            raise RuntimeError(
+                "Cannot call run() from within an async context. Use 'await pipeline.run_async(...)' instead."
+            )
