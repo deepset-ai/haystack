@@ -170,6 +170,7 @@ jobs:
         # complicates the workflow too much for little to no gain
         if: matrix.os == 'ubuntu-latest'
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         with:
           path-to-lcov: coverage.xml
 
