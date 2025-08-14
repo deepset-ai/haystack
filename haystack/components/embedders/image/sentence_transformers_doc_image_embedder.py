@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from copy import copy
+from dataclasses import replace
 from typing import Any, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -234,7 +234,7 @@ class SentenceTransformersDocumentImageEmbedder:
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
                 "SentenceTransformersDocumentImageEmbedder expects a list of Documents as input. "
-                "In case you want to embed a list of strings, please use the SentenceTransformersTextEmbedder."
+                "In case you want to embed a string, please use the SentenceTransformersTextEmbedder."
             )
         if self._embedding_backend is None:
             raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
@@ -281,10 +281,12 @@ class SentenceTransformersDocumentImageEmbedder:
 
         docs_with_embeddings = []
         for doc, emb in zip(documents, embeddings):
-            copied_doc = copy(doc)
-            copied_doc.embedding = emb
             # we store this information for later inspection
-            copied_doc.meta["embedding_source"] = {"type": "image", "file_path_meta_field": self.file_path_meta_field}
-            docs_with_embeddings.append(copied_doc)
+            new_meta = {
+                **doc.meta,
+                "embedding_source": {"type": "image", "file_path_meta_field": self.file_path_meta_field},
+            }
+            new_doc = replace(doc, meta=new_meta, embedding=emb)
+            docs_with_embeddings.append(new_doc)
 
         return {"documents": docs_with_embeddings}

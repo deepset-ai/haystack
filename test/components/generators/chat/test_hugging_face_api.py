@@ -587,7 +587,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert response["replies"][0].tool_calls[0].arguments == {"city": "Paris"}
         assert response["replies"][0].tool_calls[0].id == "0"
         assert response["replies"][0].meta == {
-            "finish_reason": "stop",
+            "finish_reason": "tool_calls",
             "index": 0,
             "model": "meta-llama/Llama-3.1-70B-Instruct",
             "usage": {"completion_tokens": 30, "prompt_tokens": 426},
@@ -1040,7 +1040,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert response["replies"][0].tool_calls[0].arguments == {"city": "Paris"}
         assert response["replies"][0].tool_calls[0].id == "0"
         assert response["replies"][0].meta == {
-            "finish_reason": "stop",
+            "finish_reason": "tool_calls",
             "index": 0,
             "model": "meta-llama/Llama-3.1-70B-Instruct",
             "usage": {"completion_tokens": 30, "prompt_tokens": 426},

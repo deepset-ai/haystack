@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from dataclasses import replace
 from typing import Any, Optional, Union
 
 from tqdm import tqdm
@@ -328,10 +329,11 @@ class HuggingFaceAPIDocumentEmbedder:
 
         embeddings = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
+        new_documents = []
         for doc, emb in zip(documents, embeddings):
-            doc.embedding = emb
+            new_documents.append(replace(doc, embedding=emb))
 
-        return {"documents": documents}
+        return {"documents": new_documents}
 
     @component.output_types(documents=list[Document])
     async def run_async(self, documents: list[Document]):
@@ -355,7 +357,8 @@ class HuggingFaceAPIDocumentEmbedder:
 
         embeddings = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
+        new_documents = []
         for doc, emb in zip(documents, embeddings):
-            doc.embedding = emb
+            new_documents.append(replace(doc, embedding=emb))
 
-        return {"documents": documents}
+        return {"documents": new_documents}
