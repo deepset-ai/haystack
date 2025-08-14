@@ -353,7 +353,7 @@ class SentenceTransformersDiversityRanker:
 
         texts_to_embed = self._prepare_texts_to_embed(documents)
         doc_embeddings, query_embedding = self._embed_and_normalize(query, texts_to_embed)
-        top_k = top_k if top_k else len(documents)
+        top_k = min(top_k, len(documents))
 
         selected: list[int] = []
         query_similarities_as_tensor = query_embedding @ doc_embeddings.T
@@ -375,9 +375,8 @@ class SentenceTransformersDiversityRanker:
                 if mmr_score > best_score:
                     best_score = mmr_score
                     best_idx = idx
-            if best_idx is None:
-                raise ValueError("No best document found, check if the documents list contains any documents.")
-            selected.append(best_idx)
+            # loop condition ensures unselected docs exist with valid scores
+            selected.append(best_idx)  # type: ignore[arg-type]
 
         return [documents[i] for i in selected]
 
@@ -421,8 +420,8 @@ class SentenceTransformersDiversityRanker:
 
         if top_k is None:
             top_k = self.top_k
-        if not 0 < top_k <= len(documents):
-            raise ValueError(f"top_k must be between 1 and {len(documents)}, but got {top_k}")
+        if top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         if self.strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE:
             if lambda_threshold is None:

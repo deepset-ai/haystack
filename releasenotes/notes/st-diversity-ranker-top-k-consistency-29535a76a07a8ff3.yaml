@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Ensure consistent behavior in `SentenceTransformersDiversityRanker`. Like other rankers, it now returns
+    all documents instead of raising an error when `top_k` exceeds the number of available documents.
