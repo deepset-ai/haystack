@@ -17,10 +17,12 @@ from haystack.core.pipeline.base import (
 )
 from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
+    _save_pipeline_snapshot,
     _trigger_break_point,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
 )
+from haystack.core.pipeline.predefined.persistance_state import _create_automatic_pipeline_snapshot
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot
 from haystack.telemetry import pipeline_running
@@ -93,6 +95,8 @@ class Pipeline(PipelineBase):
         *,
         break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        state_persistence: bool = False,
+        state_persistence_path: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -378,6 +382,29 @@ class Pipeline(PipelineBase):
                             _trigger_break_point(
                                 pipeline_snapshot=new_pipeline_snapshot, pipeline_outputs=pipeline_outputs
                             )
+
+                # automatic snapshot creation after each component execution
+                if state_persistence:
+                    # Create a dummy breakpoint for the automatic snapshot
+                    auto_breakpoint = Breakpoint(
+                        component_name=component_name,
+                        visit_count=component_visits[component_name],
+                        snapshot_file_path=state_persistence_path,
+                    )
+
+                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
+                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
+                    new_pipeline_snapshot = _create_pipeline_snapshot(
+                        inputs=pipeline_snapshot_inputs_serialised,
+                        break_point=auto_breakpoint,
+                        component_visits=component_visits,
+                        original_input_data=data,
+                        ordered_component_names=ordered_component_names,
+                        include_outputs_from=include_outputs_from,
+                        pipeline_outputs=pipeline_outputs,
+                    )
+
+                    _save_pipeline_snapshot(pipeline_snapshot=new_pipeline_snapshot)
 
                 component_outputs = self._run_component(
                     component_name=component_name,
