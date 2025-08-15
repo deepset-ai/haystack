@@ -22,7 +22,6 @@ from haystack.core.pipeline.breakpoint import (
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
 )
-from haystack.core.pipeline.predefined.persistance_state import _create_automatic_pipeline_snapshot
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot
 from haystack.telemetry import pipeline_running
@@ -394,7 +393,7 @@ class Pipeline(PipelineBase):
 
                     pipeline_snapshot_inputs_serialised = deepcopy(inputs)
                     pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
-                    new_pipeline_snapshot = _create_pipeline_snapshot(
+                    pipeline_snapshot = _create_pipeline_snapshot(
                         inputs=pipeline_snapshot_inputs_serialised,
                         break_point=auto_breakpoint,
                         component_visits=component_visits,
@@ -404,7 +403,9 @@ class Pipeline(PipelineBase):
                         pipeline_outputs=pipeline_outputs,
                     )
 
-                    _save_pipeline_snapshot(pipeline_snapshot=new_pipeline_snapshot)
+                    # ToDo: remove the Breakpoint from the pipeline_snapshot since it is not needed
+
+                    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
 
                 component_outputs = self._run_component(
                     component_name=component_name,
