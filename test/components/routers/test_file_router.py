@@ -154,7 +154,6 @@ class TestFileTypeRouter:
         for i, elements in enumerate(output.values()):
             for el in elements:
                 assert isinstance(el, ByteStream)
-
                 expected_meta_key, expected_meta_value = list(meta[i].items())[0]
                 assert el.meta[expected_meta_key] == expected_meta_value
 
@@ -165,11 +164,8 @@ class TestFileTypeRouter:
         """
 
         bs = ByteStream.from_string("Haystack!", mime_type="text/plain", meta={"foo": "bar"})
-
         meta = {"another_key": "another_value"}
-
         router = FileTypeRouter(mime_types=[r"text/plain"])
-
         output = router.run(sources=[bs], meta=meta)
 
         assert output
@@ -185,9 +181,7 @@ class TestFileTypeRouter:
         Test that the component raises an error if the length of the metadata list does not match the number of sources.
         """
         file_paths = [test_files_path / "txt" / "doc_1.txt"]
-
         meta = [{"key1": "value1"}, {"key2": "value2"}, {"key3": "value3"}]
-
         router = FileTypeRouter(mime_types=[r"text/plain"])
 
         with pytest.raises(ValueError):
@@ -268,11 +262,12 @@ class TestFileTypeRouter:
             test_files_path / "audio" / "ignored.mp3",
             test_files_path / "audio" / "this is the content of the document.wav",
         ]
-        router = FileTypeRouter(mime_types=[r"text/plain"])
+        router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=False)
         output = router.run(sources=file_paths)
         assert len(output[r"text/plain"]) == 1
         assert "mp3" not in output
-        assert len(output.get("unclassified")) == 2
+        assert len(output.get("unclassified")) == 1
+        assert output.get("failed")[0].name == "ignored.mp3"
 
     def test_no_extension(self, test_files_path):
         """
@@ -280,8 +275,8 @@ class TestFileTypeRouter:
         """
         file_paths = [
             test_files_path / "txt" / "doc_1.txt",
-            test_files_path / "txt" / "doc_2",
             test_files_path / "txt" / "doc_2.txt",
+            test_files_path / "txt" / "doc_4",
         ]
         router = FileTypeRouter(mime_types=[r"text/plain"])
         output = router.run(sources=file_paths)
@@ -331,9 +326,7 @@ class TestFileTypeRouter:
         mp3_stream.mime_type = "audio/mpeg"
 
         byte_streams = [txt_stream, jpg_stream, mp3_stream]
-
         router = FileTypeRouter(mime_types=["text/plain", "image/jpeg"])
-
         output = router.run(sources=byte_streams)
 
         assert len(output["text/plain"]) == 1, "Failed to match 'text/plain' MIME type exactly"
@@ -442,32 +435,39 @@ class TestFileTypeRouter:
         This inconsistent behavior is slated to change in 2.17.0.
         See: https://github.com/deepset-ai/haystack/pull/9573#issuecomment-3045237341
         """
-        router = FileTypeRouter(mime_types=[r"text/plain"])
+        router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=True)
 
-        # No meta - does not raise error
-        result = router.run(sources=["non_existent.txt"])
-        assert result == {"text/plain": [PosixPath("non_existent.txt")]}
+        # no metadata
+        with pytest.raises(FileNotFoundError):
+            router.run(sources=["non_existent.txt"])
 
-        # With meta - raises FileNotFoundError
+        # with metadata
         with pytest.raises(FileNotFoundError):
             router.run(sources=["non_existent.txt"], meta={"spam": "eggs"})
 
-    def test_warning_for_non_existent_file(self):
+    def test_logging_for_non_existent_file(self, caplog: pytest.LogCaptureFixture):
         """
-        Test that a warning is triggered when a non-existent file is encountered
+        Test that a logging warning is triggered when a non-existent file is encountered
         and raise_on_failure is False.
         """
+        import logging
+
         router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=False)
-        with pytest.warns(UserWarning, match="File not found: .* - skipping."):
+
+        # Capture log messages to verify they are triggered
+        with caplog.at_level(logging.WARNING):
             result = router.run(sources=["non_existent_file.txt"])
+            assert "File not found:" in caplog.text
+            assert "Skipping it." in caplog.text
 
-        # Verify the file is still included in the result despite the warning
-        assert "text/plain" in result
-        assert PosixPath("non_existent_file.txt") in result["text/plain"]
+        # Verify the file is added to the "failed" category
+        assert "failed" in result
+        assert PosixPath("non_existent_file.txt") in result["failed"]
+        assert "text/plain" not in result
 
-    def test_no_warning_when_raise_on_failure_is_true(self):
+    def test_no_logging_when_raise_on_failure_is_true(self):
         """
-        Test that no warning is triggered when raise_on_failure is True,
+        Test that no logging warning is triggered when raise_on_failure is True,
         instead a FileNotFoundError is raised.
         """
         router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=True)

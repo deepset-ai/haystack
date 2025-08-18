@@ -4,12 +4,11 @@
 
 import mimetypes
 import re
-import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Optional, Union
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 
@@ -17,6 +16,8 @@ from haystack.utils.misc import _guess_mime_type  # ruff: isort: skip
 
 # We import CUSTOM_MIMETYPES here to prevent breaking change from moving to haystack.utils.misc
 from haystack.utils.misc import CUSTOM_MIMETYPES  # pylint: disable=unused-import
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -81,16 +82,6 @@ class FileTypeRouter:
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
-
-        # Deprecation warning for inconsistent FileNotFoundError behavior
-        warnings.warn(
-            "FileTypeRouter currently has inconsistent behavior: FileNotFoundError is only raised when "
-            "metadata is provided. "
-            "This will be changed in a future release to always raise FileNotFoundError for non-existent files. "
-            "and with raise_on_failure=True, if False it will only emit a warning.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
 
         if additional_mimetypes:
             for mime, ext in additional_mimetypes.items():
@@ -159,8 +150,9 @@ class FileTypeRouter:
             If it's a single dictionary, its content is added to the metadata of all ByteStream objects.
             If it's a list, its length must match the number of sources, as they are zipped together.
 
-        :returns: A dictionary where the keys are MIME types (or `"unclassified"`) and the values are lists of data
-            sources.
+        :returns: A dictionary where the keys are MIME types and the values are lists of data sources.
+                  Two extra keys might be returns `"unclassified"` when a source's MIME type doesn't match any pattern
+                    and `"failed"` when a source couldn't be processed (for example, a file path that doesn't exist).
         """
 
         mime_types = defaultdict(list)
@@ -174,9 +166,12 @@ class FileTypeRouter:
                 if not source.exists():
                     if self._raise_on_failure:
                         raise FileNotFoundError(f"File not found: {source}")
-                    warnings.warn(f"File not found: {source} - skipping.", UserWarning, stacklevel=2)
+                    logger.warning(f"File not found: {source}. Skipping it.", source=source)
+                    mime_types["failed"].append(source)
+                    continue
 
                 mime_type = _guess_mime_type(source)
+
             elif isinstance(source, ByteStream):
                 mime_type = source.mime_type
             else:
@@ -184,7 +179,15 @@ class FileTypeRouter:
 
             # If we have metadata, we convert the source to ByteStream and add the metadata
             if meta_dict:
-                source = get_bytestream_from_source(source)
+                try:
+                    source = get_bytestream_from_source(source)
+                except Exception as e:
+                    if self._raise_on_failure:
+                        raise e
+                    logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
+                    mime_types["failed"].append(source)
+                    continue
+
                 source.meta.update(meta_dict)
 
             matched = False
