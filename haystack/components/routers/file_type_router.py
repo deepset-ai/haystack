@@ -79,7 +79,6 @@ class FileTypeRouter:
             If True, raises FileNotFoundError when a file path doesn't exist, regardless of whether metadata is
             provided.
             If False (default), only raises FileNotFoundError when metadata is provided (current behavior).
-            This parameter will be removed in a future release where consistent behavior will be enforced.
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
@@ -173,8 +172,10 @@ class FileTypeRouter:
                 source = Path(source)
 
             if isinstance(source, Path):
-                if self._raise_on_failure and not source.exists():
-                    raise FileNotFoundError(f"File not found: {source}")
+                if not source.exists():
+                    if self._raise_on_failure:
+                        raise FileNotFoundError(f"File not found: {source}")
+                    warnings.warn(f"File not found: {source} - skipping.", UserWarning, stacklevel=2)
 
                 mime_type = _guess_mime_type(source)
             elif isinstance(source, ByteStream):
