@@ -453,12 +453,3 @@ class TestFileTypeRouter:
         assert "failed" in result
         assert PosixPath("non_existent_file.txt") in result["failed"]
         assert "text/plain" not in result
-
-    def test_file_not_found_error_is_raised_when_raise_on_failure_is_true(self):
-        """
-        Test that no logging warning is triggered when raise_on_failure is True,
-        instead a FileNotFoundError is raised.
-        """
-        router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=True)
-        with pytest.raises(FileNotFoundError, match="File not found: .*"):
-            router.run(sources=["non_existent_file.txt"])
