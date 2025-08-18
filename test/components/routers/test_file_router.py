@@ -59,6 +59,7 @@ class TestFileTypeRouter:
                 "additional_mimetypes": {
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"
                 },
+                "raise_on_failure": False,
             },
         }
         assert router.to_dict() == expected_dict
@@ -268,9 +269,10 @@ class TestFileTypeRouter:
             test_files_path / "audio" / "this is the content of the document.wav",
         ]
         router = FileTypeRouter(mime_types=[r"text/plain"])
-
-        with pytest.raises(FileNotFoundError, match="File not found"):
-            router.run(sources=file_paths)
+        output = router.run(sources=file_paths)
+        assert len(output[r"text/plain"]) == 1
+        assert "mp3" not in output
+        assert len(output.get("unclassified")) == 2
 
     def test_no_extension(self, test_files_path):
         """
@@ -282,8 +284,9 @@ class TestFileTypeRouter:
             test_files_path / "txt" / "doc_2.txt",
         ]
         router = FileTypeRouter(mime_types=[r"text/plain"])
-        with pytest.raises(FileNotFoundError, match="File not found"):
-            router.run(sources=file_paths)
+        output = router.run(sources=file_paths)
+        assert len(output[r"text/plain"]) == 2
+        assert len(output.get("unclassified")) == 1
 
     def test_unsupported_source_type(self):
         """
@@ -361,7 +364,11 @@ class TestFileTypeRouter:
             "components": {
                 "file_type_router": {
                     "type": "haystack.components.routers.file_type_router.FileTypeRouter",
-                    "init_parameters": {"mime_types": ["text/plain", "application/pdf"], "additional_mimetypes": None},
+                    "init_parameters": {
+                        "mime_types": ["text/plain", "application/pdf"],
+                        "additional_mimetypes": None,
+                        "raise_on_failure": False,
+                    },
                 }
             },
             "connections": [],
@@ -437,9 +444,9 @@ class TestFileTypeRouter:
         """
         router = FileTypeRouter(mime_types=[r"text/plain"])
 
-        # No meta - raises FileNotFoundError
-        with pytest.raises(FileNotFoundError):
-            router.run(sources=["non_existent.txt"])
+        # No meta - does not raise error
+        result = router.run(sources=["non_existent.txt"])
+        assert result == {"text/plain": [PosixPath("non_existent.txt")]}
 
         # With meta - raises FileNotFoundError
         with pytest.raises(FileNotFoundError):
