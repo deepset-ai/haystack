@@ -420,20 +420,9 @@ class TestFileTypeRouter:
         assert custom_mime_type in mappings
         assert test_file in mappings[custom_mime_type]
 
-    @pytest.mark.skipif(
-        version.parse(haystack.__version__) >= version.parse("2.17.0"),
-        reason="https://github.com/deepset-ai/haystack/pull/9573#issuecomment-3045237341",
-    )
     def test_non_existent_file(self):
         """
         Test conditional FileNotFoundError behavior in FileTypeRouter.
-
-        In Haystack versions prior to 2.17.0, `FileTypeRouter` does not raise an error
-        when a non-existent file is passed without `meta`. However, it raises a
-        FileNotFoundError when the same file is passed with `meta` supplied.
-
-        This inconsistent behavior is slated to change in 2.17.0.
-        See: https://github.com/deepset-ai/haystack/pull/9573#issuecomment-3045237341
         """
         router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=True)
 
@@ -465,7 +454,7 @@ class TestFileTypeRouter:
         assert PosixPath("non_existent_file.txt") in result["failed"]
         assert "text/plain" not in result
 
-    def test_no_logging_when_raise_on_failure_is_true(self):
+    def test_file_not_found_error_is_raised_when_raise_on_failure_is_true(self):
         """
         Test that no logging warning is triggered when raise_on_failure is True,
         instead a FileNotFoundError is raised.
