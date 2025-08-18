@@ -62,7 +62,7 @@ class FileTypeRouter:
         self,
         mime_types: list[str],
         additional_mimetypes: Optional[dict[str, str]] = None,
-        raise_on_failure: bool = False,  # Set to True in 2.18 release and remove warning below
+        raise_on_failure: bool = False,
     ):
         """
         Initialize the FileTypeRouter component.
