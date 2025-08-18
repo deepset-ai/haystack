@@ -219,6 +219,16 @@ class TestState:
         with pytest.raises(ValueError, match="must be callable or None"):
             _validate_schema(invalid_schema)
 
+    def test_validate_schema_with_messages(self):
+        class ChatMessageSubclass(ChatMessage):
+            pass
+
+        schema_with_messages = {"messages": {"type": List[ChatMessage]}}
+        _validate_schema(schema_with_messages)
+
+        schema_with_messages_subclass = {"messages": {"type": List[ChatMessageSubclass]}}
+        _validate_schema(schema_with_messages_subclass)
+
     def test_state_initialization(self, basic_schema):
         # Test empty initialization
         state = State(basic_schema)
@@ -302,11 +312,11 @@ class TestState:
         schema = {
             "complex": {
                 "type": dict[str, list[int]],
-                "handler": lambda current, new: {
-                    k: current.get(k, []) + new.get(k, []) for k in set(current.keys()) | set(new.keys())
-                }
-                if current
-                else new,
+                "handler": lambda current, new: (
+                    {k: current.get(k, []) + new.get(k, []) for k in set(current.keys()) | set(new.keys())}
+                    if current
+                    else new
+                ),
             }
         }
 
