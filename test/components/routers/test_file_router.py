@@ -457,11 +457,7 @@ class TestFileTypeRouter:
         Test that a warning is triggered when a non-existent file is encountered
         and raise_on_failure is False.
         """
-        import warnings
-
         router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=False)
-
-        # Capture warnings to verify they are triggered
         with pytest.warns(UserWarning, match="File not found: .* - skipping."):
             result = router.run(sources=["non_existent_file.txt"])
 
@@ -475,7 +471,5 @@ class TestFileTypeRouter:
         instead a FileNotFoundError is raised.
         """
         router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=True)
-
-        # Should raise FileNotFoundError instead of warning
         with pytest.raises(FileNotFoundError, match="File not found: .*"):
             router.run(sources=["non_existent_file.txt"])
