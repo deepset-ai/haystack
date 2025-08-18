@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import contextvars
 import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
@@ -628,8 +629,11 @@ class ToolInvoker:
     ) -> Union[ToolInvocationError, Any]:
         """Safely invoke a tool with proper exception handling."""
         loop = asyncio.get_running_loop()
+        # Important: contextvars (e.g. active tracing Span) don’t propagate to running loop's ThreadPoolExecutor
+        # We use ctx.run(...) to preserve context like the active tracing span
+        ctx = contextvars.copy_context()
         try:
-            result = await loop.run_in_executor(executor, partial(tool_to_invoke.invoke, **final_args))
+            result = await loop.run_in_executor(executor, lambda: ctx.run(partial(tool_to_invoke.invoke, **final_args)))
             return result
         except ToolInvocationError as e:
             return e

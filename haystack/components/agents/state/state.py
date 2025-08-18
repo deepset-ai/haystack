@@ -74,7 +74,7 @@ def _validate_schema(schema: dict[str, Any]) -> None:
                 raise ValueError(f"StateSchema: 'messages' must be of type list[ChatMessage], got {definition['type']}")
             # Check if the list contains ChatMessage elements
             args = get_args(definition["type"])
-            if not args or args[0] != ChatMessage:
+            if not args or not issubclass(args[0], ChatMessage):
                 raise ValueError(f"StateSchema: 'messages' must be of type list[ChatMessage], got {definition['type']}")
 
 
