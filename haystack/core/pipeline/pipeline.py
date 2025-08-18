@@ -404,7 +404,6 @@ class Pipeline(PipelineBase):
                     )
 
                     # ToDo: remove the Breakpoint from the pipeline_snapshot since it is not needed
-
                     _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
 
                 component_outputs = self._run_component(
