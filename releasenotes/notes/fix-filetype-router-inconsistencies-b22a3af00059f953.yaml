@@ -1,5 +1,5 @@
 ---
 fixes:
   - |
-    `FileTypeRouter` has a new parameter `raise_on_failure` with default value to `False`. When set to `True`, `FileNotFoundError` is always raised for non-existent files. Currently, it only
-    happens when the parameter `meta` in the run() is provided. This will be changed in a future release to always raise `FileNotFoundError` for non-existent files when `raise_on_failure` is set to `True`.
+    `FileTypeRouter` has a new parameter `raise_on_failure` with default value to `False`. When set to `True`, `FileNotFoundError` is always raised for non-existent files.
+    Previously, this exception was raised only when processing a non-existent file and the `meta` parameter was provided to `run()`.
