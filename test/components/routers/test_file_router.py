@@ -268,10 +268,9 @@ class TestFileTypeRouter:
             test_files_path / "audio" / "this is the content of the document.wav",
         ]
         router = FileTypeRouter(mime_types=[r"text/plain"])
-        output = router.run(sources=file_paths)
-        assert len(output[r"text/plain"]) == 1
-        assert "mp3" not in output
-        assert len(output.get("unclassified")) == 2
+
+        with pytest.raises(FileNotFoundError, match="File not found"):
+            router.run(sources=file_paths)
 
     def test_no_extension(self, test_files_path):
         """
@@ -283,9 +282,8 @@ class TestFileTypeRouter:
             test_files_path / "txt" / "doc_2.txt",
         ]
         router = FileTypeRouter(mime_types=[r"text/plain"])
-        output = router.run(sources=file_paths)
-        assert len(output[r"text/plain"]) == 2
-        assert len(output.get("unclassified")) == 1
+        with pytest.raises(FileNotFoundError, match="File not found"):
+            router.run(sources=file_paths)
 
     def test_unsupported_source_type(self):
         """
@@ -439,9 +437,9 @@ class TestFileTypeRouter:
         """
         router = FileTypeRouter(mime_types=[r"text/plain"])
 
-        # No meta - does not raise error
-        result = router.run(sources=["non_existent.txt"])
-        assert result == {"text/plain": [PosixPath("non_existent.txt")]}
+        # No meta - raises FileNotFoundError
+        with pytest.raises(FileNotFoundError):
+            router.run(sources=["non_existent.txt"])
 
         # With meta - raises FileNotFoundError
         with pytest.raises(FileNotFoundError):

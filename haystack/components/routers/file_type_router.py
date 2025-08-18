@@ -57,12 +57,7 @@ class FileTypeRouter:
     ```
     """
 
-    def __init__(
-        self,
-        mime_types: list[str],
-        additional_mimetypes: Optional[dict[str, str]] = None,
-        raise_on_failure: bool = False,  # Set to True in 2.18 release and remove warning below
-    ):
+    def __init__(self, mime_types: list[str], additional_mimetypes: Optional[dict[str, str]] = None):
         """
         Initialize the FileTypeRouter component.
 
@@ -74,12 +69,6 @@ class FileTypeRouter:
             A dictionary containing the MIME type to add to the mimetypes package to prevent unsupported or non-native
             packages from being unclassified.
             (for example: `{"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"}`).
-
-        :param raise_on_failure:
-            If True, raises FileNotFoundError when a file path doesn't exist, regardless of whether metadata is
-            provided.
-            If False (default), only raises FileNotFoundError when metadata is provided (current behavior).
-            This parameter will be removed in a future release where consistent behavior will be enforced.
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
@@ -115,7 +104,6 @@ class FileTypeRouter:
         )
         self.mime_types = mime_types
         self._additional_mimetypes = additional_mimetypes
-        self._raise_on_failure = raise_on_failure
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -124,12 +112,7 @@ class FileTypeRouter:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(
-            self,
-            mime_types=self.mime_types,
-            additional_mimetypes=self._additional_mimetypes,
-            raise_on_failure=self._raise_on_failure,
-        )
+        return default_to_dict(self, mime_types=self.mime_types, additional_mimetypes=self._additional_mimetypes)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FileTypeRouter":
@@ -173,8 +156,7 @@ class FileTypeRouter:
                 source = Path(source)
 
             if isinstance(source, Path):
-                # Check if file exists when raise_on_failure is True
-                if self._raise_on_failure and not source.exists():
+                if not source.exists():
                     raise FileNotFoundError(f"File not found: {source}")
 
                 mime_type = _guess_mime_type(source)
