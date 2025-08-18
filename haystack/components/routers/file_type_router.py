@@ -151,8 +151,8 @@ class FileTypeRouter:
             If it's a list, its length must match the number of sources, as they are zipped together.
 
         :returns: A dictionary where the keys are MIME types and the values are lists of data sources.
-                  Two extra keys might be returns `"unclassified"` when a source's MIME type doesn't match any pattern
-                    and `"failed"` when a source couldn't be processed (for example, a file path that doesn't exist).
+                  Two extra keys may be returned: `"unclassified"` when a source's MIME type doesn't match any pattern
+                   and `"failed"` when a source cannot be processed (for example, a file path that doesn't exist).
         """
 
         mime_types = defaultdict(list)
