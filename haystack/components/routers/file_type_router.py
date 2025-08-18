@@ -76,9 +76,8 @@ class FileTypeRouter:
             (for example: `{"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"}`).
 
         :param raise_on_failure:
-            If True, raises FileNotFoundError when a file path doesn't exist, regardless of whether metadata is
-            provided.
-            If False (default), only raises FileNotFoundError when metadata is provided (current behavior).
+            If True, raises FileNotFoundError when a file path doesn't exist.
+            If False (default), only emits a warning when a file path doesn't exist.
         """
         if not mime_types:
             raise ValueError("The list of mime types cannot be empty.")
@@ -88,7 +87,7 @@ class FileTypeRouter:
             "FileTypeRouter currently has inconsistent behavior: FileNotFoundError is only raised when "
             "metadata is provided. "
             "This will be changed in a future release to always raise FileNotFoundError for non-existent files. "
-            "Set raise_on_failure=True to opt into the future behavior.",
+            "and with raise_on_failure=True, if False it will only emit a warning.",
             DeprecationWarning,
             stacklevel=2,
         )
