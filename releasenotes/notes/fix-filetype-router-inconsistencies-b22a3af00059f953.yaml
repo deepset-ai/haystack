@@ -3,6 +3,7 @@ fixes:
   - |
     `FileTypeRouter` has a new parameter `raise_on_failure` with default value to `False`. When set to `True`, `FileNotFoundError` is always raised for non-existent files.
     Previously, this exception was raised only when processing a non-existent file and the `meta` parameter was provided to `run()`.
-enhancements:
+upgrade:
   - |
     `MultiFileConverter` outputs a new key `failed` in the result dictionary, which contains a list of files that failed to convert.
+    The `documents` output is only included if at least one file is successfully converted. Previously, `documents` was always present, even when empty.
