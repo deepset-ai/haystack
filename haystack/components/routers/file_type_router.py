@@ -156,7 +156,7 @@ class FileTypeRouter:
                    and `"failed"` when a source cannot be processed (for example, a file path that doesn't exist).
         """
 
-        mime_types = defaultdict(list)
+        mime_types: defaultdict[str, list[Union[Path, ByteStream]]] = defaultdict(list)
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
         for source, meta_dict in zip(sources, meta_list):
