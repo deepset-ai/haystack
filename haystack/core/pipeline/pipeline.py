@@ -382,7 +382,7 @@ class Pipeline(PipelineBase):
                                 pipeline_snapshot=new_pipeline_snapshot, pipeline_outputs=pipeline_outputs
                             )
 
-                # automatic snapshot creation after each component execution
+                # Scenario 3: Automatic snapshot creation after each component execution
                 if state_persistence:
                     # Create a dummy breakpoint for the automatic snapshot
                     auto_breakpoint = Breakpoint(
