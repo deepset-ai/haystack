@@ -106,7 +106,7 @@ class TestMultiFileConverter:
         paths = [test_files_path / "non_existent.txt"]
         with caplog.at_level("WARNING"):
             output = converter.run(sources=paths)
-            assert "Could not read" in caplog.text
+            assert "File not found" in caplog.text
             assert len(output["documents"]) == 0
 
     @pytest.mark.integration
