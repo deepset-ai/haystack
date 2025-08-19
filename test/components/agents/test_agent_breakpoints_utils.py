@@ -10,11 +10,7 @@ from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import Tool
-from test.components.agents.test_agent import (
-    MockChatGeneratorWithoutRunAsync,
-    MockChatGeneratorWithRunAsync,
-    weather_function,
-)
+from test.components.agents.test_agent import MockChatGenerator, MockChatGeneratorWithoutRunAsync, weather_function
 
 
 # Common fixtures
@@ -74,7 +70,7 @@ def mock_agent_with_tool_calls_sync(monkeypatch, weather_tool):
 
 @pytest.fixture
 def agent_async(weather_tool):
-    generator = MockChatGeneratorWithRunAsync()
+    generator = MockChatGenerator()
     mock_run_async = AsyncMock()
     mock_run_async.return_value = {
         "replies": [
@@ -99,7 +95,7 @@ def agent_async(weather_tool):
 @pytest.fixture
 def mock_agent_with_tool_calls_async(monkeypatch, weather_tool):
     monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-    generator = MockChatGeneratorWithRunAsync()
+    generator = MockChatGenerator()
     mock_messages = [
         ChatMessage.from_assistant("First response"),
         ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]),

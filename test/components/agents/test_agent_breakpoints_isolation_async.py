@@ -14,7 +14,7 @@ from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.tools import Tool
-from test.components.agents.test_agent import MockChatGeneratorWithRunAsync, weather_function
+from test.components.agents.test_agent import MockChatGenerator, weather_function
 
 AGENT_NAME = "isolated_agent"
 
@@ -31,7 +31,7 @@ def weather_tool():
 
 @pytest.fixture
 def mock_chat_generator():
-    generator = MockChatGeneratorWithRunAsync()
+    generator = MockChatGenerator()
     mock_run_async = AsyncMock()
     mock_run_async.return_value = {
         "replies": [
@@ -67,7 +67,7 @@ def debug_path(tmp_path):
 @pytest.fixture
 def mock_agent_with_tool_calls(monkeypatch, weather_tool):
     monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-    generator = MockChatGeneratorWithRunAsync()
+    generator = MockChatGenerator()
     mock_messages = [
         ChatMessage.from_assistant("First response"),
         ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]),
