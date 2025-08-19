@@ -427,10 +427,15 @@ class Agent:
         :raises BreakpointException: If an agent breakpoint is triggered.
 
         """
-        # kwargs can contain the key parent_snapshot.
-        # We pop it here to avoid passing it into State. We explicitly pass it on if a break point is triggered.
+        # We pop parent_snapshot from kwargs to avoid passing it into State.
         parent_snapshot = kwargs.pop("parent_snapshot", None)
-
+        agent_inputs = {
+            "messages": messages,
+            "streaming_callback": streaming_callback,
+            "break_point": break_point,
+            "snapshot": snapshot,
+            **kwargs,
+        }
         self._runtime_checks(break_point=break_point, snapshot=snapshot)
 
         if snapshot:
@@ -444,18 +449,7 @@ class Agent:
 
         state = execution_context.state
         with self._create_agent_span() as span:
-            span.set_content_tag(
-                "haystack.agent.input",
-                _deepcopy_with_exceptions(
-                    {
-                        "messages": messages,
-                        "streaming_callback": streaming_callback,
-                        "break_point": break_point,
-                        "snapshot": snapshot,
-                        **kwargs,
-                    }
-                ),
-            )
+            span.set_content_tag("haystack.agent.input", _deepcopy_with_exceptions(agent_inputs))
 
             while execution_context.counter < self.max_agent_steps:
                 # Handle breakpoint and ChatGenerator call
@@ -552,11 +546,15 @@ class Agent:
         :raises RuntimeError: If the Agent component wasn't warmed up before calling `run_async()`.
         :raises BreakpointException: If an agent breakpoint is triggered.
         """
-        # kwargs can contain the key parent_snapshot.
-        # We pop it here to avoid passing it into State. We explicitly handle it pass it on if a break point is
-        # triggered.
+        # We pop parent_snapshot from kwargs to avoid passing it into State.
         parent_snapshot = kwargs.pop("parent_snapshot", None)
-
+        agent_inputs = {
+            "messages": messages,
+            "streaming_callback": streaming_callback,
+            "break_point": break_point,
+            "snapshot": snapshot,
+            **kwargs,
+        }
         self._runtime_checks(break_point=break_point, snapshot=snapshot)
 
         if snapshot:
@@ -570,18 +568,7 @@ class Agent:
 
         state = execution_context.state
         with self._create_agent_span() as span:
-            span.set_content_tag(
-                "haystack.agent.input",
-                _deepcopy_with_exceptions(
-                    {
-                        "messages": messages,
-                        "streaming_callback": streaming_callback,
-                        "break_point": break_point,
-                        "snapshot": snapshot,
-                        **kwargs,
-                    }
-                ),
-            )
+            span.set_content_tag("haystack.agent.input", _deepcopy_with_exceptions(agent_inputs))
 
             while execution_context.counter < self.max_agent_steps:
                 # Handle breakpoint and ChatGenerator call
