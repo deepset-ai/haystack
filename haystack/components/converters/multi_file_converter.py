@@ -115,7 +115,11 @@ class MultiFileConverter:
         pp.connect("xlsx.documents", "joiner.documents")
 
         self.pipeline = pp
-        self.output_mapping = {"joiner.documents": "documents", "router.unclassified": "unclassified"}
+        self.output_mapping = {
+            "joiner.documents": "documents",
+            "router.unclassified": "unclassified",
+            "router.failed": "failed",
+        }
         self.input_mapping = {"sources": ["router.sources"], "meta": ["router.meta"]}
 
     if TYPE_CHECKING:
@@ -127,5 +131,6 @@ class MultiFileConverter:
             meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
         ) -> dict[str, list[Document]]:  # noqa: D102
             ...
+
         def warm_up(self) -> None:  # noqa: D102
             ...
