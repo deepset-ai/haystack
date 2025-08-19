@@ -557,127 +557,65 @@ class Agent:
         # triggered.
         parent_snapshot = kwargs.pop("parent_snapshot", None)
 
-        if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
-            raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run_async()'.")
+        self._runtime_checks(break_point=break_point, snapshot=snapshot)
 
-        if break_point and snapshot:
-            raise ValueError(
-                "break_point and snapshot cannot be provided at the same time. The agent run will be aborted."
+        if snapshot:
+            execution_context = self._initialize_from_snapshot(
+                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=False
+            )
+        else:
+            execution_context = self._initialize_fresh_execution(
+                messages=messages, streaming_callback=streaming_callback, requires_async=False, **kwargs
             )
 
-        # validate breakpoints
-        if break_point and isinstance(break_point.break_point, ToolBreakpoint):
-            _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
-
-        # Handle agent snapshot if provided
-        if snapshot:
-            component_visits = snapshot.component_visits
-            current_inputs = {
-                "chat_generator": _deserialize_value_with_schema(snapshot.component_inputs["chat_generator"]),
-                "tool_invoker": _deserialize_value_with_schema(snapshot.component_inputs["tool_invoker"]),
-            }
-            state_data = current_inputs["tool_invoker"]["state"].data
-            if isinstance(snapshot.break_point.break_point, ToolBreakpoint):
-                # If the break point is a ToolBreakpoint, we need to get the messages from the tool invoker inputs
-                messages = current_inputs["tool_invoker"]["messages"]
-                # Needed to know if we should start with the ToolInvoker or ChatGenerator
-                skip_chat_generator = True
-            else:
-                messages = current_inputs["chat_generator"]["messages"]
-                skip_chat_generator = False
-            # We also load the streaming_callback from the snapshot if it exists
-            streaming_callback = current_inputs["chat_generator"].get("streaming_callback", None)
-        else:
-            skip_chat_generator = False
-            if self.system_prompt is not None:
-                messages = [ChatMessage.from_system(self.system_prompt)] + messages
-
-            if all(m.is_from(ChatRole.SYSTEM) for m in messages):
-                logger.warning(
-                    "All messages provided to the Agent component are system messages. This is not recommended as the "
-                    "Agent will not perform any actions specific to user input. Consider adding user messages to the "
-                    "input."
-                )
-            component_visits = dict.fromkeys(["chat_generator", "tool_invoker"], 0)
-            state_data = kwargs
-
-        state = State(schema=self.state_schema, data=state_data)
-        state.set("messages", messages)
-
-        streaming_callback = select_streaming_callback(
-            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
-        )
-        generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback)
+        state = execution_context.state
         with self._create_agent_span() as span:
             span.set_content_tag(
                 "haystack.agent.input",
-                _deepcopy_with_exceptions({"messages": messages, "streaming_callback": streaming_callback, **kwargs}),
+                _deepcopy_with_exceptions(
+                    {
+                        "messages": messages,
+                        "streaming_callback": streaming_callback,
+                        "break_point": break_point,
+                        "snapshot": snapshot,
+                        **kwargs,
+                    }
+                ),
             )
-            counter = 0
 
-            while counter < self.max_agent_steps:
-                # check for breakpoint before ChatGenerator
-                if (
-                    break_point
-                    and break_point.break_point.component_name == "chat_generator"
-                    and component_visits["chat_generator"] == break_point.break_point.visit_count
-                ):
-                    agent_snapshot = _create_agent_snapshot(
-                        component_visits=component_visits,
-                        agent_breakpoint=break_point,
-                        component_inputs={
-                            "chat_generator": {"messages": messages, **generator_inputs},
-                            "tool_invoker": {"messages": [], "state": state, "streaming_callback": streaming_callback},
-                        },
-                    )
-                    _check_chat_generator_breakpoint(agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot)
-
-                # 1. Call the ChatGenerator
-                # If skip_chat_generator is True, we skip the chat generator and use the messages from the state
-                # This is useful when the agent is resumed from a snapshot where the chat generator already ran.
-                if skip_chat_generator:
-                    llm_messages = state.get("messages", [])[-1:]  # Get the last message from the state
-                    # We set it to False to ensure that the next iteration will call the chat generator again
-                    skip_chat_generator = False
+            while execution_context.counter < self.max_agent_steps:
+                # Handle breakpoint and ChatGenerator call
+                self._check_chat_generator_breakpoint(
+                    execution_context=execution_context, break_point=break_point, parent_snapshot=parent_snapshot
+                )
+                # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
+                if execution_context.skip_chat_generator:
+                    llm_messages = state.get("messages", [])[-1:]
+                    # Set to False so the next iteration will call the chat generator
+                    execution_context.skip_chat_generator = False
                 else:
                     result = await AsyncPipeline._run_component_async(
                         component_name="chat_generator",
                         component={"instance": self.chat_generator},
-                        component_inputs={"messages": messages, **generator_inputs},
-                        component_visits=component_visits,
+                        component_inputs={
+                            "messages": execution_context.messages,
+                            **execution_context.chat_generator_inputs,
+                        },
+                        component_visits=execution_context.component_visits,
                         parent_span=span,
                     )
                     llm_messages = result["replies"]
                     state.set("messages", llm_messages)
 
-                # 2. Check if any of the LLM responses contain a tool call or if the LLM is not using tools
+                # Check if any of the LLM responses contain a tool call or if the LLM is not using tools
                 if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
-                    counter += 1
+                    execution_context.counter += 1
                     break
 
-                # Check for breakpoint before ToolInvoker
-                if (
-                    break_point
-                    and break_point.break_point.component_name == "tool_invoker"
-                    and break_point.break_point.visit_count == component_visits["tool_invoker"]
-                ):
-                    agent_snapshot = _create_agent_snapshot(
-                        component_visits=component_visits,
-                        agent_breakpoint=break_point,
-                        component_inputs={
-                            "chat_generator": {"messages": messages[:-1], **generator_inputs},
-                            "tool_invoker": {
-                                "messages": llm_messages,
-                                "state": state,
-                                "streaming_callback": streaming_callback,
-                            },
-                        },
-                    )
-                    _check_tool_invoker_breakpoint(
-                        llm_messages=llm_messages, agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot
-                    )
-
-                # 3. Call the ToolInvoker
+                # Handle breakpoint and ToolInvoker call
+                self._check_tool_invoker_breakpoint(
+                    execution_context=execution_context, break_point=break_point, parent_snapshot=parent_snapshot
+                )
                 # We only send the messages from the LLM to the tool invoker
                 tool_invoker_result = await AsyncPipeline._run_component_async(
                     component_name="tool_invoker",
@@ -685,36 +623,34 @@ class Agent:
                     component_inputs={
                         "messages": llm_messages,
                         "state": state,
-                        "streaming_callback": streaming_callback,
+                        **execution_context.tool_invoker_inputs,
                     },
-                    component_visits=component_visits,
+                    component_visits=execution_context.component_visits,
                     parent_span=span,
                 )
-                tool_messages = tool_invoker_result["tool_messages"]
-                state = tool_invoker_result["state"]
+                tool_messages, state = tool_invoker_result["tool_messages"], tool_invoker_result["state"]
                 state.set("messages", tool_messages)
 
                 # 4. Check if any LLM message's tool call name matches an exit condition
                 if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                    counter += 1
+                    execution_context.counter += 1
                     break
 
                 # 5. Fetch the combined messages and send them back to the LLM
-                messages = state.get("messages")
-                counter += 1
+                execution_context.messages = state.get("messages")
+                execution_context.counter += 1
 
-            if counter >= self.max_agent_steps:
+            if execution_context.counter >= self.max_agent_steps:
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
             span.set_content_tag("haystack.agent.output", state.data)
-            span.set_tag("haystack.agent.steps_taken", counter)
+            span.set_tag("haystack.agent.steps_taken", execution_context.counter)
 
         result = {**state.data}
-        all_messages = state.get("messages")
-        if all_messages:
-            result.update({"last_message": all_messages[-1]})
+        if msgs := result.get("messages"):
+            result["last_message"] = msgs[-1]
         return result
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:
