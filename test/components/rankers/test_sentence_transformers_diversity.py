@@ -381,7 +381,7 @@ class TestSentenceTransformersDiversityRanker:
         query = "test"
         documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
 
-        with pytest.raises(ValueError, match="top_k must be between"):
+        with pytest.raises(ValueError, match="top_k must be > 0"):
             ranker.run(query=query, documents=documents, top_k=-5)
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
