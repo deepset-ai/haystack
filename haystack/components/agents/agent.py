@@ -21,7 +21,7 @@ from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
-from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, ToolBreakpoint
+from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, PipelineSnapshot, ToolBreakpoint
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils import _deserialize_value_with_schema
@@ -266,8 +266,8 @@ class Agent:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
 
-        tool_invoker_inputs = {}
-        generator_inputs = {"tools": self.tools}
+        tool_invoker_inputs: dict[str, Any] = {}
+        generator_inputs: dict[str, Any] = {"tools": self.tools}
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
@@ -307,8 +307,8 @@ class Agent:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
 
-        tool_invoker_inputs = {}
-        generator_inputs = {"tools": self.tools}
+        tool_invoker_inputs: dict[str, Any] = {}
+        generator_inputs: dict[str, Any] = {"tools": self.tools}
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
@@ -338,7 +338,7 @@ class Agent:
         self,
         execution_context: _ExecutionContext,
         break_point: Optional[AgentBreakpoint],
-        parent_snapshot: Optional[AgentSnapshot],
+        parent_snapshot: Optional[PipelineSnapshot],
     ) -> None:
         component_visits = execution_context.component_visits
         state = execution_context.state
@@ -364,7 +364,7 @@ class Agent:
         self,
         execution_context: _ExecutionContext,
         break_point: Optional[AgentBreakpoint],
-        parent_snapshot: Optional[AgentSnapshot],
+        parent_snapshot: Optional[PipelineSnapshot],
     ) -> None:
         if (
             break_point
