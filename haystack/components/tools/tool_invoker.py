@@ -552,7 +552,9 @@ class ToolInvoker:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 futures = []
                 for params in tool_call_params:
-                    future = executor.submit(self._execute_single_tool_call, **params)
+                    # Preserve contextvars (e.g., active tracing span) inside threadpool workers
+                    ctx = contextvars.copy_context()
+                    future = executor.submit(lambda p=params, c=ctx: c.run(self._execute_single_tool_call, **p))
                     futures.append(future)
 
                 # 3) Gather and process results: handle errors and merge outputs into state
