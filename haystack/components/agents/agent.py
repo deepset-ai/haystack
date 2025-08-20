@@ -262,7 +262,7 @@ class Agent:
         state = State(schema=self.state_schema, data=kwargs)
         state.set("messages", messages)
 
-        streaming_callback = select_streaming_callback(
+        streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
 
@@ -303,7 +303,7 @@ class Agent:
         state.set("messages", messages)
 
         streaming_callback = current_inputs["chat_generator"].get("streaming_callback", streaming_callback)
-        streaming_callback = select_streaming_callback(
+        streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
 
