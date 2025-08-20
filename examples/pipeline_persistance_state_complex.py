@@ -9,6 +9,7 @@ from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
+from haystack.core.pipeline.pipeline import PersistenceSaving
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
@@ -40,6 +41,9 @@ def setup_document_store():
 
 
 def hybrid_search(document_store):
+    """
+    Create a hybrid RAG pipeline that combines BM25 and embedding-based retrieval.
+    """
     top_k = 3
     text_embedder = SentenceTransformersTextEmbedder(model=embedding_model, progress_bar=False)
     embedding_retriever = InMemoryEmbeddingRetriever(document_store, top_k=top_k)
@@ -83,7 +87,10 @@ def hybrid_search(document_store):
     return hybrid_retrieval
 
 
-def test_hybrid_rag_with_automatic_snapshots():
+def hybrid_rag_with_automatic_snapshots():
+    """
+    Example of a hybrid RAG pipeline with automatic state persistence and snapshot management.
+    """
     print(f"Using directory: {snapshots_dir}")
 
     # Setup document store
@@ -106,7 +113,12 @@ def test_hybrid_rag_with_automatic_snapshots():
     try:
         # Run pipeline with automatic state persistence
         print("Running pipeline with automatic state persistence...")
-        results = pipeline.run(data=test_data, state_persistence=True, state_persistence_path=snapshots_dir)
+        results = pipeline.run(
+            data=test_data,
+            # state_persistence=PersistenceSaving.FULL,
+            state_persistence=PersistenceSaving.INPUT_ONLY,
+            state_persistence_path=snapshots_dir,
+        )
 
         print("Pipeline completed successfully!")
         print(f"Final answer: {results['answer_builder']['answers'][0].data}")
@@ -167,4 +179,4 @@ def test_hybrid_rag_with_automatic_snapshots():
 
 
 if __name__ == "__main__":
-    test_hybrid_rag_with_automatic_snapshots()
+    hybrid_rag_with_automatic_snapshots()

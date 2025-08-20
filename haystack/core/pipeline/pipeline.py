@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Literal, Mapping, Optional, Union
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -28,6 +28,14 @@ from haystack.telemetry import pipeline_running
 from haystack.utils import _deserialize_value_with_schema
 
 logger = logging.getLogger(__name__)
+
+from enum import Enum
+
+
+class PersistenceSaving(Enum):
+    FULL = "full"
+    INPUT_ONLY = "component_input"
+    NONE = "none"
 
 
 class Pipeline(PipelineBase):
@@ -94,7 +102,7 @@ class Pipeline(PipelineBase):
         *,
         break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
-        state_persistence: bool = False,
+        state_persistence: PersistenceSaving = PersistenceSaving.NONE,
         state_persistence_path: Optional[str] = None,
     ) -> dict[str, Any]:
         """
@@ -177,6 +185,12 @@ class Pipeline(PipelineBase):
 
         :param pipeline_snapshot:
             A dictionary containing a snapshot of a previously saved pipeline execution.
+
+        :param state_persistence:
+            Literal["component_input", "full"] | bool = False
+
+        :param state_persistence_path:
+            Optional[str] = None
 
         :returns:
             A dictionary where each entry corresponds to a component name
@@ -382,10 +396,10 @@ class Pipeline(PipelineBase):
                                 pipeline_snapshot=new_pipeline_snapshot, pipeline_outputs=pipeline_outputs
                             )
 
-                # Scenario 3: Automatic snapshot creation after each component execution
-                if state_persistence:
-                    # Create a dummy breakpoint for the automatic snapshot
-                    auto_breakpoint = Breakpoint(
+                # Scenario 3: Save the full pipeline state allowing to restart the pipeline from this point
+                if state_persistence == state_persistence.FULL:
+                    # ToDo: FIX we need a Breakpoint because it's where the path to the snapshot is stored.
+                    dummy_breakpoint = Breakpoint(
                         component_name=component_name,
                         visit_count=component_visits[component_name],
                         snapshot_file_path=state_persistence_path,
@@ -395,7 +409,7 @@ class Pipeline(PipelineBase):
                     pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
                     pipeline_snapshot = _create_pipeline_snapshot(
                         inputs=pipeline_snapshot_inputs_serialised,
-                        break_point=auto_breakpoint,
+                        break_point=dummy_breakpoint,
                         component_visits=component_visits,
                         original_input_data=data,
                         ordered_component_names=ordered_component_names,
@@ -403,8 +417,14 @@ class Pipeline(PipelineBase):
                         pipeline_outputs=pipeline_outputs,
                     )
 
-                    # ToDo: remove the Breakpoint from the pipeline_snapshot since it is not needed
-                    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
+                # Scenario 4: Save the component input only
+                if state_persistence == state_persistence.INPUT_ONLY:
+                    pass
+                    # component_inputs
+                    # state_persistence_path
+                    # visit_nr = component_visits[component_name]
+                    # filename = f"{component_name}_{visit_nr}_{datetime}.json"
+                    # ToDo: save all this as a JSON file in the state_persistence_path
 
                 component_outputs = self._run_component(
                     component_name=component_name,

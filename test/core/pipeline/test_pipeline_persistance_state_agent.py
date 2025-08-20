@@ -7,6 +7,7 @@ from haystack.components.converters.html import HTMLToDocument
 from haystack.components.fetchers.link_content import LinkContentFetcher
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.core.pipeline import Pipeline
+from haystack.core.pipeline.pipeline import PersistenceSaving
 from haystack.dataclasses import ChatMessage, Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.tools import tool
@@ -66,7 +67,7 @@ def main():
     agent = create_agent_pipeline()
     agent_output = agent.run(
         data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}},
-        state_persistence=True,
+        state_persistence=PersistenceSaving.FULL,
         state_persistence_path=snapshots_dir,
     )
     print(agent_output["database_agent"]["messages"][-1].text)
