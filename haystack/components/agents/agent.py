@@ -376,10 +376,7 @@ class Agent:
                 component_visits=execution_context.component_visits,
                 agent_breakpoint=break_point,
                 component_inputs={
-                    "chat_generator": {
-                        "messages": messages[:-1],
-                        **execution_context.chat_generator_inputs,
-                    },
+                    "chat_generator": {"messages": messages[:-1], **execution_context.chat_generator_inputs},
                     "tool_invoker": {
                         "messages": messages[:-1],
                         "state": execution_context.state,
@@ -388,9 +385,7 @@ class Agent:
                 },
             )
             _check_tool_invoker_breakpoint(
-                llm_messages=messages[-1:],
-                agent_snapshot=agent_snapshot,
-                parent_snapshot=parent_snapshot,
+                llm_messages=messages[-1:], agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot
             )
 
     def run(  # noqa: PLR0915
