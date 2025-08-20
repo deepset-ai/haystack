@@ -8,7 +8,7 @@ import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from haystack.components.agents import State
 from haystack.core.component.component import component
@@ -550,13 +550,21 @@ class ToolInvoker:
         # 2) Execute valid tool calls in parallel
         if tool_call_params:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                # Helper: run a zero-arg callable within a captured contextvars.Context
+                def run_in_context(callable_to_run: Callable[[], Any], execution_context: contextvars.Context) -> Any:
+                    return execution_context.run(callable_to_run)
+
                 futures = []
                 for params in tool_call_params:
-                    # Preserve contextvars (e.g., active tracing span) inside threadpool workers
-                    ctx = contextvars.copy_context()
-                    future = executor.submit(lambda: ctx.run(partial(self._execute_single_tool_call, **params)))
-                    futures.append(future)
+                    # Capture the current context for this task so
+                    # executor workers inherit active tracing and other contextvars
+                    execution_context = contextvars.copy_context()
 
+                    # Bind this iteration's arguments to avoid late-binding in closures
+                    bound_tool_call = partial(self._execute_single_tool_call, **params)
+
+                    future = executor.submit(run_in_context, bound_tool_call, execution_context)
+                    futures.append(future)
                 # 3) Gather and process results: handle errors and merge outputs into state
                 for future, tool_call in zip(futures, tool_calls):
                     result = future.result()
