@@ -285,9 +285,9 @@ class Agent:
 
         return _ExecutionContext(
             state=state,
-            tool_invoker_inputs=tool_invoker_inputs,
-            chat_generator_inputs=generator_inputs,
             component_visits=dict.fromkeys(["chat_generator", "tool_invoker"], 0),
+            chat_generator_inputs=generator_inputs,
+            tool_invoker_inputs=tool_invoker_inputs,
         )
 
     def _initialize_from_snapshot(
@@ -331,9 +331,10 @@ class Agent:
 
         return _ExecutionContext(
             state=state,
+            component_visits=component_visits,
             chat_generator_inputs=generator_inputs,
             tool_invoker_inputs=tool_invoker_inputs,
-            component_visits=component_visits,
+            counter=snapshot.break_point.break_point.visit_count,
             skip_chat_generator=skip_chat_generator,
         )
 
