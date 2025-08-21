@@ -223,7 +223,7 @@ class ToolInvoker:
         def _runner() -> Any:
             try:
                 return ctx.run(partial(tool_to_invoke.invoke, **final_args))
-            except ToolInvocationError as e:  # noqa: PERF203
+            except ToolInvocationError as e:
                 return e
 
         return _runner
@@ -625,21 +625,6 @@ class ToolInvoker:
             )
 
         return {"tool_messages": tool_messages, "state": state}
-
-    @staticmethod
-    def _execute_single_tool_call(tool_to_invoke: Tool, final_args: dict[str, Any]) -> Union[ToolInvocationError, Any]:
-        """
-        Execute a single tool call. This method is designed to be run in a thread pool.
-
-        :param tool_to_invoke: The Tool object that should be invoked.
-        :param final_args: The final arguments to pass to the tool.
-        :returns: Either a ToolInvocationError or the actual tool result.
-        """
-        try:
-            tool_result = tool_to_invoke.invoke(**final_args)
-            return tool_result
-        except ToolInvocationError as e:
-            return e
 
     @staticmethod
     async def invoke_tool_safely(
