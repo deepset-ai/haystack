@@ -22,6 +22,7 @@ from haystack.core.pipeline.base import (
 )
 from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
+    _save_pipeline_snapshot,
     _trigger_break_point,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
@@ -394,24 +395,20 @@ class Pipeline(PipelineBase):
 
                 # Scenario 3: Save the full pipeline state allowing to restart the pipeline from this point
                 if state_persistence:
-                    # ToDo: FIX we need a Breakpoint because it's where the path to the snapshot is stored.
-                    dummy_breakpoint = Breakpoint(
-                        component_name=component_name,
-                        visit_count=component_visits[component_name],
-                        snapshot_file_path=state_persistence_path,
-                    )
-
                     pipeline_snapshot_inputs_serialised = deepcopy(inputs)
                     pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
                     pipeline_snapshot = _create_pipeline_snapshot(
                         inputs=pipeline_snapshot_inputs_serialised,
-                        break_point=dummy_breakpoint,
+                        break_point=Breakpoint(
+                            component_name="", visit_count=0, snapshot_file_path=state_persistence_path
+                        ),  # Dummy breakpoint to pass the state_persistence_path to the _save_pipeline_snapshot
                         component_visits=component_visits,
                         original_input_data=data,
                         ordered_component_names=ordered_component_names,
                         include_outputs_from=include_outputs_from,
                         pipeline_outputs=pipeline_outputs,
                     )
+                    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
 
                 try:
                     component_outputs = self._run_component(
@@ -423,6 +420,7 @@ class Pipeline(PipelineBase):
                     )
                 except Exception:
                     raise PipelineError(_serialize_value_with_schema(pipeline_outputs))
+                    # ToDo: make test for condition where component fails and pipeline outputs are not empty
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
