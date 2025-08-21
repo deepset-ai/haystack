@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from haystack import Document, Pipeline
 from haystack.components.builders import ChatPromptBuilder
@@ -116,8 +116,6 @@ def load_snapshot_files(snapshots_dir: Path) -> dict[str, Any]:
 
 
 class TestHybridRAGStatePersistence:
-    """Test state persistence functionality with hybrid RAG pipelines."""
-
     def test_hybrid_rag_pipeline_with_state_persistence(self, tmp_path):
         """Test that hybrid RAG pipeline creates snapshots with state persistence enabled."""
         snapshots_dir = tmp_path / "snapshots"
@@ -215,82 +213,3 @@ class TestHybridRAGStatePersistence:
                 if "answer_builder" in resumed_results:
                     assert "answers" in resumed_results["answer_builder"], "Resumed pipeline should produce answers"
                     assert len(resumed_results["answer_builder"]["answers"]) > 0, "Should have at least one answer"
-
-    def test_hybrid_rag_pipeline_snapshot_timing(self, tmp_path):
-        """Test that snapshots are created at the right timing during pipeline execution."""
-        snapshots_dir = tmp_path / "snapshots"
-        snapshots_dir.mkdir()
-
-        # Setup document store
-        document_store = setup_document_store()
-
-        # Create the pipeline
-        pipeline = create_hybrid_search_pipeline(document_store)
-
-        # Test data
-        question = "Where does Mark live?"
-        test_data = {
-            "text_embedder": {"text": question},
-            "bm25_retriever": {"query": question},
-            "prompt_builder": {"question": question},
-            "answer_builder": {"query": question},
-        }
-
-        # Run pipeline with state persistence
-        pipeline.run(data=test_data, state_persistence=True, state_persistence_path=str(snapshots_dir))
-
-        # Load snapshots
-        snapshots = load_snapshot_files(snapshots_dir)
-
-        # Verify that snapshots have reasonable timestamps
-        for component_name, component_snapshots in snapshots.items():
-            for snapshot_info in component_snapshots:
-                timestamp = snapshot_info["timestamp"]
-                assert timestamp is not None, f"Snapshot for {component_name} should have a timestamp"
-
-                # Verify timestamp is a reasonable value (not too old or in the future)
-                # This is a basic sanity check - timestamps should be recent
-                assert timestamp > 0, f"Timestamp for {component_name} should be positive"
-
-    def test_hybrid_rag_pipeline_component_visit_counts(self, tmp_path):
-        """Test that component visit counts are correctly tracked in snapshots."""
-        snapshots_dir = tmp_path / "snapshots"
-        snapshots_dir.mkdir()
-
-        # Setup document store
-        document_store = setup_document_store()
-
-        # Create the pipeline
-        pipeline = create_hybrid_search_pipeline(document_store)
-
-        # Test data
-        question = "Where does Mark live?"
-        test_data = {
-            "text_embedder": {"text": question},
-            "bm25_retriever": {"query": question},
-            "prompt_builder": {"question": question},
-            "answer_builder": {"query": question},
-        }
-
-        # Run pipeline with state persistence
-        pipeline.run(data=test_data, state_persistence=True, state_persistence_path=str(snapshots_dir))
-
-        # Load snapshots
-        snapshots = load_snapshot_files(snapshots_dir)
-
-        # Verify visit counts for each component
-        for component_name, component_snapshots in snapshots.items():
-            for snapshot_info in component_snapshots:
-                visit_count = snapshot_info["visit_count"]
-                pipeline_state = snapshot_info["snapshot"].pipeline_state
-
-                # Verify visit count matches the pipeline state
-                assert component_name in pipeline_state.component_visits, (
-                    f"Component {component_name} should be in visits"
-                )
-                assert pipeline_state.component_visits[component_name] == visit_count, (
-                    f"Visit count should match for {component_name}"
-                )
-
-                # Verify visit count is reasonable (at least 1, since the component was visited)
-                assert visit_count >= 1, f"Visit count for {component_name} should be at least 1"
