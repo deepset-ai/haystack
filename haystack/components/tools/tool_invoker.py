@@ -213,10 +213,15 @@ class ToolInvoker:
     @staticmethod
     def _make_context_bound_invoke(tool_to_invoke: Tool, final_args: dict[str, Any]) -> Callable[[], Any]:
         """
-        Create a zero-argument callable that invokes the tool under the caller's contextvars context.
+        Create a zero-arg callable that invokes the tool under the caller's contextvars Context.
 
-        The callable catches ToolInvocationError and returns it as a sentinel value so callers can
-        handle per-tool failures without aborting parallel execution.
+        We copy and use contextvars to preserve the caller’s ambient execution context (for example the active
+        tracing Span) across thread boundaries. Python’s contextvars do not automatically propagate to worker
+        threads (or to threadpool tasks spawned via run_in_executor), so without intervention nested tool calls
+        would lose their parent trace/span and appear as separate roots. By capturing the current Context in the
+        caller thread and invoking the tool under ctx.run(...) inside the executor, we ensure proper span parentage,
+        consistent tagging, and reliable log/trace correlation in both sync and async paths. The callable returns
+        ToolInvocationError instead of raising so parallel execution can collect failures.
         """
         ctx = contextvars.copy_context()
 
