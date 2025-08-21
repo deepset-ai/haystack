@@ -13,8 +13,8 @@ from haystack.core.component.component import component
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.breakpoint import (
     _create_agent_snapshot,
-    _handle_chat_generator_breakpoint,
     _handle_tool_invoker_breakpoint,
+    _trigger_chat_generator_breakpoint,
     _validate_tool_breakpoint_is_valid,
 )
 from haystack.core.pipeline.pipeline import Pipeline
@@ -395,7 +395,7 @@ class Agent:
                     },
                 },
             )
-            _handle_chat_generator_breakpoint(agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot)
+            _trigger_chat_generator_breakpoint(agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot)
 
     def _check_tool_invoker_breakpoint(
         self,
@@ -435,7 +435,7 @@ class Agent:
                 llm_messages=messages[-1:], agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot
             )
 
-    def run(  # noqa: PLR0915
+    def run(
         self,
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
@@ -448,7 +448,6 @@ class Agent:
         Process messages and execute tools until an exit condition is met.
 
         :param messages: List of Haystack ChatMessage objects to process.
-            If a list of dictionaries is provided, each dictionary will be converted to a ChatMessage object.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
@@ -551,7 +550,7 @@ class Agent:
             result["last_message"] = msgs[-1]
         return result
 
-    async def run_async(  # noqa: PLR0915
+    async def run_async(
         self,
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,

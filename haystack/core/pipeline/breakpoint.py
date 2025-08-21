@@ -340,11 +340,11 @@ def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools:
         raise ValueError(f"Tool '{tool_breakpoint.tool_name}' is not available in the agent's tools")
 
 
-def _handle_chat_generator_breakpoint(
+def _trigger_chat_generator_breakpoint(
     *, agent_snapshot: AgentSnapshot, parent_snapshot: Optional[PipelineSnapshot]
 ) -> None:
     """
-    Handle a breakpoint triggered before ChatGenerator execution in Agent.
+    Trigger a breakpoint before ChatGenerator execution in Agent.
 
     :param agent_snapshot: AgentSnapshot object containing the agent's state and breakpoints
     :param parent_snapshot: Optional parent snapshot containing the state of the pipeline that houses the agent.
