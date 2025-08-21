@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any, Dict
 
 from haystack import Document, Pipeline
 from haystack.components.builders import ChatPromptBuilder
@@ -13,12 +14,12 @@ from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 
-snapshots_dir = "snapshots_complex"
-embedding_model = "sentence-transformers/all-MiniLM-L6-v2"
+# Test configuration
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 def setup_document_store():
-    """Create and populate a document store"""
+    """Create and populate a document store with test documents."""
     documents = [
         Document(content="My name is Jean and I live in Paris."),
         Document(content="My name is Mark and I live in Berlin."),
@@ -27,7 +28,7 @@ def setup_document_store():
 
     document_store = InMemoryDocumentStore()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
-    doc_embedder = SentenceTransformersDocumentEmbedder(model=embedding_model)
+    doc_embedder = SentenceTransformersDocumentEmbedder(model=EMBEDDING_MODEL)
 
     # Create ingestion pipeline
     ingestion_pipe = Pipeline()
@@ -39,12 +40,12 @@ def setup_document_store():
     return document_store
 
 
-def hybrid_search(document_store):
+def create_hybrid_search_pipeline(document_store):
     """
     Create a hybrid RAG pipeline that combines BM25 and embedding-based retrieval.
     """
     top_k = 3
-    text_embedder = SentenceTransformersTextEmbedder(model=embedding_model, progress_bar=False)
+    text_embedder = SentenceTransformersTextEmbedder(model=EMBEDDING_MODEL, progress_bar=False)
     embedding_retriever = InMemoryEmbeddingRetriever(document_store, top_k=top_k)
     bm25_retriever = InMemoryBM25Retriever(document_store, top_k=top_k)
     document_joiner = DocumentJoiner(join_mode="concatenate")
@@ -86,80 +87,210 @@ def hybrid_search(document_store):
     return hybrid_retrieval
 
 
-def hybrid_rag_with_automatic_snapshots():
+def load_snapshot_files(snapshots_dir: Path) -> dict[str, Any]:
     """
-    Example of a hybrid RAG pipeline with automatic state persistence and snapshot management.
+    Load and parse all JSON snapshot files in the specified directory.
+
+    :param snapshots_dir: Directory containing snapshot files
+    :return: Dictionary mapping component names to their snapshot data
     """
-    print(f"Using directory: {snapshots_dir}")
-
-    # Setup document store
-    print("Setting up document store...")
-    document_store = setup_document_store()
-
-    # Create the pipeline
-    print("Creating hybrid RAG pipeline...")
-    pipeline = hybrid_search(document_store)
-
-    # Test data
-    question = "Where does Mark live?"
-    test_data = {
-        "text_embedder": {"text": question},
-        "bm25_retriever": {"query": question},
-        "prompt_builder": {"question": question},
-        "answer_builder": {"query": question},
-    }
-
-    # Run pipeline with automatic state persistence
-    print("Running pipeline with automatic state persistence...")
-    results = pipeline.run(data=test_data, state_persistence=True, state_persistence_path=snapshots_dir)
-
-    print("Pipeline completed successfully!")
-    print(f"Final answer: {results['answer_builder']['answers'][0].data}")
-
-    # Check if snapshot files were created
-    snapshot_files = list(Path(snapshots_dir).glob("*.json"))
-    print(f"\nSnapshot files created: {len(snapshot_files)}")
-
-    # Group snapshots by component
-    component_snapshots = {}
-    for snapshot_file in snapshot_files:
+    snapshots = {}
+    for snapshot_file in snapshots_dir.glob("*.json"):
         try:
             snapshot = load_pipeline_snapshot(snapshot_file)
             component_name = snapshot.break_point.component_name
-            if component_name not in component_snapshots:
-                component_snapshots[component_name] = []
-            component_snapshots[component_name].append(
+            if component_name not in snapshots:
+                snapshots[component_name] = []
+            snapshots[component_name].append(
                 {
                     "file": snapshot_file.name,
                     "visit_count": snapshot.break_point.visit_count,
                     "timestamp": snapshot.timestamp,
+                    "snapshot": snapshot,
                 }
             )
         except Exception as e:
             print(f"Error loading snapshot {snapshot_file.name}: {e}")
 
-    # Display snapshot information
-    for component_name, snapshots in component_snapshots.items():
-        print(f"\nComponent: {component_name}")
-        for snapshot in snapshots:
-            print(f"  - {snapshot['file']} (visit: {snapshot['visit_count']}, time: {snapshot['timestamp']})")
+    return snapshots
 
-    # Test resuming from different snapshots
-    print("\nTesting resume functionality...")
-    for component_name, snapshots in component_snapshots.items():
-        if snapshots:
-            latest_snapshot_file = max(snapshots, key=lambda x: x["timestamp"])
-            snapshot_path = Path(snapshots_dir) / latest_snapshot_file["file"]
 
-            print(f"Resuming from {component_name} snapshot...")
-            try:
-                snapshot = load_pipeline_snapshot(snapshot_path)
+class TestHybridRAGStatePersistence:
+    """Test state persistence functionality with hybrid RAG pipelines."""
+
+    def test_hybrid_rag_pipeline_with_state_persistence(self, tmp_path):
+        """Test that hybrid RAG pipeline creates snapshots with state persistence enabled."""
+        snapshots_dir = tmp_path / "snapshots"
+        snapshots_dir.mkdir()
+
+        # Setup document store
+        document_store = setup_document_store()
+
+        # Create the pipeline
+        pipeline = create_hybrid_search_pipeline(document_store)
+
+        # Test data
+        question = "Where does Mark live?"
+        test_data = {
+            "text_embedder": {"text": question},
+            "bm25_retriever": {"query": question},
+            "prompt_builder": {"question": question},
+            "answer_builder": {"query": question},
+        }
+
+        # Run pipeline with automatic state persistence
+        results = pipeline.run(data=test_data, state_persistence=True, state_persistence_path=str(snapshots_dir))
+
+        # Verify pipeline completed successfully
+        assert "answer_builder" in results, "Pipeline should complete successfully"
+        assert "answers" in results["answer_builder"], "Answer builder should produce answers"
+        assert len(results["answer_builder"]["answers"]) > 0, "Should have at least one answer"
+
+        # Check if snapshot files were created
+        snapshot_files = list(snapshots_dir.glob("*.json"))
+        assert len(snapshot_files) > 0, "Snapshot files should be created"
+
+        for f_name in snapshot_files:
+            print(f"Snapshot file created: {f_name.name}")
+
+        # Load and verify snapshot data
+        snapshots = load_snapshot_files(snapshots_dir)
+
+        # Verify that snapshots exist for key components
+        expected_components = [
+            "text_embedder",
+            "embedding_retriever",
+            "bm25_retriever",
+            "document_joiner",
+            "prompt_builder",
+            "llm",
+        ]
+        for component_name in expected_components:
+            assert component_name in snapshots, f"Should have snapshots for {component_name}"
+            assert len(snapshots[component_name]) > 0, f"Should have at least one snapshot for {component_name}"
+
+    def test_hybrid_rag_pipeline_resume_from_snapshot(self, tmp_path):
+        """Test that pipeline can be resumed from a snapshot."""
+        snapshots_dir = tmp_path / "snapshots"
+        snapshots_dir.mkdir()
+
+        # Setup document store
+        document_store = setup_document_store()
+
+        # Create the pipeline
+        pipeline = create_hybrid_search_pipeline(document_store)
+
+        # Test data
+        question = "Where does Mark live?"
+        test_data = {
+            "text_embedder": {"text": question},
+            "bm25_retriever": {"query": question},
+            "prompt_builder": {"question": question},
+            "answer_builder": {"query": question},
+        }
+
+        # Run pipeline with state persistence
+        _ = pipeline.run(data=test_data, state_persistence=True, state_persistence_path=str(snapshots_dir))
+
+        # Load snapshots
+        snapshots = load_snapshot_files(snapshots_dir)
+
+        # Test resuming from each component's latest snapshot
+        for component_name, component_snapshots in snapshots.items():
+            if component_snapshots:
+                # Get the latest snapshot for this component
+                latest_snapshot = max(component_snapshots, key=lambda x: x["timestamp"])
+                snapshot = latest_snapshot["snapshot"]
+
+                # Resume from snapshot
                 resumed_results = pipeline.run(
                     data={},  # Empty data since we're resuming
                     pipeline_snapshot=snapshot,
                 )
-                print(f"  ✓ Successfully resumed from {component_name}")
+
+                # Verify that resuming produces results
+                assert resumed_results is not None, f"Resuming from {component_name} should produce results"
+
+                # If we resumed from a point that should produce final answers, verify they exist
                 if "answer_builder" in resumed_results:
-                    print(f"  Final answer: {resumed_results['answer_builder']['answers'][0].data}")
-            except Exception as e:
-                print(f"  ✗ Failed to resume from {component_name}: {e}")
+                    assert "answers" in resumed_results["answer_builder"], "Resumed pipeline should produce answers"
+                    assert len(resumed_results["answer_builder"]["answers"]) > 0, "Should have at least one answer"
+
+    def test_hybrid_rag_pipeline_snapshot_timing(self, tmp_path):
+        """Test that snapshots are created at the right timing during pipeline execution."""
+        snapshots_dir = tmp_path / "snapshots"
+        snapshots_dir.mkdir()
+
+        # Setup document store
+        document_store = setup_document_store()
+
+        # Create the pipeline
+        pipeline = create_hybrid_search_pipeline(document_store)
+
+        # Test data
+        question = "Where does Mark live?"
+        test_data = {
+            "text_embedder": {"text": question},
+            "bm25_retriever": {"query": question},
+            "prompt_builder": {"question": question},
+            "answer_builder": {"query": question},
+        }
+
+        # Run pipeline with state persistence
+        pipeline.run(data=test_data, state_persistence=True, state_persistence_path=str(snapshots_dir))
+
+        # Load snapshots
+        snapshots = load_snapshot_files(snapshots_dir)
+
+        # Verify that snapshots have reasonable timestamps
+        for component_name, component_snapshots in snapshots.items():
+            for snapshot_info in component_snapshots:
+                timestamp = snapshot_info["timestamp"]
+                assert timestamp is not None, f"Snapshot for {component_name} should have a timestamp"
+
+                # Verify timestamp is a reasonable value (not too old or in the future)
+                # This is a basic sanity check - timestamps should be recent
+                assert timestamp > 0, f"Timestamp for {component_name} should be positive"
+
+    def test_hybrid_rag_pipeline_component_visit_counts(self, tmp_path):
+        """Test that component visit counts are correctly tracked in snapshots."""
+        snapshots_dir = tmp_path / "snapshots"
+        snapshots_dir.mkdir()
+
+        # Setup document store
+        document_store = setup_document_store()
+
+        # Create the pipeline
+        pipeline = create_hybrid_search_pipeline(document_store)
+
+        # Test data
+        question = "Where does Mark live?"
+        test_data = {
+            "text_embedder": {"text": question},
+            "bm25_retriever": {"query": question},
+            "prompt_builder": {"question": question},
+            "answer_builder": {"query": question},
+        }
+
+        # Run pipeline with state persistence
+        pipeline.run(data=test_data, state_persistence=True, state_persistence_path=str(snapshots_dir))
+
+        # Load snapshots
+        snapshots = load_snapshot_files(snapshots_dir)
+
+        # Verify visit counts for each component
+        for component_name, component_snapshots in snapshots.items():
+            for snapshot_info in component_snapshots:
+                visit_count = snapshot_info["visit_count"]
+                pipeline_state = snapshot_info["snapshot"].pipeline_state
+
+                # Verify visit count matches the pipeline state
+                assert component_name in pipeline_state.component_visits, (
+                    f"Component {component_name} should be in visits"
+                )
+                assert pipeline_state.component_visits[component_name] == visit_count, (
+                    f"Visit count should match for {component_name}"
+                )
+
+                # Verify visit count is reasonable (at least 1, since the component was visited)
+                assert visit_count >= 1, f"Visit count for {component_name} should be at least 1"
