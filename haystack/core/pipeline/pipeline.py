@@ -7,7 +7,12 @@ from typing import Any, Mapping, Optional, Union
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError, PipelineRuntimeError
+from haystack.core.errors import (
+    BreakpointException,
+    PipelineError,
+    PipelineInvalidPipelineSnapshotError,
+    PipelineRuntimeError,
+)
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -17,7 +22,6 @@ from haystack.core.pipeline.base import (
 )
 from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
-    _save_component_input,
     _trigger_break_point,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
@@ -25,17 +29,9 @@ from haystack.core.pipeline.breakpoint import (
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot
 from haystack.telemetry import pipeline_running
-from haystack.utils import _deserialize_value_with_schema
+from haystack.utils import _deserialize_value_with_schema, _serialize_value_with_schema
 
 logger = logging.getLogger(__name__)
-
-from enum import Enum
-
-
-class PersistenceSaving(Enum):
-    FULL = "full"
-    INPUT_ONLY = "component_input"
-    NONE = "none"
 
 
 class Pipeline(PipelineBase):
@@ -102,7 +98,7 @@ class Pipeline(PipelineBase):
         *,
         break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
-        state_persistence: PersistenceSaving = PersistenceSaving.NONE,
+        state_persistence: bool = False,
         state_persistence_path: Optional[str] = None,
     ) -> dict[str, Any]:
         """
@@ -397,7 +393,7 @@ class Pipeline(PipelineBase):
                             )
 
                 # Scenario 3: Save the full pipeline state allowing to restart the pipeline from this point
-                if state_persistence == state_persistence.FULL:
+                if state_persistence:
                     # ToDo: FIX we need a Breakpoint because it's where the path to the snapshot is stored.
                     dummy_breakpoint = Breakpoint(
                         component_name=component_name,
@@ -417,18 +413,16 @@ class Pipeline(PipelineBase):
                         pipeline_outputs=pipeline_outputs,
                     )
 
-                # Scenario 4: Save the component input only
-                if state_persistence == state_persistence.INPUT_ONLY:
-                    visit_nr = component_visits[component_name]
-                    _save_component_input(component_inputs, component_name, visit_nr, state_persistence_path)
-
-                component_outputs = self._run_component(
-                    component_name=component_name,
-                    component=component,
-                    inputs=component_inputs,  # the inputs to the current component
-                    component_visits=component_visits,
-                    parent_span=span,
-                )
+                try:
+                    component_outputs = self._run_component(
+                        component_name=component_name,
+                        component=component,
+                        inputs=component_inputs,  # the inputs to the current component
+                        component_visits=component_visits,
+                        parent_span=span,
+                    )
+                except Exception:
+                    raise PipelineError(_serialize_value_with_schema(pipeline_outputs))
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.

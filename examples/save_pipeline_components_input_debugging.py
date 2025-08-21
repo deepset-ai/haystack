@@ -8,7 +8,6 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
-from haystack.core.pipeline.pipeline import PersistenceSaving
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
@@ -110,9 +109,17 @@ def hybrid_rag():
         print("Running pipeline with automatic state persistence...")
         results = pipeline.run(
             data=test_data,
-            # state_persistence=PersistenceSaving.FULL,
-            state_persistence=PersistenceSaving.INPUT_ONLY,
+            state_persistence=False,
             state_persistence_path=snapshots_dir,
+            include_outputs_from={
+                "answer_builder",
+                "document_joiner",
+                "embedding_retriever",
+                "bm25_retriever",
+                "llm",
+                "text_embedder",
+                "prompt_builder",
+            },
         )
         print(f"{results['answer_builder']['answers'][0].data}")
         snapshot_files = list(Path(snapshots_dir).glob("*.json"))
