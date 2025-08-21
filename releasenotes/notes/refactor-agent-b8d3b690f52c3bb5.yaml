@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The internal Agent logic was refactored to help with readability and maintanability.
