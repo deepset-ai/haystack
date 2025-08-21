@@ -12,9 +12,9 @@ from haystack.components.tools import ToolInvoker
 from haystack.core.component.component import component
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.breakpoint import (
-    _check_chat_generator_breakpoint,
-    _check_tool_invoker_breakpoint,
     _create_agent_snapshot,
+    _handle_chat_generator_breakpoint,
+    _handle_tool_invoker_breakpoint,
     _validate_tool_breakpoint_is_valid,
 )
 from haystack.core.pipeline.pipeline import Pipeline
@@ -36,10 +36,19 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class _ExecutionContext:
-    """Encapsulates the execution state and configuration"""
+    """
+    Context for executing the agent.
+
+    :param state: The current state of the agent, including messages and any additional data.
+    :param component_visits: A dictionary tracking how many times each component has been visited.
+    :param chat_generator_inputs: Runtime inputs to be passed to the chat generator.
+    :param tool_invoker_inputs: Runtime inputs to be passed to the tool invoker.
+    :param counter: A counter to track the number of steps taken in the agent's run.
+    :param skip_chat_generator: A flag to indicate whether to skip the chat generator in the next iteration.
+        This is useful when resuming from a ToolBreakpoint where the ToolInvoker needs to be called first.
+    """
 
     state: State
-    streaming_callback: Optional[StreamingCallbackT]
     component_visits: dict
     chat_generator_inputs: dict
     tool_invoker_inputs: dict
@@ -192,11 +201,6 @@ class Agent:
 
         :return: Dictionary with serialized data
         """
-        if self.streaming_callback is not None:
-            streaming_callback = serialize_callable(self.streaming_callback)
-        else:
-            streaming_callback = None
-
         return default_to_dict(
             self,
             chat_generator=component_to_dict(obj=self.chat_generator, name="chat_generator"),
@@ -206,7 +210,7 @@ class Agent:
             # We serialize the original state schema, not the resolved one to reflect the original user input
             state_schema=_schema_to_dict(self._state_schema),
             max_agent_steps=self.max_agent_steps,
-            streaming_callback=streaming_callback,
+            streaming_callback=serialize_callable(self.streaming_callback) if self.streaming_callback else None,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
             tool_invoker_kwargs=self.tool_invoker_kwargs,
         )
@@ -252,7 +256,14 @@ class Agent:
         requires_async: bool,
         **kwargs,
     ) -> _ExecutionContext:
-        """Initialize execution context for a fresh run"""
+        """
+        Initialize execution context for a fresh run of the agent.
+
+        :param messages: List of ChatMessage objects to start the agent with.
+        :param streaming_callback: Optional callback for streaming responses.
+        :param requires_async: Whether the agent run requires asynchronous execution.
+        :param kwargs: Additional data to pass to the State used by the Agent.
+        """
         if self.system_prompt is not None:
             messages = [ChatMessage.from_system(self.system_prompt)] + messages
 
@@ -274,7 +285,6 @@ class Agent:
 
         return _ExecutionContext(
             state=state,
-            streaming_callback=streaming_callback,
             tool_invoker_inputs=tool_invoker_inputs,
             chat_generator_inputs=generator_inputs,
             component_visits=dict.fromkeys(["chat_generator", "tool_invoker"], 0),
@@ -283,7 +293,13 @@ class Agent:
     def _initialize_from_snapshot(
         self, snapshot: AgentSnapshot, streaming_callback: Optional[StreamingCallbackT], requires_async: bool
     ) -> _ExecutionContext:
-        """Initialize execution context from a saved snapshot"""
+        """
+        Initialize execution context from an AgentSnapshot.
+
+        :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
+        :param streaming_callback: Optional callback for streaming responses.
+        :param requires_async: Whether the agent run requires asynchronous execution.
+        """
         component_visits = snapshot.component_visits
         current_inputs = {
             "chat_generator": _deserialize_value_with_schema(snapshot.component_inputs["chat_generator"]),
@@ -315,7 +331,6 @@ class Agent:
 
         return _ExecutionContext(
             state=state,
-            streaming_callback=streaming_callback,
             chat_generator_inputs=generator_inputs,
             tool_invoker_inputs=tool_invoker_inputs,
             component_visits=component_visits,
@@ -323,6 +338,15 @@ class Agent:
         )
 
     def _runtime_checks(self, break_point: Optional[AgentBreakpoint], snapshot: Optional[AgentSnapshot]) -> None:
+        """
+        Perform runtime checks before running the agent.
+
+        :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
+            for "tool_invoker".
+        :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
+        :raises RuntimeError: If the Agent component wasn't warmed up before calling `run()`.
+        :raises ValueError: If both break_point and snapshot are provided, or if the break_point is invalid.
+        """
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
 
@@ -340,25 +364,32 @@ class Agent:
         break_point: Optional[AgentBreakpoint],
         parent_snapshot: Optional[PipelineSnapshot],
     ) -> None:
-        component_visits = execution_context.component_visits
-        state = execution_context.state
-        messages = state.data["messages"]
-        streaming_callback = execution_context.streaming_callback
+        """
+        Check if the chat generator breakpoint is triggered.
 
+        If the breakpoint is triggered, create an agent snapshot and check the chat generator breakpoint.
+        """
         if (
             break_point
             and break_point.break_point.component_name == "chat_generator"
-            and component_visits["chat_generator"] == break_point.break_point.visit_count
+            and execution_context.component_visits["chat_generator"] == break_point.break_point.visit_count
         ):
             agent_snapshot = _create_agent_snapshot(
-                component_visits=component_visits,
+                component_visits=execution_context.component_visits,
                 agent_breakpoint=break_point,
                 component_inputs={
-                    "chat_generator": {"messages": messages, **execution_context.chat_generator_inputs},
-                    "tool_invoker": {"messages": [], "state": state, "streaming_callback": streaming_callback},
+                    "chat_generator": {
+                        "messages": execution_context.state.data["messages"],
+                        **execution_context.chat_generator_inputs,
+                    },
+                    "tool_invoker": {
+                        "messages": [],
+                        "state": execution_context.state,
+                        **execution_context.tool_invoker_inputs,
+                    },
                 },
             )
-            _check_chat_generator_breakpoint(agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot)
+            _handle_chat_generator_breakpoint(agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot)
 
     def _check_tool_invoker_breakpoint(
         self,
@@ -384,7 +415,7 @@ class Agent:
                     },
                 },
             )
-            _check_tool_invoker_breakpoint(
+            _handle_tool_invoker_breakpoint(
                 llm_messages=messages[-1:], agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot
             )
 
@@ -405,9 +436,9 @@ class Agent:
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-                           for "tool_invoker".
+            for "tool_invoker".
         :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
-                         the relevant information to restart the Agent execution from where it left off.
+            the relevant information to restart the Agent execution from where it left off.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -417,7 +448,6 @@ class Agent:
             - Any additional keys defined in the `state_schema`.
         :raises RuntimeError: If the Agent component wasn't warmed up before calling `run()`.
         :raises BreakpointException: If an agent breakpoint is triggered.
-
         """
         # We pop parent_snapshot from kwargs to avoid passing it into State.
         parent_snapshot = kwargs.pop("parent_snapshot", None)
@@ -521,12 +551,14 @@ class Agent:
         asynchronous operations where possible, such as calling the `run_async` method of the ChatGenerator
         if available.
 
-        :param messages: List of chat messages to process
-        :param streaming_callback: An asynchronous callback that will be invoked when a response
-        is streamed from the LLM. The same callback can be configured to emit tool results when a tool is called.
+        :param messages: List of Haystack ChatMessage objects to process.
+            If a list of dictionaries is provided, each dictionary will be converted to a ChatMessage object.
+        :param streaming_callback: An asynchronous callback that will be invoked when a response is streamed from the
+            LLM. The same callback can be configured to emit tool results when a tool is called.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-                           for "tool_invoker".
-        :param snapshot: A dictionary containing the state of a previously saved agent execution.
+            for "tool_invoker".
+        :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
+            the relevant information to restart the Agent execution from where it left off.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
