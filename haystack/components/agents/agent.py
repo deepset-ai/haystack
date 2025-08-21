@@ -568,7 +568,6 @@ class Agent:
         if available.
 
         :param messages: List of Haystack ChatMessage objects to process.
-            If a list of dictionaries is provided, each dictionary will be converted to a ChatMessage object.
         :param streaming_callback: An asynchronous callback that will be invoked when a response is streamed from the
             LLM. The same callback can be configured to emit tool results when a tool is called.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
