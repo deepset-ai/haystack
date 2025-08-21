@@ -369,6 +369,11 @@ class Agent:
         Check if the chat generator breakpoint is triggered.
 
         If the breakpoint is triggered, create an agent snapshot and check the chat generator breakpoint.
+
+        :param execution_context: The current execution context of the agent.
+        :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
+            for "tool_invoker".
+        :param parent_snapshot: An optional parent snapshot for the agent execution.
         """
         if (
             break_point
@@ -398,6 +403,16 @@ class Agent:
         break_point: Optional[AgentBreakpoint],
         parent_snapshot: Optional[PipelineSnapshot],
     ) -> None:
+        """
+        Check if the tool invoker breakpoint is triggered.
+
+        If the breakpoint is triggered, create an agent snapshot and handle the tool invoker breakpoint.
+
+        :param execution_context: The current execution context of the agent.
+        :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
+            for "tool_invoker".
+        :param parent_snapshot: An optional parent snapshot for the agent execution.
+        """
         if (
             break_point
             and break_point.break_point.component_name == "tool_invoker"
