@@ -196,7 +196,6 @@ def _create_pipeline_snapshot(
     :param original_input_data: The original input data.
     :param ordered_component_names: The ordered component names.
     :param include_outputs_from: Set of component names whose outputs should be included in the pipeline results.
-    :param intermediate_outputs: Dictionary containing outputs from components that are in the include_outputs_from set.
     """
     dt = datetime.now()
 
