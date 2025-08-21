@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Literal, Mapping, Optional, Union
+from typing import Any, Mapping, Optional, Union
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -17,7 +17,7 @@ from haystack.core.pipeline.base import (
 )
 from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
-    _save_pipeline_snapshot,
+    _save_component_input,
     _trigger_break_point,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
@@ -419,12 +419,8 @@ class Pipeline(PipelineBase):
 
                 # Scenario 4: Save the component input only
                 if state_persistence == state_persistence.INPUT_ONLY:
-                    pass
-                    # component_inputs
-                    # state_persistence_path
-                    # visit_nr = component_visits[component_name]
-                    # filename = f"{component_name}_{visit_nr}_{datetime}.json"
-                    # ToDo: save all this as a JSON file in the state_persistence_path
+                    visit_nr = component_visits[component_name]
+                    _save_component_input(component_inputs, component_name, visit_nr, state_persistence_path)
 
                 component_outputs = self._run_component(
                     component_name=component_name,

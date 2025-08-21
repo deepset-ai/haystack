@@ -250,6 +250,38 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot) -> PipelineSnap
     return pipeline_snapshot
 
 
+def _save_component_input(
+    component_inputs: dict[str, Any], component_name: str, visit_nr: int, out_path: Union[str, Path]
+) -> None:
+    """
+    Save the inputs of a component to a JSON file for debugging purposes.
+
+    :param component_inputs: A dictionary containing the inputs of the component.
+    :param component_name: The name of the component for which inputs are being saved.
+    :param visit_nr: The visit number of the component, used to differentiate between multiple visits.
+    :param out_path: The path where the JSON file will be saved. Can be a string or a Path object.
+
+    :raise:
+        Exception if saving the JSON snapshot fails.
+    """
+    out_path = Path(out_path) if isinstance(out_path, str) else out_path
+    if not isinstance(out_path, Path):
+        raise ValueError("Debug path must be a string or a Path object.")
+    out_path.mkdir(exist_ok=True)
+
+    dt = datetime.now()
+    f_name = f"{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+    component_inputs_serialised = _serialize_value_with_schema(component_inputs)
+
+    try:
+        with open(out_path / f_name, "w") as f_out:
+            json.dump(component_inputs_serialised, f_out, indent=2, sort_keys=True)
+        logger.info(f"Pipeline snapshot saved at: {f_name}")
+    except Exception as e:
+        logger.error(f"Failed to save pipeline snapshot: {str(e)}")
+        raise
+
+
 def _transform_json_structure(data: Union[dict[str, Any], list[Any], Any]) -> Any:
     """
     Transforms a JSON structure by removing the 'sender' key and moving the 'value' to the top level.
