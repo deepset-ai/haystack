@@ -109,68 +109,57 @@ def hybrid_rag_with_automatic_snapshots():
         "answer_builder": {"query": question},
     }
 
-    try:
-        # Run pipeline with automatic state persistence
-        print("Running pipeline with automatic state persistence...")
-        results = pipeline.run(data=test_data, state_persistence=True, state_persistence_path=snapshots_dir)
+    # Run pipeline with automatic state persistence
+    print("Running pipeline with automatic state persistence...")
+    results = pipeline.run(data=test_data, state_persistence=True, state_persistence_path=snapshots_dir)
 
-        print("Pipeline completed successfully!")
-        print(f"Final answer: {results['answer_builder']['answers'][0].data}")
+    print("Pipeline completed successfully!")
+    print(f"Final answer: {results['answer_builder']['answers'][0].data}")
 
-        # Check if snapshot files were created
-        snapshot_files = list(Path(snapshots_dir).glob("*.json"))
-        print(f"\nSnapshot files created: {len(snapshot_files)}")
+    # Check if snapshot files were created
+    snapshot_files = list(Path(snapshots_dir).glob("*.json"))
+    print(f"\nSnapshot files created: {len(snapshot_files)}")
 
-        # Group snapshots by component
-        component_snapshots = {}
-        for snapshot_file in snapshot_files:
+    # Group snapshots by component
+    component_snapshots = {}
+    for snapshot_file in snapshot_files:
+        try:
+            snapshot = load_pipeline_snapshot(snapshot_file)
+            component_name = snapshot.break_point.component_name
+            if component_name not in component_snapshots:
+                component_snapshots[component_name] = []
+            component_snapshots[component_name].append(
+                {
+                    "file": snapshot_file.name,
+                    "visit_count": snapshot.break_point.visit_count,
+                    "timestamp": snapshot.timestamp,
+                }
+            )
+        except Exception as e:
+            print(f"Error loading snapshot {snapshot_file.name}: {e}")
+
+    # Display snapshot information
+    for component_name, snapshots in component_snapshots.items():
+        print(f"\nComponent: {component_name}")
+        for snapshot in snapshots:
+            print(f"  - {snapshot['file']} (visit: {snapshot['visit_count']}, time: {snapshot['timestamp']})")
+
+    # Test resuming from different snapshots
+    print("\nTesting resume functionality...")
+    for component_name, snapshots in component_snapshots.items():
+        if snapshots:
+            latest_snapshot_file = max(snapshots, key=lambda x: x["timestamp"])
+            snapshot_path = Path(snapshots_dir) / latest_snapshot_file["file"]
+
+            print(f"Resuming from {component_name} snapshot...")
             try:
-                snapshot = load_pipeline_snapshot(snapshot_file)
-                component_name = snapshot.break_point.component_name
-                if component_name not in component_snapshots:
-                    component_snapshots[component_name] = []
-                component_snapshots[component_name].append(
-                    {
-                        "file": snapshot_file.name,
-                        "visit_count": snapshot.break_point.visit_count,
-                        "timestamp": snapshot.timestamp,
-                    }
+                snapshot = load_pipeline_snapshot(snapshot_path)
+                resumed_results = pipeline.run(
+                    data={},  # Empty data since we're resuming
+                    pipeline_snapshot=snapshot,
                 )
+                print(f"  ✓ Successfully resumed from {component_name}")
+                if "answer_builder" in resumed_results:
+                    print(f"  Final answer: {resumed_results['answer_builder']['answers'][0].data}")
             except Exception as e:
-                print(f"Error loading snapshot {snapshot_file.name}: {e}")
-
-        # Display snapshot information
-        for component_name, snapshots in component_snapshots.items():
-            print(f"\nComponent: {component_name}")
-            for snapshot in snapshots:
-                print(f"  - {snapshot['file']} (visit: {snapshot['visit_count']}, time: {snapshot['timestamp']})")
-
-        # Test resuming from different snapshots
-        print("\nTesting resume functionality...")
-        for component_name, snapshots in component_snapshots.items():
-            if snapshots:
-                latest_snapshot_file = max(snapshots, key=lambda x: x["timestamp"])
-                snapshot_path = Path(snapshots_dir) / latest_snapshot_file["file"]
-
-                print(f"Resuming from {component_name} snapshot...")
-                try:
-                    snapshot = load_pipeline_snapshot(snapshot_path)
-                    resumed_results = pipeline.run(
-                        data={},  # Empty data since we're resuming
-                        pipeline_snapshot=snapshot,
-                    )
-                    print(f"  ✓ Successfully resumed from {component_name}")
-                    if "answer_builder" in resumed_results:
-                        print(f"  Final answer: {resumed_results['answer_builder']['answers'][0].data}")
-                except Exception as e:
-                    print(f"  ✗ Failed to resume from {component_name}: {e}")
-
-    except Exception as e:
-        print(f"Pipeline execution failed: {e}")
-        import traceback
-
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    hybrid_rag_with_automatic_snapshots()
+                print(f"  ✗ Failed to resume from {component_name}: {e}")
