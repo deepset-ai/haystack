@@ -5,6 +5,7 @@
 from unittest.mock import patch
 
 import pytest
+import torch
 
 from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
@@ -101,6 +102,10 @@ def test_embedding_function_with_kwargs(mock_sentence_transformer):
 
 @patch("haystack.components.embedders.backends.sentence_transformers_backend.SparseEncoder")
 def test_sparse_embedding_function_with_kwargs(mock_sparse_encoder):
+    indices = torch.tensor([[0, 1], [1, 3]])
+    values = torch.tensor([0.5, 0.7])
+    mock_sparse_encoder.return_value.encode.return_value = torch.sparse_coo_tensor(indices, values, (2, 5))
+
     embedding_backend = _SentenceTransformersSparseEmbeddingBackendFactory.get_embedding_backend(model="model")
 
     data = ["sentence1", "sentence2"]

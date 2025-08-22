@@ -164,18 +164,17 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
         )
 
     def embed(self, data: List[str], **kwargs) -> List[SparseEmbedding]:
-        embeddings = self.model.encode(data, **kwargs)
+        embeddings = self.model.encode(data, **kwargs).coalesce()
 
-        sparse_embeddings = []
+        rows, columns = embeddings.indices()
+        values = embeddings.values()
+        batch_size = embeddings.size(0)
 
-        if isinstance(embeddings, list):
-            for embedding in embeddings:
-                sparse_embeddings.append(
-                    SparseEmbedding(indices=embedding.indices.tolist(), values=embedding.values.tolist())
-                )
-        else:
-            sparse_embeddings.append(
-                SparseEmbedding(indices=embeddings.indices.tolist(), values=embeddings.values.tolist())
-            )
+        sparse_embeddings: List[SparseEmbedding] = []
+        for embedding in range(batch_size):
+            mask = rows == embedding
+            embedding_columns = columns[mask].tolist()
+            embedding_values = values[mask].tolist()
+            sparse_embeddings.append(SparseEmbedding(indices=embedding_columns, values=embedding_values))
 
         return sparse_embeddings

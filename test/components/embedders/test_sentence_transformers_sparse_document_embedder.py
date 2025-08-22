@@ -14,6 +14,11 @@ from haystack.components.embedders.sentence_transformers_sparse_document_embedde
 )
 from haystack.utils import ComponentDevice, Secret
 
+from haystack.components.embedders.backends.sentence_transformers_backend import (
+    _SentenceTransformersSparseEmbeddingBackendFactory,
+    _SentenceTransformersSparseEncoderEmbeddingBackend,
+)
+
 
 class TestSentenceTransformersDocumentEmbedder:
     def test_init_default(self):
@@ -210,7 +215,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.meta_fields_to_embed == ["meta_field"]
 
     @patch(
-        "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+        "haystack.components.embedders.sentence_transformers_sparse_document_embedder._SentenceTransformersSparseEmbeddingBackendFactory"
     )
     def test_warmup(self, mocked_factory):
         embedder = SentenceTransformersSparseDocumentEmbedder(
@@ -236,7 +241,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
 
     @patch(
-        "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+        "haystack.components.embedders.sentence_transformers_sparse_document_embedder._SentenceTransformersSparseEmbeddingBackendFactory"
     )
     def test_warmup_doesnt_reload(self, mocked_factory):
         embedder = SentenceTransformersSparseDocumentEmbedder(model="model")
@@ -322,7 +327,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
 
     @patch(
-        "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+        "haystack.components.embedders.sentence_transformers_sparse_document_embedder._SentenceTransformersSparseEmbeddingBackendFactory"
     )
     def test_model_onnx_backend(self, mocked_factory):
         onnx_embedder = SentenceTransformersSparseDocumentEmbedder(
@@ -349,7 +354,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
 
     @patch(
-        "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+        "haystack.components.embedders.sentence_transformers_sparse_document_embedder._SentenceTransformersSparseEmbeddingBackendFactory"
     )
     def test_model_openvino_backend(self, mocked_factory):
         openvino_embedder = SentenceTransformersSparseDocumentEmbedder(
@@ -376,7 +381,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
 
     @patch(
-        "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+        "haystack.components.embedders.sentence_transformers_sparse_document_embedder._SentenceTransformersSparseEmbeddingBackendFactory"
     )
     @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "bfloat16"}, {"torch_dtype": "float16"}])
     def test_dtype_on_gpu(self, mocked_factory, model_kwargs):
