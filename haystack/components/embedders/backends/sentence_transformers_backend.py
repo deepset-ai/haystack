@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional, Union
 
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.lazy_imports import LazyImport
@@ -11,13 +11,16 @@ from haystack.utils.auth import Secret
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as sentence_transformers_import:
     from sentence_transformers import SentenceTransformer, SparseEncoder
 
+with LazyImport(message="Run 'pip install \"pillow\"'") as pillow_import:
+    from PIL.Image import Image
+
 
 class _SentenceTransformersEmbeddingBackendFactory:
     """
     Factory class to create instances of Sentence Transformers embedding backends.
     """
 
-    _instances: Dict[str, "_SentenceTransformersEmbeddingBackend"] = {}
+    _instances: dict[str, "_SentenceTransformersEmbeddingBackend"] = {}
 
     @staticmethod
     def get_embedding_backend(  # pylint: disable=too-many-positional-arguments
@@ -27,9 +30,9 @@ class _SentenceTransformersEmbeddingBackendFactory:
         trust_remote_code: bool = False,
         local_files_only: bool = False,
         truncate_dim: Optional[int] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        config_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         embedding_backend_id = f"{model}{device}{auth_token}{truncate_dim}{backend}"
@@ -107,9 +110,9 @@ class _SentenceTransformersEmbeddingBackend:
         trust_remote_code: bool = False,
         local_files_only: bool = False,
         truncate_dim: Optional[int] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        config_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         sentence_transformers_import.check()
@@ -127,8 +130,10 @@ class _SentenceTransformersEmbeddingBackend:
             backend=backend,
         )
 
-    def embed(self, data: List[str], **kwargs) -> List[List[float]]:
-        embeddings = self.model.encode(data, **kwargs).tolist()
+    def embed(self, data: Union[list[str], list["Image"]], **kwargs: Any) -> list[list[float]]:
+        # Sentence Transformers encode can work with Images, but the type hint does not reflect that
+        # https://sbert.net/examples/sentence_transformer/applications/image-search
+        embeddings = self.model.encode(data, **kwargs).tolist()  # type: ignore[arg-type]
         return embeddings
 
 

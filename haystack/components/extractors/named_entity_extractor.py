@@ -4,9 +4,9 @@
 
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -110,7 +110,7 @@ class NamedEntityExtractor:
         *,
         backend: Union[str, NamedEntityExtractorBackend],
         model: str,
-        pipeline_kwargs: Optional[Dict[str, Any]] = None,
+        pipeline_kwargs: Optional[dict[str, Any]] = None,
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ) -> None:
@@ -177,8 +177,8 @@ class NamedEntityExtractor:
                 f"Named entity extractor with backend '{self._backend.type}' failed to initialize."
             ) from e
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document], batch_size: int = 1) -> Dict[str, Any]:
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document], batch_size: int = 1) -> dict[str, Any]:
         """
         Annotate named entities in each document and store the annotations in the document's metadata.
 
@@ -204,12 +204,14 @@ class NamedEntityExtractor:
                 f"got {len(annotations)} but expected {len(documents)}"
             )
 
+        new_documents = []
         for doc, doc_annotations in zip(documents, annotations):
-            doc.meta[self._METADATA_KEY] = doc_annotations
+            new_meta = {**doc.meta, self._METADATA_KEY: doc_annotations}
+            new_documents.append(replace(doc, meta=new_meta))
 
-        return {"documents": documents}
+        return {"documents": new_documents}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -232,7 +234,7 @@ class NamedEntityExtractor:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "NamedEntityExtractor":
+    def from_dict(cls, data: dict[str, Any]) -> "NamedEntityExtractor":
         """
         Deserializes the component from a dictionary.
 
@@ -262,7 +264,7 @@ class NamedEntityExtractor:
         return self._backend.initialized
 
     @classmethod
-    def get_stored_annotations(cls, document: Document) -> Optional[List[NamedEntityAnnotation]]:
+    def get_stored_annotations(cls, document: Document) -> Optional[list[NamedEntityAnnotation]]:
         """
         Returns the document's named entity annotations stored in its metadata, if any.
 
@@ -284,7 +286,7 @@ class _NerBackend(ABC):
         self,
         _type: NamedEntityExtractorBackend,
         device: ComponentDevice,
-        pipeline_kwargs: Optional[Dict[str, Any]] = None,
+        pipeline_kwargs: Optional[dict[str, Any]] = None,
     ) -> None:
         super().__init__()
 
@@ -306,7 +308,7 @@ class _NerBackend(ABC):
         """
 
     @abstractmethod
-    def annotate(self, texts: List[str], *, batch_size: int = 1) -> List[List[NamedEntityAnnotation]]:
+    def annotate(self, texts: list[str], *, batch_size: int = 1) -> list[list[NamedEntityAnnotation]]:
         """
         Predict annotations for a collection of documents.
 
@@ -350,7 +352,7 @@ class _HfBackend(_NerBackend):
     """
 
     def __init__(
-        self, *, model_name_or_path: str, device: ComponentDevice, pipeline_kwargs: Optional[Dict[str, Any]] = None
+        self, *, model_name_or_path: str, device: ComponentDevice, pipeline_kwargs: Optional[dict[str, Any]] = None
     ) -> None:
         """
         Construct a Hugging Face NER backend.
@@ -382,7 +384,7 @@ class _HfBackend(_NerBackend):
         self.tokenizer = AutoTokenizer.from_pretrained(self._model_name_or_path, token=token)
         self.model = AutoModelForTokenClassification.from_pretrained(self._model_name_or_path, token=token)
 
-        pipeline_params: Dict[str, Any] = {
+        pipeline_params: dict[str, Any] = {
             "task": "ner",
             "model": self.model,
             "tokenizer": self.tokenizer,
@@ -392,7 +394,7 @@ class _HfBackend(_NerBackend):
         self.device.update_hf_kwargs(pipeline_params, overwrite=False)
         self.pipeline = pipeline(**pipeline_params)
 
-    def annotate(self, texts: List[str], *, batch_size: int = 1) -> List[List[NamedEntityAnnotation]]:
+    def annotate(self, texts: list[str], *, batch_size: int = 1) -> list[list[NamedEntityAnnotation]]:
         if not self.initialized:
             raise ComponentError("Hugging Face NER backend was not initialized - Did you call `warm_up()`?")
 
@@ -426,7 +428,7 @@ class _SpacyBackend(_NerBackend):
     """
 
     def __init__(
-        self, *, model_name_or_path: str, device: ComponentDevice, pipeline_kwargs: Optional[Dict[str, Any]] = None
+        self, *, model_name_or_path: str, device: ComponentDevice, pipeline_kwargs: Optional[dict[str, Any]] = None
     ) -> None:
         """
         Construct a spaCy NER backend.
@@ -467,7 +469,7 @@ class _SpacyBackend(_NerBackend):
 
         self._pipeline_kwargs = {k: v for k, v in self._pipeline_kwargs.items() if k not in ("texts", "batch_size")}
 
-    def annotate(self, texts: List[str], *, batch_size: int = 1) -> List[List[NamedEntityAnnotation]]:
+    def annotate(self, texts: list[str], *, batch_size: int = 1) -> list[list[NamedEntityAnnotation]]:
         if not self.initialized:
             raise ComponentError("spaCy NER backend was not initialized - Did you call `warm_up()`?")
 

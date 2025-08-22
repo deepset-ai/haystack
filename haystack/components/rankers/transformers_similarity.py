@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
@@ -56,13 +56,13 @@ class TransformersSimilarityRanker:
         top_k: int = 10,
         query_prefix: str = "",
         document_prefix: str = "",
-        meta_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
         calibration_factor: Optional[float] = 1.0,
         score_threshold: Optional[float] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
         batch_size: int = 16,
     ):
         """
@@ -146,7 +146,7 @@ class TransformersSimilarityRanker:
         if self.top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
@@ -168,7 +168,7 @@ class TransformersSimilarityRanker:
             assert self.model is not None
             self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -197,7 +197,7 @@ class TransformersSimilarityRanker:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TransformersSimilarityRanker":
+    def from_dict(cls, data: dict[str, Any]) -> "TransformersSimilarityRanker":
         """
         Deserializes the component from a dictionary.
 
@@ -215,11 +215,11 @@ class TransformersSimilarityRanker:
 
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(  # pylint: disable=too-many-positional-arguments
         self,
         query: str,
-        documents: List[Document],
+        documents: list[Document],
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         calibration_factor: Optional[float] = None,
@@ -292,7 +292,7 @@ class TransformersSimilarityRanker:
             def __getitem__(self, item):
                 return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
 
-        batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(  # type: ignore
+        batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(
             self.device.first_device.to_torch()
         )
         dataset = _Dataset(batch_enc)
@@ -301,7 +301,7 @@ class TransformersSimilarityRanker:
         similarity_scores = []
         with torch.inference_mode():
             for features in inp_dataloader:
-                model_preds = self.model(**features).logits.squeeze(dim=1)  # type: ignore
+                model_preds = self.model(**features).logits.squeeze(dim=1)
                 similarity_scores.extend(model_preds)
         similarity_scores = torch.stack(similarity_scores)
 
@@ -310,7 +310,7 @@ class TransformersSimilarityRanker:
 
         _, sorted_indices = torch.sort(similarity_scores, descending=True)
 
-        sorted_indices = sorted_indices.cpu().tolist()  # type: ignore
+        sorted_indices = sorted_indices.cpu().tolist()
         similarity_scores = similarity_scores.cpu().tolist()
         ranked_docs = []
         for sorted_index in sorted_indices:

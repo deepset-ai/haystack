@@ -238,7 +238,7 @@ class TestSentenceTransformersDiversityRanker:
         Tests that run method raises ValueError if similarity is incorrect
         """
         similarity = "incorrect"
-        with pytest.raises(ValueError, match=f"Unknown similarity metric"):
+        with pytest.raises(ValueError, match="Unknown similarity metric"):
             SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity)
 
     def test_run_invalid_strategy(self):
@@ -246,7 +246,7 @@ class TestSentenceTransformersDiversityRanker:
         Tests that run method raises ValueError if strategy is incorrect
         """
         strategy = "incorrect"
-        with pytest.raises(ValueError, match=f"Unknown strategy"):
+        with pytest.raises(ValueError, match="Unknown strategy"):
             SentenceTransformersDiversityRanker(
                 model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy=strategy
             )
@@ -381,7 +381,7 @@ class TestSentenceTransformersDiversityRanker:
         query = "test"
         documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
 
-        with pytest.raises(ValueError, match="top_k must be between"):
+        with pytest.raises(ValueError, match="top_k must be > 0"):
             ranker.run(query=query, documents=documents, top_k=-5)
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
@@ -586,12 +586,12 @@ class TestSentenceTransformersDiversityRanker:
         query = "What are the reasons for long-standing animosities between Russia and Poland?"
 
         doc1 = Document(
-            "One of the earliest known events in Russian-Polish history dates back to 981, when the Grand Prince of Kiev , "
-            "Vladimir Svyatoslavich , seized the Cherven Cities from the Duchy of Poland . The relationship between two by "
-            "that time was mostly close and cordial, as there had been no serious wars between both. In 966, Poland "
-            "accepted Christianity from Rome while Kievan Rus' —the ancestor of Russia, Ukraine and Belarus—was "
-            "Christianized by Constantinople. In 1054, the internal Christian divide formally split the Church into "
-            "the Catholic and Orthodox branches separating the Poles from the Eastern Slavs."
+            "One of the earliest known events in Russian-Polish history dates back to 981, when the Grand Prince of "
+            "Kiev , Vladimir Svyatoslavich , seized the Cherven Cities from the Duchy of Poland . The relationship "
+            "between two by that time was mostly close and cordial, as there had been no serious wars between both. "
+            "In 966, Poland accepted Christianity from Rome while Kievan Rus' —the ancestor of Russia, Ukraine and "
+            "Belarus—was Christianized by Constantinople. In 1054, the internal Christian divide formally split the "
+            "Church into the Catholic and Orthodox branches separating the Poles from the Eastern Slavs."
         )
         doc2 = Document(
             "Since the fall of the Soviet Union , with Lithuania , Ukraine and Belarus regaining independence, the "
@@ -600,11 +600,12 @@ class TestSentenceTransformersDiversityRanker:
         )
         doc3 = Document(
             "As part of Poland's plans to become fully energy independent from Russia within the next years, Piotr "
-            "Wozniak, president of state-controlled oil and gas company PGNiG , stated in February 2019: 'The strategy of "
-            "the company is just to forget about Eastern suppliers and especially about Gazprom .'[53] In 2020, the "
-            "Stockholm Arbitrary Tribunal ruled that PGNiG's long-term contract gas price with Gazprom linked to oil prices "
-            "should be changed to approximate the Western European gas market price, backdated to 1 November 2014 when "
-            "PGNiG requested a price review under the contract. Gazprom had to refund about $1.5 billion to PGNiG."
+            "Wozniak, president of state-controlled oil and gas company PGNiG , stated in February 2019: 'The strategy "
+            "of the company is just to forget about Eastern suppliers and especially about Gazprom .'[53] In 2020, the "
+            "Stockholm Arbitrary Tribunal ruled that PGNiG's long-term contract gas price with Gazprom linked to oil "
+            "prices should be changed to approximate the Western European gas market price, backdated to 1 November "
+            "2014 when PGNiG requested a price review under the contract. Gazprom had to refund about $1.5 billion to "
+            "PGNiG."
         )
         doc4 = Document(
             "Both Poland and Russia had accused each other for their historical revisionism . Russia has repeatedly "
@@ -614,29 +615,29 @@ class TestSentenceTransformersDiversityRanker:
             "notorious Sobibor extermination camp."
         )
         doc5 = Document(
-            "President of Russia Vladimir Putin and Prime Minister of Poland Leszek Miller in 2002 Modern Polish Russian "
-            "relations begin with the fall of communism in1989 in Poland ( Solidarity and the Polish Round Table "
-            "Agreement ) and 1991 in Russia ( dissolution of the Soviet Union ). With a new democratic government after "
-            "the 1989 elections , Poland regained full sovereignty, [2] and what was the Soviet Union, became 15 newly "
-            "independent states , including the Russian Federation . Relations between modern Poland and Russia suffer "
-            "from constant ups and downs."
+            "President of Russia Vladimir Putin and Prime Minister of Poland Leszek Miller in 2002 Modern Polish "
+            "Russian relations begin with the fall of communism in1989 in Poland ( Solidarity and the Polish Round "
+            "Table Agreement ) and 1991 in Russia ( dissolution of the Soviet Union ). With a new democratic "
+            "government after the 1989 elections , Poland regained full sovereignty, [2] and what was the Soviet "
+            "Union, became 15 newly independent states , including the Russian Federation . Relations between modern "
+            "Poland and Russia suffer from constant ups and downs."
         )
         doc6 = Document(
-            "Soviet influence in Poland finally ended with the Round Table Agreement of 1989 guaranteeing free elections "
-            "in Poland, the Revolutions of 1989 against Soviet-sponsored Communist governments in the Eastern Block , and "
-            "finally the formal dissolution of the Warsaw Pact."
+            "Soviet influence in Poland finally ended with the Round Table Agreement of 1989 guaranteeing free "
+            "elections in Poland, the Revolutions of 1989 against Soviet-sponsored Communist governments in the "
+            "Eastern Block , and finally the formal dissolution of the Warsaw Pact."
         )
         doc7 = Document(
-            "Dmitry Medvedev and then Polish Prime Minister Donald Tusk , 6 December 2010 BBC News reported that one of "
-            "the main effects of the 2010 Polish Air Force Tu-154 crash would be the impact it has on Russian-Polish "
-            "relations. [38] It was thought if the inquiry into the crash were not transparent, it would increase "
-            "suspicions toward Russia in Poland."
+            "Dmitry Medvedev and then Polish Prime Minister Donald Tusk , 6 December 2010 BBC News reported that one "
+            "of the main effects of the 2010 Polish Air Force Tu-154 crash would be the impact it has on "
+            "Russian-Polish relations. [38] It was thought if the inquiry into the crash were not transparent, it "
+            "would increase suspicions toward Russia in Poland."
         )
         doc8 = Document(
             "Soviet control over the Polish People's Republic lessened after Stalin's death and Gomulka's Thaw , and "
             "ceased completely after the fall of the communist government in Poland in late 1989, although the "
-            "Soviet-Russian Northern Group of Forces did not leave Polish soil until 1993. The continuing Soviet military "
-            "presence allowed the Soviet Union to heavily influence Polish politics."
+            "Soviet-Russian Northern Group of Forces did not leave Polish soil until 1993. The continuing Soviet "
+            "military presence allowed the Soviet Union to heavily influence Polish politics."
         )
 
         documents = [doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8]

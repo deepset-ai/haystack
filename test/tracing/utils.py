@@ -5,7 +5,7 @@
 import contextlib
 import dataclasses
 import uuid
-from typing import Dict, Any, Optional, List, Iterator
+from typing import Any, Iterator, Optional
 
 from haystack.tracing import Span, Tracer
 
@@ -15,7 +15,7 @@ class SpyingSpan(Span):
     operation_name: str
     parent_span: Optional[Span] = None
 
-    tags: Dict[str, Any] = dataclasses.field(default_factory=dict)
+    tags: dict[str, Any] = dataclasses.field(default_factory=dict)
 
     trace_id: Optional[str] = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
     span_id: Optional[str] = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
@@ -23,7 +23,7 @@ class SpyingSpan(Span):
     def set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
 
-    def get_correlation_data_for_logs(self) -> Dict[str, Any]:
+    def get_correlation_data_for_logs(self) -> dict[str, Any]:
         return {"trace_id": self.trace_id, "span_id": self.span_id}
 
     def set_content_tag(self, key: str, value: Any) -> None:
@@ -38,11 +38,11 @@ class SpyingTracer(Tracer):
         return self.spans[-1] if self.spans else None
 
     def __init__(self) -> None:
-        self.spans: List[SpyingSpan] = []
+        self.spans: list[SpyingSpan] = []
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+        self, operation_name: str, tags: Optional[dict[str, Any]] = None, parent_span: Optional[Span] = None
     ) -> Iterator[Span]:
         new_span = SpyingSpan(operation_name, parent_span)
         for key, value in (tags or {}).items():

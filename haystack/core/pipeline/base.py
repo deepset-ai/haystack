@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -7,9 +8,9 @@ from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, ContextManager, Dict, Iterator, List, Optional, Set, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, ContextManager, Iterator, Mapping, Optional, TextIO, TypeVar, Union
 
-import networkx  # type:ignore
+import networkx
 
 from haystack import logging, tracing
 from haystack.core.component import Component, InputSocket, OutputSocket, component
@@ -32,12 +33,7 @@ from haystack.core.pipeline.component_checks import (
     is_any_greedy_socket_ready,
     is_socket_lazy_variadic,
 )
-from haystack.core.pipeline.utils import (
-    FIFOPriorityQueue,
-    _deepcopy_with_exceptions,
-    args_deprecated,
-    parse_connect_string,
-)
+from haystack.core.pipeline.utils import FIFOPriorityQueue, _deepcopy_with_exceptions, parse_connect_string
 from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
@@ -80,7 +76,7 @@ class PipelineBase:  # noqa: PLW1641
 
     def __init__(
         self,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
         max_runs_per_component: int = 100,
         connection_type_validation: bool = True,
     ):
@@ -127,7 +123,7 @@ class PipelineBase:  # noqa: PLW1641
                 res += f"  - {k}: {v}\n"
 
         res += "🚅 Components\n"
-        for name, instance in self.graph.nodes(data="instance"):  # type: ignore # type wrongly defined in networkx
+        for name, instance in self.graph.nodes(data="instance"):
             res += f"  - {name}: {instance.__class__.__name__}\n"
 
         res += "🛤️ Connections\n"
@@ -138,7 +134,7 @@ class PipelineBase:  # noqa: PLW1641
 
         return res
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the pipeline to a dictionary.
 
@@ -148,7 +144,7 @@ class PipelineBase:  # noqa: PLW1641
             Dictionary with serialized data.
         """
         components = {}
-        for name, instance in self.graph.nodes(data="instance"):  # type:ignore
+        for name, instance in self.graph.nodes(data="instance"):
             components[name] = component_to_dict(instance, name)
 
         connections = []
@@ -166,7 +162,7 @@ class PipelineBase:  # noqa: PLW1641
 
     @classmethod
     def from_dict(
-        cls: Type[T], data: Dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs: Any
+        cls: type[T], data: dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs: Any
     ) -> T:
         """
         Deserializes the pipeline from a dictionary.
@@ -176,7 +172,7 @@ class PipelineBase:  # noqa: PLW1641
         :param callbacks:
             Callbacks to invoke during deserialization.
         :param kwargs:
-            `components`: a dictionary of {name: instance} to reuse instances of components instead of creating new
+            `components`: a dictionary of `{name: instance}` to reuse instances of components instead of creating new
             ones.
         :returns:
             Deserialized component.
@@ -268,7 +264,7 @@ class PipelineBase:  # noqa: PLW1641
 
     @classmethod
     def loads(
-        cls: Type[T],
+        cls: type[T],
         data: Union[str, bytes, bytearray],
         marshaller: Marshaller = DEFAULT_MARSHALLER,
         callbacks: Optional[DeserializationCallbacks] = None,
@@ -299,7 +295,7 @@ class PipelineBase:  # noqa: PLW1641
 
     @classmethod
     def load(
-        cls: Type[T],
+        cls: type[T],
         fp: TextIO,
         marshaller: Marshaller = DEFAULT_MARSHALLER,
         callbacks: Optional[DeserializationCallbacks] = None,
@@ -421,7 +417,7 @@ class PipelineBase:  # noqa: PLW1641
 
         return instance
 
-    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915 PLR0912
+    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915 PLR0912 C901 pylint: disable=too-many-branches
         """
         Connects two components together.
 
@@ -460,13 +456,20 @@ class PipelineBase:  # noqa: PLW1641
         except KeyError as exc:
             raise ValueError(f"Component named {receiver_component_name} not found in the pipeline.") from exc
 
+        if not sender_sockets:
+            raise PipelineConnectError(
+                f"'{sender_component_name}' does not have any output connections. "
+                f"Please check that the output types of '{sender_component_name}.run' are set, "
+                f"for example by using the '@component.output_types' decorator."
+            )
+
         # If the name of either socket is given, get the socket
         sender_socket: Optional[OutputSocket] = None
         if sender_socket_name:
             sender_socket = sender_sockets.get(sender_socket_name)
             if not sender_socket:
                 raise PipelineConnectError(
-                    f"'{sender} does not exist. "
+                    f"'{sender}' does not exist. "
                     f"Output connections of {sender_component_name} are: "
                     + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in sender_sockets.items()])
                 )
@@ -485,10 +488,10 @@ class PipelineBase:  # noqa: PLW1641
 
         # Look for a matching connection among the possible ones.
         # Note that if there is more than one possible connection but two sockets match by name, they're paired.
-        sender_socket_candidates: List[OutputSocket] = (
+        sender_socket_candidates: list[OutputSocket] = (
             [sender_socket] if sender_socket else list(sender_sockets.values())
         )
-        receiver_socket_candidates: List[InputSocket] = (
+        receiver_socket_candidates: list[InputSocket] = (
             [receiver_socket] if receiver_socket else list(receiver_sockets.values())
         )
 
@@ -623,12 +626,12 @@ class PipelineBase:  # noqa: PLW1641
         :returns:
             The name of the Component instance.
         """
-        for name, inst in self.graph.nodes(data="instance"):  # type: ignore # type wrongly defined in networkx
+        for name, inst in self.graph.nodes(data="instance"):
             if inst == instance:
                 return name
         return ""
 
-    def inputs(self, include_components_with_connected_inputs: bool = False) -> Dict[str, Dict[str, Any]]:
+    def inputs(self, include_components_with_connected_inputs: bool = False) -> dict[str, dict[str, Any]]:
         """
         Returns a dictionary containing the inputs of a pipeline.
 
@@ -642,7 +645,7 @@ class PipelineBase:  # noqa: PLW1641
             A dictionary where each key is a pipeline component name and each value is a dictionary of
             inputs sockets of that component.
         """
-        inputs: Dict[str, Dict[str, Any]] = {}
+        inputs: dict[str, dict[str, Any]] = {}
         for component_name, data in find_pipeline_inputs(self.graph, include_components_with_connected_inputs).items():
             sockets_description = {}
             for socket in data:
@@ -654,7 +657,7 @@ class PipelineBase:  # noqa: PLW1641
                 inputs[component_name] = sockets_description
         return inputs
 
-    def outputs(self, include_components_with_connected_outputs: bool = False) -> Dict[str, Dict[str, Any]]:
+    def outputs(self, include_components_with_connected_outputs: bool = False) -> dict[str, dict[str, Any]]:
         """
         Returns a dictionary containing the outputs of a pipeline.
 
@@ -675,9 +678,9 @@ class PipelineBase:  # noqa: PLW1641
         }
         return outputs
 
-    @args_deprecated
     def show(
         self,
+        *,
         server_url: str = "https://mermaid.ink",
         params: Optional[dict] = None,
         timeout: int = 30,
@@ -720,26 +723,8 @@ class PipelineBase:  # noqa: PLW1641
             If the function is called outside of a Jupyter notebook or if there is an issue with rendering.
         """
 
-        # Call the internal implementation with keyword arguments
-        self._show_internal(
-            server_url=server_url, params=params, timeout=timeout, super_component_expansion=super_component_expansion
-        )
-
-    def _show_internal(
-        self,
-        *,
-        server_url: str = "https://mermaid.ink",
-        params: Optional[dict] = None,
-        timeout: int = 30,
-        super_component_expansion: bool = False,
-    ) -> None:
-        """
-        Internal implementation of show() that uses keyword-only arguments.
-
-        ToDo: after 2.14.0 release make this the main function and remove the old one.
-        """
         if is_in_jupyter():
-            from IPython.display import Image, display  # type: ignore
+            from IPython.display import Image, display
 
             if super_component_expansion:
                 graph, super_component_mapping = self._merge_super_component_pipelines()
@@ -759,9 +744,9 @@ class PipelineBase:  # noqa: PLW1641
             msg = "This method is only supported in Jupyter notebooks. Use Pipeline.draw() to save an image locally."
             raise PipelineDrawingError(msg)
 
-    @args_deprecated
-    def draw(  # pylint: disable=too-many-positional-arguments
+    def draw(
         self,
+        *,
         path: Path,
         server_url: str = "https://mermaid.ink",
         params: Optional[dict] = None,
@@ -807,29 +792,6 @@ class PipelineBase:  # noqa: PLW1641
             If there is an issue with rendering or saving the image.
         """
 
-        # Call the internal implementation with keyword arguments
-        self._draw_internal(
-            path=path,
-            server_url=server_url,
-            params=params,
-            timeout=timeout,
-            super_component_expansion=super_component_expansion,
-        )
-
-    def _draw_internal(
-        self,
-        *,
-        path: Path,
-        server_url: str = "https://mermaid.ink",
-        params: Optional[dict] = None,
-        timeout: int = 30,
-        super_component_expansion: bool = False,
-    ) -> None:
-        """
-        Internal implementation of draw() that uses keyword-only arguments.
-
-        ToDo: after 2.14.0 release make this the main function and remove the old one.
-        """
         # Before drawing we edit a bit the graph, to avoid modifying the original that is
         # used for running the pipeline we copy it.
         if super_component_expansion:
@@ -847,7 +809,7 @@ class PipelineBase:  # noqa: PLW1641
         )
         Path(path).write_bytes(image_data)
 
-    def walk(self) -> Iterator[Tuple[str, Component]]:
+    def walk(self) -> Iterator[tuple[str, Component]]:
         """
         Visits each component in the pipeline exactly once and yields its name and instance.
 
@@ -856,7 +818,7 @@ class PipelineBase:  # noqa: PLW1641
         :returns:
             An iterator of tuples of component name and component instance.
         """
-        for component_name, instance in self.graph.nodes(data="instance"):  # type: ignore # type is wrong in networkx
+        for component_name, instance in self.graph.nodes(data="instance"):
             yield component_name, instance
 
     def warm_up(self) -> None:
@@ -873,7 +835,7 @@ class PipelineBase:  # noqa: PLW1641
 
     @staticmethod
     def _create_component_span(
-        component_name: str, instance: Component, inputs: Dict[str, Any], parent_span: Optional[tracing.Span] = None
+        component_name: str, instance: Component, inputs: dict[str, Any], parent_span: Optional[tracing.Span] = None
     ) -> ContextManager[tracing.Span]:
         return tracing.tracer.trace(
             "haystack.component.run",
@@ -899,7 +861,7 @@ class PipelineBase:  # noqa: PLW1641
             parent_span=parent_span,
         )
 
-    def validate_input(self, data: Dict[str, Any]) -> None:
+    def validate_input(self, data: dict[str, Any]) -> None:
         """
         Validates pipeline input data.
 
@@ -937,7 +899,7 @@ class PipelineBase:  # noqa: PLW1641
                         f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
                     )
 
-    def _prepare_component_input_data(self, data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    def _prepare_component_input_data(self, data: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """
         Prepares input data for pipeline components.
 
@@ -961,11 +923,11 @@ class PipelineBase:  # noqa: PLW1641
             # flat input, a dict where keys are input names and values are the corresponding values
             # we need to convert it to a nested dictionary of component inputs and then run the pipeline
             # just like in the previous case
-            pipeline_input_data: Dict[str, Dict[str, Any]] = defaultdict(dict)
+            pipeline_input_data: dict[str, dict[str, Any]] = defaultdict(dict)
             unresolved_kwargs = {}
 
             # Retrieve the input slots for each component in the pipeline
-            available_inputs: Dict[str, Dict[str, Any]] = self.inputs()
+            available_inputs: dict[str, dict[str, Any]] = self.inputs()
 
             # Go through all provided to distribute them to the appropriate component inputs
             for input_name, input_value in data.items():
@@ -998,7 +960,7 @@ class PipelineBase:  # noqa: PLW1641
 
     @classmethod
     def from_template(
-        cls, predefined_pipeline: PredefinedPipeline, template_params: Optional[Dict[str, Any]] = None
+        cls, predefined_pipeline: PredefinedPipeline, template_params: Optional[dict[str, Any]] = None
     ) -> "PipelineBase":
         """
         Create a Pipeline from a predefined template. See `PredefinedPipeline` for available options.
@@ -1023,7 +985,7 @@ class PipelineBase:  # noqa: PLW1641
             msg += f"Source:\n{rendered}"
             raise PipelineUnmarshalError(msg)
 
-    def _find_receivers_from(self, component_name: str) -> List[Tuple[str, OutputSocket, InputSocket]]:
+    def _find_receivers_from(self, component_name: str) -> list[tuple[str, OutputSocket, InputSocket]]:
         """
         Utility function to find all Components that receive input from `component_name`.
 
@@ -1042,7 +1004,7 @@ class PipelineBase:  # noqa: PLW1641
         return res
 
     @staticmethod
-    def _convert_to_internal_format(pipeline_inputs: Dict[str, Any]) -> Dict[str, Dict[str, List]]:
+    def _convert_to_internal_format(pipeline_inputs: dict[str, Any]) -> dict[str, dict[str, list]]:
         """
         Converts the inputs to the pipeline to the format that is needed for the internal `Pipeline.run` logic.
 
@@ -1055,7 +1017,7 @@ class PipelineBase:  # noqa: PLW1641
         :param pipeline_inputs: Inputs to the pipeline.
         :returns: Converted inputs that can be used by the internal `Pipeline.run` logic.
         """
-        inputs: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+        inputs: dict[str, dict[str, list[dict[str, Any]]]] = {}
         for component_name, socket_dict in pipeline_inputs.items():
             inputs[component_name] = {}
             for socket_name, value in socket_dict.items():
@@ -1064,7 +1026,9 @@ class PipelineBase:  # noqa: PLW1641
         return inputs
 
     @staticmethod
-    def _consume_component_inputs(component_name: str, component: Dict, inputs: Dict) -> Dict[str, Any]:
+    def _consume_component_inputs(
+        component_name: str, component: dict, inputs: dict, is_resume: bool = False
+    ) -> dict[str, Any]:
         """
         Extracts the inputs needed to run for the component and removes them from the global inputs state.
 
@@ -1079,6 +1043,11 @@ class PipelineBase:  # noqa: PLW1641
         for socket_name, socket in component["input_sockets"].items():
             socket_inputs = component_inputs.get(socket_name, [])
             socket_inputs = [sock["value"] for sock in socket_inputs if sock["value"] is not _NO_OUTPUT_PRODUCED]
+
+            # if we are resuming a component, the inputs are already consumed, so we just return the first input
+            if is_resume:
+                consumed_inputs[socket_name] = socket_inputs[0]
+                continue
             if socket_inputs:
                 if not socket.is_variadic:
                     # We only care about the first input provided to the socket.
@@ -1107,7 +1076,7 @@ class PipelineBase:  # noqa: PLW1641
         return consumed_inputs
 
     def _fill_queue(
-        self, component_names: List[str], inputs: Dict[str, Any], component_visits: Dict[str, int]
+        self, component_names: list[str], inputs: dict[str, Any], component_visits: dict[str, int]
     ) -> FIFOPriorityQueue:
         """
         Calculates the execution priority for each component and inserts it into the priority queue.
@@ -1128,7 +1097,7 @@ class PipelineBase:  # noqa: PLW1641
         return priority_queue
 
     @staticmethod
-    def _calculate_priority(component: Dict, inputs: Dict) -> ComponentPriority:
+    def _calculate_priority(component: dict, inputs: dict) -> ComponentPriority:
         """
         Calculates the execution priority for a component depending on the component's inputs.
 
@@ -1147,7 +1116,7 @@ class PipelineBase:  # noqa: PLW1641
         else:
             return ComponentPriority.DEFER_LAST
 
-    def _get_component_with_graph_metadata_and_visits(self, component_name: str, visits: int) -> Dict[str, Any]:
+    def _get_component_with_graph_metadata_and_visits(self, component_name: str, visits: int) -> dict[str, Any]:
         """
         Returns the component instance alongside input/output-socket metadata from the graph and adds current visits.
 
@@ -1162,8 +1131,8 @@ class PipelineBase:  # noqa: PLW1641
         return comp_dict
 
     def _get_next_runnable_component(
-        self, priority_queue: FIFOPriorityQueue, component_visits: Dict[str, int]
-    ) -> Union[Tuple[ComponentPriority, str, Dict[str, Any]], None]:
+        self, priority_queue: FIFOPriorityQueue, component_visits: dict[str, int]
+    ) -> Union[tuple[ComponentPriority, str, dict[str, Any]], None]:
         """
         Returns the next runnable component alongside its metadata from the priority queue.
 
@@ -1173,27 +1142,24 @@ class PipelineBase:  # noqa: PLW1641
             or None if no component in the queue can run.
         :raises: PipelineMaxComponentRuns if the next runnable component has exceeded the maximum number of runs.
         """
-        priority_and_component_name: Union[Tuple[ComponentPriority, str], None] = (
+        priority_and_component_name: Union[tuple[ComponentPriority, str], None] = (
             None if (item := priority_queue.get()) is None else (ComponentPriority(item[0]), str(item[1]))
         )
 
-        if priority_and_component_name is not None and priority_and_component_name[0] != ComponentPriority.BLOCKED:
-            priority, component_name = priority_and_component_name
-            component = self._get_component_with_graph_metadata_and_visits(
-                component_name, component_visits[component_name]
-            )
-            if component["visits"] > self._max_runs_per_component:
-                msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
-                raise PipelineMaxComponentRuns(msg)
+        if priority_and_component_name is None:
+            return None
 
-            return priority, component_name, component
-
-        return None
+        priority, component_name = priority_and_component_name
+        comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
+        if comp["visits"] > self._max_runs_per_component:
+            msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
+            raise PipelineMaxComponentRuns(msg)
+        return priority, component_name, comp
 
     @staticmethod
     def _add_missing_input_defaults(
-        component_inputs: Dict[str, Any], component_input_sockets: Dict[str, InputSocket]
-    ) -> Dict[str, Any]:
+        component_inputs: dict[str, Any], component_input_sockets: dict[str, InputSocket]
+    ) -> dict[str, Any]:
         """
         Updates the inputs with the default values for the inputs that are missing
 
@@ -1214,8 +1180,8 @@ class PipelineBase:  # noqa: PLW1641
         component_name: str,
         priority: ComponentPriority,
         priority_queue: FIFOPriorityQueue,
-        topological_sort: Union[Dict[str, int], None],
-    ) -> Tuple[str, Union[Dict[str, int], None]]:
+        topological_sort: Union[dict[str, int], None],
+    ) -> tuple[str, Union[dict[str, int], None]]:
         """
         Decides which component to run when multiple components are waiting for inputs with the same priority.
 
@@ -1258,11 +1224,11 @@ class PipelineBase:  # noqa: PLW1641
     @staticmethod
     def _write_component_outputs(
         component_name: str,
-        component_outputs: Dict[str, Any],
-        inputs: Dict[str, Any],
-        receivers: List[Tuple],
-        include_outputs_from: Set[str],
-    ) -> Dict[str, Any]:
+        component_outputs: Mapping[str, Any],
+        inputs: dict[str, Any],
+        receivers: list[tuple],
+        include_outputs_from: set[str],
+    ) -> Mapping[str, Any]:
         """
         Distributes the outputs of a component to the input sockets that it is connected to.
 
@@ -1355,7 +1321,7 @@ class PipelineBase:  # noqa: PLW1641
                 super_components.append((comp_name, comp))
         return super_components
 
-    def _merge_super_component_pipelines(self) -> Tuple["networkx.MultiDiGraph", Dict[str, str]]:
+    def _merge_super_component_pipelines(self) -> tuple["networkx.MultiDiGraph", dict[str, str]]:
         """
         Merge the internal pipelines of SuperComponents into the main pipeline graph structure.
 
@@ -1371,7 +1337,7 @@ class PipelineBase:  # noqa: PLW1641
             - A dictionary mapping component names to their SuperComponent name
         """
         merged_graph = self.graph.copy()
-        super_component_mapping: Dict[str, str] = {}
+        super_component_mapping: dict[str, str] = {}
 
         for super_name, super_component in self._find_super_components():
             internal_pipeline = super_component.pipeline  # type: ignore
@@ -1432,9 +1398,30 @@ class PipelineBase:  # noqa: PLW1641
 
         return merged_graph, super_component_mapping
 
+    def _is_pipeline_possibly_blocked(self, current_pipeline_outputs: dict[str, Any]) -> bool:
+        """
+        Heuristically determines whether the pipeline is possibly blocked based on its current outputs.
+
+        This method checks if the pipeline has produced any of the expected outputs.
+        - If no outputs are expected (i.e., `self.outputs()` returns an empty list), the method assumes the pipeline
+        is not blocked.
+        - If at least one expected output is present in `current_pipeline_outputs`, the pipeline is also assumed to not
+        be blocked.
+        - If none of the expected outputs are present, the pipeline is considered to be possibly blocked.
+
+        Note: This check is not definitive—it is intended as a best-effort guess to detect a stalled or misconfigured
+        pipeline when there are no more runnable components.
+
+        :param current_pipeline_outputs: A dictionary of outputs currently produced by the pipeline.
+        :returns:
+            bool: True if the pipeline is possibly blocked (i.e., expected outputs are missing), False otherwise.
+        """
+        expected_outputs = self.outputs()
+        return bool(expected_outputs) and not any(k in current_pipeline_outputs for k in expected_outputs)
+
 
 def _connections_status(
-    sender_node: str, receiver_node: str, sender_sockets: List[OutputSocket], receiver_sockets: List[InputSocket]
+    sender_node: str, receiver_node: str, sender_sockets: list[OutputSocket], receiver_sockets: list[InputSocket]
 ) -> str:
     """
     Lists the status of the sockets, for error messages.
@@ -1462,7 +1449,7 @@ def _connections_status(
 
 
 def _write_to_lazy_variadic_socket(
-    inputs: Dict[str, Any], receiver_name: str, receiver_socket_name: str, component_name: str, value: Any
+    inputs: dict[str, Any], receiver_name: str, receiver_socket_name: str, component_name: str, value: Any
 ) -> None:
     """
     Write to a lazy variadic socket.
@@ -1476,7 +1463,7 @@ def _write_to_lazy_variadic_socket(
 
 
 def _write_to_standard_socket(
-    inputs: Dict[str, Any], receiver_name: str, receiver_socket_name: str, component_name: str, value: Any
+    inputs: dict[str, Any], receiver_name: str, receiver_socket_name: str, component_name: str, value: Any
 ) -> None:
     """
     Write to a greedy variadic or non-variadic socket.

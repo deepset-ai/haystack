@@ -3,12 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections.abc
-from typing import Any, Type, TypeVar, Union, get_args, get_origin
+from typing import Any, TypeVar, Union, get_args, get_origin
+
+from haystack.utils.type_serialization import _UnionType
 
 T = TypeVar("T")
 
 
-def _types_are_compatible(sender: Type, receiver: Type, type_validation: bool = True) -> bool:
+def _types_are_compatible(sender: type, receiver: type, type_validation: bool = True) -> bool:
     """
     Determines if two types are compatible based on the specified validation mode.
 
@@ -21,6 +23,25 @@ def _types_are_compatible(sender: Type, receiver: Type, type_validation: bool = 
         return _strict_types_are_compatible(sender, receiver)
     else:
         return True
+
+
+def _safe_get_origin(_type: type[T]) -> Union[type[T], None]:
+    """
+    Safely retrieves the origin type of a generic alias or returns the type itself if it's a built-in.
+
+    This function extends the behavior of `typing.get_origin()` by also handling plain built-in types
+    like `list`, `dict`, etc., which `get_origin()` would normally return `None` for.
+
+    :param _type: A type or generic alias (e.g., `list`, `list[int]`, `dict[str, int]`).
+
+    :returns: The origin type (e.g., `list`, `dict`), or `None` if the input is not a type.
+    """
+    origin = get_origin(_type) or (_type if isinstance(_type, type) else None)
+    # We want to treat typing.Union and UnionType as the same for compatibility checks.
+    # So we convert UnionType to Union if it is detected.
+    if origin is _UnionType:
+        origin = Union
+    return origin
 
 
 def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-return-statements
@@ -48,8 +69,8 @@ def _strict_types_are_compatible(sender, receiver):  # pylint: disable=too-many-
     except TypeError:  # typing classes can't be used with issubclass, so we deal with them below
         pass
 
-    sender_origin = get_origin(sender)
-    receiver_origin = get_origin(receiver)
+    sender_origin = _safe_get_origin(sender)
+    receiver_origin = _safe_get_origin(receiver)
 
     if sender_origin is not Union and receiver_origin is Union:
         return any(_strict_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
@@ -105,13 +126,20 @@ def _type_name(type_: Any) -> str:
     if isinstance(type_, str):
         return f"'{type_}'"
 
-    name = getattr(type_, "__name__", str(type_))
+    if type_ is type(None):
+        return "None"
 
+    args = get_args(type_)
+
+    if isinstance(type_, _UnionType):
+        return " | ".join([_type_name(a) for a in args])
+
+    name = getattr(type_, "__name__", str(type_))
     if name.startswith("typing."):
         name = name[7:]
     if "[" in name:
         name = name.split("[")[0]
-    args = get_args(type_)
+
     if name == "Union" and type(None) in args and len(args) == 2:
         # Optional is technically a Union of type and None
         # but we want to display it as Optional

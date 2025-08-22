@@ -3,16 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-import pytest
 import warnings
+
+import pytest
 
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.core.pipeline.utils import (
-    parse_connect_string,
     FIFOPriorityQueue,
     _deepcopy_with_exceptions,
     args_deprecated,
+    parse_connect_string,
 )
 from haystack.tools import ComponentTool, Tool
 

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+
 import pytest
 from _pytest.logging import LogCaptureFixture
 

@@ -3,16 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import List, Optional
+import sys
+from typing import Optional
 from unittest.mock import patch
 
 import pytest
-
 from pandas import DataFrame
 
 from haystack import Document
 from haystack.core.component import component
-from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic, _empty
+from haystack.core.component.types import GreedyVariadic, InputSocket, OutputSocket, Variadic, _empty
 from haystack.core.errors import (
     DeserializationError,
     PipelineConnectError,
@@ -21,10 +21,8 @@ from haystack.core.errors import (
     PipelineMaxComponentRuns,
 )
 from haystack.core.pipeline import PredefinedPipeline
-from haystack.core.pipeline.base import PipelineBase
-from haystack.core.pipeline.base import ComponentPriority, _NO_OUTPUT_PRODUCED
+from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
 from haystack.core.pipeline.utils import FIFOPriorityQueue
-
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.testing.factory import component_class
 from haystack.testing.sample_components import AddFixedValue, Double, Greet
@@ -74,6 +72,7 @@ def lazy_variadic_input_socket():
 class TestPipelineBase:
     """
     This class contains only unit tests for the PipelineBase class.
+
     It doesn't test Pipeline.run(), that is done separately in a different way.
     """
 
@@ -103,7 +102,7 @@ class TestPipelineBase:
         """
 
         with pytest.raises(DeserializationError, match="unmarshalling serialized"):
-            pipeline = PipelineBase.loads(invalid_yaml)
+            _ = PipelineBase.loads(invalid_yaml)
 
         invalid_init_parameter_yaml = """components:
         Comp1:
@@ -121,7 +120,7 @@ class TestPipelineBase:
         """
 
         with pytest.raises(DeserializationError, match=".*Comp1.*unknown.*"):
-            pipeline = PipelineBase.loads(invalid_init_parameter_yaml)
+            _ = PipelineBase.loads(invalid_init_parameter_yaml)
 
     def test_pipeline_dump(self, test_files_path, tmp_path):
         pipeline = PipelineBase(max_runs_per_component=99)
@@ -222,8 +221,8 @@ class TestPipelineBase:
 
         pipe.remove_component("2")
 
-        assert ["1", "3", "4"] == sorted(pipe.graph.nodes)
-        assert [("3", "4")] == sorted([(u, v) for (u, v) in pipe.graph.edges()])
+        assert sorted(pipe.graph.nodes) == ["1", "3", "4"]
+        assert sorted([(u, v) for (u, v) in pipe.graph.edges()]) == [("3", "4")]
 
     def test_remove_component_allows_you_to_reuse_the_component(self):
         pipe = PipelineBase()
@@ -259,6 +258,40 @@ class TestPipelineBase:
 
         # instance = pipe2.get_component("some")
         # assert instance == component
+
+    def test_connect_with_nonexistent_output_socket_name(self):
+        """Test connecting using a non-existent output socket name."""
+        comp1 = component_class("Comp1", output_types={"output": int})()
+        comp2 = component_class("Comp2", input_types={"value": int})()
+        pipe = PipelineBase()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2)
+
+        with pytest.raises(PipelineConnectError) as excinfo:
+            pipe.connect("comp1.value", "comp2.value")
+
+        assert "'comp1.value' does not exist" in str(excinfo.value)
+        assert "Output connections of comp1 are: output (type int)" in str(excinfo.value)
+
+    def test_connect_with_no_output_sockets(self):
+        """Test connecting from a component that has no output sockets at all."""
+
+        @component
+        class NoOutputComponent:
+            def run(self):
+                pass
+
+        comp1 = NoOutputComponent()
+        comp2 = component_class("Comp2", input_types={"value": int})()
+        pipe = PipelineBase()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2)
+
+        with pytest.raises(PipelineConnectError) as excinfo:
+            pipe.connect("comp1.value", "comp2.value")
+
+        assert "'comp1' does not have any output connections" in str(excinfo.value)
+        assert "@component.output_types" in str(excinfo.value)
 
     # UNIT
     def test_get_component_name(self):
@@ -614,7 +647,8 @@ class TestPipelineBase:
             PipelineBase.from_dict(data)
 
         err.match(
-            r"Component '' \(name: 'add_two'\) not imported. Please check that the package is installed and the component path is correct."
+            r"Component '' \(name: 'add_two'\) not imported. Please check that the package is installed and the "
+            r"component path is correct."
         )
 
     def test_from_dict_with_correct_import_but_invalid_type(self):
@@ -707,8 +741,7 @@ class TestPipelineBase:
 
     def test_describe_output_multiple_possible(self):
         """
-        This pipeline has two outputs:
-        {"b": {"output_b": {"type": str}}, "a": {"output_a": {"type": str}}}
+        This pipeline has two outputs: {"b": {"output_b": {"type": str}}, "a": {"output_a": {"type": str}}}
         """
         A = component_class("A", input_types={"input_a": str}, output={"output_a": "str", "output_b": "str"})
         B = component_class("B", input_types={"input_b": str}, output={"output_b": "str"})
@@ -726,8 +759,7 @@ class TestPipelineBase:
 
     def test_describe_output_single(self):
         """
-        This pipeline has one output:
-        {"c": {"z": {"type": int}}}
+        This pipeline has one output: {"c": {"z": {"type": int}}}
         """
         A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
         B = component_class("B", input_types={"y": int}, output={"y": 0})
@@ -748,6 +780,8 @@ class TestPipelineBase:
 
     def test_describe_no_outputs(self):
         """
+        Test for PipelineBase.outputs() method.
+
         This pipeline sets up elaborate connections between three components but in fact it has no outputs:
         Check that p.outputs() == {}
         """
@@ -773,6 +807,8 @@ class TestPipelineBase:
 
     def test_walk_pipeline_with_no_cycles(self):
         """
+        Test for PipelineBase.walk() method.
+
         This pipeline has two source nodes, source1 and source2, one hello3 node in between, and one sink node, joiner.
         pipeline.walk() should return each component exactly once. The order is not guaranteed.
         """
@@ -815,6 +851,7 @@ class TestPipelineBase:
     def test_walk_pipeline_with_cycles(self):
         """
         This pipeline consists of two components, which would run three times in a loop.
+
         pipeline.walk() should return these components exactly once. The order is not guaranteed.
         """
 
@@ -843,7 +880,7 @@ class TestPipelineBase:
         assert {("hello", hello), ("hello_again", hello_again)} == set(pipeline.walk())
 
     def test__prepare_component_input_data(self):
-        MockComponent = component_class("MockComponent", input_types={"x": List[str], "y": str})
+        MockComponent = component_class("MockComponent", input_types={"x": list[str], "y": str})
         pipe = PipelineBase()
         pipe.add_component("first_mock", MockComponent())
         pipe.add_component("second_mock", MockComponent())
@@ -857,7 +894,7 @@ class TestPipelineBase:
 
     def test__prepare_component_input_data_with_connected_inputs(self):
         MockComponent = component_class(
-            "MockComponent", input_types={"x": List[str], "y": str}, output_types={"z": str}
+            "MockComponent", input_types={"x": list[str], "y": str}, output_types={"z": str}
         )
         pipe = PipelineBase()
         pipe.add_component("first_mock", MockComponent())
@@ -1052,6 +1089,7 @@ class TestPipelineBase:
     def test_connect_same_component_as_sender_and_receiver(self):
         """
         This pipeline consists of one component, which would be connected to itself.
+
         Connecting a component to itself is raises PipelineConnectError.
         """
         pipe = PipelineBase()
@@ -1096,7 +1134,7 @@ class TestPipelineBase:
 
     def test__find_receivers_from(self):
         sentence_builder = component_class(
-            "SentenceBuilder", input_types={"words": List[str]}, output_types={"text": str}
+            "SentenceBuilder", input_types={"words": list[str]}, output_types={"text": str}
         )()
         document_builder = component_class(
             "DocumentBuilder", input_types={"text": str}, output_types={"doc": Document}
@@ -1492,14 +1530,6 @@ class TestPipelineBase:
         result = pipeline._get_next_runnable_component(queue, component_visits={})
         assert result is None
 
-    def test__get_next_runnable_component_blocked(self):
-        """Test component with BLOCKED priority returns None"""
-        pipeline = PipelineBase()
-        queue = FIFOPriorityQueue()
-        queue.push("blocked_component", ComponentPriority.BLOCKED)
-        result = pipeline._get_next_runnable_component(queue, component_visits={"blocked_component": 0})
-        assert result is None
-
     @patch("haystack.core.pipeline.base.PipelineBase._get_component_with_graph_metadata_and_visits")
     def test__get_next_runnable_component_max_visits(self, mock_get_component_with_graph_metadata_and_visits):
         """Test component exceeding max visits raises exception"""
@@ -1682,87 +1712,6 @@ class TestPipelineBase:
 
         assert consumed["input1"].equals(DataFrame({"a": [1, 2], "b": [1, 2]}))
 
-    @patch("haystack.core.pipeline.draw.requests")
-    def test_pipeline_draw_called_with_positional_args_triggers_a_warning(self, mock_requests, tmp_path):
-        """
-        Test that calling the pipeline draw method with positional arguments raises a warning.
-        """
-        from pathlib import Path
-        import warnings
-
-        pipeline = PipelineBase()
-        mock_response = mock_requests.get.return_value
-        mock_response.status_code = 200
-        mock_response.content = b"image_data"
-        out_file = tmp_path / "original_pipeline.png"
-        with warnings.catch_warnings(record=True) as w:
-            pipeline.draw(out_file, server_url="http://localhost:3000")
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert (
-                "Warning: In an upcoming release, this method will require keyword arguments for all parameters"
-                in str(w[0].message)
-            )
-
-    @patch("haystack.core.pipeline.draw.requests")
-    @patch("haystack.core.pipeline.base.is_in_jupyter")
-    def test_pipeline_show_called_with_positional_args_triggers_a_warning(self, mock_is_in_jupyter, mock_requests):
-        """
-        Test that calling the pipeline show method with positional arguments raises a warning.
-        """
-        import warnings
-
-        pipeline = PipelineBase()
-        mock_response = mock_requests.get.return_value
-        mock_response.status_code = 200
-        mock_response.content = b"image_data"
-        mock_is_in_jupyter.return_value = True
-
-        with warnings.catch_warnings(record=True) as w:
-            pipeline.show("http://localhost:3000")
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert (
-                "Warning: In an upcoming release, this method will require keyword arguments for all parameters"
-                in str(w[0].message)
-            )
-
-    @patch("haystack.core.pipeline.draw.requests")
-    def test_pipeline_draw_called_with_keyword_args_triggers_no_warning(self, mock_requests, tmp_path):
-        """
-        Test that calling the pipeline draw method with keyword arguments does not raise a warning.
-        """
-        from pathlib import Path
-        import warnings
-
-        pipeline = PipelineBase()
-        mock_response = mock_requests.get.return_value
-        mock_response.status_code = 200
-        mock_response.content = b"image_data"
-        out_file = tmp_path / "original_pipeline.png"
-
-        with warnings.catch_warnings(record=True) as w:
-            pipeline.draw(path=out_file, server_url="http://localhost:3000")
-            assert len(w) == 0, "No warning should be triggered when using keyword arguments"
-
-    @patch("haystack.core.pipeline.draw.requests")
-    @patch("haystack.core.pipeline.base.is_in_jupyter")
-    def test_pipeline_show_called_with_keyword_args_triggers_no_warning(self, mock_is_in_jupyter, mock_requests):
-        """
-        Test that calling the pipeline show method with keyword arguments does not raise a warning.
-        """
-        import warnings
-
-        pipeline = PipelineBase()
-        mock_response = mock_requests.get.return_value
-        mock_response.status_code = 200
-        mock_response.content = b"image_data"
-        mock_is_in_jupyter.return_value = True
-
-        with warnings.catch_warnings(record=True) as w:
-            pipeline.show(server_url="http://localhost:3000")
-            assert len(w) == 0, "No warning should be triggered when using keyword arguments"
-
     @pytest.mark.integration
     def test_find_super_components(self):
         """
@@ -1868,3 +1817,37 @@ class TestPipelineBase:
         ]
         actual_edges = [(u, v) for u, v, _ in merged_graph.edges]
         assert sorted(actual_edges) == expected_edges
+
+
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
+def test_connect_pep_604_union_type():
+    """
+    Test connecting a PEP 604 union type as input and output.
+    """
+
+    # Producer: outputs a plain list of strings
+    @component
+    class StringProducer:
+        @component.output_types(words=list[str])
+        def run(self) -> dict[str, list[str]]:
+            return {"words": ["apple", "banana", "cherry"]}
+
+    @component
+    class StringConsumerOptional:
+        @component.output_types(count=int)
+        def run(self, words: list[str] | None = None) -> dict[str, int]:
+            return {"count": len(words or [])}
+
+    comp1 = StringProducer()
+    comp2 = StringConsumerOptional()
+
+    pipeline = PipelineBase()
+    pipeline.add_component("producer", comp1)
+    pipeline.add_component("consumer_opt", comp2)
+
+    # This should succeed:
+    pipeline.connect("producer.words", "consumer_opt.words")
+
+    assert comp1.__haystack_output__.words.receivers == ["consumer_opt"]
+    assert comp2.__haystack_input__.words.senders == ["producer"]
+    assert list(pipeline.graph.edges) == [("producer", "consumer_opt", "words/words")]

@@ -2,15 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
 import json
+from typing import List
 
 import pytest
 
 from haystack import Pipeline, component
-from haystack.dataclasses import Document
 from haystack.components.converters import OutputAdapter
 from haystack.components.converters.output_adapter import OutputAdaptationException
+from haystack.dataclasses import Document
 
 
 def custom_filter_to_sede(value):
@@ -134,10 +134,21 @@ class TestOutputAdapter:
 
     def test_sede_with_list_output_type_in_pipeline(self):
         pipe = Pipeline()
+        pipe.add_component("adapter", OutputAdapter(template="{{ test }}", output_type=list[str]))
+        serialized_pipe = pipe.dumps()
+
+        # we serialize the pipeline and check if the output type is serialized correctly (as list[str])
+        assert "list[str]" in serialized_pipe
+
+        deserialized_pipe = Pipeline.loads(serialized_pipe)
+        assert deserialized_pipe.get_component("adapter").output_type == list[str]
+
+    def test_sede_with_typing_list_output_type_in_pipeline(self):
+        pipe = Pipeline()
         pipe.add_component("adapter", OutputAdapter(template="{{ test }}", output_type=List[str]))
         serialized_pipe = pipe.dumps()
 
-        # we serialize the pipeline and check if the output type is serialized correctly (as typing.List[str])
+        # we serialize the pipeline and check if the output type is serialized correctly (as list[str])
         assert "typing.List[str]" in serialized_pipe
 
         deserialized_pipe = Pipeline.loads(serialized_pipe)

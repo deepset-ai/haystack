@@ -2,16 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.core.errors import DeserializationError, SerializationError
 import pytest
 
-from haystack.utils.base_serialization import (
-    serialize_class_instance,
-    deserialize_class_instance,
-    _serialize_value_with_schema,
-    _deserialize_value_with_schema,
-)
+from haystack.core.errors import DeserializationError, SerializationError
 from haystack.dataclasses import ChatMessage, Document, GeneratedAnswer
+from haystack.utils.base_serialization import (
+    _deserialize_value_with_schema,
+    _serialize_value_with_schema,
+    deserialize_class_instance,
+    serialize_class_instance,
+)
 
 
 class CustomClass:
@@ -54,8 +54,6 @@ def test_deserialize_class_instance():
 
 
 def test_deserialize_class_instance_invalid_data():
-    data = {"data": {"key": "value", "more": False}, "type": "test_base_serialization.CustomClass"}
-
     with pytest.raises(DeserializationError, match="Missing 'type'"):
         deserialize_class_instance({})
 
@@ -77,13 +75,13 @@ def test_deserialize_class_instance_invalid_data():
 def test_serialize_value_primitive_types():
     numbers = 1
     string = "test"
-    bool = True
+    _bool = True
     none = None
     result = _serialize_value_with_schema(numbers)
     assert result == {"serialization_schema": {"type": "integer"}, "serialized_data": 1}
     result = _serialize_value_with_schema(string)
     assert result == {"serialization_schema": {"type": "string"}, "serialized_data": "test"}
-    result = _serialize_value_with_schema(bool)
+    result = _serialize_value_with_schema(_bool)
     assert result == {"serialization_schema": {"type": "boolean"}, "serialized_data": True}
     result = _serialize_value_with_schema(none)
     assert result == {"serialization_schema": {"type": "null"}, "serialized_data": None}

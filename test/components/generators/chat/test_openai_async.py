@@ -2,24 +2,27 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import AsyncMock, patch, MagicMock
-
-from openai import AsyncOpenAI, OpenAIError
-import pytest
-from datetime import datetime
 import os
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from openai.types.chat import ChatCompletion, ChatCompletionMessage, ChatCompletionMessageToolCall, ChatCompletionChunk
+import pytest
+from openai import AsyncOpenAI, OpenAIError
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionChunk,
+    ChatCompletionMessage,
+    ChatCompletionMessageFunctionToolCall,
+    chat_completion_chunk,
+)
 from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion_message_function_tool_call import Function
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
-from openai.types.chat.chat_completion_message_tool_call import Function
-from openai.types.chat import chat_completion_chunk
 
-from haystack.dataclasses import StreamingChunk
-from haystack.utils.auth import Secret
-from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.tools import Tool
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.tools import Tool
+from haystack.utils.auth import Secret
 
 
 @pytest.fixture
@@ -199,7 +202,7 @@ class TestOpenAIChatGeneratorAsync:
                         message=ChatCompletionMessage(
                             role="assistant",
                             tool_calls=[
-                                ChatCompletionMessageToolCall(
+                                ChatCompletionMessageFunctionToolCall(
                                     id="123",
                                     type="function",
                                     function=Function(name="weather", arguments='{"city": "Paris"}'),

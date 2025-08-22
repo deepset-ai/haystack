@@ -2,17 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 import math
-from typing import List
+import os
 
 import pytest
 
 from haystack import Pipeline
 from haystack.components.evaluators import FaithfulnessEvaluator
-from haystack.utils.auth import Secret
-from haystack.dataclasses.chat_message import ChatMessage
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.dataclasses.chat_message import ChatMessage
+from haystack.utils.auth import Secret
 
 
 class TestFaithfulnessEvaluator:
@@ -29,9 +28,9 @@ class TestFaithfulnessEvaluator:
             "inferred from the provided context or 0 if it cannot be inferred."
         )
         assert component.inputs == [
-            ("questions", List[str]),
-            ("contexts", List[List[str]]),
-            ("predicted_answers", List[str]),
+            ("questions", list[str]),
+            ("contexts", list[list[str]]),
+            ("predicted_answers", list[str]),
         ]
         assert component.outputs == ["statements", "statement_scores"]
         assert component.examples == [

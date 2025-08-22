@@ -2,18 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import os
-from typing import List
-
 import math
+import os
 
 import pytest
 
 from haystack import Pipeline
 from haystack.components.evaluators import ContextRelevanceEvaluator
-from haystack.utils.auth import Secret
-from haystack.dataclasses.chat_message import ChatMessage
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.dataclasses.chat_message import ChatMessage
+from haystack.utils.auth import Secret
 
 
 class TestContextRelevanceEvaluator:
@@ -26,7 +24,7 @@ class TestContextRelevanceEvaluator:
             "required to answer the following question. If no relevant sentences are found, or if you "
             "believe the question cannot be answered from the given context, return an empty list, example: []"
         )
-        assert component.inputs == [("questions", List[str]), ("contexts", List[List[str]])]
+        assert component.inputs == [("questions", list[str]), ("contexts", list[list[str]])]
         assert component.outputs == ["relevant_statements"]
         assert component.examples == [
             {

@@ -2,12 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
-import httpx
-import requests
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from haystack.utils.requests_utils import request_with_retry, async_request_with_retry
+import httpx
+import pytest
+import requests
+
+from haystack.utils.requests_utils import async_request_with_retry, request_with_retry
 
 
 @pytest.fixture
@@ -197,7 +198,6 @@ class TestAsyncRequestWithRetry:
             # Mock asyncio.sleep used by tenacity to keep this test fast
             mock_sleep.return_value = None
 
-            error_response = httpx.Response(status_code=503, request=httpx.Request("GET", "https://example.com"))
             success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
 
             with patch("httpx.AsyncClient.request") as mock_request:

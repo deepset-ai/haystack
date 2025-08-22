@@ -4,7 +4,7 @@
 
 import io
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from openai import OpenAI
 
@@ -42,7 +42,7 @@ class RemoteWhisperTranscriber:
         model: str = "whisper-1",
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
         **kwargs,
     ):
         """
@@ -105,7 +105,7 @@ class RemoteWhisperTranscriber:
             http_client=init_http_client(self.http_client_kwargs, async_client=False),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -123,7 +123,7 @@ class RemoteWhisperTranscriber:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "RemoteWhisperTranscriber":
+    def from_dict(cls, data: dict[str, Any]) -> "RemoteWhisperTranscriber":
         """
         Deserializes the component from a dictionary.
 
@@ -135,8 +135,8 @@ class RemoteWhisperTranscriber:
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
-    def run(self, sources: List[Union[str, Path, ByteStream]]):
+    @component.output_types(documents=list[Document])
+    def run(self, sources: list[Union[str, Path, ByteStream]]):
         """
         Transcribes the list of audio files into a list of documents.
 

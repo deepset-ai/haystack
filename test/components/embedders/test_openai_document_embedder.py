@@ -4,7 +4,6 @@
 
 import os
 import random
-from typing import List
 from unittest.mock import Mock, patch
 
 import pytest
@@ -13,20 +12,6 @@ from openai import APIError
 from haystack import Document
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 from haystack.utils.auth import Secret
-
-
-def mock_openai_response(input: List[str], model: str = "text-embedding-ada-002", **kwargs) -> dict:
-    dict_response = {
-        "object": "list",
-        "data": [
-            {"object": "embedding", "index": i, "embedding": [random.random() for _ in range(1536)]}
-            for i in range(len(input))
-        ],
-        "model": model,
-        "usage": {"prompt_tokens": 4, "total_tokens": 4},
-    }
-
-    return dict_response
 
 
 class TestOpenAIDocumentEmbedder:
@@ -296,11 +281,13 @@ class TestOpenAIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc in documents_with_embeddings:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 1536
-            assert all(isinstance(x, float) for x in doc.embedding)
+        for doc, new_doc in zip(docs, documents_with_embeddings):
+            assert doc.embedding is None
+            assert new_doc is not doc
+            assert isinstance(new_doc, Document)
+            assert isinstance(new_doc.embedding, list)
+            assert len(new_doc.embedding) == 1536
+            assert all(isinstance(x, float) for x in new_doc.embedding)
 
         assert "text" in result["meta"]["model"] and "ada" in result["meta"]["model"], (
             "The model name does not contain 'text' and 'ada'"
@@ -326,11 +313,13 @@ class TestOpenAIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc in documents_with_embeddings:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 1536
-            assert all(isinstance(x, float) for x in doc.embedding)
+        for doc, new_doc in zip(docs, documents_with_embeddings):
+            assert doc.embedding is None
+            assert new_doc is not doc
+            assert isinstance(new_doc, Document)
+            assert isinstance(new_doc.embedding, list)
+            assert len(new_doc.embedding) == 1536
+            assert all(isinstance(x, float) for x in new_doc.embedding)
 
         assert "text" in result["meta"]["model"] and "ada" in result["meta"]["model"], (
             "The model name does not contain 'text' and 'ada'"

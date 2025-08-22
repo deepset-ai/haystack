@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -61,8 +61,8 @@ class TopPSampler:
         self.score_field = score_field
         self.min_top_k = min_top_k
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document], top_p: Optional[float] = None):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document], top_p: Optional[float] = None):
         """
         Filters documents using top-p sampling based on their scores.
 
@@ -141,7 +141,7 @@ class TopPSampler:
             score = None
         return score
 
-    def _get_documents_and_scores(self, documents: List[Document]) -> Tuple[List[Document], List[float]]:
+    def _get_documents_and_scores(self, documents: list[Document]) -> tuple[list[Document], list[float]]:
         """
         Checks if documents have scores in their metadata or score field and returns the documents with scores.
 

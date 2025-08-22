@@ -2,29 +2,31 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import re
-import pytest
-from typing import Any, Dict, List
-from unittest.mock import Mock
-from haystack.components.routers.llm_messages_router import LLMMessagesRouter
-from haystack.dataclasses import ChatMessage
-from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.core.serialization import default_to_dict, default_from_dict
 import os
+import re
+from typing import Any
+from unittest.mock import Mock
+
+import pytest
+
+from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.routers.llm_messages_router import LLMMessagesRouter
+from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.dataclasses import ChatMessage
 
 
 class MockChatGenerator:
     def __init__(self, return_text: str = "safe"):
         self.return_text = return_text
 
-    def run(self, messages: List[ChatMessage]) -> Dict[str, Any]:
+    def run(self, messages: list[ChatMessage]) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant(self.return_text)]}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return default_to_dict(self, return_text=self.return_text)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MockChatGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "MockChatGenerator":
         return default_from_dict(cls, data)
 
 

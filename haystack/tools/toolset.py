@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Union
+from typing import Any, Iterator, Union
 
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
@@ -143,7 +143,7 @@ class Toolset:
     """
 
     # Use field() with default_factory to initialize the list
-    tools: List[Tool] = field(default_factory=list)
+    tools: list[Tool] = field(default_factory=list)
 
     def __post_init__(self):
         """
@@ -208,7 +208,7 @@ class Toolset:
 
         self.tools.extend(new_tools)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize the Toolset to a dictionary.
 
@@ -231,7 +231,7 @@ class Toolset:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Toolset":
+    def from_dict(cls, data: dict[str, Any]) -> "Toolset":
         """
         Deserialize a Toolset from a dictionary.
 
@@ -250,7 +250,7 @@ class Toolset:
 
         return cls(tools=tools)
 
-    def __add__(self, other: Union[Tool, "Toolset", List[Tool]]) -> "Toolset":
+    def __add__(self, other: Union[Tool, "Toolset", list[Tool]]) -> "Toolset":
         """
         Concatenate this Toolset with another Tool, Toolset, or list of Tools.
 

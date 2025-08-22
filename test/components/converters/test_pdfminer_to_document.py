@@ -8,9 +8,9 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document
+from haystack.components.converters.pdfminer import PDFMinerToDocument
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.dataclasses import ByteStream
-from haystack.components.converters.pdfminer import PDFMinerToDocument
 
 
 class TestPDFMinerToDocument:

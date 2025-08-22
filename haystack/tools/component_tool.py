@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
+from typing import Any, Callable, Optional, Union, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
 
@@ -88,11 +88,11 @@ class ComponentTool(Tool):
         component: Component,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        parameters: Optional[Dict[str, Any]] = None,
+        parameters: Optional[dict[str, Any]] = None,
         *,
-        outputs_to_string: Optional[Dict[str, Union[str, Callable[[Any], str]]]] = None,
-        inputs_from_state: Optional[Dict[str, str]] = None,
-        outputs_to_state: Optional[Dict[str, Dict[str, Union[str, Callable]]]] = None,
+        outputs_to_string: Optional[dict[str, Union[str, Callable[[Any], str]]]] = None,
+        inputs_from_state: Optional[dict[str, str]] = None,
+        outputs_to_state: Optional[dict[str, dict[str, Union[str, Callable]]]] = None,
     ):
         """
         Create a Tool instance from a Haystack component.
@@ -107,22 +107,31 @@ class ComponentTool(Tool):
             Optional dictionary defining how a tool outputs should be converted into a string.
             If the source is provided only the specified output key is sent to the handler.
             If the source is omitted the whole tool result is sent to the handler.
-            Example: {
+            Example:
+            ```python
+            {
                 "source": "docs", "handler": format_documents
             }
+            ```
         :param inputs_from_state:
             Optional dictionary mapping state keys to tool parameter names.
-            Example: {"repository": "repo"} maps state's "repository" to tool's "repo" parameter.
+            Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
         :param outputs_to_state:
             Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
             If the source is provided only the specified output key is sent to the handler.
-            Example: {
+            Example:
+            ```python
+            {
                 "documents": {"source": "docs", "handler": custom_handler}
             }
+            ```
             If the source is omitted the whole tool result is sent to the handler.
-            Example: {
+            Example:
+            ```python
+            {
                 "documents": {"handler": custom_handler}
             }
+            ```
         :raises ValueError: If the component is invalid or schema generation fails.
         """
         if not isinstance(component, Component):
@@ -200,13 +209,13 @@ class ComponentTool(Tool):
         )
         self._component = component
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the ComponentTool to a dictionary.
         """
         serialized_component = component_to_dict(obj=self._component, name=self.name)
 
-        serialized: Dict[str, Any] = {
+        serialized: dict[str, Any] = {
             "component": serialized_component,
             "name": self.name,
             "description": self.description,
@@ -235,7 +244,7 @@ class ComponentTool(Tool):
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Tool":
+    def from_dict(cls, data: dict[str, Any]) -> "Tool":
         """
         Deserializes the ComponentTool from a dictionary.
         """
@@ -270,7 +279,7 @@ class ComponentTool(Tool):
             outputs_to_state=inner_data.get("outputs_to_state", None),
         )
 
-    def _create_tool_parameters_schema(self, component: Component, inputs_from_state: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_tool_parameters_schema(self, component: Component, inputs_from_state: dict[str, Any]) -> dict[str, Any]:
         """
         Creates an OpenAI tools schema from a component's run method parameters.
 
@@ -281,7 +290,7 @@ class ComponentTool(Tool):
         component_run_description, param_descriptions = _get_component_param_descriptions(component)
 
         # collect fields (types and defaults) and descriptions from function parameters
-        fields: Dict[str, Any] = {}
+        fields: dict[str, Any] = {}
 
         for input_name, socket in component.__haystack_input__._sockets_dict.items():  # type: ignore[attr-defined]
             if inputs_from_state is not None and input_name in inputs_from_state:
@@ -295,7 +304,7 @@ class ComponentTool(Tool):
             resolved_type = _resolve_type(input_type)
             fields[input_name] = (resolved_type, Field(default=default, description=description))
 
-        parameters_schema: Dict[str, Any] = {}
+        parameters_schema: dict[str, Any] = {}
         try:
             model = create_model(component.run.__name__, __doc__=component_run_description, **fields)
             parameters_schema = model.model_json_schema()

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Type
+from typing import Any, Optional
 
 
 class PipelineError(Exception):
@@ -10,13 +10,13 @@ class PipelineError(Exception):
 
 
 class PipelineRuntimeError(Exception):
-    def __init__(self, component_name: Optional[str], component_type: Optional[Type], message: str) -> None:
+    def __init__(self, component_name: Optional[str], component_type: Optional[type], message: str) -> None:
         self.component_name = component_name
         self.component_type = component_type
         super().__init__(message)
 
     @classmethod
-    def from_exception(cls, component_name: str, component_type: Type, error: Exception) -> "PipelineRuntimeError":
+    def from_exception(cls, component_name: str, component_type: type, error: Exception) -> "PipelineRuntimeError":
         """
         Create a PipelineRuntimeError from an exception.
         """
@@ -29,7 +29,7 @@ class PipelineRuntimeError(Exception):
         return cls(component_name, component_type, message)
 
     @classmethod
-    def from_invalid_output(cls, component_name: str, component_type: Type, output: Any) -> "PipelineRuntimeError":
+    def from_invalid_output(cls, component_name: str, component_type: type, output: Any) -> "PipelineRuntimeError":
         """
         Create a PipelineRuntimeError from an invalid output.
         """
@@ -89,3 +89,30 @@ class DeserializationError(Exception):
 
 class SerializationError(Exception):
     pass
+
+
+class BreakpointException(Exception):
+    """
+    Exception raised when a pipeline breakpoint is triggered.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        component: Optional[str] = None,
+        inputs: Optional[dict[str, Any]] = None,
+        results: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(message)
+        self.component = component
+        self.inputs = inputs
+        self.results = results
+
+
+class PipelineInvalidPipelineSnapshotError(Exception):
+    """
+    Exception raised when a pipeline is resumed from an invalid snapshot.
+    """
+
+    def __init__(self, message: str):
+        super().__init__(message)

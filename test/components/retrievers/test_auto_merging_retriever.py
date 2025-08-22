@@ -5,8 +5,8 @@
 import pytest
 
 from haystack import Document, Pipeline
-from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.preprocessors import HierarchicalDocumentSplitter
+from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.auto_merging_retriever import AutoMergingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 

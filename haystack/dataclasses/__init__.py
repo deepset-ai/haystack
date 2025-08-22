@@ -10,7 +10,8 @@ from lazy_imports import LazyImporter
 _import_structure = {
     "answer": ["Answer", "ExtractedAnswer", "GeneratedAnswer"],
     "byte_stream": ["ByteStream"],
-    "chat_message": ["ChatMessage", "ChatRole", "TextContent", "ToolCall", "ToolCallResult"],
+    "chat_message": ["ChatMessage", "ChatRole", "ReasoningContent", "TextContent", "ToolCall", "ToolCallResult"],
+    "image_content": ["ImageContent"],
     "document": ["Document"],
     "sparse_embedding": ["SparseEmbedding"],
     "state": ["State"],
@@ -33,10 +34,12 @@ if TYPE_CHECKING:
     from .byte_stream import ByteStream as ByteStream
     from .chat_message import ChatMessage as ChatMessage
     from .chat_message import ChatRole as ChatRole
+    from .chat_message import ReasoningContent as ReasoningContent
     from .chat_message import TextContent as TextContent
     from .chat_message import ToolCall as ToolCall
     from .chat_message import ToolCallResult as ToolCallResult
     from .document import Document as Document
+    from .image_content import ImageContent as ImageContent
     from .sparse_embedding import SparseEmbedding as SparseEmbedding
     from .streaming_chunk import AsyncStreamingCallbackT as AsyncStreamingCallbackT
     from .streaming_chunk import ComponentInfo as ComponentInfo

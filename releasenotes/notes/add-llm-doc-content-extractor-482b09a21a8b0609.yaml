@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added the LLMDocumentContentExtractor which extracts textual content from image-based documents using a vision-enabled LLM.
+    This is good for creating a textual representation of an image which can be used when only text-based retrieval is available.

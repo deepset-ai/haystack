@@ -47,7 +47,7 @@ jobs:
     outputs:
       changes: ${{ steps.changes.outputs.changes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check for changed code
         id: changes
         uses: dorny/paths-filter@v3
@@ -60,6 +60,7 @@ jobs:
               - "haystack/components/converters/tika.py"
               - "haystack/components/embedders/hugging_face_api_document_embedder.py"
               - "haystack/components/embedders/hugging_face_api_text_embedder.py"
+              - "haystack/components/embedders/image/sentence_transformers_doc_image_embedder.py"
               - "haystack/components/embedders/sentence_transformers_text_embedder.py"
               - "haystack/components/evaluators/sas_evaluator.py"
               - "haystack/components/generators/chat/hugging_face_api.py"
@@ -78,6 +79,7 @@ jobs:
               - "test/components/converters/test_tika_doc_converter.py"
               - "test/components/embedders/test_hugging_face_api_document_embedder.py"
               - "test/components/embedders/test_hugging_face_api_text_embedder.py"
+              - "test/components/embedders/image/test_sentence_transformers_doc_image_embedder.py"
               - "test/components/embedders/test_sentence_transformers_text_embedder.py"
               - "test/components/evaluators/test_sas_evaluator.py"
               - "test/components/generators/chat/test_hugging_face_api.py"
@@ -117,7 +119,7 @@ jobs:
             install_cmd: "echo 'No additional dependencies needed'"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:

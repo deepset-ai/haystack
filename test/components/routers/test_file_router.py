@@ -3,15 +3,19 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import mimetypes
 import sys
+from pathlib import PosixPath
 from unittest.mock import mock_open, patch
 
 import pytest
+from packaging import version
 
-from haystack.components.routers.file_type_router import FileTypeRouter
-from haystack.components.converters import TextFileToDocument, PyPDFToDocument
-from haystack.dataclasses import ByteStream
+import haystack
 from haystack import Pipeline
+from haystack.components.converters import PyPDFToDocument, TextFileToDocument
+from haystack.components.routers.file_type_router import FileTypeRouter
+from haystack.dataclasses import ByteStream
 
 
 @pytest.mark.skipif(
@@ -55,6 +59,7 @@ class TestFileTypeRouter:
                 "additional_mimetypes": {
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"
                 },
+                "raise_on_failure": False,
             },
         }
         assert router.to_dict() == expected_dict
@@ -149,7 +154,6 @@ class TestFileTypeRouter:
         for i, elements in enumerate(output.values()):
             for el in elements:
                 assert isinstance(el, ByteStream)
-
                 expected_meta_key, expected_meta_value = list(meta[i].items())[0]
                 assert el.meta[expected_meta_key] == expected_meta_value
 
@@ -160,11 +164,8 @@ class TestFileTypeRouter:
         """
 
         bs = ByteStream.from_string("Haystack!", mime_type="text/plain", meta={"foo": "bar"})
-
         meta = {"another_key": "another_value"}
-
         router = FileTypeRouter(mime_types=[r"text/plain"])
-
         output = router.run(sources=[bs], meta=meta)
 
         assert output
@@ -180,9 +181,7 @@ class TestFileTypeRouter:
         Test that the component raises an error if the length of the metadata list does not match the number of sources.
         """
         file_paths = [test_files_path / "txt" / "doc_1.txt"]
-
         meta = [{"key1": "value1"}, {"key2": "value2"}, {"key3": "value3"}]
-
         router = FileTypeRouter(mime_types=[r"text/plain"])
 
         with pytest.raises(ValueError):
@@ -263,11 +262,12 @@ class TestFileTypeRouter:
             test_files_path / "audio" / "ignored.mp3",
             test_files_path / "audio" / "this is the content of the document.wav",
         ]
-        router = FileTypeRouter(mime_types=[r"text/plain"])
+        router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=False)
         output = router.run(sources=file_paths)
         assert len(output[r"text/plain"]) == 1
         assert "mp3" not in output
-        assert len(output.get("unclassified")) == 2
+        assert len(output.get("unclassified")) == 1
+        assert output.get("failed")[0].name == "ignored.mp3"
 
     def test_no_extension(self, test_files_path):
         """
@@ -275,8 +275,8 @@ class TestFileTypeRouter:
         """
         file_paths = [
             test_files_path / "txt" / "doc_1.txt",
-            test_files_path / "txt" / "doc_2",
             test_files_path / "txt" / "doc_2.txt",
+            test_files_path / "txt" / "doc_4",
         ]
         router = FileTypeRouter(mime_types=[r"text/plain"])
         output = router.run(sources=file_paths)
@@ -326,9 +326,7 @@ class TestFileTypeRouter:
         mp3_stream.mime_type = "audio/mpeg"
 
         byte_streams = [txt_stream, jpg_stream, mp3_stream]
-
         router = FileTypeRouter(mime_types=["text/plain", "image/jpeg"])
-
         output = router.run(sources=byte_streams)
 
         assert len(output["text/plain"]) == 1, "Failed to match 'text/plain' MIME type exactly"
@@ -359,7 +357,11 @@ class TestFileTypeRouter:
             "components": {
                 "file_type_router": {
                     "type": "haystack.components.routers.file_type_router.FileTypeRouter",
-                    "init_parameters": {"mime_types": ["text/plain", "application/pdf"], "additional_mimetypes": None},
+                    "init_parameters": {
+                        "mime_types": ["text/plain", "application/pdf"],
+                        "additional_mimetypes": None,
+                        "raise_on_failure": False,
+                    },
                 }
             },
             "connections": [],
@@ -395,3 +397,59 @@ class TestFileTypeRouter:
 
         assert output["text_file_converter"]["documents"][0].meta["meta_field_1"] == "meta_value_1"
         assert output["pypdf_converter"]["documents"][0].meta["meta_field_2"] == "meta_value_2"
+
+    def test_additional_mimetypes_integration(self, tmp_path):
+        """
+        Test if the component runs correctly in a pipeline with additional mimetypes correctly.
+        """
+        custom_mime_type = "application/x-spam"
+        custom_extension = ".spam"
+        test_file = tmp_path / f"test.{custom_extension}"
+        test_file.touch()
+
+        # confirm that mimetypes module doesn't know about this extension by default
+        assert custom_mime_type not in mimetypes.types_map.values()
+
+        # make haystack aware of the custom mime type
+        router = FileTypeRouter(
+            mime_types=[custom_mime_type], additional_mimetypes={custom_mime_type: custom_extension}
+        )
+        mappings = router.run(sources=[test_file])
+
+        # assert the file was classified under the custom mime type
+        assert custom_mime_type in mappings
+        assert test_file in mappings[custom_mime_type]
+
+    def test_non_existent_file(self):
+        """
+        Test conditional FileNotFoundError behavior in FileTypeRouter.
+        """
+        router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=True)
+
+        # no metadata
+        with pytest.raises(FileNotFoundError):
+            router.run(sources=["non_existent.txt"])
+
+        # with metadata
+        with pytest.raises(FileNotFoundError):
+            router.run(sources=["non_existent.txt"], meta={"spam": "eggs"})
+
+    def test_logging_for_non_existent_file(self, caplog: pytest.LogCaptureFixture):
+        """
+        Test that a logging warning is triggered when a non-existent file is encountered
+        and raise_on_failure is False.
+        """
+        import logging
+
+        router = FileTypeRouter(mime_types=[r"text/plain"], raise_on_failure=False)
+
+        # Capture log messages to verify they are triggered
+        with caplog.at_level(logging.WARNING):
+            result = router.run(sources=["non_existent_file.txt"])
+            assert "File not found:" in caplog.text
+            assert "Skipping it." in caplog.text
+
+        # Verify the file is added to the "failed" category
+        assert "failed" in result
+        assert PosixPath("non_existent_file.txt") in result["failed"]
+        assert "text/plain" not in result

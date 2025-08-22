@@ -7,8 +7,8 @@ import os
 
 import pytest
 
-from haystack.dataclasses import ByteStream
 from haystack.components.converters.txt import TextFileToDocument
+from haystack.dataclasses import ByteStream
 
 
 class TestTextfileToDocument:

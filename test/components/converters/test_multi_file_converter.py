@@ -5,10 +5,10 @@
 import pytest
 
 from haystack import Document, Pipeline
-from haystack.core.pipeline.base import component_to_dict, component_from_dict
-from haystack.core.component.component import Component
-from haystack.dataclasses import ByteStream
 from haystack.components.converters.multi_file_converter import MultiFileConverter
+from haystack.core.component.component import Component
+from haystack.core.pipeline.base import component_from_dict, component_to_dict
+from haystack.dataclasses import ByteStream
 
 
 @pytest.fixture
@@ -106,8 +106,8 @@ class TestMultiFileConverter:
         paths = [test_files_path / "non_existent.txt"]
         with caplog.at_level("WARNING"):
             output = converter.run(sources=paths)
-            assert "Could not read" in caplog.text
-            assert len(output["documents"]) == 0
+            assert "File not found" in caplog.text
+            assert len(output["failed"]) == 1
 
     @pytest.mark.integration
     def test_run_all_file_types(self, test_files_path, converter):
