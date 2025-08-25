@@ -22,9 +22,6 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.auth import Secret
 
-# Test configuration
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-
 
 def setup_document_store(mock_doc_embedder):
     """Create and populate a document store with test documents."""
