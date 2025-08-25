@@ -422,7 +422,6 @@ class Pipeline(PipelineBase):
                     )
                 except Exception:
                     raise PipelineError(_serialize_value_with_schema(pipeline_outputs))
-                    # ToDo: make test for condition where component fails and pipeline outputs are not empty
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
