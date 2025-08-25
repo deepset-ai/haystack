@@ -7,6 +7,9 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from openai.types.chat import ChatCompletion, ChatCompletionMessage
+from openai.types.chat.chat_completion import Choice
+from openai.types.completion_usage import CompletionUsage
 
 from haystack import Document, Pipeline
 from haystack.components.builders import ChatPromptBuilder
@@ -195,12 +198,20 @@ class TestHybridRAGStatePersistence:
     @pytest.fixture
     def mock_openai_completion(self):
         with patch("openai.resources.chat.completions.Completions.create") as mock_chat_completion_create:
-            mock_completion = MagicMock()
-            mock_completion.model = "gpt-4o-mini"
-            mock_completion.choices = [
-                MagicMock(finish_reason="stop", index=0, message=MagicMock(content="Mark lives in Berlin."))
-            ]
-            mock_completion.usage = {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97}
+            mock_completion = ChatCompletion(
+                id="test",
+                model="gpt-4o-mini",
+                object="chat.completion",
+                choices=[
+                    Choice(
+                        finish_reason="stop",
+                        index=0,
+                        message=ChatCompletionMessage(role="assistant", content="Mark lives in Berlin."),
+                    )
+                ],
+                created=1234567890,
+                usage=CompletionUsage(completion_tokens=40, prompt_tokens=57, total_tokens=97),
+            )
 
             mock_chat_completion_create.return_value = mock_completion
             yield mock_chat_completion_create
