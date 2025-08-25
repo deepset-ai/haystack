@@ -1,0 +1,9 @@
+---
+highlights: >
+    Replace this text with content to appear at the top of the section for this
+    release. The highlights might repeat some details that are also present in other notes
+    from the same release, that's ok. Not every release note requires highlights,
+    use this section only to describe major features or notable changes.
+features:
+  - |
+    List new features here, or remove this section.
