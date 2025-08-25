@@ -17,6 +17,7 @@ from haystack.core.pipeline.base import (
 )
 from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
+    _save_pipeline_snapshot,
     _trigger_break_point,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
@@ -24,7 +25,7 @@ from haystack.core.pipeline.breakpoint import (
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot
 from haystack.telemetry import pipeline_running
-from haystack.utils import _deserialize_value_with_schema
+from haystack.utils import _deserialize_value_with_schema, _serialize_value_with_schema
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,8 @@ class Pipeline(PipelineBase):
         *,
         break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        state_persistence: bool = False,
+        state_persistence_path: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -174,6 +177,12 @@ class Pipeline(PipelineBase):
 
         :param pipeline_snapshot:
             A dictionary containing a snapshot of a previously saved pipeline execution.
+
+        :param state_persistence:
+            Literal["component_input", "full"] | bool = False
+
+        :param state_persistence_path:
+            Optional[str] = None
 
         :returns:
             A dictionary where each entry corresponds to a component name
@@ -379,13 +388,43 @@ class Pipeline(PipelineBase):
                                 pipeline_snapshot=new_pipeline_snapshot, pipeline_outputs=pipeline_outputs
                             )
 
-                component_outputs = self._run_component(
-                    component_name=component_name,
-                    component=component,
-                    inputs=component_inputs,  # the inputs to the current component
-                    component_visits=component_visits,
-                    parent_span=span,
-                )
+                # Scenario 3: Save the full pipeline state allowing to restart the pipeline from this point
+                if state_persistence:
+                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
+                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
+                    pipeline_snapshot = _create_pipeline_snapshot(
+                        inputs=pipeline_snapshot_inputs_serialised,
+                        # Dummy breakpoint to pass the component_name and state_persistence_path to the
+                        # _save_pipeline_snapshot
+                        break_point=Breakpoint(
+                            component_name=component_name, visit_count=0, snapshot_file_path=state_persistence_path
+                        ),
+                        component_visits=component_visits,
+                        original_input_data=data,
+                        ordered_component_names=ordered_component_names,
+                        include_outputs_from=include_outputs_from,
+                        pipeline_outputs=pipeline_outputs,
+                    )
+                    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
+
+                try:
+                    component_outputs = self._run_component(
+                        component_name=component_name,
+                        component=component,
+                        inputs=component_inputs,  # the inputs to the current component
+                        component_visits=component_visits,
+                        parent_span=span,
+                    )
+                except Exception as e:
+                    if isinstance(e, BreakpointException):
+                        raise
+                    serialized_outputs = _serialize_value_with_schema(pipeline_outputs)
+                    raise PipelineRuntimeError.from_pipeline_crash(
+                        component_name=component_name,
+                        component_type=type(component),
+                        original_error=e,
+                        pipeline_outputs=serialized_outputs,
+                    )
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.

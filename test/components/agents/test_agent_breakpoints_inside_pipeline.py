@@ -316,7 +316,6 @@ def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
                 data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoint
             )
             assert False, "Expected PipelineBreakpointException was not raised"
-
         except BreakpointException as e:
             assert e.component == "tool_invoker"
             assert e.inputs is not None
