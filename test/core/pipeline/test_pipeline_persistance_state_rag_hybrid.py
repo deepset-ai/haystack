@@ -4,6 +4,9 @@
 
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.builders import ChatPromptBuilder
@@ -17,12 +20,13 @@ from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
+from haystack.utils.auth import Secret
 
 # Test configuration
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
-def setup_document_store():
+def setup_document_store(mock_doc_embedder):
     """Create and populate a document store with test documents."""
     documents = [
         Document(content="My name is Jean and I live in Paris."),
@@ -32,11 +36,10 @@ def setup_document_store():
 
     document_store = InMemoryDocumentStore()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
-    doc_embedder = SentenceTransformersDocumentEmbedder(model=EMBEDDING_MODEL)
 
     # Create ingestion pipeline
     ingestion_pipe = Pipeline()
-    ingestion_pipe.add_component(instance=doc_embedder, name="doc_embedder")
+    ingestion_pipe.add_component(instance=mock_doc_embedder, name="doc_embedder")
     ingestion_pipe.add_component(instance=doc_writer, name="doc_writer")
     ingestion_pipe.connect("doc_embedder.documents", "doc_writer.documents")
     ingestion_pipe.run({"doc_embedder": {"documents": documents}})
@@ -44,12 +47,11 @@ def setup_document_store():
     return document_store
 
 
-def create_hybrid_search_pipeline(document_store):
+def create_hybrid_search_pipeline(document_store, mock_text_embedder, mock_llm):
     """
     Create a hybrid RAG pipeline that combines BM25 and embedding-based retrieval.
     """
     top_k = 3
-    text_embedder = SentenceTransformersTextEmbedder(model=EMBEDDING_MODEL, progress_bar=False)
     embedding_retriever = InMemoryEmbeddingRetriever(document_store, top_k=top_k)
     bm25_retriever = InMemoryBM25Retriever(document_store, top_k=top_k)
     document_joiner = DocumentJoiner(join_mode="concatenate")
@@ -72,14 +74,14 @@ def create_hybrid_search_pipeline(document_store):
     ]
 
     hybrid_retrieval = Pipeline()
-    hybrid_retrieval.add_component("text_embedder", text_embedder)
+    hybrid_retrieval.add_component("text_embedder", mock_text_embedder)
     hybrid_retrieval.add_component("embedding_retriever", embedding_retriever)
     hybrid_retrieval.add_component("bm25_retriever", bm25_retriever)
     hybrid_retrieval.add_component("document_joiner", document_joiner)
     hybrid_retrieval.add_component(
         "prompt_builder", ChatPromptBuilder(template=template, required_variables=["question", "documents"])
     )
-    hybrid_retrieval.add_component("llm", OpenAIChatGenerator())
+    hybrid_retrieval.add_component("llm", mock_llm)
     hybrid_retrieval.add_component("answer_builder", AnswerBuilder())
     hybrid_retrieval.connect("text_embedder", "embedding_retriever")
     hybrid_retrieval.connect("bm25_retriever", "document_joiner")
@@ -120,16 +122,111 @@ def load_snapshot_files(snapshots_dir: Path) -> dict[str, Any]:
 
 
 class TestHybridRAGStatePersistence:
-    def test_hybrid_rag_pipeline_with_state_persistence(self, tmp_path):
+    @pytest.fixture
+    def mock_sentence_transformers_doc_embedder(self):
+        with patch(
+            "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
+        ) as mock_doc_embedder:
+            mock_model = MagicMock()
+            mock_doc_embedder.return_value = mock_model
+
+            def mock_encode(
+                documents, batch_size=None, show_progress_bar=None, normalize_embeddings=None, precision=None, **kwargs
+            ):  # noqa E501
+                import numpy as np
+
+                return [np.ones(384).tolist() for _ in documents]
+
+            mock_model.encode = mock_encode
+            embedder = SentenceTransformersDocumentEmbedder(model="mock-model", progress_bar=False)
+
+            def mock_run(documents: list[Document]):
+                if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
+                    raise TypeError(
+                        "SentenceTransformersDocumentEmbedder expects a list of Documents as input."
+                        "In case you want to embed a string, please use the SentenceTransformersTextEmbedder."
+                    )
+
+                import numpy as np
+
+                embedding = np.ones(384).tolist()
+
+                for doc in documents:
+                    doc.embedding = embedding
+
+                return {"documents": documents}
+
+            embedder.run = mock_run
+            embedder.warm_up()
+            return embedder
+
+    @pytest.fixture
+    def mock_sentence_transformers_text_embedder(self):
+        with patch(
+            "haystack.components.embedders.sentence_transformers_text_embedder._SentenceTransformersEmbeddingBackendFactory"
+        ) as mock_text_embedder:
+            mock_model = MagicMock()
+            mock_text_embedder.return_value = mock_model
+
+            def mock_encode(
+                texts, batch_size=None, show_progress_bar=None, normalize_embeddings=None, precision=None, **kwargs
+            ):  # noqa E501
+                import numpy as np
+
+                return [np.ones(384).tolist() for _ in texts]
+
+            mock_model.encode = mock_encode
+            embedder = SentenceTransformersTextEmbedder(model="mock-model", progress_bar=False)
+
+            def mock_run(text):
+                if not isinstance(text, str):
+                    raise TypeError(
+                        "SentenceTransformersTextEmbedder expects a string as input."
+                        "In case you want to embed a list of Documents, please use the "
+                        "SentenceTransformersDocumentEmbedder."
+                    )
+
+                import numpy as np
+
+                embedding = np.ones(384).tolist()
+                return {"embedding": embedding}
+
+            embedder.run = mock_run
+            embedder.warm_up()
+            return embedder
+
+    @pytest.fixture
+    def mock_openai_completion(self):
+        with patch("openai.resources.chat.completions.Completions.create") as mock_chat_completion_create:
+            mock_completion = MagicMock()
+            mock_completion.model = "gpt-4o-mini"
+            mock_completion.choices = [
+                MagicMock(finish_reason="stop", index=0, message=MagicMock(content="Mark lives in Berlin."))
+            ]
+            mock_completion.usage = {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97}
+
+            mock_chat_completion_create.return_value = mock_completion
+            yield mock_chat_completion_create
+
+    @pytest.mark.integration
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
+    def test_hybrid_rag_pipeline_with_state_persistence(
+        self,
+        tmp_path,
+        mock_sentence_transformers_doc_embedder,
+        mock_sentence_transformers_text_embedder,
+        mock_openai_completion,
+    ):
         """Test that hybrid RAG pipeline creates snapshots with state persistence enabled."""
         snapshots_dir = tmp_path / "snapshots"
         snapshots_dir.mkdir()
 
-        # Setup document store
-        document_store = setup_document_store()
+        # Setup document store with mocked embedder
+        document_store = setup_document_store(mock_sentence_transformers_doc_embedder)
 
-        # Create the pipeline
-        pipeline = create_hybrid_search_pipeline(document_store)
+        # Create the pipeline with mocked components
+        mock_llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"))
+        pipeline = create_hybrid_search_pipeline(document_store, mock_sentence_transformers_text_embedder, mock_llm)
 
         # Test data
         question = "Where does Mark live?"
@@ -171,16 +268,25 @@ class TestHybridRAGStatePersistence:
             assert component_name in snapshots, f"Should have snapshots for {component_name}"
             assert len(snapshots[component_name]) > 0, f"Should have at least one snapshot for {component_name}"
 
-    def test_hybrid_rag_pipeline_resume_from_snapshot(self, tmp_path):
+    @pytest.mark.integration
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
+    def test_hybrid_rag_pipeline_resume_from_snapshot(
+        self,
+        tmp_path,
+        mock_sentence_transformers_doc_embedder,
+        mock_sentence_transformers_text_embedder,
+        mock_openai_completion,
+    ):
         """Test that pipeline can be resumed from a snapshot."""
         snapshots_dir = tmp_path / "snapshots"
         snapshots_dir.mkdir()
 
-        # Setup document store
-        document_store = setup_document_store()
+        # Setup document store with mocked embedder
+        document_store = setup_document_store(mock_sentence_transformers_doc_embedder)
 
-        # Create the pipeline
-        pipeline = create_hybrid_search_pipeline(document_store)
+        # Create the pipeline with mocked components
+        mock_llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"))
+        pipeline = create_hybrid_search_pipeline(document_store, mock_sentence_transformers_text_embedder, mock_llm)
 
         # Test data
         question = "Where does Mark live?"

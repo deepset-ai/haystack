@@ -420,8 +420,11 @@ class Pipeline(PipelineBase):
                         component_visits=component_visits,
                         parent_span=span,
                     )
-                except Exception:
-                    raise PipelineError(_serialize_value_with_schema(pipeline_outputs))
+                except Exception as e:
+                    if isinstance(e, BreakpointException):
+                        raise
+                    else:
+                        raise PipelineError(_serialize_value_with_schema(pipeline_outputs))
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
