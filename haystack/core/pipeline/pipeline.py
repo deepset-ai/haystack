@@ -7,12 +7,7 @@ from typing import Any, Mapping, Optional, Union
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import (
-    BreakpointException,
-    PipelineError,
-    PipelineInvalidPipelineSnapshotError,
-    PipelineRuntimeError,
-)
+from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -423,8 +418,13 @@ class Pipeline(PipelineBase):
                 except Exception as e:
                     if isinstance(e, BreakpointException):
                         raise
-                    else:
-                        raise PipelineError(_serialize_value_with_schema(pipeline_outputs))
+                    serialized_outputs = _serialize_value_with_schema(pipeline_outputs)
+                    raise PipelineRuntimeError.from_pipeline_crash(
+                        component_name=component_name,
+                        component_type=type(component),
+                        original_error=e,
+                        pipeline_outputs=serialized_outputs,
+                    )
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.

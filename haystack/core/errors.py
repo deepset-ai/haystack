@@ -10,9 +10,16 @@ class PipelineError(Exception):
 
 
 class PipelineRuntimeError(Exception):
-    def __init__(self, component_name: Optional[str], component_type: Optional[type], message: str) -> None:
+    def __init__(
+        self,
+        component_name: Optional[str],
+        component_type: Optional[type],
+        message: str,
+        pipeline_outputs: Optional[Any] = None,
+    ) -> None:
         self.component_name = component_name
         self.component_type = component_type
+        self.pipeline_outputs = pipeline_outputs
         super().__init__(message)
 
     @classmethod
@@ -41,6 +48,16 @@ class PipelineRuntimeError(Exception):
             f"Check the component's output and ensure it is a valid dictionary."
         )
         return cls(component_name, component_type, message)
+
+    @classmethod
+    def from_pipeline_crash(
+        cls, component_name: str, component_type: type, original_error: Exception, pipeline_outputs: Any
+    ) -> "PipelineRuntimeError":
+        """
+        Create a PipelineRuntimeError from a pipeline crash with serialized outputs.
+        """
+        message = f"Pipeline execution failed at component '{component_name}': {str(original_error)}"
+        return cls(component_name, component_type, message, pipeline_outputs)
 
 
 class PipelineComponentsBlockedError(PipelineRuntimeError):
