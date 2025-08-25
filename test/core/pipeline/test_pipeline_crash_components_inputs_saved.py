@@ -15,7 +15,7 @@ from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.writers import DocumentWriter
 from haystack.core.component import component
-from haystack.core.errors import PipelineError
+from haystack.core.errors import PipelineRuntimeError
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
@@ -132,7 +132,6 @@ class TestPipelineCrashStatePersistence:
             mock_chat_completion_create.return_value = mock_completion
             yield mock_chat_completion_create
 
-    @pytest.mark.integration
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
     def test_hybrid_rag_pipeline_crash_on_embedding_retriever(
         self,
@@ -211,7 +210,7 @@ class TestPipelineCrashStatePersistence:
         }
 
         # run pipeline and expect it to crash due to invalid output type
-        with pytest.raises(PipelineError) as exc_info:
+        with pytest.raises(PipelineRuntimeError) as exc_info:
             pipeline.run(
                 data=test_data,
                 include_outputs_from={
@@ -225,7 +224,8 @@ class TestPipelineCrashStatePersistence:
                 },
             )
 
-        pipeline_outputs = exc_info.value.args[0]
+        pipeline_outputs = exc_info.value.pipeline_outputs
+
         assert pipeline_outputs is not None, "Pipeline outputs should be captured in the exception"
 
         # verify that bm25_retriever and text_embedder ran successfully before the crash

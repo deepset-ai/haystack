@@ -205,7 +205,6 @@ class TestHybridRAGStatePersistence:
             mock_chat_completion_create.return_value = mock_completion
             yield mock_chat_completion_create
 
-    @pytest.mark.integration
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
     def test_hybrid_rag_pipeline_with_state_persistence(
         self,
@@ -265,7 +264,6 @@ class TestHybridRAGStatePersistence:
             assert component_name in snapshots, f"Should have snapshots for {component_name}"
             assert len(snapshots[component_name]) > 0, f"Should have at least one snapshot for {component_name}"
 
-    @pytest.mark.integration
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
     def test_hybrid_rag_pipeline_resume_from_snapshot(
         self,
