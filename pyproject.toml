@@ -90,7 +90,7 @@ dependencies = [
   "pandas",                                           # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
                                                       # EvaluationRunResult, XLSXToDocument, and pipeline tests
 
-  "transformers[torch, sentencepiece]>=4.52.4,<4.53", # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
+  "transformers[torch, sentencepiece]>=4.55.4",       # ExtractiveReader, TransformersSimilarityRanker, LocalWhisperTranscriber, HFGenerators...
   "huggingface_hub>=0.27.0",                          # Hugging Face API Generators and Embedders
   "sentence-transformers>=4.1.0",                     # Sentence Transformers Embedders, Rankers, and SASEvaluator
   "langdetect",                                       # TextLanguageRouter and DocumentLanguageClassifier
