@@ -1,9 +1,7 @@
 ---
-highlights: >
-    Replace this text with content to appear at the top of the section for this
-    release. The highlights might repeat some details that are also present in other notes
-    from the same release, that's ok. Not every release note requires highlights,
-    use this section only to describe major features or notable changes.
 features:
   - |
-    List new features here, or remove this section.
+    The Pipeline API has been enhanced to handle crashes and resume state. This means that if a pipeline execution is
+    interrupted due to a crash or failure, it can now be resumed from the last successful state rather than starting
+    over from the beginning. This improvement increases the reliability and efficiency of pipeline executions,
+    especially for long-running processes.
