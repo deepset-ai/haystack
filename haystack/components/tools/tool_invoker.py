@@ -8,7 +8,7 @@ import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from haystack.components.agents import State
 from haystack.core.component.component import component
@@ -209,6 +209,29 @@ class ToolInvoker:
         self.convert_result_to_json_string = convert_result_to_json_string
 
         self._tools_with_names = self._validate_and_prepare_tools(tools)
+
+    @staticmethod
+    def _make_context_bound_invoke(tool_to_invoke: Tool, final_args: dict[str, Any]) -> Callable[[], Any]:
+        """
+        Create a zero-arg callable that invokes the tool under the caller's contextvars Context.
+
+        We copy and use contextvars to preserve the caller’s ambient execution context (for example the active
+        tracing Span) across thread boundaries. Python’s contextvars do not automatically propagate to worker
+        threads (or to threadpool tasks spawned via run_in_executor), so without intervention nested tool calls
+        would lose their parent trace/span and appear as separate roots. By capturing the current Context in the
+        caller thread and invoking the tool under ctx.run(...) inside the executor, we ensure proper span parentage,
+        consistent tagging, and reliable log/trace correlation in both sync and async paths. The callable returns
+        ToolInvocationError instead of raising so parallel execution can collect failures.
+        """
+        ctx = contextvars.copy_context()
+
+        def _runner() -> Any:
+            try:
+                return ctx.run(partial(tool_to_invoke.invoke, **final_args))
+            except ToolInvocationError as e:
+                return e
+
+        return _runner
 
     @staticmethod
     def _validate_and_prepare_tools(tools: Union[list[Tool], Toolset]) -> dict[str, Tool]:
@@ -552,9 +575,9 @@ class ToolInvoker:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 futures = []
                 for params in tool_call_params:
-                    future = executor.submit(self._execute_single_tool_call, **params)
+                    callable_ = self._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
+                    future = executor.submit(callable_)
                     futures.append(future)
-
                 # 3) Gather and process results: handle errors and merge outputs into state
                 for future, tool_call in zip(futures, tool_calls):
                     result = future.result()
@@ -609,34 +632,14 @@ class ToolInvoker:
         return {"tool_messages": tool_messages, "state": state}
 
     @staticmethod
-    def _execute_single_tool_call(tool_to_invoke: Tool, final_args: dict[str, Any]) -> Union[ToolInvocationError, Any]:
-        """
-        Execute a single tool call. This method is designed to be run in a thread pool.
-
-        :param tool_to_invoke: The Tool object that should be invoked.
-        :param final_args: The final arguments to pass to the tool.
-        :returns: Either a ToolInvocationError or the actual tool result.
-        """
-        try:
-            tool_result = tool_to_invoke.invoke(**final_args)
-            return tool_result
-        except ToolInvocationError as e:
-            return e
-
-    @staticmethod
     async def invoke_tool_safely(
         executor: ThreadPoolExecutor, tool_to_invoke: Tool, final_args: dict[str, Any]
     ) -> Union[ToolInvocationError, Any]:
         """Safely invoke a tool with proper exception handling."""
         loop = asyncio.get_running_loop()
-        # Important: contextvars (e.g. active tracing Span) don’t propagate to running loop's ThreadPoolExecutor
-        # We use ctx.run(...) to preserve context like the active tracing span
-        ctx = contextvars.copy_context()
-        try:
-            result = await loop.run_in_executor(executor, lambda: ctx.run(partial(tool_to_invoke.invoke, **final_args)))
-            return result
-        except ToolInvocationError as e:
-            return e
+        callable_ = ToolInvoker._make_context_bound_invoke(tool_to_invoke, final_args)
+        result = await loop.run_in_executor(executor, callable_)
+        return result
 
     @component.output_types(tool_messages=list[ChatMessage], state=State)
     async def run_async(

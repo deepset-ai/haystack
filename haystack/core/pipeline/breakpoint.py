@@ -374,15 +374,15 @@ def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools:
         raise ValueError(f"Tool '{tool_breakpoint.tool_name}' is not available in the agent's tools")
 
 
-def _check_chat_generator_breakpoint(
+def _trigger_chat_generator_breakpoint(
     *, agent_snapshot: AgentSnapshot, parent_snapshot: Optional[PipelineSnapshot]
 ) -> None:
     """
-    Check for breakpoint before calling the ChatGenerator.
+    Trigger a breakpoint before ChatGenerator execution in Agent.
 
     :param agent_snapshot: AgentSnapshot object containing the agent's state and breakpoints
     :param parent_snapshot: Optional parent snapshot containing the state of the pipeline that houses the agent.
-    :raises BreakpointException: If a breakpoint is triggered
+    :raises BreakpointException: Always raised when this function is called, indicating a breakpoint has been triggered.
     """
 
     break_point = agent_snapshot.break_point.break_point
@@ -415,16 +415,17 @@ def _check_chat_generator_breakpoint(
     )
 
 
-def _check_tool_invoker_breakpoint(
+def _handle_tool_invoker_breakpoint(
     *, llm_messages: list[ChatMessage], agent_snapshot: AgentSnapshot, parent_snapshot: Optional[PipelineSnapshot]
 ) -> None:
     """
-    Check for breakpoint before calling the ToolInvoker.
+    Check if a tool call breakpoint should be triggered before executing the tool invoker.
 
     :param llm_messages: List of ChatMessage objects containing potential tool calls.
     :param agent_snapshot: AgentSnapshot object containing the agent's state and breakpoints.
     :param parent_snapshot: Optional parent snapshot containing the state of the pipeline that houses the agent.
-    :raises BreakpointException: If a breakpoint is triggered
+    :raises BreakpointException: If the breakpoint is triggered, indicating a breakpoint has been reached for a tool
+        call.
     """
     if not isinstance(agent_snapshot.break_point.break_point, ToolBreakpoint):
         return

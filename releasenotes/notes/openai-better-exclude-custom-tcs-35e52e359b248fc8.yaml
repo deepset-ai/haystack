@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    In `OpenAIChatGenerator`, improved the logic to exclude unsupported custom tool calls.
+    The previous implementation caused compatibility issues with the Mistral Haystack core integration,
+    which extends `OpenAIChatGenerator`.

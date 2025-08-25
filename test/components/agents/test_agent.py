@@ -12,13 +12,12 @@ import pytest
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
-from haystack import Pipeline, tracing
+from haystack import Pipeline, component, tracing
 from haystack.components.agents import Agent
 from haystack.components.agents.state import merge_lists
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
@@ -101,11 +100,9 @@ def openai_mock_chat_completion_chunk():
         yield mock_chat_completion_create
 
 
-class MockChatGeneratorWithoutTools(ChatGenerator):
+@component
+class MockChatGeneratorWithoutTools:
     """A mock chat generator that implements ChatGenerator protocol but doesn't support tools."""
-
-    __haystack_input__ = MagicMock(_sockets_dict={})
-    __haystack_output__ = MagicMock(_sockets_dict={})
 
     def to_dict(self) -> dict[str, Any]:
         return {"type": "MockChatGeneratorWithoutTools", "data": {}}
@@ -114,16 +111,15 @@ class MockChatGeneratorWithoutTools(ChatGenerator):
     def from_dict(cls, data: dict[str, Any]) -> "MockChatGeneratorWithoutTools":
         return cls()
 
+    @component.output_types(replies=list[ChatMessage])
     def run(self, messages: list[ChatMessage]) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
 
-class MockChatGeneratorWithoutRunAsync(ChatGenerator):
+@component
+class MockChatGeneratorWithoutRunAsync:
     """A mock chat generator that implements ChatGenerator protocol but doesn't have run_async method."""
 
-    __haystack_input__ = MagicMock(_sockets_dict={})
-    __haystack_output__ = MagicMock(_sockets_dict={})
-
     def to_dict(self) -> dict[str, Any]:
         return {"type": "MockChatGeneratorWithoutRunAsync", "data": {}}
 
@@ -131,17 +127,15 @@ class MockChatGeneratorWithoutRunAsync(ChatGenerator):
     def from_dict(cls, data: dict[str, Any]) -> "MockChatGeneratorWithoutRunAsync":
         return cls()
 
+    @component.output_types(replies=list[ChatMessage])
     def run(
         self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
     ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
 
-class MockChatGeneratorWithRunAsync(ChatGenerator):
-    __haystack_supports_async__ = True
-    __haystack_input__ = MagicMock(_sockets_dict={})
-    __haystack_output__ = MagicMock(_sockets_dict={})
-
+@component
+class MockChatGenerator:
     def to_dict(self) -> dict[str, Any]:
         return {"type": "MockChatGeneratorWithoutRunAsync", "data": {}}
 
@@ -149,11 +143,13 @@ class MockChatGeneratorWithRunAsync(ChatGenerator):
     def from_dict(cls, data: dict[str, Any]) -> "MockChatGeneratorWithoutRunAsync":
         return cls()
 
+    @component.output_types(replies=list[ChatMessage])
     def run(
         self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
     ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
+    @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
     ) -> dict[str, Any]:
@@ -818,7 +814,7 @@ class TestAgent:
 
     @pytest.mark.asyncio
     async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool):
-        chat_generator = MockChatGeneratorWithRunAsync()
+        chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         agent.warm_up()
 
@@ -904,8 +900,8 @@ class TestAgentTracing:
             "chat_generator",
             "MockChatGeneratorWithoutRunAsync",
             '{"messages": "list", "tools": "list"}',
-            "{}",
-            "{}",
+            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "typing.Union[list[haystack.tools.tool.Tool], haystack.tools.toolset.Toolset, NoneType]", "senders": []}}',  # noqa: E501
+            '{"replies": {"type": "list", "receivers": []}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
@@ -913,7 +909,7 @@ class TestAgentTracing:
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
             '["text"]',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null, "break_point": null, "snapshot": null}',  # noqa: E501
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',  # noqa: E501
             1,
         ]
@@ -927,7 +923,7 @@ class TestAgentTracing:
 
     @pytest.mark.asyncio
     async def test_agent_tracing_span_async_run(self, caplog, monkeypatch, weather_tool):
-        chat_generator = MockChatGeneratorWithRunAsync()
+        chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
 
         tracing.tracer.is_content_tracing_enabled = True
@@ -962,10 +958,10 @@ class TestAgentTracing:
 
         expected_tag_values = [
             "chat_generator",
-            "MockChatGeneratorWithRunAsync",
+            "MockChatGenerator",
             '{"messages": "list", "tools": "list"}',
-            "{}",
-            "{}",
+            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "typing.Union[list[haystack.tools.tool.Tool], haystack.tools.toolset.Toolset, NoneType]", "senders": []}}',  # noqa: E501
+            '{"replies": {"type": "list", "receivers": []}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
@@ -973,7 +969,7 @@ class TestAgentTracing:
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
             '["text"]',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null, "break_point": null, "snapshot": null}',  # noqa: E501
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
             1,
         ]
