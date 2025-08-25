@@ -4,6 +4,7 @@
 
 import json
 from typing import Any, Optional, Union
+from urllib.parse import urlparse
 
 import requests
 
@@ -36,6 +37,15 @@ class SerperDevWebSearch:
 
     assert results["documents"]
     assert results["links"]
+
+    # Example with domain filtering - exclude subdomains
+    websearch_filtered = SerperDevWebSearch(
+        top_k=10,
+        allowed_domains=["example.com"],
+        exclude_subdomains=True,  # Only results from example.com, not blog.example.com
+        api_key=Secret.from_token("test-api-key")
+    )
+    results_filtered = websearch_filtered.run(query="search query")
     ```
     """
 
@@ -44,6 +54,7 @@ class SerperDevWebSearch:
         api_key: Secret = Secret.from_env_var("SERPERDEV_API_KEY"),
         top_k: Optional[int] = 10,
         allowed_domains: Optional[list[str]] = None,
+        exclude_subdomains: bool = False,
         search_params: Optional[dict[str, Any]] = None,
     ):
         """
@@ -52,6 +63,9 @@ class SerperDevWebSearch:
         :param api_key: API key for the Serper API.
         :param top_k: Number of documents to return.
         :param allowed_domains: List of domains to limit the search to.
+        :param exclude_subdomains: Whether to exclude subdomains when filtering by allowed_domains.
+            If True, only results from the exact domains in allowed_domains will be returned.
+            If False, results from subdomains will also be included. Defaults to False.
         :param search_params: Additional parameters passed to the Serper API.
             For example, you can set 'num' to 20 to increase the number of search results.
             See the [Serper website](https://serper.dev/) for more details.
@@ -59,6 +73,7 @@ class SerperDevWebSearch:
         self.api_key = api_key
         self.top_k = top_k
         self.allowed_domains = allowed_domains
+        self.exclude_subdomains = exclude_subdomains
         self.search_params = search_params or {}
 
         # Ensure that the API key is resolved.
@@ -75,6 +90,7 @@ class SerperDevWebSearch:
             self,
             top_k=self.top_k,
             allowed_domains=self.allowed_domains,
+            exclude_subdomains=self.exclude_subdomains,
             search_params=self.search_params,
             api_key=self.api_key.to_dict(),
         )
@@ -89,6 +105,36 @@ class SerperDevWebSearch:
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
+
+    def _is_domain_allowed(self, url: str) -> bool:
+        """
+        Check if a URL's domain is allowed based on allowed_domains and exclude_subdomains settings.
+
+        :param url: The URL to check.
+        :returns: True if the domain is allowed, False otherwise.
+        """
+        if not self.allowed_domains:
+            return True
+
+        try:
+            parsed = urlparse(url)
+            domain = parsed.netloc.lower()
+
+            for allowed_domain in self.allowed_domains:
+                allowed_domain = allowed_domain.lower()
+
+                if self.exclude_subdomains:
+                    # Exact domain match only
+                    if domain == allowed_domain:
+                        return True
+                # Allow subdomains (current behavior)
+                elif domain == allowed_domain or domain.endswith("." + allowed_domain):
+                    return True
+
+            return False
+        except Exception:
+            # If URL parsing fails, allow the result to be safe
+            return True
 
     @component.output_types(documents=list[Document], links=list[str])
     def run(self, query: str) -> dict[str, Union[list[Document], list[str]]]:
@@ -125,6 +171,7 @@ class SerperDevWebSearch:
         organic = [
             Document(meta={k: v for k, v in d.items() if k != "snippet"}, content=d.get("snippet"))
             for d in json_result["organic"]
+            if self._is_domain_allowed(d.get("link", ""))
         ]
 
         # answer box is what search engine shows as a direct answer to the query
@@ -143,7 +190,7 @@ class SerperDevWebSearch:
                     if key in answer_dict:
                         answer_box_content = answer_dict[key]
                         break
-            if answer_box_content:
+            if answer_box_content and self._is_domain_allowed(answer_dict.get("link", "")):
                 answer_box = [
                     Document(
                         content=answer_box_content,
@@ -155,17 +202,18 @@ class SerperDevWebSearch:
         people_also_ask = []
         if "peopleAlsoAsk" in json_result:
             for result in json_result["peopleAlsoAsk"]:
-                title = result.get("title", "")
-                people_also_ask.append(
-                    Document(
-                        content=result["snippet"] if result.get("snippet") else title,
-                        meta={"title": title, "link": result.get("link", None)},
+                if self._is_domain_allowed(result.get("link", "")):
+                    title = result.get("title", "")
+                    people_also_ask.append(
+                        Document(
+                            content=result["snippet"] if result.get("snippet") else title,
+                            meta={"title": title, "link": result.get("link", None)},
+                        )
                     )
-                )
 
         documents = answer_box + organic + people_also_ask
 
-        links = [result["link"] for result in json_result["organic"]]
+        links = [result["link"] for result in json_result["organic"] if self._is_domain_allowed(result.get("link", ""))]
 
         logger.debug(
             "Serper Dev returned {number_documents} documents for the query '{query}'",
