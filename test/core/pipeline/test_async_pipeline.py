@@ -6,7 +6,8 @@ import asyncio
 
 import pytest
 
-from haystack import AsyncPipeline
+from haystack import AsyncPipeline, component
+from haystack.core.errors import PipelineRuntimeError
 
 
 def test_async_pipeline_reentrance(waiting_component, spying_tracer):
@@ -43,3 +44,30 @@ def test_run_in_async_context_raises_runtime_error():
 
     with pytest.raises(RuntimeError, match="Cannot call run\\(\\) from within an async context"):
         asyncio.run(call_run())
+
+
+def test_non_async_component_error_handling():
+    """Test that non-async components in AsyncPipeline properly wrap exceptions with PipelineRuntimeError"""
+    
+    @component
+    class ErroringComponent:
+        @component.output_types(output=str)
+        def run(self, value: str):
+            raise ValueError("Test error from non-async component")
+    
+    erroring_component = ErroringComponent()
+    pp = AsyncPipeline()
+    pp.add_component("erroring_component", erroring_component)
+    
+    inputs = {"value": "test_value"}
+    
+    async def run_pipeline():
+        return await pp.run_async({"erroring_component": inputs})
+    
+    with pytest.raises(PipelineRuntimeError) as exc_info:
+        asyncio.run(run_pipeline())
+    
+    # Verify that the error includes component information
+    assert "Component name: 'erroring_component'" in str(exc_info.value)
+    assert "Component type: 'ErroringComponent'" in str(exc_info.value)
+    assert "Test error from non-async component" in str(exc_info.value)
