@@ -167,6 +167,7 @@ def _save_pipeline_snapshot_to_file(
     else:
         component_name = pipeline_snapshot.break_point.component_name
         file_name = f"{component_name}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+
     try:
         with open(snapshot_file_path / file_name, "w") as f_out:
             json.dump(pipeline_snapshot.to_dict(), f_out, indent=2)
