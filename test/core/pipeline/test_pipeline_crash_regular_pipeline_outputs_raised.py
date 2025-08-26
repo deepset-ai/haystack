@@ -2,12 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
-from haystack import Document, Pipeline
+from haystack import AsyncPipeline, Document, Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.embedders import SentenceTransformersTextEmbedder
@@ -152,6 +153,108 @@ class TestPipelineOutputsRaisedInException:
                     "answer_builder",
                 },
             )
+
+        pipeline_outputs = exc_info.value.pipeline_outputs
+
+        assert pipeline_outputs is not None, "Pipeline outputs should be captured in the exception"
+
+        # verify that bm25_retriever and text_embedder ran successfully before the crash
+        assert "bm25_retriever" in pipeline_outputs, "BM25 retriever output not captured"
+        assert "documents" in pipeline_outputs["bm25_retriever"], "BM25 retriever should have produced documents"
+        assert "text_embedder" in pipeline_outputs, "Text embedder output not captured"
+        assert "embedding" in pipeline_outputs["text_embedder"], "Text embedder should have produced embeddings"
+
+        # components after the crash point are not in the outputs
+        assert "document_joiner" not in pipeline_outputs, "Document joiner should not have run due to crash"
+        assert "prompt_builder" not in pipeline_outputs, "Prompt builder should not have run due to crash"
+        assert "llm" not in pipeline_outputs, "LLM should not have run due to crash"
+        assert "answer_builder" not in pipeline_outputs, "Answer builder should not have run due to crash"
+
+    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
+    def test_async_hybrid_rag_pipeline_crash_on_embedding_retriever(self, mock_sentence_transformers_text_embedder):
+        """Test async hybrid RAG pipeline crash on embedding retriever component."""
+        # Setup document store with mocked embedder
+        document_store = setup_document_store()
+
+        # Create a mock component that returns invalid output (int instead of documents list)
+        @component
+        class InvalidOutputEmbeddingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query_embedding: list[float]):
+                # Return an int instead of the expected documents list
+                # This will cause the pipeline to crash when trying to pass it to the next component
+                return 42
+
+        # Build the hybrid RAG pipeline from scratch with the invalid retriever
+        top_k = 3
+        # Use the mocked text embedder instead of real one
+        text_embedder = mock_sentence_transformers_text_embedder
+        invalid_embedding_retriever = InvalidOutputEmbeddingRetriever()
+        bm25_retriever = InMemoryBM25Retriever(document_store, top_k=top_k)
+        document_joiner = DocumentJoiner(join_mode="concatenate")
+
+        template = [
+            ChatMessage.from_system(
+                "You are a helpful AI assistant. Answer the following question based on the given context information "
+                "only. If the context is empty or just a '\n' answer with None, example: 'None'."
+            ),
+            ChatMessage.from_user(
+                """
+                Context:
+                {% for document in documents %}
+                    {{ document.content }}
+                {% endfor %}
+
+                Question: {{question}}
+                """
+            ),
+        ]
+
+        pipeline = AsyncPipeline()
+        pipeline.add_component("text_embedder", text_embedder)
+        pipeline.add_component("embedding_retriever", invalid_embedding_retriever)
+        pipeline.add_component("bm25_retriever", bm25_retriever)
+        pipeline.add_component("document_joiner", document_joiner)
+        pipeline.add_component(
+            "prompt_builder", ChatPromptBuilder(template=template, required_variables=["question", "documents"])
+        )
+        # Use a mocked API key for the OpenAIGenerator
+        pipeline.add_component("llm", OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")))
+        pipeline.add_component("answer_builder", AnswerBuilder())
+
+        # Connect components
+        pipeline.connect("text_embedder", "embedding_retriever")
+        pipeline.connect("bm25_retriever", "document_joiner")
+        pipeline.connect("embedding_retriever", "document_joiner")
+        pipeline.connect("document_joiner.documents", "prompt_builder.documents")
+        pipeline.connect("prompt_builder", "llm")
+        pipeline.connect("llm.replies", "answer_builder.replies")
+
+        question = "Where does Mark live?"
+        test_data = {
+            "text_embedder": {"text": question},
+            "bm25_retriever": {"query": question},
+            "prompt_builder": {"question": question},
+            "answer_builder": {"query": question},
+        }
+
+        async def run_pipeline():
+            return await pipeline.run_async(
+                data=test_data,
+                include_outputs_from={
+                    "text_embedder",
+                    "embedding_retriever",
+                    "bm25_retriever",
+                    "document_joiner",
+                    "prompt_builder",
+                    "llm",
+                    "answer_builder",
+                },
+            )
+
+        # run pipeline and expect it to crash due to invalid output type
+        with pytest.raises(PipelineRuntimeError) as exc_info:
+            asyncio.run(run_pipeline())
 
         pipeline_outputs = exc_info.value.pipeline_outputs
 

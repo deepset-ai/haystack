@@ -309,28 +309,37 @@ class AsyncPipeline(PipelineBase):
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
 
                 async def _runner():
-                    async with ready_sem:
-                        component_pipeline_outputs = await self._run_component_async(
+                    try:
+                        async with ready_sem:
+                            component_pipeline_outputs = await self._run_component_async(
+                                component_name=component_name,
+                                component=comp_dict,
+                                component_inputs=component_inputs,
+                                component_visits=component_visits,
+                                parent_span=parent_span,
+                            )
+
+                        # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
+                        pruned = self._write_component_outputs(
                             component_name=component_name,
-                            component=comp_dict,
-                            component_inputs=component_inputs,
-                            component_visits=component_visits,
-                            parent_span=parent_span,
+                            component_outputs=component_pipeline_outputs,
+                            inputs=inputs_state,
+                            receivers=cached_receivers[component_name],
+                            include_outputs_from=include_outputs_from,
                         )
+                        if pruned:
+                            pipeline_outputs[component_name] = pruned
 
-                    # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
-                    pruned = self._write_component_outputs(
-                        component_name=component_name,
-                        component_outputs=component_pipeline_outputs,
-                        inputs=inputs_state,
-                        receivers=cached_receivers[component_name],
-                        include_outputs_from=include_outputs_from,
-                    )
-                    if pruned:
-                        pipeline_outputs[component_name] = pruned
-
-                    scheduled_components.remove(component_name)
-                    return pruned
+                        scheduled_components.remove(component_name)
+                        return pruned
+                    except Exception as e:
+                        scheduled_components.remove(component_name)
+                        raise PipelineRuntimeError.from_pipeline_crash(
+                            component_name=component_name,
+                            component_type=comp_dict["instance"].__class__,
+                            original_error=e,
+                            pipeline_outputs=pipeline_outputs,
+                        ) from e
 
                 task = asyncio.create_task(_runner())
                 running_tasks[task] = component_name
