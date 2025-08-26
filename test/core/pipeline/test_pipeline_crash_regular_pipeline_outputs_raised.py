@@ -4,12 +4,13 @@
 
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.builders.answer_builder import AnswerBuilder
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import SentenceTransformersTextEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
@@ -22,68 +23,22 @@ from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.auth import Secret
 
 
-def setup_document_store(mock_doc_embedder):
+def setup_document_store():
     """Create and populate a document store with test documents."""
     documents = [
-        Document(content="My name is Jean and I live in Paris."),
-        Document(content="My name is Mark and I live in Berlin."),
-        Document(content="My name is Giorgio and I live in Rome."),
+        Document(content="My name is Jean and I live in Paris.", embedding=[0.1, 0.3, 0.6]),
+        Document(content="My name is Mark and I live in Berlin.", embedding=[0.2, 0.4, 0.7]),
+        Document(content="My name is Giorgio and I live in Rome.", embedding=[0.3, 0.5, 0.8]),
     ]
 
     document_store = InMemoryDocumentStore()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
-
-    # Create ingestion pipeline
-    ingestion_pipe = Pipeline()
-    ingestion_pipe.add_component(instance=mock_doc_embedder, name="doc_embedder")
-    ingestion_pipe.add_component(instance=doc_writer, name="doc_writer")
-    ingestion_pipe.connect("doc_embedder.documents", "doc_writer.documents")
-    ingestion_pipe.run({"doc_embedder": {"documents": documents}})
+    doc_writer.run(documents=documents)
 
     return document_store
 
 
-class TestPipelineCrashStatePersistence:
-    """Test pipeline crash scenarios with state persistence."""
-
-    @pytest.fixture
-    def mock_sentence_transformers_doc_embedder(self):
-        with patch(
-            "haystack.components.embedders.sentence_transformers_document_embedder._SentenceTransformersEmbeddingBackendFactory"
-        ) as mock_doc_embedder:
-            mock_model = MagicMock()
-            mock_doc_embedder.return_value = mock_model
-
-            def mock_encode(
-                documents, batch_size=None, show_progress_bar=None, normalize_embeddings=None, precision=None, **kwargs
-            ):  # noqa E501
-                import numpy as np
-
-                return [np.ones(384).tolist() for _ in documents]
-
-            mock_model.encode = mock_encode
-            embedder = SentenceTransformersDocumentEmbedder(model="mock-model", progress_bar=False)
-
-            def mock_run(documents: list[Document]):
-                if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
-                    raise TypeError(
-                        "SentenceTransformersDocumentEmbedder expects a list of Documents as input."
-                        "In case you want to embed a string, please use the SentenceTransformersTextEmbedder."
-                    )
-
-                import numpy as np
-
-                embedding = np.ones(384).tolist()
-
-                for doc in documents:
-                    doc.embedding = embedding
-
-                return {"documents": documents}
-
-            embedder.run = mock_run
-            embedder.warm_up()
-            return embedder
-
+class TestPipelineOutputsRaisedInException:
     @pytest.fixture
     def mock_sentence_transformers_text_embedder(self):
         with patch(
@@ -95,8 +50,6 @@ class TestPipelineCrashStatePersistence:
             def mock_encode(
                 texts, batch_size=None, show_progress_bar=None, normalize_embeddings=None, precision=None, **kwargs
             ):  # noqa E501
-                import numpy as np
-
                 return [np.ones(384).tolist() for _ in texts]
 
             mock_model.encode = mock_encode
@@ -110,8 +63,6 @@ class TestPipelineCrashStatePersistence:
                         "SentenceTransformersDocumentEmbedder."
                     )
 
-                import numpy as np
-
                 embedding = np.ones(384).tolist()
                 return {"embedding": embedding}
 
@@ -119,33 +70,11 @@ class TestPipelineCrashStatePersistence:
             embedder.warm_up()
             return embedder
 
-    @pytest.fixture
-    def mock_openai_completion(self):
-        with patch("openai.resources.chat.completions.Completions.create") as mock_chat_completion_create:
-            mock_completion = MagicMock()
-            mock_completion.model = "gpt-4o-mini"
-            mock_completion.choices = [
-                MagicMock(finish_reason="stop", index=0, message=MagicMock(content="Mark lives in Berlin."))
-            ]
-            mock_completion.usage = {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97}
-
-            mock_chat_completion_create.return_value = mock_completion
-            yield mock_chat_completion_create
-
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
-    def test_hybrid_rag_pipeline_crash_on_embedding_retriever(
-        self,
-        tmp_path,
-        mock_sentence_transformers_doc_embedder,
-        mock_sentence_transformers_text_embedder,
-        mock_openai_completion,
-    ):
+    def test_hybrid_rag_pipeline_crash_on_embedding_retriever(self, mock_sentence_transformers_text_embedder):
         """Test hybrid RAG pipeline crash on embedding retriever component."""
-        snapshots_dir = tmp_path / "snapshots"
-        snapshots_dir.mkdir()
-
         # Setup document store with mocked embedder
-        document_store = setup_document_store(mock_sentence_transformers_doc_embedder)
+        document_store = setup_document_store()
 
         # Create a mock component that returns invalid output (int instead of documents list)
         @component
@@ -154,7 +83,7 @@ class TestPipelineCrashStatePersistence:
             def run(self, query_embedding: list[float]):
                 # Return an int instead of the expected documents list
                 # This will cause the pipeline to crash when trying to pass it to the next component
-                return 42  # Invalid output type
+                return 42
 
         # Build the hybrid RAG pipeline from scratch with the invalid retriever
         top_k = 3
