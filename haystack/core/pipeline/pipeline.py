@@ -24,7 +24,7 @@ from haystack.core.pipeline.breakpoint import (
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot
 from haystack.telemetry import pipeline_running
-from haystack.utils import _deserialize_value_with_schema, _serialize_value_with_schema
+from haystack.utils import _deserialize_value_with_schema
 
 logger = logging.getLogger(__name__)
 
