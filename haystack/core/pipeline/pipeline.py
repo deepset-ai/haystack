@@ -17,7 +17,6 @@ from haystack.core.pipeline.base import (
 )
 from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
-    _save_pipeline_snapshot,
     _trigger_break_point,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
@@ -94,8 +93,6 @@ class Pipeline(PipelineBase):
         *,
         break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
-        state_persistence: bool = False,
-        state_persistence_path: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -387,25 +384,6 @@ class Pipeline(PipelineBase):
                             _trigger_break_point(
                                 pipeline_snapshot=new_pipeline_snapshot, pipeline_outputs=pipeline_outputs
                             )
-
-                # Scenario 3: Save the full pipeline state allowing to restart the pipeline from this point
-                if state_persistence:
-                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
-                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
-                    pipeline_snapshot = _create_pipeline_snapshot(
-                        inputs=pipeline_snapshot_inputs_serialised,
-                        # Dummy breakpoint to pass the component_name and state_persistence_path to the
-                        # _save_pipeline_snapshot
-                        break_point=Breakpoint(
-                            component_name=component_name, visit_count=0, snapshot_file_path=state_persistence_path
-                        ),
-                        component_visits=component_visits,
-                        original_input_data=data,
-                        ordered_component_names=ordered_component_names,
-                        include_outputs_from=include_outputs_from,
-                        pipeline_outputs=pipeline_outputs,
-                    )
-                    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
 
                 try:
                     component_outputs = self._run_component(
