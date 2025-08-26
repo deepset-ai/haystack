@@ -407,24 +407,13 @@ class Pipeline(PipelineBase):
                     )
                     _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
 
-                try:
-                    component_outputs = self._run_component(
-                        component_name=component_name,
-                        component=component,
-                        inputs=component_inputs,  # the inputs to the current component
-                        component_visits=component_visits,
-                        parent_span=span,
-                    )
-                except Exception as e:
-                    if isinstance(e, BreakpointException):
-                        raise
-                    serialized_outputs = _serialize_value_with_schema(pipeline_outputs)
-                    raise PipelineRuntimeError.from_pipeline_crash(
-                        component_name=component_name,
-                        component_type=type(component),
-                        original_error=e,
-                        pipeline_outputs=serialized_outputs,
-                    )
+                component_outputs = self._run_component(
+                    component_name=component_name,
+                    component=component,
+                    inputs=component_inputs,  # the inputs to the current component
+                    component_visits=component_visits,
+                    parent_span=span,
+                )
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
