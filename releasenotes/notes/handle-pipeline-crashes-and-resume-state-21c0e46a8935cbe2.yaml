@@ -1,7 +1,6 @@
 ---
 features:
   - |
-    The Pipeline API has been enhanced to handle crashes and resume state. This means that if a pipeline execution is
-    interrupted due to a crash or failure, it can now be resumed from the last successful state rather than starting
-    over from the beginning. This improvement increases the reliability and efficiency of pipeline executions,
-    especially for long-running processes.
+    If an error occurs during the execution of a pipeline, the pipeline will raise an exception containing, besides the
+    error message, the components and it's inputs up to the point of failure. This allows you to inspect and debug the
+    the pipeline up to the point of failure.
