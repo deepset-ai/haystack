@@ -1,6 +1,6 @@
 ---
 features:
   - |
-    If an error occurs during the execution of a pipeline, the pipeline will raise an exception containing, besides the
-    error message, the components and it's inputs up to the point of failure. This allows you to inspect and debug the
-    the pipeline up to the point of failure.
+    If an error occurs during the execution of a pipeline, the pipeline will raise an PipelineRuntimeError exception
+    containing an error message and the components outputs up to the point of failure. This allows you to inspect and
+    debug the pipeline up to the point of failure.

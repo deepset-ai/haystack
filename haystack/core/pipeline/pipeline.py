@@ -175,12 +175,6 @@ class Pipeline(PipelineBase):
         :param pipeline_snapshot:
             A dictionary containing a snapshot of a previously saved pipeline execution.
 
-        :param state_persistence:
-            Literal["component_input", "full"] | bool = False
-
-        :param state_persistence_path:
-            Optional[str] = None
-
         :returns:
             A dictionary where each entry corresponds to a component name
             and its output. If `include_outputs_from` is `None`, this dictionary
@@ -396,13 +390,12 @@ class Pipeline(PipelineBase):
                 except Exception as e:
                     if isinstance(e, BreakpointException):
                         raise
-                    serialized_outputs = _serialize_value_with_schema(pipeline_outputs)
                     raise PipelineRuntimeError.from_pipeline_crash(
                         component_name=component_name,
                         component_type=type(component),
                         original_error=e,
-                        pipeline_outputs=serialized_outputs,
-                    )
+                        pipeline_outputs=pipeline_outputs,
+                    ) from e
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
