@@ -39,6 +39,34 @@ def setup_document_store():
     return document_store
 
 
+# Create a mock component that returns invalid output (int instead of documents list)
+@component
+class InvalidOutputEmbeddingRetriever:
+    @component.output_types(documents=list[Document])
+    def run(self, query_embedding: list[float]):
+        # Return an int instead of the expected documents list
+        # This will cause the pipeline to crash when trying to pass it to the next component
+        return 42
+
+
+template = [
+    ChatMessage.from_system(
+        "You are a helpful AI assistant. Answer the following question based on the given context information "
+        "only. If the context is empty or just a '\n' answer with None, example: 'None'."
+    ),
+    ChatMessage.from_user(
+        """
+        Context:
+        {% for document in documents %}
+            {{ document.content }}
+        {% endfor %}
+
+        Question: {{question}}
+        """
+    ),
+]
+
+
 class TestPipelineOutputsRaisedInException:
     @pytest.fixture
     def mock_sentence_transformers_text_embedder(self):
@@ -73,43 +101,11 @@ class TestPipelineOutputsRaisedInException:
 
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
     def test_hybrid_rag_pipeline_crash_on_embedding_retriever(self, mock_sentence_transformers_text_embedder):
-        """Test hybrid RAG pipeline crash on embedding retriever component."""
-        # Setup document store with mocked embedder
         document_store = setup_document_store()
-
-        # Create a mock component that returns invalid output (int instead of documents list)
-        @component
-        class InvalidOutputEmbeddingRetriever:
-            @component.output_types(documents=list[Document])
-            def run(self, query_embedding: list[float]):
-                # Return an int instead of the expected documents list
-                # This will cause the pipeline to crash when trying to pass it to the next component
-                return 42
-
-        # Build the hybrid RAG pipeline from scratch with the invalid retriever
-        top_k = 3
-        # Use the mocked text embedder instead of real one
         text_embedder = mock_sentence_transformers_text_embedder
         invalid_embedding_retriever = InvalidOutputEmbeddingRetriever()
-        bm25_retriever = InMemoryBM25Retriever(document_store, top_k=top_k)
+        bm25_retriever = InMemoryBM25Retriever(document_store)
         document_joiner = DocumentJoiner(join_mode="concatenate")
-
-        template = [
-            ChatMessage.from_system(
-                "You are a helpful AI assistant. Answer the following question based on the given context information "
-                "only. If the context is empty or just a '\n' answer with None, example: 'None'."
-            ),
-            ChatMessage.from_user(
-                """
-                Context:
-                {% for document in documents %}
-                    {{ document.content }}
-                {% endfor %}
-
-                Question: {{question}}
-                """
-            ),
-        ]
 
         pipeline = Pipeline()
         pipeline.add_component("text_embedder", text_embedder)
@@ -119,11 +115,9 @@ class TestPipelineOutputsRaisedInException:
         pipeline.add_component(
             "prompt_builder", ChatPromptBuilder(template=template, required_variables=["question", "documents"])
         )
-        # Use a mocked API key for the OpenAIGenerator
         pipeline.add_component("llm", OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")))
         pipeline.add_component("answer_builder", AnswerBuilder())
 
-        # Connect components
         pipeline.connect("text_embedder", "embedding_retriever")
         pipeline.connect("bm25_retriever", "document_joiner")
         pipeline.connect("embedding_retriever", "document_joiner")
@@ -172,43 +166,11 @@ class TestPipelineOutputsRaisedInException:
 
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
     def test_async_hybrid_rag_pipeline_crash_on_embedding_retriever(self, mock_sentence_transformers_text_embedder):
-        """Test async hybrid RAG pipeline crash on embedding retriever component."""
-        # Setup document store with mocked embedder
         document_store = setup_document_store()
-
-        # Create a mock component that returns invalid output (int instead of documents list)
-        @component
-        class InvalidOutputEmbeddingRetriever:
-            @component.output_types(documents=list[Document])
-            def run(self, query_embedding: list[float]):
-                # Return an int instead of the expected documents list
-                # This will cause the pipeline to crash when trying to pass it to the next component
-                return 42
-
-        # Build the hybrid RAG pipeline from scratch with the invalid retriever
-        top_k = 3
-        # Use the mocked text embedder instead of real one
         text_embedder = mock_sentence_transformers_text_embedder
         invalid_embedding_retriever = InvalidOutputEmbeddingRetriever()
-        bm25_retriever = InMemoryBM25Retriever(document_store, top_k=top_k)
+        bm25_retriever = InMemoryBM25Retriever(document_store)
         document_joiner = DocumentJoiner(join_mode="concatenate")
-
-        template = [
-            ChatMessage.from_system(
-                "You are a helpful AI assistant. Answer the following question based on the given context information "
-                "only. If the context is empty or just a '\n' answer with None, example: 'None'."
-            ),
-            ChatMessage.from_user(
-                """
-                Context:
-                {% for document in documents %}
-                    {{ document.content }}
-                {% endfor %}
-
-                Question: {{question}}
-                """
-            ),
-        ]
 
         pipeline = AsyncPipeline()
         pipeline.add_component("text_embedder", text_embedder)
@@ -218,11 +180,9 @@ class TestPipelineOutputsRaisedInException:
         pipeline.add_component(
             "prompt_builder", ChatPromptBuilder(template=template, required_variables=["question", "documents"])
         )
-        # Use a mocked API key for the OpenAIGenerator
         pipeline.add_component("llm", OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")))
         pipeline.add_component("answer_builder", AnswerBuilder())
 
-        # Connect components
         pipeline.connect("text_embedder", "embedding_retriever")
         pipeline.connect("bm25_retriever", "document_joiner")
         pipeline.connect("embedding_retriever", "document_joiner")
