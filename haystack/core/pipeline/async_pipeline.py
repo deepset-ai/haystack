@@ -256,13 +256,22 @@ class AsyncPipeline(PipelineBase):
                 )
                 component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
-                component_pipeline_outputs = await self._run_component_async(
-                    component_name=component_name,
-                    component=comp_dict,
-                    component_inputs=component_inputs,
-                    component_visits=component_visits,
-                    parent_span=parent_span,
-                )
+
+                try:
+                    component_pipeline_outputs = await self._run_component_async(
+                        component_name=component_name,
+                        component=comp_dict,
+                        component_inputs=component_inputs,
+                        component_visits=component_visits,
+                        parent_span=parent_span,
+                    )
+                except Exception as e:
+                    raise PipelineRuntimeError.from_pipeline_crash(
+                        component_name=component_name,
+                        component_type=comp_dict["instance"].__class__,
+                        original_error=e,
+                        pipeline_outputs=pipeline_outputs,
+                    ) from e
 
                 # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                 pruned = self._write_component_outputs(
