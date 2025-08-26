@@ -1,7 +1,0 @@
----
-features:
-  - |
-    The Pipeline API has been enhanced to handle crashes and resume state. This means that if a pipeline execution is
-    interrupted due to a crash or failure, it can now be resumed from the last successful state rather than starting
-    over from the beginning. This improvement increases the reliability and efficiency of pipeline executions,
-    especially for long-running processes.
