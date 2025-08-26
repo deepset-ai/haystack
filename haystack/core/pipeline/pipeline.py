@@ -390,6 +390,9 @@ class Pipeline(PipelineBase):
 
                 # Scenario 3: Save the full pipeline state allowing to restart the pipeline from this point
                 if state_persistence:
+                    if not state_persistence_path:
+                        raise ValueError("state_persistence_path must be provided when state_persistence is True")
+
                     pipeline_snapshot_inputs_serialised = deepcopy(inputs)
                     pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
                     pipeline_snapshot = _create_pipeline_snapshot(
