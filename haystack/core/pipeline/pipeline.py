@@ -410,14 +410,6 @@ class Pipeline(PipelineBase):
                     )
                     _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
 
-                component_outputs = self._run_component(
-                    component_name=component_name,
-                    component=component,
-                    inputs=component_inputs,  # the inputs to the current component
-                    component_visits=component_visits,
-                    parent_span=span,
-                )
-
                 try:
                     component_outputs = self._run_component(
                         component_name=component_name,
