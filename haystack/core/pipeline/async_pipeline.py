@@ -71,7 +71,12 @@ class AsyncPipeline(PipelineBase):
                 # Important: contextvars (e.g. active tracing Span) don’t propagate to running loop's ThreadPoolExecutor
                 # We use ctx.run(...) to preserve context like the active tracing span
                 ctx = contextvars.copy_context()
-                outputs = await loop.run_in_executor(None, lambda: ctx.run(lambda: instance.run(**component_inputs)))
+                try:
+                    outputs = await loop.run_in_executor(
+                        None, lambda: ctx.run(lambda: instance.run(**component_inputs))
+                    )
+                except Exception as error:
+                    raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
 
             component_visits[component_name] += 1
 
@@ -265,13 +270,10 @@ class AsyncPipeline(PipelineBase):
                         component_visits=component_visits,
                         parent_span=parent_span,
                     )
-                except Exception as e:
-                    raise PipelineRuntimeError.from_pipeline_crash(
-                        component_name=component_name,
-                        component_type=comp_dict["instance"].__class__,
-                        original_error=e,
-                        pipeline_outputs=pipeline_outputs,
-                    ) from e
+                except PipelineRuntimeError as error:
+                    # Attach partial pipeline outputs to the error before re-raising
+                    error.pipeline_outputs = pipeline_outputs
+                    raise error
 
                 # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                 pruned = self._write_component_outputs(
@@ -318,28 +320,24 @@ class AsyncPipeline(PipelineBase):
                                 component_visits=component_visits,
                                 parent_span=parent_span,
                             )
+                    except PipelineRuntimeError as error:
+                        # Attach partial pipeline outputs to the error before re-raising
+                        error.pipeline_outputs = pipeline_outputs
+                        raise error
 
-                        # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
-                        pruned = self._write_component_outputs(
-                            component_name=component_name,
-                            component_outputs=component_pipeline_outputs,
-                            inputs=inputs_state,
-                            receivers=cached_receivers[component_name],
-                            include_outputs_from=include_outputs_from,
-                        )
-                        if pruned:
-                            pipeline_outputs[component_name] = pruned
+                    # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
+                    pruned = self._write_component_outputs(
+                        component_name=component_name,
+                        component_outputs=component_pipeline_outputs,
+                        inputs=inputs_state,
+                        receivers=cached_receivers[component_name],
+                        include_outputs_from=include_outputs_from,
+                    )
+                    if pruned:
+                        pipeline_outputs[component_name] = pruned
 
-                        scheduled_components.remove(component_name)
-                        return pruned
-                    except Exception as e:
-                        scheduled_components.remove(component_name)
-                        raise PipelineRuntimeError.from_pipeline_crash(
-                            component_name=component_name,
-                            component_type=comp_dict["instance"].__class__,
-                            original_error=e,
-                            pipeline_outputs=pipeline_outputs,
-                        ) from e
+                    scheduled_components.remove(component_name)
+                    return pruned
 
                 task = asyncio.create_task(_runner())
                 running_tasks[task] = component_name

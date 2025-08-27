@@ -49,16 +49,6 @@ class PipelineRuntimeError(Exception):
         )
         return cls(component_name, component_type, message)
 
-    @classmethod
-    def from_pipeline_crash(
-        cls, component_name: str, component_type: type, original_error: Exception, pipeline_outputs: Any
-    ) -> "PipelineRuntimeError":
-        """
-        Create a PipelineRuntimeError from a pipeline crash with serialized outputs.
-        """
-        message = f"Pipeline execution failed at component '{component_name}': {str(original_error)}"
-        return cls(component_name, component_type, message, pipeline_outputs)
-
 
 class PipelineComponentsBlockedError(PipelineRuntimeError):
     def __init__(self) -> None:

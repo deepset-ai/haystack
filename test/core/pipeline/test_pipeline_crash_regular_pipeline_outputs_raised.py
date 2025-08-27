@@ -164,8 +164,15 @@ class TestPipelineOutputsRaisedInException:
         assert "llm" not in pipeline_outputs, "LLM should not have run due to crash"
         assert "answer_builder" not in pipeline_outputs, "Answer builder should not have run due to crash"
 
+    from unittest.mock import patch
+
+    import pytest
+
+    @pytest.mark.asyncio
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
-    def test_async_hybrid_rag_pipeline_crash_on_embedding_retriever(self, mock_sentence_transformers_text_embedder):
+    async def test_async_hybrid_rag_pipeline_crash_on_embedding_retriever(
+        self, mock_sentence_transformers_text_embedder
+    ):
         document_store = setup_document_store()
         text_embedder = mock_sentence_transformers_text_embedder
         invalid_embedding_retriever = InvalidOutputEmbeddingRetriever()
@@ -198,8 +205,8 @@ class TestPipelineOutputsRaisedInException:
             "answer_builder": {"query": question},
         }
 
-        async def run_pipeline():
-            return await pipeline.run_async(
+        with pytest.raises(PipelineRuntimeError) as exc_info:
+            await pipeline.run_async(
                 data=test_data,
                 include_outputs_from={
                     "text_embedder",
@@ -212,12 +219,7 @@ class TestPipelineOutputsRaisedInException:
                 },
             )
 
-        # run pipeline and expect it to crash due to invalid output type
-        with pytest.raises(PipelineRuntimeError) as exc_info:
-            asyncio.run(run_pipeline())
-
         pipeline_outputs = exc_info.value.pipeline_outputs
-
         assert pipeline_outputs is not None, "Pipeline outputs should be captured in the exception"
 
         # verify that bm25_retriever and text_embedder ran successfully before the crash
