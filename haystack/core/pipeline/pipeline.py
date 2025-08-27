@@ -387,15 +387,10 @@ class Pipeline(PipelineBase):
                         component_visits=component_visits,
                         parent_span=span,
                     )
-                except Exception as e:
-                    if isinstance(e, BreakpointException):
-                        raise
-                    raise PipelineRuntimeError.from_pipeline_crash(
-                        component_name=component_name,
-                        component_type=type(component),
-                        original_error=e,
-                        pipeline_outputs=pipeline_outputs,
-                    ) from e
+                except PipelineRuntimeError as error:
+                    # Attach partial pipeline outputs to the error before re-raising
+                    error.pipeline_outputs = pipeline_outputs
+                    raise error
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
