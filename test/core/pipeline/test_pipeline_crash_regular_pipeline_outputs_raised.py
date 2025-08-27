@@ -98,8 +98,11 @@ class TestPipelineOutputsRaisedInException:
             embedder.warm_up()
             return embedder
 
-    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
-    def test_hybrid_rag_pipeline_crash_on_embedding_retriever(self, mock_sentence_transformers_text_embedder):
+    def test_hybrid_rag_pipeline_crash_on_embedding_retriever(
+        self, mock_sentence_transformers_text_embedder, monkeypatch
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
         document_store = setup_document_store()
         text_embedder = mock_sentence_transformers_text_embedder
         invalid_embedding_retriever = InvalidOutputEmbeddingRetriever()
@@ -164,10 +167,11 @@ class TestPipelineOutputsRaisedInException:
         assert "answer_builder" not in pipeline_outputs, "Answer builder should not have run due to crash"
 
     @pytest.mark.asyncio
-    @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
     async def test_async_hybrid_rag_pipeline_crash_on_embedding_retriever(
-        self, mock_sentence_transformers_text_embedder
+        self, mock_sentence_transformers_text_embedder, monkeypatch
     ):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
         document_store = setup_document_store()
         text_embedder = mock_sentence_transformers_text_embedder
         invalid_embedding_retriever = InvalidOutputEmbeddingRetriever()
