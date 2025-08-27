@@ -10,9 +10,16 @@ class PipelineError(Exception):
 
 
 class PipelineRuntimeError(Exception):
-    def __init__(self, component_name: Optional[str], component_type: Optional[type], message: str) -> None:
+    def __init__(
+        self,
+        component_name: Optional[str],
+        component_type: Optional[type],
+        message: str,
+        pipeline_outputs: Optional[Any] = None,
+    ) -> None:
         self.component_name = component_name
         self.component_type = component_type
+        self.pipeline_outputs = pipeline_outputs
         super().__init__(message)
 
     @classmethod

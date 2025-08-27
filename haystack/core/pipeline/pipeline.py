@@ -379,13 +379,18 @@ class Pipeline(PipelineBase):
                                 pipeline_snapshot=new_pipeline_snapshot, pipeline_outputs=pipeline_outputs
                             )
 
-                component_outputs = self._run_component(
-                    component_name=component_name,
-                    component=component,
-                    inputs=component_inputs,  # the inputs to the current component
-                    component_visits=component_visits,
-                    parent_span=span,
-                )
+                try:
+                    component_outputs = self._run_component(
+                        component_name=component_name,
+                        component=component,
+                        inputs=component_inputs,  # the inputs to the current component
+                        component_visits=component_visits,
+                        parent_span=span,
+                    )
+                except PipelineRuntimeError as error:
+                    # Attach partial pipeline outputs to the error before re-raising
+                    error.pipeline_outputs = pipeline_outputs
+                    raise error
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
