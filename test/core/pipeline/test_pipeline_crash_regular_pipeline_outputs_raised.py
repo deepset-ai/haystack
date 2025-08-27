@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import asyncio
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -163,10 +162,6 @@ class TestPipelineOutputsRaisedInException:
         assert "prompt_builder" not in pipeline_outputs, "Prompt builder should not have run due to crash"
         assert "llm" not in pipeline_outputs, "LLM should not have run due to crash"
         assert "answer_builder" not in pipeline_outputs, "Answer builder should not have run due to crash"
-
-    from unittest.mock import patch
-
-    import pytest
 
     @pytest.mark.asyncio
     @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
