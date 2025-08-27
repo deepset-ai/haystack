@@ -163,10 +163,12 @@ def _save_pipeline_snapshot_to_file(
     if isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
         agent_name = pipeline_snapshot.break_point.agent_name
         component_name = pipeline_snapshot.break_point.break_point.component_name
-        file_name = f"{agent_name}_{component_name}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+        visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
+        file_name = f"{agent_name}_{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
     else:
         component_name = pipeline_snapshot.break_point.component_name
-        file_name = f"{component_name}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+        visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
+        file_name = f"{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
 
     try:
         with open(snapshot_file_path / file_name, "w") as f_out:
