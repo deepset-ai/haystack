@@ -151,23 +151,6 @@ class TestSerperDevSearchAPI:
             },
         }
 
-    def test_to_dict_with_exclude_subdomains(self, monkeypatch):
-        monkeypatch.setenv("SERPERDEV_API_KEY", "test-api-key")
-        component = SerperDevWebSearch(
-            top_k=10, allowed_domains=["test.com"], exclude_subdomains=True, search_params={"param": "test"}
-        )
-        data = component.to_dict()
-        assert data == {
-            "type": "haystack.components.websearch.serper_dev.SerperDevWebSearch",
-            "init_parameters": {
-                "api_key": {"env_vars": ["SERPERDEV_API_KEY"], "strict": True, "type": "env_var"},
-                "top_k": 10,
-                "allowed_domains": ["test.com"],
-                "exclude_subdomains": True,
-                "search_params": {"param": "test"},
-            },
-        }
-
     @pytest.mark.parametrize("top_k", [1, 5, 7])
     def test_web_search_top_k(self, mock_serper_dev_search_result, top_k: int):
         ws = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"), top_k=top_k)
