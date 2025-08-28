@@ -209,7 +209,19 @@ def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
         if serialization_key in part:
             return cls.from_dict(part[serialization_key])
 
-    raise ValueError(f"Unsupported content part in the serialized ChatMessage: `{part}`")
+    # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
+    msg = (
+        f"Unsupported content part in the serialized ChatMessage: {part}. "
+        "The `content` field of the serialized ChatMessage must be a list of dictionaries, where each "
+        "dictionary contains one of these keys: 'text', 'image', 'reasoning', 'tool_call', or 'tool_call_result'. "
+        "Valid formats: [{{'text': 'Hello'}}, "
+        "{{'image': {{'base64_image': '...', ...}}}}, "
+        "{{'reasoning': {{'reasoning_text': 'I think...', 'extra': {{...}}}}}}, "
+        "{{'tool_call': {{'tool_name': 'search', 'arguments': {{}}, 'id': 'call_123'}}}}, "
+        "{{'tool_call_result': {{'result': 'data', 'origin': {{...}}, 'error': false}}}}]"
+    )
+
+    raise ValueError(msg)
 
 
 def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
@@ -530,6 +542,8 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         :returns:
             The created object.
         """
+
+        # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
         if not "role" in data and not "_role" in data:
             raise ValueError(
                 "The `role` field is required in the message dictionary. "
