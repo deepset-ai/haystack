@@ -48,13 +48,13 @@ class SentenceTransformersSparseDocumentEmbedder:
         suffix: str = "",
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        config_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         """
@@ -118,13 +118,13 @@ class SentenceTransformersSparseDocumentEmbedder:
         self.embedding_backend: Optional[_SentenceTransformersSparseEncoderEmbeddingBackend] = None
         self.backend = backend
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
         return {"model": self.model}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -154,7 +154,7 @@ class SentenceTransformersSparseDocumentEmbedder:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersSparseDocumentEmbedder":
+    def from_dict(cls, data: dict[str, Any]) -> "SentenceTransformersSparseDocumentEmbedder":
         """
         Deserializes the component from a dictionary.
 
@@ -190,8 +190,8 @@ class SentenceTransformersSparseDocumentEmbedder:
             if self.tokenizer_kwargs and self.tokenizer_kwargs.get("model_max_length"):
                 self.embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]):
         """
         Embed a list of documents.
 

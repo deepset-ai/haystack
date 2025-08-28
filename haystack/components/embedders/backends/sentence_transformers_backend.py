@@ -62,7 +62,7 @@ class _SentenceTransformersSparseEmbeddingBackendFactory:
     Factory class to create instances of Sentence Transformers embedding backends.
     """
 
-    _instances: Dict[str, "_SentenceTransformersSparseEncoderEmbeddingBackend"] = {}
+    _instances: dict[str, "_SentenceTransformersSparseEncoderEmbeddingBackend"] = {}
 
     @staticmethod
     def get_embedding_backend(  # pylint: disable=too-many-positional-arguments
@@ -71,9 +71,9 @@ class _SentenceTransformersSparseEmbeddingBackendFactory:
         auth_token: Optional[Secret] = None,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        config_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         embedding_backend_id = f"{model}{device}{auth_token}{backend}"
@@ -149,9 +149,9 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
         auth_token: Optional[Secret] = None,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        config_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         sentence_transformers_import.check()
@@ -168,14 +168,14 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
             backend=backend,
         )
 
-    def embed(self, data: List[str], **kwargs) -> List[SparseEmbedding]:
+    def embed(self, data: list[str], **kwargs) -> list[SparseEmbedding]:
         embeddings = self.model.encode(data, **kwargs).coalesce()
 
         rows, columns = embeddings.indices()
         values = embeddings.values()
         batch_size = embeddings.size(0)
 
-        sparse_embeddings: List[SparseEmbedding] = []
+        sparse_embeddings: list[SparseEmbedding] = []
         for embedding in range(batch_size):
             mask = rows == embedding
             embedding_columns = columns[mask].tolist()

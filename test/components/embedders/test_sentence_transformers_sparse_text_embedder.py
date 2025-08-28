@@ -13,6 +13,10 @@ from haystack.components.embedders.sentence_transformers_sparse_text_embedder im
 )
 from haystack.utils import ComponentDevice, Secret
 
+TYPE_NAME = (
+    "haystack.components.embedders.sentence_transformers_sparse_text_embedder.SentenceTransformersSparseTextEmbedder"
+)
+
 
 class TestSentenceTransformersSparseTextEmbedder:
     def test_init_default(self):
@@ -53,7 +57,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         component = SentenceTransformersSparseTextEmbedder(model="model", device=ComponentDevice.from_str("cpu"))
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.embedders.sentence_transformers_sparse_text_embedder.SentenceTransformersSparseTextEmbedder",
+            "type": TYPE_NAME,
             "init_parameters": {
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
@@ -90,7 +94,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         )
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.embedders.sentence_transformers_sparse_text_embedder.SentenceTransformersSparseTextEmbedder",
+            "type": TYPE_NAME,
             "init_parameters": {
                 "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "model": "model",
@@ -116,7 +120,7 @@ class TestSentenceTransformersSparseTextEmbedder:
 
     def test_from_dict(self):
         data = {
-            "type": "haystack.components.embedders.sentence_transformers_sparse_text_embedder.SentenceTransformersSparseTextEmbedder",
+            "type": TYPE_NAME,
             "init_parameters": {
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
@@ -147,10 +151,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert component.config_kwargs == {"use_memory_efficient_attention": False}
 
     def test_from_dict_no_default_parameters(self):
-        data = {
-            "type": "haystack.components.embedders.sentence_transformers_sparse_text_embedder.SentenceTransformersSparseTextEmbedder",
-            "init_parameters": {},
-        }
+        data = {"type": TYPE_NAME, "init_parameters": {}}
         component = SentenceTransformersSparseTextEmbedder.from_dict(data)
         assert component.model == "naver/splade-cocondenser-ensembledistil"
         assert component.device == ComponentDevice.resolve_device(None)
@@ -164,7 +165,7 @@ class TestSentenceTransformersSparseTextEmbedder:
 
     def test_from_dict_none_device(self):
         data = {
-            "type": "haystack.components.embedders.sentence_transformers_sparse_text_embedder.SentenceTransformersSparseTextEmbedder",
+            "type": TYPE_NAME,
             "init_parameters": {
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "model",
@@ -257,7 +258,8 @@ class TestSentenceTransformersSparseTextEmbedder:
             device=ComponentDevice.from_str("cpu"),
             model_kwargs={
                 "file_name": "onnx/model.onnx"
-            },  # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to prevent a HF warning
+            },  # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to
+            # prevent a HF warning
             backend="onnx",
         )
         onnx_embedder.warm_up()
@@ -284,7 +286,8 @@ class TestSentenceTransformersSparseTextEmbedder:
             device=ComponentDevice.from_str("cpu"),
             model_kwargs={
                 "file_name": "openvino/openvino_model.xml"
-            },  # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but this is to prevent a HF warning
+            },  # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but
+            # this is to prevent a HF warning
             backend="openvino",
         )
         openvino_embedder.warm_up()

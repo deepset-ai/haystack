@@ -46,10 +46,10 @@ class SentenceTransformersSparseTextEmbedder:
         progress_bar: bool = True,
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
-        encode_kwargs: Optional[Dict[str, Any]] = None,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        config_kwargs: Optional[dict[str, Any]] = None,
+        encode_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         """
@@ -112,13 +112,13 @@ class SentenceTransformersSparseTextEmbedder:
         self.embedding_backend: Optional[_SentenceTransformersSparseEncoderEmbeddingBackend] = None
         self.backend = backend
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
         return {"model": self.model}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -147,7 +147,7 @@ class SentenceTransformersSparseTextEmbedder:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersSparseTextEmbedder":
+    def from_dict(cls, data: dict[str, Any]) -> "SentenceTransformersSparseTextEmbedder":
         """
         Deserializes the component from a dictionary.
 
@@ -183,7 +183,7 @@ class SentenceTransformersSparseTextEmbedder:
             if self.tokenizer_kwargs and self.tokenizer_kwargs.get("model_max_length"):
                 self.embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]
 
-    @component.output_types(embedding=List[float])
+    @component.output_types(embedding=list[float])
     def run(self, text: str):
         """
         Embed a single string.

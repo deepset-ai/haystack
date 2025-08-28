@@ -9,14 +9,18 @@ import pytest
 import torch
 
 from haystack import Document
+from haystack.components.embedders.backends.sentence_transformers_backend import (
+    _SentenceTransformersSparseEmbeddingBackendFactory,
+    _SentenceTransformersSparseEncoderEmbeddingBackend,
+)
 from haystack.components.embedders.sentence_transformers_sparse_document_embedder import (
     SentenceTransformersSparseDocumentEmbedder,
 )
 from haystack.utils import ComponentDevice, Secret
 
-from haystack.components.embedders.backends.sentence_transformers_backend import (
-    _SentenceTransformersSparseEmbeddingBackendFactory,
-    _SentenceTransformersSparseEncoderEmbeddingBackend,
+TYPE_NAME = (
+    "haystack.components.embedders.sentence_transformers_sparse_document_embedder."
+    "SentenceTransformersSparseDocumentEmbedder"
 )
 
 
@@ -65,7 +69,7 @@ class TestSentenceTransformersDocumentEmbedder:
         component = SentenceTransformersSparseDocumentEmbedder(model="model", device=ComponentDevice.from_str("cpu"))
         data = component.to_dict()
         assert data == {
-            "type": "haystack.components.embedders.sentence_transformers_sparse_document_embedder.SentenceTransformersSparseDocumentEmbedder",
+            "type": TYPE_NAME,
             "init_parameters": {
                 "model": "model",
                 "device": ComponentDevice.from_str("cpu").to_dict(),
@@ -105,7 +109,7 @@ class TestSentenceTransformersDocumentEmbedder:
         data = component.to_dict()
 
         assert data == {
-            "type": "haystack.components.embedders.sentence_transformers_sparse_document_embedder.SentenceTransformersSparseDocumentEmbedder",
+            "type": TYPE_NAME,
             "init_parameters": {
                 "model": "model",
                 "device": ComponentDevice.from_str("cuda:0").to_dict(),
@@ -143,10 +147,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "config_kwargs": {"use_memory_efficient_attention": True},
         }
         component = SentenceTransformersSparseDocumentEmbedder.from_dict(
-            {
-                "type": "haystack.components.embedders.sentence_transformers_sparse_document_embedder.SentenceTransformersSparseDocumentEmbedder",
-                "init_parameters": init_parameters,
-            }
+            {"type": TYPE_NAME, "init_parameters": init_parameters}
         )
         assert component.model == "model"
         assert component.device == ComponentDevice.from_str("cuda:0")
@@ -164,12 +165,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.config_kwargs == {"use_memory_efficient_attention": True}
 
     def test_from_dict_no_default_parameters(self):
-        component = SentenceTransformersSparseDocumentEmbedder.from_dict(
-            {
-                "type": "haystack.components.embedders.sentence_transformers_sparse_document_embedder.SentenceTransformersSparseDocumentEmbedder",
-                "init_parameters": {},
-            }
-        )
+        component = SentenceTransformersSparseDocumentEmbedder.from_dict({"type": TYPE_NAME, "init_parameters": {}})
         assert component.model == "naver/splade-cocondenser-ensembledistil"
         assert component.device == ComponentDevice.resolve_device(None)
         assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
@@ -197,10 +193,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "local_files_only": False,
         }
         component = SentenceTransformersSparseDocumentEmbedder.from_dict(
-            {
-                "type": "haystack.components.embedders.sentence_transformers_sparse_document_embedder.SentenceTransformersSparseDocumentEmbedder",
-                "init_parameters": init_parameters,
-            }
+            {"type": TYPE_NAME, "init_parameters": init_parameters}
         )
         assert component.model == "model"
         assert component.device == ComponentDevice.resolve_device(None)
@@ -336,7 +329,8 @@ class TestSentenceTransformersDocumentEmbedder:
             device=ComponentDevice.from_str("cpu"),
             model_kwargs={
                 "file_name": "onnx/model.onnx"
-            },  # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to prevent a HF warning
+            },  # setting the path isn't necessary if the repo contains a "onnx/model.onnx" file but this is to
+            # prevent a HF warning
             backend="onnx",
         )
         onnx_embedder.warm_up()
@@ -363,7 +357,8 @@ class TestSentenceTransformersDocumentEmbedder:
             device=ComponentDevice.from_str("cpu"),
             model_kwargs={
                 "file_name": "openvino/openvino_model.xml"
-            },  # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but this is to prevent a HF warning
+            },  # setting the path isn't necessary if the repo contains a "openvino/openvino_model.xml" file but this
+            # is to prevent a HF warning
             backend="openvino",
         )
         openvino_embedder.warm_up()
