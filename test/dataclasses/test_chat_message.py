@@ -398,11 +398,11 @@ class TestChatMessage:
 
     def test_from_dict_with_invalid_content_type(self):
         data = {"role": "assistant", "content": [{"text": "Hello"}, "invalid"]}
-        with pytest.raises(ValueError, match="Unsupported content part in the serialized ChatMessage"):
+        with pytest.raises(ValueError, match=r"Unsupported content part.*Valid formats.*"):
             ChatMessage.from_dict(data)
 
         data = {"role": "assistant", "content": [{"text": "Hello"}, {"invalid": "invalid"}]}
-        with pytest.raises(ValueError, match="Unsupported content part in the serialized ChatMessage"):
+        with pytest.raises(ValueError, match=r"Unsupported content part.*Valid formats.*"):
             ChatMessage.from_dict(data)
 
     def test_from_dict_with_missing_role(self):
