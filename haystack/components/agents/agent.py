@@ -63,6 +63,7 @@ class Agent:
 
     The component processes messages and executes tools until an exit condition is met.
     The exit condition can be triggered either by a direct text response or by invoking a specific designated tool.
+    Multiple exit conditions can be specified.
 
     When you call an Agent without tools, it acts as a ChatGenerator, produces one response, then exits.
 
