@@ -220,7 +220,7 @@ class TestSerperDevSearchAPI:
         documents = results["documents"]
         links = results["links"]
         assert len(documents) == len(links) == 10
-        assert all(isinstance(doc, Document) for doc in results)
+        assert all(isinstance(doc, Document) for doc in documents)
         assert all(isinstance(link, str) for link in links)
         assert all(link.startswith("http") for link in links)
 
