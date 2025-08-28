@@ -140,7 +140,11 @@ def load_pipeline_snapshot(file_path: Union[str, Path]) -> PipelineSnapshot:
 
 
 def _save_pipeline_snapshot_to_file(
-    *, pipeline_snapshot: PipelineSnapshot, snapshot_file_path: Union[str, Path], dt: datetime
+    *,
+    pipeline_snapshot: PipelineSnapshot,
+    snapshot_file_path: Union[str, Path],
+    dt: datetime,
+    file_name: Optional[str] = None,
 ) -> None:
     """
     Save the pipeline snapshot dictionary to a JSON file.
@@ -156,19 +160,17 @@ def _save_pipeline_snapshot_to_file(
     if not isinstance(snapshot_file_path, Path):
         raise ValueError("Debug path must be a string or a Path object.")
 
-    snapshot_file_path.mkdir(exist_ok=True)
-
-    # Generate filename
-    # We check if the agent_name is provided to differentiate between agent and non-agent breakpoints
-    if isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
-        agent_name = pipeline_snapshot.break_point.agent_name
-        component_name = pipeline_snapshot.break_point.break_point.component_name
-        visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
-        file_name = f"{agent_name}_{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
-    else:
-        component_name = pipeline_snapshot.break_point.component_name
-        visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
-        file_name = f"{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+    if not file_name:
+        # Check if the agent_name is provided to differentiate between agent and non-agent breakpoints
+        if isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
+            agent_name = pipeline_snapshot.break_point.agent_name
+            component_name = pipeline_snapshot.break_point.break_point.component_name
+            visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
+            file_name = f"{agent_name}_{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+        else:
+            component_name = pipeline_snapshot.break_point.component_name
+            visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
+            file_name = f"{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
 
     try:
         with open(snapshot_file_path / file_name, "w") as f_out:
@@ -219,7 +221,7 @@ def _create_pipeline_snapshot(
     return pipeline_snapshot
 
 
-def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot) -> PipelineSnapshot:
+def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, f_name: Optional[str] = None) -> PipelineSnapshot:
     """
     Save the pipeline snapshot to a file.
 
@@ -244,42 +246,10 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot) -> PipelineSnap
     if snapshot_file_path is not None:
         dt = pipeline_snapshot.timestamp or datetime.now()
         _save_pipeline_snapshot_to_file(
-            pipeline_snapshot=pipeline_snapshot, snapshot_file_path=snapshot_file_path, dt=dt
+            pipeline_snapshot=pipeline_snapshot, snapshot_file_path=snapshot_file_path, dt=dt, file_name=f_name
         )
 
     return pipeline_snapshot
-
-
-def _save_component_input(
-    component_inputs: dict[str, Any], component_name: str, visit_nr: int, out_path: Union[str, Path]
-) -> None:
-    """
-    Save the inputs of a component to a JSON file for debugging purposes.
-
-    :param component_inputs: A dictionary containing the inputs of the component.
-    :param component_name: The name of the component for which inputs are being saved.
-    :param visit_nr: The visit number of the component, used to differentiate between multiple visits.
-    :param out_path: The path where the JSON file will be saved. Can be a string or a Path object.
-
-    :raise:
-        Exception if saving the JSON snapshot fails.
-    """
-    out_path = Path(out_path) if isinstance(out_path, str) else out_path
-    if not isinstance(out_path, Path):
-        raise ValueError("Debug path must be a string or a Path object.")
-    out_path.mkdir(exist_ok=True)
-
-    dt = datetime.now()
-    f_name = f"{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
-    component_inputs_serialised = _serialize_value_with_schema(component_inputs)
-
-    try:
-        with open(out_path / f_name, "w") as f_out:
-            json.dump(component_inputs_serialised, f_out, indent=2, sort_keys=True)
-        logger.info(f"Pipeline snapshot saved at: {f_name}")
-    except Exception as e:
-        logger.error(f"Failed to save pipeline snapshot: {str(e)}")
-        raise
 
 
 def _transform_json_structure(data: Union[dict[str, Any], list[Any], Any]) -> Any:

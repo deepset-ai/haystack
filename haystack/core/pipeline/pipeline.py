@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Mapping, Optional, Union
 
 from haystack import logging, tracing
@@ -94,8 +94,6 @@ class Pipeline(PipelineBase):
         *,
         break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
-        state_persistence: bool = False,
-        state_persistence_path: Optional[str] = None,
     ) -> dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -177,9 +175,6 @@ class Pipeline(PipelineBase):
 
         :param pipeline_snapshot:
             A dictionary containing a snapshot of a previously saved pipeline execution.
-
-        :param state_persistence:
-            Whether to save the full pipeline state saved after each component execution.
 
         :param state_persistence_path:
             The path where the pipeline state should be saved if `state_persistence` is `True`.
@@ -388,28 +383,6 @@ class Pipeline(PipelineBase):
                                 pipeline_snapshot=new_pipeline_snapshot, pipeline_outputs=pipeline_outputs
                             )
 
-                # Scenario 3: Save the full pipeline state allowing to restart the pipeline from this point
-                if state_persistence:
-                    if not state_persistence_path:
-                        raise ValueError("state_persistence_path must be provided when state_persistence is True")
-
-                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
-                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
-                    pipeline_snapshot = _create_pipeline_snapshot(
-                        inputs=pipeline_snapshot_inputs_serialised,
-                        # Dummy breakpoint to pass the component_name and state_persistence_path to the
-                        # _save_pipeline_snapshot
-                        break_point=Breakpoint(
-                            component_name=component_name, visit_count=0, snapshot_file_path=state_persistence_path
-                        ),
-                        component_visits=component_visits,
-                        original_input_data=data,
-                        ordered_component_names=ordered_component_names,
-                        include_outputs_from=include_outputs_from,
-                        pipeline_outputs=pipeline_outputs,
-                    )
-                    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
-
                 try:
                     component_outputs = self._run_component(
                         component_name=component_name,
@@ -421,6 +394,19 @@ class Pipeline(PipelineBase):
                 except PipelineRuntimeError as error:
                     # Attach partial pipeline outputs to the error before re-raising
                     error.pipeline_outputs = pipeline_outputs
+                    # Create a snapshot of the last good state of the pipeline before the error occurred.
+                    last_good_state_snapshot = self.create_last_good_state_snapshot(
+                        component_inputs,
+                        component_name,
+                        component_visits,
+                        data,
+                        include_outputs_from,
+                        inputs,
+                        ordered_component_names,
+                        pipeline_outputs,
+                    )
+                    f_name = f"last_good_state_snapshot_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.json"
+                    _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot, f_name=f_name)
                     raise error
 
                 # Updates global input state with component outputs and returns outputs that should go to
@@ -447,3 +433,47 @@ class Pipeline(PipelineBase):
                 )
 
             return pipeline_outputs
+
+    @staticmethod
+    def create_last_good_state_snapshot(  # pylint: disable=too-many-positional-arguments
+        component_inputs: dict[str, Any],
+        component_name: str,
+        component_visits: dict[str, int],
+        data: dict[str, dict[str, Any]],
+        include_outputs_from: set[str],
+        inputs: dict[str, Any],
+        ordered_component_names: list[str],
+        pipeline_outputs: dict[str, Any],
+    ) -> PipelineSnapshot:
+        """
+        Creates a snapshot of the last good state of the pipeline before an error occurred.
+
+        This snapshot can be used for debugging purposes to understand the state of the pipeline, edited and passed
+        to the `pipeline_snapshot` parameter of the `Pipeline.run()` method to resume execution from this point.
+
+        :param component_inputs:
+        :param component_name:
+        :param component_visits:
+        :param data:
+        :param include_outputs_from:
+        :param inputs:
+        :param ordered_component_names:
+        :param pipeline_outputs:
+
+        :return:
+        """
+
+        pipeline_snapshot_inputs_serialised = deepcopy(inputs)
+        pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
+        pipeline_snapshot = _create_pipeline_snapshot(
+            inputs=pipeline_snapshot_inputs_serialised,
+            # Dummy breakpoint to pass the component_name and state_persistence_path to the _save_pipeline_snapshot
+            break_point=Breakpoint(component_name=component_name, visit_count=0, snapshot_file_path="debug"),
+            component_visits=component_visits,
+            original_input_data=data,
+            ordered_component_names=ordered_component_names,
+            include_outputs_from=include_outputs_from,
+            pipeline_outputs=pipeline_outputs,
+        )
+
+        return pipeline_snapshot
