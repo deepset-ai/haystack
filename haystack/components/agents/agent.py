@@ -61,8 +61,8 @@ class Agent:
     """
     A Haystack component that implements a tool-using agent with provider-agnostic chat model support.
 
-    The component processes messages and executes tools until an exit_condition condition is met.
-    The exit_condition can be triggered either by a direct text response or by invoking a specific designated tool.
+    The component processes messages and executes tools until an exit condition is met.
+    The exit condition can be triggered either by a direct text response or by invoking a specific designated tool.
 
     When you call an Agent without tools, it acts as a ChatGenerator, produces one response, then exits.
 
@@ -78,7 +78,7 @@ class Agent:
     agent = Agent(
         chat_generator=OpenAIChatGenerator(),
         tools=tools,
-        exit_condition="search",
+        exit_conditions=["search"],
     )
 
     # Run the agent
