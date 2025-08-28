@@ -1,6 +1,6 @@
 ---
 features:
   - |
-    A Pipeline can now be resumed from its last successful step. The Pipeline.run() method a new parameter `state_persistence`
-    which if set to `True` enables state persistence, meaning that Pipeline snapshots would be saved to the the path specified
-    in `state_persistence_path`. Any pipeline snapshot can be used to resume a pipeline execution.
+    A snapshot of the last successful step is now saved when an error occurs during a Pipeline run. This allows you
+    to inspect the snapshot, understand and potentially fix the error and resume the pipeline from that point onwards.
+    Avoiding to re-run the entire pipeline from the start.
