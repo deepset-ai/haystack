@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
+
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Mapping, Optional, Union
