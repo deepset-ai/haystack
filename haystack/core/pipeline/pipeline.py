@@ -457,16 +457,16 @@ class Pipeline(PipelineBase):
         This snapshot can be used for debugging purposes to understand the state of the pipeline, edited and passed
         to the `pipeline_snapshot` parameter of the `Pipeline.run()` method to resume execution from this point.
 
-        :param component_inputs:
-        :param component_name:
-        :param component_visits:
-        :param data:
-        :param include_outputs_from:
-        :param inputs:
-        :param ordered_component_names:
-        :param pipeline_outputs:
+        :param component_inputs: Inputs to the component that was being executed when the error occurred.
+        :param component_name: Name of the component that was being executed when the error occurred.
+        :param component_visits: Current state of component visits.
+        :param data: Original input data provided to the pipeline.
+        :param include_outputs_from: Set of component names whose outputs are included in the pipeline output.
+        :param inputs: Current state of all inputs in the pipeline.
+        :param ordered_component_names: List of component names in the order they were added to the pipeline.
+        :param pipeline_outputs: Current state of the pipeline outputs.
 
-        :return:
+        :return: A PipelineSnapshot representing the last good state of the pipeline.
         """
 
         pipeline_snapshot_inputs_serialised = deepcopy(inputs)
