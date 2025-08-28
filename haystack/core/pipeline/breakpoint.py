@@ -160,8 +160,11 @@ def _save_pipeline_snapshot_to_file(
     if not isinstance(snapshot_file_path, Path):
         raise ValueError("Debug path must be a string or a Path object.")
 
+    snapshot_file_path.mkdir(exist_ok=True)
+
     if not file_name:
-        # Check if the agent_name is provided to differentiate between agent and non-agent breakpoints
+        # Generate filename
+        # We check if the agent_name is provided to differentiate between agent and non-agent breakpoints
         if isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
             agent_name = pipeline_snapshot.break_point.agent_name
             component_name = pipeline_snapshot.break_point.break_point.component_name

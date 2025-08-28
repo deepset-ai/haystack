@@ -405,8 +405,14 @@ class Pipeline(PipelineBase):
                         ordered_component_names,
                         pipeline_outputs,
                     )
-                    f_name = f"last_good_state_snapshot_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.json"
+                    f_name = f"last_good_state_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.json"
                     _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot, f_name=f_name)
+                    # inform the user that a snapshot has been saved
+                    logger.info(
+                        "A snapshot of the last good state of the pipeline has been saved to '{f_name}'. "
+                        "You can inspect this snapshot to fix the error and resume the pipeline from this point.",
+                        f_name=f_name,
+                    )
                     raise error
 
                 # Updates global input state with component outputs and returns outputs that should go to

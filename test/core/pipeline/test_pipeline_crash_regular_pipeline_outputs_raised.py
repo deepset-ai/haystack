@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import os
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -232,3 +232,7 @@ class TestPipelineOutputsRaisedInException:
         assert "prompt_builder" not in pipeline_outputs, "Prompt builder should not have run due to crash"
         assert "llm" not in pipeline_outputs, "LLM should not have run due to crash"
         assert "answer_builder" not in pipeline_outputs, "Answer builder should not have run due to crash"
+
+        # check that a pipeline snapshot file was created in the "debug" directory
+        snapshot_files = os.listdir("debug")
+        assert any(f.endswith(".json") for f in snapshot_files), "No pipeline snapshot file found in debug directory"
