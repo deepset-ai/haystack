@@ -214,13 +214,11 @@ def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
         f"Unsupported content part in the serialized ChatMessage: {part}. "
         "The `content` field of the serialized ChatMessage must be a list of dictionaries, where each "
         "dictionary contains one of these keys: 'text', 'image', 'reasoning', 'tool_call', or 'tool_call_result'. "
-        "Valid formats: [{{'text': 'Hello'}}, "
-        "{{'image': {{'base64_image': '...', ...}}}}, "
-        "{{'reasoning': {{'reasoning_text': 'I think...', 'extra': {{...}}}}}}, "
-        "{{'tool_call': {{'tool_name': 'search', 'arguments': {{}}, 'id': 'call_123'}}}}, "
-        "{{'tool_call_result': {{'result': 'data', 'origin': {{...}}, 'error': false}}}}]"
+        "Valid formats: [{'text': 'Hello'}, {'image': {'base64_image': '...', ...}}, "
+        "{'reasoning': {'reasoning_text': 'I think...', 'extra': {...}}}, "
+        "{'tool_call': {'tool_name': 'search', 'arguments': {}, 'id': 'call_123'}}, "
+        "{'tool_call_result': {'result': 'data', 'origin': {...}, 'error': false}}]"
     )
-
     raise ValueError(msg)
 
 
