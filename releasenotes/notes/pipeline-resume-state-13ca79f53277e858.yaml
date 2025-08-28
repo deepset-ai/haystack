@@ -2,5 +2,5 @@
 features:
   - |
     A snapshot of the last successful step is now saved when an error occurs during a Pipeline run. This allows you
-    to inspect the snapshot, understand and potentially fix the error and resume the pipeline from that point onwards.
-    Avoiding to re-run the entire pipeline from the start.
+    to inspect the snapshot, potentially identify and fix the error, and later resume the pipeline from that point
+    onwards. Avoiding to re-run the entire pipeline from the start.
