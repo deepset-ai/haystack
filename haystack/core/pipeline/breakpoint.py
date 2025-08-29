@@ -140,11 +140,7 @@ def load_pipeline_snapshot(file_path: Union[str, Path]) -> PipelineSnapshot:
 
 
 def _save_pipeline_snapshot_to_file(
-    *,
-    pipeline_snapshot: PipelineSnapshot,
-    snapshot_file_path: Union[str, Path],
-    dt: datetime,
-    file_name: Optional[str] = None,
+    *, pipeline_snapshot: PipelineSnapshot, snapshot_file_path: Union[str, Path], dt: datetime
 ) -> None:
     """
     Save the pipeline snapshot dictionary to a JSON file.
@@ -162,18 +158,17 @@ def _save_pipeline_snapshot_to_file(
 
     snapshot_file_path.mkdir(exist_ok=True)
 
-    if not file_name:
-        # Generate filename
-        # We check if the agent_name is provided to differentiate between agent and non-agent breakpoints
-        if isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
-            agent_name = pipeline_snapshot.break_point.agent_name
-            component_name = pipeline_snapshot.break_point.break_point.component_name
-            visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
-            file_name = f"{agent_name}_{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
-        else:
-            component_name = pipeline_snapshot.break_point.component_name
-            visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
-            file_name = f"{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+    # Generate filename
+    # We check if the agent_name is provided to differentiate between agent and non-agent breakpoints
+    if isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
+        agent_name = pipeline_snapshot.break_point.agent_name
+        component_name = pipeline_snapshot.break_point.break_point.component_name
+        visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
+        file_name = f"{agent_name}_{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
+    else:
+        component_name = pipeline_snapshot.break_point.component_name
+        visit_nr = pipeline_snapshot.pipeline_state.component_visits.get(component_name, 0)
+        file_name = f"{component_name}_{visit_nr}_{dt.strftime('%Y_%m_%d_%H_%M_%S')}.json"
 
     try:
         with open(snapshot_file_path / file_name, "w") as f_out:
@@ -224,12 +219,11 @@ def _create_pipeline_snapshot(
     return pipeline_snapshot
 
 
-def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, file_name: Optional[str] = None) -> PipelineSnapshot:
+def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot) -> PipelineSnapshot:
     """
     Save the pipeline snapshot to a file.
 
     :param pipeline_snapshot: The pipeline snapshot to save.
-    :param file_name: Optional custom file name for the snapshot file.
 
     :returns:
         The dictionary containing the snapshot of the pipeline containing the following keys:
@@ -250,7 +244,7 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, file_name: Opti
     if snapshot_file_path is not None:
         dt = pipeline_snapshot.timestamp or datetime.now()
         _save_pipeline_snapshot_to_file(
-            pipeline_snapshot=pipeline_snapshot, snapshot_file_path=snapshot_file_path, dt=dt, file_name=file_name
+            pipeline_snapshot=pipeline_snapshot, snapshot_file_path=snapshot_file_path, dt=dt
         )
 
     return pipeline_snapshot

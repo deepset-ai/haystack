@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import mimetypes
-import os
 import tempfile
 from pathlib import Path
 from typing import Any, Optional, Union, overload
@@ -85,36 +84,34 @@ def _guess_mime_type(path: Path) -> Optional[str]:
     return CUSTOM_MIMETYPES.get(extension, mime_type)
 
 
-def get_output_dir(out_dir: str) -> str:
+def _get_output_dir(out_dir: str) -> str:
     """
-    Try to find a directory for to save status files in a writeable location.
+    Find or create a writable directory for saving status files.
 
-    The function tries the following locations in order:
-    1. User's home directory in a folder named after the value of `out_dir`
-    2. System temporary directory in a folder named after the value of `out_dir`
-    3. Current working directory in a folder named after the value of `out_dir`
+    Tries in the following order:
 
-    :return:
-        A string representing a directory path.
+        1. ~/.haystack/{out_dir}
+        2. {tempdir}/haystack/{out_dir}
+        3. ./.haystack/{out_dir}
+
+    :raises RuntimeError: If no directory could be created.
+    :returns:
+        The path to the created directory.
     """
 
-    # 1. user's home directory first
-    home_dir = os.path.expanduser("~")
-    status_dir = os.path.join(home_dir, out_dir)
-    if os.access(status_dir, os.W_OK) or not os.path.exists(status_dir):
+    candidates = [
+        Path.home() / ".haystack" / out_dir,
+        Path(tempfile.gettempdir()) / "haystack" / out_dir,
+        Path.cwd() / ".haystack" / out_dir,
+    ]
+
+    for candidate in candidates:
         try:
-            os.makedirs(status_dir, exist_ok=True)
-            return status_dir
+            candidate.mkdir(parents=True, exist_ok=True)
+            return str(candidate)
         except Exception:
-            pass
+            continue
 
-    # 2. fallback to system temp directory
-    try:
-        status_dir = tempfile.gettempdir()
-        status_dir = os.path.join(status_dir, out_dir)
-        return status_dir
-    except Exception:
-        pass
-
-    # 3. last resort try current working directory
-    return os.path.join(os.getcwd(), out_dir)
+    raise RuntimeError(
+        f"Could not create a writable directory for output files in any of the following locations: {candidates}"
+    )
