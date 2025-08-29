@@ -177,9 +177,6 @@ class Pipeline(PipelineBase):
         :param pipeline_snapshot:
             A dictionary containing a snapshot of a previously saved pipeline execution.
 
-        :param state_persistence_path:
-            The path where the pipeline state should be saved if `state_persistence` is `True`.
-
         :returns:
             A dictionary where each entry corresponds to a component name
             and its output. If `include_outputs_from` is `None`, this dictionary
