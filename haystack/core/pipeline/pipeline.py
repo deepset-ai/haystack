@@ -418,7 +418,7 @@ class Pipeline(PipelineBase):
                             "Review this snapshot to debug the error and resume the pipeline from here.",
                             out_path=out_dir,
                         )
-                    except Exception as error:
+                    except Exception:
                         logger.error(
                             "Failed to save a snapshot of the pipeline's last valid state with error: {e}", e=error
                         )
