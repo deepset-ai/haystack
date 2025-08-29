@@ -409,8 +409,8 @@ class Pipeline(PipelineBase):
                     f_name = f"last_good_state_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.json"
                     _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot, f_name=f_name)
                     logger.info(
-                        "A snapshot of the last good state of the pipeline has been saved to '{f_name}'. "
-                        "You can inspect this snapshot to fix the error and resume the pipeline from this point.",
+                        "Saved a snapshot of the pipeline's last valid state to '{f_name}'. "
+                        "Review this snapshot to debug the error and resume the pipeline from here.",
                         f_name=f_name,
                     )
                     raise error
