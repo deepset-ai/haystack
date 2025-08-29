@@ -224,11 +224,12 @@ def _create_pipeline_snapshot(
     return pipeline_snapshot
 
 
-def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, f_name: Optional[str] = None) -> PipelineSnapshot:
+def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, file_name: Optional[str] = None) -> PipelineSnapshot:
     """
     Save the pipeline snapshot to a file.
 
     :param pipeline_snapshot: The pipeline snapshot to save.
+    :param file_name: Optional custom file name for the snapshot file.
 
     :returns:
         The dictionary containing the snapshot of the pipeline containing the following keys:
@@ -249,7 +250,7 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, f_name: Optiona
     if snapshot_file_path is not None:
         dt = pipeline_snapshot.timestamp or datetime.now()
         _save_pipeline_snapshot_to_file(
-            pipeline_snapshot=pipeline_snapshot, snapshot_file_path=snapshot_file_path, dt=dt, file_name=f_name
+            pipeline_snapshot=pipeline_snapshot, snapshot_file_path=snapshot_file_path, dt=dt, file_name=file_name
         )
 
     return pipeline_snapshot

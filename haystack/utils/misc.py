@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import mimetypes
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Optional, Union, overload
 
@@ -81,3 +83,38 @@ def _guess_mime_type(path: Path) -> Optional[str]:
     mime_type = mimetypes.guess_type(path.as_posix())[0]
     # lookup custom mappings if the mime type is not found
     return CUSTOM_MIMETYPES.get(extension, mime_type)
+
+
+def get_output_dir(out_dir: str) -> str:
+    """
+    Try to find a directory for to save status files in a writeable location.
+
+    The function tries the following locations in order:
+    1. User's home directory in a folder named after the value of `out_dir`
+    2. System temporary directory in a folder named after the value of `out_dir`
+    3. Current working directory in a folder named after the value of `out_dir`
+
+    :return:
+        A string representing a directory path.
+    """
+
+    # 1. user's home directory first
+    home_dir = os.path.expanduser("~")
+    status_dir = os.path.join(home_dir, out_dir)
+    if os.access(status_dir, os.W_OK) or not os.path.exists(status_dir):
+        try:
+            os.makedirs(status_dir, exist_ok=True)
+            return status_dir
+        except Exception:
+            pass
+
+    # 2. fallback to system temp directory
+    try:
+        status_dir = tempfile.gettempdir()
+        status_dir = os.path.join(status_dir, out_dir)
+        return status_dir
+    except Exception:
+        pass
+
+    # 3. last resort try current working directory
+    return os.path.join(os.getcwd(), out_dir)

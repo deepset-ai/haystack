@@ -27,6 +27,7 @@ from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot
 from haystack.telemetry import pipeline_running
 from haystack.utils import _deserialize_value_with_schema
+from haystack.utils.misc import get_output_dir
 
 logger = logging.getLogger(__name__)
 
@@ -393,18 +394,29 @@ class Pipeline(PipelineBase):
                     # Attach partial pipeline outputs to the error before re-raising
                     error.pipeline_outputs = pipeline_outputs
                     # Create a snapshot of the last good state of the pipeline before the error occurred.
-                    last_good_state_snapshot = self.create_last_good_state_snapshot(
-                        component_inputs,
-                        component_name,
-                        component_visits,
-                        data,
-                        include_outputs_from,
-                        inputs,
-                        ordered_component_names,
-                        pipeline_outputs,
+                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
+                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
+                    last_good_state_snapshot = _create_pipeline_snapshot(
+                        inputs=pipeline_snapshot_inputs_serialised,
+                        # Dummy breakpoint to pass the component_name and state_persistence_path to the
+                        # _save_pipeline_snapshot
+                        break_point=Breakpoint(
+                            component_name=component_name,
+                            visit_count=0,
+                            snapshot_file_path=get_output_dir("pipeline_snapshot"),
+                        ),
+                        component_visits=component_visits,
+                        original_input_data=data,
+                        ordered_component_names=ordered_component_names,
+                        include_outputs_from=include_outputs_from,
+                        pipeline_outputs=pipeline_outputs,
                     )
                     f_name = f"last_good_state_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.json"
-                    _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot, f_name=f_name)
+                    try:
+                        _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot, file_name=f_name)
+                    except Exception:
+                        msg = "Failed to save a snapshot of the pipeline's last valid state to '{f_name}'."
+                        logger.error(msg)
                     logger.info(
                         "Saved a snapshot of the pipeline's last valid state to '{f_name}'. "
                         "Review this snapshot to debug the error and resume the pipeline from here.",
@@ -436,47 +448,3 @@ class Pipeline(PipelineBase):
                 )
 
             return pipeline_outputs
-
-    @staticmethod
-    def create_last_good_state_snapshot(  # pylint: disable=too-many-positional-arguments
-        component_inputs: dict[str, Any],
-        component_name: str,
-        component_visits: dict[str, int],
-        data: dict[str, dict[str, Any]],
-        include_outputs_from: set[str],
-        inputs: dict[str, Any],
-        ordered_component_names: list[str],
-        pipeline_outputs: dict[str, Any],
-    ) -> PipelineSnapshot:
-        """
-        Creates a snapshot of the last good state of the pipeline before an error occurred.
-
-        This snapshot can be used for debugging purposes to understand the state of the pipeline, edited and passed
-        to the `pipeline_snapshot` parameter of the `Pipeline.run()` method to resume execution from this point.
-
-        :param component_inputs: Inputs to the component that was being executed when the error occurred.
-        :param component_name: Name of the component that was being executed when the error occurred.
-        :param component_visits: Current state of component visits.
-        :param data: Original input data provided to the pipeline.
-        :param include_outputs_from: Set of component names whose outputs are included in the pipeline output.
-        :param inputs: Current state of all inputs in the pipeline.
-        :param ordered_component_names: List of component names in the order they were added to the pipeline.
-        :param pipeline_outputs: Current state of the pipeline outputs.
-
-        :return: A PipelineSnapshot representing the last good state of the pipeline.
-        """
-
-        pipeline_snapshot_inputs_serialised = deepcopy(inputs)
-        pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
-        pipeline_snapshot = _create_pipeline_snapshot(
-            inputs=pipeline_snapshot_inputs_serialised,
-            # Dummy breakpoint to pass the component_name and state_persistence_path to the _save_pipeline_snapshot
-            break_point=Breakpoint(component_name=component_name, visit_count=0, snapshot_file_path="debug"),
-            component_visits=component_visits,
-            original_input_data=data,
-            ordered_component_names=ordered_component_names,
-            include_outputs_from=include_outputs_from,
-            pipeline_outputs=pipeline_outputs,
-        )
-
-        return pipeline_snapshot
