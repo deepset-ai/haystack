@@ -399,7 +399,7 @@ class Pipeline(PipelineBase):
                     out_dir = get_output_dir("pipeline_snapshot")
                     last_good_state_snapshot = _create_pipeline_snapshot(
                         inputs=pipeline_snapshot_inputs_serialised,
-                        # Dummy breakpoint to pass the component_name and state_persistence_path to the
+                        # Dummy breakpoint to pass the component_name and snapshot_file_path to the
                         # _save_pipeline_snapshot
                         break_point=Breakpoint(
                             component_name=component_name, visit_count=0, snapshot_file_path=out_dir
