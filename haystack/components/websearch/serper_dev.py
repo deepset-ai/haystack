@@ -54,8 +54,9 @@ class SerperDevWebSearch:
         api_key: Secret = Secret.from_env_var("SERPERDEV_API_KEY"),
         top_k: Optional[int] = 10,
         allowed_domains: Optional[list[str]] = None,
-        exclude_subdomains: bool = False,
         search_params: Optional[dict[str, Any]] = None,
+        *,
+        exclude_subdomains: bool = False,
     ):
         """
         Initialize the SerperDevWebSearch component.
