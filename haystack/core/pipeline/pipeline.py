@@ -396,14 +396,13 @@ class Pipeline(PipelineBase):
                     # Create a snapshot of the last good state of the pipeline before the error occurred.
                     pipeline_snapshot_inputs_serialised = deepcopy(inputs)
                     pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
+                    out_dir = get_output_dir("pipeline_snapshot")
                     last_good_state_snapshot = _create_pipeline_snapshot(
                         inputs=pipeline_snapshot_inputs_serialised,
                         # Dummy breakpoint to pass the component_name and state_persistence_path to the
                         # _save_pipeline_snapshot
                         break_point=Breakpoint(
-                            component_name=component_name,
-                            visit_count=0,
-                            snapshot_file_path=get_output_dir("pipeline_snapshot"),
+                            component_name=component_name, visit_count=0, snapshot_file_path=out_dir
                         ),
                         component_visits=component_visits,
                         original_input_data=data,

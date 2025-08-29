@@ -22,6 +22,7 @@ from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.auth import Secret
+from haystack.utils.misc import get_output_dir
 
 
 def setup_document_store():
@@ -235,5 +236,5 @@ class TestPipelineOutputsRaisedInException:
         assert "answer_builder" not in pipeline_outputs, "Answer builder should not have run due to crash"
 
         # check that a pipeline snapshot file was created in the "debug" directory
-        snapshot_files = os.listdir("debug")
+        snapshot_files = os.listdir(get_output_dir("pipeline_snapshot"))
         assert any(f.endswith(".json") for f in snapshot_files), "No pipeline snapshot file found in debug directory"
