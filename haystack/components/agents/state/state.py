@@ -83,10 +83,12 @@ class State:
     A class that wraps a StateSchema and maintains an internal _data dictionary.
 
     Each schema entry has:
+    ```json
       "parameter_name": {
         "type": SomeType,
         "handler": Optional[Callable[[Any, Any], Any]]
       }
+      ```
     """
 
     def __init__(self, schema: dict[str, Any], data: Optional[dict[str, Any]] = None):
