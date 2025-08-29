@@ -413,9 +413,8 @@ class Pipeline(PipelineBase):
                     f_name = f"last_good_state_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.json"
                     try:
                         _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot, file_name=f_name)
-                    except Exception:
-                        msg = "Failed to save a snapshot of the pipeline's last valid state to '{f_name}'."
-                        logger.error(msg)
+                    except Exception as error:
+                        logger.error("Failed to save a snapshot of the pipeline's last valid state with error: {e}", e=error)
                     logger.info(
                         "Saved a snapshot of the pipeline's last valid state to '{f_name}'. "
                         "Review this snapshot to debug the error and resume the pipeline from here.",
