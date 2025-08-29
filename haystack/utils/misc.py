@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import mimetypes
+import tempfile
 from pathlib import Path
 from typing import Any, Optional, Union, overload
 
@@ -81,3 +82,36 @@ def _guess_mime_type(path: Path) -> Optional[str]:
     mime_type = mimetypes.guess_type(path.as_posix())[0]
     # lookup custom mappings if the mime type is not found
     return CUSTOM_MIMETYPES.get(extension, mime_type)
+
+
+def _get_output_dir(out_dir: str) -> str:
+    """
+    Find or create a writable directory for saving status files.
+
+    Tries in the following order:
+
+        1. ~/.haystack/{out_dir}
+        2. {tempdir}/haystack/{out_dir}
+        3. ./.haystack/{out_dir}
+
+    :raises RuntimeError: If no directory could be created.
+    :returns:
+        The path to the created directory.
+    """
+
+    candidates = [
+        Path.home() / ".haystack" / out_dir,
+        Path(tempfile.gettempdir()) / "haystack" / out_dir,
+        Path.cwd() / ".haystack" / out_dir,
+    ]
+
+    for candidate in candidates:
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            return str(candidate)
+        except Exception:
+            continue
+
+    raise RuntimeError(
+        f"Could not create a writable directory for output files in any of the following locations: {candidates}"
+    )
