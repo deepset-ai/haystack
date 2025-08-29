@@ -80,13 +80,23 @@ def _validate_schema(schema: dict[str, Any]) -> None:
 
 class State:
     """
-    A class that wraps a StateSchema and maintains an internal _data dictionary.
+    State is a container for storing shared information (documents, context, intermediate
+    results) during the execution of Agents and their tools.
 
-    Each schema entry has:
-      "parameter_name": {
-        "type": SomeType,
-        "handler": Optional[Callable[[Any, Any], Any]]
-      }
+    Internally it wraps a `_data` dictionary defined by a `StateSchema`. Each schema entry has:
+        "parameter_name": {
+            "type": SomeType,                        # expected type
+            "handler": Optional[Callable[[Any, Any], Any]]  # merge/update function
+        }
+
+    This makes it possible for different components in a pipeline or agent to
+    read from and write to the same context.
+
+    Example (simplified):
+        >>> state = State()
+        >>> state["query"] = "What is AI?"
+        >>> state["answer"] = "Artificial Intelligence is..."
+
     """
 
     def __init__(self, schema: dict[str, Any], data: Optional[dict[str, Any]] = None):
