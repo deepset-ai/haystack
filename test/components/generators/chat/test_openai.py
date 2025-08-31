@@ -56,11 +56,10 @@ def mock_chat_completion_chunk_with_tools(openai_mock_stream):
             model="gpt-4",
             object="chat.completion.chunk",
             choices=[
-                chat_completion_chunk.Choice(
-                    finish_reason="tool_calls",
-                    logprobs=None,
-                    index=0,
-                    delta=chat_completion_chunk.ChoiceDelta(
+                        chat_completion_chunk.Choice(index=0, 
+            finish_reason="tool_calls",
+            logprobs=None,
+            delta=chat_completion_chunk.ChoiceDelta(
                         role="assistant",
                         tool_calls=[
                             chat_completion_chunk.ChoiceDeltaToolCall(
@@ -468,10 +467,9 @@ class TestOpenAIChatGenerator:
                 model="gpt-4",
                 object="chat.completion",
                 choices=[
-                    Choice(
+                    Choice(index=0, 
                         finish_reason="tool_calls",
                         logprobs=None,
-                        index=0,
                         message=ChatCompletionMessage(
                             role="assistant",
                             tool_calls=[
@@ -564,9 +562,8 @@ class TestOpenAIChatGenerator:
                 model="gpt-4o-mini",
                 object="chat.completion",
                 choices=[
-                    Choice(
+                    Choice(index=0, 
                         finish_reason="tool_calls",
-                        index=0,
                         message=ChatCompletionMessage(
                             role="assistant",
                             tool_calls=[
@@ -779,7 +776,7 @@ def chat_completion_chunks():
     return [
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
-            choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(role="assistant"), index=0)],
+            choices=[chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(role="assistant"))],
             created=1747834733,
             model="gpt-4o-mini-2024-07-18",
             object="chat.completion.chunk",
@@ -789,7 +786,7 @@ def chat_completion_chunks():
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[
-                chat_completion_chunk.Choice(
+                chat_completion_chunk.Choice(index=0, 
                     delta=ChoiceDelta(
                         tool_calls=[
                             ChoiceDeltaToolCall(
@@ -800,7 +797,6 @@ def chat_completion_chunks():
                             )
                         ]
                     ),
-                    index=0,
                 )
             ],
             created=1747834733,
@@ -812,13 +808,12 @@ def chat_completion_chunks():
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[
-                chat_completion_chunk.Choice(
+                chat_completion_chunk.Choice(index=0, 
                     delta=ChoiceDelta(
                         tool_calls=[
                             ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))
                         ]
                     ),
-                    index=0,
                 )
             ],
             created=1747834733,
@@ -830,13 +825,12 @@ def chat_completion_chunks():
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[
-                chat_completion_chunk.Choice(
+                chat_completion_chunk.Choice(index=0, 
                     delta=ChoiceDelta(
                         tool_calls=[
                             ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='ty": '))
                         ]
                     ),
-                    index=0,
                 )
             ],
             created=1747834733,
@@ -848,13 +842,12 @@ def chat_completion_chunks():
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[
-                chat_completion_chunk.Choice(
+                chat_completion_chunk.Choice(index=0, 
                     delta=ChoiceDelta(
                         tool_calls=[
                             ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"Paris'))
                         ]
                     ),
-                    index=0,
                 )
             ],
             created=1747834733,
@@ -866,11 +859,10 @@ def chat_completion_chunks():
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[
-                chat_completion_chunk.Choice(
+                chat_completion_chunk.Choice(index=0, 
                     delta=ChoiceDelta(
                         tool_calls=[ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"}'))]
                     ),
-                    index=0,
                 )
             ],
             created=1747834733,
@@ -882,7 +874,7 @@ def chat_completion_chunks():
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[
-                chat_completion_chunk.Choice(
+                chat_completion_chunk.Choice(index=0, 
                     delta=ChoiceDelta(
                         tool_calls=[
                             ChoiceDeltaToolCall(
@@ -893,7 +885,6 @@ def chat_completion_chunks():
                             )
                         ]
                     ),
-                    index=0,
                 )
             ],
             created=1747834733,
@@ -905,13 +896,12 @@ def chat_completion_chunks():
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[
-                chat_completion_chunk.Choice(
+                chat_completion_chunk.Choice(index=0, 
                     delta=ChoiceDelta(
                         tool_calls=[
                             ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))
                         ]
                     ),
-                    index=0,
                 )
             ],
             created=1747834733,
@@ -923,13 +913,12 @@ def chat_completion_chunks():
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[
-                chat_completion_chunk.Choice(
+                chat_completion_chunk.Choice(index=0, 
                     delta=ChoiceDelta(
                         tool_calls=[
                             ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='ty": '))
                         ]
                     ),
-                    index=0,
                 )
             ],
             created=1747834733,
@@ -941,13 +930,12 @@ def chat_completion_chunks():
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[
-                chat_completion_chunk.Choice(
+                chat_completion_chunk.Choice(index=0, 
                     delta=ChoiceDelta(
                         tool_calls=[
                             ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='"Berli'))
                         ]
                     ),
-                    index=0,
                 )
             ],
             created=1747834733,
@@ -959,11 +947,10 @@ def chat_completion_chunks():
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[
-                chat_completion_chunk.Choice(
+                chat_completion_chunk.Choice(index=0, 
                     delta=ChoiceDelta(
                         tool_calls=[ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='n"}'))]
                     ),
-                    index=0,
                 )
             ],
             created=1747834733,
@@ -974,7 +961,7 @@ def chat_completion_chunks():
         ),
         ChatCompletionChunk(
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
-            choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(), finish_reason="tool_calls", index=0)],
+            choices=[chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(), finish_reason="tool_calls")],
             created=1747834733,
             model="gpt-4o-mini-2024-07-18",
             object="chat.completion.chunk",
@@ -1005,22 +992,19 @@ def chat_completion_chunks():
 @pytest.fixture
 def streaming_chunks():
     return [
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=None,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
                 "tool_calls": None,
                 "finish_reason": None,
                 "received_at": ANY,
                 "usage": None,
             },
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=0,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                
                 "tool_calls": [
                     ChoiceDeltaToolCall(
                         index=0,
@@ -1033,67 +1017,56 @@ def streaming_chunks():
                 "received_at": ANY,
                 "usage": None,
             },
-            index=0,
-            tool_calls=[ToolCallDelta(tool_name="weather", id="call_zcvlnVaTeJWRjLAFfYxX69z4", index=0)],
+            tool_calls=[ToolCallDelta(tool_name="weather", id="call_zcvlnVaTeJWRjLAFfYxX69z4", tool_call_index=0)],
             start=True,
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=0,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))],
                 "finish_reason": None,
                 "received_at": ANY,
                 "usage": None,
             },
-            index=0,
-            tool_calls=[ToolCallDelta(arguments='{"ci', index=0)],
+            tool_calls=[ToolCallDelta(arguments='{"ci', tool_call_index=0)],
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=0,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='ty": '))],
                 "finish_reason": None,
                 "received_at": ANY,
                 "usage": None,
             },
-            index=0,
-            tool_calls=[ToolCallDelta(arguments='ty": ', index=0)],
+            tool_calls=[ToolCallDelta(arguments='ty": ', tool_call_index=0)],
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=0,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"Paris'))],
                 "finish_reason": None,
                 "received_at": ANY,
                 "usage": None,
             },
-            index=0,
-            tool_calls=[ToolCallDelta(arguments='"Paris', index=0)],
+            tool_calls=[ToolCallDelta(arguments='"Paris', tool_call_index=0)],
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=0,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"}'))],
                 "finish_reason": None,
                 "received_at": ANY,
                 "usage": None,
             },
-            index=0,
-            tool_calls=[ToolCallDelta(arguments='"}', index=0)],
+            tool_calls=[ToolCallDelta(arguments='"}', tool_call_index=0)],
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=1,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
                 "tool_calls": [
                     ChoiceDeltaToolCall(
                         index=1,
@@ -1106,67 +1079,52 @@ def streaming_chunks():
                 "received_at": ANY,
                 "usage": None,
             },
-            index=1,
-            tool_calls=[ToolCallDelta(tool_name="weather", id="call_C88m67V16CrETq6jbNXjdZI9", index=1)],
+            tool_calls=[ToolCallDelta(tool_name="weather", id="call_C88m67V16CrETq6jbNXjdZI9", tool_call_index=1)],
             start=True,
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=1,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))],
                 "finish_reason": None,
                 "received_at": ANY,
                 "usage": None,
             },
-            index=1,
-            tool_calls=[ToolCallDelta(arguments='{"ci', index=1)],
+            tool_calls=[ToolCallDelta(arguments='{"ci', tool_call_index=1)],
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=1,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='ty": '))],
                 "finish_reason": None,
                 "received_at": ANY,
                 "usage": None,
             },
-            index=1,
-            tool_calls=[ToolCallDelta(arguments='ty": ', index=1)],
+            tool_calls=[ToolCallDelta(arguments='ty": ', tool_call_index=1)],
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=1,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='"Berli'))],
                 "finish_reason": None,
                 "received_at": ANY,
                 "usage": None,
             },
-            index=1,
-            tool_calls=[ToolCallDelta(arguments='"Berli', index=1)],
+            tool_calls=[ToolCallDelta(arguments='"Berli', tool_call_index=1)],
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=1,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='n"}'))],
                 "finish_reason": None,
                 "received_at": ANY,
                 "usage": None,
             },
-            index=1,
-            tool_calls=[ToolCallDelta(arguments='n"}', index=1)],
+            tool_calls=[ToolCallDelta(arguments='n"}', tool_call_index=1)],
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=None,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
                 "tool_calls": None,
                 "finish_reason": "tool_calls",
                 "received_at": ANY,
@@ -1174,8 +1132,7 @@ def streaming_chunks():
             },
             finish_reason="tool_calls",
         ),
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="", chunk_index=None,
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
                 "received_at": ANY,
@@ -1213,10 +1170,10 @@ class TestChatCompletionChunkConversion:
             id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
             choices=[
                 chat_completion_chunk.Choice(
+                    index=0,
                     delta=chat_completion_chunk.ChoiceDelta(
                         tool_calls=[ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction())]
-                    ),
-                    index=0,
+                    )
                 )
             ],
             created=1742207200,
@@ -1226,9 +1183,9 @@ class TestChatCompletionChunkConversion:
         result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])
         assert result.content == ""
         assert result.start is False
-        assert result.tool_calls == [ToolCallDelta(index=0)]
+        assert result.tool_calls == [ToolCallDelta(tool_call_index=0)]
         assert result.tool_call_result is None
-        assert result.index == 0
+        assert result.chunk_index == 0
         assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
         assert result.meta["received_at"] is not None
 
@@ -1252,7 +1209,7 @@ class TestChatCompletionChunkConversion:
         # Verify meta information
         assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
         assert result.meta["finish_reason"] == "tool_calls"
-        assert result.meta["index"] == 0
+        assert result.meta["chunk_index"] == 0
         assert result.meta["completion_start_time"] is not None
         assert result.meta["usage"] == {
             "completion_tokens": 42,

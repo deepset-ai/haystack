@@ -186,7 +186,7 @@ class TestAnswerBuilder:
 
         message_meta = {
             "model": "gpt-4o-mini",
-            "index": 0,
+            "chunk_index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
         }
@@ -210,7 +210,7 @@ class TestAnswerBuilder:
 
         message_meta = {
             "model": "gpt-4o-mini",
-            "index": 0,
+            "chunk_index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
         }
@@ -232,7 +232,7 @@ class TestAnswerBuilder:
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")
         message_meta = {
             "model": "gpt-4o-mini",
-            "index": 0,
+            "chunk_index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
         }
@@ -263,7 +263,7 @@ class TestAnswerBuilder:
         component = AnswerBuilder(pattern="unused pattern")
         message_meta = {
             "model": "gpt-4o-mini",
-            "index": 0,
+            "chunk_index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
         }
@@ -286,7 +286,7 @@ class TestAnswerBuilder:
         component = AnswerBuilder()
         message_meta = {
             "model": "gpt-4o-mini",
-            "index": 0,
+            "chunk_index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
         }
@@ -300,7 +300,7 @@ class TestAnswerBuilder:
         # Check metadata excluding all_messages
         expected_meta = {
             "model": "gpt-4o-mini",
-            "index": 0,
+            "chunk_index": 0,
             "finish_reason": "stop",
             "usage": {"prompt_tokens": 32, "completion_tokens": 153, "total_tokens": 185},
             "test": "meta",

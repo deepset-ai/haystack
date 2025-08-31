@@ -16,7 +16,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": None,
                 "finish_reason": None,
                 "received_at": "2025-02-19T16:02:55.910076",
@@ -27,7 +27,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0,
@@ -42,17 +42,17 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.913919",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=0,
+            chunk_index=0,
             start=True,
             tool_calls=[
-                ToolCallDelta(id="call_ZOj5l67zhZOx6jqjg7ATQwb6", tool_name="rag_pipeline_tool", arguments="", index=0)
+                ToolCallDelta(id="call_ZOj5l67zhZOx6jqjg7ATQwb6", tool_name="rag_pipeline_tool", arguments="", tool_call_index=0)
             ],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments='{"qu')
@@ -62,14 +62,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.914439",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=0,
-            tool_calls=[ToolCallDelta(arguments='{"qu', index=0)],
+            chunk_index=0,
+            tool_calls=[ToolCallDelta(arguments='{"qu', tool_call_index=0)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments='ery":')
@@ -79,14 +79,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.924146",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=0,
-            tool_calls=[ToolCallDelta(arguments='ery":', index=0)],
+            chunk_index=0,
+            tool_calls=[ToolCallDelta(arguments='ery":', tool_call_index=0)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments=' "Wher')
@@ -96,14 +96,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.924420",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=0,
-            tool_calls=[ToolCallDelta(arguments=' "Wher', index=0)],
+            chunk_index=0,
+            tool_calls=[ToolCallDelta(arguments=' "Wher', tool_call_index=0)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments="e do")
@@ -113,14 +113,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.944398",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=0,
-            tool_calls=[ToolCallDelta(arguments="e do", index=0)],
+            chunk_index=0,
+            tool_calls=[ToolCallDelta(arguments="e do", tool_call_index=0)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments="es Ma")
@@ -130,14 +130,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.944958",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=0,
-            tool_calls=[ToolCallDelta(arguments="es Ma", index=0)],
+            chunk_index=0,
+            tool_calls=[ToolCallDelta(arguments="es Ma", tool_call_index=0)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments="rk liv")
@@ -147,14 +147,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.945507",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=0,
-            tool_calls=[ToolCallDelta(arguments="rk liv", index=0)],
+            chunk_index=0,
+            tool_calls=[ToolCallDelta(arguments="rk liv", tool_call_index=0)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments='e?"}')
@@ -164,14 +164,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.946018",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=0,
-            tool_calls=[ToolCallDelta(arguments='e?"}', index=0)],
+            chunk_index=0,
+            tool_calls=[ToolCallDelta(arguments='e?"}', tool_call_index=0)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=1,
@@ -184,17 +184,17 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.946578",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=1,
+            chunk_index=1,
             start=True,
             tool_calls=[
-                ToolCallDelta(id="call_STxsYY69wVOvxWqopAt3uWTB", tool_name="get_weather", arguments="", index=1)
+                ToolCallDelta(id="call_STxsYY69wVOvxWqopAt3uWTB", tool_name="get_weather", arguments="", tool_call_index=1)
             ],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=1, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments='{"ci')
@@ -204,14 +204,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.946981",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=1,
-            tool_calls=[ToolCallDelta(arguments='{"ci', index=1)],
+            chunk_index=1,
+            tool_calls=[ToolCallDelta(arguments='{"ci', tool_call_index=1)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=1, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments='ty": ')
@@ -221,14 +221,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.947411",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=1,
-            tool_calls=[ToolCallDelta(arguments='ty": ', index=1)],
+            chunk_index=1,
+            tool_calls=[ToolCallDelta(arguments='ty": ', tool_call_index=1)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=1, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments='"Berli')
@@ -238,14 +238,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.947643",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=1,
-            tool_calls=[ToolCallDelta(arguments='"Berli', index=1)],
+            chunk_index=1,
+            tool_calls=[ToolCallDelta(arguments='"Berli', tool_call_index=1)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=1, function=chat_completion_chunk.ChoiceDeltaToolCallFunction(arguments='n"}')
@@ -255,14 +255,14 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
                 "received_at": "2025-02-19T16:02:55.947939",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=1,
-            tool_calls=[ToolCallDelta(arguments='n"}', index=1)],
+            chunk_index=1,
+            tool_calls=[ToolCallDelta(arguments='n"}', tool_call_index=1)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": None,
                 "finish_reason": "tool_calls",
                 "received_at": "2025-02-19T16:02:55.948772",
@@ -274,7 +274,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": None,
                 "finish_reason": None,
                 "received_at": "2025-02-19T16:02:55.948772",
@@ -313,7 +313,7 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
     # Verify meta information
     assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
     assert result.meta["finish_reason"] == "tool_calls"
-    assert result.meta["index"] == 0
+    assert result.meta["chunk_index"] == 0
     assert result.meta["completion_start_time"] == "2025-02-19T16:02:55.910076"
     assert result.meta["usage"] == {
         "completion_tokens": 42,
@@ -335,7 +335,7 @@ def test_convert_streaming_chunk_to_chat_message_two_tool_calls_in_same_chunk():
             content="",
             meta={
                 "model": "mistral-small-latest",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": None,
                 "finish_reason": None,
                 "usage": None,
@@ -349,7 +349,7 @@ def test_convert_streaming_chunk_to_chat_message_two_tool_calls_in_same_chunk():
             content="",
             meta={
                 "model": "mistral-small-latest",
-                "index": 0,
+                "chunk_index": 0,
                 "finish_reason": "tool_calls",
                 "usage": {
                     "completion_tokens": 35,
@@ -363,10 +363,10 @@ def test_convert_streaming_chunk_to_chat_message_two_tool_calls_in_same_chunk():
                 type="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator",
                 name=None,
             ),
-            index=0,
+            chunk_index=0,
             tool_calls=[
-                ToolCallDelta(index=0, tool_name="weather", arguments='{"city": "Paris"}', id="FL1FFlqUG"),
-                ToolCallDelta(index=1, tool_name="weather", arguments='{"city": "Berlin"}', id="xSuhp66iB"),
+                ToolCallDelta(tool_call_index=0, tool_name="weather", arguments='{"city": "Paris"}', id="FL1FFlqUG"),
+                ToolCallDelta(tool_call_index=1, tool_name="weather", arguments='{"city": "Berlin"}', id="xSuhp66iB"),
             ],
             start=True,
             finish_reason="tool_calls",
@@ -395,7 +395,7 @@ def test_convert_streaming_chunk_to_chat_message_empty_tool_call_delta():
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": None,
                 "finish_reason": None,
                 "received_at": "2025-02-19T16:02:55.910076",
@@ -406,7 +406,7 @@ def test_convert_streaming_chunk_to_chat_message_empty_tool_call_delta():
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0,
@@ -421,11 +421,11 @@ def test_convert_streaming_chunk_to_chat_message_empty_tool_call_delta():
                 "received_at": "2025-02-19T16:02:55.913919",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=0,
+            chunk_index=0,
             start=True,
             tool_calls=[
                 ToolCallDelta(
-                    id="call_ZOj5l67zhZOx6jqjg7ATQwb6", tool_name="rag_pipeline_tool", arguments='{"query":', index=0
+                    id="call_ZOj5l67zhZOx6jqjg7ATQwb6", tool_name="rag_pipeline_tool", arguments='{"query":', tool_call_index=0
                 )
             ],
         ),
@@ -433,7 +433,7 @@ def test_convert_streaming_chunk_to_chat_message_empty_tool_call_delta():
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0,
@@ -446,14 +446,14 @@ def test_convert_streaming_chunk_to_chat_message_empty_tool_call_delta():
                 "received_at": "2025-02-19T16:02:55.924420",
             },
             component_info=ComponentInfo(name="test", type="test"),
-            index=0,
-            tool_calls=[ToolCallDelta(arguments=' "Where does Mark live?"}', index=0)],
+            chunk_index=0,
+            tool_calls=[ToolCallDelta(arguments=' "Where does Mark live?"}', tool_call_index=0)],
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": [
                     chat_completion_chunk.ChoiceDeltaToolCall(
                         index=0, function=chat_completion_chunk.ChoiceDeltaToolCallFunction()
@@ -462,16 +462,16 @@ def test_convert_streaming_chunk_to_chat_message_empty_tool_call_delta():
                 "finish_reason": "tool_calls",
                 "received_at": "2025-02-19T16:02:55.948772",
             },
-            tool_calls=[ToolCallDelta(index=0)],
+            tool_calls=[ToolCallDelta(tool_call_index=0)],
             component_info=ComponentInfo(name="test", type="test"),
             finish_reason="tool_calls",
-            index=0,
+            chunk_index=0,
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-4o-mini-2024-07-18",
-                "index": 0,
+                "chunk_index": 0,
                 "tool_calls": None,
                 "finish_reason": None,
                 "received_at": "2025-02-19T16:02:55.948772",
@@ -509,8 +509,7 @@ def test_convert_streaming_chunk_to_chat_message_empty_tool_call_delta():
 def test_convert_streaming_chunk_to_chat_message_with_empty_tool_call_arguments():
     chunks = [
         # Message start with input tokens
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="",
             meta={
                 "type": "message_start",
                 "message": {
@@ -523,73 +522,60 @@ def test_convert_streaming_chunk_to_chat_message_with_empty_tool_call_arguments(
                     "stop_sequence": None,
                     "usage": {"input_tokens": 25, "output_tokens": 0},
                 },
-            },
-            index=0,
+            },chunk_index=0,
             tool_calls=[],
             tool_call_result=None,
             start=True,
             finish_reason=None,
         ),
         # Initial text content
-        StreamingChunk(
-            content="",
-            meta={"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}},
-            index=1,
+        StreamingChunk(content="",
+            meta={"type": "content_block_start", "chunk_index": 0, "content_block": {"type": "text", "text": ""}},chunk_index=1,
             tool_calls=[],
             tool_call_result=None,
             start=True,
             finish_reason=None,
         ),
-        StreamingChunk(
-            content="Let me check",
-            meta={"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Let me check"}},
-            index=2,
+        StreamingChunk(content="Let me check",
+            meta={"type": "content_block_delta", "chunk_index": 0, "delta": {"type": "text_delta", "text": "Let me check"}},chunk_index=2,
             tool_calls=[],
             tool_call_result=None,
             start=False,
             finish_reason=None,
         ),
-        StreamingChunk(
-            content=" the weather",
-            meta={"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": " the weather"}},
-            index=3,
+        StreamingChunk(content=" the weather",
+            meta={"type": "content_block_delta", "chunk_index": 0, "delta": {"type": "text_delta", "text": " the weather"}},chunk_index=3,
             tool_calls=[],
             tool_call_result=None,
             start=False,
             finish_reason=None,
         ),
         # Tool use content
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="",
             meta={
                 "type": "content_block_start",
-                "index": 1,
+                "chunk_index": 1,
                 "content_block": {"type": "tool_use", "id": "toolu_123", "name": "weather", "input": {}},
-            },
-            index=5,
-            tool_calls=[ToolCallDelta(index=1, id="toolu_123", tool_name="weather", arguments=None)],
+            },chunk_index=5,
+            tool_calls=[ToolCallDelta(tool_call_index=1, id="toolu_123", tool_name="weather", arguments=None)],
             tool_call_result=None,
             start=True,
             finish_reason=None,
         ),
-        StreamingChunk(
-            content="",
-            meta={"type": "content_block_delta", "index": 1, "delta": {"type": "input_json_delta", "partial_json": ""}},
-            index=7,
-            tool_calls=[ToolCallDelta(index=1, id=None, tool_name=None, arguments="")],
+        StreamingChunk(content="",
+            meta={"type": "content_block_delta", "chunk_index": 1, "delta": {"type": "input_json_delta", "partial_json": ""}},chunk_index=7,
+            tool_calls=[ToolCallDelta(tool_call_index=1, id=None, tool_name=None, arguments="")],
             tool_call_result=None,
             start=False,
             finish_reason=None,
         ),
         # Final message delta
-        StreamingChunk(
-            content="",
+        StreamingChunk(content="",
             meta={
                 "type": "message_delta",
                 "delta": {"stop_reason": "tool_use", "stop_sequence": None},
                 "usage": {"completion_tokens": 40},
-            },
-            index=8,
+            },chunk_index=8,
             tool_calls=[],
             tool_call_result=None,
             start=False,
@@ -625,8 +611,8 @@ def test_print_streaming_chunk_tool_call():
         meta={"model": "test-model"},
         component_info=ComponentInfo(name="test", type="test"),
         start=True,
-        index=0,
-        tool_calls=[ToolCallDelta(id="call_123", tool_name="test_tool", arguments='{"param": "value"}', index=0)],
+        chunk_index=0,
+        tool_calls=[ToolCallDelta(id="call_123", tool_name="test_tool", arguments='{"param": "value"}', tool_call_index=0)],
     )
     with patch("builtins.print") as mock_print:
         print_streaming_chunk(chunk)
@@ -642,7 +628,7 @@ def test_print_streaming_chunk_tool_call_result():
         content="",
         meta={"model": "test-model"},
         component_info=ComponentInfo(name="test", type="test"),
-        index=0,
+        chunk_index=0,
         tool_call_result=ToolCallResult(
             result="Tool execution completed successfully",
             origin=ToolCall(id="call_123", tool_name="test_tool", arguments={}),

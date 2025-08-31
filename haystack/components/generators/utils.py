@@ -25,7 +25,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
     :param chunk: A chunk of streaming data containing content and optional metadata, such as tool calls and
         tool results.
     """
-    if chunk.start and chunk.index and chunk.index > 0:
+    if chunk.start and chunk.chunk_index and chunk.chunk_index > 0:
         # If this is the start of a new content block but not the first content block, print two new lines
         print("\n\n", flush=True, end="")
 
@@ -40,7 +40,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
                 # If there is more than one tool call in the chunk, we print two new lines to separate them
                 # We know there is more than one tool call if the index of the tool call is greater than the index of
                 # the chunk.
-                if chunk.index and tool_call.index > chunk.index:
+                if chunk.chunk_index and tool_call.tool_call_index > chunk.chunk_index:
                     print("\n\n", flush=True, end="")
 
                 print(f"[TOOL CALL]\nTool: {tool_call.tool_name} \nArguments: ", flush=True, end="")
@@ -86,17 +86,17 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
             for tool_call in chunk.tool_calls:
                 # We use the index of the tool_call to track the tool call across chunks since the ID is not always
                 # provided
-                if tool_call.index not in tool_call_data:
-                    tool_call_data[tool_call.index] = {"id": "", "name": "", "arguments": ""}
+                if tool_call.tool_call_index not in tool_call_data:
+                    tool_call_data[tool_call.tool_call_index] = {"id": "", "name": "", "arguments": ""}
 
                 # Save the ID if present
                 if tool_call.id is not None:
-                    tool_call_data[tool_call.index]["id"] = tool_call.id
+                    tool_call_data[tool_call.tool_call_index]["id"] = tool_call.id
 
                 if tool_call.tool_name is not None:
-                    tool_call_data[tool_call.index]["name"] += tool_call.tool_name
+                    tool_call_data[tool_call.tool_call_index]["name"] += tool_call.tool_name
                 if tool_call.arguments is not None:
-                    tool_call_data[tool_call.index]["arguments"] += tool_call.arguments
+                    tool_call_data[tool_call.tool_call_index]["arguments"] += tool_call.arguments
 
     # Convert accumulated tool call data into ToolCall objects
     sorted_keys = sorted(tool_call_data.keys())
@@ -119,9 +119,16 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     finish_reasons = [chunk.finish_reason for chunk in chunks if chunk.finish_reason]
     finish_reason = finish_reasons[-1] if finish_reasons else None
 
+    # Find the first chunk with a meaningful chunk_index (not None)
+    first_meaningful_chunk = None
+    for chunk in chunks:
+        if chunk.chunk_index is not None:
+            first_meaningful_chunk = chunk
+            break
+    
     meta = {
         "model": chunks[-1].meta.get("model"),
-        "index": 0,
+        "chunk_index": first_meaningful_chunk.chunk_index if first_meaningful_chunk else None,
         "finish_reason": finish_reason,
         "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
         "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available

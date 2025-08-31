@@ -19,13 +19,13 @@ class ToolCallDelta:
     """
     Represents a Tool call prepared by the model, usually contained in an assistant message.
 
-    :param index: The index of the Tool call in the list of Tool calls.
+    :param tool_call_index: The index of the Tool call in the list of Tool calls.
     :param tool_name: The name of the Tool to call.
     :param arguments: Either the full arguments in JSON format or a delta of the arguments.
     :param id: The ID of the Tool call.
     """
 
-    index: int
+    tool_call_index: int
     tool_name: Optional[str] = field(default=None)
     arguments: Optional[str] = field(default=None)
     id: Optional[str] = field(default=None)  # noqa: A003
@@ -34,7 +34,7 @@ class ToolCallDelta:
         """
         Returns a dictionary representation of the ToolCallDelta.
 
-        :returns: A dictionary with keys 'index', 'tool_name', 'arguments', and 'id'.
+        :returns: A dictionary with keys 'tool_call_index', 'tool_name', 'arguments', and 'id'.
         """
         return asdict(self)
 
@@ -46,6 +46,9 @@ class ToolCallDelta:
         :param data: Dictionary containing ToolCallDelta's attributes.
         :returns: A ToolCallDelta instance.
         """
+        # Handle backward compatibility for old 'index' field
+        if 'index' in data and 'tool_call_index' not in data:
+            data['tool_call_index'] = data.pop('index')
         return ToolCallDelta(**data)
 
 
@@ -106,7 +109,7 @@ class StreamingChunk:
     :param meta: A dictionary containing metadata related to the message chunk.
     :param component_info: A `ComponentInfo` object containing information about the component that generated the chunk,
         such as the component name and type.
-    :param index: An optional integer index representing which content block this chunk belongs to.
+    :param chunk_index: An optional integer index representing which content block this chunk belongs to.
     :param tool_calls: An optional list of ToolCallDelta object representing a tool call associated with the message
         chunk.
     :param tool_call_result: An optional ToolCallResult object representing the result of a tool call.
@@ -119,7 +122,7 @@ class StreamingChunk:
     content: str
     meta: dict[str, Any] = field(default_factory=dict, hash=False)
     component_info: Optional[ComponentInfo] = field(default=None)
-    index: Optional[int] = field(default=None)
+    chunk_index: Optional[int] = field(default=None)
     tool_calls: Optional[list[ToolCallDelta]] = field(default=None)
     tool_call_result: Optional[ToolCallResult] = field(default=None)
     start: bool = field(default=False)
@@ -135,8 +138,8 @@ class StreamingChunk:
             )
 
         # NOTE: We don't enforce this for self.content otherwise it would be a breaking change
-        if (self.tool_calls or self.tool_call_result) and self.index is None:
-            raise ValueError("If `tool_call`, or `tool_call_result` is set, `index` must also be set.")
+        if (self.tool_calls or self.tool_call_result) and self.chunk_index is None:
+            raise ValueError("If `tool_call`, or `tool_call_result` is set, `chunk_index` must also be set.")
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -148,7 +151,7 @@ class StreamingChunk:
             "content": self.content,
             "meta": self.meta,
             "component_info": self.component_info.to_dict() if self.component_info else None,
-            "index": self.index,
+            "chunk_index": self.chunk_index,
             "tool_calls": [tc.to_dict() for tc in self.tool_calls] if self.tool_calls else None,
             "tool_call_result": self.tool_call_result.to_dict() if self.tool_call_result else None,
             "start": self.start,
@@ -166,11 +169,15 @@ class StreamingChunk:
         if "content" not in data:
             raise ValueError("Missing required field `content` in StreamingChunk deserialization.")
 
+        # Handle backward compatibility for old 'index' field
+        if 'index' in data and 'chunk_index' not in data:
+            data['chunk_index'] = data.pop('index')
+
         return StreamingChunk(
             content=data["content"],
             meta=data.get("meta", {}),
             component_info=ComponentInfo.from_dict(data["component_info"]) if data.get("component_info") else None,
-            index=data.get("index"),
+            chunk_index=data.get("chunk_index"),
             tool_calls=[ToolCallDelta.from_dict(tc) for tc in data["tool_calls"]] if data.get("tool_calls") else None,
             tool_call_result=ToolCallResult.from_dict(data["tool_call_result"])
             if data.get("tool_call_result")

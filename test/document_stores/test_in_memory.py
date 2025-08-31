@@ -85,7 +85,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         assert store.tokenizer
         assert store.bm25_algorithm == "BM25Plus"
         assert store.bm25_parameters == {"key": "value"}
-        assert store.index == "my_cool_index"
+        assert store.tool_call_index == "my_cool_index"
 
     def test_save_to_disk_and_load_from_disk(self, tmp_dir: str):
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
