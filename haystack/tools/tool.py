@@ -174,6 +174,12 @@ def _check_duplicate_tool_names(tools: Optional[list[Tool]]) -> None:
 
 
 def _serialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """
+    Serializes the outputs_to_state dictionary, converting any callable handlers to their string representation.
+
+    :param outputs_to_state: The outputs_to_state dictionary to serialize.
+    :returns: The serialized outputs_to_state dictionary.
+    """
     serialized_outputs = {}
     for key, config in outputs_to_state.items():
         serialized_config = config.copy()
@@ -184,6 +190,12 @@ def _serialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -> 
 
 
 def _deserialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """
+    Deserializes the outputs_to_state dictionary, converting any string handlers back to callables.
+
+    :param outputs_to_state: The outputs_to_state dictionary to deserialize.
+    :returns: The deserialized outputs_to_state dictionary.
+    """
     deserialized_outputs = {}
     for key, config in outputs_to_state.items():
         deserialized_config = config.copy()
