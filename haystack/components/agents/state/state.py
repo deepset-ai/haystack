@@ -80,23 +80,35 @@ def _validate_schema(schema: dict[str, Any]) -> None:
 
 class State:
     """
-    State is a container for storing shared information (documents, context, intermediate
-    results) during the execution of Agents and their tools.
+    State is a container for storing shared information during the execution of an Agent and its tools.
 
-    Internally it wraps a `_data` dictionary defined by a `StateSchema`. Each schema entry has:
-        "parameter_name": {
-            "type": SomeType,                        # expected type
-            "handler": Optional[Callable[[Any, Any], Any]]  # merge/update function
-        }
+    For instance, State can be used to store documents, context, and intermediate results.
 
-    This makes it possible for different components in a pipeline or agent to
-    read from and write to the same context.
+    Internally it wraps a `_data` dictionary defined by a `schema`. Each schema entry has:
+    ```json
+      "parameter_name": {
+        "type": SomeType,  # expected type
+        "handler": Optional[Callable[[Any, Any], Any]]  # merge/update function
+      }
+      ```
 
-    Example (simplified):
-        >>> state = State()
-        >>> state["query"] = "What is AI?"
-        >>> state["answer"] = "Artificial Intelligence is..."
+    Handlers control how values are merged when using the `set()` method:
+    - For list types: defaults to `merge_lists` (concatenates lists)
+    - For other types: defaults to `replace_values` (overwrites existing value)
 
+    A `messages` field with type `list[ChatMessage]` is automatically added to the schema.
+
+    This makes it possible for the Agent to read from and write to the same context.
+
+    ### Usage example
+    ```python
+    from haystack.components.agents.state import State
+
+    my_state = State(
+        schema={"gh_repo_name": {"type": str}, "user_name": {"type": str}},
+        data={"gh_repo_name": "my_repo", "user_name": "my_user_name"}
+    )
+    ```
     """
 
     def __init__(self, schema: dict[str, Any], data: Optional[dict[str, Any]] = None):
