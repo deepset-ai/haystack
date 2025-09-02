@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import base64
+import json
 import logging
 import os
 from datetime import datetime
@@ -22,6 +22,7 @@ from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
 from openai.types.chat.chat_completion_message_function_tool_call import Function
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
+from pydantic import BaseModel
 
 from haystack import component
 from haystack.components.generators.chat.openai import (
@@ -616,6 +617,29 @@ class TestOpenAIChatGenerator:
         assert "gpt-4o" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format(self):
+        class CalendarEvent(BaseModel):
+            name: str
+            date: str
+            location: str
+
+        chat_messages = [ChatMessage.from_user("Describe the 20th Nobel Peace Prize.")]
+        component = OpenAIChatGenerator(generation_kwargs={"response_format": CalendarEvent})
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "20th Nobel Peace Prize" in msg["name"]
+        assert isinstance(msg["date"], str)
+        assert isinstance(msg["location"], str)
+
+        assert message.meta["finish_reason"] == "stop"
 
     def test_run_with_wrong_model(self):
         mock_client = MagicMock()

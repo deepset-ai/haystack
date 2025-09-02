@@ -13,6 +13,8 @@ from openai.types.chat import (
     ChatCompletionChunk,
     ChatCompletionMessage,
     ChatCompletionMessageCustomToolCall,
+    ParsedChatCompletion,
+    ParsedChatCompletionMessage,
 )
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
@@ -138,7 +140,8 @@ class OpenAIChatGenerator:
                 Bigger values mean the model will be less likely to repeat the same token in the text.
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
-            - `response_format`: A pydantic model to parse the response into.
+            - `response_format`: A json schema or pydantic model to parse the response into.
+                For more information, see the [OpenAI documentation](https://platform.openai.com/docs/guides/structured-outputs).
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
@@ -167,7 +170,7 @@ class OpenAIChatGenerator:
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
-        self.response_format = generation_kwargs.get("response_format", None)
+        self._response_format = generation_kwargs.get("response_format", None) if generation_kwargs else None
         # Check for duplicate tool names
         _check_duplicate_tool_names(list(self.tools or []))
 
@@ -275,7 +278,7 @@ class OpenAIChatGenerator:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
-        chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = None
+        chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion, ParsedChatCompletion]
 
         api_args = self._prepare_api_call(
             messages=messages,
@@ -284,10 +287,11 @@ class OpenAIChatGenerator:
             tools=tools,
             tools_strict=tools_strict,
         )
-        if self.response_format:
+        if self._response_format:
             chat_completion = self.client.chat.completions.parse(**api_args)
         else:
             chat_completion = self.client.chat.completions.create(**api_args)
+        print(chat_completion)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
@@ -351,6 +355,7 @@ class OpenAIChatGenerator:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
+        chat_completion: Union[AsyncStream[ChatCompletionChunk], ChatCompletion, ParsedChatCompletion]
 
         if len(messages) == 0:
             return {"replies": []}
@@ -363,9 +368,10 @@ class OpenAIChatGenerator:
             tools_strict=tools_strict,
         )
 
-        chat_completion: Union[
-            AsyncStream[ChatCompletionChunk], ChatCompletion
-        ] = await self.async_client.chat.completions.create(**api_args)
+        if self._response_format:
+            chat_completion = await self.async_client.chat.completions.parse(**api_args)
+        else:
+            chat_completion = await self.async_client.chat.completions.create(**api_args)
 
         if streaming_callback is not None:
             completions = await self._handle_async_stream_response(
@@ -422,17 +428,18 @@ class OpenAIChatGenerator:
         is_streaming = streaming_callback is not None
         num_responses = generation_kwargs.pop("n", 1)
 
-        if self.response_format:
+        if self._response_format:
             if is_streaming:
-                raise ValueError("Cannot stream responses with response_format, please choose one.")
+                raise ValueError("OpenAI cannot stream responses with `response_format`, please choose one.")
             return {
                 "model": self.model,
                 "messages": openai_formatted_messages,
                 "n": num_responses,
-                "response_format": self.response_format,
+                "response_format": self._response_format,
                 **openai_tools,
                 **generation_kwargs,
             }
+
         if is_streaming and num_responses > 1:
             raise ValueError("Cannot stream multiple responses, please set n=1.")
 
@@ -488,7 +495,9 @@ def _check_finish_reason(meta: dict[str, Any]) -> None:
         )
 
 
-def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice: Choice) -> ChatMessage:
+def _convert_chat_completion_to_chat_message(
+    completion: Union[ChatCompletion, ParsedChatCompletion], choice: Choice
+) -> ChatMessage:
     """
     Converts the non-streaming response from the OpenAI API to a ChatMessage.
 
@@ -496,7 +505,7 @@ def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice:
     :param choice: The choice returned by the OpenAI API.
     :return: The ChatMessage.
     """
-    message: ChatCompletionMessage = choice.message
+    message: Union[ChatCompletionMessage, ParsedChatCompletionMessage] = choice.message
     text = message.content
     tool_calls = []
     if message.tool_calls:
