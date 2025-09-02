@@ -360,8 +360,8 @@ class Agent:
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
             _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
 
+    @staticmethod
     def _check_chat_generator_breakpoint(
-        self,
         execution_context: _ExecutionContext,
         break_point: Optional[AgentBreakpoint],
         parent_snapshot: Optional[PipelineSnapshot],
@@ -398,8 +398,8 @@ class Agent:
             )
             _trigger_chat_generator_breakpoint(agent_snapshot=agent_snapshot, parent_snapshot=parent_snapshot)
 
+    @staticmethod
     def _check_tool_invoker_breakpoint(
-        self,
         execution_context: _ExecutionContext,
         break_point: Optional[AgentBreakpoint],
         parent_snapshot: Optional[PipelineSnapshot],
@@ -490,7 +490,7 @@ class Agent:
 
             while exe_context.counter < self.max_agent_steps:
                 # Handle breakpoint and ChatGenerator call
-                self._check_chat_generator_breakpoint(
+                Agent._check_chat_generator_breakpoint(
                     execution_context=exe_context, break_point=break_point, parent_snapshot=parent_snapshot
                 )
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
@@ -515,7 +515,7 @@ class Agent:
                     break
 
                 # Handle breakpoint and ToolInvoker call
-                self._check_tool_invoker_breakpoint(
+                Agent._check_tool_invoker_breakpoint(
                     execution_context=exe_context, break_point=break_point, parent_snapshot=parent_snapshot
                 )
                 # We only send the messages from the LLM to the tool invoker
