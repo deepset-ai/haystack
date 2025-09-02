@@ -1,7 +1,7 @@
 ---
 fixes:
   - |
-    Added a fix to the pipeline's component scheduling alogrithm to reduce edge cases where the execution order of
+    Added a fix to the pipeline's component scheduling algorithm to reduce edge cases where the execution order of
     components that are simultaneously waiting for inputs has an impact on a pipeline's output. We look at topolgical
     order first to see which of the waiting components should run first and fall back to lexicographical order when both
     components are on the same topology-level. In cyclic pipelines, if the waiting components are in the same cycle,
