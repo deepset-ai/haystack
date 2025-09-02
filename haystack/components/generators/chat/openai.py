@@ -167,6 +167,7 @@ class OpenAIChatGenerator:
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
+        self.response_format = generation_kwargs.get("response_format", None)
         # Check for duplicate tool names
         _check_duplicate_tool_names(list(self.tools or []))
 
@@ -283,10 +284,7 @@ class OpenAIChatGenerator:
             tools=tools,
             tools_strict=tools_strict,
         )
-        response_format = self.generation_kwargs.get("response_format", None)
-        if response_format:
-            api_args["response_format"] = response_format
-            api_args.pop("stream")
+        if self.response_format:
             chat_completion = self.client.chat.completions.parse(**api_args)
         else:
             chat_completion = self.client.chat.completions.create(**api_args)
@@ -423,6 +421,18 @@ class OpenAIChatGenerator:
 
         is_streaming = streaming_callback is not None
         num_responses = generation_kwargs.pop("n", 1)
+
+        if self.response_format:
+            if is_streaming:
+                raise ValueError("Cannot stream responses with response_format, please choose one.")
+            return {
+                "model": self.model,
+                "messages": openai_formatted_messages,
+                "n": num_responses,
+                "response_format": self.response_format,
+                **openai_tools,
+                **generation_kwargs,
+            }
         if is_streaming and num_responses > 1:
             raise ValueError("Cannot stream multiple responses, please set n=1.")
 
