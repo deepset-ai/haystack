@@ -71,7 +71,12 @@ class AsyncPipeline(PipelineBase):
                 # Important: contextvars (e.g. active tracing Span) don’t propagate to running loop's ThreadPoolExecutor
                 # We use ctx.run(...) to preserve context like the active tracing span
                 ctx = contextvars.copy_context()
-                outputs = await loop.run_in_executor(None, lambda: ctx.run(lambda: instance.run(**component_inputs)))
+                try:
+                    outputs = await loop.run_in_executor(
+                        None, lambda: ctx.run(lambda: instance.run(**component_inputs))
+                    )
+                except Exception as error:
+                    raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
 
             component_visits[component_name] += 1
 
@@ -256,13 +261,19 @@ class AsyncPipeline(PipelineBase):
                 )
                 component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
-                component_pipeline_outputs = await self._run_component_async(
-                    component_name=component_name,
-                    component=comp_dict,
-                    component_inputs=component_inputs,
-                    component_visits=component_visits,
-                    parent_span=parent_span,
-                )
+
+                try:
+                    component_pipeline_outputs = await self._run_component_async(
+                        component_name=component_name,
+                        component=comp_dict,
+                        component_inputs=component_inputs,
+                        component_visits=component_visits,
+                        parent_span=parent_span,
+                    )
+                except PipelineRuntimeError as error:
+                    # Attach partial pipeline outputs to the error before re-raising
+                    error.pipeline_outputs = pipeline_outputs
+                    raise error
 
                 # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                 pruned = self._write_component_outputs(
@@ -300,14 +311,19 @@ class AsyncPipeline(PipelineBase):
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
 
                 async def _runner():
-                    async with ready_sem:
-                        component_pipeline_outputs = await self._run_component_async(
-                            component_name=component_name,
-                            component=comp_dict,
-                            component_inputs=component_inputs,
-                            component_visits=component_visits,
-                            parent_span=parent_span,
-                        )
+                    try:
+                        async with ready_sem:
+                            component_pipeline_outputs = await self._run_component_async(
+                                component_name=component_name,
+                                component=comp_dict,
+                                component_inputs=component_inputs,
+                                component_visits=component_visits,
+                                parent_span=parent_span,
+                            )
+                    except PipelineRuntimeError as error:
+                        # Attach partial pipeline outputs to the error before re-raising
+                        error.pipeline_outputs = pipeline_outputs
+                        raise error
 
                     # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                     pruned = self._write_component_outputs(
