@@ -173,7 +173,6 @@ class OpenAIChatGenerator:
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
-        self._response_format = generation_kwargs.get("response_format", None) if generation_kwargs else None
         # Check for duplicate tool names
         _check_duplicate_tool_names(list(self.tools or []))
 
@@ -406,6 +405,7 @@ class OpenAIChatGenerator:
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+        self._response_format = generation_kwargs.get("response_format") if generation_kwargs else None
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
