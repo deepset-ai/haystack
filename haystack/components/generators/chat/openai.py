@@ -140,8 +140,11 @@ class OpenAIChatGenerator:
                 Bigger values mean the model will be less likely to repeat the same token in the text.
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
-            - `response_format`: A json schema or pydantic model to parse the response into.
-                For more information, see the [OpenAI documentation](https://platform.openai.com/docs/guides/structured-outputs).
+            - `response_format`: A JSON schema or Pydantic model that enforces the structure of the model's response.
+                If provided, the output will always be validated against this
+                format (unless the model returns a tool call).
+                For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+                Note: This parameter is only supported for latest models starting with GPT-4o.
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
@@ -291,7 +294,6 @@ class OpenAIChatGenerator:
             chat_completion = self.client.chat.completions.parse(**api_args)
         else:
             chat_completion = self.client.chat.completions.create(**api_args)
-        print(chat_completion)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
