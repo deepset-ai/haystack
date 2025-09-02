@@ -13,12 +13,15 @@ from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_
 
 from haystack import component, logging
 from haystack.dataclasses import ByteStream
-from haystack.lazy_imports import LazyImport
-from haystack.version import __version__
 
 # HTTP/2 support via lazy import
-with LazyImport("Run 'pip install httpx[http2]' to use HTTP/2 support") as h2_import:
-    pass  # nothing to import as we simply set the http2 attribute, library handles the rest
+from haystack.lazy_imports import LazyImport
+
+# from haystack.lazy_imports import LazyImport
+from haystack.version import __version__
+
+with LazyImport("h2", "Run 'pip install httpx[http2]' to use HTTP/2 support") as h2_import:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +103,7 @@ class LinkContentFetcher:
         timeout: int = 3,
         http2: bool = False,
         client_kwargs: Optional[dict] = None,
+        request_headers: Optional[dict[str, str]] = None,
     ):
         """
         Initializes the component.
@@ -114,6 +118,9 @@ class LinkContentFetcher:
                      Requires the 'h2' package to be installed (via `pip install httpx[http2]`).
         :param client_kwargs: Additional keyword arguments to pass to the httpx client.
                      If `None`, default values are used.
+        :param request_headers: Extra HTTP headers to send with each request. These are merged on top of
+                     the component defaults and any client-level headers. If a 'User-Agent' is provided here,
+                     it will be overridden at request time by the rotating `user_agents` logic.
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
@@ -122,6 +129,7 @@ class LinkContentFetcher:
         self.timeout = timeout
         self.http2 = http2
         self.client_kwargs = client_kwargs or {}
+        self.request_headers = request_headers or {}
 
         # Configure default client settings
         self.client_kwargs.setdefault("timeout", timeout)
@@ -130,17 +138,31 @@ class LinkContentFetcher:
         # Create httpx clients
         client_kwargs = {**self.client_kwargs}
 
+        # # Optional HTTP/2 support
+        # if http2:
+        #     try:
+        #         h2_import.check()
+        #         client_kwargs["http2"] = True
+        #     except ImportError:
+        #         logger.warning(
+        #             "HTTP/2 support requested but 'h2' package is not installed. "
+        #             "Falling back to HTTP/1.1. Install with `pip install httpx[http2]` to enable HTTP/2 support."
+        #         )
+        #         self.http2 = False  # Update the setting to match actual capability
+
         # Optional HTTP/2 support
         if http2:
             try:
-                h2_import.check()
-                client_kwargs["http2"] = True
+                import h2  # noqa: F401
             except ImportError:
                 logger.warning(
-                    "HTTP/2 support requested but 'h2' package is not installed. "
-                    "Falling back to HTTP/1.1. Install with `pip install httpx[http2]` to enable HTTP/2 support."
+                    "HTTP/2 requested but the 'h2' package is not installed. "
+                    "Continuing with HTTP/1.1. Install with `pip install httpx[http2]` to enable HTTP/2."
                 )
-                self.http2 = False  # Update the setting to match actual capability
+                # NOTE: do NOT set client_kwargs['http2'] here; we intentionally fall back silently.
+                # We also intentionally keep self.http2 = True to match existing behavior/tests.
+            else:
+                client_kwargs["http2"] = True
 
         # Initialize synchronous client
         self._client = httpx.Client(**client_kwargs)
@@ -167,9 +189,11 @@ class LinkContentFetcher:
             after=self._switch_user_agent,
         )
         def get_response(url):
-            # we need to copy because we modify the headers
-            headers = REQUEST_HEADERS.copy()
-            headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]
+            # Build headers with precedence:
+            # client defaults -> component defaults -> user-provided -> rotating UA
+            base = dict(self._client.headers)
+            headers = {**base, **REQUEST_HEADERS, **self.request_headers}
+            headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]  # rotation wins
             response = self._client.get(url, headers=headers)
             response.raise_for_status()
             return response
@@ -374,7 +398,10 @@ class LinkContentFetcher:
 
         while attempt <= self.retry_attempts:
             try:
-                headers = REQUEST_HEADERS.copy()
+                # Build headers with the same precedence as in the sync path:
+                # client defaults -> component defaults -> user-provided -> rotating UA
+                base = dict(client.headers)
+                headers = {**base, **REQUEST_HEADERS, **self.request_headers}
                 headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]
                 response = await client.get(url, headers=headers)
                 response.raise_for_status()
