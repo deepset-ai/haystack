@@ -138,6 +138,7 @@ class OpenAIChatGenerator:
                 Bigger values mean the model will be less likely to repeat the same token in the text.
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
+            - `response_format`: A pydantic model to parse the response into.
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
@@ -153,6 +154,7 @@ class OpenAIChatGenerator:
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+
         """
         self.api_key = api_key
         self.model = model
@@ -272,6 +274,7 @@ class OpenAIChatGenerator:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
+        chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = None
 
         api_args = self._prepare_api_call(
             messages=messages,
@@ -280,9 +283,13 @@ class OpenAIChatGenerator:
             tools=tools,
             tools_strict=tools_strict,
         )
-        chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
-            **api_args
-        )
+        response_format = self.generation_kwargs.get("response_format", None)
+        if response_format:
+            api_args["response_format"] = response_format
+            api_args.pop("stream")
+            chat_completion = self.client.chat.completions.parse(**api_args)
+        else:
+            chat_completion = self.client.chat.completions.create(**api_args)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
