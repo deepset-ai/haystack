@@ -390,9 +390,6 @@ class Pipeline(PipelineBase):
                         parent_span=span,
                     )
                 except PipelineRuntimeError as error:
-                    # Attach partial pipeline outputs to the error before re-raising
-                    error.pipeline_outputs = pipeline_outputs
-
                     # Create a snapshot of the last good state of the pipeline before the error occurred.
                     pipeline_snapshot_inputs_serialised = deepcopy(inputs)
                     pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
@@ -411,6 +408,8 @@ class Pipeline(PipelineBase):
                         include_outputs_from=include_outputs_from,
                         pipeline_outputs=pipeline_outputs,
                     )
+                    # Attach the last good state snapshot to the error before re-raising and saving to disk
+                    error.pipeline_snapshot = last_good_state_snapshot
                     try:
                         _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot)
                         logger.info(
