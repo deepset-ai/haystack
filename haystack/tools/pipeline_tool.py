@@ -99,9 +99,9 @@ class PipelineTool(ComponentTool):
         pipeline: Union[Pipeline, AsyncPipeline],
         *,
         name: str,
+        description: str,
         input_mapping: Optional[dict[str, list[str]]] = None,
         output_mapping: Optional[dict[str, str]] = None,
-        description: Optional[str] = None,
         parameters: Optional[dict[str, Any]] = None,
         outputs_to_string: Optional[dict[str, Union[str, Callable[[Any], str]]]] = None,
         inputs_from_state: Optional[dict[str, str]] = None,
@@ -112,6 +112,7 @@ class PipelineTool(ComponentTool):
 
         :param pipeline: The Haystack pipeline to wrap as a tool.
         :param name: Name of the tool.
+        :param description: Optional description (defaults to component's docstring).
         :param input_mapping: A dictionary mapping component input names to pipeline input socket paths.
             If not provided, a default input mapping will be created based on all pipeline inputs.
             Example:
@@ -129,7 +130,6 @@ class PipelineTool(ComponentTool):
                 "generator.replies": "replies",
             }
             ```
-        :param description: Optional description (defaults to component's docstring).
         :param parameters:
             A JSON schema defining the parameters expected by the Tool.
             Will fall back to the parameters defined in the component's run method signature if not provided.
@@ -200,7 +200,7 @@ class PipelineTool(ComponentTool):
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
             "is_pipeline_async": isinstance(self._pipeline, AsyncPipeline),
-            "outputs_to_string": _serialize_outputs_to_state(self.outputs_to_state) if self.outputs_to_state else None,
+            "outputs_to_state": _serialize_outputs_to_state(self.outputs_to_state) if self.outputs_to_state else None,
         }
 
         if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:

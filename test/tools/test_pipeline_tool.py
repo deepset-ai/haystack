@@ -96,7 +96,7 @@ class TestPipelineTool:
         with pytest.raises(
             ValueError, match="The 'pipeline' parameter must be an instance of Pipeline or AsyncPipeline."
         ):
-            PipelineTool(pipeline="invalid_pipeline", name="test_tool")
+            PipelineTool(pipeline="invalid_pipeline", name="test_tool", description="A test tool")
 
     def test_to_dict(self, sample_pipeline, sample_pipeline_dict):
         tool = PipelineTool(
@@ -194,6 +194,7 @@ class TestPipelineTool:
             input_mapping={"query": ["bm25_retriever.query", "ranker.query"]},
             output_mapping={"ranker.documents": "documents"},
             name="test_tool",
+            description="A test tool",
         )
 
         assert tool.parameters == {
@@ -213,7 +214,7 @@ class TestPipelineTool:
         }
 
     def test_auto_generated_tool_params_no_mappings(self, sample_pipeline):
-        tool = PipelineTool(pipeline=sample_pipeline, name="test_tool")
+        tool = PipelineTool(pipeline=sample_pipeline, name="test_tool", description="A test tool")
         assert tool.parameters == {
             "description": "A component that combines: 'bm25_retriever': Run the InMemoryBM25Retriever on the given "
             "input data., 'ranker': Returns a list of documents ranked by their similarity to the "

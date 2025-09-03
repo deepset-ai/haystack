@@ -222,7 +222,7 @@ class ComponentTool(Tool):
             "description": self.description,
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
-            "outputs_to_string": _serialize_outputs_to_state(self.outputs_to_state) if self.outputs_to_state else None,
+            "outputs_to_state": _serialize_outputs_to_state(self.outputs_to_state) if self.outputs_to_state else None,
         }
 
         if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
