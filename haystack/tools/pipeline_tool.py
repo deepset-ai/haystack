@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional, Union
 from haystack import AsyncPipeline, Pipeline, SuperComponent, logging
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools.component_tool import ComponentTool
-from haystack.tools.tool import Tool, _deserialize_outputs_to_state, _serialize_outputs_to_state
+from haystack.tools.tool import _deserialize_outputs_to_state, _serialize_outputs_to_state
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
