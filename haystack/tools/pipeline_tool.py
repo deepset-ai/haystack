@@ -200,10 +200,8 @@ class PipelineTool(ComponentTool):
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
             "is_pipeline_async": isinstance(self._pipeline, AsyncPipeline),
+            "outputs_to_string": _serialize_outputs_to_state(self.outputs_to_state) if self.outputs_to_state else None,
         }
-
-        if self.outputs_to_state is not None:
-            serialized["outputs_to_state"] = _serialize_outputs_to_state(self.outputs_to_state)
 
         if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
             # This is soft-copied as to not modify the attributes in place
