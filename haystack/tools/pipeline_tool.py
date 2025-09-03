@@ -112,7 +112,7 @@ class PipelineTool(ComponentTool):
 
         :param pipeline: The Haystack pipeline to wrap as a tool.
         :param name: Name of the tool.
-        :param description: Optional description (defaults to component's docstring).
+        :param description: Description of the tool.
         :param input_mapping: A dictionary mapping component input names to pipeline input socket paths.
             If not provided, a default input mapping will be created based on all pipeline inputs.
             Example:
