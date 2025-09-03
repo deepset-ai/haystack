@@ -46,8 +46,20 @@ class _SuperComponent:
         :param pipeline: The pipeline instance or async pipeline instance to be wrapped
         :param input_mapping: A dictionary mapping component input names to pipeline input socket paths.
             If not provided, a default input mapping will be created based on all pipeline inputs.
+            Example:
+            ```python
+            input_mapping={
+                "query": ["retriever.query", "prompt_builder.query"],
+            }
+            ```
         :param output_mapping: A dictionary mapping pipeline output socket paths to component output names.
             If not provided, a default output mapping will be created based on all pipeline outputs.
+            Example:
+            ```python
+            output_mapping={
+                "retriever.documents": "documents",
+                "generator.replies": "replies",
+            }
         :raises InvalidMappingError: Raised if any mapping is invalid or type conflicts occur
         :raises ValueError: Raised if no pipeline is provided
         """
@@ -177,10 +189,14 @@ class _SuperComponent:
             for path in pipeline_input_paths:
                 comp_name, socket_name = self._split_component_path(path)
                 if comp_name not in pipeline_inputs:
-                    raise InvalidMappingValueError(f"Component '{comp_name}' not found in pipeline inputs.")
+                    raise InvalidMappingValueError(
+                        f"Component '{comp_name}' not found in pipeline inputs.\n"
+                        f"Available components: {list(pipeline_inputs.keys())}"
+                    )
                 if socket_name not in pipeline_inputs[comp_name]:
                     raise InvalidMappingValueError(
-                        f"Input socket '{socket_name}' not found in component '{comp_name}'."
+                        f"Input socket '{socket_name}' not found in component '{comp_name}'.\n"
+                        f"Available inputs for '{comp_name}': {list(pipeline_inputs[comp_name].keys())}"
                     )
 
     def _resolve_input_types_from_mapping(
