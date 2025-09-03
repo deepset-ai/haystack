@@ -4,6 +4,8 @@
 
 from typing import Any, Optional
 
+from haystack.dataclasses.breakpoints import PipelineSnapshot
+
 
 class PipelineError(Exception):
     pass
@@ -15,11 +17,11 @@ class PipelineRuntimeError(Exception):
         component_name: Optional[str],
         component_type: Optional[type],
         message: str,
-        pipeline_outputs: Optional[Any] = None,
+        pipeline_snapshot: Optional[PipelineSnapshot] = None,
     ) -> None:
         self.component_name = component_name
         self.component_type = component_type
-        self.pipeline_outputs = pipeline_outputs
+        self.pipeline_snapshot = pipeline_snapshot
         super().__init__(message)
 
     @classmethod
