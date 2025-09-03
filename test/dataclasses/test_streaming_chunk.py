@@ -57,7 +57,7 @@ def test_create_chunk_with_content_and_tool_call():
         StreamingChunk(
             content="Test content",
             meta={"key": "value"},
-            tool_calls=[ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0)],
+            tool_calls=[ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', tool_call_index=0)],
         )
 
 
@@ -91,11 +91,11 @@ def test_component_info_from_component_with_name_from_pipeline():
 
 
 def test_tool_call_delta():
-    tool_call = ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0)
+    tool_call = ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', tool_call_index=0)
     assert tool_call.id == "123"
     assert tool_call.tool_name == "test_tool"
     assert tool_call.arguments == '{"arg1": "value1"}'
-    assert tool_call.index == 0
+    assert tool_call.tool_call_index == 0
 
 
 def test_create_chunk_with_finish_reason():
@@ -148,7 +148,7 @@ def test_to_dict_tool_call_result():
     chunk = StreamingChunk(
         content="",
         meta={"key": "value"},
-        index=0,
+        chunk_index=0,
         component_info=component_info,
         tool_call_result=tool_call_result,
         finish_reason="tool_call_results",
@@ -158,7 +158,7 @@ def test_to_dict_tool_call_result():
 
     assert d["content"] == ""
     assert d["meta"] == {"key": "value"}
-    assert d["index"] == 0
+    assert d["chunk_index"] == 0
     assert d["component_info"]["type"] == "test_streaming_chunk.ExampleComponent"
     assert d["tool_call_result"]["result"] == "output"
     assert d["tool_call_result"]["error"] is False
@@ -172,14 +172,14 @@ def test_to_dict_tool_calls():
     component = ExampleComponent()
     component_info = ComponentInfo.from_component(component)
     tool_calls = [
-        ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0),
-        ToolCallDelta(id="456", tool_name="another_tool", arguments='{"arg2": "value2"}', index=1),
+        ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', tool_call_index=0),
+        ToolCallDelta(id="456", tool_name="another_tool", arguments='{"arg2": "value2"}', tool_call_index=1),
     ]
 
     chunk = StreamingChunk(
         content="",
         meta={"key": "value"},
-        index=0,
+        chunk_index=0,
         component_info=component_info,
         tool_calls=tool_calls,
         finish_reason="tool_calls",
@@ -189,13 +189,13 @@ def test_to_dict_tool_calls():
 
     assert d["content"] == ""
     assert d["meta"] == {"key": "value"}
-    assert d["index"] == 0
+    assert d["chunk_index"] == 0
     assert d["component_info"]["type"] == "test_streaming_chunk.ExampleComponent"
     assert len(d["tool_calls"]) == 2
     assert d["tool_calls"][0]["id"] == "123"
-    assert d["tool_calls"][0]["index"] == 0
+    assert d["tool_calls"][0]["tool_call_index"] == 0
     assert d["tool_calls"][1]["id"] == "456"
-    assert d["tool_calls"][1]["index"] == 1
+    assert d["tool_calls"][1]["tool_call_index"] == 1
     assert d["finish_reason"] == "tool_calls"
 
 
@@ -211,7 +211,7 @@ def test_from_dict_tool_call_result():
     data = {
         "content": "",
         "meta": {"key": "value"},
-        "index": 0,
+        "chunk_index": 0,
         "component_info": component_info,
         "tool_call_result": tool_call_result,
         "finish_reason": "tool_call_results",
@@ -221,7 +221,7 @@ def test_from_dict_tool_call_result():
 
     assert chunk.content == ""
     assert chunk.meta == {"key": "value"}
-    assert chunk.index == 0
+    assert chunk.chunk_index == 0
     assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
     assert chunk.component_info.name == "test_component"
     assert chunk.tool_call_result.result == "output"
@@ -232,12 +232,12 @@ def test_from_dict_tool_call_result():
 def test_from_dict_tool_calls():
     """Test the from_dict method for StreamingChunk with tool_calls."""
     component_info = {"type": "test_streaming_chunk.ExampleComponent", "name": "test_component"}
-    tool_calls = [{"id": "123", "tool_name": "test_tool", "arguments": '{"arg1": "value1"}', "index": 0}]
+    tool_calls = [{"id": "123", "tool_name": "test_tool", "arguments": '{"arg1": "value1"}', "tool_call_index": 0}]
 
     data = {
         "content": "",
         "meta": {"key": "value"},
-        "index": 0,
+        "chunk_index": 0,
         "component_info": component_info,
         "tool_calls": tool_calls,
         "finish_reason": "tool_calls",
@@ -247,9 +247,9 @@ def test_from_dict_tool_calls():
 
     assert chunk.content == ""
     assert chunk.meta == {"key": "value"}
-    assert chunk.index == 0
+    assert chunk.chunk_index == 0
     assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
     assert chunk.component_info.name == "test_component"
     assert chunk.tool_calls[0].tool_name == "test_tool"
-    assert chunk.tool_calls[0].index == 0
+    assert chunk.tool_calls[0].tool_call_index == 0
     assert chunk.finish_reason == "tool_calls"

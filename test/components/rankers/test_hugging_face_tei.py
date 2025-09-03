@@ -115,9 +115,9 @@ class TestHuggingFaceTEIRanker:
         # Setup mock response
         mock_response = MagicMock(spec=requests.Response)
         mock_response.json.return_value = [
-            {"index": 2, "score": 0.95},
-            {"index": 1, "score": 0.85},
-            {"index": 0, "score": 0.75},
+            {"chunk_index": 2, "score": 0.95},
+            {"chunk_index": 1, "score": 0.85},
+            {"chunk_index": 0, "score": 0.75},
         ]
         mock_request.return_value = mock_response
 
@@ -166,7 +166,7 @@ class TestHuggingFaceTEIRanker:
 
         # Setup mock response
         mock_response = MagicMock(spec=requests.Response)
-        mock_response.json.return_value = [{"index": 0, "score": 0.95}]
+        mock_response.json.return_value = [{"chunk_index": 0, "score": 0.95}]
         mock_request.return_value = mock_response
 
         # Create ranker and test documents
@@ -204,11 +204,11 @@ class TestHuggingFaceTEIRanker:
         # Setup mock response with 5 documents
         mock_response = MagicMock(spec=requests.Response)
         mock_response.json.return_value = [
-            {"index": 4, "score": 0.95},
-            {"index": 3, "score": 0.90},
-            {"index": 2, "score": 0.85},
-            {"index": 1, "score": 0.80},
-            {"index": 0, "score": 0.75},
+            {"chunk_index": 4, "score": 0.95},
+            {"chunk_index": 3, "score": 0.90},
+            {"chunk_index": 2, "score": 0.85},
+            {"chunk_index": 1, "score": 0.80},
+            {"chunk_index": 0, "score": 0.75},
         ]
         mock_request.return_value = mock_response
 
@@ -273,9 +273,9 @@ class TestHuggingFaceTEIRanker:
         # Setup mock response
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.json.return_value = [
-            {"index": 2, "score": 0.95},
-            {"index": 1, "score": 0.85},
-            {"index": 0, "score": 0.75},
+            {"chunk_index": 2, "score": 0.95},
+            {"chunk_index": 1, "score": 0.85},
+            {"chunk_index": 0, "score": 0.75},
         ]
         mock_request.return_value = mock_response
 
