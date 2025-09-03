@@ -239,7 +239,7 @@ class ComponentTool(Tool):
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Tool":
+    def from_dict(cls, data: dict[str, Any]) -> "ComponentTool":
         """
         Deserializes the ComponentTool from a dictionary.
         """

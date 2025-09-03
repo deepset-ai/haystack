@@ -163,10 +163,10 @@ class PipelineTool(ComponentTool):
             ```
         :raises ValueError: If the provided pipeline is not a valid Haystack Pipeline instance.
         """
-        if not isinstance(pipeline, Pipeline):
+        if not isinstance(pipeline, (Pipeline, AsyncPipeline)):
             raise ValueError(
-                f"Object {pipeline!r} is not a Haystack pipeline. "
-                f"Use PipelineTool only with Haystack component instances."
+                "The 'pipeline' parameter must be an instance of Pipeline or AsyncPipeline."
+                f" Got {type(pipeline)} instead."
             )
 
         super().__init__(
@@ -216,7 +216,7 @@ class PipelineTool(ComponentTool):
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Tool":
+    def from_dict(cls, data: dict[str, Any]) -> "PipelineTool":
         """
         Deserializes the PipelineTool from a dictionary.
 
@@ -240,4 +240,7 @@ class PipelineTool(ComponentTool):
                 inner_data["outputs_to_string"]["handler"]
             )
 
-        return cls(**{**inner_data, "pipeline": pipeline})
+        merged_data = {**inner_data, "pipeline": pipeline}
+        # Remove is_pipeline_async as it's not a parameter of the constructor
+        merged_data.pop("is_pipeline_async", None)
+        return cls(**merged_data)
