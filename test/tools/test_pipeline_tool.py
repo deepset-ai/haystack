@@ -67,7 +67,7 @@ def sample_pipeline_dict():
                 "type": "haystack.components.rankers.sentence_transformers_similarity."
                 "SentenceTransformersSimilarityRanker",
                 "init_parameters": {
-                    "device": {"type": "single", "device": "mps"},
+                    "device": {"type": "single", "device": ANY},
                     "model": "fake-model",
                     "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
                     "top_k": 10,
