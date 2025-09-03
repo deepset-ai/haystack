@@ -128,6 +128,7 @@ class PipelineTool(ComponentTool):
                 "retriever.documents": "documents",
                 "generator.replies": "replies",
             }
+            ```
         :param description: Optional description (defaults to component's docstring).
         :param parameters:
             A JSON schema defining the parameters expected by the Tool.
@@ -198,8 +199,6 @@ class PipelineTool(ComponentTool):
             "description": self.description,
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
-            # This is soft-copied as to not modify the attributes in place
-            "outputs_to_state": self.outputs_to_state.copy() if self.outputs_to_state else None,
             "is_pipeline_async": isinstance(self._pipeline, AsyncPipeline),
         }
 

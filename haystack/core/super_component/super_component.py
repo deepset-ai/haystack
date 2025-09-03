@@ -60,6 +60,7 @@ class _SuperComponent:
                 "retriever.documents": "documents",
                 "generator.replies": "replies",
             }
+            ```
         :raises InvalidMappingError: Raised if any mapping is invalid or type conflicts occur
         :raises ValueError: Raised if no pipeline is provided
         """

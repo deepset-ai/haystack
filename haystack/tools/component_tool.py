@@ -222,8 +222,6 @@ class ComponentTool(Tool):
             "description": self.description,
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
-            # This is soft-copied as to not modify the attributes in place
-            "outputs_to_state": self.outputs_to_state.copy() if self.outputs_to_state else None,
         }
 
         if self.outputs_to_state is not None:
