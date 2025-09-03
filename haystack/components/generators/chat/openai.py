@@ -208,6 +208,7 @@ class OpenAIChatGenerator:
             The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
+
         return default_to_dict(
             self,
             model=self.model,
@@ -289,7 +290,7 @@ class OpenAIChatGenerator:
             tools=tools,
             tools_strict=tools_strict,
         )
-        if self._response_format:
+        if "response_format" in api_args.keys():
             chat_completion = self.client.chat.completions.parse(**api_args)
         else:
             chat_completion = self.client.chat.completions.create(**api_args)
@@ -369,7 +370,7 @@ class OpenAIChatGenerator:
             tools_strict=tools_strict,
         )
 
-        if self._response_format:
+        if "response_format" in api_args.keys():
             chat_completion = await self.async_client.chat.completions.parse(**api_args)
         else:
             chat_completion = await self.async_client.chat.completions.create(**api_args)
@@ -405,7 +406,7 @@ class OpenAIChatGenerator:
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
-        self._response_format = generation_kwargs.get("response_format") if generation_kwargs else None
+        response_format = generation_kwargs.get("response_format") if generation_kwargs else None
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
@@ -430,14 +431,14 @@ class OpenAIChatGenerator:
         is_streaming = streaming_callback is not None
         num_responses = generation_kwargs.pop("n", 1)
 
-        if self._response_format:
+        if response_format:
             if is_streaming:
                 raise ValueError("OpenAI cannot stream responses with `response_format`, please choose one.")
             return {
                 "model": self.model,
                 "messages": openai_formatted_messages,
                 "n": num_responses,
-                "response_format": self._response_format,
+                "response_format": response_format,
                 **openai_tools,
                 **generation_kwargs,
             }
