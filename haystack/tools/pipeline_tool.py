@@ -21,48 +21,64 @@ class PipelineTool(ComponentTool):
     which are derived from the underlying components in the pipeline.
 
     Key features:
-    - Automatic LLM tool calling schema generation from component input sockets
-    - Automatic name generation from component class name
-    - Description extraction from component docstrings
+    - Automatic LLM tool calling schema generation from pipeline inputs
+    - Description extraction of pipeline inputs based on the underlying component docstrings
 
     To use PipelineTool, you first need a Haystack pipeline.
-    Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component.
+    Below is an example of creating a PipelineTool
 
     ## Usage Example:
 
     ```python
-    from haystack import Pipeline
-    from haystack.tools import PipelineTool
-    from haystack.components.embedders import SentenceTransformerTextEmbedder
-    from haystack.components.retrievers import InMemoryEmbeddingRetriever
-    from haystack.utils import Secret
-    from haystack.components.tools.tool_invoker import ToolInvoker
+    from haystack import Document, Pipeline
+    from haystack.document_stores import InMemoryDocumentStore
+    from haystack.components.embedders import SentenceTransformerTextEmbedder, SentenceTransformersDocumentEmbedder
     from haystack.components.generators.chat import OpenAIChatGenerator
-    from haystack.dataclasses import ChatMessage
+    from haystack.components.retrievers import InMemoryEmbeddingRetriever
+    from haystack.components.agents import Agent
+    from haystack.tools import PipelineTool
 
-    # Create a TextEmbedder and an InMemoryEmbeddingRetriever components
-    text_embedder = SentenceTransformerTextEmbedder(model_name_or_path="sentence-transformers/all-MiniLM-L6-v2")
-    retriever = InMemoryEmbeddingRetriever()
+    # Initialize a document store and add some documents
+    document_store = InMemoryDocumentStore()
+    document_embedder = SentenceTransformersDocumentEmbedder(
+        model_name_or_path="sentence-transformers/all-MiniLM-L6-v2"
+    )
+    documents = [
+        Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
+        Document(
+            content="He is best known for his contributions to the design of the modern alternating current (AC) "
+                    "electricity supply system."
+        ),
+    ]
+    docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
+    document_store.write_documents(docs_with_embeddings)
 
-    # Create a tool based on a retrieval pipeline
-    tool = ComponentTool(
-        component=search,
-        name="web_search",  # Optional: defaults to "serper_dev_web_search"
-        description="Search the web for current information on any topic"  # Optional: defaults to component docstring
+    # Build a simple retrieval pipeline
+    retrieval_pipeline = Pipeline()
+    retrieval_pipeline.add_component(
+        "embedder", SentenceTransformerTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    )
+    retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+
+    retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
+
+    # Wrap the pipeline as a tool
+    retriever_tool = PipelineTool(
+        pipeline=retrieval_pipeline,
+        input_mapping={"query": ["embedder.query"]},
+        output_mapping={"retriever.documents": "documents"},
+        name="document_retriever",
+        description="Retrieve documents relevant to a query from the document store",
     )
 
-    # Create pipeline with OpenAIChatGenerator and ToolInvoker
-    pipeline = Pipeline()
-    pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
-    pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
+    # Create an Agent with the tool
+    agent = Agent(
+        chat_generator=OpenAIChatGenerator(model_name="gpt-4.1-mini"),
+        tools=[retriever_tool]
+    )
 
-    # Connect components
-    pipeline.connect("llm.replies", "tool_invoker.messages")
-
-    message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
-
-    # Run pipeline
-    result = pipeline.run({"llm": {"messages": [message]}})
+    # Let the Agent handle a query
+    result = agent.run("Find information about Nikola Tesla in the document store")
 
     print(result)
     ```
@@ -72,21 +88,37 @@ class PipelineTool(ComponentTool):
     def __init__(
         self,
         pipeline: Pipeline,
-        name: Optional[str] = None,
+        *,
+        name: str,
+        input_mapping: Optional[dict[str, str]] = None,
+        output_mapping: Optional[dict[str, str]] = None,
         description: Optional[str] = None,
         parameters: Optional[dict[str, Any]] = None,
-        *,
         outputs_to_string: Optional[dict[str, Union[str, Callable[[Any], str]]]] = None,
         inputs_from_state: Optional[dict[str, str]] = None,
         outputs_to_state: Optional[dict[str, dict[str, Union[str, Callable]]]] = None,
-        input_mapping: Optional[dict[str, str]] = None,
-        output_mapping: Optional[dict[str, str]] = None,
     ) -> None:
         """
         Create a Tool instance from a Haystack pipeline.
 
         :param pipeline: The Haystack pipeline to wrap as a tool.
-        :param name: Optional name for the tool (defaults to snake_case of component class name).
+        :param name: Name of the tool.
+        :param input_mapping: A dictionary mapping component input names to pipeline input socket paths.
+            If not provided, a default input mapping will be created based on all pipeline inputs.
+            Example:
+            ```python
+            input_mapping={
+                "query": ["retriever.query", "prompt_builder.query"],
+            }
+            ```
+        :param output_mapping: A dictionary mapping pipeline output socket paths to component output names.
+            If not provided, a default output mapping will be created based on all pipeline outputs.
+            Example:
+            ```python
+            output_mapping={
+                "retriever.documents": "documents",
+                "generator.replies": "replies",
+            }
         :param description: Optional description (defaults to component's docstring).
         :param parameters:
             A JSON schema defining the parameters expected by the Tool.
@@ -120,10 +152,6 @@ class PipelineTool(ComponentTool):
                 "documents": {"handler": custom_handler}
             }
             ```
-        :param input_mapping: A dictionary mapping component input names to pipeline input socket paths.
-            If not provided, a default input mapping will be created based on all pipeline inputs.
-        :param output_mapping: A dictionary mapping pipeline output socket paths to component output names.
-            If not provided, a default output mapping will be created based on all pipeline outputs.
         :raises ValueError: If the provided pipeline is not a valid Haystack Pipeline instance.
         """
         if not isinstance(pipeline, Pipeline):
@@ -149,17 +177,20 @@ class PipelineTool(ComponentTool):
     def to_dict(self) -> dict[str, Any]:
         """
         Serializes the PipelineTool to a dictionary.
+
+        :returns:
+            The serialized dictionary representation of PipelineTool.
         """
         serialized: dict[str, Any] = {
             "pipeline": self._pipeline.to_dict(),
             "name": self.name,
+            "input_mapping": self._input_mapping,
+            "output_mapping": self._output_mapping,
             "description": self.description,
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
             # This is soft-copied as to not modify the attributes in place
             "outputs_to_state": self.outputs_to_state.copy() if self.outputs_to_state else None,
-            "input_mapping": self._input_mapping,
-            "output_mapping": self._output_mapping,
         }
 
         if self.outputs_to_state is not None:
@@ -177,7 +208,11 @@ class PipelineTool(ComponentTool):
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Tool":
         """
-        Deserializes the ComponentTool from a dictionary.
+        Deserializes the PipelineTool from a dictionary.
+
+        :param data: The dictionary representation of PipelineTool.
+        :returns:
+            The deserialized PipelineTool instance.
         """
         inner_data = data["data"]
         pipeline = Pipeline.from_dict(inner_data["pipeline"])
@@ -193,12 +228,4 @@ class PipelineTool(ComponentTool):
                 inner_data["outputs_to_string"]["handler"]
             )
 
-        return cls(
-            pipeline=pipeline,
-            name=inner_data["name"],
-            description=inner_data["description"],
-            parameters=inner_data.get("parameters", None),
-            outputs_to_string=inner_data.get("outputs_to_string", None),
-            inputs_from_state=inner_data.get("inputs_from_state", None),
-            outputs_to_state=inner_data.get("outputs_to_state", None),
-        )
+        return cls(**{**inner_data, "pipeline": pipeline})
