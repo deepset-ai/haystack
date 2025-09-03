@@ -152,8 +152,8 @@ class TestPipelineOutputsRaisedInException:
                 },
             )
 
-        pipeline_outputs = exc_info.value.pipeline_outputs
-
+        pipeline_snapshot = exc_info.value.pipeline_snapshot
+        pipeline_outputs = pipeline_snapshot.pipeline_state.pipeline_outputs
         assert pipeline_outputs is not None, "Pipeline outputs should be captured in the exception"
 
         # verify that bm25_retriever and text_embedder ran successfully before the crash

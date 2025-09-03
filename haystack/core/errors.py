@@ -4,22 +4,26 @@
 
 from typing import Any, Optional
 
+from haystack.dataclasses.breakpoints import PipelineSnapshot
+
 
 class PipelineError(Exception):
     pass
 
 
 class PipelineRuntimeError(Exception):
-    def __init__(
+    def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         component_name: Optional[str],
         component_type: Optional[type],
         message: str,
-        pipeline_outputs: Optional[Any] = None,
+        pipeline_outputs: Optional[dict[str, Any]] = None,  # for the AsyncPipeline case, remove once aligned with Sync
+        last_good_snapshot: Optional[PipelineSnapshot] = None,
     ) -> None:
         self.component_name = component_name
         self.component_type = component_type
         self.pipeline_outputs = pipeline_outputs
+        self.pipeline_snapshot = last_good_snapshot
         super().__init__(message)
 
     @classmethod
