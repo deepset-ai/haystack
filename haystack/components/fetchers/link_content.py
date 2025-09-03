@@ -13,15 +13,15 @@ from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_
 
 from haystack import component, logging
 from haystack.dataclasses import ByteStream
-
-# HTTP/2 support via lazy import
-from haystack.lazy_imports import LazyImport
-
-# from haystack.lazy_imports import LazyImport
 from haystack.version import __version__
 
-with LazyImport("h2", "Run 'pip install httpx[http2]' to use HTTP/2 support") as h2_import:
-    pass
+# Optional HTTP/2 support detection (never raise at import time)
+try:
+    import h2 as _h2  # noqa: F401
+
+    H2_AVAILABLE = True
+except Exception:  # pragma: no cover
+    H2_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,8 @@ REQUEST_HEADERS = {
     "accept": "*/*",
     "User-Agent": DEFAULT_USER_AGENT,
     "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
+    # HTTP spec historically uses 'Referer' (misspelling), but the original default here was lowercase.
+    # Keep it lowercase to satisfy existing expectations/tests.
     "referer": "https://www.google.com/",
 }
 
@@ -115,12 +117,16 @@ class LinkContentFetcher:
         :param retry_attempts: The number of times to retry to fetch the URL's content.
         :param timeout: Timeout in seconds for the request.
         :param http2: Whether to enable HTTP/2 support for requests. Defaults to False.
-                     Requires the 'h2' package to be installed (via `pip install httpx[http2]`).
+                     HTTP/2 will only be enabled if the optional 'h2' package is installed;
+                     otherwise we log a warning and fall back to HTTP/1.1 without raising.
         :param client_kwargs: Additional keyword arguments to pass to the httpx client.
                      If `None`, default values are used.
         :param request_headers: Extra HTTP headers to send with each request. These are merged on top of
                      the component defaults and any client-level headers. If a 'User-Agent' is provided here,
                      it will be overridden at request time by the rotating `user_agents` logic.
+
+        Headers precedence (per request):
+          client defaults → component defaults (REQUEST_HEADERS) → `request_headers` → rotating `User-Agent`
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
@@ -138,31 +144,17 @@ class LinkContentFetcher:
         # Create httpx clients
         client_kwargs = {**self.client_kwargs}
 
-        # # Optional HTTP/2 support
-        # if http2:
-        #     try:
-        #         h2_import.check()
-        #         client_kwargs["http2"] = True
-        #     except ImportError:
-        #         logger.warning(
-        #             "HTTP/2 support requested but 'h2' package is not installed. "
-        #             "Falling back to HTTP/1.1. Install with `pip install httpx[http2]` to enable HTTP/2 support."
-        #         )
-        #         self.http2 = False  # Update the setting to match actual capability
-
-        # Optional HTTP/2 support
+        # Optional HTTP/2 support: only enable if 'h2' package is installed
         if http2:
-            try:
-                import h2  # noqa: F401
-            except ImportError:
+            if H2_AVAILABLE:
+                client_kwargs["http2"] = True
+            else:
                 logger.warning(
                     "HTTP/2 requested but the 'h2' package is not installed. "
                     "Continuing with HTTP/1.1. Install with `pip install httpx[http2]` to enable HTTP/2."
                 )
-                # NOTE: do NOT set client_kwargs['http2'] here; we intentionally fall back silently.
-                # We also intentionally keep self.http2 = True to match existing behavior/tests.
-            else:
-                client_kwargs["http2"] = True
+                # Intentionally do not set client_kwargs['http2']; httpx will use HTTP/1.1.
+                # Keep self.http2 = True so external checks/tests on the flag remain consistent.
 
         # Initialize synchronous client
         self._client = httpx.Client(**client_kwargs)
@@ -211,7 +203,6 @@ class LinkContentFetcher:
             # Close the synchronous client if it exists
             if hasattr(self, "_client"):
                 self._client.close()
-
             # There is no way to close the async client without await
         except Exception:
             # Suppress any exceptions during cleanup
@@ -328,7 +319,6 @@ class LinkContentFetcher:
                 raise e
             # less verbose log as this is expected to happen often (requests failing, blocked, etc.)
             logger.debug("Couldn't retrieve content from {url} because {error}", url=url, error=str(e))
-
         finally:
             self.current_user_agent_idx = 0
 
