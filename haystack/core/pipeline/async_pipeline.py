@@ -271,8 +271,6 @@ class AsyncPipeline(PipelineBase):
                         parent_span=parent_span,
                     )
                 except PipelineRuntimeError as error:
-                    # Attach partial pipeline outputs to the error before re-raising
-                    error.pipeline_outputs = pipeline_outputs
                     raise error
 
                 # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
@@ -321,8 +319,6 @@ class AsyncPipeline(PipelineBase):
                                 parent_span=parent_span,
                             )
                     except PipelineRuntimeError as error:
-                        # Attach partial pipeline outputs to the error before re-raising
-                        error.pipeline_outputs = pipeline_outputs
                         raise error
 
                     # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
