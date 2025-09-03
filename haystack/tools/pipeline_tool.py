@@ -4,7 +4,7 @@
 
 from typing import Any, Callable, Optional, Union
 
-from haystack import Pipeline, SuperComponent, logging
+from haystack import AsyncPipeline, Pipeline, SuperComponent, logging
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.tool import Tool, _deserialize_outputs_to_state, _serialize_outputs_to_state
@@ -96,7 +96,7 @@ class PipelineTool(ComponentTool):
 
     def __init__(
         self,
-        pipeline: Pipeline,
+        pipeline: Union[Pipeline, AsyncPipeline],
         *,
         name: str,
         input_mapping: Optional[dict[str, list[str]]] = None,
@@ -200,6 +200,7 @@ class PipelineTool(ComponentTool):
             "inputs_from_state": self.inputs_from_state,
             # This is soft-copied as to not modify the attributes in place
             "outputs_to_state": self.outputs_to_state.copy() if self.outputs_to_state else None,
+            "is_pipeline_async": isinstance(self._pipeline, AsyncPipeline),
         }
 
         if self.outputs_to_state is not None:
@@ -224,7 +225,9 @@ class PipelineTool(ComponentTool):
             The deserialized PipelineTool instance.
         """
         inner_data = data["data"]
-        pipeline = Pipeline.from_dict(inner_data["pipeline"])
+        is_pipeline_async = inner_data.get("is_pipeline_async", False)
+        pipeline_class = AsyncPipeline if is_pipeline_async else Pipeline
+        pipeline = pipeline_class.from_dict(inner_data["pipeline"])
 
         if "outputs_to_state" in inner_data and inner_data["outputs_to_state"]:
             inner_data["outputs_to_state"] = _deserialize_outputs_to_state(inner_data["outputs_to_state"])
