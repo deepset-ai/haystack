@@ -211,6 +211,9 @@ class OpenAIChatGenerator:
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         response_format = self.generation_kwargs.get("response_format")
+
+        # If the response format is a Pydantic model, its converted to openai's json schema format
+        # If its already a json schema, it's left as is
         if response_format and issubclass(response_format, BaseModel):
             self.generation_kwargs["response_format"] = to_strict_json_schema(response_format)
 
