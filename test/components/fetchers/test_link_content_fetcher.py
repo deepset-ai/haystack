@@ -356,3 +356,50 @@ class TestLinkContentFetcherAsync:
         streams = (await fetcher.run_async([HTML_URL]))["streams"]
         assert len(streams) == 1
         assert "Haystack" in streams[0].data.decode("utf-8")
+
+
+class TestLinkContentFetcher_CustomHeaders:
+    def test_request_headers_sync_merging_and_ua_override(self):
+        # The request should merge client defaults -> component defaults -> request_headers
+        # and then override 'User-Agent' with the rotating UA.
+        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+            mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+
+            fetcher = LinkContentFetcher(
+                user_agents=["ua-sync-1", "ua-sync-2"],
+                request_headers={
+                    "Accept-Language": "fr-FR",
+                    "X-Test": "1",
+                    "User-Agent": "will-be-overridden",  # should not win
+                },
+            )
+            _ = fetcher.run(urls=["https://example.com"])["streams"]
+
+            assert mock_get.call_count == 1
+            sent_headers = mock_get.call_args.kwargs["headers"]
+            # from request_headers
+            assert sent_headers["X-Test"] == "1"
+            assert sent_headers["Accept-Language"] == "fr-FR"
+            # rotating UA wins over request_headers
+            assert sent_headers["User-Agent"] == "ua-sync-1"
+
+
+class TestLinkContentFetcherAsync_CustomHeaders:
+    @pytest.mark.asyncio
+    async def test_request_headers_async_merging_and_ua_override(self):
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+            mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+
+            fetcher = LinkContentFetcher(
+                user_agents=["ua-async-1", "ua-async-2"],
+                request_headers={"Accept-Language": "de-DE", "X-Async": "true", "User-Agent": "ignored-here-too"},
+            )
+            _ = (await fetcher.run_async(urls=["https://example.com"]))["streams"]
+
+            assert mock_get.call_count == 1
+            sent_headers = mock_get.call_args.kwargs["headers"]
+            assert sent_headers["X-Async"] == "true"
+            assert sent_headers["Accept-Language"] == "de-DE"
+            assert sent_headers["User-Agent"] == "ua-async-1"
