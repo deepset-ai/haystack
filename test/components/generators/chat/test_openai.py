@@ -37,6 +37,12 @@ from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
 
 
+class CalendarEvent(BaseModel):
+    name: str
+    date: str
+    location: str
+
+
 @pytest.fixture
 def chat_messages():
     return [
@@ -227,7 +233,7 @@ class TestOpenAIChatGenerator:
             model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params", "response_format": CalendarEvent},
             tools=[tool],
             tools_strict=True,
             max_retries=10,
@@ -235,6 +241,7 @@ class TestOpenAIChatGenerator:
             http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
         )
         data = component.to_dict()
+        print(data)
 
         assert data == {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
@@ -246,7 +253,21 @@ class TestOpenAIChatGenerator:
                 "max_retries": 10,
                 "timeout": 100.0,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {
+                    "max_tokens": 10,
+                    "some_test_param": "test-params",
+                    "response_format": {
+                        "properties": {
+                            "name": {"title": "Name", "type": "string"},
+                            "date": {"title": "Date", "type": "string"},
+                            "location": {"title": "Location", "type": "string"},
+                        },
+                        "required": ["name", "date", "location"],
+                        "title": "CalendarEvent",
+                        "type": "object",
+                        "additionalProperties": False,
+                    },
+                },
                 "tools": [
                     {
                         "type": "haystack.tools.tool.Tool",
@@ -624,11 +645,6 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_response_format(self):
-        class CalendarEvent(BaseModel):
-            name: str
-            date: str
-            location: str
-
         chat_messages = [ChatMessage.from_user("Describe the 20th Nobel Peace Prize.")]
         component = OpenAIChatGenerator(generation_kwargs={"response_format": CalendarEvent})
         results = component.run(chat_messages)
@@ -639,6 +655,41 @@ class TestOpenAIChatGenerator:
         assert isinstance(msg["date"], str)
         assert isinstance(msg["location"], str)
 
+        assert message.meta["finish_reason"] == "stop"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_schema(self):
+        response_schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "CapitalCity",
+                "strict": True,
+                "schema": {
+                    "title": "CapitalCity",
+                    "type": "object",
+                    "properties": {
+                        "city": {"title": "City", "type": "string"},
+                        "country": {"title": "Country", "type": "string"},
+                    },
+                    "required": ["city", "country"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+        chat_messages = [ChatMessage.from_user("What's the capital of France?")]
+        component = OpenAIChatGenerator(generation_kwargs={"response_format": response_schema})
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Paris" in msg["city"]
+        assert isinstance(msg["country"], str)
+        assert "France" in msg["country"]
         assert message.meta["finish_reason"] == "stop"
 
     def test_run_with_wrong_model(self):

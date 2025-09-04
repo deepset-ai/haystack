@@ -1,4 +1,5 @@
 ---
 features:
-  - OpenAIChatGenerator now supports structured outputs by passing a `response_format` parameter.
-   The `response_format` parameter can be a pydantic model or a JSON schema.
+  - |
+    `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` now support structured outputs by passing a `response_format` parameter.
+    The `response_format` parameter can be a pydantic model or a JSON schema.
