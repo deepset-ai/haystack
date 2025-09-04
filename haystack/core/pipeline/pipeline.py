@@ -23,7 +23,7 @@ from haystack.core.pipeline.breakpoint import (
     _validate_pipeline_snapshot_against_pipeline,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
-from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot
+from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot, ToolBreakpoint
 from haystack.telemetry import pipeline_running
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.misc import _get_output_dir
@@ -75,6 +75,13 @@ class Pipeline(PipelineBase):
                 # This is important when Agent components internally use Pipeline._run_component
                 # and trigger breakpoints that need to bubble up to the main pipeline
                 raise error
+
+            # Agent components might raise PipelineRuntimeError with additional context
+            # and an agent snapshot. We want to preserve that information here
+            except PipelineRuntimeError as runtime_error:
+                raise runtime_error
+
+            # Catch all other exceptions and wrap them in a PipelineRuntimeError
             except Exception as error:
                 raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
 
@@ -390,15 +397,33 @@ class Pipeline(PipelineBase):
                         parent_span=span,
                     )
                 except PipelineRuntimeError as error:
+                    out_dir = _get_output_dir("pipeline_snapshot")
+
+                    # ToDo: find out if the error happened in an Agent component or a regular component - improve
+
+                    if error.component_type.__name__ == "ToolInvoker":
+                        # the error exception comes with an agent snapshot
+                        # create a snapshot of the host pipeline
+
+                        # find out if the error happened in a tool or the chat generator
+                        if component_name == "chat_generator":
+                            break_point_agent = Breakpoint("chat_generator", 0, out_dir)
+                        else:
+                            break_point_agent = ToolBreakpoint("tool_invoker", 0, out_dir)
+
+                        # create an AgentBreakpoint to pass to the snapshot
+                        break_point = AgentBreakpoint(agent_name=error.component_name, break_point=break_point_agent)
+
+                    else:
+                        break_point = Breakpoint(
+                            component_name=component_name,
+                            visit_count=component_visits[component_name],
+                            snapshot_file_path=out_dir,
+                        )
+
                     # Create a snapshot of the last good state of the pipeline before the error occurred.
                     pipeline_snapshot_inputs_serialised = deepcopy(inputs)
                     pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
-                    out_dir = _get_output_dir("pipeline_snapshot")
-                    break_point = Breakpoint(
-                        component_name=component_name,
-                        visit_count=component_visits[component_name],
-                        snapshot_file_path=out_dir,
-                    )
                     last_good_state_snapshot = _create_pipeline_snapshot(
                         inputs=pipeline_snapshot_inputs_serialised,
                         break_point=break_point,
@@ -408,8 +433,13 @@ class Pipeline(PipelineBase):
                         include_outputs_from=include_outputs_from,
                         pipeline_outputs=pipeline_outputs,
                     )
+
+                    # if we have an agent snapshot from the error, we attach it to the pipeline snapshot
+                    last_good_state_snapshot.agent_snapshot = getattr(error, "agent_snapshot", None)
+
                     # Attach the last good state snapshot to the error before re-raising and saving to disk
                     error.pipeline_snapshot = last_good_state_snapshot
+
                     try:
                         _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot)
                         logger.info(
