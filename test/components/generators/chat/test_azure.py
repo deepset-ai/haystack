@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import os
 from typing import Any, Optional
 
 import pytest
 from openai import OpenAIError
+from pydantic import BaseModel
 
 from haystack import Pipeline, component
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
@@ -330,6 +332,31 @@ class TestAzureOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+
+    @pytest.mark.skipif(
+        not os.environ.get("AZURE_OPENAI_API_KEY", None),
+        reason="Export an env var called AZURE_OPENAI_API_KEY containing the Azure OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format(self):
+        class CalendarEvent(BaseModel):
+            name: str
+            date: str
+            location: str
+
+        chat_messages = [ChatMessage.from_user("Describe the 20th Nobel Peace Prize.")]
+        component = AzureOpenAIChatGenerator(
+            api_version="2024-08-01-preview", generation_kwargs={"response_format": CalendarEvent}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "20th Nobel Peace Prize" in msg["name"]
+        assert isinstance(msg["date"], str)
+        assert isinstance(msg["location"], str)
+
+        assert message.meta["finish_reason"] == "stop"
 
     def test_to_dict_with_toolset(self, tools, monkeypatch):
         """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""

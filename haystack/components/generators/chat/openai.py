@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any, Optional, Union
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
+from openai.lib._pydantic import to_strict_json_schema
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionChunk,
@@ -18,6 +19,7 @@ from openai.types.chat import (
 )
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
+from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
@@ -208,6 +210,9 @@ class OpenAIChatGenerator:
             The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
+        response_format = self.generation_kwargs.get("response_format")
+        if response_format and issubclass(response_format, BaseModel):
+            self.generation_kwargs["response_format"] = to_strict_json_schema(response_format)
 
         return default_to_dict(
             self,
@@ -433,7 +438,9 @@ class OpenAIChatGenerator:
 
         if response_format:
             if is_streaming:
-                raise ValueError("OpenAI cannot stream responses with `response_format`, please choose one.")
+                raise ValueError(
+                    "OpenAI does not support `streaming_callback` with `response_format`, please choose one."
+                )
             return {
                 "model": self.model,
                 "messages": openai_formatted_messages,
