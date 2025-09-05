@@ -146,7 +146,7 @@ def test_to_dict_without_flattening():
 def test_to_dict_with_custom_parameters():
     doc = Document(
         content="test text",
-        blob=ByteStream(b"some bytes", mime_type="application/pdf"),
+        blob=ByteStream(b"some bytes", mime_type="application/pdf", meta={"foo": "bar"}),
         meta={"some": "values", "test": 10},
         score=0.99,
         embedding=[10.0, 10.0],
@@ -156,7 +156,7 @@ def test_to_dict_with_custom_parameters():
     assert doc.to_dict() == {
         "id": doc.id,
         "content": "test text",
-        "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf"},
+        "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf", "meta": {"foo": "bar"}},
         "some": "values",
         "test": 10,
         "score": 0.99,
@@ -178,18 +178,20 @@ def test_to_dict_with_custom_parameters_without_flattening():
     assert doc.to_dict(flatten=False) == {
         "id": doc.id,
         "content": "test text",
-        "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf"},
+        "blob": {"data": list(b"some bytes"), "mime_type": "application/pdf", "meta": {}},
         "meta": {"some": "values", "test": 10},
         "score": 0.99,
-        "embedding": [10, 10],
+        "embedding": [10.0, 10.0],
         "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
     }
 
 
 def test_to_dict_field_precedence():
     """
-    Test that Document's first-level fields take precedence over meta fields
-    when flattening the dictionary representation.
+    Test for Document.to_dict() with flatten=True.
+
+    Test that Document's first-level fields take precedence over meta fields when flattening the dictionary
+    representation.
     """
 
     doc = Document(content="from-content", score=0.9, meta={"content": "from-meta", "score": 0.5, "source": "web"})
@@ -212,7 +214,7 @@ def from_from_dict_with_parameters():
     assert Document.from_dict(
         {
             "content": "test text",
-            "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
+            "blob": {"data": list(blob_data), "mime_type": "text/markdown", "meta": {"text": "test text"}},
             "meta": {"text": "test text"},
             "score": 0.812,
             "embedding": [0.1, 0.2, 0.3],
@@ -220,7 +222,7 @@ def from_from_dict_with_parameters():
         }
     ) == Document(
         content="test text",
-        blob=ByteStream(blob_data, mime_type="text/markdown"),
+        blob=ByteStream(blob_data, mime_type="text/markdown", meta={"text": "test text"}),
         meta={"text": "test text"},
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
@@ -306,6 +308,8 @@ def test_from_dict_with_flat_and_non_flat_meta():
 
 def test_from_dict_with_dataframe():
     """
+    Test for legacy support of Document.from_dict() with dataframe field.
+
     Test that Document.from_dict() can properly deserialize a Document dictionary obtained with
     document.to_dict(flatten=False) in haystack-ai<=2.10.0.
     We make sure that Document.from_dict() does not raise an error and that dataframe is skipped (legacy field).

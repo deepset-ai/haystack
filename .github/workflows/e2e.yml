@@ -18,14 +18,16 @@ env:
   PYTHON_VERSION: "3.9"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   HATCH_VERSION: "1.14.1"
-  HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
+  # we use HF_TOKEN instead of HF_API_TOKEN to work around a Hugging Face bug
+  # see https://github.com/deepset-ai/haystack/issues/9552
+  HF_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
 
 jobs:
   run:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - uses: actions/setup-python@v5
       with:

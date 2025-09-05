@@ -2,16 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, Any
+from typing import Any
 
 import pytest
 
-from haystack import Pipeline, DeserializationError
-from haystack.document_stores.types import FilterPolicy
-from haystack.testing.factory import document_store_class
+from haystack import DeserializationError, Pipeline
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import FilterPolicy
+from haystack.testing.factory import document_store_class
 
 
 @pytest.fixture()
@@ -84,8 +84,6 @@ class TestMemoryBM25Retriever:
             },
         }
 
-    #
-
     def test_from_dict(self):
         data = {
             "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
@@ -154,7 +152,7 @@ class TestMemoryBM25Retriever:
 
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
-        result: Dict[str, Any] = pipeline.run(data={"retriever": {"query": query}})
+        result: dict[str, Any] = pipeline.run(data={"retriever": {"query": query}})
 
         assert result
         assert "retriever" in result
@@ -178,7 +176,7 @@ class TestMemoryBM25Retriever:
 
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
-        result: Dict[str, Any] = pipeline.run(data={"retriever": {"query": query, "top_k": top_k}})
+        result: dict[str, Any] = pipeline.run(data={"retriever": {"query": query, "top_k": top_k}})
 
         assert result
         assert "retriever" in result

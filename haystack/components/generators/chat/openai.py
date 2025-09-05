@@ -5,10 +5,15 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
-from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionChunk,
+    ChatCompletionMessage,
+    ChatCompletionMessageCustomToolCall,
+)
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
@@ -18,10 +23,12 @@ from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
+    FinishReason,
     StreamingCallbackT,
     StreamingChunk,
     SyncStreamingCallbackT,
     ToolCall,
+    ToolCallDelta,
     select_streaming_callback,
 )
 from haystack.tools import (
@@ -88,12 +95,12 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         tools_strict: bool = False,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-4o-mini
@@ -166,7 +173,7 @@ class OpenAIChatGenerator:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
-        client_kwargs: Dict[str, Any] = {
+        client_kwargs: dict[str, Any] = {
             "api_key": api_key.resolve_value(),
             "organization": organization,
             "base_url": api_base_url,
@@ -179,13 +186,13 @@ class OpenAIChatGenerator:
             http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
         )
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
         return {"model": self.model}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -209,7 +216,7 @@ class OpenAIChatGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIChatGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "OpenAIChatGenerator":
         """
         Deserialize this component from a dictionary.
 
@@ -225,14 +232,14 @@ class OpenAIChatGenerator:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[ChatMessage])
+    @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -279,8 +286,10 @@ class OpenAIChatGenerator:
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
+                # we cannot check isinstance(chat_completion, Stream) because some observability tools wrap Stream
+                # and return a different type. See https://github.com/deepset-ai/haystack/issues/9014.
                 chat_completion,  # type: ignore
-                streaming_callback,  # type: ignore
+                streaming_callback,
             )
 
         else:
@@ -295,14 +304,14 @@ class OpenAIChatGenerator:
 
         return {"replies": completions}
 
-    @component.output_types(replies=List[ChatMessage])
+    @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -355,8 +364,10 @@ class OpenAIChatGenerator:
 
         if streaming_callback is not None:
             completions = await self._handle_async_stream_response(
+                # we cannot check isinstance(chat_completion, AsyncStream) because some observability tools wrap
+                # AsyncStream and return a different type. See https://github.com/deepset-ai/haystack/issues/9014.
                 chat_completion,  # type: ignore
-                streaming_callback,  # type: ignore
+                streaming_callback,
             )
 
         else:
@@ -374,12 +385,12 @@ class OpenAIChatGenerator:
     def _prepare_api_call(  # noqa: PLR0913
         self,
         *,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         tools_strict: Optional[bool] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
@@ -410,37 +421,41 @@ class OpenAIChatGenerator:
 
         return {
             "model": self.model,
-            "messages": openai_formatted_messages,  # type: ignore[arg-type] # openai expects list of specific message types
+            "messages": openai_formatted_messages,
             "stream": streaming_callback is not None,
             "n": num_responses,
             **openai_tools,
             **generation_kwargs,
         }
 
-    def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> List[ChatMessage]:
+    def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
-        chunks: List[StreamingChunk] = []
+        chunks: list[StreamingChunk] = []
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, component_info=component_info)
+            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
+                chunk=chunk, previous_chunks=chunks, component_info=component_info
+            )
             chunks.append(chunk_delta)
             callback(chunk_delta)
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
         self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
-    ) -> List[ChatMessage]:
+    ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
-        chunks: List[StreamingChunk] = []
+        chunks: list[StreamingChunk] = []
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, component_info=component_info)
+            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
+                chunk=chunk, previous_chunks=chunks, component_info=component_info
+            )
             chunks.append(chunk_delta)
             await callback(chunk_delta)
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
 
-def _check_finish_reason(meta: Dict[str, Any]) -> None:
+def _check_finish_reason(meta: dict[str, Any]) -> None:
     if meta["finish_reason"] == "length":
         logger.warning(
             "The completion for index {index} has been truncated before reaching a natural stopping point. "
@@ -467,7 +482,10 @@ def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice:
     message: ChatCompletionMessage = choice.message
     text = message.content
     tool_calls = []
-    if openai_tool_calls := message.tool_calls:
+    if message.tool_calls:
+        # we currently only support function tools (not custom tools)
+        # https://platform.openai.com/docs/guides/function-calling#custom-tools
+        openai_tool_calls = [tc for tc in message.tool_calls if not isinstance(tc, ChatCompletionMessageCustomToolCall)]
         for openai_tc in openai_tool_calls:
             arguments_str = openai_tc.function.arguments
             try:
@@ -497,34 +515,94 @@ def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice:
 
 
 def _convert_chat_completion_chunk_to_streaming_chunk(
-    chunk: ChatCompletionChunk, component_info: Optional[ComponentInfo] = None
+    chunk: ChatCompletionChunk, previous_chunks: list[StreamingChunk], component_info: Optional[ComponentInfo] = None
 ) -> StreamingChunk:
     """
     Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
 
     :param chunk: The chunk returned by the OpenAI API.
+    :param previous_chunks: A list of previously received StreamingChunks.
+    :param component_info: An optional `ComponentInfo` object containing information about the component that
+        generated the chunk, such as the component name and type.
 
     :returns:
-        The StreamingChunk.
+        A StreamingChunk object representing the content of the chunk from the OpenAI API.
     """
-    # Choices is empty on the very first chunk which provides role information (e.g. "assistant").
-    # It is also empty if include_usage is set to True where the usage information is returned.
+    finish_reason_mapping: dict[str, FinishReason] = {
+        "stop": "stop",
+        "length": "length",
+        "content_filter": "content_filter",
+        "tool_calls": "tool_calls",
+        "function_call": "tool_calls",
+    }
+    # On very first chunk so len(previous_chunks) == 0, the Choices field only provides role info (e.g. "assistant")
+    # Choices is empty if include_usage is set to True where the usage information is returned.
     if len(chunk.choices) == 0:
         return StreamingChunk(
             content="",
+            component_info=component_info,
+            # Index is None since it's only set to an int when a content block is present
+            index=None,
+            finish_reason=None,
             meta={
                 "model": chunk.model,
                 "received_at": datetime.now().isoformat(),
                 "usage": _serialize_usage(chunk.usage),
             },
-            component_info=component_info,
         )
 
     choice: ChunkChoice = chunk.choices[0]
-    content = choice.delta.content or ""
 
+    # create a list of ToolCallDelta objects from the tool calls
+    if choice.delta.tool_calls:
+        tool_calls_deltas = []
+        for tool_call in choice.delta.tool_calls:
+            function = tool_call.function
+            tool_calls_deltas.append(
+                ToolCallDelta(
+                    index=tool_call.index,
+                    id=tool_call.id,
+                    tool_name=function.name if function else None,
+                    arguments=function.arguments if function and function.arguments else None,
+                )
+            )
+        chunk_message = StreamingChunk(
+            content=choice.delta.content or "",
+            component_info=component_info,
+            # We adopt the first tool_calls_deltas.index as the overall index of the chunk.
+            index=tool_calls_deltas[0].index,
+            tool_calls=tool_calls_deltas,
+            start=tool_calls_deltas[0].tool_name is not None,
+            finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
+            meta={
+                "model": chunk.model,
+                "index": choice.index,
+                "tool_calls": choice.delta.tool_calls,
+                "finish_reason": choice.finish_reason,
+                "received_at": datetime.now().isoformat(),
+                "usage": _serialize_usage(chunk.usage),
+            },
+        )
+        return chunk_message
+
+    # On very first chunk the choice field only provides role info (e.g. "assistant") so we set index to None
+    # We set all chunks missing the content field to index of None. E.g. can happen if chunk only contains finish
+    # reason.
+    if choice.delta.content is None or choice.delta.role is not None:
+        resolved_index = None
+    else:
+        # We set the index to be 0 since if text content is being streamed then no tool calls are being streamed
+        # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
+        #       Anthropic Claude
+        resolved_index = 0
     chunk_message = StreamingChunk(
-        content=content,
+        content=choice.delta.content or "",
+        component_info=component_info,
+        index=resolved_index,
+        # The first chunk is always a start message chunk that only contains role information, so if we reach here
+        # and previous_chunks is length 1 then this is the start of text content.
+        start=len(previous_chunks) == 1,
+        finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
         meta={
             "model": chunk.model,
             "index": choice.index,
@@ -533,7 +611,6 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
             "received_at": datetime.now().isoformat(),
             "usage": _serialize_usage(chunk.usage),
         },
-        component_info=component_info,
     )
     return chunk_message
 

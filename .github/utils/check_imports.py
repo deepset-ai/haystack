@@ -1,14 +1,17 @@
+import importlib
 import os
 import sys
-import importlib
 import traceback
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
+
 from haystack import logging  # pylint: disable=unused-import  # this is needed to avoid circular imports
 
-def validate_module_imports(root_dir: str, exclude_subdirs: Optional[List[str]] = None) -> tuple[list, list]:
+
+def validate_module_imports(root_dir: str, exclude_subdirs: Optional[list[str]] = None) -> tuple[list, list]:
     """
     Recursively search for all Python modules and attempt to import them.
+
     This includes both packages (directories with __init__.py) and individual Python files.
     """
     imported = []
@@ -25,7 +28,7 @@ def validate_module_imports(root_dir: str, exclude_subdirs: Optional[List[str]] 
 
         # Convert path to module format
         module_path = ".".join(Path(root).relative_to(base_path.parent).parts)
-        python_files = [f for f in files if f.endswith('.py')]
+        python_files = [f for f in files if f.endswith(".py")]
 
         # Try importing package and individual files
         for file in python_files:
@@ -39,16 +42,15 @@ def validate_module_imports(root_dir: str, exclude_subdirs: Optional[List[str]] 
                 importlib.import_module(module_to_import)
                 imported.append(module_to_import)
             except:
-                failed.append({
-                    'module': module_to_import,
-                    'traceback': traceback.format_exc()
-                })
+                failed.append({"module": module_to_import, "traceback": traceback.format_exc()})
 
     return imported, failed
+
 
 def main():
     """
     This script checks that all Haystack modules can be imported successfully.
+
     This includes both packages and individual Python files.
     This can detect several issues, such as:
     - Syntax errors in Python files
@@ -80,5 +82,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

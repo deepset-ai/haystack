@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    **RecursiveDocumentSplitter** now generates a unique `Document.id` for every chunk. The meta fields (`split_id`, `parent_id`, etc.) are populated _before_ `Document` creation, so the hash used for `id` generation is always unique.

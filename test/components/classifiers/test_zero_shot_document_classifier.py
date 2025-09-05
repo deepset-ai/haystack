@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
-
 from unittest.mock import patch
+
+import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
@@ -30,7 +30,7 @@ class TestTransformersZeroShotDocumentClassifier:
         )
         component_dict = component.to_dict()
         assert component_dict == {
-            "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",
+            "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",  # noqa: E501
             "init_parameters": {
                 "model": "cross-encoder/nli-deberta-v3-xsmall",
                 "labels": ["positive", "negative"],
@@ -47,7 +47,7 @@ class TestTransformersZeroShotDocumentClassifier:
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
         monkeypatch.delenv("HF_TOKEN", raising=False)
         data = {
-            "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",
+            "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",  # noqa: E501
             "init_parameters": {
                 "model": "cross-encoder/nli-deberta-v3-xsmall",
                 "labels": ["positive", "negative"],
@@ -76,7 +76,7 @@ class TestTransformersZeroShotDocumentClassifier:
         monkeypatch.delenv("HF_API_TOKEN", raising=False)
         monkeypatch.delenv("HF_TOKEN", raising=False)
         data = {
-            "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",
+            "type": "haystack.components.classifiers.zero_shot_document_classifier.TransformersZeroShotDocumentClassifier",  # noqa: E501
             "init_parameters": {"model": "cross-encoder/nli-deberta-v3-xsmall", "labels": ["positive", "negative"]},
         }
         component = TransformersZeroShotDocumentClassifier.from_dict(data)
@@ -135,6 +135,8 @@ class TestTransformersZeroShotDocumentClassifier:
         assert component.pipeline is not None
         assert result["documents"][0].to_dict()["classification"]["label"] == "positive"
         assert result["documents"][1].to_dict()["classification"]["label"] == "negative"
+        assert "classification" not in positive_document.to_dict()
+        assert "classification" not in negative_document.to_dict()
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -150,6 +152,8 @@ class TestTransformersZeroShotDocumentClassifier:
         assert component.pipeline is not None
         assert result["documents"][0].to_dict()["classification"]["label"] == "positive"
         assert result["documents"][1].to_dict()["classification"]["label"] == "negative"
+        assert "classification" not in positive_document.to_dict()
+        assert "classification" not in negative_document.to_dict()
 
     def test_serialization_and_deserialization_pipeline(self):
         pipeline = Pipeline()

@@ -10,7 +10,7 @@ from lazy_imports import LazyImporter
 _import_structure = {"cache_checker": ["CacheChecker"]}
 
 if TYPE_CHECKING:
-    from .cache_checker import CacheChecker
+    from .cache_checker import CacheChecker as CacheChecker
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

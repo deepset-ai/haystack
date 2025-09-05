@@ -2,6 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# Note: We only test the Spacy backend in this module, which is executed in the e2e environment.
+# We don't test Spacy in test/components/extractors/test_named_entity_extractor.py, which is executed in the
+# test environment. Spacy is not installed in the test environment to keep the CI fast.
+
 import os
 import pytest
 
@@ -47,7 +51,10 @@ def spacy_annotations():
     ]
 
 
-def test_ner_extractor_init():
+def test_ner_extractor_init(monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
 
     with pytest.raises(RuntimeError, match=r"not warmed up"):
@@ -59,7 +66,10 @@ def test_ner_extractor_init():
 
 
 @pytest.mark.parametrize("batch_size", [1, 3])
-def test_ner_extractor_hf_backend(raw_texts, hf_annotations, batch_size):
+def test_ner_extractor_hf_backend(raw_texts, hf_annotations, batch_size, monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
     extractor.warm_up()
 
@@ -68,8 +78,8 @@ def test_ner_extractor_hf_backend(raw_texts, hf_annotations, batch_size):
 
 @pytest.mark.parametrize("batch_size", [1, 3])
 @pytest.mark.skipif(
-    not os.environ.get("HF_API_TOKEN", None),
-    reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    not os.environ.get("HF_API_TOKEN", None) and not os.environ.get("HF_TOKEN", None),
+    reason="Export an env var called HF_API_TOKEN or HF_TOKEN containing the Hugging Face token to run this test.",
 )
 def test_ner_extractor_hf_backend_private_models(raw_texts, hf_annotations, batch_size):
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="deepset/bert-base-NER")
@@ -87,7 +97,10 @@ def test_ner_extractor_spacy_backend(raw_texts, spacy_annotations, batch_size):
 
 
 @pytest.mark.parametrize("batch_size", [1, 3])
-def test_ner_extractor_in_pipeline(raw_texts, hf_annotations, batch_size):
+def test_ner_extractor_in_pipeline(raw_texts, hf_annotations, batch_size, monkeypatch):
+    monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+    monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
     pipeline = Pipeline()
     pipeline.add_component(
         name="ner_extractor",
@@ -104,7 +117,15 @@ def test_ner_extractor_in_pipeline(raw_texts, hf_annotations, batch_size):
 def _extract_and_check_predictions(extractor, texts, expected, batch_size):
     docs = [Document(content=text) for text in texts]
     outputs = extractor.run(documents=docs, batch_size=batch_size)["documents"]
-    assert all(id(a) == id(b) for a, b in zip(docs, outputs))
+    for original_doc, output_doc in zip(docs, outputs):
+        # we don't modify documents in place
+        assert original_doc is not output_doc
+
+        # apart from meta, the documents should be identical
+        output_doc_dict = output_doc.to_dict(flatten=False)
+        output_doc_dict.pop("meta", None)
+        assert original_doc.to_dict() == output_doc_dict
+
     predicted = [NamedEntityExtractor.get_stored_annotations(doc) for doc in outputs]
 
     _check_predictions(predicted, expected)

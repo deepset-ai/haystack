@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added `ReasoningContent` as a new content part to the `ChatMessage` dataclass. This allows storing model
+    reasoning text and additional metadata in assistant messages.
+    Assistant messages can now include reasoning content using the `reasoning` parameter in
+    `ChatMessage.from_assistant()`.
+    We will progressively update the implementations for Chat Generators with LLMs that support reasoning to use this
+    new content part.

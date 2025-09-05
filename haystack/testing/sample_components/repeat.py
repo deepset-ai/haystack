@@ -2,14 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
 
 from haystack.core.component import component
 
 
 @component
 class Repeat:
-    def __init__(self, outputs: List[str]):
+    def __init__(self, outputs: list[str]):
         self._outputs = outputs
         component.set_output_types(self, **dict.fromkeys(outputs, int))
 

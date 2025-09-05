@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List
-
 import re
 
 import pytest
@@ -27,8 +25,7 @@ def merge_documents(documents):
         start = doc.meta["split_idx_start"]  # start of the current content
 
         # if the start of the current content is before the end of the last appended content, adjust it
-        if start < last_idx_end:
-            start = last_idx_end
+        start = max(start, last_idx_end)
 
         # append the non-overlapping part to the merged text
         merged_text += doc.content[start - doc.meta["split_idx_start"] :]
@@ -40,7 +37,7 @@ def merge_documents(documents):
 
 
 class TestSplittingByFunctionOrCharacterRegex:
-    def test_non_text_document(self):
+    def test_non_text_document(self, caplog):
         with pytest.raises(
             ValueError, match="DocumentSplitter only works with text documents but content for document ID"
         ):
@@ -110,7 +107,10 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_split_by_word_multiple_input_docs(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
         text1 = "This is a text with some words. There is a second sentence. And there is a third sentence."
-        text2 = "This is a different text with some words. There is a second sentence. And there is a third sentence. And there is a fourth sentence."
+        text2 = (
+            "This is a different text with some words. There is a second sentence. And there is a third sentence. "
+            "And there is a fourth sentence."
+        )
         splitter.warm_up()
         result = splitter.run(documents=[Document(content=text1), Document(content=text2)])
         docs = result["documents"]
@@ -155,7 +155,10 @@ class TestSplittingByFunctionOrCharacterRegex:
 
     def test_split_by_passage(self):
         splitter = DocumentSplitter(split_by="passage", split_length=1)
-        text = "This is a text with some words. There is a second sentence.\n\nAnd there is a third sentence.\n\n And another passage."
+        text = (
+            "This is a text with some words. There is a second sentence.\n\nAnd there is a third sentence.\n\n "
+            "And another passage."
+        )
         splitter.warm_up()
         result = splitter.run(documents=[Document(content=text)])
         docs = result["documents"]
@@ -172,7 +175,10 @@ class TestSplittingByFunctionOrCharacterRegex:
 
     def test_split_by_page(self):
         splitter = DocumentSplitter(split_by="page", split_length=1)
-        text = "This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+        text = (
+            "This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And "
+            "another passage."
+        )
         splitter.warm_up()
         result = splitter.run(documents=[Document(content=text)])
         docs = result["documents"]
@@ -310,7 +316,8 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_add_page_number_to_metadata_with_no_overlap_passage_split(self):
         splitter = DocumentSplitter(split_by="passage", split_length=1)
         doc1 = Document(
-            content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence.\n\nAnd more passages.\n\n\f And another passage."
+            content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence."
+            "\n\nAnd more passages.\n\n\f And another passage."
         )
         splitter.warm_up()
         result = splitter.run(documents=[doc1])
@@ -322,7 +329,8 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_add_page_number_to_metadata_with_no_overlap_page_split(self):
         splitter = DocumentSplitter(split_by="page", split_length=1)
         doc1 = Document(
-            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f "
+            "And another passage."
         )
         splitter.warm_up()
         result = splitter.run(documents=[doc1])
@@ -332,7 +340,8 @@ class TestSplittingByFunctionOrCharacterRegex:
 
         splitter = DocumentSplitter(split_by="page", split_length=2)
         doc1 = Document(
-            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f "
+            "And another passage."
         )
         splitter.warm_up()
         result = splitter.run(documents=[doc1])
@@ -366,7 +375,8 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_add_page_number_to_metadata_with_overlap_passage_split(self):
         splitter = DocumentSplitter(split_by="passage", split_length=2, split_overlap=1)
         doc1 = Document(
-            content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence.\n\nAnd more passages.\n\n\f And another passage."
+            content="This is a text with some words.\f There is a second sentence.\n\nAnd there is a third sentence."
+            "\n\nAnd more passages.\n\n\f And another passage."
         )
         splitter.warm_up()
         result = splitter.run(documents=[doc1])
@@ -378,7 +388,8 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_add_page_number_to_metadata_with_overlap_page_split(self):
         splitter = DocumentSplitter(split_by="page", split_length=2, split_overlap=1)
         doc1 = Document(
-            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f And another passage."
+            content="This is a text with some words. There is a second sentence.\f And there is a third sentence.\f "
+            "And another passage."
         )
         splitter.warm_up()
         result = splitter.run(documents=[doc1])
@@ -432,6 +443,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert serialized["init_parameters"]["split_length"] == 10
         assert serialized["init_parameters"]["split_overlap"] == 2
         assert serialized["init_parameters"]["split_threshold"] == 5
+        assert serialized["init_parameters"]["skip_empty_documents"]
         assert "splitting_function" not in serialized["init_parameters"]
 
     def test_to_dict_with_splitting_function(self):
@@ -445,6 +457,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert serialized["type"] == "haystack.components.preprocessors.document_splitter.DocumentSplitter"
         assert serialized["init_parameters"]["split_by"] == "function"
         assert "splitting_function" in serialized["init_parameters"]
+        assert serialized["init_parameters"]["skip_empty_documents"]
         assert callable(deserialize_callable(serialized["init_parameters"]["splitting_function"]))
 
     def test_from_dict(self):
@@ -453,7 +466,13 @@ class TestSplittingByFunctionOrCharacterRegex:
         """
         data = {
             "type": "haystack.components.preprocessors.document_splitter.DocumentSplitter",
-            "init_parameters": {"split_by": "word", "split_length": 10, "split_overlap": 2, "split_threshold": 5},
+            "init_parameters": {
+                "split_by": "word",
+                "split_length": 10,
+                "split_overlap": 2,
+                "split_threshold": 5,
+                "skip_empty_documents": False,
+            },
         }
         splitter = DocumentSplitter.from_dict(data)
 
@@ -462,6 +481,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert splitter.split_overlap == 2
         assert splitter.split_threshold == 5
         assert splitter.splitting_function is None
+        assert splitter.skip_empty_documents is False
 
     def test_from_dict_with_splitting_function(self):
         """
@@ -504,7 +524,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert callable(deserialized_splitter.splitting_function)
         assert deserialized_splitter.splitting_function("a.b.c") == ["a", "b", "c"]
 
-    def test_run_empty_document(self):
+    def test_run_empty_document_with_skip_empty_documents_true(self):
         """
         Test if the component runs correctly with an empty document.
         """
@@ -513,6 +533,14 @@ class TestSplittingByFunctionOrCharacterRegex:
         splitter.warm_up()
         results = splitter.run([doc])
         assert results["documents"] == []
+
+    def test_run_empty_document_with_skip_empty_documents_false(self):
+        splitter = DocumentSplitter(skip_empty_documents=False)
+        doc = Document(content="")
+        splitter.warm_up()
+        results = splitter.run([doc])
+        assert len(results["documents"]) == 1
+        assert results["documents"][0].content == ""
 
     def test_run_document_only_whitespaces(self):
         """
@@ -536,7 +564,7 @@ class TestSplittingNLTKSentenceSplitter:
             (["Sun", "Moon"], 1),  # Ignores the first sentence even if its inclusion would be < split_overlap
         ],
     )
-    def test_number_of_sentences_to_keep(self, sentences: List[str], expected_num_sentences: int) -> None:
+    def test_number_of_sentences_to_keep(self, sentences: list[str], expected_num_sentences: int) -> None:
         num_sentences = DocumentSplitter._number_of_sentences_to_keep(
             sentences=sentences, split_length=5, split_overlap=2
         )

@@ -3,8 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+from pandas import DataFrame
 
+from haystack.core.component.types import GreedyVariadic, InputSocket, OutputSocket, Variadic
 from haystack.core.pipeline.component_checks import (
+    _NO_OUTPUT_PRODUCED,
     all_predecessors_executed,
     all_socket_predecessors_executed,
     any_predecessors_provided_input,
@@ -21,11 +24,6 @@ from haystack.core.pipeline.component_checks import (
     is_any_greedy_socket_ready,
     is_socket_lazy_variadic,
 )
-from haystack.core.pipeline.component_checks import _NO_OUTPUT_PRODUCED
-from haystack.core.component.types import InputSocket, OutputSocket, Variadic, GreedyVariadic
-
-
-from pandas import DataFrame
 
 
 @pytest.fixture

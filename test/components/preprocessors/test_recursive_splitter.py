@@ -58,8 +58,8 @@ def test_apply_overlap_with_overlap_capturing_completely_previous_chunk(caplog):
     chunks = ["chunk1", "chunk2", "chunk3", "chunk4"]
     _ = splitter._apply_overlap(chunks)
     assert (
-        "Overlap is the same as the previous chunk. Consider increasing the `split_length` parameter or decreasing the `split_overlap` parameter."
-        in caplog.text
+        "Overlap is the same as the previous chunk. Consider increasing the `split_length` parameter or decreasing "
+        "the `split_overlap` parameter." in caplog.text
     )
 
 
@@ -134,12 +134,15 @@ AI technology is widely used throughout industry, government, and science. Some 
     assert (
         chunks[1].content
         == "AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.\n"
-    )  # noqa: E501
-    assert chunks[2].content == "AI technology is widely used throughout industry, government, and science."  # noqa: E501
+    )
+    assert chunks[2].content == "AI technology is widely used throughout industry, government, and science."
     assert (
         chunks[3].content
-        == "Some high-profile applications include advanced web search engines (e.g., Google Search); recommendation systems (used by YouTube, Amazon, and Netflix); interacting via human speech (e.g., Google Assistant, Siri, and Alexa); autonomous vehicles (e.g., Waymo); generative and creative tools (e.g., ChatGPT and AI art); and superhuman play and analysis in strategy games (e.g., chess and Go)."
-    )  # noqa: E501
+        == "Some high-profile applications include advanced web search engines (e.g., Google Search); recommendation "
+        "systems (used by YouTube, Amazon, and Netflix); interacting via human speech (e.g., Google Assistant, "
+        "Siri, and Alexa); autonomous vehicles (e.g., Waymo); generative and creative tools (e.g., ChatGPT and "
+        "AI art); and superhuman play and analysis in strategy games (e.g., chess and Go)."
+    )
 
 
 def test_run_split_by_dot_count_page_breaks_split_unit_char() -> None:
@@ -990,3 +993,21 @@ def test_run_complex_text_with_multiple_separators():
     assert len(chunks[3].content) == 152
     assert chunks[3].content.startswith("C")
     assert chunks[3].content.endswith("D" * 50)
+
+
+def test_recursive_splitter_generates_unique_ids_and_correct_meta():
+    text = "Haystack is awesome. " * 5
+    source_doc = Document(content=text)
+
+    splitter = RecursiveDocumentSplitter(split_length=3)
+    splitter.warm_up()
+
+    chunks = splitter.run([source_doc])["documents"]
+
+    # IDs must be unique
+    assert len({c.id for c in chunks}) == len(chunks)
+
+    # parent_id and split_id checks
+    for idx, chunk in enumerate(chunks):
+        assert chunk.meta["parent_id"] == source_doc.id
+        assert chunk.meta["split_id"] == idx

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 import requests
 
@@ -40,8 +40,8 @@ class SearchApiWebSearch:
         self,
         api_key: Secret = Secret.from_env_var("SEARCHAPI_API_KEY"),
         top_k: Optional[int] = 10,
-        allowed_domains: Optional[List[str]] = None,
-        search_params: Optional[Dict[str, Any]] = None,
+        allowed_domains: Optional[list[str]] = None,
+        search_params: Optional[dict[str, Any]] = None,
     ):
         """
         Initialize the SearchApiWebSearch component.
@@ -67,7 +67,7 @@ class SearchApiWebSearch:
         # Ensure that the API key is resolved.
         _ = self.api_key.resolve_value()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -83,7 +83,7 @@ class SearchApiWebSearch:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SearchApiWebSearch":
+    def from_dict(cls, data: dict[str, Any]) -> "SearchApiWebSearch":
         """
         Deserializes the component from a dictionary.
 
@@ -95,8 +95,8 @@ class SearchApiWebSearch:
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document], links=List[str])
-    def run(self, query: str) -> Dict[str, Union[List[Document], List[str]]]:
+    @component.output_types(documents=list[Document], links=list[str])
+    def run(self, query: str) -> dict[str, Union[list[Document], list[str]]]:
         """
         Uses [SearchApi](https://www.searchapi.io/) to search the web.
 

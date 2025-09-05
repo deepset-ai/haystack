@@ -2,16 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, Any
+from typing import Any
 
 import pytest
 
-from haystack import Pipeline, DeserializationError
-from haystack.document_stores.types import FilterPolicy
-from haystack.testing.factory import document_store_class
+from haystack import DeserializationError, Pipeline
 from haystack.components.retrievers.in_memory.embedding_retriever import InMemoryEmbeddingRetriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import FilterPolicy
+from haystack.testing.factory import document_store_class
 
 
 class TestMemoryEmbeddingRetriever:
@@ -156,7 +156,7 @@ class TestMemoryEmbeddingRetriever:
 
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
-        result: Dict[str, Any] = pipeline.run(
+        result: dict[str, Any] = pipeline.run(
             data={"retriever": {"query_embedding": [0.1, 0.1, 0.1, 0.1], "return_embedding": True}}
         )
 

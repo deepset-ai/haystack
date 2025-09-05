@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 
@@ -55,7 +55,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     """
 
     # pylint: disable=super-init-not-called
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(  # pylint: disable=too-many-positional-arguments  # noqa: PLR0913
         self,
         azure_endpoint: Optional[str] = None,
         api_version: Optional[str] = "2023-05-15",
@@ -67,9 +67,9 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         system_prompt: Optional[str] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        default_headers: Optional[Dict[str, str]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        default_headers: Optional[dict[str, str]] = None,
         *,
         azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
     ):
@@ -164,7 +164,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             default_headers=self.default_headers,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -194,7 +194,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AzureOpenAIGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "AzureOpenAIGenerator":
         """
         Deserialize this component from a dictionary.
 

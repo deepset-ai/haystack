@@ -5,22 +5,18 @@
 import collections
 from dataclasses import MISSING, fields, is_dataclass
 from inspect import getdoc
-from typing import Any, Callable, Dict, List, Sequence, Tuple, Union, get_args, get_origin
+from typing import Any, Callable, Sequence, Union, get_args, get_origin
 
+from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage
-from haystack.lazy_imports import LazyImport
-
-with LazyImport(message="Run 'pip install docstring-parser'") as docstring_parser_import:
-    from docstring_parser import parse
-
 
 logger = logging.getLogger(__name__)
 
 
-def _get_param_descriptions(method: Callable) -> Tuple[str, Dict[str, str]]:
+def _get_param_descriptions(method: Callable) -> tuple[str, dict[str, str]]:
     """
     Extracts parameter descriptions from the method's docstring using docstring_parser.
 
@@ -33,7 +29,6 @@ def _get_param_descriptions(method: Callable) -> Tuple[str, Dict[str, str]]:
     if not docstring:
         return "", {}
 
-    docstring_parser_import.check()
     parsed_doc = parse(docstring)
     param_descriptions = {}
     for param in parsed_doc.params:
@@ -47,7 +42,7 @@ def _get_param_descriptions(method: Callable) -> Tuple[str, Dict[str, str]]:
     return parsed_doc.short_description or "", param_descriptions
 
 
-def _get_component_param_descriptions(component: Any) -> Tuple[str, Dict[str, str]]:
+def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, str]]:
     """
     Get parameter descriptions from a component, handling both regular Components and SuperComponents.
 
@@ -121,7 +116,7 @@ def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
     _, param_descriptions = _get_param_descriptions(dc_type)
     cls = dc_type if isinstance(dc_type, type) else dc_type.__class__
 
-    field_defs: Dict[str, Any] = {}
+    field_defs: dict[str, Any] = {}
     for field in fields(dc_type):
         f_type = field.type if isinstance(field.type, str) else _resolve_type(field.type)
         default = field.default if field.default is not MISSING else ...
@@ -148,7 +143,7 @@ def _resolve_type(_type: Any) -> Any:
     it encounters into corresponding Pydantic models.
 
     :param _type: The type annotation to resolve. If the type is a dataclass, it will be converted to a Pydantic model.
-        For generic types (like List[SomeDataclass]), the inner types are also resolved recursively.
+        For generic types (like list[SomeDataclass]), the inner types are also resolved recursively.
 
     :returns:
         A fully resolved type, with all dataclass types converted to Pydantic models
@@ -160,15 +155,15 @@ def _resolve_type(_type: Any) -> Any:
     args = get_args(_type)
 
     if origin is list:
-        return List[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
+        return list[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
 
     if origin is collections.abc.Sequence:
         return Sequence[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
 
     if origin is Union:
-        return Union[tuple(_resolve_type(a) for a in args)]  # type: ignore[misc]
+        return Union[tuple(_resolve_type(a) for a in args)]
 
     if origin is dict:
-        return Dict[args[0] if args else Any, _resolve_type(args[1]) if args else Any]  # type: ignore[misc]
+        return dict[args[0] if args else Any, _resolve_type(args[1]) if args else Any]  # type: ignore[misc]
 
     return _type

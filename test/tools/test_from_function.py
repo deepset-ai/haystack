@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Annotated, Literal, Optional
+
 import pytest
 
 from haystack.tools.errors import SchemaGenerationError
-from haystack.tools.from_function import create_tool_from_function, _remove_title_from_schema, tool
-from typing import Annotated, Literal, Optional
+from haystack.tools.from_function import _remove_title_from_schema, create_tool_from_function, tool
+from haystack.tools.tool import Tool
 
 
 def function_with_docstring(city: str) -> str:
@@ -91,7 +93,7 @@ def test_from_function_missing_type_hint():
 
 
 def test_from_function_schema_generation_error():
-    def function_with_invalid_type_hint(city: "invalid") -> str:
+    def function_with_invalid_type_hint(city: "invalid") -> str:  # noqa: F821
         return f"Weather report for {city}: 20°C, sunny"
 
     with pytest.raises(SchemaGenerationError):
@@ -115,14 +117,33 @@ def test_tool_decorator():
     assert get_weather.function("Berlin") == "Weather report for Berlin: 20°C, sunny"
 
 
+# Test function for decorator deserialization
+@tool
+def weather_tool_with_decorator(city: str) -> str:
+    """Get weather report for a city."""
+    return f"Weather report for {city}: 20°C, sunny"
+
+
+def test_tool_decorator_deserialization():
+    serialized = weather_tool_with_decorator.to_dict()
+    deserialized = Tool.from_dict(serialized)
+    assert deserialized.name == "weather_tool_with_decorator"
+    assert deserialized.description == "Get weather report for a city."
+    assert deserialized.parameters == {
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+    }
+
+
 def test_tool_decorator_with_annotated_params():
     @tool
     def get_weather(
         city: Annotated[str, "The target city"] = "Berlin",
-        format: Annotated[Literal["short", "long"], "Output format"] = "short",
+        output_format: Annotated[Literal["short", "long"], "Output format"] = "short",
     ) -> str:
         """Get weather report for a city."""
-        return f"Weather report for {city} ({format} format): 20°C, sunny"
+        return f"Weather report for {city} ({output_format} format): 20°C, sunny"
 
     assert get_weather.name == "get_weather"
     assert get_weather.description == "Get weather report for a city."
@@ -130,7 +151,12 @@ def test_tool_decorator_with_annotated_params():
         "type": "object",
         "properties": {
             "city": {"type": "string", "description": "The target city", "default": "Berlin"},
-            "format": {"type": "string", "enum": ["short", "long"], "description": "Output format", "default": "short"},
+            "output_format": {
+                "type": "string",
+                "enum": ["short", "long"],
+                "description": "Output format",
+                "default": "short",
+            },
         },
     }
     assert callable(get_weather.function)
@@ -141,26 +167,26 @@ def test_tool_decorator_with_parameters():
     @tool(name="fetch_weather", description="A tool to check the weather.")
     def get_weather(
         city: Annotated[str, "The target city"] = "Berlin",
-        format: Annotated[Literal["short", "long"], "Output format"] = "short",
+        output_format: Annotated[Literal["short", "long"], "Output format"] = "short",
     ) -> str:
         """Get weather report for a city."""
-        return f"Weather report for {city} ({format} format): 20°C, sunny"
+        return f"Weather report for {city} ({output_format} format): 20°C, sunny"
 
     assert get_weather.name == "fetch_weather"
     assert get_weather.description == "A tool to check the weather."
 
 
 def test_tool_decorator_with_inputs_and_outputs():
-    @tool(inputs_from_state={"format": "format"}, outputs_to_state={"output": {"source": "output"}})
+    @tool(inputs_from_state={"output_format": "output_format"}, outputs_to_state={"output": {"source": "output"}})
     def get_weather(
         city: Annotated[str, "The target city"] = "Berlin",
-        format: Annotated[Literal["short", "long"], "Output format"] = "short",
+        output_format: Annotated[Literal["short", "long"], "Output format"] = "short",
     ) -> str:
         """Get weather report for a city."""
-        return f"Weather report for {city} ({format} format): 20°C, sunny"
+        return f"Weather report for {city} ({output_format} format): 20°C, sunny"
 
     assert get_weather.name == "get_weather"
-    assert get_weather.inputs_from_state == {"format": "format"}
+    assert get_weather.inputs_from_state == {"output_format": "output_format"}
     assert get_weather.outputs_to_state == {"output": {"source": "output"}}
     # Inputs should be excluded from auto-generated parameters
     assert get_weather.parameters == {

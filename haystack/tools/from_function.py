@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from pydantic import create_model
 
@@ -15,8 +15,8 @@ def create_tool_from_function(
     function: Callable,
     name: Optional[str] = None,
     description: Optional[str] = None,
-    inputs_from_state: Optional[Dict[str, str]] = None,
-    outputs_to_state: Optional[Dict[str, Dict[str, Any]]] = None,
+    inputs_from_state: Optional[dict[str, str]] = None,
+    outputs_to_state: Optional[dict[str, dict[str, Any]]] = None,
 ) -> "Tool":
     """
     Create a Tool instance from a function.
@@ -68,13 +68,16 @@ def create_tool_from_function(
         To intentionally leave the description empty, pass an empty string.
     :param inputs_from_state:
         Optional dictionary mapping state keys to tool parameter names.
-        Example: {"repository": "repo"} maps state's "repository" to tool's "repo" parameter.
+        Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
     :param outputs_to_state:
         Optional dictionary defining how tool outputs map to state and message handling.
-        Example: {
+        Example:
+        ```python
+        {
             "documents": {"source": "docs", "handler": custom_handler},
             "message": {"source": "summary", "handler": format_summary}
         }
+        ```
     :returns:
         The Tool created from the function.
 
@@ -88,7 +91,7 @@ def create_tool_from_function(
     signature = inspect.signature(function)
 
     # collect fields (types and defaults) and descriptions from function parameters
-    fields: Dict[str, Any] = {}
+    fields: dict[str, Any] = {}
     descriptions = {}
 
     for param_name, param in signature.parameters.items():
@@ -139,8 +142,8 @@ def tool(
     *,
     name: Optional[str] = None,
     description: Optional[str] = None,
-    inputs_from_state: Optional[Dict[str, str]] = None,
-    outputs_to_state: Optional[Dict[str, Dict[str, Any]]] = None,
+    inputs_from_state: Optional[dict[str, str]] = None,
+    outputs_to_state: Optional[dict[str, dict[str, Any]]] = None,
 ) -> Union[Tool, Callable[[Callable], Tool]]:
     """
     Decorator to convert a function into a Tool.
@@ -203,7 +206,7 @@ def tool(
     return decorator(function)
 
 
-def _remove_title_from_schema(schema: Dict[str, Any]) -> None:
+def _remove_title_from_schema(schema: dict[str, Any]) -> None:
     """
     Remove the 'title' keyword from JSON schema and contained property schemas.
 

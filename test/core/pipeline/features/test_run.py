@@ -1,52 +1,53 @@
+# ruff: noqa: D103
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from copy import deepcopy
-from typing import List, Optional, Dict, Any
 import re
-
-from pytest_bdd import scenarios, given
+from copy import deepcopy
+from typing import Any, Optional, Union
 from unittest.mock import ANY
+
 import pytest
 from pandas import DataFrame
+from pytest_bdd import given, scenarios
 
 from haystack import Document, component
-from haystack.document_stores.types import DuplicatePolicy
-from haystack.dataclasses import ChatMessage, GeneratedAnswer, TextContent, ByteStream
-from haystack.components.routers import ConditionalRouter, FileTypeRouter
-from haystack.components.builders import PromptBuilder, AnswerBuilder, ChatPromptBuilder
+from haystack.components.builders import AnswerBuilder, ChatPromptBuilder, PromptBuilder
 from haystack.components.converters import (
-    OutputAdapter,
-    JSONConverter,
-    TextFileToDocument,
     CSVToDocument,
     HTMLToDocument,
+    JSONConverter,
+    OutputAdapter,
+    TextFileToDocument,
 )
+from haystack.components.joiners import AnswerJoiner, BranchJoiner, DocumentJoiner, StringJoiner
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.joiners import BranchJoiner, DocumentJoiner, AnswerJoiner, StringJoiner
+from haystack.components.routers import ConditionalRouter, FileTypeRouter
+from haystack.components.routers.conditional_router import Route
 from haystack.core.component.types import Variadic
+from haystack.dataclasses import ByteStream, ChatMessage, ChatRole, GeneratedAnswer, TextContent
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+from haystack.testing.factory import component_class
 from haystack.testing.sample_components import (
     Accumulate,
     AddFixedValue,
     Double,
+    FString,
     Greet,
+    Hello,
     Parity,
+    Remainder,
     Repeat,
+    StringListJoiner,
     Subtract,
     Sum,
-    Threshold,
-    Remainder,
-    FString,
-    Hello,
     TextSplitter,
-    StringListJoiner,
+    Threshold,
 )
-from haystack.testing.factory import component_class
-
 from test.core.pipeline.features.conftest import PipelineRunData
 
 pytestmark = [pytest.mark.usefixtures("pipeline_class"), pytest.mark.integration]
@@ -57,9 +58,7 @@ scenarios("pipeline_run.feature")
 @given("a pipeline that has no components", target_fixture="pipeline_data")
 def pipeline_that_has_no_components(pipeline_class):
     pipeline = pipeline_class(max_runs_per_component=1)
-    inputs = {}
-    expected_outputs = {}
-    return pipeline, [PipelineRunData(inputs=inputs, expected_outputs=expected_outputs)]
+    return pipeline, [PipelineRunData(inputs={}, expected_outputs={})]
 
 
 @given("a pipeline that is linear", target_fixture="pipeline_data")
@@ -89,7 +88,7 @@ def pipeline_that_is_linear(pipeline_class):
 
 @given("a pipeline that has an infinite loop", target_fixture="pipeline_data")
 def pipeline_that_has_an_infinite_loop(pipeline_class):
-    routes = [
+    routes: list[Route] = [
         {"condition": "{{number > 2}}", "output": "{{number}}", "output_name": "big_number", "output_type": int},
         {"condition": "{{number <= 2}}", "output": "{{number + 2}}", "output_name": "small_number", "output_type": int},
     ]
@@ -209,7 +208,7 @@ def pipeline_that_has_a_single_component_with_a_default_input(pipeline_class):
     @component
     class WithDefault:
         @component.output_types(b=int)
-        def run(self, a: int, b: int = 2):
+        def run(self, a: int, b: int = 2) -> dict[str, int]:
             return {"c": a + b}
 
     pipeline = pipeline_class(max_runs_per_component=1)
@@ -639,8 +638,8 @@ def pipeline_that_has_two_branches_one_of_which_loops_back(pipeline_class):
 def pipeline_that_has_a_component_with_mutable_input(pipeline_class):
     @component
     class InputMangler:
-        @component.output_types(mangled_list=List[str])
-        def run(self, input_list: List[str]):
+        @component.output_types(mangled_list=list[str])
+        def run(self, input_list: list[str]) -> dict[str, list[str]]:
             input_list.append("extra_item")
             return {"mangled_list": input_list}
 
@@ -679,21 +678,21 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
     @component
     class PassThroughPromptBuilder:
         # This is a pass-through component that returns the same input
-        @component.output_types(prompt=List[ChatMessage])
-        def run(self, prompt_source: List[ChatMessage]):
+        @component.output_types(prompt=list[ChatMessage])
+        def run(self, prompt_source: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
             return {"prompt": prompt_source}
 
     @component
     class MessageMerger:
         @component.output_types(merged_message=str)
-        def run(self, messages: List[ChatMessage], metadata: dict = None):
+        def run(self, messages: list[ChatMessage], metadata: Optional[dict] = None) -> dict[str, str]:
             return {"merged_message": "\n".join(t.text or "" for t in messages)}
 
     @component
     class FakeGenerator:
         # This component is a fake generator that always returns the same message
-        @component.output_types(replies=List[ChatMessage])
-        def run(self, messages: List[ChatMessage]):
+        @component.output_types(replies=list[ChatMessage])
+        def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
             return {"replies": [ChatMessage.from_assistant("Fake message")]}
 
     prompt_builder = PassThroughPromptBuilder()
@@ -738,7 +737,7 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
                     ("llm", 1): {
                         "messages": [
                             ChatMessage(
-                                _role="system",
+                                _role=ChatRole.SYSTEM,
                                 _content=[
                                     TextContent(
                                         text="Always respond in English even if some input data is in other languages."
@@ -748,14 +747,17 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
                                 _meta={},
                             ),
                             ChatMessage(
-                                _role="user", _content=[TextContent(text="Tell me about Berlin")], _name=None, _meta={}
+                                _role=ChatRole.USER,
+                                _content=[TextContent(text="Tell me about Berlin")],
+                                _name=None,
+                                _meta={},
                             ),
                         ]
                     },
                     ("mm1", 1): {
                         "messages": [
                             ChatMessage(
-                                _role="system",
+                                _role=ChatRole.SYSTEM,
                                 _content=[
                                     TextContent(
                                         text="Always respond in English even if some input data is in other languages."
@@ -765,7 +767,10 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
                                 _meta={},
                             ),
                             ChatMessage(
-                                _role="user", _content=[TextContent(text="Tell me about Berlin")], _name=None, _meta={}
+                                _role=ChatRole.USER,
+                                _content=[TextContent(text="Tell me about Berlin")],
+                                _name=None,
+                                _meta={},
                             ),
                         ],
                         "metadata": {"meta2": "value2", "metadata_key": "metadata_value"},
@@ -773,7 +778,10 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
                     ("mm2", 1): {
                         "messages": [
                             ChatMessage(
-                                _role="assistant", _content=[TextContent(text="Fake message")], _name=None, _meta={}
+                                _role=ChatRole.ASSISTANT,
+                                _content=[TextContent(text="Fake message")],
+                                _name=None,
+                                _meta={},
                             )
                         ],
                         "metadata": {"meta2": "value2", "metadata_key": "metadata_value"},
@@ -781,7 +789,7 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
                     ("prompt_builder", 1): {
                         "prompt_source": [
                             ChatMessage(
-                                _role="system",
+                                _role=ChatRole.SYSTEM,
                                 _content=[
                                     TextContent(
                                         text="Always respond in English even if some input data is in other languages."
@@ -791,7 +799,10 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
                                 _meta={},
                             ),
                             ChatMessage(
-                                _role="user", _content=[TextContent(text="Tell me about Berlin")], _name=None, _meta={}
+                                _role=ChatRole.USER,
+                                _content=[TextContent(text="Tell me about Berlin")],
+                                _name=None,
+                                _meta={},
                             ),
                         ]
                     },
@@ -806,6 +817,7 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
     target_fixture="pipeline_data",
 )
 def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_default_input(pipeline_class):
+    # ruff: noqa: D205
     """
     This test verifies that `Pipeline.run()` executes the components in the correct order when
     there's a greedy Component with variadic input right before a Component with at least one default input.
@@ -822,7 +834,7 @@ def pipeline_that_has_a_greedy_and_variadic_component_after_a_component_with_def
     template = "Given this documents: {{ documents|join(', ', attribute='content') }} Answer this question: {{ query }}"
     pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
     pipeline.add_component("prompt_builder", PromptBuilder(template=template))
-    pipeline.add_component("branch_joiner", BranchJoiner(List[Document]))
+    pipeline.add_component("branch_joiner", BranchJoiner(list[Document]))
 
     pipeline.connect("retriever", "branch_joiner")
     pipeline.connect("branch_joiner", "prompt_builder.documents")
@@ -897,7 +909,7 @@ def pipeline_that_has_a_component_that_doesnt_return_a_dictionary(pipeline_class
 @given("a pipeline that has a component with only default inputs", target_fixture="pipeline_data")
 def pipeline_that_has_a_component_with_only_default_inputs(pipeline_class):
     FakeGenerator = component_class(
-        "FakeGenerator", input_types={"prompt": str}, output_types={"replies": List[str]}, output={"replies": ["Paris"]}
+        "FakeGenerator", input_types={"prompt": str}, output_types={"replies": list[str]}, output={"replies": ["Paris"]}
     )
     docs = [Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")]
     doc_store = InMemoryDocumentStore()
@@ -1016,26 +1028,28 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
     pipeline_class,
 ):
     """
-    This tests verifies that a Pipeline doesn't get stuck running in a loop if
-    it has all the following characterics:
+    This tests verifies that a Pipeline doesn't get stuck running in a loop if it has all the following characteristics:
+
     - The first Component has all defaults for its inputs
     - The first Component receives one input from the user
     - The first Component receives one input from a loop in the Pipeline
     - The second Component has at least one default input
     """
 
-    def fake_generator_run(self, generation_kwargs: Optional[Dict[str, Any]] = None, **kwargs):
+    def fake_generator_run(
+        self: Any, generation_kwargs: Optional[dict[str, Any]] = None, **kwargs: dict[str, Any]
+    ) -> dict[str, list[str]]:
         # Simple hack to simulate a model returning a different reply after the
         # the first time it's called
         if getattr(fake_generator_run, "called", False):
             return {"replies": ["Rome"]}
-        fake_generator_run.called = True
+        fake_generator_run.called = True  # type: ignore[attr-defined]
         return {"replies": ["Paris"]}
 
     FakeGenerator = component_class(
         "FakeGenerator",
         input_types={"prompt": str},
-        output_types={"replies": List[str]},
+        output_types={"replies": list[str]},
         extra_fields={"run": fake_generator_run},
     )
     template = (
@@ -1054,18 +1068,18 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
                 "condition": "{{ replies == ['Rome'] }}",
                 "output": "{{ replies }}",
                 "output_name": "correct_replies",
-                "output_type": List[int],
+                "output_type": list[int],
             },
             {
                 "condition": "{{ replies == ['Paris'] }}",
                 "output": "{{ replies }}",
                 "output_name": "incorrect_replies",
-                "output_type": List[int],
+                "output_type": list[int],
             },
         ]
     )
 
-    pipe = pipeline_class(max_runs_per_component=1)
+    pipe = pipeline_class(max_runs_per_component=2)
 
     pipe.add_component("prompt_builder", PromptBuilder(template=template))
     pipe.add_component("generator", FakeGenerator())
@@ -1322,7 +1336,7 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs_from_multiple_socke
         """
 
         @component.output_types(value=int, original=int)
-        def run(self, value: int):
+        def run(self, value: int) -> dict[str, int]:
             return {"value": value * 2, "original": value}
 
     pipeline = pipeline_class(max_runs_per_component=1)
@@ -1368,11 +1382,22 @@ def pipeline_that_is_linear_and_returns_intermediate_outputs_from_multiple_socke
     target_fixture="pipeline_data",
 )
 def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anything_from_its_sender(pipeline_class):
-    routes = [
-        {"condition": "{{'reisen' in sentence}}", "output": "German", "output_name": "language_1", "output_type": str},
-        {"condition": "{{'viajar' in sentence}}", "output": "Spanish", "output_name": "language_2", "output_type": str},
-    ]
-    router = ConditionalRouter(routes)
+    router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{'reisen' in sentence}}",
+                "output": "German",
+                "output_name": "language_1",
+                "output_type": str,
+            },
+            {
+                "condition": "{{'viajar' in sentence}}",
+                "output": "Spanish",
+                "output_name": "language_2",
+                "output_type": str,
+            },
+        ]
+    )
 
     pipeline = pipeline_class(max_runs_per_component=1)
     pipeline.add_component("router", router)
@@ -1416,8 +1441,8 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str):
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             if "no_answer" in prompt:
                 return {"replies": ["There's simply no_answer to this question"]}
             return {"replies": ["Some SQL query"]}
@@ -1425,28 +1450,28 @@ def pipeline_that_has_a_component_with_default_inputs_that_doesnt_receive_anythi
     @component
     class FakeSQLQuerier:
         @component.output_types(results=str)
-        def run(self, query: str):
+        def run(self, query: str) -> dict[str, str]:
             return {"results": "This is the query result", "query": query}
 
     llm = FakeGenerator()
     sql_querier = FakeSQLQuerier()
 
-    routes = [
-        {
-            "condition": "{{'no_answer' not in replies[0]}}",
-            "output": "{{replies[0]}}",
-            "output_name": "sql",
-            "output_type": str,
-        },
-        {
-            "condition": "{{'no_answer' in replies[0]}}",
-            "output": "{{question}}",
-            "output_name": "go_to_fallback",
-            "output_type": str,
-        },
-    ]
-
-    router = ConditionalRouter(routes)
+    router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{'no_answer' not in replies[0]}}",
+                "output": "{{replies[0]}}",
+                "output_name": "sql",
+                "output_type": str,
+            },
+            {
+                "condition": "{{'no_answer' in replies[0]}}",
+                "output": "{{question}}",
+                "output_name": "go_to_fallback",
+                "output_type": str,
+            },
+        ]
+    )
 
     fallback_prompt = PromptBuilder(
         template="""User entered a query that cannot be answered with the given table.
@@ -1668,9 +1693,9 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
     @component
     class FakeOutputValidator:
         @component.output_types(
-            valid_replies=List[str], invalid_replies=Optional[List[str]], error_message=Optional[str]
+            valid_replies=list[str], invalid_replies=Optional[list[str]], error_message=Optional[str]
         )
-        def run(self, replies: List[str]):
+        def run(self, replies: list[str]) -> dict[str, Any]:
             if not getattr(self, "called", False):
                 self.called = True
                 return {"invalid_replies": ["This is an invalid reply"], "error_message": "this is an error message"}
@@ -1678,14 +1703,14 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str):
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             return {"replies": ["This is a valid reply"]}
 
     llm = FakeGenerator()
     validator = FakeOutputValidator()
 
-    pipeline = pipeline_class(max_runs_per_component=1)
+    pipeline = pipeline_class(max_runs_per_component=2)
     pipeline.add_component("prompt_builder", prompt_builder)
 
     pipeline.add_component("llm", llm)
@@ -1844,34 +1869,34 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
 
     @component
     class FakeRetriever:
-        @component.output_types(documents=List[Document])
+        @component.output_types(documents=list[Document])
         def run(
             self,
             query: str,
-            filters: Optional[Dict[str, Any]] = None,
+            filters: Optional[dict[str, Any]] = None,
             top_k: Optional[int] = None,
             scale_score: Optional[bool] = None,
-        ):
+        ) -> dict[str, list[Document]]:
             return {"documents": [Document(content="This is a document")]}
 
     @component
     class FakeRanker:
-        @component.output_types(documents=List[Document])
+        @component.output_types(documents=list[Document])
         def run(
             self,
             query: str,
-            documents: List[Document],
+            documents: list[Document],
             top_k: Optional[int] = None,
             scale_score: Optional[bool] = None,
             calibration_factor: Optional[float] = None,
             score_threshold: Optional[float] = None,
-        ):
+        ) -> dict[str, list[Document]]:
             return {"documents": documents}
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str], meta=Dict[str, Any])
-        def run(self, prompt: str, generation_kwargs: Optional[Dict[str, Any]] = None):
+        @component.output_types(replies=list[str], meta=dict[str, Any])
+        def run(self, prompt: str, generation_kwargs: Optional[dict[str, Any]] = None) -> dict[str, Any]:
             return {"replies": ["This is a reply"], "meta": {"meta_key": "meta_value"}}
 
     pipeline = pipeline_class(max_runs_per_component=1)
@@ -1983,35 +2008,35 @@ def that_is_linear_with_conditional_branching_and_multiple_joins(pipeline_class)
     @component
     class FakeRouter:
         @component.output_types(LEGIT=str, INJECTION=str)
-        def run(self, query: str):
+        def run(self, query: str) -> dict[str, str]:
             if "injection" in query:
                 return {"INJECTION": query}
             return {"LEGIT": query}
 
     @component
     class FakeEmbedder:
-        @component.output_types(embeddings=List[float])
-        def run(self, text: str):
+        @component.output_types(embeddings=list[float])
+        def run(self, text: str) -> dict[str, list[float]]:
             return {"embeddings": [1.0, 2.0, 3.0]}
 
     @component
     class FakeRanker:
-        @component.output_types(documents=List[Document])
-        def run(self, query: str, documents: List[Document]):
+        @component.output_types(documents=list[Document])
+        def run(self, query: str, documents: list[Document]) -> dict[str, list[Document]]:
             return {"documents": documents}
 
     @component
     class FakeRetriever:
-        @component.output_types(documents=List[Document])
-        def run(self, query: str):
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
             if "injection" in query:
                 return {"documents": []}
             return {"documents": [Document(content="This is a document")]}
 
     @component
     class FakeEmbeddingRetriever:
-        @component.output_types(documents=List[Document])
-        def run(self, query_embedding: List[float]):
+        @component.output_types(documents=list[Document])
+        def run(self, query_embedding: list[float]) -> dict[str, list[Document]]:
             return {"documents": [Document(content="This is another document")]}
 
     pipeline.add_component(name="router", instance=FakeRouter())
@@ -2142,27 +2167,14 @@ def that_is_a_simple_agent(pipeline_class):
     Thought:
     """
 
-    routes = [
-        {
-            "condition": "{{'search' in tool_id_and_param[0]}}",
-            "output": "{{tool_id_and_param[1]}}",
-            "output_name": "search",
-            "output_type": str,
-        },
-        {
-            "condition": "{{'finish' in tool_id_and_param[0]}}",
-            "output": "{{tool_id_and_param[1]}}",
-            "output_name": "finish",
-            "output_type": str,
-        },
-    ]
-
     @component
     class FakeThoughtActionOpenAIChatGenerator:
         run_counter = 0
 
-        @component.output_types(replies=List[ChatMessage])
-        def run(self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None):
+        @component.output_types(replies=list[ChatMessage])
+        def run(
+            self, messages: list[ChatMessage], generation_kwargs: Optional[dict[str, Any]] = None
+        ) -> dict[str, list[ChatMessage]]:
             if self.run_counter == 0:
                 self.run_counter += 1
                 return {
@@ -2177,14 +2189,16 @@ def that_is_a_simple_agent(pipeline_class):
 
     @component
     class FakeConclusionOpenAIChatGenerator:
-        @component.output_types(replies=List[ChatMessage])
-        def run(self, messages: List[ChatMessage], generation_kwargs: Optional[Dict[str, Any]] = None):
+        @component.output_types(replies=list[ChatMessage])
+        def run(
+            self, messages: list[ChatMessage], generation_kwargs: Optional[dict[str, Any]] = None
+        ) -> dict[str, list[ChatMessage]]:
             return {"replies": [ChatMessage.from_assistant("Tower of Pisa is 55 meters tall\n")]}
 
     @component
     class FakeSerperDevWebSearch:
-        @component.output_types(documents=List[Document])
-        def run(self, query: str):
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
             return {
                 "documents": [
                     Document(content="Eiffel Tower is 300 meters tall"),
@@ -2194,15 +2208,16 @@ def that_is_a_simple_agent(pipeline_class):
 
     # main part
     pipeline = pipeline_class()
-    pipeline.add_component("main_input", BranchJoiner(List[ChatMessage]))
+    pipeline.add_component("main_input", BranchJoiner(list[ChatMessage]))
     pipeline.add_component("prompt_builder", ChatPromptBuilder(variables=["query"]))
     pipeline.add_component("llm", FakeThoughtActionOpenAIChatGenerator())
 
     @component
     class ToolExtractor:
-        @component.output_types(output=List[str])
-        def run(self, messages: List[ChatMessage]):
-            prompt: str = messages[-1].text
+        @component.output_types(output=list[Optional[str]])
+        def run(self, messages: list[ChatMessage]) -> dict[str, list[Optional[str]]]:
+            prompt = messages[-1].text
+            assert isinstance(prompt, str)
             lines = prompt.strip().split("\n")
             for line in reversed(lines):
                 pattern = r"Action:\s*(\w+)\[(.*?)\]"
@@ -2221,21 +2236,41 @@ def that_is_a_simple_agent(pipeline_class):
         def __init__(self, suffix: str = ""):
             self._suffix = suffix
 
-        @component.output_types(output=List[ChatMessage])
-        def run(self, replies: List[ChatMessage], current_prompt: List[ChatMessage]):
-            content = current_prompt[-1].text + replies[-1].text + self._suffix
+        @component.output_types(output=list[ChatMessage])
+        def run(self, replies: list[ChatMessage], current_prompt: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+            curr_prompt = current_prompt[-1].text if current_prompt[-1].text else ""
+            reply = replies[-1].text if replies[-1].text else ""
+            content = curr_prompt + reply + self._suffix
             return {"output": [ChatMessage.from_user(content)]}
 
     @component
     class SearchOutputAdapter:
-        @component.output_types(output=List[ChatMessage])
-        def run(self, replies: List[ChatMessage]):
+        @component.output_types(output=list[ChatMessage])
+        def run(self, replies: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
             content = f"Observation: {replies[-1].text}\n"
             return {"output": [ChatMessage.from_assistant(content)]}
 
     pipeline.add_component("prompt_concatenator_after_action", PromptConcatenator())
 
-    pipeline.add_component("router", ConditionalRouter(routes))
+    pipeline.add_component(
+        "router",
+        ConditionalRouter(
+            routes=[
+                {
+                    "condition": "{{'search' in tool_id_and_param[0]}}",
+                    "output": "{{tool_id_and_param[1]}}",
+                    "output_name": "search",
+                    "output_type": str,
+                },
+                {
+                    "condition": "{{'finish' in tool_id_and_param[0]}}",
+                    "output": "{{tool_id_and_param[1]}}",
+                    "output_name": "finish",
+                    "output_type": str,
+                },
+            ]
+        ),
+    )
     pipeline.add_component("router_search", FakeSerperDevWebSearch())
     pipeline.add_component("search_prompt_builder", ChatPromptBuilder(variables=["documents", "search_query"]))
     pipeline.add_component("search_llm", FakeConclusionOpenAIChatGenerator())
@@ -2280,7 +2315,7 @@ def that_is_a_simple_agent(pipeline_class):
                     "generation_kwargs": None,
                     "messages": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    "
@@ -2295,7 +2330,7 @@ def that_is_a_simple_agent(pipeline_class):
                     "generation_kwargs": None,
                     "messages": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\nObservation: Tower of Pisa is 55 meters tall\n\n\nThought: "
@@ -2310,7 +2345,7 @@ def that_is_a_simple_agent(pipeline_class):
                     "value": [
                         [
                             ChatMessage(
-                                _role="user",
+                                _role=ChatRole.USER,
                                 _content=[
                                     TextContent(
                                         text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: {{query}}\n\n    Thought:\n    "
@@ -2326,7 +2361,7 @@ def that_is_a_simple_agent(pipeline_class):
                     "value": [
                         [
                             ChatMessage(
-                                _role="user",
+                                _role=ChatRole.USER,
                                 _content=[
                                     TextContent(
                                         text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\nObservation: Tower of Pisa is 55 meters tall\n\n\nThought: "
@@ -2342,7 +2377,7 @@ def that_is_a_simple_agent(pipeline_class):
                     "query": "which tower is taller: eiffel tower or tower of pisa?",
                     "template": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: {{query}}\n\n    Thought:\n    "
@@ -2358,7 +2393,7 @@ def that_is_a_simple_agent(pipeline_class):
                     "query": "which tower is taller: eiffel tower or tower of pisa?",
                     "template": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\nObservation: Tower of Pisa is 55 meters tall\n\n\nThought: "
@@ -2373,7 +2408,7 @@ def that_is_a_simple_agent(pipeline_class):
                 ("prompt_concatenator_after_action", 1): {
                     "current_prompt": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    "
@@ -2385,7 +2420,7 @@ def that_is_a_simple_agent(pipeline_class):
                     ],
                     "replies": [
                         ChatMessage(
-                            _role="assistant",
+                            _role=ChatRole.ASSISTANT,
                             _content=[
                                 TextContent(
                                     text="thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\n"
@@ -2399,7 +2434,7 @@ def that_is_a_simple_agent(pipeline_class):
                 ("prompt_concatenator_after_action", 2): {
                     "current_prompt": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\nObservation: Tower of Pisa is 55 meters tall\n\n\nThought: "
@@ -2411,7 +2446,7 @@ def that_is_a_simple_agent(pipeline_class):
                     ],
                     "replies": [
                         ChatMessage(
-                            _role="assistant",
+                            _role=ChatRole.ASSISTANT,
                             _content=[TextContent(text="thinking\n Action: finish[Eiffel Tower]\n")],
                             _name=None,
                             _meta={},
@@ -2421,7 +2456,7 @@ def that_is_a_simple_agent(pipeline_class):
                 ("prompt_concatenator_after_observation", 1): {
                     "current_prompt": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\n"
@@ -2433,7 +2468,7 @@ def that_is_a_simple_agent(pipeline_class):
                     ],
                     "replies": [
                         ChatMessage(
-                            _role="assistant",
+                            _role=ChatRole.ASSISTANT,
                             _content=[TextContent(text="Observation: Tower of Pisa is 55 meters tall\n\n")],
                             _name=None,
                             _meta={},
@@ -2449,7 +2484,7 @@ def that_is_a_simple_agent(pipeline_class):
                     "generation_kwargs": None,
                     "messages": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Given these web search results:\n\n    \n        Eiffel Tower is 300 meters tall\n    \n        Tower of Pisa is 55 meters tall\n    \n\n    Be as brief as possible, max one sentence.\n    Answer the question: What is taller, Eiffel Tower or Leaning Tower of Pisa\n    "
@@ -2463,7 +2498,7 @@ def that_is_a_simple_agent(pipeline_class):
                 ("search_output_adapter", 1): {
                     "replies": [
                         ChatMessage(
-                            _role="assistant",
+                            _role=ChatRole.ASSISTANT,
                             _content=[TextContent(text="Tower of Pisa is 55 meters tall\n")],
                             _name=None,
                             _meta={},
@@ -2484,7 +2519,7 @@ def that_is_a_simple_agent(pipeline_class):
                     "search_query": "What is taller, Eiffel Tower or Leaning Tower of Pisa",
                     "template": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Given these web search results:\n\n    {% for doc in documents %}\n        {{ doc.content }}\n    {% endfor %}\n\n    Be as brief as possible, max one sentence.\n    Answer the question: {{search_query}}\n    "
@@ -2499,7 +2534,7 @@ def that_is_a_simple_agent(pipeline_class):
                 ("tool_extractor", 1): {
                     "messages": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\n"
@@ -2513,7 +2548,7 @@ def that_is_a_simple_agent(pipeline_class):
                 ("tool_extractor", 2): {
                     "messages": [
                         ChatMessage(
-                            _role="user",
+                            _role=ChatRole.USER,
                             _content=[
                                 TextContent(
                                     text="\n    Solve a question answering task with interleaving Thought, Action, Observation steps.\n\n    Thought reasons about the current situation\n\n    Action can be:\n    google_search - Searches Google for the exact concept/entity (given in square brackets) and returns the results for you to use\n    finish - Returns the final answer (given in square brackets) and finishes the task\n\n    Observation summarizes the Action outcome and helps in formulating the next\n    Thought in Thought, Action, Observation interleaving triplet of steps.\n\n    After each Observation, provide the next Thought and next Action.\n    Don't execute multiple steps even though you know the answer.\n    Only generate Thought and Action, never Observation, you'll get Observation from Action.\n    Follow the pattern in the example below.\n\n    Example:\n    ###########################\n    Question: Which magazine was started first Arthur’s Magazine or First for Women?\n    Thought: I need to search Arthur’s Magazine and First for Women, and find which was started\n    first.\n    Action: google_search[When was 'Arthur’s Magazine' started?]\n    Observation: Arthur’s Magazine was an American literary periodical ˘\n    published in Philadelphia and founded in 1844. Edited by Timothy Shay Arthur, it featured work by\n    Edgar A. Poe, J.H. Ingraham, Sarah Josepha Hale, Thomas G. Spear, and others. In May 1846\n    it was merged into Godey’s Lady’s Book.\n    Thought: Arthur’s Magazine was started in 1844. I need to search First for Women founding date next\n    Action: google_search[When was 'First for Women' magazine started?]\n    Observation: First for Women is a woman’s magazine published by Bauer Media Group in the\n    USA. The magazine was started in 1989. It is based in Englewood Cliffs, New Jersey. In 2011\n    the circulation of the magazine was 1,310,696 copies.\n    Thought: First for Women was started in 1989. 1844 (Arthur’s Magazine) ¡ 1989 (First for\n    Women), so Arthur’s Magazine was started first.\n    Action: finish[Arthur’s Magazine]\n    ############################\n\n    Let's start, the question is: which tower is taller: eiffel tower or tower of pisa?\n\n    Thought:\n    thinking\n Action: google_search[What is taller, Eiffel Tower or Leaning Tower of Pisa]\nObservation: Tower of Pisa is 55 meters tall\n\n\nThought: thinking\n Action: finish[Eiffel Tower]\n"
@@ -2536,8 +2571,8 @@ def that_has_a_variadic_component_that_receives_partial_inputs(pipeline_class):
         def __init__(self, content: str):
             self._content = content
 
-        @component.output_types(documents=List[Document], noop=None)
-        def run(self, create_document: bool = False):
+        @component.output_types(documents=list[Document], noop=None)
+        def run(self, create_document: bool = False) -> dict[str, Union[list[Document], None]]:
             if create_document:
                 return {"documents": [Document(id=self._content, content=self._content)]}
             return {"noop": None}
@@ -2617,8 +2652,8 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order(p
         def __init__(self, content: str):
             self._content = content
 
-        @component.output_types(documents=List[Document], noop=None)
-        def run(self, create_document: bool = False):
+        @component.output_types(documents=list[Document], noop=None)
+        def run(self, create_document: bool = False) -> dict[str, Union[list[Document], None]]:
             if create_document:
                 return {"documents": [Document(id=self._content, content=self._content)]}
             return {"noop": None}
@@ -2779,8 +2814,8 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
 ):
     @component
     class QueryMetadataExtractor:
-        @component.output_types(filters=Dict[str, str])
-        def run(self, prompt: str):
+        @component.output_types(filters=dict[str, Any])
+        def run(self, prompt: str) -> dict[str, dict[str, Any]]:
             metadata = json.loads(prompt)
             filters = []
             for key, value in metadata.items():
@@ -2878,6 +2913,7 @@ def that_is_linear_and_a_component_in_the_middle_receives_optional_input_from_ot
 
 @given("a pipeline that has a cycle that would get it stuck", target_fixture="pipeline_data")
 def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
+    # ruff: noqa: E501
     template = """
     You are an experienced and accurate Turkish CX speacialist that classifies customer comments into pre-defined categories below:\n
     Negative experience labels:
@@ -2910,10 +2946,8 @@ def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
 
     @component
     class FakeOutputValidator:
-        @component.output_types(
-            valid_replies=List[str], invalid_replies=Optional[List[str]], error_message=Optional[str]
-        )
-        def run(self, replies: List[str]):
+        @component.output_types(valid_replies=list[str], invalid_replies=list[str], error_message=str)
+        def run(self, replies: list[str]) -> dict[str, Union[list[str], str]]:
             if not getattr(self, "called", False):
                 self.called = True
                 return {"invalid_replies": ["This is an invalid reply"], "error_message": "this is an error message"}
@@ -2921,8 +2955,8 @@ def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str):
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             return {"replies": ["This is a valid reply"]}
 
     llm = FakeGenerator()
@@ -2948,8 +2982,8 @@ def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
 def that_has_a_loop_in_the_middle(pipeline_class):
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str):
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             replies = []
             if getattr(self, "first_run", True):
                 self.first_run = False
@@ -2961,29 +2995,32 @@ def that_has_a_loop_in_the_middle(pipeline_class):
     @component
     class PromptCleaner:
         @component.output_types(clean_prompt=str)
-        def run(self, prompt: str):
+        def run(self, prompt: str) -> dict[str, str]:
             return {"clean_prompt": prompt.strip()}
 
-    routes = [
-        {
-            "condition": "{{ 'No answer' in replies }}",
-            "output": "{{ replies }}",
-            "output_name": "invalid_replies",
-            "output_type": List[str],
-        },
-        {
-            "condition": "{{ 'No answer' not in replies }}",
-            "output": "{{ replies }}",
-            "output_name": "valid_replies",
-            "output_type": List[str],
-        },
-    ]
-
-    pipeline = pipeline_class(max_runs_per_component=20)
+    pipeline = pipeline_class(max_runs_per_component=2)
     pipeline.add_component("prompt_cleaner", PromptCleaner())
     pipeline.add_component("prompt_builder", PromptBuilder(template="", variables=["question", "invalid_replies"]))
     pipeline.add_component("llm", FakeGenerator())
-    pipeline.add_component("answer_validator", ConditionalRouter(routes=routes))
+    pipeline.add_component(
+        "answer_validator",
+        ConditionalRouter(
+            routes=[
+                {
+                    "condition": "{{ 'No answer' in replies }}",
+                    "output": "{{ replies }}",
+                    "output_name": "invalid_replies",
+                    "output_type": list[str],
+                },
+                {
+                    "condition": "{{ 'No answer' not in replies }}",
+                    "output": "{{ replies }}",
+                    "output_name": "valid_replies",
+                    "output_type": list[str],
+                },
+            ]
+        ),
+    )
     pipeline.add_component("answer_builder", AnswerBuilder())
 
     pipeline.connect("prompt_cleaner.clean_prompt", "prompt_builder.template")
@@ -3044,40 +3081,47 @@ def that_has_a_loop_in_the_middle(pipeline_class):
 @given("a pipeline that has variadic component that receives a conditional input", target_fixture="pipeline_data")
 def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class):
     pipe = pipeline_class(max_runs_per_component=1)
-    routes = [
-        {
-            "condition": "{{ documents|length > 1 }}",
-            "output": "{{ documents }}",
-            "output_name": "long",
-            "output_type": List[Document],
-        },
-        {
-            "condition": "{{ documents|length <= 1 }}",
-            "output": "{{ documents }}",
-            "output_name": "short",
-            "output_type": List[Document],
-        },
-    ]
 
     @component
     class NoOp:
-        @component.output_types(documents=List[Document])
-        def run(self, documents: List[Document]):
+        @component.output_types(documents=list[Document])
+        def run(self, documents: list[Document]) -> dict[str, list[Document]]:
             return {"documents": documents}
 
     @component
     class CommaSplitter:
-        @component.output_types(documents=List[Document])
-        def run(self, documents: List[Document]):
+        @component.output_types(documents=list[Document])
+        def run(self, documents: list[Document]) -> dict[str, list[Document]]:
             res = []
             current_id = 0
             for doc in documents:
+                if doc.content is None:
+                    continue
                 for split in doc.content.split(","):
                     res.append(Document(content=split, id=str(current_id)))
                     current_id += 1
             return {"documents": res}
 
-    pipe.add_component("conditional_router", ConditionalRouter(routes, unsafe=True))
+    pipe.add_component(
+        "conditional_router",
+        ConditionalRouter(
+            routes=[
+                {
+                    "condition": "{{ documents|length > 1 }}",
+                    "output": "{{ documents }}",
+                    "output_name": "long",
+                    "output_type": list[Document],
+                },
+                {
+                    "condition": "{{ documents|length <= 1 }}",
+                    "output": "{{ documents }}",
+                    "output_name": "short",
+                    "output_type": list[Document],
+                },
+            ],
+            unsafe=True,
+        ),
+    )
     pipe.add_component(
         "empty_lines_cleaner", DocumentCleaner(remove_empty_lines=True, remove_extra_whitespaces=False, keep_id=True)
     )
@@ -3110,7 +3154,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "short": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         )
                     ]
                 },
@@ -3127,7 +3172,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         )
                     ]
                 },
@@ -3135,7 +3181,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         )
                     ]
                 },
@@ -3165,7 +3212,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         )
                     ]
                 },
@@ -3173,7 +3221,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         )
                     ]
                 },
@@ -3195,7 +3244,8 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                         Document(id="5", content=" or this one. Or even this other one."),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         ),
                     ]
                 }
@@ -3205,11 +3255,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         ),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         ),
                     ]
                 },
@@ -3217,11 +3269,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         ),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even "
+                            "this other one.",
                         ),
                     ]
                 },
@@ -3256,11 +3310,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                         [
                             Document(
                                 id="1000",
-                                content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                                content="This document has so many, sentences. Like this one, or this one. Or even "
+                                "this other one.",
                             ),
                             Document(
                                 id="1000",
-                                content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                                content="This document has so many, sentences. Like this one, or this one. Or even "
+                                "this other one.",
                             ),
                         ],
                     ],
@@ -3270,11 +3326,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                     ]
                 },
@@ -3282,11 +3340,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                     ]
                 },
@@ -3294,11 +3354,13 @@ def that_has_variadic_component_that_receives_a_conditional_input(pipeline_class
                     "documents": [
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                         Document(
                             id="1000",
-                            content="This document has so many, sentences. Like this one, or this one. Or even this other one.",
+                            content="This document has so many, sentences. Like this one, or this one. Or even this "
+                            "other one.",
                         ),
                     ]
                 },
@@ -3354,8 +3416,8 @@ def an_agent_that_can_use_RAG(pipeline_class):
             self.replies = replies
             self.idx = 0
 
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str):
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
@@ -3368,8 +3430,8 @@ def an_agent_that_can_use_RAG(pipeline_class):
 
     @component
     class FakeRetriever:
-        @component.output_types(documents=List[Document])
-        def run(self, query: str):
+        @component.output_types(documents=list[Document])
+        def run(self, query: str) -> dict[str, list[Document]]:
             return {
                 "documents": [
                     Document(content="This is a document potentially answering the question.", meta={"access_group": 1})
@@ -3405,22 +3467,22 @@ Documents:
 
     retriever = FakeRetriever()
 
-    routes = [
-        {
-            "condition": "{{ 'search:' in replies[0] }}",
-            "output": "{{ replies[0] }}",
-            "output_name": "search",
-            "output_type": str,
-        },
-        {
-            "condition": "{{ 'answer:' in replies[0] }}",
-            "output": "{{ replies }}",
-            "output_name": "answer",
-            "output_type": List[str],
-        },
-    ]
-
-    router = ConditionalRouter(routes=routes)
+    router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{ 'search:' in replies[0] }}",
+                "output": "{{ replies[0] }}",
+                "output_name": "search",
+                "output_type": str,
+            },
+            {
+                "condition": "{{ 'answer:' in replies[0] }}",
+                "output": "{{ replies }}",
+                "output_name": "answer",
+                "output_type": list[str],
+            },
+        ]
+    )
 
     concatenator = OutputAdapter(template="{{current_prompt + '\n' + rag_answer[0]}}", output_type=str)
 
@@ -3609,8 +3671,8 @@ def has_feedback_loop(pipeline_class):
             self.replies = replies
             self.idx = 0
 
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str):
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
@@ -3642,22 +3704,22 @@ Provide additional feedback on why it fails.
     feedback_llm = FixedGenerator(replies=["FAIL", "PASS"])
     feedback_prompt = PromptBuilder(template=feedback_prompt_template)
 
-    routes = [
-        {
-            "condition": "{{ 'FAIL' in replies[0] }}",
-            "output": "{{ replies[0] }}",
-            "output_name": "fail",
-            "output_type": str,
-        },
-        {
-            "condition": "{{ 'PASS' in replies[0] }}",
-            "output": "{{ code }}",
-            "output_name": "pass",
-            "output_type": List[str],
-        },
-    ]
-
-    router = ConditionalRouter(routes=routes)
+    router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{ 'FAIL' in replies[0] }}",
+                "output": "{{ replies[0] }}",
+                "output_name": "fail",
+                "output_type": str,
+            },
+            {
+                "condition": "{{ 'PASS' in replies[0] }}",
+                "output": "{{ code }}",
+                "output_name": "pass",
+                "output_type": list[str],
+            },
+        ]
+    )
 
     concatenator = OutputAdapter(template="{{current_prompt[0] + '\n' + feedback[0]}}", output_type=str)
 
@@ -3779,8 +3841,8 @@ def has_non_standard_order_loop(pipeline_class):
             self.replies = replies
             self.idx = 0
 
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str):
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
@@ -3812,22 +3874,22 @@ Provide additional feedback on why it fails.
     feedback_llm = FixedGenerator(replies=["FAIL", "PASS"])
     feedback_prompt = PromptBuilder(template=feedback_prompt_template)
 
-    routes = [
-        {
-            "condition": "{{ 'FAIL' in replies[0] }}",
-            "output": "{{ replies[0] }}",
-            "output_name": "fail",
-            "output_type": str,
-        },
-        {
-            "condition": "{{ 'PASS' in replies[0] }}",
-            "output": "{{ code }}",
-            "output_name": "pass",
-            "output_type": List[str],
-        },
-    ]
-
-    router = ConditionalRouter(routes=routes)
+    router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{ 'FAIL' in replies[0] }}",
+                "output": "{{ replies[0] }}",
+                "output_name": "fail",
+                "output_type": str,
+            },
+            {
+                "condition": "{{ 'PASS' in replies[0] }}",
+                "output": "{{ code }}",
+                "output_name": "pass",
+                "output_type": list[str],
+            },
+        ]
+    )
 
     concatenator = OutputAdapter(template="{{current_prompt[0] + '\n' + feedback[0]}}", output_type=str)
 
@@ -3950,8 +4012,8 @@ def agent_with_feedback_cycle(pipeline_class):
             self.replies = replies
             self.idx = 0
 
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str):
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, list[str]]:
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
@@ -3965,7 +4027,7 @@ def agent_with_feedback_cycle(pipeline_class):
     @component
     class FakeFileEditor:
         @component.output_types(files=str)
-        def run(self, replies: List[str]):
+        def run(self, replies: list[str]) -> dict[str, str]:
             return {"files": "This is the edited file content."}
 
     code_prompt_template = """
@@ -3998,37 +4060,39 @@ Provide additional feedback on why it fails.
     feedback_llm = FixedGenerator(replies=["FAIL", "PASS"])
     feedback_prompt = PromptBuilder(template=feedback_prompt_template, required_variables=["task_finished"])
 
-    routes = [
-        {
-            "condition": "{{ 'FAIL' in replies[0] }}",
-            "output": "{{ current_prompt + '\n' + replies[0] }}",
-            "output_name": "fail",
-            "output_type": str,
-        },
-        {
-            "condition": "{{ 'PASS' in replies[0] }}",
-            "output": "{{ replies }}",
-            "output_name": "pass",
-            "output_type": List[str],
-        },
-    ]
-    feedback_router = ConditionalRouter(routes=routes)
+    feedback_router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{ 'FAIL' in replies[0] }}",
+                "output": "{{ current_prompt + '\n' + replies[0] }}",
+                "output_name": "fail",
+                "output_type": str,
+            },
+            {
+                "condition": "{{ 'PASS' in replies[0] }}",
+                "output": "{{ replies }}",
+                "output_name": "pass",
+                "output_type": list[str],
+            },
+        ]
+    )
 
-    tool_use_routes = [
-        {
-            "condition": "{{ 'Edit:' in replies[0] }}",
-            "output": "{{ replies }}",
-            "output_name": "edit",
-            "output_type": List[str],
-        },
-        {
-            "condition": "{{ 'Task finished!' in replies[0] }}",
-            "output": "{{ replies }}",
-            "output_name": "done",
-            "output_type": List[str],
-        },
-    ]
-    tool_use_router = ConditionalRouter(routes=tool_use_routes)
+    tool_use_router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{ 'Edit:' in replies[0] }}",
+                "output": "{{ replies }}",
+                "output_name": "edit",
+                "output_type": list[str],
+            },
+            {
+                "condition": "{{ 'Task finished!' in replies[0] }}",
+                "output": "{{ replies }}",
+                "output_name": "done",
+                "output_type": list[str],
+            },
+        ]
+    )
 
     joiner = BranchJoiner(type_=str)
     agent_concatenator = OutputAdapter(template="{{current_prompt + '\n' + files}}", output_type=str)
@@ -4684,8 +4748,8 @@ def passes_outputs_outside_cycle(pipeline_class):
             self.replies = replies
             self.idx = 0
 
-        @component.output_types(replies=List[str])
-        def run(self, prompt: str):
+        @component.output_types(replies=list[str])
+        def run(self, prompt: str) -> dict[str, Any]:
             if self.idx < len(self.replies):
                 replies = [self.replies[self.idx]]
                 self.idx += 1
@@ -4698,8 +4762,8 @@ def passes_outputs_outside_cycle(pipeline_class):
 
     @component
     class AnswerBuilderWithPrompt:
-        @component.output_types(answers=List[GeneratedAnswer])
-        def run(self, replies: List[str], query: str, prompt: Optional[str] = None) -> Dict[str, Any]:
+        @component.output_types(answers=list[GeneratedAnswer])
+        def run(self, replies: list[str], query: str, prompt: Optional[str] = None) -> dict[str, Any]:
             answer = GeneratedAnswer(data=replies[0], query=query, documents=[], meta={"all_messages": replies})
 
             if prompt is not None:
@@ -4730,22 +4794,22 @@ def generate_santa_sleigh():
     feedback_llm = FixedGenerator(replies=["FAIL", "FAIL, come on, try again.", "PASS"])
     feedback_prompt = PromptBuilder(template=feedback_prompt_template)
 
-    routes = [
-        {
-            "condition": "{{ 'FAIL' in replies[0] }}",
-            "output": "{{ replies[0] }}",
-            "output_name": "fail",
-            "output_type": str,
-        },
-        {
-            "condition": "{{ 'PASS' in replies[0] }}",
-            "output": "{{ code }}",
-            "output_name": "pass",
-            "output_type": List[str],
-        },
-    ]
-
-    router = ConditionalRouter(routes=routes)
+    router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{ 'FAIL' in replies[0] }}",
+                "output": "{{ replies[0] }}",
+                "output_name": "fail",
+                "output_type": str,
+            },
+            {
+                "condition": "{{ 'PASS' in replies[0] }}",
+                "output": "{{ code }}",
+                "output_name": "pass",
+                "output_type": list[str],
+            },
+        ]
+    )
     joiner = BranchJoiner(type_=str)
     concatenator = OutputAdapter(
         template="{{code_prompt + '\n' + generated_code[0] + '\n' + feedback}}", output_type=str
@@ -4989,7 +5053,7 @@ def pipeline_with_variadic_dynamic_defaults(pipeline_class):
             self.input_variable = input_variable
             component.set_input_type(self, input_variable, Variadic[str], default="Parrot doesn't only parrot!")
 
-        @component.output_types(response=List[str])
+        @component.output_types(response=list[str])
         def run(self, **kwargs):
             return {"response": kwargs[self.input_variable]}
 
@@ -5125,11 +5189,9 @@ def pipeline_that_converts_files_with_three_joiners(pipeline_class):
     # What does this test?
     # When a component does not produce outputs, and the successors only receive inputs from this component,
     # then the successors will not run.
-    # The successor of the successor would never know that its predecessor did not run if we don't send a signal.
-    # This is why we use PipelineBase._notify_downstream_components to recursively notify successors that
-    # can not run anymore.
-    # This prevents an edge case where multiple lazy variadic components wait for input and the execution order
-    # would otherwise be decided by lexicographical sort.
+    # The successor of the successor would never know that its predecessor did not run.
+    # This tests an edge case where multiple lazy variadic components wait for input and the execution order is
+    # determined by a topological sort.
     html_data = """
 <html><body>Some content</body></html>
     """
@@ -5181,26 +5243,6 @@ def pipeline_that_converts_files_with_three_joiners(pipeline_class):
 
     expected_html_doc = Document(content="Some content", meta={"file_type": "html"})
     expected_txt_doc = Document(content=txt_data, meta={"file_type": "txt"})
-    expected_txt_split_doc = Document(
-        content=txt_data,
-        meta={
-            "file_type": "txt",
-            "source_id": expected_txt_doc.id,
-            "page_number": 1,
-            "split_id": 0,
-            "split_idx_start": 0,
-        },
-    )
-    expected_html_split_doc = Document(
-        content=expected_html_doc.content,
-        meta={
-            "file_type": "html",
-            "source_id": expected_html_doc.id,
-            "page_number": 1,
-            "split_id": 0,
-            "split_idx_start": 0,
-        },
-    )
 
     return (
         pp,
@@ -5233,19 +5275,17 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
     # What does this test?
     # When a component does not produce outputs, and the successors only receive inputs from this component,
     # then the successors will not run.
-    # The successor of the successor would never know that its predecessor did not run if we don't send a signal.
-    # This is why we use PipelineBase._notify_downstream_components to recursively notify successors that
-    # can not run anymore.
-    # This prevents an edge case where multiple lazy variadic components wait for input and the execution order
-    # would otherwise be decided by lexicographical sort.
+    # The successor of the successor would never know that its predecessor did not run.
+    # This tests an edge case where multiple lazy variadic components wait for input and the execution order is
+    # determined by a topological sort.
     @component
     class FakeDataExtractor:
         def __init__(self, metas):
             self.metas = metas
             self.current_idx = 0
 
-        @component.output_types(documents=List[Document])
-        def run(self, documents: List[Document]):
+        @component.output_types(documents=list[Document])
+        def run(self, documents: list[Document]) -> dict[str, list[Document]]:
             sorted_docs = sorted(documents, key=lambda doc: doc.meta["file_type"])
             if self.current_idx >= len(sorted_docs):
                 self.current_idx = 0
@@ -5275,28 +5315,25 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
     json_converter = JSONConverter(content_key="content")
     html_converter = HTMLToDocument()
 
-    DocumentJoiner_1 = DocumentJoiner()
-    joiner = DocumentJoiner()
-    DocumentJoiner_2 = DocumentJoiner()
+    extraction_router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{documents[0].meta['iteration'] == 1}}",
+                "output_name": "continue",
+                "output": "{{documents}}",
+                "output_type": list[Document],
+            },
+            {
+                "condition": "{{documents[0].meta['iteration'] == 2}}",
+                "output_name": "stop",
+                "output": "{{documents}}",
+                "output_type": list[Document],
+            },
+        ],
+        unsafe=True,
+    )
 
-    extraction_routes = [
-        {
-            "condition": "{{documents[0].meta['iteration'] == 1}}",
-            "output_name": "continue",
-            "output": "{{documents}}",
-            "output_type": List[Document],
-        },
-        {
-            "condition": "{{documents[0].meta['iteration'] == 2}}",
-            "output_name": "stop",
-            "output": "{{documents}}",
-            "output_type": List[Document],
-        },
-    ]
-
-    extraction_router = ConditionalRouter(routes=extraction_routes, unsafe=True)
-
-    pp = pipeline_class(max_runs_per_component=4)
+    pp = pipeline_class(max_runs_per_component=2)
 
     pp.add_component("router", router)
     pp.add_component("splitter", splitter)
@@ -5304,13 +5341,13 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
     pp.add_component("csv_converter", csv_converter)
     pp.add_component("json_converter", json_converter)
     pp.add_component("html_converter", html_converter)
-    pp.add_component("joiner", joiner)
-    pp.add_component("DocumentJoiner_1", DocumentJoiner_1)
-    pp.add_component("DocumentJoiner_2", DocumentJoiner_2)
+    pp.add_component("joiner", DocumentJoiner())
+    pp.add_component("DocumentJoiner_1", DocumentJoiner())
+    pp.add_component("DocumentJoiner_2", DocumentJoiner())
     pp.add_component("page_splitter", page_splitter)
     pp.add_component("metadata_generator", FakeDataExtractor(metas=[{"iteration": 1}, {"iteration": 2}]))
     pp.add_component("extraction_router", extraction_router)
-    pp.add_component("branch_joiner", BranchJoiner(type_=List[Document]))
+    pp.add_component("branch_joiner", BranchJoiner(type_=list[Document]))
 
     pp.connect("router.text/plain", "txt_converter.sources")
     pp.connect("router.application/json", "json_converter.sources")
@@ -5402,7 +5439,7 @@ def pipeline_has_components_returning_dataframes(pipeline_class):
     @component
     class DataFramer:
         @component.output_types(dataframe=DataFrame)
-        def run(self, dataframe: DataFrame) -> Dict[str, Any]:
+        def run(self, dataframe: DataFrame) -> dict[str, Any]:
             return {"dataframe": get_df()}
 
     pp = pipeline_class(max_runs_per_component=1)
@@ -5431,12 +5468,22 @@ def pipeline_has_components_returning_dataframes(pipeline_class):
 def pipeline_single_component_many_sockets_same_target(pipeline_class):
     joiner = BranchJoiner(type_=str)
 
-    routes = [
-        {"condition": "{{query == 'route_1'}}", "output": "{{query}}", "output_name": "route_1", "output_type": str},
-        {"condition": "{{query == 'route_2'}}", "output": "{{query}}", "output_name": "route_2", "output_type": str},
-    ]
-
-    router = ConditionalRouter(routes=routes)
+    router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{query == 'route_1'}}",
+                "output": "{{query}}",
+                "output_name": "route_1",
+                "output_type": str,
+            },
+            {
+                "condition": "{{query == 'route_2'}}",
+                "output": "{{query}}",
+                "output_name": "route_2",
+                "output_type": str,
+            },
+        ]
+    )
 
     pp = pipeline_class(max_runs_per_component=1)
 
@@ -5459,55 +5506,56 @@ def pipeline_single_component_many_sockets_same_target(pipeline_class):
 
 
 @given(
-    "a pipeline where a component in a cycle provides inputs for a component outside the cycle in one iteration and no input in another iteration",
+    "a pipeline where a component in a cycle provides inputs for a component outside the cycle in one iteration "
+    "and no input in another iteration",
     target_fixture="pipeline_data",
 )
 def pipeline_component_cycle_input_no_input(pipeline_class):
     joiner = BranchJoiner(type_=str)
 
-    routes = [
-        {
-            "condition": "{{query == 'iterationiterationiterationiteration'}}",
-            "output": "{{query}}",
-            "output_name": "exit",
-            "output_type": str,
-        },
-        {
-            "condition": "{{query != 'iterationiterationiterationiteration'}}",
-            "output": "{{query}}",
-            "output_name": "continue",
-            "output_type": str,
-        },
-    ]
-
     template = "{{query ~ query}}"
 
     builder = PromptBuilder(template=template)
 
-    router = ConditionalRouter(routes=routes)
+    router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{query == 'iterationiterationiterationiteration'}}",
+                "output": "{{query}}",
+                "output_name": "exit",
+                "output_type": str,
+            },
+            {
+                "condition": "{{query != 'iterationiterationiterationiteration'}}",
+                "output": "{{query}}",
+                "output_name": "continue",
+                "output_type": str,
+            },
+        ]
+    )
 
     outside_builder = PromptBuilder(
         template="{{cycle_output ~ delayed_input}}", required_variables=["cycle_output", "delayed_input"]
     )
 
-    outside_routes = [
-        {
-            "condition": "{{query == 'iterationiteration'}}",
-            "output": "{{query}}",
-            "output_name": "cycle_output",
-            "output_type": str,
-        },
-        {
-            "condition": "{{query != 'iterationiteration'}}",
-            "output": "{{query}}",
-            "output_name": "no_output",
-            "output_type": str,
-        },
-    ]
+    outside_router = ConditionalRouter(
+        routes=[
+            {
+                "condition": "{{query == 'iterationiteration'}}",
+                "output": "{{query}}",
+                "output_name": "cycle_output",
+                "output_type": str,
+            },
+            {
+                "condition": "{{query != 'iterationiteration'}}",
+                "output": "{{query}}",
+                "output_name": "no_output",
+                "output_type": str,
+            },
+        ]
+    )
 
-    outside_router = ConditionalRouter(routes=outside_routes)
-
-    pp = pipeline_class(max_runs_per_component=1)
+    pp = pipeline_class(max_runs_per_component=2)
 
     pp.add_component("joiner", joiner)
     pp.add_component("router", router)
@@ -5546,6 +5594,51 @@ def pipeline_component_cycle_input_no_input(pipeline_class):
                         "template_variables": None,
                         "delayed_input": "iterationiterationiterationiteration",
                     },
+                },
+            )
+        ],
+    )
+
+
+@given("a pipeline that is blocked because not enough component inputs", target_fixture="pipeline_data")
+def that_is_blocked_not_enough_component_inputs(pipeline_class):
+    router = ConditionalRouter(
+        [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
+            {
+                "condition": "{{streams|length >= 2}}",
+                "output": "{{streams}}",
+                "output_type": list[int],
+                "output_name": "streams",
+            },
+        ]
+    )
+
+    # This component requires both `streams` and `query` inputs to run
+    # If one is missing then the pipeline is blocked and cannot run.
+    @component
+    class PayloadBuilder:
+        @component.output_types(payload=dict[str, Any])
+        def run(self, streams: list[int], query: str) -> dict[str, Any]:
+            return {"payload": {"streams": streams, "query": query}}
+
+    pipe = pipeline_class(max_runs_per_component=1)
+    pipe.add_component("router", router)
+    pipe.add_component("payload_builder", PayloadBuilder())
+
+    # Since the router only outputs either `streams` or `query` it's impossible to run PayloadBuilder.
+    pipe.connect("router.streams", "payload_builder.streams")
+    pipe.connect("router.query", "payload_builder.query")
+
+    return (
+        pipe,
+        [
+            PipelineRunData(
+                inputs={"router": {"streams": [1, 2, 3], "query": "Haystack"}},
+                expected_outputs={},
+                expected_component_calls={
+                    ("router", 1): {"streams": [1, 2, 3], "query": "Haystack"}
+                    # PayloadBuilder will not run because it requires both inputs
                 },
             )
         ],

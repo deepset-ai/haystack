@@ -5,7 +5,7 @@
 import functools
 from pathlib import Path
 from types import new_class
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union
 
 from haystack import logging
 from haystack.core.component.component import component
@@ -37,8 +37,8 @@ class _SuperComponent:
     def __init__(
         self,
         pipeline: Union[Pipeline, AsyncPipeline],
-        input_mapping: Optional[Dict[str, List[str]]] = None,
-        output_mapping: Optional[Dict[str, str]] = None,
+        input_mapping: Optional[dict[str, list[str]]] = None,
+        output_mapping: Optional[dict[str, str]] = None,
     ) -> None:
         """
         Creates a SuperComponent with optional input and output mappings.
@@ -68,7 +68,7 @@ class _SuperComponent:
         for input_name, info in input_types.items():
             component.set_input_type(self, name=input_name, **info)
 
-        self.input_mapping: Dict[str, List[str]] = resolved_input_mapping
+        self.input_mapping: dict[str, list[str]] = resolved_input_mapping
         self._original_input_mapping = input_mapping
 
         # Set output types based on pipeline and mapping
@@ -82,7 +82,7 @@ class _SuperComponent:
         output_types = self._resolve_output_types_from_mapping(all_possible_pipeline_outputs, resolved_output_mapping)
         # Set output types on the component
         component.set_output_types(self, **output_types)
-        self.output_mapping: Dict[str, str] = resolved_output_mapping
+        self.output_mapping: dict[str, str] = resolved_output_mapping
         self._original_output_mapping = output_mapping
 
     def warm_up(self) -> None:
@@ -93,7 +93,7 @@ class _SuperComponent:
             self.pipeline.warm_up()
             self._warmed_up = True
 
-    def run(self, **kwargs: Any) -> Dict[str, Any]:
+    def run(self, **kwargs: Any) -> dict[str, Any]:
         """
         Runs the wrapped pipeline with the provided inputs.
 
@@ -116,7 +116,7 @@ class _SuperComponent:
         # Collecting the component names from output_mapping
         return {self._split_component_path(path)[0] for path in self.output_mapping.keys()}
 
-    async def run_async(self, **kwargs: Any) -> Dict[str, Any]:
+    async def run_async(self, **kwargs: Any) -> dict[str, Any]:
         """
         Runs the wrapped pipeline with the provided inputs async.
 
@@ -140,7 +140,7 @@ class _SuperComponent:
         return self._map_explicit_outputs(pipeline_outputs, self.output_mapping)
 
     @staticmethod
-    def _split_component_path(path: str) -> Tuple[str, str]:
+    def _split_component_path(path: str) -> tuple[str, str]:
         """
         Splits a component path into a component name and a socket name.
 
@@ -156,7 +156,7 @@ class _SuperComponent:
         return comp_name, socket_name
 
     def _validate_input_mapping(
-        self, pipeline_inputs: Dict[str, Dict[str, Any]], input_mapping: Dict[str, List[str]]
+        self, pipeline_inputs: dict[str, dict[str, Any]], input_mapping: dict[str, list[str]]
     ) -> None:
         """
         Validates the input mapping to ensure that specified components and sockets exist in the pipeline.
@@ -184,8 +184,8 @@ class _SuperComponent:
                     )
 
     def _resolve_input_types_from_mapping(
-        self, pipeline_inputs: Dict[str, Dict[str, Any]], input_mapping: Dict[str, List[str]]
-    ) -> Dict[str, Dict[str, Any]]:
+        self, pipeline_inputs: dict[str, dict[str, Any]], input_mapping: dict[str, list[str]]
+    ) -> dict[str, dict[str, Any]]:
         """
         Resolves and validates input types based on the provided input mapping.
 
@@ -199,7 +199,7 @@ class _SuperComponent:
         :raises InvalidMappingTypeError:
             If the input mapping contains incompatible types.
         """
-        aggregated_inputs: Dict[str, Dict[str, Any]] = {}
+        aggregated_inputs: dict[str, dict[str, Any]] = {}
         for wrapper_input_name, pipeline_input_paths in input_mapping.items():
             for path in pipeline_input_paths:
                 comp_name, socket_name = self._split_component_path(path)
@@ -232,7 +232,7 @@ class _SuperComponent:
         return aggregated_inputs
 
     @staticmethod
-    def _create_input_mapping(pipeline_inputs: Dict[str, Dict[str, Any]]) -> Dict[str, List[str]]:
+    def _create_input_mapping(pipeline_inputs: dict[str, dict[str, Any]]) -> dict[str, list[str]]:
         """
         Create an input mapping from pipeline inputs.
 
@@ -240,7 +240,7 @@ class _SuperComponent:
         :returns:
             Dictionary mapping SuperComponent input names to pipeline socket paths
         """
-        input_mapping: Dict[str, List[str]] = {}
+        input_mapping: dict[str, list[str]] = {}
         for comp_name, inputs_dict in pipeline_inputs.items():
             for socket_name in inputs_dict.keys():
                 existing_socket_info = input_mapping.get(socket_name)
@@ -251,7 +251,7 @@ class _SuperComponent:
         return input_mapping
 
     def _validate_output_mapping(
-        self, pipeline_outputs: Dict[str, Dict[str, Any]], output_mapping: Dict[str, str]
+        self, pipeline_outputs: dict[str, dict[str, Any]], output_mapping: dict[str, str]
     ) -> None:
         """
         Validates the output mapping to ensure that specified components and sockets exist in the pipeline.
@@ -273,8 +273,8 @@ class _SuperComponent:
                 raise InvalidMappingValueError(f"Output socket '{socket_name}' not found in component '{comp_name}'.")
 
     def _resolve_output_types_from_mapping(
-        self, pipeline_outputs: Dict[str, Dict[str, Any]], output_mapping: Dict[str, str]
-    ) -> Dict[str, Any]:
+        self, pipeline_outputs: dict[str, dict[str, Any]], output_mapping: dict[str, str]
+    ) -> dict[str, Any]:
         """
         Resolves and validates output types based on the provided output mapping.
 
@@ -297,7 +297,7 @@ class _SuperComponent:
         return resolved_outputs
 
     @staticmethod
-    def _create_output_mapping(pipeline_outputs: Dict[str, Dict[str, Any]]) -> Dict[str, str]:
+    def _create_output_mapping(pipeline_outputs: dict[str, dict[str, Any]]) -> dict[str, str]:
         """
         Create an output mapping from pipeline outputs.
 
@@ -321,8 +321,8 @@ class _SuperComponent:
         return output_mapping
 
     def _map_explicit_inputs(
-        self, input_mapping: Dict[str, List[str]], inputs: Dict[str, Any]
-    ) -> Dict[str, Dict[str, Any]]:
+        self, input_mapping: dict[str, list[str]], inputs: dict[str, Any]
+    ) -> dict[str, dict[str, Any]]:
         """
         Map inputs according to explicit input mapping.
 
@@ -330,7 +330,7 @@ class _SuperComponent:
         :param inputs: Input arguments provided to wrapper
         :return: Dictionary of mapped pipeline inputs
         """
-        pipeline_inputs: Dict[str, Dict[str, Any]] = {}
+        pipeline_inputs: dict[str, dict[str, Any]] = {}
         for wrapper_input_name, pipeline_input_paths in input_mapping.items():
             if wrapper_input_name not in inputs:
                 continue
@@ -344,8 +344,8 @@ class _SuperComponent:
         return pipeline_inputs
 
     def _map_explicit_outputs(
-        self, pipeline_outputs: Dict[str, Dict[str, Any]], output_mapping: Dict[str, str]
-    ) -> Dict[str, Any]:
+        self, pipeline_outputs: dict[str, dict[str, Any]], output_mapping: dict[str, str]
+    ) -> dict[str, Any]:
         """
         Map outputs according to explicit output mapping.
 
@@ -353,25 +353,27 @@ class _SuperComponent:
         :param output_mapping: Output mapping configuration
         :return: Dictionary of mapped outputs
         """
-        outputs: Dict[str, Any] = {}
+        outputs: dict[str, Any] = {}
         for pipeline_output_path, wrapper_output_name in output_mapping.items():
             comp_name, socket_name = self._split_component_path(pipeline_output_path)
             if comp_name in pipeline_outputs and socket_name in pipeline_outputs[comp_name]:
                 outputs[wrapper_output_name] = pipeline_outputs[comp_name][socket_name]
         return outputs
 
-    def _to_super_component_dict(self) -> Dict[str, Any]:
+    def _to_super_component_dict(self) -> dict[str, Any]:
         """
         Convert to a SuperComponent dictionary representation.
 
         :return: Dictionary containing serialized SuperComponent data
         """
         serialized_pipeline = self.pipeline.to_dict()
+        is_pipeline_async = isinstance(self.pipeline, AsyncPipeline)
         serialized = default_to_dict(
             self,
             pipeline=serialized_pipeline,
             input_mapping=self._original_input_mapping,
             output_mapping=self._original_output_mapping,
+            is_pipeline_async=is_pipeline_async,
         )
         serialized["type"] = generate_qualified_class_name(SuperComponent)
         return serialized
@@ -444,7 +446,7 @@ class SuperComponent(_SuperComponent):
 
     """
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the SuperComponent into a dictionary.
 
@@ -454,7 +456,7 @@ class SuperComponent(_SuperComponent):
         return self._to_super_component_dict()
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SuperComponent":
+    def from_dict(cls, data: dict[str, Any]) -> "SuperComponent":
         """
         Deserializes the SuperComponent from a dictionary.
 
@@ -462,7 +464,9 @@ class SuperComponent(_SuperComponent):
         :returns:
             The deserialized SuperComponent.
         """
-        pipeline = Pipeline.from_dict(data["init_parameters"]["pipeline"])
+        is_pipeline_async = data["init_parameters"].pop("is_pipeline_async", False)
+        pipeline_class = AsyncPipeline if is_pipeline_async else Pipeline
+        pipeline = pipeline_class.from_dict(data["init_parameters"]["pipeline"])
         data["init_parameters"]["pipeline"] = pipeline
         return default_from_dict(cls, data)
 
@@ -537,7 +541,7 @@ class SuperComponent(_SuperComponent):
         self.pipeline.draw(path=path, server_url=server_url, params=params, timeout=timeout)
 
 
-def super_component(cls: Type[T]) -> Type[T]:
+def super_component(cls: type[T]) -> type[T]:
     """
     Decorator that converts a class into a SuperComponent.
 

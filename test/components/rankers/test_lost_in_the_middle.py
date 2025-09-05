@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+
 from haystack import Document
 from haystack.components.rankers.lost_in_the_middle import LostInTheMiddleRanker
 
@@ -14,7 +15,7 @@ class TestLostInTheMiddleRanker:
         ranker = LostInTheMiddleRanker()
         result = ranker.run(documents=docs)
         assert result["documents"]
-        expected_order = "1 3 5 7 9 8 6 4 2".split()
+        expected_order = ["1", "3", "5", "7", "9", "8", "6", "4", "2"]
         assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
 
     def test_lost_in_the_middle_order_even(self):
@@ -22,7 +23,7 @@ class TestLostInTheMiddleRanker:
         docs = [Document(content=str(i)) for i in range(1, 11)]
         ranker = LostInTheMiddleRanker()
         result = ranker.run(documents=docs)
-        expected_order = "1 3 5 7 9 10 8 6 4 2".split()
+        expected_order = ["1", "3", "5", "7", "9", "10", "8", "6", "4", "2"]
         assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
 
     def test_lost_in_the_middle_order_two_docs(self):
@@ -56,13 +57,13 @@ class TestLostInTheMiddleRanker:
         docs = [Document(content="word" + str(i)) for i in range(1, 10)]
         # result, _ = ranker.run(query="", documents=docs)
         result = ranker.run(documents=docs)
-        expected_order = "word1 word3 word5 word6 word4 word2".split()
+        expected_order = ["word1", "word3", "word5", "word6", "word4", "word2"]
         assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
 
         ranker = LostInTheMiddleRanker(word_count_threshold=9)
         # result, _ = ranker.run(query="", documents=docs)
         result = ranker.run(documents=docs)
-        expected_order = "word1 word3 word5 word7 word9 word8 word6 word4 word2".split()
+        expected_order = ["word1", "word3", "word5", "word7", "word9", "word8", "word6", "word4", "word2"]
         assert all(doc.content == expected_order[idx] for idx, doc in enumerate(result["documents"]))
 
     def test_word_count_threshold_greater_than_total_number_of_words_returns_all_documents(self):
@@ -70,7 +71,7 @@ class TestLostInTheMiddleRanker:
         docs = [Document(content="word" + str(i)) for i in range(1, 10)]
         ordered_docs = ranker.run(documents=docs)
         # assert len(ordered_docs) == len(docs)
-        expected_order = "word1 word3 word5 word7 word9 word8 word6 word4 word2".split()
+        expected_order = ["word1", "word3", "word5", "word7", "word9", "word8", "word6", "word4", "word2"]
         assert all(doc.content == expected_order[idx] for idx, doc in enumerate(ordered_docs["documents"]))
 
     def test_empty_documents_returns_empty_list(self):

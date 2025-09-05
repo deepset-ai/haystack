@@ -6,7 +6,7 @@ import itertools
 from collections import defaultdict
 from enum import Enum
 from math import inf
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.core.component.types import Variadic
@@ -87,7 +87,7 @@ class DocumentJoiner:
     def __init__(
         self,
         join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
-        weights: Optional[List[float]] = None,
+        weights: Optional[list[float]] = None,
         top_k: Optional[int] = None,
         sort_by_score: bool = True,
     ):
@@ -126,8 +126,8 @@ class DocumentJoiner:
         self.top_k = top_k
         self.sort_by_score = sort_by_score
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: Variadic[List[Document]], top_k: Optional[int] = None):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: Variadic[list[Document]], top_k: Optional[int] = None):
         """
         Joins multiple lists of Documents into a single list depending on the `join_mode` parameter.
 
@@ -161,7 +161,7 @@ class DocumentJoiner:
         return {"documents": output_documents}
 
     @staticmethod
-    def _concatenate(document_lists: List[List[Document]]) -> List[Document]:
+    def _concatenate(document_lists: list[list[Document]]) -> list[Document]:
         """
         Concatenate multiple lists of Documents and return only the Document with the highest score for duplicates.
         """
@@ -174,7 +174,7 @@ class DocumentJoiner:
             output.append(doc_with_best_score)
         return output
 
-    def _merge(self, document_lists: List[List[Document]]) -> List[Document]:
+    def _merge(self, document_lists: list[list[Document]]) -> list[Document]:
         """
         Merge multiple lists of Documents and calculate a weighted sum of the scores of duplicate Documents.
         """
@@ -196,7 +196,7 @@ class DocumentJoiner:
 
         return list(documents_map.values())
 
-    def _reciprocal_rank_fusion(self, document_lists: List[List[Document]]) -> List[Document]:
+    def _reciprocal_rank_fusion(self, document_lists: list[list[Document]]) -> list[Document]:
         """
         Merge multiple lists of Documents and assign scores based on reciprocal rank fusion.
 
@@ -230,7 +230,7 @@ class DocumentJoiner:
         return list(documents_map.values())
 
     @staticmethod
-    def _distribution_based_rank_fusion(document_lists: List[List[Document]]) -> List[Document]:
+    def _distribution_based_rank_fusion(document_lists: list[list[Document]]) -> list[Document]:
         """
         Merge multiple lists of Documents and assign scores based on Distribution-Based Score Fusion.
 
@@ -260,7 +260,7 @@ class DocumentJoiner:
 
         return output
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -276,7 +276,7 @@ class DocumentJoiner:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DocumentJoiner":
+    def from_dict(cls, data: dict[str, Any]) -> "DocumentJoiner":
         """
         Deserializes the component from a dictionary.
 

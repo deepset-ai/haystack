@@ -52,7 +52,7 @@ def test_yaml_marshal(yaml_data, serialized_yaml_str):
 def test_yaml_marshal_invalid_type(invalid_yaml_data):
     with pytest.raises(TypeError, match="basic Python types"):
         marshaller = YamlMarshaller()
-        marshalled = marshaller.marshal(invalid_yaml_data)
+        _ = marshaller.marshal(invalid_yaml_data)
 
 
 def test_yaml_unmarshal(yaml_data, serialized_yaml_str):

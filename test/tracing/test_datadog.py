@@ -4,37 +4,30 @@
 
 import functools
 import json
-from typing import List, Dict
 
-from ddtrace.trace import Span as ddSpan
-from ddtrace.trace import Tracer as ddTracer
-from ddtrace._trace.processor import SpanAggregator
 import pytest
 from _pytest.capture import CaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
+from ddtrace.trace import Span as ddSpan
+from ddtrace.trace import Tracer as ddTracer
 
 from haystack.tracing.datadog import DatadogTracer
 
 
-def safe_patch(monkeypatch, target, attr_name, replacement):
-    if hasattr(target, attr_name):
-        attr = getattr(target, attr_name)
-        name = attr.__name__ if callable(attr) and hasattr(attr, "__name__") else attr_name
-        monkeypatch.setattr(target, name, replacement)
-
-
 @pytest.fixture()
 def datadog_tracer(monkeypatch: MonkeyPatch) -> ddTracer:
-    # For the purpose of the tests we want to use the log writer
-    safe_patch(monkeypatch, SpanAggregator, "_use_log_writer", lambda *_: True)
-    safe_patch(monkeypatch, ddTracer, "_use_log_writer", lambda *_: True)
+    # For the purpose of the tests we want to use the log writer.
+    # We simulate being in AWS Lambda, where the log writer is active.
+    # See https://github.com/DataDog/dd-trace-py/blob/ae4c189ebf8e539f39905f21c7918cc19de69d13/ddtrace/internal/writer/writer.py#L680
+    # for more details.
+    monkeypatch.setenv("AWS_LAMBDA_FUNCTION_NAME", "test-function")
 
     tracer = ddTracer()
 
     return tracer
 
 
-def get_traces_from_console(capfd: CaptureFixture) -> List[Dict]:
+def get_traces_from_console(capfd: CaptureFixture) -> list[dict]:
     output = capfd.readouterr().out
     parsed = json.loads(output)
     nested_traces = parsed["traces"]
@@ -47,7 +40,14 @@ class TestDatadogTracer:
     def test_opentelemetry_tracer(self, datadog_tracer: ddTracer, capfd: CaptureFixture) -> None:
         tracer = DatadogTracer(datadog_tracer)
 
-        with tracer.trace("test") as span:
+        component_tags = {
+            "haystack.component.name": "test_component",
+            "haystack.component.type": "TestType",
+            "haystack.component.input": {"input_key": "input_value"},
+            "haystack.component.output": {"output_key": "output_value"},
+        }
+
+        with tracer.trace("haystack.component.run", tags=component_tags) as span:
             span.set_tag("key", "value")
 
         traces = get_traces_from_console(capfd)
@@ -55,7 +55,9 @@ class TestDatadogTracer:
 
         trace = traces[0]
 
-        assert trace["name"] == "test"
+        assert trace["name"] == "haystack.component.run"
+        assert "test_component" in trace["resource"]
+        assert "TestType" in trace["resource"]
 
     def test_tagging(self, datadog_tracer: ddTracer, capfd: CaptureFixture) -> None:
         tracer = DatadogTracer(datadog_tracer)

@@ -17,10 +17,11 @@ repos:
         args: [--markdown-linebreak-ext=md]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.0
+    rev: v0.12.0
     hooks:
-      - id: ruff
-      - id: ruff-format
+    - id: ruff-check
+      args: [ --fix ]
+    - id: ruff-format
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.3.0

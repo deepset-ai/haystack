@@ -13,8 +13,10 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
-    from .document_language_classifier import DocumentLanguageClassifier
-    from .zero_shot_document_classifier import TransformersZeroShotDocumentClassifier
+    from .document_language_classifier import DocumentLanguageClassifier as DocumentLanguageClassifier
+    from .zero_shot_document_classifier import (
+        TransformersZeroShotDocumentClassifier as TransformersZeroShotDocumentClassifier,
+    )
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

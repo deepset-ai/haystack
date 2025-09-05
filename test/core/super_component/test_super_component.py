@@ -2,23 +2,24 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, List, Union
+from typing import Any, Union
+from unittest.mock import patch
 
 import pytest
-from haystack import Document, SuperComponent, Pipeline, AsyncPipeline, component, super_component
-from haystack.core.pipeline.base import component_to_dict, component_from_dict
+
+from haystack import AsyncPipeline, Document, Pipeline, SuperComponent, component, super_component
 from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.generators import OpenAIGenerator
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.core.pipeline.base import component_from_dict, component_to_dict
+from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.core.super_component.super_component import InvalidMappingTypeError, InvalidMappingValueError
 from haystack.dataclasses import GeneratedAnswer
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.utils.auth import Secret
-from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.core.super_component.super_component import InvalidMappingTypeError, InvalidMappingValueError
 from haystack.testing.sample_components import AddFixedValue, Double
-from unittest.mock import patch
+from haystack.utils.auth import Secret
 
 
 @pytest.fixture
@@ -56,7 +57,7 @@ def rag_pipeline(document_store):
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
+        @component.output_types(replies=list[str])
         def run(self, prompt: str, **kwargs):
             return {"replies": ["This is a test response about capitals."]}
 
@@ -87,7 +88,7 @@ def async_rag_pipeline(document_store):
 
     @component
     class FakeGenerator:
-        @component.output_types(replies=List[str])
+        @component.output_types(replies=list[str])
         def run(self, prompt: str, **kwargs):
             return {"replies": ["This is a test response about capitals."]}
 
@@ -184,7 +185,7 @@ class TestSuperComponent:
         wrapper = SuperComponent(pipeline=rag_pipeline, output_mapping=output_mapping)
         output_sockets = wrapper.__haystack_output__._sockets_dict
         assert set(output_sockets.keys()) == {"final_answers"}
-        assert output_sockets["final_answers"].type == List[GeneratedAnswer]
+        assert output_sockets["final_answers"].type == list[GeneratedAnswer]
 
     def test_auto_input_mapping(self, rag_pipeline):
         wrapper = SuperComponent(pipeline=rag_pipeline)
@@ -212,7 +213,7 @@ class TestSuperComponent:
 
         output_sockets = wrapper.__haystack_output__._sockets_dict
         assert set(output_sockets.keys()) == {"answers", "documents"}
-        assert output_sockets["answers"].type == List[GeneratedAnswer]
+        assert output_sockets["answers"].type == list[GeneratedAnswer]
 
         input_sockets = wrapper.__haystack_input__._sockets_dict
         assert set(input_sockets.keys()) == {
@@ -266,6 +267,7 @@ class TestSuperComponent:
         assert "type" in serialized
         assert "init_parameters" in serialized
         assert "pipeline" in serialized["init_parameters"]
+        assert serialized["init_parameters"]["is_pipeline_async"] is False
 
         # Test deserialization
         deserialized = SuperComponent.from_dict(serialized)
@@ -395,20 +397,20 @@ class TestSuperComponent:
         @component
         class UnionTypeComponent1:
             @component.output_types(result=Union[int, str])
-            def run(self, input: Union[int, str]):
-                return {"result": input}
+            def run(self, inp: Union[int, str]):
+                return {"result": inp}
 
         @component
         class UnionTypeComponent2:
             @component.output_types(result=Union[float, str])
-            def run(self, input: Union[float, str]):
-                return {"result": input}
+            def run(self, inp: Union[float, str]):
+                return {"result": inp}
 
         pipeline = Pipeline()
         pipeline.add_component("test1", UnionTypeComponent1())
         pipeline.add_component("test2", UnionTypeComponent2())
 
-        input_mapping = {"data": ["test1.input", "test2.input"]}
+        input_mapping = {"data": ["test1.inp", "test2.inp"]}
         output_mapping = {"test2.result": "result"}
         wrapper = SuperComponent(pipeline=pipeline, input_mapping=input_mapping, output_mapping=output_mapping)
 
@@ -434,3 +436,35 @@ class TestSuperComponent:
         input_sockets = wrapper.__haystack_input__._sockets_dict
         assert "text" in input_sockets
         assert input_sockets["text"].type == str
+
+    @pytest.mark.asyncio
+    async def test_super_component_async_serialization_deserialization(self):
+        """
+        Test for async SuperComponent serialization and deserialization.
+
+        Test that when using the SuperComponent class, a SuperComponent based on an async pipeline can be serialized and
+        deserialized correctly.
+        """
+
+        @component
+        class AsyncComponent:
+            @component.output_types(output=str)
+            def run(self):
+                return {"output": "irrelevant"}
+
+            @component.output_types(output=str)
+            async def run_async(self):
+                return {"output": "Hello world"}
+
+        pipeline = AsyncPipeline()
+        pipeline.add_component("hello", AsyncComponent())
+
+        async_super_component = SuperComponent(pipeline=pipeline)
+        serialized_super_component = async_super_component.to_dict()
+        assert serialized_super_component["init_parameters"]["is_pipeline_async"] is True
+
+        deserialized_super_component = SuperComponent.from_dict(serialized_super_component)
+        assert isinstance(deserialized_super_component.pipeline, AsyncPipeline)
+
+        result = await deserialized_super_component.run_async()
+        assert result == {"output": "Hello world"}

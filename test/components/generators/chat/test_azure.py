@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import pytest
 from openai import OpenAIError
 
-from haystack import component, Pipeline
+from haystack import Pipeline, component
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
@@ -18,7 +18,7 @@ from haystack.utils.auth import Secret
 from haystack.utils.azure import default_azure_ad_token_provider
 
 
-def get_weather(city: str) -> Dict[str, Any]:
+def get_weather(city: str) -> dict[str, Any]:
     weather_info = {
         "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
         "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
@@ -29,8 +29,8 @@ def get_weather(city: str) -> Dict[str, Any]:
 
 @component
 class MessageExtractor:
-    @component.output_types(messages=List[str], meta=Dict[str, Any])
-    def run(self, messages: List[ChatMessage], meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    @component.output_types(messages=list[str], meta=dict[str, Any])
+    def run(self, messages: list[ChatMessage], meta: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
         Extracts the text content of ChatMessage objects
 

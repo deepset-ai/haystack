@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
 from haystack import Document
-from haystack.components.converters.pypdf import PyPDFToDocument, PyPDFExtractionMode
+from haystack.components.converters.pypdf import PyPDFExtractionMode, PyPDFToDocument
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.dataclasses import ByteStream
 

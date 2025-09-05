@@ -19,7 +19,7 @@ on:
       - "haystack/core/pipeline/predefined/*"
       - "test/**/*.py"
       - "pyproject.toml"
-      - ".github/utils/check_imports.py"
+      - ".github/utils/*.py"
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -36,7 +36,7 @@ jobs:
   format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
@@ -45,11 +45,8 @@ jobs:
       - name: Install Hatch
         run: pip install hatch==${{ env.HATCH_VERSION }}
 
-      - name: Check file format
-        run: hatch run format-check
-
-      - name: Check linting
-        run: hatch run check
+      - name: Ruff - check format and linting
+        run: hatch run fmt-check
 
       - name: Check presence of license header
         run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
@@ -89,7 +86,7 @@ jobs:
     needs: format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
@@ -145,7 +142,7 @@ jobs:
           - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
@@ -173,6 +170,7 @@ jobs:
         # complicates the workflow too much for little to no gain
         if: matrix.os == 'ubuntu-latest'
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         with:
           path-to-lcov: coverage.xml
 
@@ -212,7 +210,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # With the default value of 1, there are corner cases where tj-actions/changed-files
           # fails with a `no merge base` error
@@ -288,7 +286,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
@@ -345,7 +343,7 @@ jobs:
       HAYSTACK_MPS_ENABLED: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
@@ -404,8 +402,11 @@ jobs:
     needs: unit-tests
     runs-on: windows-latest
     timeout-minutes: 30
+    env:
+      HAYSTACK_XPU_ENABLED: false
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:

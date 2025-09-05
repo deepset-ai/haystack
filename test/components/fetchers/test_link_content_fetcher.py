@@ -2,16 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import patch, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
 import httpx
+import pytest
 
 from haystack.components.fetchers.link_content import (
-    LinkContentFetcher,
-    _text_content_handler,
-    _binary_content_handler,
     DEFAULT_USER_AGENT,
+    LinkContentFetcher,
+    _binary_content_handler,
+    _text_content_handler,
 )
 
 HTML_URL = "https://docs.haystack.deepset.ai/docs"
@@ -30,11 +30,9 @@ def mock_get_link_text_content():
 @pytest.fixture
 def mock_get_link_content(test_files_path):
     with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
-        mock_response = Mock(
-            status_code=200,
-            content=open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb").read(),
-            headers={"Content-Type": "application/pdf"},
-        )
+        with open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb") as f1:
+            file_bytes = f1.read()
+        mock_response = Mock(status_code=200, content=file_bytes, headers={"Content-Type": "application/pdf"})
         mock_get.return_value = mock_response
         yield mock_get
 
@@ -110,7 +108,8 @@ class TestLinkContentFetcher:
 
     def test_run_binary(self, test_files_path):
         """Test fetching binary content"""
-        file_bytes = open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb").read()
+        with open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb") as f1:
+            file_bytes = f1.read()
         with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
             mock_response = Mock(status_code=200, content=file_bytes, headers={"Content-Type": "application/pdf"})
             mock_get.return_value = mock_response
@@ -143,8 +142,8 @@ class TestLinkContentFetcher:
 
     def test_bad_request_exception_raised(self):
         """
-        This test is to ensure that the fetcher raises an exception when a single bad request is made and it is configured to
-        do so.
+        This test is to ensure that the fetcher raises an exception when a single bad request is made and it is
+        configured to do so.
         """
         fetcher = LinkContentFetcher(raise_on_failure=True, retry_attempts=0)
 
@@ -157,6 +156,31 @@ class TestLinkContentFetcher:
             mock_get.return_value = mock_response
             with pytest.raises(httpx.HTTPStatusError):
                 fetcher.run(["https://non_existent_website_dot.com/"])
+
+    def test_request_headers_merging_and_ua_override(self):
+        # Patch the Client class to control the instance created by LinkContentFetcher
+        with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:
+            client = ClientMock.return_value
+            client.headers = {}  # base headers used in the merge
+            mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+            client.get.return_value = mock_response
+
+            fetcher = LinkContentFetcher(
+                user_agents=["ua-sync-1", "ua-sync-2"],
+                request_headers={
+                    "Accept-Language": "fr-FR",
+                    "X-Test": "1",
+                    "User-Agent": "will-be-overridden",  # rotating UA must override this
+                },
+            )
+
+            _ = fetcher.run(urls=["https://example.com"])["streams"]
+
+            client.get.assert_called_once()
+            sent_headers = client.get.call_args.kwargs["headers"]
+            assert sent_headers["X-Test"] == "1"
+            assert sent_headers["Accept-Language"] == "fr-FR"
+            assert sent_headers["User-Agent"] == "ua-sync-1"  # rotating UA wins
 
     @pytest.mark.integration
     def test_link_content_fetcher_html(self):
@@ -247,7 +271,8 @@ class TestLinkContentFetcherAsync:
             streams = (await fetcher.run_async(urls=["https://www.example.com"]))["streams"]
 
             first_stream = streams[0]
-            assert first_stream.data == b"Example test response"
+            expected_content = b"Example test response"
+            assert first_stream.data == expected_content
             assert first_stream.meta["content_type"] == "text/plain"
             assert first_stream.mime_type == "text/plain"
 
@@ -265,7 +290,8 @@ class TestLinkContentFetcherAsync:
 
             assert len(streams) == 2
             for stream in streams:
-                assert stream.data == b"Example test response"
+                expected_data = b"Example test response"
+                assert stream.data == expected_data
                 assert stream.meta["content_type"] == "text/plain"
                 assert stream.mime_type == "text/plain"
 
@@ -324,7 +350,8 @@ class TestLinkContentFetcherAsync:
             # Should succeed on the second attempt with the second user agent
             streams = (await fetcher.run_async(urls=["https://www.example.com"]))["streams"]
             assert len(streams) == 1
-            assert streams[0].data == b"Success"
+            expected_result = b"Success"
+            assert streams[0].data == expected_result
 
             mock_sleep.assert_called_once()
 
@@ -354,3 +381,26 @@ class TestLinkContentFetcherAsync:
         streams = (await fetcher.run_async([HTML_URL]))["streams"]
         assert len(streams) == 1
         assert "Haystack" in streams[0].data.decode("utf-8")
+
+    @pytest.mark.asyncio
+    async def test_request_headers_merging_and_ua_override(self):
+        # Patch the AsyncClient class to control the instance created by LinkContentFetcher
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
+            aclient = AsyncClientMock.return_value
+            aclient.headers = {}  # base headers used in the merge
+
+            mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+            aclient.get = AsyncMock(return_value=mock_response)
+
+            fetcher = LinkContentFetcher(
+                user_agents=["ua-async-1", "ua-async-2"],
+                request_headers={"Accept-Language": "de-DE", "X-Async": "true", "User-Agent": "ignored-here-too"},
+            )
+
+            _ = (await fetcher.run_async(urls=["https://example.com"]))["streams"]
+
+            assert aclient.get.await_count == 1
+            sent_headers = aclient.get.call_args.kwargs["headers"]
+            assert sent_headers["X-Async"] == "true"
+            assert sent_headers["Accept-Language"] == "de-DE"
+            assert sent_headers["User-Agent"] == "ua-async-1"  # rotating UA wins

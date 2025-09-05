@@ -4,7 +4,7 @@
 
 from copy import copy
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -48,13 +48,14 @@ class SentenceTransformersSimilarityRanker:
         top_k: int = 10,
         query_prefix: str = "",
         document_prefix: str = "",
-        meta_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
         score_threshold: Optional[float] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[Dict[str, Any]] = None,
-        config_kwargs: Optional[Dict[str, Any]] = None,
+        trust_remote_code: bool = False,
+        model_kwargs: Optional[dict[str, Any]] = None,
+        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        config_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
         batch_size: int = 16,
     ):
@@ -84,6 +85,9 @@ class SentenceTransformersSimilarityRanker:
             If `False`, disables scaling of the raw logit predictions.
         :param score_threshold:
             Use it to return documents with a score above this threshold only.
+        :param trust_remote_code:
+            If `False`, allows only Hugging Face verified model architectures.
+            If `True`, allows custom models and scripts.
         :param model_kwargs:
             Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
             when loading the model. Refer to specific model documentation for available kwargs.
@@ -119,13 +123,14 @@ class SentenceTransformersSimilarityRanker:
         self.embedding_separator = embedding_separator
         self.scale_score = scale_score
         self.score_threshold = score_threshold
+        self.trust_remote_code = trust_remote_code
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
         self.config_kwargs = config_kwargs
         self.backend = backend
         self.batch_size = batch_size
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
@@ -140,13 +145,14 @@ class SentenceTransformersSimilarityRanker:
                 model_name_or_path=self.model,
                 device=self.device.to_torch_str(),
                 token=self.token.resolve_value() if self.token else None,
+                trust_remote_code=self.trust_remote_code,
                 model_kwargs=self.model_kwargs,
                 tokenizer_kwargs=self.tokenizer_kwargs,
                 config_kwargs=self.config_kwargs,
                 backend=self.backend,
             )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -165,6 +171,7 @@ class SentenceTransformersSimilarityRanker:
             embedding_separator=self.embedding_separator,
             scale_score=self.scale_score,
             score_threshold=self.score_threshold,
+            trust_remote_code=self.trust_remote_code,
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
             config_kwargs=self.config_kwargs,
@@ -176,7 +183,7 @@ class SentenceTransformersSimilarityRanker:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SentenceTransformersSimilarityRanker":
+    def from_dict(cls, data: dict[str, Any]) -> "SentenceTransformersSimilarityRanker":
         """
         Deserializes the component from a dictionary.
 
@@ -194,16 +201,16 @@ class SentenceTransformersSimilarityRanker:
 
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(
         self,
         *,
         query: str,
-        documents: List[Document],
+        documents: list[Document],
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         score_threshold: Optional[float] = None,
-    ) -> Dict[str, List[Document]]:
+    ) -> dict[str, list[Document]]:
         """
         Returns a list of documents ranked by their similarity to the given query.
 
@@ -269,7 +276,7 @@ class SentenceTransformersSimilarityRanker:
         ranked_docs = []
         for el in ranking_result:
             index = el["corpus_id"]
-            score = el["score"]
+            score = float(el["score"])
             document = copy(documents[index])
             document.score = score
             ranked_docs.append(document)

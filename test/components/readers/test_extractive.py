@@ -4,7 +4,6 @@
 
 import logging
 from math import ceil, exp
-from typing import List
 from unittest.mock import Mock, patch
 
 import pytest
@@ -28,8 +27,8 @@ def initialized_token(monkeypatch: MonkeyPatch) -> Secret:
 @pytest.fixture
 def mock_tokenizer():
     def mock_tokenize(
-        texts: List[str],
-        text_pairs: List[str],
+        texts: list[str],
+        text_pairs: list[str],
         padding: bool,
         truncation: bool,
         max_length: int,
@@ -581,8 +580,8 @@ def test_device_map_and_device_warning(caplog):
             "deepset/roberta-base-squad2", model_kwargs={"device_map": "cpu"}, device=ComponentDevice.from_str("cuda")
         )
         assert (
-            "The parameters `device` and `device_map` from `model_kwargs` are both provided. Ignoring `device` and using `device_map`."
-            in caplog.text
+            "The parameters `device` and `device_map` from `model_kwargs` are both provided. Ignoring `device` "
+            "and using `device_map`." in caplog.text
         )
 
 

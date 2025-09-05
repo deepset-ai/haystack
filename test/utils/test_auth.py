@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from dataclasses import FrozenInstanceError
 
 import pytest
 
-from haystack.utils.auth import Secret, EnvVarSecret, SecretType, TokenSecret
-from dataclasses import FrozenInstanceError
+from haystack.utils.auth import EnvVarSecret, Secret, SecretType, TokenSecret
 
 
 def test_secret_type():

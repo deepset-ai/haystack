@@ -1,11 +1,13 @@
+import ast
+import hashlib
 from pathlib import Path
 from typing import Iterator
 
-import ast
-import hashlib
-
 
 def docstrings_checksum(python_files: Iterator[Path]):
+    """
+    Calculate the checksum of the docstrings in the given Python files.
+    """
     files_content = (f.read_text() for f in python_files)
     trees = (ast.parse(c) for c in files_content)
 

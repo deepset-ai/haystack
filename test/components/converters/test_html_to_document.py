@@ -4,9 +4,9 @@
 
 import logging
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
-from unittest.mock import patch
 
 from haystack.components.converters import HTMLToDocument
 from haystack.dataclasses import ByteStream

@@ -253,10 +253,10 @@ def test_set_input_types_overrides_run():
 
     err_msg = "cannot override the parameters of the 'run' method"
     with pytest.raises(ComponentError, match=err_msg):
-        comp = MockComponent(False)
+        _ = MockComponent(False)
 
     with pytest.raises(ComponentError, match=err_msg):
-        comp = MockComponent(True)
+        _ = MockComponent(True)
 
 
 def test_set_output_types():
@@ -322,6 +322,23 @@ def test_output_types_decorator_and_set_output_types():
 
         @component.output_types(value=int)
         def run(self, value: int):
+            return {"value": 1}
+
+    with pytest.raises(ComponentError, match="Cannot call `set_output_types`"):
+        _ = MockComponent()
+
+
+def test_output_types_decorator_and_set_output_types_async():
+    @component
+    class MockComponent:
+        def __init__(self) -> None:
+            component.set_output_types(self, value=int)
+
+        def run(self, value: int):
+            return {"value": 1}
+
+        @component.output_types(value=int)
+        async def run_async(self, value: int):
             return {"value": 1}
 
     with pytest.raises(ComponentError, match="Cannot call `set_output_types`"):

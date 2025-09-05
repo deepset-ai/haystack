@@ -5,7 +5,7 @@
 import io
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -78,7 +78,7 @@ class MSGToDocument:
             recip_str += f"{recip.email_address}"
         return recip_str
 
-    def _convert(self, file_content: io.BytesIO) -> Tuple[str, List[ByteStream]]:
+    def _convert(self, file_content: io.BytesIO) -> tuple[str, list[ByteStream]]:
         """
         Converts the MSG file content into text and extracts any attachments.
 
@@ -130,12 +130,12 @@ class MSGToDocument:
 
         return txt, attachments
 
-    @component.output_types(documents=List[Document], attachments=List[ByteStream])
+    @component.output_types(documents=list[Document], attachments=list[ByteStream])
     def run(
         self,
-        sources: List[Union[str, Path, ByteStream]],
-        meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-    ) -> Dict[str, Union[List[Document], List[ByteStream]]]:
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+    ) -> dict[str, Union[list[Document], list[ByteStream]]]:
         """
         Converts MSG files to Documents.
 

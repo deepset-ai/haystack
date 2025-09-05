@@ -1,14 +1,16 @@
+import argparse
 import re
 import sys
-import argparse
 
-from readme_api import get_versions, create_new_unstable
-
+from readme_api import create_new_unstable, get_versions
 
 VERSION_VALIDATOR = re.compile(r"^[0-9]+\.[0-9]+$")
 
 
 def calculate_new_unstable(version: str):
+    """
+    Calculate the new unstable version based on the given version.
+    """
     # version must be formatted like so <major>.<minor>
     major, minor = version.split(".")
     return f"{major}.{int(minor) + 1}-unstable"

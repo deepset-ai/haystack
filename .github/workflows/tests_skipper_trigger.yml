@@ -16,7 +16,7 @@ on:
       - "haystack/core/pipeline/predefined/*"
       - "test/**/*.py"
       - "pyproject.toml"
-      - ".github/utils/check_imports.py"
+      - ".github/utils/*.py"
 
 jobs:
   check_if_changed:
@@ -27,7 +27,7 @@ jobs:
     outputs:
       code_changes: ${{ steps.changes.outputs.code_changes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Check for changed code
         id: changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
@@ -39,7 +39,7 @@ jobs:
               - "haystack/core/pipeline/predefined/*"
               - "test/**/*.py"
               - "pyproject.toml"
-              - ".github/utils/check_imports.py"
+              - ".github/utils/*.py"
 
   trigger-catch-all:
     name: Tests completed

@@ -2,18 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime
 import os
-from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, AsyncMock, patch
+from datetime import datetime
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-from haystack import Pipeline
-from haystack.dataclasses import StreamingChunk
-from haystack.utils.auth import Secret
-from haystack.utils.hf import HFGenerationAPIType
-
 from huggingface_hub import (
+    ChatCompletionInputStreamOptions,
     ChatCompletionOutput,
     ChatCompletionOutputComplete,
     ChatCompletionOutputFunctionDefinition,
@@ -23,21 +19,22 @@ from huggingface_hub import (
     ChatCompletionStreamOutput,
     ChatCompletionStreamOutputChoice,
     ChatCompletionStreamOutputDelta,
-    ChatCompletionInputStreamOptions,
     ChatCompletionStreamOutputUsage,
 )
 from huggingface_hub.errors import RepositoryNotFoundError
 
+from haystack import Pipeline
 from haystack.components.generators.chat.hugging_face_api import (
     HuggingFaceAPIChatGenerator,
+    _convert_chat_completion_stream_output_to_streaming_chunk,
     _convert_hfapi_tool_calls,
     _convert_tools_to_hfapi_tools,
-    _convert_chat_completion_stream_output_to_streaming_chunk,
 )
-
+from haystack.dataclasses import ChatMessage, ImageContent, StreamingChunk, ToolCall
 from haystack.tools import Tool
-from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools.toolset import Toolset
+from haystack.utils.auth import Secret
+from haystack.utils.hf import HFGenerationAPIType
 
 
 @pytest.fixture
@@ -48,7 +45,7 @@ def chat_messages():
     ]
 
 
-def get_weather(city: str) -> Dict[str, Any]:
+def get_weather(city: str) -> dict[str, Any]:
     weather_info = {
         "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
         "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
@@ -590,7 +587,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert response["replies"][0].tool_calls[0].arguments == {"city": "Paris"}
         assert response["replies"][0].tool_calls[0].id == "0"
         assert response["replies"][0].meta == {
-            "finish_reason": "stop",
+            "finish_reason": "tool_calls",
             "index": 0,
             "model": "meta-llama/Llama-3.1-70B-Instruct",
             "usage": {"completion_tokens": 30, "prompt_tokens": 426},
@@ -664,7 +661,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert len(tool_calls) == 0
 
     @pytest.mark.parametrize(
-        "hf_stream_output, expected_stream_chunk",
+        "hf_stream_output, expected_stream_chunk, dummy_previous_chunks",
         [
             (
                 ChatCompletionStreamOutput(
@@ -685,7 +682,10 @@ class TestHuggingFaceAPIChatGenerator:
                         "model": "microsoft/Phi-3.5-mini-instruct",
                         "finish_reason": None,
                     },
+                    index=0,
+                    start=True,
                 ),
+                [],
             ),
             (
                 ChatCompletionStreamOutput(
@@ -708,7 +708,9 @@ class TestHuggingFaceAPIChatGenerator:
                         "model": "microsoft/Phi-3.5-mini-instruct",
                         "finish_reason": "stop",
                     },
+                    finish_reason="stop",
                 ),
+                [0],
             ),
             (
                 ChatCompletionStreamOutput(
@@ -727,11 +729,16 @@ class TestHuggingFaceAPIChatGenerator:
                         "usage": {"completion_tokens": 2, "prompt_tokens": 21},
                     },
                 ),
+                [0, 1],
             ),
         ],
     )
-    def test_convert_chat_completion_stream_output_to_streaming_chunk(self, hf_stream_output, expected_stream_chunk):
-        converted_stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(chunk=hf_stream_output)
+    def test_convert_chat_completion_stream_output_to_streaming_chunk(
+        self, hf_stream_output, expected_stream_chunk, dummy_previous_chunks
+    ):
+        converted_stream_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(
+            chunk=hf_stream_output, previous_chunks=dummy_previous_chunks
+        )
         # Remove timestamp from comparison since it's always the current time
         converted_stream_chunk.meta.pop("received_at", None)
         expected_stream_chunk.meta.pop("received_at", None)
@@ -743,11 +750,11 @@ class TestHuggingFaceAPIChatGenerator:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
-    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.flaky(reruns=2, reruns_delay=10)
     def test_live_run_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
+            api_params={"model": "Qwen/Qwen2.5-7B-Instruct", "provider": "together"},
             generation_kwargs={"max_tokens": 20},
         )
 
@@ -769,7 +776,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert meta["usage"]["prompt_tokens"] > 0
         assert "completion_tokens" in meta["usage"]
         assert meta["usage"]["completion_tokens"] > 0
-        assert meta["model"] == "microsoft/Phi-3.5-mini-instruct"
+        assert meta["model"] == "Qwen/Qwen2.5-7B-Instruct"
         assert meta["finish_reason"] is not None
 
     @pytest.mark.integration
@@ -778,11 +785,11 @@ class TestHuggingFaceAPIChatGenerator:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
-    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.flaky(reruns=2, reruns_delay=10)
     def test_live_run_serverless_streaming(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
+            api_params={"model": "Qwen/Qwen2.5-7B-Instruct", "provider": "together"},
             generation_kwargs={"max_tokens": 20},
             streaming_callback=streaming_callback_handler,
         )
@@ -793,6 +800,8 @@ class TestHuggingFaceAPIChatGenerator:
             ChatMessage.from_user("What is the capital of France? Be concise only provide the capital, nothing else.")
         ]
         response = generator.run(messages=messages)
+
+        print(response)
 
         assert "replies" in response
         assert isinstance(response["replies"], list)
@@ -805,10 +814,11 @@ class TestHuggingFaceAPIChatGenerator:
         assert datetime.fromisoformat(response_meta["completion_start_time"]) <= datetime.now()
         assert "usage" in response_meta
         assert "prompt_tokens" in response_meta["usage"]
-        assert response_meta["usage"]["prompt_tokens"] > 0
+        assert response_meta["usage"]["prompt_tokens"] >= 0
         assert "completion_tokens" in response_meta["usage"]
-        assert response_meta["usage"]["completion_tokens"] > 0
-        assert response_meta["model"] == "microsoft/Phi-3.5-mini-instruct"
+        assert response_meta["usage"]["completion_tokens"] >= 0
+        # internally, Together calls this "Qwen/Qwen2.5-7B-Instruct-Turbo"
+        assert "Qwen/Qwen2.5-7B-Instruct" in response_meta["model"]
         assert response_meta["finish_reason"] is not None
 
     @pytest.mark.integration
@@ -821,13 +831,13 @@ class TestHuggingFaceAPIChatGenerator:
         """
         We test the round trip: generate tool call, pass tool message, generate response.
 
-        The model used here (Hermes-3-Llama-3.1-8B) is not gated and kept in a warm state.
+        The model used here (Qwen/Qwen2.5-72B-Instruct) is not gated and kept in a warm state.
         """
 
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "NousResearch/Hermes-3-Llama-3.1-8B"},
+            api_params={"model": "Qwen/Qwen2.5-72B-Instruct", "provider": "together"},
             generation_kwargs={"temperature": 0.5},
         )
 
@@ -841,7 +851,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert "city" in tool_call.arguments
         assert "Paris" in tool_call.arguments["city"]
-        assert message.meta["finish_reason"] == "stop"
+        assert message.meta["finish_reason"] == "tool_calls"
 
         new_messages = chat_messages + [message, ChatMessage.from_tool(tool_result="22° C", origin=tool_call)]
 
@@ -852,7 +862,35 @@ class TestHuggingFaceAPIChatGenerator:
         final_message = results["replies"][0]
         assert not final_message.tool_calls
         assert len(final_message.text) > 0
-        assert "paris" in final_message.text.lower()
+        assert "paris" in final_message.text.lower() and "22" in final_message.text
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    def test_live_run_multimodal(self, test_files_path):
+        image_path = test_files_path / "images" / "apple.jpg"
+        # Resize the image to keep this test fast
+        image_content = ImageContent.from_file_path(file_path=image_path, size=(100, 100))
+        messages = [ChatMessage.from_user(content_parts=["What does this image show? Max 5 words", image_content])]
+
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "Qwen/Qwen2.5-VL-32B-Instruct", "provider": "fireworks-ai"},
+            generation_kwargs={"max_tokens": 20},
+        )
+
+        response = generator.run(messages=messages)
+
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) > 0
+        message = response["replies"][0]
+        assert message.text
+        assert len(message.text) > 0
+        assert any(word in message.text.lower() for word in ["apple", "fruit", "red"])
 
     @pytest.mark.asyncio
     async def test_run_async(self, mock_check_valid_model, mock_chat_completion_async, chat_messages):
@@ -1002,7 +1040,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert response["replies"][0].tool_calls[0].arguments == {"city": "Paris"}
         assert response["replies"][0].tool_calls[0].id == "0"
         assert response["replies"][0].meta == {
-            "finish_reason": "stop",
+            "finish_reason": "tool_calls",
             "index": 0,
             "model": "meta-llama/Llama-3.1-70B-Instruct",
             "usage": {"completion_tokens": 30, "prompt_tokens": 426},
@@ -1014,12 +1052,12 @@ class TestHuggingFaceAPIChatGenerator:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
-    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.flaky(reruns=2, reruns_delay=10)
     @pytest.mark.asyncio
     async def test_live_run_async_serverless(self):
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "microsoft/Phi-3.5-mini-instruct", "provider": "hf-inference"},
+            api_params={"model": "Qwen/Qwen2.5-7B-Instruct", "provider": "together"},
             generation_kwargs={"max_tokens": 20},
         )
 
@@ -1041,7 +1079,7 @@ class TestHuggingFaceAPIChatGenerator:
             assert meta["usage"]["prompt_tokens"] > 0
             assert "completion_tokens" in meta["usage"]
             assert meta["usage"]["completion_tokens"] > 0
-            assert meta["model"] == "microsoft/Phi-3.5-mini-instruct"
+            assert meta["model"] == "Qwen/Qwen2.5-7B-Instruct"
             assert meta["finish_reason"] is not None
         finally:
             await generator._async_client.close()

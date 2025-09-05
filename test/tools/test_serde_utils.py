@@ -4,7 +4,7 @@
 
 import pytest
 
-from haystack.tools import Tool, deserialize_tools_or_toolset_inplace, Toolset, serialize_tools_or_toolset
+from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 
 
 def get_weather_report(city: str) -> str:

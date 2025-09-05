@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Dict, List, Optional
+from dataclasses import replace
+from typing import Optional
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -52,7 +53,7 @@ class DocumentLanguageClassifier:
     ```
     """
 
-    def __init__(self, languages: Optional[List[str]] = None):
+    def __init__(self, languages: Optional[list[str]] = None):
         """
         Initializes the DocumentLanguageClassifier component.
 
@@ -65,8 +66,8 @@ class DocumentLanguageClassifier:
             languages = ["en"]
         self.languages = languages
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document]):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document]):
         """
         Classifies the language of each document and adds it to its metadata.
 
@@ -86,24 +87,27 @@ class DocumentLanguageClassifier:
                 "In case you want to classify and route a text, please use the TextLanguageRouter."
             )
 
-        output: Dict[str, List[Document]] = {language: [] for language in self.languages}
+        output: dict[str, list[Document]] = {language: [] for language in self.languages}
         output["unmatched"] = []
 
+        new_documents = []
         for document in documents:
             detected_language = self._detect_language(document)
+            new_meta = {**document.meta}
             if detected_language in self.languages:
-                document.meta["language"] = detected_language
+                new_meta["language"] = detected_language
             else:
-                document.meta["language"] = "unmatched"
+                new_meta["language"] = "unmatched"
+            new_documents.append(replace(document, meta=new_meta))
 
-        return {"documents": documents}
+        return {"documents": new_documents}
 
     def _detect_language(self, document: Document) -> Optional[str]:
+        language = None
         try:
             language = langdetect.detect(document.content)
         except langdetect.LangDetectException:
             logger.warning(
                 "Langdetect cannot detect the language of Document with id: {document_id}", document_id=document.id
             )
-            language = None
         return language

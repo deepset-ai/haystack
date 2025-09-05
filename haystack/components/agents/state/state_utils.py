@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-from typing import Any, List, TypeVar, Union, get_origin
+from typing import Any, TypeVar, Union, get_origin
 
 T = TypeVar("T")
 
@@ -14,7 +14,7 @@ def _is_valid_type(obj: Any) -> bool:
 
     Valid types include:
     - Normal classes (str, dict, CustomClass)
-    - Generic types (List[str], Dict[str, int])
+    - Generic types (list[str], dict[str, int])
     - Union types (Union[str, int], Optional[str])
 
     :param obj: The object to check
@@ -23,7 +23,7 @@ def _is_valid_type(obj: Any) -> bool:
     Example usage:
         >>> _is_valid_type(str)
         True
-        >>> _is_valid_type(List[int])
+        >>> _is_valid_type(list[int])
         True
         >>> _is_valid_type(Union[str, int])
         True
@@ -48,7 +48,7 @@ def _is_list_type(type_hint: Any) -> bool:
     return type_hint == list or (hasattr(type_hint, "__origin__") and get_origin(type_hint) == list)
 
 
-def merge_lists(current: Union[List[T], T, None], new: Union[List[T], T]) -> List[T]:
+def merge_lists(current: Union[list[T], T, None], new: Union[list[T], T]) -> list[T]:
     """
     Merges two values into a single list.
 

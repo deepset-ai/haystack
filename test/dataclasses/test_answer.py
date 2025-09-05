@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from haystack.dataclasses import ChatMessage, Document
 from haystack.dataclasses.answer import Answer, ExtractedAnswer, GeneratedAnswer
-from haystack.dataclasses.document import Document
 
 
 class TestExtractedAnswer:
@@ -133,13 +133,40 @@ class TestGeneratedAnswer:
         assert isinstance(answer, Answer)
 
     def test_to_dict(self):
+        answer = GeneratedAnswer(data="42", query="What is the answer?", documents=[])
+        assert answer.to_dict() == {
+            "type": "haystack.dataclasses.answer.GeneratedAnswer",
+            "init_parameters": {"data": "42", "query": "What is the answer?", "documents": [], "meta": {}},
+        }
+
+    def test_to_dict_with_meta(self):
+        answer = GeneratedAnswer(
+            data="42",
+            query="What is the answer?",
+            documents=[],
+            meta={"meta_key": "meta_value", "all_messages": ["What is the answer?"]},
+        )
+        assert answer.to_dict() == {
+            "type": "haystack.dataclasses.answer.GeneratedAnswer",
+            "init_parameters": {
+                "data": "42",
+                "query": "What is the answer?",
+                "documents": [],
+                "meta": {"meta_key": "meta_value", "all_messages": ["What is the answer?"]},
+            },
+        }
+
+    def test_to_dict_with_chat_message_in_meta(self):
         documents = [
             Document(id="1", content="The answer is 42."),
             Document(id="2", content="I believe the answer is 42."),
             Document(id="3", content="42 is definitely the answer."),
         ]
         answer = GeneratedAnswer(
-            data="42", query="What is the answer?", documents=documents, meta={"meta_key": "meta_value"}
+            data="42",
+            query="What is the answer?",
+            documents=documents,
+            meta={"meta_key": "meta_value", "all_messages": [ChatMessage.from_user("What is the answer?")]},
         )
         assert answer.to_dict() == {
             "type": "haystack.dataclasses.answer.GeneratedAnswer",
@@ -147,11 +174,44 @@ class TestGeneratedAnswer:
                 "data": "42",
                 "query": "What is the answer?",
                 "documents": [d.to_dict(flatten=False) for d in documents],
-                "meta": {"meta_key": "meta_value"},
+                "meta": {
+                    "meta_key": "meta_value",
+                    "all_messages": [ChatMessage.from_user("What is the answer?").to_dict()],
+                },
             },
         }
 
     def test_from_dict(self):
+        answer = GeneratedAnswer.from_dict(
+            {
+                "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                "init_parameters": {"data": "42", "query": "What is the answer?", "documents": [], "meta": {}},
+            }
+        )
+        assert answer.data == "42"
+        assert answer.query == "What is the answer?"
+        assert answer.documents == []
+        assert answer.meta == {}
+
+    def test_from_dict_with_meta(self):
+        answer = GeneratedAnswer.from_dict(
+            {
+                "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                "init_parameters": {
+                    "data": "42",
+                    "query": "What is the answer?",
+                    "documents": [],
+                    "meta": {"meta_key": "meta_value", "all_messages": ["What is the answer?"]},
+                },
+            }
+        )
+        assert answer.data == "42"
+        assert answer.query == "What is the answer?"
+        assert answer.documents == []
+        assert answer.meta["meta_key"] == "meta_value"
+        assert answer.meta["all_messages"] == ["What is the answer?"]
+
+    def test_from_dict_with_chat_message_in_meta(self):
         answer = GeneratedAnswer.from_dict(
             {
                 "type": "haystack.dataclasses.answer.GeneratedAnswer",
@@ -163,7 +223,10 @@ class TestGeneratedAnswer:
                         {"id": "2", "content": "I believe the answer is 42."},
                         {"id": "3", "content": "42 is definitely the answer."},
                     ],
-                    "meta": {"meta_key": "meta_value"},
+                    "meta": {
+                        "meta_key": "meta_value",
+                        "all_messages": [ChatMessage.from_user("What is the answer?").to_dict()],
+                    },
                 },
             }
         )
@@ -174,4 +237,5 @@ class TestGeneratedAnswer:
             Document(id="2", content="I believe the answer is 42."),
             Document(id="3", content="42 is definitely the answer."),
         ]
-        assert answer.meta == {"meta_key": "meta_value"}
+        assert answer.meta["meta_key"] == "meta_value"
+        assert answer.meta["all_messages"] == [ChatMessage.from_user("What is the answer?")]

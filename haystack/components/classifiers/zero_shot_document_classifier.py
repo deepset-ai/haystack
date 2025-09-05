@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional
+from dataclasses import replace
+from typing import Any, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -74,12 +75,12 @@ class TransformersZeroShotDocumentClassifier:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str,
-        labels: List[str],
+        labels: list[str],
         multi_label: bool = False,
         classification_field: Optional[str] = None,
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
+        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Initializes the TransformersZeroShotDocumentClassifier.
@@ -132,7 +133,7 @@ class TransformersZeroShotDocumentClassifier:
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.pipeline: Optional[HfPipeline] = None
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
@@ -147,7 +148,7 @@ class TransformersZeroShotDocumentClassifier:
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -169,7 +170,7 @@ class TransformersZeroShotDocumentClassifier:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TransformersZeroShotDocumentClassifier":
+    def from_dict(cls, data: dict[str, Any]) -> "TransformersZeroShotDocumentClassifier":
         """
         Deserializes the component from a dictionary.
 
@@ -183,8 +184,8 @@ class TransformersZeroShotDocumentClassifier:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document], batch_size: int = 1):
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document], batch_size: int = 1):
         """
         Classifies the documents based on the provided labels and adds them to their metadata.
 
@@ -232,12 +233,14 @@ class TransformersZeroShotDocumentClassifier:
 
         predictions = self.pipeline(texts, self.labels, multi_label=self.multi_label, batch_size=batch_size)
 
+        new_documents = []
         for prediction, document in zip(predictions, documents):
             formatted_prediction = {
                 "label": prediction["labels"][0],
                 "score": prediction["scores"][0],
                 "details": dict(zip(prediction["labels"], prediction["scores"])),
             }
-            document.meta["classification"] = formatted_prediction
+            new_meta = {**document.meta, "classification": formatted_prediction}
+            new_documents.append(replace(document, meta=new_meta))
 
-        return {"documents": documents}
+        return {"documents": new_documents}

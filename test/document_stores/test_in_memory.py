@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import gc
 import logging
+import tempfile
 from unittest.mock import patch
 
 import pytest
-import tempfile
-import asyncio
 
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
@@ -27,8 +27,10 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             yield tmp_dir
 
     @pytest.fixture
-    def document_store(self) -> InMemoryDocumentStore:
-        return InMemoryDocumentStore(bm25_algorithm="BM25L")
+    def document_store(self):
+        store = InMemoryDocumentStore(bm25_algorithm="BM25L")
+        yield store
+        store.shutdown()
 
     def test_to_dict(self):
         store = InMemoryDocumentStore()
@@ -41,6 +43,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
                 "index": store.index,
+                "return_embedding": True,
             },
         }
 
@@ -51,6 +54,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
             bm25_parameters={"key": "value"},
             embedding_similarity_function="cosine",
             index="my_cool_index",
+            return_embedding=True,
         )
         data = store.to_dict()
         assert data == {
@@ -61,6 +65,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
                 "bm25_parameters": {"key": "value"},
                 "embedding_similarity_function": "cosine",
                 "index": "my_cool_index",
+                "return_embedding": True,
             },
         }
 
@@ -114,7 +119,8 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
 
     def test_bm25_retrieval_with_empty_document_store(self, document_store: InMemoryDocumentStore, caplog):
         caplog.set_level(logging.INFO)
-        # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the DocumentStore.
+        # Tests if the bm25_retrieval method correctly returns an empty list when there are no documents in the
+        # DocumentStore.
         results = document_store.bm25_retrieval(query="How to test this?", top_k=2)
         assert len(results) == 0
         assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
@@ -246,6 +252,47 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
         document_store.write_documents(docs)
         results = document_store.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
         assert len(results) == 0
+
+    def test_embedding_retrieval_return_embedding_false_on_store(self):
+        # Initialize InMemoryDocumentStore with return_embedding=False
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine", return_embedding=False)
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+        ]
+        docstore.write_documents(docs)
+
+        # embedding_retrieval should not return embeddings in the documents
+        results = docstore.embedding_retrieval(query_embedding=[0.1, 0.1, 0.1, 0.1], top_k=2)
+        assert all(doc.embedding is None for doc in results)
+
+        # bm25_retrieval should also not return embeddings
+        bm25_results = docstore.bm25_retrieval(query="languages", top_k=2)
+        assert all(doc.embedding is None for doc in bm25_results)
+
+        # filter_documents should not return embeddings
+        filtered_docs = docstore.filter_documents()
+        assert all(doc.embedding is None for doc in filtered_docs)
+
+    def test_embedding_retrieval_override_return_embedding(self):
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine", return_embedding=False)
+        docs = [
+            Document(content="Hello world", embedding=[0.1, 0.2, 0.3, 0.4]),
+            Document(content="Haystack supports multiple languages", embedding=[1.0, 1.0, 1.0, 1.0]),
+        ]
+        docstore.write_documents(docs)
+
+        # Overriding return_embedding to True should return embeddings
+        # Query for the embedding that matches both documents by cosine similarity
+        results_with_embedding = docstore.embedding_retrieval(
+            query_embedding=[0.1, 0.2, 0.3, 0.4], top_k=2, return_embedding=True
+        )
+
+        # Assert that the retrieved documents have the expected embeddings
+        assert len(results_with_embedding) == 2
+
+        assert results_with_embedding[0].embedding in ([1.0, 1.0, 1.0, 1.0], [0.1, 0.2, 0.3, 0.4])
+        assert results_with_embedding[1].embedding in ([1.0, 1.0, 1.0, 1.0], [0.1, 0.2, 0.3, 0.4])
 
     def test_embedding_retrieval(self):
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
@@ -424,7 +471,7 @@ class TestMemoryDocumentStore(DocumentStoreBaseTests):  # pylint: disable=R0904
 
     @pytest.mark.asyncio
     async def test_filter_documents(self, document_store: InMemoryDocumentStore):
-        filterable_docs = [Document(content=f"1", meta={"number": -10}), Document(content=f"2", meta={"number": 100})]
+        filterable_docs = [Document(content="1", meta={"number": -10}), Document(content="2", meta={"number": 100})]
         await document_store.write_documents_async(filterable_docs)
         result = await document_store.filter_documents_async(
             filters={"field": "meta.number", "operator": "==", "value": 100}
