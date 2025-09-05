@@ -38,9 +38,14 @@ from haystack.utils.auth import Secret
 
 
 class CalendarEvent(BaseModel):
-    name: str
-    date: str
-    location: str
+    event_name: str
+    event_date: str
+    event_location: str
+
+
+@pytest.fixture
+def calendar_event_model():
+    return CalendarEvent
 
 
 @pytest.fixture
@@ -224,7 +229,7 @@ class TestOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch):
+    def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
 
         monkeypatch.setenv("ENV_VAR", "test-api-key")
@@ -233,7 +238,11 @@ class TestOpenAIChatGenerator:
             model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params", "response_format": CalendarEvent},
+            generation_kwargs={
+                "max_tokens": 10,
+                "some_test_param": "test-params",
+                "response_format": calendar_event_model,
+            },
             tools=[tool],
             tools_strict=True,
             max_retries=10,
@@ -241,7 +250,6 @@ class TestOpenAIChatGenerator:
             http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
         )
         data = component.to_dict()
-        print(data)
 
         assert data == {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
@@ -258,11 +266,11 @@ class TestOpenAIChatGenerator:
                     "some_test_param": "test-params",
                     "response_format": {
                         "properties": {
-                            "name": {"title": "Name", "type": "string"},
-                            "date": {"title": "Date", "type": "string"},
-                            "location": {"title": "Location", "type": "string"},
+                            "event_name": {"title": "Event Name", "type": "string"},
+                            "event_date": {"title": "Event Date", "type": "string"},
+                            "event_location": {"title": "Event Location", "type": "string"},
                         },
-                        "required": ["name", "date", "location"],
+                        "required": ["event_name", "event_date", "event_location"],
                         "title": "CalendarEvent",
                         "type": "object",
                         "additionalProperties": False,
@@ -644,9 +652,9 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format(self):
+    def test_live_run_with_response_format(self, calendar_event_model):
         chat_messages = [ChatMessage.from_user("Describe the 20th Nobel Peace Prize.")]
-        component = OpenAIChatGenerator(generation_kwargs={"response_format": CalendarEvent})
+        component = OpenAIChatGenerator(generation_kwargs={"response_format": calendar_event_model})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]

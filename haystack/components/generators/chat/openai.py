@@ -146,7 +146,10 @@ class OpenAIChatGenerator:
                 If provided, the output will always be validated against this
                 format (unless the model returns a tool call).
                 For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
-                Note: This parameter is only supported for latest models starting with GPT-4o.
+                Note:
+                - This parameter is only supported for latest models starting with GPT-4o.
+                - For structured outputs with streaming,
+                  the `response_format` must be a JSON schema and not a Pydantic model.
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
@@ -298,10 +301,10 @@ class OpenAIChatGenerator:
             tools=tools,
             tools_strict=tools_strict,
         )
-        if "response_format" in api_args.keys():
-            chat_completion = self.client.chat.completions.parse(**api_args)
-        else:
+        if "stream" in api_args.keys():
             chat_completion = self.client.chat.completions.create(**api_args)
+        else:
+            chat_completion = self.client.chat.completions.parse(**api_args)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
@@ -378,10 +381,10 @@ class OpenAIChatGenerator:
             tools_strict=tools_strict,
         )
 
-        if "response_format" in api_args.keys():
-            chat_completion = await self.async_client.chat.completions.parse(**api_args)
-        else:
+        if "stream" in api_args.keys():
             chat_completion = await self.async_client.chat.completions.create(**api_args)
+        else:
+            chat_completion = await self.async_client.chat.completions.parse(**api_args)
 
         if streaming_callback is not None:
             completions = await self._handle_async_stream_response(
@@ -439,11 +442,7 @@ class OpenAIChatGenerator:
         is_streaming = streaming_callback is not None
         num_responses = generation_kwargs.pop("n", 1)
 
-        if response_format:
-            if is_streaming:
-                raise ValueError(
-                    "OpenAI does not support `streaming_callback` with `response_format`, please choose one."
-                )
+        if response_format and not is_streaming:
             return {
                 "model": self.model,
                 "messages": openai_formatted_messages,
@@ -461,6 +460,7 @@ class OpenAIChatGenerator:
             "messages": openai_formatted_messages,
             "stream": streaming_callback is not None,
             "n": num_responses,
+            "response_format": response_format,
             **openai_tools,
             **generation_kwargs,
         }
