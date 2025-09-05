@@ -217,7 +217,7 @@ class TestHuggingFaceAPITextEmbedder:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    @pytest.mark.flaky(reruns=2, reruns_delay=30)
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
@@ -228,6 +228,7 @@ class TestHuggingFaceAPITextEmbedder:
             api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
             api_params={"model": "sentence-transformers/all-MiniLM-L6-v2"},
         )
+        embedder._client.timeout = 10  # we want to fail fast if the server is not responding
         result = embedder.run(text="The food was delicious")
 
         assert len(result["embedding"]) == 384
@@ -236,7 +237,7 @@ class TestHuggingFaceAPITextEmbedder:
     @pytest.mark.integration
     @pytest.mark.asyncio
     @pytest.mark.slow
-    @pytest.mark.flaky(reruns=2, reruns_delay=30)
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.skipif(os.environ.get("HF_API_TOKEN", "") == "", reason="HF_API_TOKEN is not set")
     @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
     async def test_live_run_async_serverless(self):
@@ -245,6 +246,7 @@ class TestHuggingFaceAPITextEmbedder:
         embedder = HuggingFaceAPITextEmbedder(
             api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API, api_params={"model": model_name}
         )
+        embedder._client.timeout = 10  # we want to fail fast if the server is not responding
 
         text = "This is a test sentence for embedding."
         result = await embedder.run_async(text=text)
