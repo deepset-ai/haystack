@@ -400,19 +400,25 @@ class Pipeline(PipelineBase):
                     out_dir = _get_output_dir("pipeline_snapshot")
 
                     # ToDo: find out if the error happened in an Agent component or a regular component - improve
-
                     if error.component_type.__name__ == "ToolInvoker":
-                        # the error exception comes with an agent snapshot
+                        pass
+                        # the error exception comes with an agent snapshot + break_point
                         # create a snapshot of the host pipeline
 
                         # find out if the error happened in a tool or the chat generator
-                        if component_name == "chat_generator":
-                            break_point_agent = Breakpoint("chat_generator", 0, out_dir)
-                        else:
-                            break_point_agent = ToolBreakpoint("tool_invoker", 0, out_dir)
+                        # if component_name == "chat_generator":
+                        #     break_point_agent = Breakpoint("chat_generator", 0, out_dir)
+                        # else:
+                        #     # tool_name it's the component_name
+                        #     break_point_agent = ToolBreakpoint(
+                        #         tool_name=component_name,
+                        #         component_name="tool_invoker",
+                        #         visit_count=0,
+                        #         snapshot_file_path=out_dir
+                        #     )
 
                         # create an AgentBreakpoint to pass to the snapshot
-                        break_point = AgentBreakpoint(agent_name=error.component_name, break_point=break_point_agent)
+                        # break_point = AgentBreakpoint(agent_name=component_name, break_point=break_point_agent)
 
                     else:
                         break_point = Breakpoint(
@@ -439,6 +445,7 @@ class Pipeline(PipelineBase):
 
                     # Attach the last good state snapshot to the error before re-raising and saving to disk
                     error.pipeline_snapshot = last_good_state_snapshot
+                    error.pipeline_snapshot.break_point = error.agent_snapshot.break_point
 
                     try:
                         _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot)
