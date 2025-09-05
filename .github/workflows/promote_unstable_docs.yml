@@ -24,7 +24,7 @@ jobs:
         run: |
           echo "version=$(cut -d "." -f 1,2 < VERSION.txt)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
