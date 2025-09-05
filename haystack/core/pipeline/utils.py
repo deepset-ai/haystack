@@ -10,7 +10,6 @@ from typing import Any, Optional
 
 from haystack import logging
 from haystack.core.component import Component
-from haystack.tools import Tool, Toolset
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,10 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
     :returns:
         A deep-copied version of the object, or the original object if deepcopying fails.
     """
+    # Import here to avoid circular imports
+    from haystack.tools.tool import Tool
+    from haystack.tools.toolset import Toolset
+
     if isinstance(obj, (list, tuple, set)):
         return type(obj)(_deepcopy_with_exceptions(v) for v in obj)
 

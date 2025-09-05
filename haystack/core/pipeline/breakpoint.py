@@ -7,7 +7,7 @@ from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from networkx import MultiDiGraph
 
@@ -22,8 +22,11 @@ from haystack.dataclasses.breakpoints import (
     PipelineState,
     ToolBreakpoint,
 )
-from haystack.tools import Tool, Toolset
 from haystack.utils.base_serialization import _serialize_value_with_schema
+
+if TYPE_CHECKING:
+    from haystack.tools.tool import Tool
+    from haystack.tools.toolset import Toolset
 
 logger = logging.getLogger(__name__)
 
@@ -323,7 +326,9 @@ def _create_agent_snapshot(
     )
 
 
-def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools: Union[list[Tool], Toolset]) -> None:
+def _validate_tool_breakpoint_is_valid(
+    agent_breakpoint: AgentBreakpoint, tools: Union[list["Tool"], "Toolset"]
+) -> None:
     """
     Validates the AgentBreakpoint passed to the agent.
 
