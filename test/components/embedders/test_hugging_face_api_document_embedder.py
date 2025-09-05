@@ -377,7 +377,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
-    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.flaky(reruns=2, reruns_delay=30)
     @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
     def test_live_run_serverless(self):
         docs = [
