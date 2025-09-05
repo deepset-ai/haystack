@@ -4,6 +4,7 @@
 
 import os
 import random
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -216,11 +217,12 @@ class TestHuggingFaceAPITextEmbedder:
 
     @pytest.mark.integration
     @pytest.mark.slow
-    @pytest.mark.flaky(reruns=3, reruns_delay=20)
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.skipif(
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
+    @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
     def test_live_run_serverless(self):
         embedder = HuggingFaceAPITextEmbedder(
             api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
@@ -234,8 +236,9 @@ class TestHuggingFaceAPITextEmbedder:
     @pytest.mark.integration
     @pytest.mark.asyncio
     @pytest.mark.slow
-    @pytest.mark.flaky(reruns=3, reruns_delay=20)
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.skipif(os.environ.get("HF_API_TOKEN", "") == "", reason="HF_API_TOKEN is not set")
+    @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
     async def test_live_run_async_serverless(self):
         model_name = "sentence-transformers/all-MiniLM-L6-v2"
 
