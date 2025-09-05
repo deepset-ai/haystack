@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import base64
+import json
 import logging
 import os
 from datetime import datetime
@@ -22,6 +22,7 @@ from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
 from openai.types.chat.chat_completion_message_function_tool_call import Function
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
+from pydantic import BaseModel
 
 from haystack import component
 from haystack.components.generators.chat.openai import (
@@ -34,6 +35,17 @@ from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingC
 from haystack.tools import ComponentTool, Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
+
+
+class CalendarEvent(BaseModel):
+    event_name: str
+    event_date: str
+    event_location: str
+
+
+@pytest.fixture
+def calendar_event_model():
+    return CalendarEvent
 
 
 @pytest.fixture
@@ -217,7 +229,7 @@ class TestOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch):
+    def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
 
         monkeypatch.setenv("ENV_VAR", "test-api-key")
@@ -226,7 +238,11 @@ class TestOpenAIChatGenerator:
             model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={
+                "max_tokens": 10,
+                "some_test_param": "test-params",
+                "response_format": calendar_event_model,
+            },
             tools=[tool],
             tools_strict=True,
             max_retries=10,
@@ -245,7 +261,21 @@ class TestOpenAIChatGenerator:
                 "max_retries": 10,
                 "timeout": 100.0,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {
+                    "max_tokens": 10,
+                    "some_test_param": "test-params",
+                    "response_format": {
+                        "properties": {
+                            "event_name": {"title": "Event Name", "type": "string"},
+                            "event_date": {"title": "Event Date", "type": "string"},
+                            "event_location": {"title": "Event Location", "type": "string"},
+                        },
+                        "required": ["event_name", "event_date", "event_location"],
+                        "title": "CalendarEvent",
+                        "type": "object",
+                        "additionalProperties": False,
+                    },
+                },
                 "tools": [
                     {
                         "type": "haystack.tools.tool.Tool",
@@ -616,6 +646,59 @@ class TestOpenAIChatGenerator:
         assert "gpt-4o" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format(self, calendar_event_model):
+        chat_messages = [ChatMessage.from_user("Give me information about the 20th Nobel Peace Prize.")]
+        component = OpenAIChatGenerator(generation_kwargs={"response_format": calendar_event_model})
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "20th Nobel Peace Prize" in msg["event_name"]
+        assert isinstance(msg["event_date"], str)
+        assert isinstance(msg["event_location"], str)
+
+        assert message.meta["finish_reason"] == "stop"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_schema(self):
+        response_schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "CapitalCity",
+                "strict": True,
+                "schema": {
+                    "title": "CapitalCity",
+                    "type": "object",
+                    "properties": {
+                        "city": {"title": "City", "type": "string"},
+                        "country": {"title": "Country", "type": "string"},
+                    },
+                    "required": ["city", "country"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+        chat_messages = [ChatMessage.from_user("What's the capital of France?")]
+        component = OpenAIChatGenerator(generation_kwargs={"response_format": response_schema})
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Paris" in msg["city"]
+        assert isinstance(msg["country"], str)
+        assert "France" in msg["country"]
+        assert message.meta["finish_reason"] == "stop"
 
     def test_run_with_wrong_model(self):
         mock_client = MagicMock()
