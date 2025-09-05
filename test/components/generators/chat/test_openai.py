@@ -653,15 +653,15 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_response_format(self, calendar_event_model):
-        chat_messages = [ChatMessage.from_user("Describe the 20th Nobel Peace Prize.")]
+        chat_messages = [ChatMessage.from_user("Give me information about the 20th Nobel Peace Prize.")]
         component = OpenAIChatGenerator(generation_kwargs={"response_format": calendar_event_model})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "20th Nobel Peace Prize" in msg["name"]
-        assert isinstance(msg["date"], str)
-        assert isinstance(msg["location"], str)
+        assert "20th Nobel Peace Prize" in msg["event_name"]
+        assert isinstance(msg["event_date"], str)
+        assert isinstance(msg["event_location"], str)
 
         assert message.meta["finish_reason"] == "stop"
 
