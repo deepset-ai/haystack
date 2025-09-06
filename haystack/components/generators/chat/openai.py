@@ -8,7 +8,12 @@ from datetime import datetime
 from typing import Any, Optional, Union
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
-from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionChunk,
+    ChatCompletionMessage,
+    ChatCompletionMessageCustomToolCall,
+)
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 
@@ -477,7 +482,10 @@ def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice:
     message: ChatCompletionMessage = choice.message
     text = message.content
     tool_calls = []
-    if openai_tool_calls := message.tool_calls:
+    if message.tool_calls:
+        # we currently only support function tools (not custom tools)
+        # https://platform.openai.com/docs/guides/function-calling#custom-tools
+        openai_tool_calls = [tc for tc in message.tool_calls if not isinstance(tc, ChatCompletionMessageCustomToolCall)]
         for openai_tc in openai_tool_calls:
             arguments_str = openai_tc.function.arguments
             try:

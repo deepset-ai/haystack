@@ -4,6 +4,7 @@
 
 import os
 import random
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -287,7 +288,6 @@ class TestHuggingFaceAPIDocumentEmbedder:
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
-
         with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:
             mock_embedding_patch.side_effect = mock_embedding_generation
 
@@ -316,11 +316,13 @@ class TestHuggingFaceAPIDocumentEmbedder:
 
         assert isinstance(documents_with_embeddings, list)
         assert len(documents_with_embeddings) == len(docs)
-        for doc in documents_with_embeddings:
-            assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert len(doc.embedding) == 384
-            assert all(isinstance(x, float) for x in doc.embedding)
+        for doc, new_doc in zip(docs, documents_with_embeddings):
+            assert doc.embedding is None
+            assert new_doc is not doc
+            assert isinstance(new_doc, Document)
+            assert isinstance(new_doc.embedding, list)
+            assert len(new_doc.embedding) == 384
+            assert all(isinstance(x, float) for x in new_doc.embedding)
 
     def test_run_custom_batch_size(self, mock_check_valid_model):
         docs = [
@@ -375,7 +377,8 @@ class TestHuggingFaceAPIDocumentEmbedder:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
-    @pytest.mark.flaky(reruns=2, reruns_delay=10)
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
     def test_live_run_serverless(self):
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
@@ -388,6 +391,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             meta_fields_to_embed=["topic"],
             embedding_separator=" | ",
         )
+        embedder._client.timeout = 10  # we want to fail fast if the server is not responding
         result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]
 

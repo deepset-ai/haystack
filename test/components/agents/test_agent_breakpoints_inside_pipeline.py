@@ -75,17 +75,14 @@ class MockHTMLToDocument:
 
         documents = []
         for source in sources:
-            # Extract the HTML content from the ByteStream
             html_content = source.data.decode("utf-8")
 
             # Simple text extraction - remove HTML tags and extract meaningful content
-            # This is a simplified version that extracts the main content
             # Remove HTML tags
             text_content = re.sub(r"<[^>]+>", " ", html_content)
             # Remove extra whitespace
             text_content = re.sub(r"\s+", " ", text_content).strip()
 
-            # Create a Document with the extracted text
             document = Document(
                 content=text_content,
                 meta={"url": source.meta.get("url", "unknown"), "mime_type": source.mime_type, "source_type": "html"},
@@ -99,10 +96,6 @@ def add_database_tool_function(name: str, surname: str, job_title: Optional[str]
     document_store.write_documents(
         [Document(content=name + " " + surname + " " + (job_title or ""), meta={"other": other})]
     )
-
-
-# We use this since the @tool decorator has issues with deserialization
-add_database_tool = create_tool_from_function(add_database_tool_function, name="add_database_tool")
 
 
 @pytest.fixture
@@ -162,6 +155,9 @@ def pipeline_with_agent(monkeypatch):
             }
 
     generator.run = mock_run
+
+    # We use this since the @tool decorator has issues with deserialization
+    add_database_tool = create_tool_from_function(add_database_tool_function, name="add_database_tool")
 
     database_assistant = Agent(
         chat_generator=generator,

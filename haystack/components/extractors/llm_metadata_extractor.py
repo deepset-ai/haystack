@@ -5,6 +5,7 @@
 import copy
 import json
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from typing import Any, Optional, Union
 
 from jinja2 import meta
@@ -318,24 +319,25 @@ class LLMMetadataExtractor:
         successful_documents = []
         failed_documents = []
         for document, result in zip(documents, results):
+            new_meta = {**document.meta}
             if "error" in result:
-                document.meta["metadata_extraction_error"] = result["error"]
-                document.meta["metadata_extraction_response"] = None
-                failed_documents.append(document)
+                new_meta["metadata_extraction_error"] = result["error"]
+                new_meta["metadata_extraction_response"] = None
+                failed_documents.append(replace(document, meta=new_meta))
                 continue
 
             parsed_metadata = self._extract_metadata(result["replies"][0].text)
             if "error" in parsed_metadata:
-                document.meta["metadata_extraction_error"] = parsed_metadata["error"]
-                document.meta["metadata_extraction_response"] = result["replies"][0]
-                failed_documents.append(document)
+                new_meta["metadata_extraction_error"] = parsed_metadata["error"]
+                new_meta["metadata_extraction_response"] = result["replies"][0]
+                failed_documents.append(replace(document, meta=new_meta))
                 continue
 
             for key in parsed_metadata:
-                document.meta[key] = parsed_metadata[key]
+                new_meta[key] = parsed_metadata[key]
                 # Remove metadata_extraction_error and metadata_extraction_response if present from previous runs
-                document.meta.pop("metadata_extraction_error", None)
-                document.meta.pop("metadata_extraction_response", None)
-            successful_documents.append(document)
+                new_meta.pop("metadata_extraction_error", None)
+                new_meta.pop("metadata_extraction_response", None)
+            successful_documents.append(replace(document, meta=new_meta))
 
         return {"documents": successful_documents, "failed_documents": failed_documents}
