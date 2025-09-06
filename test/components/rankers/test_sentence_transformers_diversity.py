@@ -64,6 +64,22 @@ class TestSentenceTransformersDiversityRanker:
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.embedding_separator == "--"
 
+    def test_init_with_lambda_threshold(self):
+        component = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/msmarco-distilbert-base-v4", lambda_threshold=0.5
+        )
+        assert component.lambda_threshold == 0.5
+
+        component = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/msmarco-distilbert-base-v4", lambda_threshold=None
+        )
+        assert component.lambda_threshold == 0.5
+
+        component = SentenceTransformersDiversityRanker(
+            model="sentence-transformers/msmarco-distilbert-base-v4", lambda_threshold=0
+        )
+        assert component.lambda_threshold == 0
+
     def test_to_dict(self):
         component = SentenceTransformersDiversityRanker()
         data = component.to_dict()
