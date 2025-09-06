@@ -184,7 +184,9 @@ class SentenceTransformersDiversityRanker:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.strategy = DiversityRankingStrategy.from_str(strategy) if isinstance(strategy, str) else strategy
-        self.lambda_threshold = lambda_threshold or 0.5
+        if lambda_threshold is None:
+            lambda_threshold = 0.5
+        self.lambda_threshold = lambda_threshold
         self._check_lambda_threshold(self.lambda_threshold, self.strategy)
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
