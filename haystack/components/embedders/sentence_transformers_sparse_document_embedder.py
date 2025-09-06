@@ -225,6 +225,6 @@ class SentenceTransformersSparseDocumentEmbedder:
         )
 
         for doc, emb in zip(documents, embeddings):
-            doc.embedding = emb
+            doc.sparse_embedding = emb
 
         return {"documents": documents}

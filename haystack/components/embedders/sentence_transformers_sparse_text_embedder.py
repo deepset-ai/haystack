@@ -9,6 +9,7 @@ from haystack.components.embedders.backends.sentence_transformers_backend import
     _SentenceTransformersSparseEmbeddingBackendFactory,
     _SentenceTransformersSparseEncoderEmbeddingBackend,
 )
+from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
@@ -183,7 +184,7 @@ class SentenceTransformersSparseTextEmbedder:
             if self.tokenizer_kwargs and self.tokenizer_kwargs.get("model_max_length"):
                 self.embedding_backend.model.max_seq_length = self.tokenizer_kwargs["model_max_length"]
 
-    @component.output_types(embedding=list[float])
+    @component.output_types(sparse_embedding=SparseEmbedding)
     def run(self, text: str):
         """
         Embed a single string.
@@ -211,4 +212,4 @@ class SentenceTransformersSparseTextEmbedder:
             show_progress_bar=self.progress_bar,
             **(self.encode_kwargs if self.encode_kwargs else {}),
         )[0]
-        return {"embedding": embedding}
+        return {"sparse_embedding": embedding}
