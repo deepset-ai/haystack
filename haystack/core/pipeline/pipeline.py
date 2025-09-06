@@ -17,6 +17,7 @@ from haystack.core.pipeline.base import (
 )
 from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
+    _save_pipeline_snapshot,
     _trigger_break_point,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
@@ -25,6 +26,7 @@ from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot
 from haystack.telemetry import pipeline_running
 from haystack.utils import _deserialize_value_with_schema
+from haystack.utils.misc import _get_output_dir
 
 logger = logging.getLogger(__name__)
 
@@ -388,8 +390,37 @@ class Pipeline(PipelineBase):
                         parent_span=span,
                     )
                 except PipelineRuntimeError as error:
-                    # Attach partial pipeline outputs to the error before re-raising
-                    error.pipeline_outputs = pipeline_outputs
+                    # Create a snapshot of the last good state of the pipeline before the error occurred.
+                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
+                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
+                    out_dir = _get_output_dir("pipeline_snapshot")
+                    break_point = Breakpoint(
+                        component_name=component_name,
+                        visit_count=component_visits[component_name],
+                        snapshot_file_path=out_dir,
+                    )
+                    last_good_state_snapshot = _create_pipeline_snapshot(
+                        inputs=pipeline_snapshot_inputs_serialised,
+                        break_point=break_point,
+                        component_visits=component_visits,
+                        original_input_data=data,
+                        ordered_component_names=ordered_component_names,
+                        include_outputs_from=include_outputs_from,
+                        pipeline_outputs=pipeline_outputs,
+                    )
+                    # Attach the last good state snapshot to the error before re-raising and saving to disk
+                    error.pipeline_snapshot = last_good_state_snapshot
+                    try:
+                        _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot)
+                        logger.info(
+                            "Saved a snapshot of the pipeline's last valid state to '{out_path}'. "
+                            "Review this snapshot to debug the error and resume the pipeline from here.",
+                            out_path=out_dir,
+                        )
+                    except Exception as save_error:
+                        logger.error(
+                            "Failed to save a snapshot of the pipeline's last valid state with error: {e}", e=save_error
+                        )
                     raise error
 
                 # Updates global input state with component outputs and returns outputs that should go to

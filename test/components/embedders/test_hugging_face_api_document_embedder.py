@@ -4,6 +4,7 @@
 
 import os
 import random
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -376,7 +377,8 @@ class TestHuggingFaceAPIDocumentEmbedder:
         not os.environ.get("HF_API_TOKEN", None),
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
-    @pytest.mark.flaky(reruns=2, reruns_delay=10)
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
     def test_live_run_serverless(self):
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
@@ -389,6 +391,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             meta_fields_to_embed=["topic"],
             embedding_separator=" | ",
         )
+        embedder._client.timeout = 10  # we want to fail fast if the server is not responding
         result = embedder.run(documents=docs)
         documents_with_embeddings = result["documents"]
 

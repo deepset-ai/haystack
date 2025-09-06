@@ -133,12 +133,14 @@ class TransformersTextRouter:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
         # Verify labels from the model configuration file match provided labels
-        labels = set(self.pipeline.model.config.label2id.keys())
-        if set(self.labels) != labels:
-            raise ValueError(
-                f"The provided labels do not match the labels in the model configuration file. "
-                f"Provided labels: {self.labels}. Model labels: {labels}"
-            )
+        label2id = self.pipeline.model.config.label2id
+        if label2id is not None:
+            labels = set(label2id.keys())
+            if set(self.labels) != labels:
+                raise ValueError(
+                    f"The provided labels do not match the labels in the model configuration file. "
+                    f"Provided labels: {self.labels}. Model labels: {labels}"
+                )
 
     def to_dict(self) -> dict[str, Any]:
         """

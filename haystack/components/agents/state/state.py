@@ -80,13 +80,35 @@ def _validate_schema(schema: dict[str, Any]) -> None:
 
 class State:
     """
-    A class that wraps a StateSchema and maintains an internal _data dictionary.
+    State is a container for storing shared information during the execution of an Agent and its tools.
 
-    Each schema entry has:
+    For instance, State can be used to store documents, context, and intermediate results.
+
+    Internally it wraps a `_data` dictionary defined by a `schema`. Each schema entry has:
+    ```json
       "parameter_name": {
-        "type": SomeType,
-        "handler": Optional[Callable[[Any, Any], Any]]
+        "type": SomeType,  # expected type
+        "handler": Optional[Callable[[Any, Any], Any]]  # merge/update function
       }
+      ```
+
+    Handlers control how values are merged when using the `set()` method:
+    - For list types: defaults to `merge_lists` (concatenates lists)
+    - For other types: defaults to `replace_values` (overwrites existing value)
+
+    A `messages` field with type `list[ChatMessage]` is automatically added to the schema.
+
+    This makes it possible for the Agent to read from and write to the same context.
+
+    ### Usage example
+    ```python
+    from haystack.components.agents.state import State
+
+    my_state = State(
+        schema={"gh_repo_name": {"type": str}, "user_name": {"type": str}},
+        data={"gh_repo_name": "my_repo", "user_name": "my_user_name"}
+    )
+    ```
     """
 
     def __init__(self, schema: dict[str, Any], data: Optional[dict[str, Any]] = None):

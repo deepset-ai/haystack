@@ -18,6 +18,7 @@ from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema
 from haystack.tools.parameters_schema_utils import _get_component_param_descriptions, _resolve_type
+from haystack.tools.tool import _deserialize_outputs_to_state, _serialize_outputs_to_state
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,8 @@ class ComponentTool(Tool):
     To use ComponentTool, you first need a Haystack component - either an existing one or a new one you create.
     You can create a ComponentTool from the component by passing the component to the ComponentTool constructor.
     Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component.
+
+    ## Usage Example:
 
     ```python
     from haystack import component, Pipeline
@@ -93,7 +96,7 @@ class ComponentTool(Tool):
         outputs_to_string: Optional[dict[str, Union[str, Callable[[Any], str]]]] = None,
         inputs_from_state: Optional[dict[str, str]] = None,
         outputs_to_state: Optional[dict[str, dict[str, Union[str, Callable]]]] = None,
-    ):
+    ) -> None:
         """
         Create a Tool instance from a Haystack component.
 
@@ -213,10 +216,8 @@ class ComponentTool(Tool):
         """
         Serializes the ComponentTool to a dictionary.
         """
-        serialized_component = component_to_dict(obj=self._component, name=self.name)
-
         serialized: dict[str, Any] = {
-            "component": serialized_component,
+            "component": component_to_dict(obj=self._component, name=self.name),
             "name": self.name,
             "description": self.description,
             "parameters": self._unresolved_parameters,
@@ -226,13 +227,7 @@ class ComponentTool(Tool):
         }
 
         if self.outputs_to_state is not None:
-            serialized_outputs = {}
-            for key, config in self.outputs_to_state.items():
-                serialized_config = config.copy()
-                if "handler" in config:
-                    serialized_config["handler"] = serialize_callable(config["handler"])
-                serialized_outputs[key] = serialized_config
-            serialized["outputs_to_state"] = serialized_outputs
+            serialized["outputs_to_state"] = _serialize_outputs_to_state(self.outputs_to_state)
 
         if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
             # This is soft-copied as to not modify the attributes in place
@@ -253,13 +248,7 @@ class ComponentTool(Tool):
         component = component_from_dict(cls=component_class, data=inner_data["component"], name=inner_data["name"])
 
         if "outputs_to_state" in inner_data and inner_data["outputs_to_state"]:
-            deserialized_outputs = {}
-            for key, config in inner_data["outputs_to_state"].items():
-                deserialized_config = config.copy()
-                if "handler" in config:
-                    deserialized_config["handler"] = deserialize_callable(config["handler"])
-                deserialized_outputs[key] = deserialized_config
-            inner_data["outputs_to_state"] = deserialized_outputs
+            inner_data["outputs_to_state"] = _deserialize_outputs_to_state(inner_data["outputs_to_state"])
 
         if (
             inner_data.get("outputs_to_string") is not None
