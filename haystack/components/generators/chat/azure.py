@@ -127,7 +127,10 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
                 If provided, the output will always be validated against this
                 format (unless the model returns a tool call).
                 For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
-                Note: This parameter is only supported for latest models starting with GPT-4o.
+                Note:
+                - This parameter is only supported for latest models starting with GPT-4o.
+                - For structured outputs with streaming,
+                  the `response_format` must be a JSON schema and not a Pydantic model.
         :param default_headers: Default headers to use for the AzureOpenAI client.
         :param tools:
             A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a

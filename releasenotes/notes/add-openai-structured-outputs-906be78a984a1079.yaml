@@ -2,7 +2,7 @@
 features:
   - |
     `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` now support structured outputs using `response_format`
-    parameter that can be passed in generation_kwargs.
+    parameter that can be passed in `generation_kwargs`.
     The `response_format` parameter can be a Pydantic model or a JSON schema for non-streaming responses. For streaming responses, the `response_format` must be a JSON schema.
     Example usage of the `response_format` parameter:
     ```python
@@ -10,14 +10,21 @@ features:
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
 
-    class CalendarEvent(BaseModel):
-      event_name: str
-      event_date: str
-      event_location: str
+    class NobelPrizeInfo(BaseModel):
+        recipient_name: str
+        award_year: int
+        category: str
+        achievement_description: str
+        nationality: str
 
-    client = OpenAIChatGenerator(model="gpt-4o-2024-08-06", generation_kwargs={"response_format": CalendarEvent})
+    client = OpenAIChatGenerator(
+        model="gpt-4o-2024-08-06",
+        generation_kwargs={"response_format": NobelPrizeInfo}
+    )
 
-    response = client.run(messages=[ChatMessage.from_user("Give me information about the 20th Nobel Peace Prize.")]))
+    response = client.run(messages=[
+        ChatMessage.from_user("Give me information about the 20th Nobel Peace Prize winner.")
+    ])
     print(response)
 
     ```

@@ -301,7 +301,8 @@ class OpenAIChatGenerator:
             tools=tools,
             tools_strict=tools_strict,
         )
-        if "stream" in api_args.keys():
+        openai_endpoint = api_args.pop("openai_endpoint")
+        if openai_endpoint == "create":
             chat_completion = self.client.chat.completions.create(**api_args)
         else:
             chat_completion = self.client.chat.completions.parse(**api_args)
@@ -443,11 +444,16 @@ class OpenAIChatGenerator:
         num_responses = generation_kwargs.pop("n", 1)
 
         if response_format and not is_streaming:
+            # for structured outputs without streaming, we use openai's parse endpoint
+            # Note: `stream` cannot be passed to chat.completions.parse
+            # we pass a key `openai_endpoint` as a hint to the run method to use the parse endpoint
+            # this key will be removed before the API call is made
             return {
                 "model": self.model,
                 "messages": openai_formatted_messages,
                 "n": num_responses,
                 "response_format": response_format,
+                "openai_endpoint": "parse",
                 **openai_tools,
                 **generation_kwargs,
             }
@@ -455,12 +461,16 @@ class OpenAIChatGenerator:
         if is_streaming and num_responses > 1:
             raise ValueError("Cannot stream multiple responses, please set n=1.")
 
+        # for structured outputs with streaming, we use openai's create endpoint
+        # we pass a key `openai_endpoint` as a hint to the run method to use the create endpoint
+        # this key will be removed before the API call is made
         return {
             "model": self.model,
             "messages": openai_formatted_messages,
             "stream": streaming_callback is not None,
             "n": num_responses,
             "response_format": response_format,
+            "openai_endpoint": "create",
             **openai_tools,
             **generation_kwargs,
         }
