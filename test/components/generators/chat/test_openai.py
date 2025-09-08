@@ -710,7 +710,7 @@ class TestOpenAIChatGenerator:
         component = OpenAIChatGenerator(
             generation_kwargs={"response_format": calendar_event_model}, streaming_callback=print_streaming_chunk
         )
-        with pytest.raises(OpenAIError):
+        with pytest.raises(TypeError):
             component.run(chat_messages)
 
     @pytest.mark.skipif(
