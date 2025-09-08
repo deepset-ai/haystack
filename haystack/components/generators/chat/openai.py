@@ -532,7 +532,6 @@ def _convert_chat_completion_to_chat_message(
     :return: The ChatMessage.
     """
     message: Union[ChatCompletionMessage, ParsedChatCompletionMessage] = choice.message
-    print(message)
     text = message.content
     tool_calls = []
     if message.tool_calls:
