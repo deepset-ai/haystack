@@ -304,7 +304,7 @@ class OpenAIChatGenerator:
         openai_endpoint = api_args.pop("openai_endpoint")
         if openai_endpoint == "create":
             chat_completion = self.client.chat.completions.create(**api_args)
-        else:
+        elif openai_endpoint == "parse":
             chat_completion = self.client.chat.completions.parse(**api_args)
 
         if streaming_callback is not None:
@@ -382,9 +382,10 @@ class OpenAIChatGenerator:
             tools_strict=tools_strict,
         )
 
-        if "stream" in api_args.keys():
+        openai_endpoint = api_args.pop("openai_endpoint")
+        if openai_endpoint == "create":
             chat_completion = await self.async_client.chat.completions.create(**api_args)
-        else:
+        elif openai_endpoint == "parse":
             chat_completion = await self.async_client.chat.completions.parse(**api_args)
 
         if streaming_callback is not None:
