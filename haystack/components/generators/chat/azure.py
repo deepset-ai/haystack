@@ -125,12 +125,12 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
                 Higher values make the model less likely to repeat the token.
             - `logit_bias`: Adds a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
-            - `response_format`: A JSON schema or Pydantic model that enforces the structure of the model's response.
+            - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
                 If provided, the output will always be validated against this
                 format (unless the model returns a tool call).
                 For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
                 Note:
-                - This parameter accepts Pydantic models and JSON schemas for latest models starting with GPT-4o.
+                - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
                   Older models only support basic version of structured outputs through `{"type": "json_object"}`.
                   For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
                 - For structured outputs with streaming,

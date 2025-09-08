@@ -142,12 +142,12 @@ class OpenAIChatGenerator:
                 Bigger values mean the model will be less likely to repeat the same token in the text.
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
-            - `response_format`: A JSON schema or Pydantic model that enforces the structure of the model's response.
+            - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
                 If provided, the output will always be validated against this
                 format (unless the model returns a tool call).
                 For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
                 Note:
-                - This parameter accepts Pydantic models and JSON schemas for latest models starting with GPT-4o.
+                - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
                   Older models only support basic version of structured outputs through `{"type": "json_object"}`.
                   For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
                 - For structured outputs with streaming,
@@ -308,7 +308,6 @@ class OpenAIChatGenerator:
             chat_completion = self.client.chat.completions.create(**api_args)
         elif openai_endpoint == "parse":
             chat_completion = self.client.chat.completions.parse(**api_args)
-        print(chat_completion)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
@@ -533,6 +532,7 @@ def _convert_chat_completion_to_chat_message(
     :return: The ChatMessage.
     """
     message: Union[ChatCompletionMessage, ParsedChatCompletionMessage] = choice.message
+    print(message)
     text = message.content
     tool_calls = []
     if message.tool_calls:

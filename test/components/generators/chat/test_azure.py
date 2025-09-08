@@ -20,6 +20,17 @@ from haystack.utils.auth import Secret
 from haystack.utils.azure import default_azure_ad_token_provider
 
 
+class CalendarEvent(BaseModel):
+    event_name: str
+    event_date: str
+    event_location: str
+
+
+@pytest.fixture
+def calendar_event_model():
+    return CalendarEvent
+
+
 def get_weather(city: str) -> dict[str, Any]:
     weather_info = {
         "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
