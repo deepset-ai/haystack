@@ -143,7 +143,7 @@ class TestAzureOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch):
+    def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIChatGenerator(
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
@@ -152,7 +152,11 @@ class TestAzureOpenAIChatGenerator:
             streaming_callback=print_streaming_chunk,
             timeout=2.5,
             max_retries=10,
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={
+                "max_tokens": 10,
+                "some_test_param": "test-params",
+                "response_format": calendar_event_model,
+            },
             azure_ad_token_provider=default_azure_ad_token_provider,
             http_client_kwargs={"proxy": "http://localhost:8080"},
         )
@@ -169,7 +173,21 @@ class TestAzureOpenAIChatGenerator:
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "timeout": 2.5,
                 "max_retries": 10,
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {
+                    "max_tokens": 10,
+                    "some_test_param": "test-params",
+                    "response_format": {
+                        "properties": {
+                            "event_name": {"title": "Event Name", "type": "string"},
+                            "event_date": {"title": "Event Date", "type": "string"},
+                            "event_location": {"title": "Event Location", "type": "string"},
+                        },
+                        "required": ["event_name", "event_date", "event_location"],
+                        "title": "CalendarEvent",
+                        "type": "object",
+                        "additionalProperties": False,
+                    },
+                },
                 "tools": None,
                 "tools_strict": False,
                 "default_headers": {},

@@ -5,7 +5,9 @@
 import os
 from typing import Any, Optional, Union
 
+from openai.lib._pydantic import to_strict_json_schema
 from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
+from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -128,7 +130,9 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
                 format (unless the model returns a tool call).
                 For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
                 Note:
-                - This parameter is only supported for latest models starting with GPT-4o.
+                - This parameter accepts Pydantic models and JSON schemas for latest models starting with GPT-4o.
+                  Older models only support basic version of structured outputs through `{"type": "json_object"}`.
+                  For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
                 - For structured outputs with streaming,
                   the `response_format` must be a JSON schema and not a Pydantic model.
         :param default_headers: Default headers to use for the AzureOpenAI client.
@@ -209,6 +213,11 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         azure_ad_token_provider_name = None
         if self.azure_ad_token_provider:
             azure_ad_token_provider_name = serialize_callable(self.azure_ad_token_provider)
+        # If the response format is a Pydantic model, its converted to openai's json schema format
+        # If its already a json schema, it's left as is
+        response_format = self.generation_kwargs.get("response_format")
+        if response_format and issubclass(response_format, BaseModel):
+            self.generation_kwargs["response_format"] = to_strict_json_schema(response_format)
         return default_to_dict(
             self,
             azure_endpoint=self.azure_endpoint,
