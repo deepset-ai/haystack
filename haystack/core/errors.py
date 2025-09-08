@@ -4,7 +4,7 @@
 
 from typing import Any, Optional
 
-from haystack.dataclasses.breakpoints import PipelineSnapshot
+from haystack.dataclasses.breakpoints import AgentSnapshot, PipelineSnapshot
 
 
 class PipelineError(Exception):
@@ -18,7 +18,7 @@ class PipelineRuntimeError(Exception):
         component_type: Optional[type],
         message: str,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
-        agent_snapshot: Optional[dict[str, Any]] = None,
+        agent_snapshot: Optional[AgentSnapshot] = None,
     ) -> None:
         self.component_name = component_name
         self.component_type = component_type

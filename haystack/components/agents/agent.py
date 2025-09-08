@@ -563,7 +563,6 @@ class Agent:
                         },
                     )
                     e.agent_snapshot = agent_snapshot
-                    e.break_point = agent_break_point
                     raise e
 
                 # Check if any LLM message's tool call name matches an exit condition
