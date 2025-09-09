@@ -102,3 +102,67 @@ class TestCSVToDocument:
 
         # check that the metadata from the bytestream is merged with that from the meta parameter
         assert document.meta == {"name": "test_name", "language": "it"}
+
+    def test_row_mode_with_content_column(self, tmp_path):
+        """
+        Each row becomes a Document, with `content` from a chosen column and other columns in meta.
+        """
+        csv_text = "text,author,stars\r\nNice app,Ada,5\r\nBuggy,Bob,2\r\n"
+        f = tmp_path / "fb.csv"
+        f.write_text(csv_text, encoding="utf-8")
+
+        bytestream = ByteStream.from_file_path(f)
+        bytestream.meta["file_path"] = str(f)
+
+        converter = CSVToDocument(conversion_mode="row", content_column="text")
+        output = converter.run(sources=[bytestream])
+        docs = output["documents"]
+
+        assert len(docs) == 2
+        assert [d.content for d in docs] == ["Nice app", "Buggy"]
+        # Remaining columns land in meta, plus file-level meta preserved
+        assert docs[0].meta["author"] == "Ada"
+        assert docs[0].meta["stars"] == "5"
+        assert docs[0].meta["row_number"] == 0
+        # still respects store_full_path default=False trimming when present
+        assert os.path.basename(f) == docs[0].meta["file_path"]
+
+    def test_row_mode_without_content_column(self, tmp_path):
+        """
+        Without `content_column`, the content is a human-readable 'key: value' listing of the row.
+        """
+        csv_text = "a,b\r\n1,2\r\n3,4\r\n"
+        f = tmp_path / "t.csv"
+        f.write_text(csv_text, encoding="utf-8")
+
+        converter = CSVToDocument(conversion_mode="row")
+        output = converter.run(sources=[f])
+        docs = output["documents"]
+
+        assert len(docs) == 2
+        assert "a: 1" in docs[0].content and "b: 2" in docs[0].content
+        assert docs[0].meta["a"] == "1" and docs[0].meta["b"] == "2"
+        assert docs[0].meta["row_number"] == 0
+
+    def test_row_mode_meta_merging(self, tmp_path):
+        """
+        File-level meta and explicit `meta` arg are merged into each row's meta.
+        """
+        csv_text = "q,user\r\nHello,u1\r\nHi,u2\r\n"
+        f = tmp_path / "m.csv"
+        f.write_text(csv_text, encoding="utf-8")
+
+        bs = ByteStream.from_file_path(f)
+        bs.meta["dataset"] = "support_tickets"
+
+        converter = CSVToDocument(conversion_mode="row", content_column="q")
+        out = converter.run(sources=[bs], meta=[{"lang": "en"}])
+        docs = out["documents"]
+
+        assert len(docs) == 2
+        assert docs[0].content == "Hello"
+        # merged meta propagated to each row
+        assert docs[0].meta["dataset"] == "support_tickets"
+        assert docs[0].meta["lang"] == "en"
+        # remaining column captured
+        assert docs[0].meta["user"] == "u1"

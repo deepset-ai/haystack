@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import csv
 import io
 import os
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -35,7 +36,16 @@ class CSVToDocument:
     ```
     """
 
-    def __init__(self, encoding: str = "utf-8", store_full_path: bool = False):
+    def __init__(
+        self,
+        encoding: str = "utf-8",
+        store_full_path: bool = False,
+        *,
+        conversion_mode: Literal["file", "row"] = "file",
+        content_column: Optional[str] = None,
+        delimiter: str = ",",
+        quotechar: str = '"',
+    ):
         """
         Creates a CSVToDocument component.
 
@@ -46,9 +56,24 @@ class CSVToDocument:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param conversion_mode:
+            - "file" (default): current behavior, one Document per CSV file whose content is the raw CSV text.
+            - "row": convert each CSV row to its own Document.
+        :param content_column:
+            When ``conversion_mode="row"``, the column to use as ``Document.content``.
+            If ``None``, the content will be a human-readable "key: value" listing of that row.
+        :param delimiter:
+            CSV delimiter used when parsing in row mode (passed to ``csv.DictReader``).
+        :param quotechar:
+            CSV quote character used when parsing in row mode (passed to ``csv.DictReader``).
         """
+
         self.encoding = encoding
         self.store_full_path = store_full_path
+        self.conversion_mode = conversion_mode
+        self.content_column = content_column
+        self.delimiter = delimiter
+        self.quotechar = quotechar
 
     @component.output_types(documents=list[Document])
     def run(
@@ -72,7 +97,7 @@ class CSVToDocument:
             A dictionary with the following keys:
             - `documents`: Created documents
         """
-        documents = []
+        documents: list[Document] = []
 
         meta_list = normalize_metadata(meta, sources_count=len(sources))
 
@@ -98,7 +123,43 @@ class CSVToDocument:
                 if file_path:  # Ensure the value is not None for pylint
                     merged_metadata["file_path"] = os.path.basename(file_path)
 
-            document = Document(content=data, meta=merged_metadata)
-            documents.append(document)
+            # Mode: file (backward-compatible default) -> one Document per file
+            if self.conversion_mode == "file":
+                documents.append(Document(content=data, meta=merged_metadata))
+                continue
+
+            # Mode: row -> one Document per CSV row
+            try:
+                reader = csv.DictReader(io.StringIO(data), delimiter=self.delimiter, quotechar=self.quotechar)
+            except Exception as e:
+                logger.warning(
+                    "Could not parse CSV rows for {source}. Falling back to file mode. Error: {error}",
+                    source=source,
+                    error=e,
+                )
+                documents.append(Document(content=data, meta=merged_metadata))
+                continue
+
+            for i, row in enumerate(reader):
+                row_meta = dict(merged_metadata)  # start with file-level/meta param  bytestream meta
+
+                # Determine content from selected column or fallback to a friendly listing
+                if self.content_column:
+                    content = row.get(self.content_column, "")
+                    if content is None:
+                        content = ""
+                else:
+                    # "key: value" per line for readability
+                    content = "\n".join(f"{k}: {v if v is not None else ''}" for k, v in row.items())
+
+                # Add remaining columns into meta (don't override existing keys like file_path, encoding, etc.)
+                for k, v in row.items():
+                    if self.content_column and k == self.content_column:
+                        continue
+                    if k not in row_meta:
+                        row_meta[k] = "" if v is None else v
+
+                row_meta["row_number"] = i
+                documents.append(Document(content=content, meta=row_meta))
 
         return {"documents": documents}
