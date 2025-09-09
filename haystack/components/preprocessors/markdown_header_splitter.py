@@ -1,5 +1,5 @@
 import re
-from typing import Literal, Optional
+from typing import Callable, Literal, Optional
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors import DocumentSplitter
@@ -7,18 +7,28 @@ from haystack.components.preprocessors import DocumentSplitter
 logger = logging.getLogger(__name__)
 
 
-class CustomDocumentSplitter(DocumentSplitter):
+class _CustomDocumentSplitter(DocumentSplitter):
     """
-    Custom DocumentSplitter that supports splitting functions returning dicts with 'content' and 'meta'.
+    Internal helper class that extends DocumentSplitter to support splitting functions.
+
+    This class handles splitting functions that return dictionaries with 'content' and 'meta'
+    keys instead of just strings. For internal use only within the MarkdownHeaderSplitter.
     """
 
-    def __init__(self, split_by="function", splitting_function=None, page_break_character="\\f"):
+    def __init__(
+        self,
+        split_by: str = "function",
+        splitting_function: Optional[Callable] = None,
+        page_break_character: str = "\\f",
+    ):
         """
-        Initialize the CustomDocumentSplitter.
+        Initialize the _CustomDocumentSplitter.
 
         :param split_by: The method to split by. Must be "function" for custom splitting functions.
-        :param splitting_function: A custom function that takes a string and returns a list of dicts with 'content' and optional 'meta'.
-        :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\\f").
+        :param splitting_function: A custom function that takes a string and returns a list of dicts
+            with 'content' and optional 'meta'.
+        :param page_break_character: Character used to identify page breaks.
+            Defaults to form feed ("\\f").
         """
         super().__init__(split_by=split_by, splitting_function=splitting_function)
         self.page_break_character = page_break_character
@@ -119,7 +129,8 @@ class MarkdownHeaderSplitter:
         :param secondary_split: Optional secondary split condition after header splitting.
             Options are "none", "word", "passage", "period", "line". Defaults to "none".
         :param split_length: The maximum number of units in each split when using secondary splitting. Defaults to 200.
-        :param split_overlap: The number of overlapping units for each split when using secondary splitting. Defaults to 0.
+        :param split_overlap: The number of overlapping units for each split when using secondary splitting.
+            Defaults to 0.
         :param split_threshold: The minimum number of units per split when using secondary splitting. Defaults to 0.
         """
         self.infer_header_levels = infer_header_levels
@@ -349,7 +360,7 @@ class MarkdownHeaderSplitter:
                 processed_documents.append(doc)
 
         # split by markdown headers
-        header_splitter = CustomDocumentSplitter(
+        header_splitter = _CustomDocumentSplitter(
             split_by="function",
             splitting_function=lambda text: self._split_by_markdown_headers(text),
             page_break_character=self.page_break_character,
