@@ -10,15 +10,17 @@ logger = logging.getLogger(__name__)
 class CustomDocumentSplitter(DocumentSplitter):
     """
     Custom DocumentSplitter that supports splitting functions returning dicts with 'content' and 'meta'.
-
-    :param split_by: The method to split by. Must be "function" for this custom splitter.
-    :param splitting_function: The custom splitting function that takes a string and returns a list of dicts
-        with 'content' and optional 'meta' keys.
-    :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\\f").
     """
 
-    def __init__(self, page_break_character="\\f"):
-        super().__init__()
+    def __init__(self, split_by="function", splitting_function=None, page_break_character="\\f"):
+        """
+        Initialize the CustomDocumentSplitter.
+
+        :param split_by: The method to split by. Must be "function" for custom splitting functions.
+        :param splitting_function: A custom function that takes a string and returns a list of dicts with 'content' and optional 'meta'.
+        :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\\f").
+        """
+        super().__init__(split_by=split_by, splitting_function=splitting_function)
         self.page_break_character = page_break_character
 
     def _flatten_dict(self, d: dict, prefix: str = "", target_dict: Optional[dict] = None) -> dict:
@@ -298,7 +300,9 @@ class MarkdownHeaderSplitter:
             )
 
             # apply secondary splitting
-            secondary_splits = secondary_splitter.run(documents=[Document(content=content_for_splitting, meta=doc.meta)])["documents"]
+            secondary_splits = secondary_splitter.run(
+                documents=[Document(content=content_for_splitting, meta=doc.meta)]
+            )["documents"]
             accumulated_page_breaks = 0  # track page breaks
 
             # split processing
