@@ -394,10 +394,10 @@ class OpenAIChatGenerator:
         )
 
         openai_endpoint = api_args.pop("openai_endpoint")
-        if openai_endpoint == "create":
-            chat_completion = await self.async_client.chat.completions.create(**api_args)
-        elif openai_endpoint == "parse":
+        if openai_endpoint == "parse":
             chat_completion = await self.async_client.chat.completions.parse(**api_args)
+        else:
+            chat_completion = await self.async_client.chat.completions.create(**api_args)
 
         if streaming_callback is not None:
             completions = await self._handle_async_stream_response(
