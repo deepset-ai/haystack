@@ -328,7 +328,7 @@ class TestPipelineTool:
             input_mapping={"query": ["embedder.text"]},
             output_mapping={"retriever.documents": "documents"},
             name="document_retriever",
-            description="For any questions about Nikola Tesla, always use this tool",
+            description="This tool retrieves documents relevant to Nikola Tesla from the document store",
         )
 
         # Create an Agent with the tool
