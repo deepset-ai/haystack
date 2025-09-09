@@ -64,7 +64,7 @@ jobs:
           Verify documentation on Readme has been correctly updated before approving and merging this PR." \
             --label "ignore-for-release-notes"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
