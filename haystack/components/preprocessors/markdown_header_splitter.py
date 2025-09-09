@@ -298,8 +298,7 @@ class MarkdownHeaderSplitter:
             )
 
             # apply secondary splitting
-            temp_doc = Document(content=content_for_splitting, meta=doc.meta)
-            secondary_splits = secondary_splitter.run(documents=[temp_doc])["documents"]
+            secondary_splits = secondary_splitter.run(documents=[Document(content=content_for_splitting, meta=doc.meta)])["documents"]
             accumulated_page_breaks = 0  # track page breaks
 
             # split processing
