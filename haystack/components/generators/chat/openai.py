@@ -220,7 +220,15 @@ class OpenAIChatGenerator:
         # If the response format is a Pydantic model, its converted to openai's json schema format
         # If its already a json schema, it's left as is
         if response_format and issubclass(response_format, BaseModel):
-            self.generation_kwargs["response_format"] = to_strict_json_schema(response_format)
+            json_schema = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": response_format.__name__,
+                    "strict": True,
+                    "schema": to_strict_json_schema(response_format),
+                },
+            }
+            self.generation_kwargs["response_format"] = json_schema
 
         return default_to_dict(
             self,
@@ -250,6 +258,7 @@ class OpenAIChatGenerator:
         deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
+
         if serialized_callback_handler:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
@@ -305,9 +314,9 @@ class OpenAIChatGenerator:
         )
         openai_endpoint = api_args.pop("openai_endpoint")
         if openai_endpoint == "parse":
-            chat_completion = self.client.chat.completions.create(**api_args)
-        else:
             chat_completion = self.client.chat.completions.parse(**api_args)
+        else:
+            chat_completion = self.client.chat.completions.create(**api_args)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
@@ -565,7 +574,7 @@ def _convert_chat_completion_to_chat_message(
     )
     # Using pdantic with structured output, openai also returns the message.parsed
     # return the parsed message in the meta
-    if message.parsed:
+    if isinstance(message, ParsedChatCompletionMessage) and message.parsed:
         chat_message.meta["parsed"] = message.parsed
     return chat_message
 

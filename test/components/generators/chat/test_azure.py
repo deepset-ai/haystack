@@ -188,15 +188,22 @@ class TestAzureOpenAIChatGenerator:
                     "max_tokens": 10,
                     "some_test_param": "test-params",
                     "response_format": {
-                        "properties": {
-                            "event_name": {"title": "Event Name", "type": "string"},
-                            "event_date": {"title": "Event Date", "type": "string"},
-                            "event_location": {"title": "Event Location", "type": "string"},
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "CalendarEvent",
+                            "strict": True,
+                            "schema": {
+                                "properties": {
+                                    "event_name": {"title": "Event Name", "type": "string"},
+                                    "event_date": {"title": "Event Date", "type": "string"},
+                                    "event_location": {"title": "Event Location", "type": "string"},
+                                },
+                                "required": ["event_name", "event_date", "event_location"],
+                                "title": "CalendarEvent",
+                                "type": "object",
+                                "additionalProperties": False,
+                            },
                         },
-                        "required": ["event_name", "event_date", "event_location"],
-                        "title": "CalendarEvent",
-                        "type": "object",
-                        "additionalProperties": False,
                     },
                 },
                 "tools": None,

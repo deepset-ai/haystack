@@ -217,7 +217,15 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         # If its already a json schema, it's left as is
         response_format = self.generation_kwargs.get("response_format")
         if response_format and issubclass(response_format, BaseModel):
-            self.generation_kwargs["response_format"] = to_strict_json_schema(response_format)
+            json_schema = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": response_format.__name__,
+                    "strict": True,
+                    "schema": to_strict_json_schema(response_format),
+                },
+            }
+            self.generation_kwargs["response_format"] = json_schema
         return default_to_dict(
             self,
             azure_endpoint=self.azure_endpoint,

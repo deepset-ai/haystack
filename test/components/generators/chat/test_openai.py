@@ -304,15 +304,22 @@ class TestOpenAIChatGenerator:
                     "max_tokens": 10,
                     "some_test_param": "test-params",
                     "response_format": {
-                        "properties": {
-                            "event_name": {"title": "Event Name", "type": "string"},
-                            "event_date": {"title": "Event Date", "type": "string"},
-                            "event_location": {"title": "Event Location", "type": "string"},
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "CalendarEvent",
+                            "strict": True,
+                            "schema": {
+                                "properties": {
+                                    "event_name": {"title": "Event Name", "type": "string"},
+                                    "event_date": {"title": "Event Date", "type": "string"},
+                                    "event_location": {"title": "Event Location", "type": "string"},
+                                },
+                                "required": ["event_name", "event_date", "event_location"],
+                                "title": "CalendarEvent",
+                                "type": "object",
+                                "additionalProperties": False,
+                            },
                         },
-                        "required": ["event_name", "event_date", "event_location"],
-                        "title": "CalendarEvent",
-                        "type": "object",
-                        "additionalProperties": False,
                     },
                 },
                 "tools": [
@@ -481,6 +488,9 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion
+        assert "parsed" in response["replies"][0].meta
+        parsed_output = response["replies"][0].meta["parsed"]
+        assert isinstance(parsed_output, CalendarEvent)
 
     def test_run_with_response_format_in_run_method(self, chat_messages, mock_parsed_chat_completion):
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
@@ -491,6 +501,9 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion
+        assert "parsed" in response["replies"][0].meta
+        parsed_output = response["replies"][0].meta["parsed"]
+        assert isinstance(parsed_output, CalendarEvent)
 
     def test_run_with_wrapped_stream_simulation(self, chat_messages, openai_mock_stream):
         streaming_callback_called = False
@@ -857,7 +870,7 @@ class TestOpenAIChatGenerator:
     def test_run_with_response_format_with_json_mode(self):
         """Test the basic json mode of structured outputs for older gpt models"""
         chat_messages = [
-            ChatMessage.from_user("Give me information about the 20th Nobel Peace Prize.Answer in json format")
+            ChatMessage.from_user("Give me information about the 20th Nobel Peace Prize. Answer in json format")
         ]
         component = OpenAIChatGenerator(
             generation_kwargs={"response_format": {"type": "json_object"}}, model="gpt-3.5-turbo"
