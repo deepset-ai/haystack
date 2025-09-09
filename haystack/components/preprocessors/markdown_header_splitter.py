@@ -316,8 +316,9 @@ class MarkdownHeaderSplitter:
                 # set page number to meta
                 split.meta["page_number"] = current_page + accumulated_page_breaks
 
-                if header_prefix:  # add header prefix to content
-                    split.content = header_prefix + split.content
+                ## deactivated: header prefix to content
+                # if header_prefix:
+                #     split.content = header_prefix + split.content
 
                 # preserve header metadata
                 for key in ["header", "parentheaders"]:
