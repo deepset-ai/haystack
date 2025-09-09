@@ -38,19 +38,27 @@ class CustomDocumentSplitter(DocumentSplitter):
 
         page_breaks = split_content.count(self.page_break_character)
         if page_breaks > 0:
-            logger.debug(f"Found {page_breaks} page breaks in split {split_index}")
+            logger.debug(
+                "Found {page_breaks} page breaks in split {split_index}",
+                page_breaks=page_breaks,
+                split_index=split_index,
+            )
         return page_breaks
 
     def _split_by_function(self, doc: Document) -> list[Document]:
         """Split document using a custom function that returns dictionaries with 'content' and 'meta'."""
-        logger.debug(f"Splitting document with id={doc.id}")
+        logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
         splits = self.splitting_function(doc.content)
         docs = []
 
         # calculate total pages and set current page
         total_pages = doc.meta.get("total_pages", 0) or doc.content.count(self.page_break_character) + 1
         current_page = doc.meta.get("page_number", 1)
-        logger.debug(f"Starting page number: {current_page}, Total pages: {total_pages}")
+        logger.debug(
+            "Starting page number: {current_page}, Total pages: {total_pages}",
+            current_page=current_page,
+            total_pages=total_pages,
+        )
 
         # get meta for each split
         for i, split in enumerate(splits):
@@ -71,7 +79,12 @@ class CustomDocumentSplitter(DocumentSplitter):
 
             docs.append(Document(content=split["content"], meta=meta))
 
-        logger.debug(f"Split into {len(docs)} documents for id={doc.id}, final page: {current_page}")
+        logger.debug(
+            "Split into {num_docs} documents for id={doc_id}, final page: {current_page}",
+            num_docs=len(docs),
+            doc_id=doc.id,
+            current_page=current_page,
+        )
         return docs
 
 
@@ -176,7 +189,7 @@ class MarkdownHeaderSplitter:
             # update offset
             offset += len(new_header) - len(original_header)
 
-        logger.info(f"Rewrote {len(matches)} headers with inferred levels.")
+        logger.info("Rewrote {num_headers} headers with inferred levels.", num_headers=len(matches))
         return modified_text
 
     def _split_by_markdown_headers(self, text: str) -> list[dict]:
@@ -223,7 +236,9 @@ class MarkdownHeaderSplitter:
             # get parent headers
             parentheaders = list(active_parents)
 
-            logger.debug(f"Creating chunk for header '{header_text}' at level {level}")
+            logger.debug(
+                "Creating chunk for header '{header_text}' at level {level}", header_text=header_text, level=level
+            )
 
             chunks.append(
                 {
@@ -235,7 +250,7 @@ class MarkdownHeaderSplitter:
             # reset active parents
             active_parents = [h for h in header_stack[: level - 1] if h]
 
-        logger.info(f"Split into {len(chunks)} chunks by markdown headers.")
+        logger.info("Split into {num_chunks} chunks by markdown headers.", num_chunks=len(chunks))
         return chunks
 
     def _apply_secondary_splitting(self, documents: list[Document]) -> list[Document]:
@@ -247,7 +262,7 @@ class MarkdownHeaderSplitter:
         if self.secondary_split == "none":
             return documents
 
-        logger.info(f"Applying secondary splitting by {self.secondary_split}")
+        logger.info("Applying secondary splitting by {secondary_split}", secondary_split=self.secondary_split)
         result_docs = []
 
         for doc in documents:
@@ -304,7 +319,7 @@ class MarkdownHeaderSplitter:
 
                 result_docs.append(split)
 
-        logger.info(f"Secondary splitting complete. Final count: {len(result_docs)} documents.")
+        logger.info("Secondary splitting complete. Final count: {final_count} documents.", final_count=len(result_docs))
         return result_docs
 
     @component.output_types(documents=list[Document])
@@ -336,7 +351,7 @@ class MarkdownHeaderSplitter:
 
         # get splits
         header_split_docs = header_splitter.run(documents=processed_documents)["documents"]
-        logger.info(f"Header splitting produced {len(header_split_docs)} documents")
+        logger.info("Header splitting produced {num_docs} documents", num_docs=len(header_split_docs))
 
         # apply secondary splitting if requested
         if self.secondary_split != "none":
