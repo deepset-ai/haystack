@@ -864,7 +864,6 @@ class TestOpenAIChatGenerator:
         )
 
         response = component.run(chat_messages)
-        print(response)
         assert len(response["replies"]) == 1
         message: ChatMessage = response["replies"][0]
         assert message.text

@@ -304,9 +304,9 @@ class OpenAIChatGenerator:
             tools_strict=tools_strict,
         )
         openai_endpoint = api_args.pop("openai_endpoint")
-        if openai_endpoint == "create":
+        if openai_endpoint == "parse":
             chat_completion = self.client.chat.completions.create(**api_args)
-        elif openai_endpoint == "parse":
+        else:
             chat_completion = self.client.chat.completions.parse(**api_args)
 
         if streaming_callback is not None:
@@ -563,6 +563,10 @@ def _convert_chat_completion_to_chat_message(
             "usage": _serialize_usage(completion.usage),
         },
     )
+    # Using pdantic with structured output, openai also returns the message.parsed
+    # return the parsed message in the meta
+    if message.parsed:
+        chat_message.meta["parsed"] = message.parsed
     return chat_message
 
 
