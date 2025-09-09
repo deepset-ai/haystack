@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.preprocessors import DocumentSplitter
@@ -16,7 +16,7 @@ class CustomDocumentSplitter(DocumentSplitter):
         super().__init__(*args, **kwargs)
         self.page_break_character = page_break_character
 
-    def _flatten_dict(self, d: Dict, prefix: str = "", target_dict: Optional[Dict] = None) -> Dict:
+    def _flatten_dict(self, d: dict, prefix: str = "", target_dict: Optional[dict] = None) -> dict:
         """Helper method to flatten a nested dictionary."""
         if target_dict is None:
             target_dict = {}
@@ -41,7 +41,7 @@ class CustomDocumentSplitter(DocumentSplitter):
             logger.debug(f"Found {page_breaks} page breaks in split {split_index}")
         return page_breaks
 
-    def _split_by_function(self, doc: Document) -> List[Document]:
+    def _split_by_function(self, doc: Document) -> list[Document]:
         """Split document using a custom function that returns dictionaries with 'content' and 'meta'."""
         logger.debug(f"Splitting document with id={doc.id}")
         splits = self.splitting_function(doc.content)
@@ -179,7 +179,7 @@ class MarkdownHeaderSplitter:
         logger.info(f"Rewrote {len(matches)} headers with inferred levels.")
         return modified_text
 
-    def _split_by_markdown_headers(self, text: str) -> List[Dict]:
+    def _split_by_markdown_headers(self, text: str) -> list[dict]:
         """Split text by markdown headers and create chunks with appropriate metadata."""
         logger.debug("Splitting text by markdown headers")
 
@@ -238,7 +238,7 @@ class MarkdownHeaderSplitter:
         logger.info(f"Split into {len(chunks)} chunks by markdown headers.")
         return chunks
 
-    def _apply_secondary_splitting(self, documents: List[Document]) -> List[Document]:
+    def _apply_secondary_splitting(self, documents: list[Document]) -> list[Document]:
         """
         Apply secondary splitting while preserving header metadata and structure.
 
@@ -307,8 +307,8 @@ class MarkdownHeaderSplitter:
         logger.info(f"Secondary splitting complete. Final count: {len(result_docs)} documents.")
         return result_docs
 
-    @component.output_types(documents=List[Document])
-    def run(self, documents: List[Document], infer_header_levels: Optional[bool] = None) -> Dict[str, List[Document]]:
+    @component.output_types(documents=list[Document])
+    def run(self, documents: list[Document], infer_header_levels: Optional[bool] = None) -> dict[str, list[Document]]:
         """
         Run the markdown header splitter with optional secondary splitting.
 
@@ -346,7 +346,7 @@ class MarkdownHeaderSplitter:
 
         return {"documents": final_docs}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize component to dictionary."""
         return default_to_dict(
             self,
@@ -359,7 +359,7 @@ class MarkdownHeaderSplitter:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MarkdownHeaderSplitter":
+    def from_dict(cls, data: dict[str, Any]) -> "MarkdownHeaderSplitter":
         """Deserialize component from dictionary."""
         return default_from_dict(cls, data)
 
