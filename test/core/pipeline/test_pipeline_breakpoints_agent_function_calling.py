@@ -4,7 +4,6 @@
 
 import math
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -15,11 +14,10 @@ from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import BreakpointException
 from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult
-from haystack.dataclasses.breakpoints import Breakpoint
+from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.tools.tool import Tool
-from haystack.utils.auth import Secret
 from test.conftest import load_and_resume_pipeline_snapshot
 
 
@@ -109,63 +107,7 @@ class ExtractResults:
 
 class TestPipelineBreakpoints:
     @pytest.fixture
-    def mock_openai_chat_generator(self):
-        """
-        Creates a mock for the OpenAIChatGenerator.
-        """
-        with patch("openai.resources.chat.completions.Completions.create") as mock_chat_completion_create:
-            # Create mock completion objects
-            mock_completion = MagicMock()
-            mock_completion.choices = [
-                MagicMock(
-                    finish_reason="stop",
-                    index=0,
-                    message=MagicMock(
-                        content="I'll help you calculate that. Let me use the calculator tool.",
-                        tool_calls=[
-                            MagicMock(
-                                id="call_123",
-                                type="function",
-                                function=MagicMock(name="calculator", arguments='{"expression": "2 + 2"}'),
-                            )
-                        ],
-                    ),
-                )
-            ]
-            mock_completion.usage = {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97}
-
-            mock_chat_completion_create.return_value = mock_completion
-
-            # Create a mock for the OpenAIChatGenerator
-            @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
-            def create_mock_generator(model_name):
-                generator = OpenAIChatGenerator(model=model_name, api_key=Secret.from_env_var("OPENAI_API_KEY"))
-
-                # Mock the run method
-                def mock_run(messages, streaming_callback=None, generation_kwargs=None, tools=None, tools_strict=None):
-                    # Check if this is a tool call response
-                    if any("tool_call" in str(msg) for msg in messages):
-                        content = "The result is 4."
-                    else:
-                        content = "I'll help you calculate that. Let me use the calculator tool."
-
-                    return {
-                        "replies": [ChatMessage.from_assistant(content)],
-                        "meta": {
-                            "model": model_name,
-                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
-                        },
-                    }
-
-                # Replace the run method with our mock
-                generator.run = mock_run
-
-                return generator
-
-            yield create_mock_generator
-
-    @pytest.fixture
-    def agent_pipeline(self, mock_openai_chat_generator):
+    def agent_pipeline(self):
         """Create a pipeline with agent, extractor, and document writer for testing."""
         doc_store = InMemoryDocumentStore()
         doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
@@ -196,7 +138,7 @@ class TestPipelineBreakpoints:
         )
 
         agent = Agent(
-            chat_generator=mock_openai_chat_generator("gpt-4o-mini"),
+            chat_generator=OpenAIChatGenerator(),
             tools=[calculator_tool, factorial_tool],
             exit_conditions=["calculator"],
             streaming_callback=print_streaming_chunk,
@@ -222,7 +164,7 @@ class TestPipelineBreakpoints:
 
     @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
-    def test_agent_pipeline_breakpoints(self, agent_pipeline, output_directory, component):
+    def test_agent_pipeline_component_breakpoints(self, agent_pipeline, output_directory, component):
         pipeline, doc_store = agent_pipeline
         data = {"math_agent": {"messages": [ChatMessage.from_user("Calculate 2 + 2")]}}
 
@@ -235,5 +177,58 @@ class TestPipelineBreakpoints:
 
         result = load_and_resume_pipeline_snapshot(
             pipeline=pipeline, output_directory=output_directory, component_name=break_point.component_name, data=data
+        )
+        assert result["doc_writer"]
+
+    @pytest.fixture
+    def agent_breakpoints(self, output_directory):
+        """Generate agent breakpoints with proper output directory."""
+        return [
+            # Chat Generator breakpoint
+            AgentBreakpoint(
+                break_point=Breakpoint(
+                    component_name="chat_generator", visit_count=0, snapshot_file_path=str(output_directory)
+                ),
+                agent_name="math_agent",
+            ),
+            # Tool Call - Calculator
+            AgentBreakpoint(
+                break_point=ToolBreakpoint(
+                    component_name="tool_invoker",
+                    tool_name="calculator",
+                    visit_count=0,
+                    snapshot_file_path=str(output_directory),
+                ),
+                agent_name="math_agent",
+            ),
+            # Tool Call - Factorial
+            AgentBreakpoint(
+                break_point=ToolBreakpoint(
+                    component_name="tool_invoker",
+                    tool_name="factorial",
+                    visit_count=0,
+                    snapshot_file_path=str(output_directory),
+                ),
+                agent_name="math_agent",
+            ),
+        ]
+
+    @pytest.mark.parametrize("breakpoint_index", [0, 1, 2])
+    @pytest.mark.integration
+    def test_agent_pipeline(self, agent_pipeline, agent_breakpoints, breakpoint_index, output_directory):
+        agent_breakpoint = agent_breakpoints[breakpoint_index]
+        pipeline, doc_store = agent_pipeline
+        data = {"math_agent": {"messages": [ChatMessage.from_user("What is 7 * (4 + 2)? What is the factorial of 5?")]}}
+
+        try:
+            _ = pipeline.run(data, break_point=agent_breakpoint)
+        except BreakpointException:
+            pass
+
+        result = load_and_resume_pipeline_snapshot(
+            pipeline=pipeline,
+            output_directory=output_directory,
+            component_name="math_agent_" + agent_breakpoint.break_point.component_name,
+            data=data,
         )
         assert result["doc_writer"]
