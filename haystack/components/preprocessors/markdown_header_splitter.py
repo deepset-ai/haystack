@@ -1,8 +1,7 @@
-import logging
 import re
 from typing import Any, Dict, List, Literal, Optional
 
-from haystack import Document, component, default_from_dict, default_to_dict
+from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.preprocessors import DocumentSplitter
 
 logger = logging.getLogger(__name__)
