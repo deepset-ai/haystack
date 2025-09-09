@@ -10,10 +10,15 @@ logger = logging.getLogger(__name__)
 class CustomDocumentSplitter(DocumentSplitter):
     """
     Custom DocumentSplitter that supports splitting functions returning dicts with 'content' and 'meta'.
+
+    :param split_by: The method to split by. Must be "function" for this custom splitter.
+    :param splitting_function: The custom splitting function that takes a string and returns a list of dicts
+        with 'content' and optional 'meta' keys.
+    :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\\f").
     """
 
-    def __init__(self, *args, page_break_character="\\f", **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, page_break_character="\\f"):
+        super().__init__()
         self.page_break_character = page_break_character
 
     def _flatten_dict(self, d: dict, prefix: str = "", target_dict: Optional[dict] = None) -> dict:
@@ -92,15 +97,6 @@ class CustomDocumentSplitter(DocumentSplitter):
 class MarkdownHeaderSplitter:
     """
     A custom component that splits documents at markdown headers with optional secondary splitting.
-
-    :param infer_header_levels: If True, attempts to infer and rewrite header levels based on content structure.
-        Useful for documents where all headers use the same level. Defaults to False.
-    :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\\f").
-    :param secondary_split: Optional secondary split condition after header splitting.
-        Options are "none", "word", "passage", "period", "line". Defaults to "none".
-    :param split_length: The maximum number of units in each split when using secondary splitting. Defaults to 200.
-    :param split_overlap: The number of overlapping units for each split when using secondary splitting. Defaults to 0.
-    :param split_threshold: The minimum number of units per split when using secondary splitting. Defaults to 0.
     """
 
     def __init__(
@@ -112,6 +108,18 @@ class MarkdownHeaderSplitter:
         split_overlap: int = 0,
         split_threshold: int = 0,
     ):
+        """
+        Initialize the MarkdownHeaderSplitter.
+
+        :param infer_header_levels: If True, attempts to infer and rewrite header levels based on content structure.
+            Useful for documents where all headers use the same level. Defaults to False.
+        :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\\f").
+        :param secondary_split: Optional secondary split condition after header splitting.
+            Options are "none", "word", "passage", "period", "line". Defaults to "none".
+        :param split_length: The maximum number of units in each split when using secondary splitting. Defaults to 200.
+        :param split_overlap: The number of overlapping units for each split when using secondary splitting. Defaults to 0.
+        :param split_threshold: The minimum number of units per split when using secondary splitting. Defaults to 0.
+        """
         self.infer_header_levels = infer_header_levels
         self.page_break_character = page_break_character
         self.secondary_split = secondary_split
