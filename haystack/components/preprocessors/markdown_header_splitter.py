@@ -279,10 +279,8 @@ class MarkdownHeaderSplitter:
             # extract header information
             header_match = re.search(r"(#{1,6}) (.+)(?:\n|$)", doc.content)
             if header_match:
-                header_prefix = header_match.group(0) + "\n"
                 content_for_splitting = doc.content[header_match.end() :]
             else:
-                header_prefix = ""
                 content_for_splitting = doc.content
 
             if not content_for_splitting.strip():  # skip empty content
@@ -316,20 +314,16 @@ class MarkdownHeaderSplitter:
                 # set page number to meta
                 split.meta["page_number"] = current_page + accumulated_page_breaks
 
-                ## deactivated: header prefix to content
-                # if header_prefix:
-                #     split.content = header_prefix + split.content
-
                 # preserve header metadata
                 for key in ["header", "parentheaders"]:
                     if key in doc.meta:
                         split.meta[key] = doc.meta[key]
 
-                # preserve primary split ID
-                if "split_id" in doc.meta:
-                    split.meta["header_split_id"] = doc.meta["split_id"]
-
                 result_docs.append(split)
+
+        # assign unique, sequential split_id to all final chunks
+        for idx, doc in enumerate(result_docs):
+            doc.meta["split_id"] = idx
 
         logger.info("Secondary splitting complete. Final count: {final_count} documents.", final_count=len(result_docs))
         return result_docs
