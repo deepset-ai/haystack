@@ -4,6 +4,7 @@ features:
     `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` now support structured outputs using `response_format`
     parameter that can be passed in `generation_kwargs`.
     The `response_format` parameter can be a Pydantic model or a JSON schema for non-streaming responses. For streaming responses, the `response_format` must be a JSON schema.
+    While using Pydantic models for structured outputs, the parsed output from OpenAI is returned in the `meta` field of the response `ChatMessage`.
     Example usage of the `response_format` parameter:
     ```python
     from pydantic import BaseModel
