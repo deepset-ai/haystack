@@ -299,7 +299,7 @@ class TestPipelineTool:
         # Let the Agent handle a query
         result = agent.run([ChatMessage.from_user("Who was Nikola Tesla?")])
 
-        assert len(result["messages"]) == 4  # User message, Agent message, Tool call result, Agent message
+        assert len(result["messages"]) == 5  # System msg, User msg, Agent msg, Tool call result, Agent mgs
         assert "nikola" in result["messages"][-1].text.lower()
 
     @pytest.mark.asyncio
@@ -345,5 +345,5 @@ class TestPipelineTool:
         # Let the Agent handle a query
         result = await agent.run_async([ChatMessage.from_user("Who was Nikola Tesla?")])
 
-        assert len(result["messages"]) == 4  # User message, Agent message, Tool call result, Agent message
+        assert len(result["messages"]) == 5  # System msg, User msg, Agent msg, Tool call result, Agent mgs
         assert "nikola" in result["messages"][-1].text.lower()
