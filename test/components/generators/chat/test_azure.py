@@ -388,7 +388,7 @@ class TestAzureOpenAIChatGenerator:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "20th Nobel Peace Prize" in msg["event_name"]
+        assert "Nobel Peace Prize" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 

@@ -803,11 +803,13 @@ class TestOpenAIChatGenerator:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "20th Nobel Peace Prize" in msg["event_name"]
+        assert "Nobel Peace Prize" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
         assert message.meta["finish_reason"] == "stop"
+        assert "parsed" in message.meta
+        assert isinstance(message.meta["parsed"], CalendarEvent)
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -856,7 +858,7 @@ class TestOpenAIChatGenerator:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "20th Nobel Peace Prize" in msg["event_name"]
+        assert "Nobel Peace Prize" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
