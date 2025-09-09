@@ -24,6 +24,7 @@ from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, PipelineSnapshot, ToolBreakpoint
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
+from haystack.tools.errors import ToolInvocationError
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
@@ -538,15 +539,22 @@ class Agent:
                     exe_context.state.set("messages", tool_messages)
 
                 except PipelineRuntimeError as e:
+                    # access the original ToolInvocationError exception
+                    original_error = e.__cause__
+                    tool_name = None
+                    if isinstance(original_error, ToolInvocationError):
+                        tool_name = original_error.tool
+
                     # Create a ToolBreakpoint for the current state
                     agent_tool_breakpoint = ToolBreakpoint(
                         component_name="tool_invoker",
                         visit_count=exe_context.component_visits["tool_invoker"],
-                        tool_name="calculator",  # ToDo: how to get this programmatically?
+                        tool_name=tool_name,
                         snapshot_file_path=_get_output_dir("pipeline_snapshot"),
                     )
-                    # ToDo: how to get the agent name programmatically?
-                    agent_break_point = AgentBreakpoint(agent_name="math_agent", break_point=agent_tool_breakpoint)
+                    # Get the agent name from the component instance
+                    agent_name = getattr(self, "__component_name__", None)
+                    agent_break_point = AgentBreakpoint(agent_name=agent_name, break_point=agent_tool_breakpoint)
 
                     # Create a snapshot and attach it to the exception
                     messages = exe_context.state.data["messages"]
