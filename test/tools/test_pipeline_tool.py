@@ -290,7 +290,11 @@ class TestPipelineTool:
         )
 
         # Create an Agent with the tool
-        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"), tools=[retriever_tool])
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+            system_prompt="For any questions about Nikola Tesla, always use the document_retriever.",
+            tools=[retriever_tool],
+        )
 
         # Let the Agent handle a query
         result = agent.run([ChatMessage.from_user("Who was Nikola Tesla?")])
@@ -332,7 +336,11 @@ class TestPipelineTool:
         )
 
         # Create an Agent with the tool
-        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"), tools=[retriever_tool])
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+            system_prompt="For any questions about Nikola Tesla, always use the document_retriever.",
+            tools=[retriever_tool],
+        )
 
         # Let the Agent handle a query
         result = await agent.run_async([ChatMessage.from_user("Who was Nikola Tesla?")])
