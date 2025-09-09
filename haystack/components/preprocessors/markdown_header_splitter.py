@@ -1,7 +1,7 @@
 import re
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
-from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, logging
 from haystack.components.preprocessors import DocumentSplitter
 
 logger = logging.getLogger(__name__)
@@ -73,8 +73,8 @@ class CustomDocumentSplitter(DocumentSplitter):
             if doc.meta:
                 meta = self._flatten_dict(doc.meta)
 
-            # add standard metadata
-            meta.update({"source_id": doc.id, "split_id": i, "total_pages": total_pages, "page_number": current_page})
+            # add standard metadata (no split_id here)
+            meta.update({"source_id": doc.id, "total_pages": total_pages, "page_number": current_page})
 
             # get page number based on page breaks
             page_breaks = self._process_split_content(split["content"], i)
@@ -364,6 +364,10 @@ class MarkdownHeaderSplitter:
             final_docs = self._apply_secondary_splitting(header_split_docs)
         else:
             final_docs = header_split_docs
+
+        # assign unique, sequential split_id to all final chunks
+        for idx, doc in enumerate(final_docs):
+            doc.meta["split_id"] = idx
 
         return {"documents": final_docs}
 
