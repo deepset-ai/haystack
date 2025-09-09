@@ -732,6 +732,17 @@ class TestAgent:
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
         assert response["messages"][0].text == "This is a system prompt."
 
+    def test_run_with_system_prompt_run_param(self, weather_tool):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(
+            chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is the init system prompt."
+        )
+        agent.warm_up()
+        response = agent.run(
+            [ChatMessage.from_user("What is the weather in Berlin?")], system_prompt="This is the run system prompt."
+        )
+        assert response["messages"][0].text == "This is the run system prompt."
+
     def test_run_not_warmed_up(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         chat_generator.warm_up = MagicMock()
