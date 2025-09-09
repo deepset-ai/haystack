@@ -552,8 +552,8 @@ class Agent:
                         tool_name=tool_name,
                         snapshot_file_path=_get_output_dir("pipeline_snapshot"),
                     )
-                    # Get the agent name from the component instance
-                    agent_name = getattr(self, "__component_name__", None)
+                    # Get the agent name from the component instance, it's also set when the agent is part of a pipeline
+                    agent_name = str(getattr(self, "__component_name__", None))
                     agent_break_point = AgentBreakpoint(agent_name=agent_name, break_point=agent_tool_breakpoint)
 
                     # Create a snapshot and attach it to the exception
