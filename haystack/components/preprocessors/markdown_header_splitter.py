@@ -367,23 +367,6 @@ class MarkdownHeaderSplitter:
 
         return {"documents": final_docs}
 
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize component to dictionary."""
-        return default_to_dict(
-            self,
-            infer_header_levels=self.infer_header_levels,
-            page_break_character=self.page_break_character,
-            secondary_split=self.secondary_split,
-            split_length=self.split_length,
-            split_overlap=self.split_overlap,
-            split_threshold=self.split_threshold,
-        )
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "MarkdownHeaderSplitter":
-        """Deserialize component from dictionary."""
-        return default_from_dict(cls, data)
-
 
 # TODO: move to proper test file once ready
 if __name__ == "__main__":
