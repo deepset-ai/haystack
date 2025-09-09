@@ -71,7 +71,7 @@ class PipelineTool(ComponentTool):
         input_mapping={"query": ["embedder.text"]},
         output_mapping={"retriever.documents": "documents"},
         name="document_retriever",
-        description="Retrieve documents relevant to a query from the document store",
+        description="For any questions about Nikola Tesla, always use this tool",
     )
 
     # Create an Agent with the tool
