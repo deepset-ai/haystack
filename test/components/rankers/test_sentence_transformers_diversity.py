@@ -37,6 +37,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.document_suffix == ""
         assert component.meta_fields_to_embed == []
         assert component.embedding_separator == "\n"
+        assert component.lambda_threshold == 0.5
 
     def test_init_with_custom_parameters(self):
         component = SentenceTransformersDiversityRanker(
@@ -51,6 +52,7 @@ class TestSentenceTransformersDiversityRanker:
             document_suffix="document suffix",
             meta_fields_to_embed=["meta_field"],
             embedding_separator="--",
+            lambda_threshold=0,
         )
         assert component.model_name_or_path == "sentence-transformers/msmarco-distilbert-base-v4"
         assert component.top_k == 5
@@ -63,21 +65,6 @@ class TestSentenceTransformersDiversityRanker:
         assert component.document_suffix == "document suffix"
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.embedding_separator == "--"
-
-    def test_init_with_lambda_threshold(self):
-        component = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/msmarco-distilbert-base-v4", lambda_threshold=0.5
-        )
-        assert component.lambda_threshold == 0.5
-
-        component = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/msmarco-distilbert-base-v4", lambda_threshold=None
-        )
-        assert component.lambda_threshold == 0.5
-
-        component = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/msmarco-distilbert-base-v4", lambda_threshold=0
-        )
         assert component.lambda_threshold == 0
 
     def test_to_dict(self):
