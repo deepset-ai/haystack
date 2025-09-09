@@ -136,7 +136,7 @@ def test_pipeline_with_include_outputs_from():
     assert pipeline_snapshot.break_point.agent_name == "math_agent"
     assert pipeline_snapshot.break_point.break_point.component_name == "tool_invoker"
     assert pipeline_snapshot.break_point.break_point.visit_count == 0
-    assert pipeline_snapshot.break_point.break_point.tool_name == "calculator"
+    assert pipeline_snapshot.break_point.break_point.tool_name == "factorial"
 
     # AgentSnapshot is correctly set
     assert pipeline_snapshot.agent_snapshot.component_inputs.keys() == {"chat_generator", "tool_invoker"}
@@ -144,7 +144,7 @@ def test_pipeline_with_include_outputs_from():
     assert pipeline_snapshot.agent_snapshot.break_point.agent_name == "math_agent"
     assert pipeline_snapshot.agent_snapshot.break_point.break_point.component_name == "tool_invoker"
     assert pipeline_snapshot.agent_snapshot.break_point.break_point.visit_count == 0
-    assert pipeline_snapshot.agent_snapshot.break_point.break_point.tool_name == "calculator"
+    assert pipeline_snapshot.agent_snapshot.break_point.break_point.tool_name == "factorial"
 
     # Test if we can resume the pipeline from the generated snapshot
     _ = pipe.run(data={}, pipeline_snapshot=pipeline_snapshot)
