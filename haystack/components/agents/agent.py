@@ -264,6 +264,7 @@ class Agent:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT],
         requires_async: bool,
+        system_prompt: Optional[str] = None,
         **kwargs,
     ) -> _ExecutionContext:
         """
@@ -272,10 +273,12 @@ class Agent:
         :param messages: List of ChatMessage objects to start the agent with.
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
+        :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
-        if self.system_prompt is not None:
-            messages = [ChatMessage.from_system(self.system_prompt)] + messages
+        system_prompt = system_prompt or self.system_prompt
+        if system_prompt is not None:
+            messages = [ChatMessage.from_system(system_prompt)] + messages
 
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
@@ -452,6 +455,7 @@ class Agent:
         *,
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
+        system_prompt: Optional[str] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -464,6 +468,7 @@ class Agent:
             for "tool_invoker".
         :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
             the relevant information to restart the Agent execution from where it left off.
+        :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -491,7 +496,11 @@ class Agent:
             )
         else:
             exe_context = self._initialize_fresh_execution(
-                messages=messages, streaming_callback=streaming_callback, requires_async=False, **kwargs
+                messages=messages,
+                streaming_callback=streaming_callback,
+                requires_async=False,
+                system_prompt=system_prompt,
+                **kwargs,
             )
 
         with self._create_agent_span() as span:
@@ -638,6 +647,7 @@ class Agent:
         *,
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
+        system_prompt: Optional[str] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -654,6 +664,7 @@ class Agent:
             for "tool_invoker".
         :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
             the relevant information to restart the Agent execution from where it left off.
+        :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -681,7 +692,11 @@ class Agent:
             )
         else:
             exe_context = self._initialize_fresh_execution(
-                messages=messages, streaming_callback=streaming_callback, requires_async=False, **kwargs
+                messages=messages,
+                streaming_callback=streaming_callback,
+                requires_async=False,
+                system_prompt=system_prompt,
+                **kwargs,
             )
 
         with self._create_agent_span() as span:
