@@ -290,12 +290,16 @@ class TestPipelineTool:
         )
 
         # Create an Agent with the tool
-        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"), tools=[retriever_tool])
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+            system_prompt="For any questions about Nikola Tesla, always use the document_retriever.",
+            tools=[retriever_tool],
+        )
 
         # Let the Agent handle a query
         result = agent.run([ChatMessage.from_user("Who was Nikola Tesla?")])
 
-        assert len(result["messages"]) == 4  # User message, Agent message, Tool call result, Agent message
+        assert len(result["messages"]) == 5  # System msg, User msg, Agent msg, Tool call result, Agent mgs
         assert "nikola" in result["messages"][-1].text.lower()
 
     @pytest.mark.asyncio
@@ -332,10 +336,14 @@ class TestPipelineTool:
         )
 
         # Create an Agent with the tool
-        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"), tools=[retriever_tool])
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+            system_prompt="For any questions about Nikola Tesla, always use the document_retriever.",
+            tools=[retriever_tool],
+        )
 
         # Let the Agent handle a query
         result = await agent.run_async([ChatMessage.from_user("Who was Nikola Tesla?")])
 
-        assert len(result["messages"]) == 4  # User message, Agent message, Tool call result, Agent message
+        assert len(result["messages"]) == 5  # System msg, User msg, Agent msg, Tool call result, Agent mgs
         assert "nikola" in result["messages"][-1].text.lower()
