@@ -588,7 +588,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert response["replies"][0].tool_calls[0].id == "0"
         assert response["replies"][0].meta == {
             "finish_reason": "tool_calls",
-            "index": 0,
+            "chunk_index": 0,
             "model": "meta-llama/Llama-3.1-70B-Instruct",
             "usage": {"completion_tokens": 30, "prompt_tokens": 426},
         }
@@ -675,14 +675,12 @@ class TestHuggingFaceAPIChatGenerator:
                     model="microsoft/Phi-3.5-mini-instruct",
                     system_fingerprint="3.2.1-sha-4d28897",
                 ),
-                StreamingChunk(
-                    content=" Paris",
+                StreamingChunk(content=" Paris",
                     meta={
                         "received_at": "2025-05-27T12:14:28.228852",
                         "model": "microsoft/Phi-3.5-mini-instruct",
                         "finish_reason": None,
-                    },
-                    index=0,
+                    },chunk_index=0,
                     start=True,
                 ),
                 [],
@@ -1041,7 +1039,7 @@ class TestHuggingFaceAPIChatGenerator:
         assert response["replies"][0].tool_calls[0].id == "0"
         assert response["replies"][0].meta == {
             "finish_reason": "tool_calls",
-            "index": 0,
+            "chunk_index": 0,
             "model": "meta-llama/Llama-3.1-70B-Instruct",
             "usage": {"completion_tokens": 30, "prompt_tokens": 426},
         }
