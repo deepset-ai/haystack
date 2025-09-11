@@ -103,6 +103,64 @@ class TestCSVToDocument:
         # check that the metadata from the bytestream is merged with that from the meta parameter
         assert document.meta == {"name": "test_name", "language": "it"}
 
+    # --- NEW TESTS for row mode reviewer asks ---
+
+    def test_row_mode_with_missing_content_column_warns_and_fallbacks(self, tmp_path, caplog):
+        csv_text = "a,b\r\n1,2\r\n3,4\r\n"
+        f = tmp_path / "miss.csv"
+        f.write_text(csv_text, encoding="utf-8")
+        bs = ByteStream.from_file_path(f)
+        bs.meta["file_path"] = str(f)
+
+        conv = CSVToDocument(conversion_mode="row", content_column="missing")
+        with caplog.at_level(logging.WARNING):
+            out = conv.run(sources=[bs])
+            assert "content_column='missing' not found" in caplog.text
+        docs = out["documents"]
+        assert len(docs) == 2
+        # Fallback content is a readable listing
+        assert "a: 1" in docs[0].content and "b: 2" in docs[0].content
+
+    def test_row_mode_meta_collision_prefixed(self, tmp_path):
+        # ByteStream meta has file_path and encoding; CSV also has those columns.
+        csv_text = "file_path,encoding,comment\r\nrowpath.csv,latin1,ok\r\n"
+        f = tmp_path / "collide.csv"
+        f.write_text(csv_text, encoding="utf-8")
+        bs = ByteStream.from_file_path(f)
+        bs.meta["file_path"] = str(f)
+        bs.meta["encoding"] = "utf-8"
+
+        conv = CSVToDocument(conversion_mode="row")
+        out = conv.run(sources=[bs])
+        d = out["documents"][0]
+        # Original meta preserved
+        assert d.meta["file_path"] == os.path.basename(str(f))
+        assert d.meta["encoding"] == "utf-8"
+        # CSV columns stored with csv_ prefix (no clobber)
+        assert d.meta["csv_file_path"] == "rowpath.csv"
+        assert d.meta["csv_encoding"] == "latin1"
+        assert d.meta["comment"] == "ok"
+
+    def test_init_validates_delimiter_and_quotechar(self):
+        with pytest.raises(ValueError):
+            CSVToDocument(delimiter=";;")
+        with pytest.raises(ValueError):
+            CSVToDocument(quotechar='""')
+
+    def test_row_mode_large_file_warns(self, tmp_path, caplog):
+        # Build a ~1.2MB CSV to trigger the warning (threshold ~5MB in component;
+        # If you want to keep this super fast, you can comment this test out.)
+        rows = 60_000
+        header = "text,author\n"
+        body = "".join("hello,Ada\n" for _ in range(rows))
+        data = (header + body).encode("utf-8")
+        bs = ByteStream(data=data, meta={"file_path": "big.csv"})
+        conv = CSVToDocument(conversion_mode="row")
+        with caplog.at_level(logging.WARNING):
+            _ = conv.run(sources=[bs])
+        # Not asserting exact MB value to avoid brittleness; look for the key phrase
+        assert "parsing a large CSV" in caplog.text
+
     def test_row_mode_with_content_column(self, tmp_path):
         """
         Each row becomes a Document, with `content` from a chosen column and other columns in meta.
