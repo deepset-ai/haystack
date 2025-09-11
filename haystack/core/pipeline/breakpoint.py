@@ -349,13 +349,25 @@ def _validate_tool_breakpoint_is_valid(
         raise ValueError(f"Tool '{tool_breakpoint.tool_name}' is not available in the agent's tools")
 
 
-def _create_pipeline_snapshot_from_chat_generator_breakpoint(
+def _create_pipeline_snapshot_from_chat_generator(
     *,
     execution_context: "_ExecutionContext",
     agent_name: Optional[str] = None,
     break_point: Optional[AgentBreakpoint] = None,
     parent_snapshot: Optional[PipelineSnapshot] = None,
 ) -> PipelineSnapshot:
+    """
+    Create a pipeline snapshot when a chat generator breakpoint is raised or an exception during execution occurs.
+
+    :param execution_context: The current execution context of the agent.
+    :param agent_name: The name of the agent component if present in a pipeline.
+    :param break_point: An optional AgentBreakpoint object. If provided, it will be used instead of creating a new one.
+        A scenario where a new breakpoint is created is when an exception occurs during chat generation and we want to
+        capture the state at that point.
+    :param parent_snapshot: An optional parent PipelineSnapshot to build upon.
+    :returns:
+        A PipelineSnapshot containing the state of the pipeline and agent at the point of the breakpoint or exception.
+    """
     if break_point is None:
         agent_breakpoint = AgentBreakpoint(
             agent_name=agent_name or "agent",
@@ -396,14 +408,27 @@ def _create_pipeline_snapshot_from_chat_generator_breakpoint(
     return final_snapshot
 
 
-def _create_pipeline_snapshot_from_tool_invoker_breakpoint(
+def _create_pipeline_snapshot_from_tool_invoker(
     *,
     execution_context: "_ExecutionContext",
-    tool_name: Optional[str],
+    tool_name: Optional[str] = None,
     agent_name: Optional[str] = None,
     break_point: Optional[AgentBreakpoint] = None,
     parent_snapshot: Optional[PipelineSnapshot] = None,
 ) -> PipelineSnapshot:
+    """
+    Create a pipeline snapshot when a tool invoker breakpoint is raised or an exception during execution occurs.
+
+    :param execution_context: The current execution context of the agent.
+    :param tool_name: The name of the tool that triggered the breakpoint, if available.
+    :param agent_name: The name of the agent component if present in a pipeline.
+    :param break_point: An optional AgentBreakpoint object. If provided, it will be used instead of creating a new one.
+        A scenario where a new breakpoint is created is when an exception occurs during tool execution and we want to
+        capture the state at that point.
+    :param parent_snapshot: An optional parent PipelineSnapshot to build upon.
+    :returns:
+        A PipelineSnapshot containing the state of the pipeline and agent at the point of the breakpoint or exception.
+    """
     if break_point is None:
         agent_breakpoint = AgentBreakpoint(
             agent_name=agent_name or "agent",
@@ -455,7 +480,7 @@ def _trigger_chat_generator_breakpoint(*, pipeline_snapshot: PipelineSnapshot) -
     :raises BreakpointException: Always raised when this function is called, indicating a breakpoint has been triggered.
     """
 
-    break_point = pipeline_snapshot.break_point
+    break_point = pipeline_snapshot.break_point.break_point
     _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
     msg = (
         f"Breaking at {break_point.component_name} visit count "

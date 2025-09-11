@@ -13,8 +13,8 @@ from haystack.core.component.component import component
 from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.breakpoint import (
-    _create_pipeline_snapshot_from_chat_generator_breakpoint,
-    _create_pipeline_snapshot_from_tool_invoker_breakpoint,
+    _create_pipeline_snapshot_from_chat_generator,
+    _create_pipeline_snapshot_from_tool_invoker,
     _trigger_chat_generator_breakpoint,
     _trigger_tool_invoker_breakpoint,
     _validate_tool_breakpoint_is_valid,
@@ -386,7 +386,7 @@ class Agent:
             and break_point.break_point.component_name == "chat_generator"
             and execution_context.component_visits["chat_generator"] == break_point.break_point.visit_count
         ):
-            pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator_breakpoint(
+            pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
                 execution_context=execution_context, break_point=break_point, parent_snapshot=parent_snapshot
             )
             _trigger_chat_generator_breakpoint(pipeline_snapshot=pipeline_snapshot)
@@ -412,7 +412,7 @@ class Agent:
             and break_point.break_point.component_name == "tool_invoker"
             and break_point.break_point.visit_count == execution_context.component_visits["tool_invoker"]
         ):
-            pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker_breakpoint(
+            pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
                 execution_context=execution_context, break_point=break_point, parent_snapshot=parent_snapshot
             )
             _trigger_tool_invoker_breakpoint(
@@ -500,7 +500,7 @@ class Agent:
                             parent_span=span,
                         )
                     except PipelineRuntimeError as e:
-                        pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator_breakpoint(
+                        pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
                             agent_name=getattr(self, "__component_name__", None),
                             execution_context=exe_context,
                             parent_snapshot=parent_snapshot,
@@ -538,7 +538,7 @@ class Agent:
                     original_error = e.__cause__
                     tool_name = getattr(original_error, "tool_name", None)
 
-                    pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker_breakpoint(
+                    pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
                         tool_name=tool_name,
                         agent_name=getattr(self, "__component_name__", None),
                         execution_context=exe_context,
