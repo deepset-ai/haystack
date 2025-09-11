@@ -44,6 +44,19 @@ def factorial_failing(n: int) -> dict:
     raise Exception("Error in factorial tool")  # Simulate a crash in the tool
 
 
+calculator_tool = Tool(
+    name="calculator",
+    description="Evaluate basic math expressions.",
+    parameters={
+        "type": "object",
+        "properties": {"expression": {"type": "string", "description": "Math expression to evaluate"}},
+        "required": ["expression"],
+    },
+    function=calculate,
+    outputs_to_state={"calc_result": {"source": "result"}},
+)
+
+
 @component
 class FailingChatGenerator:
     """A chat generator that raises an exception to simulate a crash."""
@@ -69,18 +82,6 @@ def build_agent_with_failing_chat_generator():
         },
         function=factorial,
         outputs_to_state={"factorial_result": {"source": "result"}},
-    )
-
-    calculator_tool = Tool(
-        name="calculator",
-        description="Evaluate basic math expressions.",
-        parameters={
-            "type": "object",
-            "properties": {"expression": {"type": "string", "description": "Math expression to evaluate"}},
-            "required": ["expression"],
-        },
-        function=calculate,
-        outputs_to_state={"calc_result": {"source": "result"}},
     )
 
     agent = Agent(
