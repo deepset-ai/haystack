@@ -4,7 +4,7 @@
 
 from typing import Any, Optional
 
-from haystack.dataclasses.breakpoints import AgentSnapshot, PipelineSnapshot
+from haystack.dataclasses.breakpoints import PipelineSnapshot
 
 
 class PipelineError(Exception):

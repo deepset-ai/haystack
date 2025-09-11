@@ -479,7 +479,6 @@ def _trigger_chat_generator_breakpoint(*, pipeline_snapshot: PipelineSnapshot) -
     :param pipeline_snapshot: PipelineSnapshot object containing the state of the pipeline and Agent snapshot.
     :raises BreakpointException: Always raised when this function is called, indicating a breakpoint has been triggered.
     """
-
     break_point = pipeline_snapshot.break_point.break_point
     _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
     msg = (
@@ -504,6 +503,9 @@ def _trigger_tool_invoker_breakpoint(*, llm_messages: list[ChatMessage], pipelin
     :raises BreakpointException: If the breakpoint is triggered, indicating a breakpoint has been reached for a tool
         call.
     """
+    if not pipeline_snapshot.agent_snapshot:
+        raise ValueError("PipelineSnapshot must contain an AgentSnapshot to trigger a tool call breakpoint.")
+
     if not isinstance(pipeline_snapshot.agent_snapshot.break_point.break_point, ToolBreakpoint):
         return
 
