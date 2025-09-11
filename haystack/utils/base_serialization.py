@@ -116,9 +116,10 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:
         schema = {"type": type_name}
         return {"serialization_schema": schema, "serialized_data": pure}
 
-    # Handle function objects - they cannot be serialized
+        # Handle callable functions serialization
     elif callable(payload) and not isinstance(payload, type):
-        return {"serialization_schema": {"type": "null"}, "serialized_data": None}
+        ser = serialize_callable(payload)
+        return {"serialization_schema": {"type": "typing.Callable"}, "serialized_data": ser}
 
     # Handle arbitrary objects with __dict__
     elif hasattr(payload, "__dict__"):
