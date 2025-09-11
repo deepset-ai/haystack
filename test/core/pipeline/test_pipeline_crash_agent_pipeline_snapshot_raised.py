@@ -44,7 +44,8 @@ def factorial_failing(n: int) -> dict:
     raise Exception("Error in factorial tool")  # Simulate a crash in the tool
 
 
-class FailingChatGenerator(OpenAIChatGenerator):
+@component
+class FailingChatGenerator:
     """A chat generator that raises an exception to simulate a crash."""
 
     def run(self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs) -> dict:
@@ -198,7 +199,6 @@ def build_pipeline_with_failing_tool():
 @pytest.mark.integration
 def test_pipeline_with_chat_generator_crash(monkeypatch):
     """Test pipeline crash handling when chat generator fails."""
-    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     pipe, doc_store = build_pipeline_with_failing_chat_generator()
 
     test_data = {

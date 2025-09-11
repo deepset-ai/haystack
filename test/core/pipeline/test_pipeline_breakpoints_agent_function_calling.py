@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
+import os
 from pathlib import Path
 
 import pytest
@@ -162,6 +163,10 @@ class TestPipelineBreakpoints:
 
     BREAKPOINT_COMPONENTS = ["math_agent", "extractor", "doc_writer"]
 
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
     @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
     def test_agent_pipeline_component_breakpoints(self, agent_pipeline, output_directory, component):
@@ -213,13 +218,16 @@ class TestPipelineBreakpoints:
             ),
         ]
 
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
     @pytest.mark.parametrize("breakpoint_index", [0, 1, 2])
     @pytest.mark.integration
     def test_agent_pipeline(self, agent_pipeline, agent_breakpoints, breakpoint_index, output_directory):
         agent_breakpoint = agent_breakpoints[breakpoint_index]
         pipeline, doc_store = agent_pipeline
         data = {"math_agent": {"messages": [ChatMessage.from_user("What is 7 * (4 + 2)? What is the factorial of 5?")]}}
-
         try:
             _ = pipeline.run(data, break_point=agent_breakpoint)
         except BreakpointException:
