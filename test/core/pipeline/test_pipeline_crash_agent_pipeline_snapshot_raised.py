@@ -194,6 +194,7 @@ def build_pipeline_with_failing_tool():
     return pipe, doc_store
 
 
+@pytest.mark.integration
 def test_pipeline_with_chat_generator_crash(monkeypatch):
     """Test pipeline crash handling when chat generator fails."""
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
