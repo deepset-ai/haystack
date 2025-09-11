@@ -10,9 +10,9 @@ from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.core.component.component import component
+from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.breakpoint import (
-    _create_agent_snapshot,
     _create_pipeline_snapshot_from_chat_generator_breakpoint,
     _create_pipeline_snapshot_from_tool_invoker_breakpoint,
     _trigger_chat_generator_breakpoint,
@@ -23,22 +23,13 @@ from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
-from haystack.dataclasses.breakpoints import (
-    AgentBreakpoint,
-    AgentSnapshot,
-    Breakpoint,
-    PipelineSnapshot,
-    ToolBreakpoint,
-)
+from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, PipelineSnapshot, ToolBreakpoint
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
-from haystack.tools.errors import ToolInvocationError
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
 
-from ...core.errors import PipelineRuntimeError
-from ...utils.misc import _get_output_dir
 from .state.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
 from .state.state_utils import merge_lists
 

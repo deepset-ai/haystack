@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from networkx import MultiDiGraph
 
 from haystack import logging
-from haystack.components.agents.agent import _ExecutionContext
 from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import (
@@ -27,6 +26,7 @@ from haystack.utils.base_serialization import _serialize_value_with_schema
 from haystack.utils.misc import _get_output_dir
 
 if TYPE_CHECKING:
+    from haystack.components.agents.agent import _ExecutionContext
     from haystack.tools.tool import Tool
     from haystack.tools.toolset import Toolset
 
@@ -351,7 +351,7 @@ def _validate_tool_breakpoint_is_valid(
 
 def _create_pipeline_snapshot_from_chat_generator_breakpoint(
     *,
-    execution_context: _ExecutionContext,
+    execution_context: "_ExecutionContext",
     agent_name: Optional[str] = None,
     break_point: Optional[AgentBreakpoint] = None,
     parent_snapshot: Optional[PipelineSnapshot] = None,
@@ -398,7 +398,7 @@ def _create_pipeline_snapshot_from_chat_generator_breakpoint(
 
 def _create_pipeline_snapshot_from_tool_invoker_breakpoint(
     *,
-    execution_context: _ExecutionContext,
+    execution_context: "_ExecutionContext",
     tool_name: Optional[str],
     agent_name: Optional[str] = None,
     break_point: Optional[AgentBreakpoint] = None,
