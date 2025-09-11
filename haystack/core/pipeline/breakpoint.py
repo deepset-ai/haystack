@@ -479,6 +479,12 @@ def _trigger_chat_generator_breakpoint(*, pipeline_snapshot: PipelineSnapshot) -
     :param pipeline_snapshot: PipelineSnapshot object containing the state of the pipeline and Agent snapshot.
     :raises BreakpointException: Always raised when this function is called, indicating a breakpoint has been triggered.
     """
+    if not isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
+        raise ValueError("PipelineSnapshot must contain an AgentBreakpoint to trigger a chat generator breakpoint.")
+
+    if not isinstance(pipeline_snapshot.agent_snapshot, AgentSnapshot):
+        raise ValueError("PipelineSnapshot must contain an AgentSnapshot to trigger a chat generator breakpoint.")
+
     break_point = pipeline_snapshot.break_point.break_point
     _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
     msg = (
