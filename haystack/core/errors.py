@@ -18,13 +18,10 @@ class PipelineRuntimeError(Exception):
         component_type: Optional[type],
         message: str,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
-        *,
-        agent_snapshot: Optional[AgentSnapshot] = None,
     ) -> None:
         self.component_name = component_name
         self.component_type = component_type
         self.pipeline_snapshot = pipeline_snapshot
-        self.agent_snapshot = agent_snapshot
         super().__init__(message)
 
     @classmethod

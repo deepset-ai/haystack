@@ -400,16 +400,11 @@ class Pipeline(PipelineBase):
                     )
                 except PipelineRuntimeError as error:
                     out_dir = _get_output_dir("pipeline_snapshot")
-
-                    # if we have an agent_snapshot, the error happened in an Agent component
-                    if isinstance(error.agent_snapshot, AgentSnapshot):
-                        break_point = error.agent_snapshot.break_point
-                    else:
-                        break_point = Breakpoint(
-                            component_name=component_name,
-                            visit_count=component_visits[component_name],
-                            snapshot_file_path=out_dir,
-                        )
+                    break_point = Breakpoint(
+                        component_name=component_name,
+                        visit_count=component_visits[component_name],
+                        snapshot_file_path=out_dir,
+                    )
 
                     # Create a snapshot of the last good state of the pipeline before the error occurred.
                     pipeline_snapshot_inputs_serialised = deepcopy(inputs)
@@ -424,13 +419,15 @@ class Pipeline(PipelineBase):
                         pipeline_outputs=pipeline_outputs,
                     )
 
-                    # if we have an agent snapshot from the error, we attach it to the pipeline snapshot
-                    last_good_state_snapshot.agent_snapshot = getattr(error, "agent_snapshot", None)
+                    # If the pipeline_snapshot already exists it came from an Agent component.
+                    # We take the agent snapshot and attach it to the pipeline snapshot we create here.
+                    # We also update the break_point to be an AgentBreakpoint.
+                    if error.pipeline_snapshot and error.pipeline_snapshot.agent_snapshot:
+                        last_good_state_snapshot.agent_snapshot = error.pipeline_snapshot.agent_snapshot
+                        last_good_state_snapshot.break_point = error.pipeline_snapshot.agent_snapshot.break_point
 
                     # Attach the last good state snapshot to the error before re-raising it and saving to disk
                     error.pipeline_snapshot = last_good_state_snapshot
-                    if isinstance(error.agent_snapshot, AgentSnapshot):
-                        error.pipeline_snapshot.break_point = error.agent_snapshot.break_point
 
                     try:
                         _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot)
