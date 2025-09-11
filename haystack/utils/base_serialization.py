@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
+from haystack.utils import deserialize_callable, serialize_callable
 
 
 def serialize_class_instance(obj: Any) -> dict[str, Any]:
@@ -116,10 +117,10 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:
         schema = {"type": type_name}
         return {"serialization_schema": schema, "serialized_data": pure}
 
-        # Handle callable functions serialization
+    # Handle callable functions serialization
     elif callable(payload) and not isinstance(payload, type):
-        ser = serialize_callable(payload)
-        return {"serialization_schema": {"type": "typing.Callable"}, "serialized_data": ser}
+        serialized = serialize_callable(payload)
+        return {"serialization_schema": {"type": "typing.Callable"}, "serialized_data": serialized}
 
     # Handle arbitrary objects with __dict__
     elif hasattr(payload, "__dict__"):
@@ -278,6 +279,10 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint
     # Handle primitive types
     elif schema_type in ("null", "boolean", "integer", "number", "string"):
         return data
+
+    # Handle callable functions
+    elif schema_type == "typing.Callable":
+        return deserialize_callable(data)
 
     # Handle custom class types
     else:
