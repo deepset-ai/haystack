@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Awaitable, Callable, Literal, Optional, Union, overload
 
 from haystack.core.component import Component
-from haystack.dataclasses.chat_message import ToolCallResult
+from haystack.dataclasses.chat_message import ReasoningContent, ToolCallResult
 from haystack.utils.asynchronous import is_callable_async_compatible
 
 # Type alias for standard finish_reason values following OpenAI's convention
@@ -114,6 +114,8 @@ class StreamingChunk:
     :param finish_reason: An optional value indicating the reason the generation finished.
         Standard values follow OpenAI's convention: "stop", "length", "tool_calls", "content_filter",
         plus Haystack-specific value "tool_call_results".
+    :param reasoning: An optional ReasoningContent object representing the reasoning content associated
+        with the message chunk.
     """
 
     content: str
@@ -124,19 +126,20 @@ class StreamingChunk:
     tool_call_result: Optional[ToolCallResult] = field(default=None)
     start: bool = field(default=False)
     finish_reason: Optional[FinishReason] = field(default=None)
+    reasoning: Optional[ReasoningContent] = field(default=None)
 
     def __post_init__(self):
-        fields_set = sum(bool(x) for x in (self.content, self.tool_calls, self.tool_call_result))
+        fields_set = sum(bool(x) for x in (self.content, self.tool_calls, self.tool_call_result, self.reasoning))
         if fields_set > 1:
             raise ValueError(
-                "Only one of `content`, `tool_call`, or `tool_call_result` may be set in a StreamingChunk. "
+                "Only one of `content`, `tool_call`, `tool_call_result` or `reasoning` may be set in a StreamingChunk. "
                 f"Got content: '{self.content}', tool_call: '{self.tool_calls}', "
-                f"tool_call_result: '{self.tool_call_result}'"
+                f"tool_call_result: '{self.tool_call_result}', reasoning: '{self.reasoning}'."
             )
 
         # NOTE: We don't enforce this for self.content otherwise it would be a breaking change
-        if (self.tool_calls or self.tool_call_result) and self.index is None:
-            raise ValueError("If `tool_call`, or `tool_call_result` is set, `index` must also be set.")
+        if (self.tool_calls or self.tool_call_result or self.reasoning) and self.index is None:
+            raise ValueError("If `tool_call`, `tool_call_result` or `reasoning` is set, `index` must also be set.")
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -153,6 +156,7 @@ class StreamingChunk:
             "tool_call_result": self.tool_call_result.to_dict() if self.tool_call_result else None,
             "start": self.start,
             "finish_reason": self.finish_reason,
+            "reasoning": self.reasoning.to_dict() if self.reasoning else None,
         }
 
     @classmethod
@@ -177,6 +181,7 @@ class StreamingChunk:
             else None,
             start=data.get("start", False),
             finish_reason=data.get("finish_reason"),
+            reasoning=ReasoningContent.from_dict(data["reasoning"]) if data.get("reasoning") else None,
         )
 
 
