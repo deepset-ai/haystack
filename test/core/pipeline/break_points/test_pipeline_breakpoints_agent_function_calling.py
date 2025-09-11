@@ -171,7 +171,7 @@ class TestPipelineBreakpoints:
     @pytest.mark.integration
     def test_agent_pipeline_component_breakpoints(self, agent_pipeline, output_directory, component):
         pipeline, doc_store = agent_pipeline
-        data = {"math_agent": {"messages": [ChatMessage.from_user("Calculate 2 + 2")]}}
+        data = {"math_agent": {"messages": [ChatMessage.from_user("Calculate 2 + 2. What is the factorial of 5?")]}}
 
         break_point = Breakpoint(component_name=component, visit_count=0, snapshot_file_path=str(output_directory))
 
@@ -183,7 +183,9 @@ class TestPipelineBreakpoints:
         result = load_and_resume_pipeline_snapshot(
             pipeline=pipeline, output_directory=output_directory, component_name=break_point.component_name, data=data
         )
-        assert result["doc_writer"]
+        assert result["math_agent"]["calc_result"] == 4
+        assert result["math_agent"]["factorial_result"] == 120
+        assert result["doc_writer"]["documents_written"] == 5
 
     @pytest.fixture
     def agent_breakpoints(self, output_directory):

@@ -110,18 +110,6 @@ def build_agent_with_failing_tool():
         outputs_to_state={"factorial_result": {"source": "result"}},
     )
 
-    calculator_tool = Tool(
-        name="calculator",
-        description="Evaluate basic math expressions.",
-        parameters={
-            "type": "object",
-            "properties": {"expression": {"type": "string", "description": "Math expression to evaluate"}},
-            "required": ["expression"],
-        },
-        function=calculate,
-        outputs_to_state={"calc_result": {"source": "result"}},
-    )
-
     agent = Agent(
         chat_generator=OpenAIChatGenerator(),
         tools=[calculator_tool, factorial_tool],
@@ -198,7 +186,7 @@ def build_pipeline_with_failing_tool():
 
 
 @pytest.mark.integration
-def test_pipeline_with_chat_generator_crash(monkeypatch):
+def test_pipeline_with_chat_generator_crash():
     """Test pipeline crash handling when chat generator fails."""
     pipe, doc_store = build_pipeline_with_failing_chat_generator()
 
@@ -231,6 +219,9 @@ def test_pipeline_with_chat_generator_crash(monkeypatch):
 
     # Test if we can resume the pipeline from the generated snapshot. Note that, the pipeline should fail again with
     # the same error since we are resuming from the same exact state and did not change anything in the pipeline.
+    #
+    # We passed it to the pipeline.run() to make sure that the generated snapshot is valid and indeed the pipeline
+    # resumes
     with pytest.raises(PipelineRuntimeError):
         _ = pipe.run(data={}, pipeline_snapshot=pipeline_snapshot)
 
