@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import os
 from typing import Optional, Union
 
 import pytest
@@ -194,9 +194,9 @@ def build_pipeline_with_failing_tool():
     return pipe, doc_store
 
 
-@pytest.mark.integration
-def test_pipeline_with_chat_generator_crash():
+def test_pipeline_with_chat_generator_crash(monkeypatch):
     """Test pipeline crash handling when chat generator fails."""
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     pipe, doc_store = build_pipeline_with_failing_chat_generator()
 
     test_data = {
@@ -214,8 +214,6 @@ def test_pipeline_with_chat_generator_crash():
     assert pipeline_snapshot.ordered_component_names == ["doc_writer", "extractor", "math_agent"]
     assert pipeline_snapshot.pipeline_state.component_visits == {"doc_writer": 0, "extractor": 0, "math_agent": 0}
 
-    print(pipeline_snapshot)
-
     # AgentBreakpoint is correctly set for chat_generator crash
     assert pipeline_snapshot.break_point.agent_name == "math_agent"
     assert pipeline_snapshot.break_point.break_point.component_name == "chat_generator"
@@ -228,13 +226,17 @@ def test_pipeline_with_chat_generator_crash():
     assert pipeline_snapshot.agent_snapshot.break_point.break_point.component_name == "chat_generator"
     assert pipeline_snapshot.agent_snapshot.break_point.break_point.visit_count == 0
 
-    # Test if we can resume the pipeline from the generated snapshot
-    # The pipeline should fail again with the same error
+    # Test if we can resume the pipeline from the generated snapshot. Note that, the pipeline should fail again with
+    # the same error since we are resuming from the same exact state and did not change anything in the pipeline.
     with pytest.raises(PipelineRuntimeError):
         _ = pipe.run(data={}, pipeline_snapshot=pipeline_snapshot)
 
 
 @pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
 def test_pipeline_with_tool_call_crash():
     """Test pipeline crash handling when a tool call fails."""
     pipe, doc_store = build_pipeline_with_failing_tool()
@@ -269,4 +271,8 @@ def test_pipeline_with_tool_call_crash():
     assert pipeline_snapshot.agent_snapshot.break_point.break_point.tool_name == "factorial"
 
     # Test if we can resume the pipeline from the generated snapshot
-    _ = pipe.run(data={}, pipeline_snapshot=pipeline_snapshot)
+    result = pipe.run(data={}, pipeline_snapshot=pipeline_snapshot)
+
+    assert result["doc_writer"]["documents_written"] == 3
+    assert result["math_agent"]["calc_result"] == 42
+    assert result["math_agent"]["factorial_result"] is None

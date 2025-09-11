@@ -12,12 +12,13 @@ class PipelineError(Exception):
 
 
 class PipelineRuntimeError(Exception):
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         component_name: Optional[str],
         component_type: Optional[type],
         message: str,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        *,
         agent_snapshot: Optional[AgentSnapshot] = None,
     ) -> None:
         self.component_name = component_name

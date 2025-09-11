@@ -589,7 +589,7 @@ class Agent:
                     original_error = e.__cause__
                     tool_name = None
                     if isinstance(original_error, ToolInvocationError):
-                        tool_name = original_error.tool
+                        tool_name = original_error.tool_name
 
                     # Create a ToolBreakpoint for the current state
                     agent_tool_breakpoint = ToolBreakpoint(

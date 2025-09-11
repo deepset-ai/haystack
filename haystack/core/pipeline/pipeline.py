@@ -76,8 +76,10 @@ class Pipeline(PipelineBase):
                 # and trigger breakpoints that need to bubble up to the main pipeline
                 raise error
 
-            # Agent components might raise PipelineRuntimeError with additional context
-            # and an agent snapshot. We want to preserve that information here
+            # Any components that internally use Pipeline._run_component could raise a PipelineRuntimeError with
+            # additional context (e.g. Agent raises an agent snapshot) so we re-raise here instead of wrapping it in
+            # another PipelineRuntimeError
+
             except PipelineRuntimeError as runtime_error:
                 raise runtime_error
 
