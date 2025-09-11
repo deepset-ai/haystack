@@ -142,6 +142,30 @@ class TestCSVToDocument:
         assert d.meta["csv_encoding"] == "latin1"
         assert d.meta["comment"] == "ok"
 
+    def test_row_mode_meta_collision_multiple_suffixes(self, tmp_path):
+        """
+        If meta already has csv_file_path and csv_file_path_1, we should write the next as csv_file_path_2 (not loop).
+        """
+        csv_text = "file_path,comment\r\nrow.csv,ok\r\n"
+        f = tmp_path / "multi.csv"
+        f.write_text(csv_text, encoding="utf-8")
+
+        bs = ByteStream.from_file_path(f)
+        bs.meta["file_path"] = str(f)
+
+        # Pre-seed meta so we force two collisions.
+        extra_meta = {"csv_file_path": "existing0", "csv_file_path_1": "existing1"}
+
+        conv = CSVToDocument(conversion_mode="row")
+        out = conv.run(sources=[bs], meta=[extra_meta])
+        d = out["documents"][0]
+
+        # Existing values preserved; new one goes to _2
+        assert d.meta["csv_file_path"] == "existing0"
+        assert d.meta["csv_file_path_1"] == "existing1"
+        assert d.meta["csv_file_path_2"] == "row.csv"
+        assert d.meta["comment"] == "ok"
+
     def test_init_validates_delimiter_and_quotechar(self):
         with pytest.raises(ValueError):
             CSVToDocument(delimiter=";;")

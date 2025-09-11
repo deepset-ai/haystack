@@ -222,7 +222,7 @@ class CSVToDocument:
                 suffix = 1
                 while key_to_use in row_meta:
                     key_to_use = f"{base_key}_{suffix}"
-                    suffix = 1
+                    suffix += 1
             row_meta[key_to_use] = self._safe_value(v)
 
         row_meta["row_number"] = row_index
