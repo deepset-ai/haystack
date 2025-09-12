@@ -264,9 +264,7 @@ def test_pipeline_with_tool_call_crash():
     assert pipeline_snapshot.agent_snapshot.break_point.break_point.visit_count == 0
     assert pipeline_snapshot.agent_snapshot.break_point.break_point.tool_name == "factorial"
 
-    # Test if we can resume the pipeline from the generated snapshot
-    result = pipe.run(data={}, pipeline_snapshot=pipeline_snapshot)
-
-    assert result["doc_writer"]["documents_written"] == 3
-    assert result["math_agent"]["calc_result"] == 42
-    assert result["math_agent"]["factorial_result"] is None
+    # Test if the pipeline can be resumed from the generated snapshot. Note that, the pipeline should fail again with
+    # the same error since we are resuming from the same exact state and did not change anything in the pipeline.
+    with pytest.raises(PipelineRuntimeError):
+        _ = pipe.run(data={}, pipeline_snapshot=pipeline_snapshot)
