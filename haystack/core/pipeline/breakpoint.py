@@ -449,7 +449,7 @@ def _create_pipeline_snapshot_from_tool_invoker(
         component_inputs={
             "chat_generator": {"messages": messages[:-1], **execution_context.chat_generator_inputs},
             "tool_invoker": {
-                "messages": messages[:-1],
+                "messages": messages[-1:],  # tool invoker consumes last msg from the chat_generator, contains tool call
                 "state": execution_context.state,
                 **execution_context.tool_invoker_inputs,
             },

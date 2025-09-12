@@ -111,7 +111,7 @@ class TestPipelineBreakpoints:
     def agent_pipeline(self):
         """Create a pipeline with agent, extractor, and document writer for testing."""
         doc_store = InMemoryDocumentStore()
-        doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
+        doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.OVERWRITE)
 
         # Build agent with mocked chat generator
         factorial_tool = Tool(
@@ -169,7 +169,7 @@ class TestPipelineBreakpoints:
     )
     @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
-    def test_agent_pipeline_component_breakpoints(self, agent_pipeline, output_directory, component):
+    def test_agent_pipeline_regular_component_breakpoints(self, agent_pipeline, output_directory, component):
         pipeline, doc_store = agent_pipeline
         data = {"math_agent": {"messages": [ChatMessage.from_user("Calculate 2 + 2. What is the factorial of 5?")]}}
 
@@ -187,9 +187,8 @@ class TestPipelineBreakpoints:
         assert result["math_agent"]["factorial_result"] == 120
         assert result["doc_writer"]["documents_written"] == 5
 
-    @pytest.fixture
+    @pytest.fixture(scope="session")
     def agent_breakpoints(self, output_directory):
-        """Generate agent breakpoints with proper output directory."""
         return [
             # Chat Generator breakpoint
             AgentBreakpoint(
@@ -224,12 +223,17 @@ class TestPipelineBreakpoints:
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
-    @pytest.mark.parametrize("breakpoint_index", [0, 1, 2])
+    @pytest.mark.parametrize("breakpoint_index", [0, 1, 2], ids=["chat_generator", "calculator_tool", "factorial_tool"])
     @pytest.mark.integration
-    def test_agent_pipeline(self, agent_pipeline, agent_breakpoints, breakpoint_index, output_directory):
-        agent_breakpoint = agent_breakpoints[breakpoint_index]
+    def test_agent_components_pipeline_breakpoints(
+        self, agent_breakpoints, agent_pipeline, output_directory, breakpoint_index
+    ):
         pipeline, doc_store = agent_pipeline
         data = {"math_agent": {"messages": [ChatMessage.from_user("What is 7 * (4 + 2)? What is the factorial of 5?")]}}
+
+        # Get the specific breakpoint from the fixture list
+        agent_breakpoint = agent_breakpoints[breakpoint_index]
+
         try:
             _ = pipeline.run(data, break_point=agent_breakpoint)
         except BreakpointException:
@@ -241,4 +245,5 @@ class TestPipelineBreakpoints:
             component_name="math_agent_" + agent_breakpoint.break_point.component_name,
             data=data,
         )
-        assert result["doc_writer"]
+
+        assert result["math_agent"]["calc_result"] == 42
