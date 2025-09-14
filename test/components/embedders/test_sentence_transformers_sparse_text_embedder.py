@@ -11,6 +11,7 @@ import torch
 from haystack.components.embedders.sentence_transformers_sparse_text_embedder import (
     SentenceTransformersSparseTextEmbedder,
 )
+from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.utils import ComponentDevice, Secret
 
 TYPE_NAME = (
@@ -228,16 +229,17 @@ class TestSentenceTransformersSparseTextEmbedder:
         embedder = SentenceTransformersSparseTextEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
         embedder.embedding_backend.embed = lambda x, **kwargs: [
-            [random.random() for _ in range(16)] for _ in range(len(x))
+            SparseEmbedding(indices=[1, 3], values=[0.5, 0.7]) for _ in range(len(x))
         ]
 
         text = "a nice text to embed"
 
         result = embedder.run(text=text)
-        embedding = result["embedding"]
+        sparse_embedding = result["sparse_embedding"]
 
-        assert isinstance(embedding, list)
-        assert all(isinstance(el, float) for el in embedding)
+        assert isinstance(sparse_embedding, SparseEmbedding)
+        assert sparse_embedding.indices == [1, 3]
+        assert sparse_embedding.values == [0.5, 0.7]
 
     def test_run_wrong_input_format(self):
         embedder = SentenceTransformersSparseTextEmbedder(model="model")
@@ -328,3 +330,23 @@ class TestSentenceTransformersSparseTextEmbedder:
             config_kwargs=None,
             backend="torch",
         )
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    def test_live_run_sparse_text_embedder(self):
+        pytest.importorskip("sentence_transformers", reason="sentence-transformers is required for this test")
+
+        text = "I love Nine Inch Nails"
+        embedder = SentenceTransformersSparseTextEmbedder(
+            model="naver/splade-cocondenser-ensembledistil", device=ComponentDevice.from_str("cpu")
+        )
+        embedder.warm_up()
+        result = embedder.run(text=text)
+        sparse_embedding = result["sparse_embedding"]
+
+        assert isinstance(sparse_embedding, SparseEmbedding)
+        assert isinstance(sparse_embedding.indices, list)
+        assert isinstance(sparse_embedding.values, list)
+        assert len(sparse_embedding.indices) == len(sparse_embedding.values)
+        assert len(sparse_embedding.indices) > 0

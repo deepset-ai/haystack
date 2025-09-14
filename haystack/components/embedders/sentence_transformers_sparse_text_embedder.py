@@ -5,7 +5,7 @@
 from typing import Any, Dict, List, Literal, Optional
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.components.embedders.backends.sentence_transformers_backend import (
+from haystack.components.embedders.backends.sentence_transformers_sparse_backend import (
     _SentenceTransformersSparseEmbeddingBackendFactory,
     _SentenceTransformersSparseEncoderEmbeddingBackend,
 )

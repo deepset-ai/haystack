@@ -9,13 +9,10 @@ import pytest
 import torch
 
 from haystack import Document
-from haystack.components.embedders.backends.sentence_transformers_backend import (
-    _SentenceTransformersSparseEmbeddingBackendFactory,
-    _SentenceTransformersSparseEncoderEmbeddingBackend,
-)
 from haystack.components.embedders.sentence_transformers_sparse_document_embedder import (
     SentenceTransformersSparseDocumentEmbedder,
 )
+from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.utils import ComponentDevice, Secret
 
 TYPE_NAME = (
@@ -247,7 +244,7 @@ class TestSentenceTransformersDocumentEmbedder:
         embedder = SentenceTransformersSparseDocumentEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
         embedder.embedding_backend.embed = lambda x, **kwargs: [
-            [random.random() for _ in range(16)] for _ in range(len(x))
+            SparseEmbedding(indices=[0, 2, 5], values=[0.1, 0.2, 0.3]) for _ in range(len(x))
         ]
 
         documents = [Document(content=f"document number {i}") for i in range(5)]
@@ -258,8 +255,9 @@ class TestSentenceTransformersDocumentEmbedder:
         assert len(result["documents"]) == len(documents)
         for doc in result["documents"]:
             assert isinstance(doc, Document)
-            assert isinstance(doc.embedding, list)
-            assert isinstance(doc.embedding[0], float)
+            assert isinstance(doc.sparse_embedding, SparseEmbedding)
+            assert isinstance(doc.sparse_embedding.indices[0], int)
+            assert isinstance(doc.sparse_embedding.values[0], float)
 
     def test_run_wrong_input_format(self):
         embedder = SentenceTransformersSparseDocumentEmbedder(model="model")
@@ -399,3 +397,36 @@ class TestSentenceTransformersDocumentEmbedder:
             config_kwargs=None,
             backend="torch",
         )
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    def test_live_run_sparse_document_embedder(self):
+        pytest.importorskip("sentence_transformers", reason="sentence-transformers is required for this test")
+
+        docs = [
+            Document(content="I love cheese", meta={"topic": "Cuisine"}),
+            Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
+        ]
+
+        embedder = SentenceTransformersSparseDocumentEmbedder(
+            model="naver/splade-cocondenser-ensembledistil",
+            meta_fields_to_embed=["topic"],
+            embedding_separator=" | ",
+            device=ComponentDevice.from_str("cpu"),
+        )
+        embedder.warm_up()
+        result = embedder.run(documents=docs)
+        documents_with_embeddings = result["documents"]
+
+        assert isinstance(documents_with_embeddings, list)
+        assert len(documents_with_embeddings) == len(docs)
+        for doc in documents_with_embeddings:
+            assert isinstance(doc, Document)
+            assert hasattr(doc, "sparse_embedding")
+            assert isinstance(doc.sparse_embedding, SparseEmbedding)
+            assert isinstance(doc.sparse_embedding.indices, list)
+            assert isinstance(doc.sparse_embedding.values, list)
+            assert len(doc.sparse_embedding.indices) == len(doc.sparse_embedding.values)
+            # Expect at least one non-zero entry
+            assert len(doc.sparse_embedding.indices) > 0
