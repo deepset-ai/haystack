@@ -206,10 +206,12 @@ class SentenceTransformersSparseTextEmbedder:
             raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
 
         text_to_embed = self.prefix + text + self.suffix
+
         embedding = self.embedding_backend.embed(
-            [text_to_embed],
+            data=[text_to_embed],
             batch_size=self.batch_size,
             show_progress_bar=self.progress_bar,
             **(self.encode_kwargs if self.encode_kwargs else {}),
         )[0]
+
         return {"sparse_embedding": embedding}

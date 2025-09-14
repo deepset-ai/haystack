@@ -221,7 +221,7 @@ class SentenceTransformersSparseDocumentEmbedder:
             texts_to_embed.append(text_to_embed)
 
         embeddings = self.embedding_backend.embed(
-            texts_to_embed, batch_size=self.batch_size, show_progress_bar=self.progress_bar
+            data=texts_to_embed, batch_size=self.batch_size, show_progress_bar=self.progress_bar
         )
 
         for doc, emb in zip(documents, embeddings):

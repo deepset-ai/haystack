@@ -86,7 +86,7 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
         )
 
     def embed(self, *, data: list[str], **kwargs) -> list[SparseEmbedding]:
-        embeddings = self.model.encode(data, **kwargs).coalesce()
+        embeddings = self.model.encode(data, **kwargs).coalesce()  # type: ignore[attr-defined]
 
         # Extract the row indices, column indices, values, and batch size from the sparse tensor embeddings
         rows, columns = embeddings.indices()
