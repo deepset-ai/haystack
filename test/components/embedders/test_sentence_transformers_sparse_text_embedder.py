@@ -228,9 +228,11 @@ class TestSentenceTransformersSparseTextEmbedder:
     def test_run(self):
         embedder = SentenceTransformersSparseTextEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: [
-            SparseEmbedding(indices=[1, 3], values=[0.5, 0.7]) for _ in range(len(x))
-        ]
+
+        def fake_embed(data, **kwargs):
+            return [SparseEmbedding(indices=[1, 3], values=[0.5, 0.7]) for _ in range(len(data))]
+
+        embedder.embedding_backend.embed = fake_embed
 
         text = "a nice text to embed"
 

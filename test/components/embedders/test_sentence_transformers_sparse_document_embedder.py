@@ -243,9 +243,11 @@ class TestSentenceTransformersDocumentEmbedder:
     def test_run(self):
         embedder = SentenceTransformersSparseDocumentEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
-        embedder.embedding_backend.embed = lambda x, **kwargs: [
-            SparseEmbedding(indices=[0, 2, 5], values=[0.1, 0.2, 0.3]) for _ in range(len(x))
-        ]
+
+        def fake_embed(data, **kwargs):
+            return [SparseEmbedding(indices=[0, 2, 5], values=[0.1, 0.2, 0.3]) for _ in range(len(data))]
+
+        embedder.embedding_backend.embed = fake_embed
 
         documents = [Document(content=f"document number {i}") for i in range(5)]
 
@@ -283,7 +285,7 @@ class TestSentenceTransformersDocumentEmbedder:
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
         embedder.run(documents=documents)
         embedder.embedding_backend.embed.assert_called_once_with(
-            [
+            data=[
                 "meta_value 0\ndocument number 0",
                 "meta_value 1\ndocument number 1",
                 "meta_value 2\ndocument number 2",
@@ -306,7 +308,7 @@ class TestSentenceTransformersDocumentEmbedder:
         documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
         embedder.run(documents=documents)
         embedder.embedding_backend.embed.assert_called_once_with(
-            [
+            data=[
                 "my_prefix meta_value 0\ndocument number 0 my_suffix",
                 "my_prefix meta_value 1\ndocument number 1 my_suffix",
                 "my_prefix meta_value 2\ndocument number 2 my_suffix",
