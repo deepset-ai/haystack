@@ -10,6 +10,7 @@ import torch
 from haystack.components.embedders.backends.sentence_transformers_sparse_backend import (
     _SentenceTransformersSparseEmbeddingBackendFactory,
 )
+from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.utils.auth import Secret
 
 
@@ -64,3 +65,37 @@ def test_sparse_embedding_function_with_kwargs(mock_sparse_encoder):
     embedding_backend.embed(data=data, attn_implementation="sdpa")
 
     embedding_backend.model.encode.assert_called_once_with(data, attn_implementation="sdpa")
+
+
+@patch("haystack.components.embedders.backends.sentence_transformers_sparse_backend.SparseEncoder")
+def test_sparse_embedding_function(mock_sparse_encoder):
+    """
+    Test that the backend's embed method returns the correct sparse embeddings.
+    """
+
+    # Ensure the factory cache is cleared before each test.
+    _SentenceTransformersSparseEmbeddingBackendFactory._instances = {}
+
+    # Mocking the sparse tensor output from the model's encode method
+    indices = torch.tensor([[0, 0, 1], [1, 4, 2]])  # (row, col) indices for a batch of 2
+    values = torch.tensor([0.5, 0.8, 0.3])
+    shape = (2, 5)  # Batch size of 2, dimension of 5
+    mock_sparse_tensor = torch.sparse_coo_tensor(indices, values, shape)
+    mock_sparse_encoder.return_value.encode.return_value = mock_sparse_tensor
+
+    # Get the embedding backend
+    embedding_backend = _SentenceTransformersSparseEmbeddingBackendFactory.get_embedding_backend(model="model")
+
+    # Embed dummy data
+    data = ["sentence1", "sentence2"]
+    sparse_embeddings = embedding_backend.embed(data=data)
+    # Expected output
+    expected_embeddings = [
+        SparseEmbedding(indices=[1, 4], values=[0.5, 0.8]),
+        SparseEmbedding(indices=[2], values=[0.3]),
+    ]
+
+    assert len(sparse_embeddings) == len(expected_embeddings)
+    for got, exp in zip(sparse_embeddings, expected_embeddings):
+        assert got.indices == exp.indices
+        assert got.values == pytest.approx(exp.values)
