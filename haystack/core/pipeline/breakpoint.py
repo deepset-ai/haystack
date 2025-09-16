@@ -23,8 +23,10 @@ from haystack.dataclasses.breakpoints import (
     ToolBreakpoint,
 )
 from haystack.utils.base_serialization import _serialize_value_with_schema
+from haystack.utils.misc import _get_output_dir
 
 if TYPE_CHECKING:
+    from haystack.components.agents.agent import _ExecutionContext
     from haystack.tools.tool import Tool
     from haystack.tools.toolset import Toolset
 
@@ -347,19 +349,48 @@ def _validate_tool_breakpoint_is_valid(
         raise ValueError(f"Tool '{tool_breakpoint.tool_name}' is not available in the agent's tools")
 
 
-def _trigger_chat_generator_breakpoint(
-    *, agent_snapshot: AgentSnapshot, parent_snapshot: Optional[PipelineSnapshot]
-) -> None:
+def _create_pipeline_snapshot_from_chat_generator(
+    *,
+    execution_context: "_ExecutionContext",
+    agent_name: Optional[str] = None,
+    break_point: Optional[AgentBreakpoint] = None,
+    parent_snapshot: Optional[PipelineSnapshot] = None,
+) -> PipelineSnapshot:
     """
-    Trigger a breakpoint before ChatGenerator execution in Agent.
+    Create a pipeline snapshot when a chat generator breakpoint is raised or an exception during execution occurs.
 
-    :param agent_snapshot: AgentSnapshot object containing the agent's state and breakpoints
-    :param parent_snapshot: Optional parent snapshot containing the state of the pipeline that houses the agent.
-    :raises BreakpointException: Always raised when this function is called, indicating a breakpoint has been triggered.
+    :param execution_context: The current execution context of the agent.
+    :param agent_name: The name of the agent component if present in a pipeline.
+    :param break_point: An optional AgentBreakpoint object. If provided, it will be used instead of creating a new one.
+        A scenario where a new breakpoint is created is when an exception occurs during chat generation and we want to
+        capture the state at that point.
+    :param parent_snapshot: An optional parent PipelineSnapshot to build upon.
+    :returns:
+        A PipelineSnapshot containing the state of the pipeline and agent at the point of the breakpoint or exception.
     """
+    if break_point is None:
+        agent_breakpoint = AgentBreakpoint(
+            agent_name=agent_name or "agent",
+            break_point=Breakpoint(
+                component_name="chat_generator",
+                visit_count=execution_context.component_visits["chat_generator"],
+                snapshot_file_path=_get_output_dir("pipeline_snapshot"),
+            ),
+        )
+    else:
+        agent_breakpoint = break_point
 
-    break_point = agent_snapshot.break_point.break_point
-
+    agent_snapshot = _create_agent_snapshot(
+        component_visits=execution_context.component_visits,
+        agent_breakpoint=agent_breakpoint,
+        component_inputs={
+            "chat_generator": {
+                "messages": execution_context.state.data["messages"],
+                **execution_context.chat_generator_inputs,
+            },
+            "tool_invoker": {"messages": [], "state": execution_context.state, **execution_context.tool_invoker_inputs},
+        },
+    )
     if parent_snapshot is None:
         # Create an empty pipeline snapshot if no parent snapshot is provided
         final_snapshot = PipelineSnapshot(
@@ -373,37 +404,118 @@ def _trigger_chat_generator_breakpoint(
         )
     else:
         final_snapshot = replace(parent_snapshot, agent_snapshot=agent_snapshot)
-    _save_pipeline_snapshot(pipeline_snapshot=final_snapshot)
 
+    return final_snapshot
+
+
+def _create_pipeline_snapshot_from_tool_invoker(
+    *,
+    execution_context: "_ExecutionContext",
+    tool_name: Optional[str] = None,
+    agent_name: Optional[str] = None,
+    break_point: Optional[AgentBreakpoint] = None,
+    parent_snapshot: Optional[PipelineSnapshot] = None,
+) -> PipelineSnapshot:
+    """
+    Create a pipeline snapshot when a tool invoker breakpoint is raised or an exception during execution occurs.
+
+    :param execution_context: The current execution context of the agent.
+    :param tool_name: The name of the tool that triggered the breakpoint, if available.
+    :param agent_name: The name of the agent component if present in a pipeline.
+    :param break_point: An optional AgentBreakpoint object. If provided, it will be used instead of creating a new one.
+        A scenario where a new breakpoint is created is when an exception occurs during tool execution and we want to
+        capture the state at that point.
+    :param parent_snapshot: An optional parent PipelineSnapshot to build upon.
+    :returns:
+        A PipelineSnapshot containing the state of the pipeline and agent at the point of the breakpoint or exception.
+    """
+    if break_point is None:
+        agent_breakpoint = AgentBreakpoint(
+            agent_name=agent_name or "agent",
+            break_point=ToolBreakpoint(
+                component_name="tool_invoker",
+                visit_count=execution_context.component_visits["tool_invoker"],
+                tool_name=tool_name,
+                snapshot_file_path=_get_output_dir("pipeline_snapshot"),
+            ),
+        )
+    else:
+        agent_breakpoint = break_point
+
+    messages = execution_context.state.data["messages"]
+    agent_snapshot = _create_agent_snapshot(
+        component_visits=execution_context.component_visits,
+        agent_breakpoint=agent_breakpoint,
+        component_inputs={
+            "chat_generator": {"messages": messages[:-1], **execution_context.chat_generator_inputs},
+            "tool_invoker": {
+                "messages": messages[-1:],  # tool invoker consumes last msg from the chat_generator, contains tool call
+                "state": execution_context.state,
+                **execution_context.tool_invoker_inputs,
+            },
+        },
+    )
+    if parent_snapshot is None:
+        # Create an empty pipeline snapshot if no parent snapshot is provided
+        final_snapshot = PipelineSnapshot(
+            pipeline_state=PipelineState(inputs={}, component_visits={}, pipeline_outputs={}),
+            timestamp=agent_snapshot.timestamp,
+            break_point=agent_snapshot.break_point,
+            agent_snapshot=agent_snapshot,
+            original_input_data={},
+            ordered_component_names=[],
+            include_outputs_from=set(),
+        )
+    else:
+        final_snapshot = replace(parent_snapshot, agent_snapshot=agent_snapshot)
+
+    return final_snapshot
+
+
+def _trigger_chat_generator_breakpoint(*, pipeline_snapshot: PipelineSnapshot) -> None:
+    """
+    Trigger a breakpoint before ChatGenerator execution in Agent.
+
+    :param pipeline_snapshot: PipelineSnapshot object containing the state of the pipeline and Agent snapshot.
+    :raises BreakpointException: Always raised when this function is called, indicating a breakpoint has been triggered.
+    """
+    if not isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
+        raise ValueError("PipelineSnapshot must contain an AgentBreakpoint to trigger a chat generator breakpoint.")
+
+    if not isinstance(pipeline_snapshot.agent_snapshot, AgentSnapshot):
+        raise ValueError("PipelineSnapshot must contain an AgentSnapshot to trigger a chat generator breakpoint.")
+
+    break_point = pipeline_snapshot.break_point.break_point
+    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
     msg = (
         f"Breaking at {break_point.component_name} visit count "
-        f"{agent_snapshot.component_visits[break_point.component_name]}"
+        f"{pipeline_snapshot.agent_snapshot.component_visits[break_point.component_name]}"
     )
     logger.info(msg)
     raise BreakpointException(
         message=msg,
         component=break_point.component_name,
-        inputs=agent_snapshot.component_inputs,
-        results=agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"],
+        inputs=pipeline_snapshot.agent_snapshot.component_inputs,
+        results=pipeline_snapshot.agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"],
     )
 
 
-def _handle_tool_invoker_breakpoint(
-    *, llm_messages: list[ChatMessage], agent_snapshot: AgentSnapshot, parent_snapshot: Optional[PipelineSnapshot]
-) -> None:
+def _trigger_tool_invoker_breakpoint(*, llm_messages: list[ChatMessage], pipeline_snapshot: PipelineSnapshot) -> None:
     """
     Check if a tool call breakpoint should be triggered before executing the tool invoker.
 
     :param llm_messages: List of ChatMessage objects containing potential tool calls.
-    :param agent_snapshot: AgentSnapshot object containing the agent's state and breakpoints.
-    :param parent_snapshot: Optional parent snapshot containing the state of the pipeline that houses the agent.
+    :param pipeline_snapshot: PipelineSnapshot object containing the state of the pipeline and Agent snapshot.
     :raises BreakpointException: If the breakpoint is triggered, indicating a breakpoint has been reached for a tool
         call.
     """
-    if not isinstance(agent_snapshot.break_point.break_point, ToolBreakpoint):
+    if not pipeline_snapshot.agent_snapshot:
+        raise ValueError("PipelineSnapshot must contain an AgentSnapshot to trigger a tool call breakpoint.")
+
+    if not isinstance(pipeline_snapshot.agent_snapshot.break_point.break_point, ToolBreakpoint):
         return
 
-    tool_breakpoint = agent_snapshot.break_point.break_point
+    tool_breakpoint = pipeline_snapshot.agent_snapshot.break_point.break_point
 
     # Check if we should break for this specific tool or all tools
     if tool_breakpoint.tool_name is None:
@@ -418,24 +530,11 @@ def _handle_tool_invoker_breakpoint(
     if not should_break:
         return  # No breakpoint triggered
 
-    if parent_snapshot is None:
-        # Create an empty pipeline snapshot if no parent snapshot is provided
-        final_snapshot = PipelineSnapshot(
-            pipeline_state=PipelineState(inputs={}, component_visits={}, pipeline_outputs={}),
-            timestamp=agent_snapshot.timestamp,
-            break_point=agent_snapshot.break_point,
-            agent_snapshot=agent_snapshot,
-            original_input_data={},
-            ordered_component_names=[],
-            include_outputs_from=set(),
-        )
-    else:
-        final_snapshot = replace(parent_snapshot, agent_snapshot=agent_snapshot)
-    _save_pipeline_snapshot(pipeline_snapshot=final_snapshot)
+    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
 
     msg = (
         f"Breaking at {tool_breakpoint.component_name} visit count "
-        f"{agent_snapshot.component_visits[tool_breakpoint.component_name]}"
+        f"{pipeline_snapshot.agent_snapshot.component_visits[tool_breakpoint.component_name]}"
     )
     if tool_breakpoint.tool_name:
         msg += f" for tool {tool_breakpoint.tool_name}"
@@ -444,6 +543,6 @@ def _handle_tool_invoker_breakpoint(
     raise BreakpointException(
         message=msg,
         component=tool_breakpoint.component_name,
-        inputs=agent_snapshot.component_inputs,
-        results=agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"],
+        inputs=pipeline_snapshot.agent_snapshot.component_inputs,
+        results=pipeline_snapshot.agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"],
     )
