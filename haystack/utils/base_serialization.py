@@ -320,7 +320,11 @@ def _deserialize_value(value: Any) -> Any:  # pylint: disable=too-many-return-st
         if t in ("null", "boolean", "integer", "number", "string"):
             return payload
 
-        # 1.d) Custom class
+        # 1.d) Callable
+        if t == "typing.Callable":
+            return deserialize_callable(payload)
+
+        # 1.e) Custom class
         cls = import_class_by_name(t)
         # first, recursively deserialize the inner payload
         deserialized_payload = {k: _deserialize_value(v) for k, v in payload.items()}
