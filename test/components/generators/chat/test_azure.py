@@ -380,7 +380,9 @@ class TestAzureOpenAIChatGenerator:
             event_date: str
             event_location: str
 
-        chat_messages = [ChatMessage.from_user("Give me information about the 20th Nobel Peace Prize.")]
+        chat_messages = [
+            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+        ]
         component = AzureOpenAIChatGenerator(
             api_version="2024-08-01-preview", generation_kwargs={"response_format": CalendarEvent}
         )
@@ -388,7 +390,7 @@ class TestAzureOpenAIChatGenerator:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "Nobel Peace Prize" in msg["event_name"]
+        assert "Marketing Summit" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 

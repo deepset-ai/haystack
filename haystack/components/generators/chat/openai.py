@@ -146,7 +146,7 @@ class OpenAIChatGenerator:
                 If provided, the output will always be validated against this
                 format (unless the model returns a tool call).
                 For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
-                Note:
+                Notes:
                 - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
                   Older models only support basic version of structured outputs through `{"type": "json_object"}`.
                   For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
@@ -215,10 +215,11 @@ class OpenAIChatGenerator:
             The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
-        response_format = self.generation_kwargs.get("response_format")
+        generation_kwargs = self.generation_kwargs.copy()
+        response_format = generation_kwargs.get("response_format")
 
-        # If the response format is a Pydantic model, its converted to openai's json schema format
-        # If its already a json schema, it's left as is
+        # If the response format is a Pydantic model, it's converted to openai's json schema format
+        # If it's already a json schema, it's left as is
         if response_format and issubclass(response_format, BaseModel):
             json_schema = {
                 "type": "json_schema",
@@ -228,7 +229,7 @@ class OpenAIChatGenerator:
                     "schema": to_strict_json_schema(response_format),
                 },
             }
-            self.generation_kwargs["response_format"] = json_schema
+            generation_kwargs["response_format"] = json_schema
 
         return default_to_dict(
             self,
@@ -236,7 +237,7 @@ class OpenAIChatGenerator:
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
             organization=self.organization,
-            generation_kwargs=self.generation_kwargs,
+            generation_kwargs=generation_kwargs,
             api_key=self.api_key.to_dict(),
             timeout=self.timeout,
             max_retries=self.max_retries,
@@ -313,10 +314,8 @@ class OpenAIChatGenerator:
             tools_strict=tools_strict,
         )
         openai_endpoint = api_args.pop("openai_endpoint")
-        if openai_endpoint == "parse":
-            chat_completion = self.client.chat.completions.parse(**api_args)
-        else:
-            chat_completion = self.client.chat.completions.create(**api_args)
+        openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
+        chat_completion = openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
@@ -430,7 +429,13 @@ class OpenAIChatGenerator:
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
-        response_format = generation_kwargs.get("response_format") if generation_kwargs else None
+
+        is_streaming = streaming_callback is not None
+        num_responses = generation_kwargs.pop("n", 1)
+
+        if is_streaming and num_responses > 1:
+            raise ValueError("Cannot stream multiple responses, please set n=1.")
+        response_format = generation_kwargs.pop("response_format", None)
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
@@ -452,39 +457,29 @@ class OpenAIChatGenerator:
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
 
-        is_streaming = streaming_callback is not None
-        num_responses = generation_kwargs.pop("n", 1)
+        base_args = {
+            "model": self.model,
+            "messages": openai_formatted_messages,
+            "n": num_responses,
+            **openai_tools,
+            **generation_kwargs,
+        }
 
         if response_format and not is_streaming:
             # for structured outputs without streaming, we use openai's parse endpoint
             # Note: `stream` cannot be passed to chat.completions.parse
             # we pass a key `openai_endpoint` as a hint to the run method to use the parse endpoint
             # this key will be removed before the API call is made
-            return {
-                "model": self.model,
-                "messages": openai_formatted_messages,
-                "n": num_responses,
-                "response_format": response_format,
-                "openai_endpoint": "parse",
-                **openai_tools,
-                **generation_kwargs,
-            }
-
-        if is_streaming and num_responses > 1:
-            raise ValueError("Cannot stream multiple responses, please set n=1.")
+            return {**base_args, "response_format": response_format, "openai_endpoint": "parse"}
 
         # for structured outputs with streaming, we use openai's create endpoint
         # we pass a key `openai_endpoint` as a hint to the run method to use the create endpoint
         # this key will be removed before the API call is made
         return {
-            "model": self.model,
-            "messages": openai_formatted_messages,
+            **base_args,
             "stream": streaming_callback is not None,
-            "n": num_responses,
             "response_format": response_format,
             "openai_endpoint": "create",
-            **openai_tools,
-            **generation_kwargs,
         }
 
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:
@@ -572,10 +567,7 @@ def _convert_chat_completion_to_chat_message(
             "usage": _serialize_usage(completion.usage),
         },
     )
-    # Using pdantic with structured output, openai also returns the message.parsed
-    # return the parsed message in the meta
-    if isinstance(message, ParsedChatCompletionMessage) and message.parsed:
-        chat_message.meta["parsed"] = message.parsed
+
     return chat_message
 
 

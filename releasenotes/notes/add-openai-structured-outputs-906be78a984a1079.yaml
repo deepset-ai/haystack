@@ -24,7 +24,9 @@ features:
     )
 
     response = client.run(messages=[
-        ChatMessage.from_user("Give me information about the 20th Nobel Peace Prize winner.")
+        ChatMessage.from_user("In 2021, American scientist David Julius received the Nobel Prize in
+        Physiology or Medicine for his groundbreaking discoveries on how the human body
+        senses temperature and touch.")
     ])
     print(response)
 

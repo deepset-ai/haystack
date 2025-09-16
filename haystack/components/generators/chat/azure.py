@@ -129,7 +129,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
                 If provided, the output will always be validated against this
                 format (unless the model returns a tool call).
                 For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
-                Note:
+                Notes:
                 - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
                   Older models only support basic version of structured outputs through `{"type": "json_object"}`.
                   For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
@@ -213,9 +213,10 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         azure_ad_token_provider_name = None
         if self.azure_ad_token_provider:
             azure_ad_token_provider_name = serialize_callable(self.azure_ad_token_provider)
-        # If the response format is a Pydantic model, its converted to openai's json schema format
-        # If its already a json schema, it's left as is
-        response_format = self.generation_kwargs.get("response_format")
+        # If the response format is a Pydantic model, it's converted to openai's json schema format
+        # If it's already a json schema, it's left as is
+        generation_kwargs = self.generation_kwargs.copy()
+        response_format = generation_kwargs.get("response_format")
         if response_format and issubclass(response_format, BaseModel):
             json_schema = {
                 "type": "json_schema",
@@ -225,7 +226,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
                     "schema": to_strict_json_schema(response_format),
                 },
             }
-            self.generation_kwargs["response_format"] = json_schema
+            generation_kwargs["response_format"] = json_schema
         return default_to_dict(
             self,
             azure_endpoint=self.azure_endpoint,
@@ -233,7 +234,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             organization=self.organization,
             api_version=self.api_version,
             streaming_callback=callback_name,
-            generation_kwargs=self.generation_kwargs,
+            generation_kwargs=generation_kwargs,
             timeout=self.timeout,
             max_retries=self.max_retries,
             api_key=self.api_key.to_dict() if self.api_key is not None else None,
