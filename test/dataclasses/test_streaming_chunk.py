@@ -5,7 +5,14 @@
 import pytest
 
 from haystack import Pipeline, component
-from haystack.dataclasses import ComponentInfo, FinishReason, StreamingChunk, ToolCall, ToolCallDelta, ToolCallResult
+from haystack.dataclasses import (
+    ComponentInfo,
+    ReasoningContent,
+    StreamingChunk,
+    ToolCall,
+    ToolCallDelta,
+    ToolCallResult,
+)
 
 
 @component
@@ -75,17 +82,30 @@ def test_create_chunk_with_content_and_tool_call_result():
         )
 
 
+def test_create_chunk_with_content_and_reasoning():
+    with pytest.raises(ValueError, match="Only one of `content`, `tool_call`, `tool_call_result`"):
+        StreamingChunk(
+            content="Test content", meta={"key": "value"}, reasoning=ReasoningContent(reasoning_text="thinking")
+        )
+
+
+def test_reasoning_and_no_index():
+    with pytest.raises(
+        ValueError, match="If `tool_call`, `tool_call_result` or `reasoning` is set, `index` must also be set."
+    ):
+        StreamingChunk(content="", meta={"key": "value"}, reasoning=ReasoningContent(reasoning_text="thinking"))
+
+
 def test_component_info_from_component():
-    component = ExampleComponent()
-    component_info = ComponentInfo.from_component(component)
+    component_info = ComponentInfo.from_component(ExampleComponent())
     assert component_info.type == "test_streaming_chunk.ExampleComponent"
 
 
 def test_component_info_from_component_with_name_from_pipeline():
     pipeline = Pipeline()
-    component = ExampleComponent()
-    pipeline.add_component("pipeline_component", component)
-    component_info = ComponentInfo.from_component(component)
+    comp = ExampleComponent()
+    pipeline.add_component("pipeline_component", comp)
+    component_info = ComponentInfo.from_component(comp)
     assert component_info.type == "test_streaming_chunk.ExampleComponent"
     assert component_info.name == "pipeline_component"
 
@@ -139,8 +159,7 @@ def test_finish_reason_tool_call_results():
 
 def test_to_dict_tool_call_result():
     """Test the to_dict method for StreamingChunk with tool_call_result."""
-    component = ExampleComponent()
-    component_info = ComponentInfo.from_component(component)
+    component_info = ComponentInfo.from_component(ExampleComponent())
     tool_call_result = ToolCallResult(
         result="output", origin=ToolCall(id="123", tool_name="test_tool", arguments={"arg1": "value1"}), error=False
     )
@@ -165,12 +184,12 @@ def test_to_dict_tool_call_result():
     assert d["tool_call_result"]["origin"]["id"] == "123"
     assert d["tool_call_result"]["origin"]["arguments"]["arg1"] == "value1"
     assert d["finish_reason"] == "tool_call_results"
+    assert d["reasoning"] is None
 
 
 def test_to_dict_tool_calls():
     """Test the to_dict method for StreamingChunk with tool_calls."""
-    component = ExampleComponent()
-    component_info = ComponentInfo.from_component(component)
+    component_info = ComponentInfo.from_component(ExampleComponent())
     tool_calls = [
         ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0),
         ToolCallDelta(id="456", tool_name="another_tool", arguments='{"arg2": "value2"}', index=1),
@@ -197,6 +216,34 @@ def test_to_dict_tool_calls():
     assert d["tool_calls"][1]["id"] == "456"
     assert d["tool_calls"][1]["index"] == 1
     assert d["finish_reason"] == "tool_calls"
+    assert d["reasoning"] is None
+
+
+def test_to_dict_reasoning():
+    """Test the to_dict method for StreamingChunk with reasoning."""
+    component_info = ComponentInfo.from_component(ExampleComponent())
+    reasoning = ReasoningContent(reasoning_text="thinking", extra={"step": 1})
+
+    chunk = StreamingChunk(
+        content="",
+        meta={"key": "value"},
+        index=0,
+        component_info=component_info,
+        reasoning=reasoning,
+        finish_reason="stop",
+    )
+
+    d = chunk.to_dict()
+
+    assert d["content"] == ""
+    assert d["meta"] == {"key": "value"}
+    assert d["index"] == 0
+    assert d["component_info"]["type"] == "test_streaming_chunk.ExampleComponent"
+    assert d["reasoning"]["reasoning_text"] == "thinking"
+    assert d["reasoning"]["extra"]["step"] == 1
+    assert d["finish_reason"] == "stop"
+    assert d["tool_calls"] is None
+    assert d["tool_call_result"] is None
 
 
 def test_from_dict_tool_call_result():
@@ -227,6 +274,7 @@ def test_from_dict_tool_call_result():
     assert chunk.tool_call_result.result == "output"
     assert chunk.tool_call_result.error is False
     assert chunk.tool_call_result.origin.id == "123"
+    assert chunk.reasoning is None
 
 
 def test_from_dict_tool_calls():
@@ -253,3 +301,32 @@ def test_from_dict_tool_calls():
     assert chunk.tool_calls[0].tool_name == "test_tool"
     assert chunk.tool_calls[0].index == 0
     assert chunk.finish_reason == "tool_calls"
+    assert chunk.reasoning is None
+
+
+def test_from_dict_reasoning():
+    """Test the from_dict method for StreamingChunk with reasoning."""
+    component_info = {"type": "test_streaming_chunk.ExampleComponent", "name": "test_component"}
+    reasoning = {"reasoning_text": "thinking", "extra": {"step": 1}}
+
+    data = {
+        "content": "",
+        "meta": {"key": "value"},
+        "index": 0,
+        "component_info": component_info,
+        "reasoning": reasoning,
+        "finish_reason": "stop",
+    }
+
+    chunk = StreamingChunk.from_dict(data)
+
+    assert chunk.content == ""
+    assert chunk.meta == {"key": "value"}
+    assert chunk.index == 0
+    assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
+    assert chunk.component_info.name == "test_component"
+    assert chunk.reasoning.reasoning_text == "thinking"
+    assert chunk.reasoning.extra["step"] == 1
+    assert chunk.finish_reason == "stop"
+    assert chunk.tool_calls is None
+    assert chunk.tool_call_result is None
