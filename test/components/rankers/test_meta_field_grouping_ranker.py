@@ -97,7 +97,7 @@ class TestMetaFieldGroupingRanker:
         """
         Test if the MetaFieldGroupingRanker component can handle list values in the metadata.
         """
-        ranker = MetaFieldGroupingRanker(group_by="value_list", subgroup_by="subvaluelist", sort_docs_by="split_id")
+        ranker = MetaFieldGroupingRanker(group_by="value_list", subgroup_by="sub_value_list", sort_docs_by="split_id")
         result = ranker.run(documents=DOC_LIST)
         assert "documents" in result
         assert len(DOC_LIST) == len(result["documents"])
