@@ -86,20 +86,19 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
         )
 
     def embed(self, *, data: list[str], **kwargs) -> list[SparseEmbedding]:
-        embeddings = self.model.encode(data, **kwargs).coalesce()  # type: ignore[attr-defined]
-
-        # Extract the row indices, column indices, values, and batch size from the sparse tensor embeddings
-        rows, columns = embeddings.indices()
-        values = embeddings.values()
-        batch_size = embeddings.size(0)
+        embeddings_list = self.model.encode(
+            data,
+            convert_to_tensor=False,  # output is a list of individual tensors
+            convert_to_sparse_tensor=True,
+            **kwargs,
+        )
 
         sparse_embeddings: list[SparseEmbedding] = []
-        for embedding in range(batch_size):
-            # For each embedding in the batch, create a mask to select its corresponding indices and values
-            mask = rows == embedding
-            # Extract the column indices and values for the current embedding in the batch
-            embedding_columns = columns[mask].tolist()
-            embedding_values = values[mask].tolist()
-            sparse_embeddings.append(SparseEmbedding(indices=embedding_columns, values=embedding_values))
+        for embedding_tensor in embeddings_list:
+            # encode returns a list of tensors with the parameters above, but the type hint is too broad
+            embedding_tensor = embedding_tensor.coalesce()  # type: ignore[union-attr]
+            indices = embedding_tensor.indices()[0].tolist()  # Only column indices
+            values = embedding_tensor.values().tolist()
+            sparse_embeddings.append(SparseEmbedding(indices=indices, values=values))
 
         return sparse_embeddings

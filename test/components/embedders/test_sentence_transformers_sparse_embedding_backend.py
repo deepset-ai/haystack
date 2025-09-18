@@ -74,8 +74,6 @@ def test_sparse_embedding_function(mock_sparse_encoder):
     # Ensure the factory cache is cleared before each test.
     _SentenceTransformersSparseEmbeddingBackendFactory._instances = {}
 
-    # size = (5,)
-
     tensors = [
         torch.sparse_coo_tensor(torch.tensor([[1, 4]]), torch.tensor([0.5, 0.8])),
         torch.sparse_coo_tensor(torch.tensor([[2]]), torch.tensor([0.3])),

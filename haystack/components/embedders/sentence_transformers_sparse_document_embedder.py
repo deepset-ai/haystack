@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Literal, Optional
+from dataclasses import replace
+from typing import Any, Literal, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_sparse_backend import (
@@ -224,7 +225,8 @@ class SentenceTransformersSparseDocumentEmbedder:
             data=texts_to_embed, batch_size=self.batch_size, show_progress_bar=self.progress_bar
         )
 
+        documents_with_embeddings = []
         for doc, emb in zip(documents, embeddings):
-            doc.sparse_embedding = emb
+            documents_with_embeddings.append(replace(doc, sparse_embedding=emb))
 
-        return {"documents": documents}
+        return {"documents": documents_with_embeddings}
