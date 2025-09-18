@@ -291,13 +291,15 @@ class Agent:
         elif isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             if not self.tools:
                 raise ValueError("No tools were configured for the Agent at initialization.")
-            tool_names = {tool.name for tool in self.tools}
-            invalid_tool_names = [t for t in tools if t not in tool_names]
+            selected_tool_names: list[str] = tools
+            valid_tool_names = {tool.name for tool in self.tools}
+            invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
             if invalid_tool_names:
                 raise ValueError(
-                    f"The following tool names are not valid: {invalid_tool_names}. Valid tool names are: {tool_names}."
+                    f"The following tool names are not valid: {invalid_tool_names}. "
+                    f"Valid tool names are: {valid_tool_names}."
                 )
-            selected_tools = [tool for tool in self.tools if tool.name in tools]
+            selected_tools = [tool for tool in self.tools if tool.name in selected_tool_names]
         elif tools is not None:
             raise TypeError("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")
 
