@@ -195,6 +195,7 @@ class TestToolInvokerSerde:
                 "convert_result_to_json_string": False,
                 "enable_streaming_callback_passthrough": False,
                 "streaming_callback": None,
+                "max_workers": 4,
             },
         }
 
@@ -215,6 +216,7 @@ class TestToolInvokerSerde:
                 "convert_result_to_json_string": True,
                 "enable_streaming_callback_passthrough": True,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
+                "max_workers": 4,
             },
         }
 
@@ -295,6 +297,7 @@ class TestToolInvokerSerde:
                         "convert_result_to_json_string": False,
                         "enable_streaming_callback_passthrough": False,
                         "streaming_callback": None,
+                        "max_workers": 4,
                     },
                 },
                 "chatgenerator": {
