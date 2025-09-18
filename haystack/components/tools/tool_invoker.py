@@ -558,9 +558,11 @@ class ToolInvoker:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
 
-        tool_messages = []
+        if not messages_with_tool_calls:
+            return {"tool_messages": [], "state": state}
 
         # 1) Collect all tool calls and their parameters for parallel execution
+        tool_messages = []
         tool_calls, tool_call_params, error_messages = self._prepare_tool_call_params(
             messages_with_tool_calls=messages_with_tool_calls,
             state=state,
@@ -570,56 +572,56 @@ class ToolInvoker:
         )
         tool_messages.extend(error_messages)
 
+        if not tool_call_params:
+            return {"tool_messages": tool_messages, "state": state}
+
         # 2) Execute valid tool calls in parallel
-        if tool_call_params:
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                futures = []
-                for params in tool_call_params:
-                    callable_ = self._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
-                    future = executor.submit(callable_)
-                    futures.append(future)
-                # 3) Gather and process results: handle errors and merge outputs into state
-                for future, tool_call in zip(futures, tool_calls):
-                    result = future.result()
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = []
+            for params in tool_call_params:
+                callable_ = self._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
+                future = executor.submit(callable_)
+                futures.append(future)
+            # 3) Gather and process results: handle errors and merge outputs into state
+            for future, tool_call in zip(futures, tool_calls):
+                result = future.result()
 
-                    if isinstance(result, ToolInvocationError):
-                        # a) This is an error, create error Tool message
-                        error_message = self._handle_error(result)
-                        error_chat_message = ChatMessage.from_tool(
-                            tool_result=error_message, origin=tool_call, error=True
-                        )
-                        tool_messages.append(error_chat_message)
-                    else:
-                        # b) In case of success, merge outputs into state
-                        tool_to_invoke = tools_with_names[tool_call.tool_name]
+                if isinstance(result, ToolInvocationError):
+                    # a) This is an error, create error Tool message
+                    tool_messages.append(
+                        ChatMessage.from_tool(tool_result=self._handle_error(result), origin=tool_call, error=True)
+                    )
+                else:
+                    # b) In case of success, merge outputs into state
+                    tool_to_invoke = tools_with_names[tool_call.tool_name]
 
+                    try:
+                        self._merge_tool_outputs(tool=tool_to_invoke, result=result, state=state)
+                    except Exception as e:
                         try:
-                            self._merge_tool_outputs(tool=tool_to_invoke, result=result, state=state)
-                        except Exception as e:
-                            try:
-                                error_message = self._handle_error(
-                                    ToolOutputMergeError(
-                                        f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
-                                    )
+                            error_message = self._handle_error(
+                                ToolOutputMergeError(
+                                    f"Failed to merge tool outputs from tool {tool_call.tool_name} into State: {e}"
                                 )
-                                tool_messages.append(
-                                    ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
-                                )
-                                continue
-                            except ToolOutputMergeError as propagated_e:
-                                # Re-raise with proper error chain
-                                raise propagated_e from e
-                        tool_messages.append(
-                            self._prepare_tool_result_message(
-                                result=result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
                             )
+                            tool_messages.append(
+                                ChatMessage.from_tool(tool_result=error_message, origin=tool_call, error=True)
+                            )
+                            continue
+                        except ToolOutputMergeError as propagated_e:
+                            # Re-raise with proper error chain
+                            raise propagated_e from e
+                    tool_messages.append(
+                        self._prepare_tool_result_message(
+                            result=result, tool_call=tool_call, tool_to_invoke=tool_to_invoke
                         )
+                    )
 
-                    # c) Handle streaming callback
-                    if streaming_callback is not None:
-                        streaming_callback(
-                            self._create_tool_result_streaming_chunk(tool_messages=tool_messages, tool_call=tool_call)
-                        )
+                # c) Handle streaming callback
+                if streaming_callback is not None:
+                    streaming_callback(
+                        self._create_tool_result_streaming_chunk(tool_messages=tool_messages, tool_call=tool_call)
+                    )
 
         # We stream one more chunk that contains a finish_reason if tool_messages were generated
         if len(tool_messages) > 0 and streaming_callback is not None:
