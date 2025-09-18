@@ -258,6 +258,7 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT],
         requires_async: bool,
         system_prompt: Optional[str] = None,
+        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
         **kwargs,
     ) -> _ExecutionContext:
         """
@@ -267,6 +268,7 @@ class Agent:
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
+        :param tools: (Optional) List of Tool objects, a Toolset, or list of tool names to use for this run.
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
         system_prompt = system_prompt or self.system_prompt
@@ -283,8 +285,24 @@ class Agent:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
 
+        selected_tools: list[Tool] | Toolset = self.tools
+        if isinstance(tools, Toolset) or isinstance(tools, list) and all(isinstance(t, Tool) for t in tools):
+            selected_tools = tools
+        elif isinstance(tools, list) and all(isinstance(t, str) for t in tools):
+            if not self.tools:
+                raise ValueError("No tools were configured for the Agent at initialization.")
+            tool_names = {tool.name for tool in self.tools}
+            invalid_tool_names = [t for t in tools if t not in tool_names]
+            if invalid_tool_names:
+                raise ValueError(
+                    f"The following tool names are not valid: {invalid_tool_names}. Valid tool names are: {tool_names}."
+                )
+            selected_tools = [tool for tool in self.tools if tool.name in tools]
+        elif tools is not None:
+            raise TypeError("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")
+
         tool_invoker_inputs: dict[str, Any] = {}
-        generator_inputs: dict[str, Any] = {"tools": self.tools}
+        generator_inputs: dict[str, Any] = {"tools": selected_tools}
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
@@ -427,6 +445,7 @@ class Agent:
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
+        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -440,6 +459,7 @@ class Agent:
         :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
             the relevant information to restart the Agent execution from where it left off.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
+        :param tools: (Optional) List of Tool objects, a Toolset, or list of tool names to use for this run.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -471,6 +491,7 @@ class Agent:
                 streaming_callback=streaming_callback,
                 requires_async=False,
                 system_prompt=system_prompt,
+                tools=tools,
                 **kwargs,
             )
 
