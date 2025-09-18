@@ -106,7 +106,7 @@ class Tool:
             result = self.function(**kwargs)
         except Exception as e:
             raise ToolInvocationError(
-                f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}"
+                f"Failed to invoke Tool `{self.name}` with parameters {kwargs}. Error: {e}", tool_name=self.name
             ) from e
         return result
 

@@ -75,6 +75,15 @@ class Pipeline(PipelineBase):
                 # This is important when Agent components internally use Pipeline._run_component
                 # and trigger breakpoints that need to bubble up to the main pipeline
                 raise error
+
+            # Any components that internally use Pipeline._run_component could raise a PipelineRuntimeError with
+            # additional context (e.g. Agent raises an agent snapshot) so we re-raise here instead of wrapping it in
+            # another PipelineRuntimeError
+
+            except PipelineRuntimeError as runtime_error:
+                raise runtime_error
+
+            # Catch all other exceptions and wrap them in a PipelineRuntimeError
             except Exception as error:
                 raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
 
@@ -390,15 +399,16 @@ class Pipeline(PipelineBase):
                         parent_span=span,
                     )
                 except PipelineRuntimeError as error:
-                    # Create a snapshot of the last good state of the pipeline before the error occurred.
-                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
-                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
                     out_dir = _get_output_dir("pipeline_snapshot")
                     break_point = Breakpoint(
                         component_name=component_name,
                         visit_count=component_visits[component_name],
                         snapshot_file_path=out_dir,
                     )
+
+                    # Create a snapshot of the last good state of the pipeline before the error occurred.
+                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
+                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
                     last_good_state_snapshot = _create_pipeline_snapshot(
                         inputs=pipeline_snapshot_inputs_serialised,
                         break_point=break_point,
@@ -408,8 +418,17 @@ class Pipeline(PipelineBase):
                         include_outputs_from=include_outputs_from,
                         pipeline_outputs=pipeline_outputs,
                     )
-                    # Attach the last good state snapshot to the error before re-raising and saving to disk
+
+                    # If the pipeline_snapshot already exists it came from an Agent component.
+                    # We take the agent snapshot and attach it to the pipeline snapshot we create here.
+                    # We also update the break_point to be an AgentBreakpoint.
+                    if error.pipeline_snapshot and error.pipeline_snapshot.agent_snapshot:
+                        last_good_state_snapshot.agent_snapshot = error.pipeline_snapshot.agent_snapshot
+                        last_good_state_snapshot.break_point = error.pipeline_snapshot.agent_snapshot.break_point
+
+                    # Attach the last good state snapshot to the error before re-raising it and saving to disk
                     error.pipeline_snapshot = last_good_state_snapshot
+
                     try:
                         _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot)
                         logger.info(
