@@ -704,8 +704,7 @@ class ToolInvoker:
             for params in tool_call_params:
                 loop = asyncio.get_running_loop()
                 callable_ = ToolInvoker._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
-                task = await loop.run_in_executor(executor, callable_)
-                tool_call_tasks.append(task)
+                tool_call_tasks.append(loop.run_in_executor(executor, callable_))
 
             # 3) Gather and process results: handle errors and merge outputs into state
             tool_results = await asyncio.gather(*tool_call_tasks)
