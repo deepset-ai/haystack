@@ -184,6 +184,16 @@ class TestComponentTool:
             "description": "A simple component that generates text.",
         }
 
+    def test_from_component_with_inputs_from_state_different_names(self):
+        tool = ComponentTool(component=SimpleComponent(), inputs_from_state={"state_text": "text"})
+        assert tool.inputs_from_state == {"state_text": "text"}
+        # Inputs should be excluded from schema generation
+        assert tool.parameters == {
+            "type": "object",
+            "properties": {},
+            "description": "A simple component that generates text.",
+        }
+
     def test_from_component_with_outputs_to_state(self):
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
         assert tool.outputs_to_state == {"replies": {"source": "reply"}}
