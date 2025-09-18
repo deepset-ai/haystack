@@ -301,7 +301,7 @@ class Agent:
         elif tools is not None:
             raise TypeError("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")
 
-        tool_invoker_inputs: dict[str, Any] = {}
+        tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
         generator_inputs: dict[str, Any] = {"tools": selected_tools}
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
