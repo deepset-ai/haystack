@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import random
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -277,6 +276,11 @@ class TestSentenceTransformersDocumentEmbedder:
         ):
             embedder.run(documents=list_integers_input)
 
+    def test_run_no_warmup(self):
+        embedder = SentenceTransformersSparseDocumentEmbedder(model="model")
+        with pytest.raises(RuntimeError, match="The embedding model has not been loaded."):
+            embedder.run(documents=[Document(content="test")])
+
     def test_embed_metadata(self):
         embedder = SentenceTransformersSparseDocumentEmbedder(
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
@@ -404,8 +408,6 @@ class TestSentenceTransformersDocumentEmbedder:
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_sparse_document_embedder(self):
-        pytest.importorskip("sentence_transformers", reason="sentence-transformers is required for this test")
-
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),

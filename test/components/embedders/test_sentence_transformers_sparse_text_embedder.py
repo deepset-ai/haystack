@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import random
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -202,7 +201,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         )
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
-        embedder.embedding_backend.model.max_seq_length = 512
+
         mocked_factory.get_embedding_backend.assert_called_once_with(
             model="model",
             device="cpu",
@@ -224,6 +223,11 @@ class TestSentenceTransformersSparseTextEmbedder:
         embedder.warm_up()
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once()
+
+    def test_run_no_warmup(self):
+        embedder = SentenceTransformersSparseTextEmbedder(model="model")
+        with pytest.raises(RuntimeError, match="The embedding model has not been loaded"):
+            embedder.run(text="a nice text to embed")
 
     def test_run(self):
         embedder = SentenceTransformersSparseTextEmbedder(model="model")
@@ -337,8 +341,6 @@ class TestSentenceTransformersSparseTextEmbedder:
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_sparse_text_embedder(self):
-        pytest.importorskip("sentence_transformers", reason="sentence-transformers is required for this test")
-
         text = "I love Nine Inch Nails"
         embedder = SentenceTransformersSparseTextEmbedder(
             model="naver/splade-cocondenser-ensembledistil", device=ComponentDevice.from_str("cpu")

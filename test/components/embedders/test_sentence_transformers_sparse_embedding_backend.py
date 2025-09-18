@@ -55,16 +55,14 @@ def test_sparse_model_initialization(mock_sparse_encoder):
 
 @patch("haystack.components.embedders.backends.sentence_transformers_sparse_backend.SparseEncoder")
 def test_sparse_embedding_function_with_kwargs(mock_sparse_encoder):
-    indices = torch.tensor([[0, 1], [1, 3]])
-    values = torch.tensor([0.5, 0.7])
-    mock_sparse_encoder.return_value.encode.return_value = torch.sparse_coo_tensor(indices, values, (2, 5))
-
     embedding_backend = _SentenceTransformersSparseEmbeddingBackendFactory.get_embedding_backend(model="model")
 
     data = ["sentence1", "sentence2"]
     embedding_backend.embed(data=data, attn_implementation="sdpa")
 
-    embedding_backend.model.encode.assert_called_once_with(data, attn_implementation="sdpa")
+    embedding_backend.model.encode.assert_called_once_with(
+        data, convert_to_tensor=False, convert_to_sparse_tensor=True, attn_implementation="sdpa"
+    )
 
 
 @patch("haystack.components.embedders.backends.sentence_transformers_sparse_backend.SparseEncoder")
@@ -76,12 +74,13 @@ def test_sparse_embedding_function(mock_sparse_encoder):
     # Ensure the factory cache is cleared before each test.
     _SentenceTransformersSparseEmbeddingBackendFactory._instances = {}
 
-    # Mocking the sparse tensor output from the model's encode method
-    indices = torch.tensor([[0, 0, 1], [1, 4, 2]])  # (row, col) indices for a batch of 2
-    values = torch.tensor([0.5, 0.8, 0.3])
-    shape = (2, 5)  # Batch size of 2, dimension of 5
-    mock_sparse_tensor = torch.sparse_coo_tensor(indices, values, shape)
-    mock_sparse_encoder.return_value.encode.return_value = mock_sparse_tensor
+    # size = (5,)
+
+    tensors = [
+        torch.sparse_coo_tensor(torch.tensor([[1, 4]]), torch.tensor([0.5, 0.8])),
+        torch.sparse_coo_tensor(torch.tensor([[2]]), torch.tensor([0.3])),
+    ]
+    mock_sparse_encoder.return_value.encode.return_value = tensors
 
     # Get the embedding backend
     embedding_backend = _SentenceTransformersSparseEmbeddingBackendFactory.get_embedding_backend(model="model")
@@ -89,6 +88,7 @@ def test_sparse_embedding_function(mock_sparse_encoder):
     # Embed dummy data
     data = ["sentence1", "sentence2"]
     sparse_embeddings = embedding_backend.embed(data=data)
+
     # Expected output
     expected_embeddings = [
         SparseEmbedding(indices=[1, 4], values=[0.5, 0.8]),
