@@ -771,6 +771,7 @@ class ToolInvoker:
             convert_result_to_json_string=self.convert_result_to_json_string,
             streaming_callback=streaming_callback,
             enable_streaming_callback_passthrough=self.enable_streaming_callback_passthrough,
+            max_workers=self.max_workers,
         )
 
     @classmethod
