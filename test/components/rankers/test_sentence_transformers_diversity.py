@@ -583,7 +583,7 @@ class TestSentenceTransformersDiversityRanker:
     def test_run_real_world_use_case(self, similarity, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
+            model="sentence-transformers-testing/stsb-bert-tiny-safetensors", similarity=similarity
         )
         ranker.warm_up()
         query = "What are the reasons for long-standing animosities between Russia and Poland?"
@@ -670,20 +670,22 @@ class TestSentenceTransformersDiversityRanker:
         ]
 
         ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, strategy="maximum_margin_relevance"
+            model="sentence-transformers-testing/stsb-bert-tiny-safetensors",
+            similarity=similarity,
+            strategy="maximum_margin_relevance",
         )
         ranker.warm_up()
 
         # lambda_threshold=1, the most relevant document should be returned first
         results = ranker.run(query=query, documents=docs, lambda_threshold=1, top_k=len(docs))
         expected = [
-            "Solar power generation",
-            "Wind turbine technology",
             "Geothermal energy extraction",
-            "Hydroelectric dam systems",
+            "Wind turbine technology",
+            "Solar power generation",
             "Biomass fuel production",
-            "Ancient Egyptian hieroglyphics",
+            "Hydroelectric dam systems",
             "Baking sourdough bread",
+            "Ancient Egyptian hieroglyphics",
             "18th-century French literature",
         ]
         assert [doc.content for doc in results["documents"]] == expected
@@ -691,13 +693,13 @@ class TestSentenceTransformersDiversityRanker:
         # lambda_threshold=0, after the most relevant one, diverse documents should be returned
         results = ranker.run(query=query, documents=docs, lambda_threshold=0, top_k=len(docs))
         expected = [
-            "Solar power generation",
+            "Geothermal energy extraction",
+            "18th-century French literature",
             "Ancient Egyptian hieroglyphics",
             "Baking sourdough bread",
-            "18th-century French literature",
+            "Solar power generation",
             "Biomass fuel production",
             "Hydroelectric dam systems",
-            "Geothermal energy extraction",
             "Wind turbine technology",
         ]
         assert [doc.content for doc in results["documents"]] == expected

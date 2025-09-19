@@ -372,13 +372,13 @@ class TestSentenceTransformersSimilarityRanker:
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run(self):
-        ranker = SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        ranker = SentenceTransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
         ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
         expected_first_text = "Sarajevo"
-        expected_scores = [2.2864143829792738e-05, 0.00012495707778725773, 0.009869757108390331]
+        expected_scores = [0.14568544924259186, 0.18189962208271027, 0.5728498697280884]
 
         docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
@@ -398,7 +398,9 @@ class TestSentenceTransformersSimilarityRanker:
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_top_k(self):
-        ranker = SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
+        ranker = SentenceTransformersSimilarityRanker(
+            model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", top_k=2
+        )
         ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
@@ -421,7 +423,9 @@ class TestSentenceTransformersSimilarityRanker:
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_single_document(self):
-        ranker = SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", device=None)
+        ranker = SentenceTransformersSimilarityRanker(
+            model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", device=None
+        )
         ranker.warm_up()
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)
