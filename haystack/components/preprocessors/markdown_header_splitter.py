@@ -7,104 +7,6 @@ from haystack.components.preprocessors import DocumentSplitter
 logger = logging.getLogger(__name__)
 
 
-class _CustomDocumentSplitter(DocumentSplitter):
-    """
-    Internal helper class that extends DocumentSplitter to support splitting functions.
-
-    This class handles splitting functions that return dictionaries with 'content' and 'meta'
-    keys instead of just strings. For internal use only within the MarkdownHeaderSplitter.
-    """
-
-    def __init__(
-        self,
-        split_by: str = "function",
-        splitting_function: Optional[Callable] = None,
-        page_break_character: str = "\\f",
-    ):
-        """
-        Initialize the _CustomDocumentSplitter.
-
-        :param split_by: The method to split by. Must be "function" for custom splitting functions.
-        :param splitting_function: A custom function that takes a string and returns a list of dicts
-            with 'content' and optional 'meta'.
-        :param page_break_character: Character used to identify page breaks.
-            Defaults to form feed ("\\f").
-        """
-        super().__init__(split_by=split_by, splitting_function=splitting_function)
-        self.page_break_character = page_break_character
-
-    def _flatten_dict(self, d: dict, prefix: str = "", target_dict: Optional[dict] = None) -> dict:
-        """Helper method to flatten a nested dictionary."""
-        if target_dict is None:
-            target_dict = {}
-
-        for key, value in d.items():
-            new_key = f"{prefix}{key}" if prefix else key
-
-            if isinstance(value, dict):
-                self._flatten_dict(value, f"{new_key}_", target_dict)
-            else:
-                target_dict[new_key] = value
-
-        return target_dict
-
-    def _process_split_content(self, split_content: str, split_index: int) -> int:
-        """Process the content of a split and return the number of page breaks."""
-        if not isinstance(split_content, str):
-            return 0
-
-        page_breaks = split_content.count(self.page_break_character)
-        if page_breaks > 0:
-            logger.debug(
-                "Found {page_breaks} page breaks in split {split_index}",
-                page_breaks=page_breaks,
-                split_index=split_index,
-            )
-        return page_breaks
-
-    def _split_by_function(self, doc: Document) -> list[Document]:
-        """Split document using a custom function that returns dictionaries with 'content' and 'meta'."""
-        logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
-        splits = self.splitting_function(doc.content)
-        docs = []
-
-        # calculate total pages and set current page
-        total_pages = doc.meta.get("total_pages", 0) or doc.content.count(self.page_break_character) + 1
-        current_page = doc.meta.get("page_number", 1)
-        logger.debug(
-            "Starting page number: {current_page}, Total pages: {total_pages}",
-            current_page=current_page,
-            total_pages=total_pages,
-        )
-
-        # get meta for each split
-        for i, split in enumerate(splits):
-            meta = {}
-            if doc.meta:
-                meta = self._flatten_dict(doc.meta)
-
-            # add standard metadata (no split_id here)
-            meta.update({"source_id": doc.id, "total_pages": total_pages, "page_number": current_page})
-
-            # get page number based on page breaks
-            page_breaks = self._process_split_content(split["content"], i)
-            current_page += page_breaks
-
-            # add split-specific metadata
-            if split.get("meta"):
-                meta.update(self._flatten_dict(split.get("meta")))
-
-            docs.append(Document(content=split["content"], meta=meta))
-
-        logger.debug(
-            "Split into {num_docs} documents for id={doc_id}, final page: {current_page}",
-            num_docs=len(docs),
-            doc_id=doc.id,
-            current_page=current_page,
-        )
-        return docs
-
-
 @component
 class MarkdownHeaderSplitter:
     """
@@ -343,6 +245,61 @@ class MarkdownHeaderSplitter:
         logger.info("Secondary splitting complete. Final count: {final_count} documents.", final_count=len(result_docs))
         return result_docs
 
+    def _flatten_dict(self, d: dict, prefix: str = "", target_dict: Optional[dict] = None) -> dict:
+        if target_dict is None:
+            target_dict = {}
+        for key, value in d.items():
+            new_key = f"{prefix}{key}" if prefix else key
+            if isinstance(value, dict):
+                self._flatten_dict(value, f"{new_key}_", target_dict)
+            else:
+                target_dict[new_key] = value
+        return target_dict
+
+    def _process_split_content(self, split_content: str, split_index: int) -> int:
+        if not isinstance(split_content, str):
+            return 0
+        page_breaks = split_content.count(self.page_break_character)
+        if page_breaks > 0:
+            logger.debug(
+                "Found {page_breaks} page breaks in split {split_index}",
+                page_breaks=page_breaks,
+                split_index=split_index,
+            )
+        return page_breaks
+
+    def _split_documents_by_function(self, documents: list[Document], splitting_function: Callable) -> list[Document]:
+        result_docs = []
+        for doc in documents:
+            logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
+            splits = splitting_function(doc.content)
+            docs = []
+            total_pages = doc.meta.get("total_pages", 0) or doc.content.count(self.page_break_character) + 1
+            current_page = doc.meta.get("page_number", 1)
+            logger.debug(
+                "Starting page number: {current_page}, Total pages: {total_pages}",
+                current_page=current_page,
+                total_pages=total_pages,
+            )
+            for i, split in enumerate(splits):
+                meta = {}
+                if doc.meta:
+                    meta = self._flatten_dict(doc.meta)
+                meta.update({"source_id": doc.id, "total_pages": total_pages, "page_number": current_page})
+                page_breaks = self._process_split_content(split["content"], i)
+                current_page += page_breaks
+                if split.get("meta"):
+                    meta.update(self._flatten_dict(split.get("meta")))
+                docs.append(Document(content=split["content"], meta=meta))
+            logger.debug(
+                "Split into {num_docs} documents for id={doc_id}, final page: {current_page}",
+                num_docs=len(docs),
+                doc_id=doc.id,
+                current_page=current_page,
+            )
+            result_docs.extend(docs)
+        return result_docs
+
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document], infer_header_levels: Optional[bool] = None) -> dict[str, list[Document]]:
         """
@@ -352,35 +309,37 @@ class MarkdownHeaderSplitter:
         :param infer_header_levels: If True, attempts to infer and rewrite header levels before splitting.
             If None, uses the value from initialization.
         """
+        # validate input documents
+        for doc in documents:
+            if not isinstance(doc.content, str):
+                raise ValueError("MarkdownHeaderSplitter only works with text documents (str content).")
+
         infer_header_levels = infer_header_levels if infer_header_levels is not None else self.infer_header_levels
 
-        # process documents - preprocess if told to
         processed_documents = []
         for doc in documents:
+            # skip empty documents
+            if not doc.content or not doc.content.strip():
+                continue
             if infer_header_levels:
                 content = self._infer_and_rewrite_header_levels(doc.content)
                 processed_documents.append(Document(content=content, meta=doc.meta, id=doc.id))
             else:
                 processed_documents.append(doc)
 
-        # split by markdown headers
-        header_splitter = _CustomDocumentSplitter(
-            split_by="function",
-            splitting_function=lambda text: self._split_by_markdown_headers(text),
-            page_break_character=self.page_break_character,
-        )
+        if not processed_documents:
+            return {"documents": []}
 
-        # get splits
-        header_split_docs = header_splitter.run(documents=processed_documents)["documents"]
+        header_split_docs = self._split_documents_by_function(
+            processed_documents, splitting_function=self._split_by_markdown_headers
+        )
         logger.info("Header splitting produced {num_docs} documents", num_docs=len(header_split_docs))
 
-        # apply secondary splitting if requested
         if self.secondary_split != "none":
             final_docs = self._apply_secondary_splitting(header_split_docs)
         else:
             final_docs = header_split_docs
 
-        # assign unique, sequential split_id to all final chunks
         for idx, doc in enumerate(final_docs):
             doc.meta["split_id"] = idx
 
@@ -423,7 +382,5 @@ Content under subheader 1.2.1."""
     print("\nAfter header inference and splitting:")
     for doc in result["documents"]:
         print("\n---Document---")
-        print(doc.content)
-        print(doc.meta)
         print(doc.content)
         print(doc.meta)
