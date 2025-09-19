@@ -10,7 +10,14 @@ logger = logging.getLogger(__name__)
 @component
 class MarkdownHeaderSplitter:
     """
-    A custom component that splits documents at markdown headers with optional secondary splitting.
+    Split documents at Markdown headers, with optional secondary splitting and header level inference.
+
+    This component processes text documents by:
+    - Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
+    - Optionally inferring and rewriting header levels for documents where header structure is ambiguous.
+    - Optionally applying a secondary split (by word, passage, period, or line) to each chunk.
+      This is done in haystack's DocumentSplitter.
+    - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
     """
 
     def __init__(
