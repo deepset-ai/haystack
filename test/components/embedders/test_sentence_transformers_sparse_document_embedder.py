@@ -407,7 +407,10 @@ class TestSentenceTransformersDocumentEmbedder:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run_sparse_document_embedder(self):
+    def test_live_run_sparse_document_embedder(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),

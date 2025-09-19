@@ -340,7 +340,10 @@ class TestSentenceTransformersSparseTextEmbedder:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run_sparse_text_embedder(self):
+    def test_live_run_sparse_text_embedder(self, monkeypatch):
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
         text = "I love Nine Inch Nails"
         embedder = SentenceTransformersSparseTextEmbedder(
             model="naver/splade-cocondenser-ensembledistil", device=ComponentDevice.from_str("cpu")

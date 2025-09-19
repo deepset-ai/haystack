@@ -9,7 +9,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as sentence_transformers_import:
-    from sentence_transformers import SentenceTransformer, SparseEncoder
+    from sentence_transformers import SparseEncoder
 
 
 class _SentenceTransformersSparseEmbeddingBackendFactory:
