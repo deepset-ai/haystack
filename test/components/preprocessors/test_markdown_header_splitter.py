@@ -185,32 +185,21 @@ def test_empty_document_list():
     assert result["documents"] == []
 
 
-def test_invalid_secondary_split():
-    """Test that an invalid secondary split type raises an error."""
-    # In MarkdownHeaderSplitter, this is validated at DocumentSplitter instantiation time in _apply_secondary_splitting
-    splitter = MarkdownHeaderSplitter(secondary_split="invalid_split_type")
-    docs = [Document(content="# Header\nContent")]
-
-    # Error should be raised when run is called and secondary splitter is created
+def test_invalid_secondary_split_at_init():
+    """Test that an invalid secondary split type raises an error at initialization time."""
     with pytest.raises(ValueError, match="split_by must be one of"):
-        splitter.run(documents=docs)
+        MarkdownHeaderSplitter(secondary_split="invalid_split_type")
 
 
-def test_invalid_split_parameters():
-    """Test invalid split parameter validation."""
-    # Similar to invalid_secondary_split, validation happens at DocumentSplitter instantiation
-
+def test_invalid_split_parameters_at_init():
+    """Test invalid split parameter validation at initialization time."""
     # Test split_length validation
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=0)
-    docs = [Document(content="# Header\nContent")]
     with pytest.raises(ValueError, match="split_length must be greater than 0"):
-        splitter.run(documents=docs)
+        MarkdownHeaderSplitter(secondary_split="word", split_length=0)
 
     # Test split_overlap validation
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_overlap=-1)
-    docs = [Document(content="# Header\nContent")]
     with pytest.raises(ValueError, match="split_overlap must be greater than or equal to 0"):
-        splitter.run(documents=docs)
+        MarkdownHeaderSplitter(secondary_split="word", split_overlap=-1)
 
 
 def test_empty_content_handling():
@@ -249,4 +238,15 @@ def test_split_id_sequentiality_primary_and_secondary():
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=5)
     result = splitter.run(documents=docs)
     split_ids = [doc.meta["split_id"] for doc in result["documents"]]
+    assert split_ids == list(range(len(split_ids)))
+    docs = [Document(content=text)]
+    result = splitter.run(documents=docs)
+    split_ids = [doc.meta["split_id"] for doc in result["documents"]]
+    assert split_ids == list(range(len(split_ids)))
+
+    # Test secondary splitting
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=5)
+    result = splitter.run(documents=docs)
+    split_ids = [doc.meta["split_id"] for doc in result["documents"]]
+    assert split_ids == list(range(len(split_ids)))
     assert split_ids == list(range(len(split_ids)))
