@@ -140,6 +140,17 @@ class MarkdownHeaderSplitter:
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
 
+        # initialize secondary_splitter only if needed
+        if self.secondary_split != "none":
+            self.secondary_splitter = DocumentSplitter(
+                split_by=self.secondary_split,
+                split_length=self.split_length,
+                split_overlap=self.split_overlap,
+                split_threshold=self.split_threshold,
+            )
+        else:
+            self.secondary_splitter = None
+
     def _infer_and_rewrite_header_levels(self, text: str) -> str:
         """
         Infer and rewrite header levels in the markdown text.
@@ -301,15 +312,8 @@ class MarkdownHeaderSplitter:
             # track page from meta
             current_page = doc.meta.get("page_number", 1)
 
-            secondary_splitter = DocumentSplitter(
-                split_by=self.secondary_split,
-                split_length=self.split_length,
-                split_overlap=self.split_overlap,
-                split_threshold=self.split_threshold,
-            )
-
-            # apply secondary splitting
-            secondary_splits = secondary_splitter.run(
+            # use the pre-initialized secondary splitter
+            secondary_splits = self.secondary_splitter.run(
                 documents=[Document(content=content_for_splitting, meta=doc.meta)]
             )["documents"]
             accumulated_page_breaks = 0  # track page breaks
@@ -419,5 +423,7 @@ Content under subheader 1.2.1."""
     print("\nAfter header inference and splitting:")
     for doc in result["documents"]:
         print("\n---Document---")
+        print(doc.content)
+        print(doc.meta)
         print(doc.content)
         print(doc.meta)
