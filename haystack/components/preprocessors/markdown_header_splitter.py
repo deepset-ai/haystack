@@ -23,7 +23,7 @@ class MarkdownHeaderSplitter:
     def __init__(
         self,
         infer_header_levels: bool = False,
-        page_break_character: str = "\\f",
+        page_break_character: str = "\f",
         secondary_split: Literal["none", "word", "passage", "period", "line"] = "none",
         split_length: int = 200,
         split_overlap: int = 0,
@@ -34,7 +34,7 @@ class MarkdownHeaderSplitter:
 
         :param infer_header_levels: If True, attempts to infer and rewrite header levels based on content structure.
             Useful for documents where all headers use the same level. Defaults to False.
-        :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\\f").
+        :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\f").
         :param secondary_split: Optional secondary split condition after header splitting.
             Options are "none", "word", "passage", "period", "line". Defaults to "none".
         :param split_length: The maximum number of units in each split when using secondary splitting. Defaults to 200.
