@@ -1,5 +1,9 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import re
-from typing import Callable, Literal, Optional
+from typing import Literal, Optional
 
 from haystack import Document, component, logging
 from haystack.components.preprocessors import DocumentSplitter
