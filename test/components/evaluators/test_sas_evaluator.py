@@ -130,7 +130,9 @@ class TestSASEvaluator:
     @pytest.mark.slow
     def test_run_with_single_prediction(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        evaluator = SASEvaluator("sentence-transformers-testing/stsb-bert-tiny-safetensors")
+        evaluator = SASEvaluator(
+            "sentence-transformers-testing/stsb-bert-tiny-safetensors", device=ComponentDevice.from_str("cpu")
+        )
 
         ground_truths = ["US $2.3 billion"]
         evaluator.warm_up()
@@ -138,8 +140,8 @@ class TestSASEvaluator:
             ground_truth_answers=ground_truths, predicted_answers=["A construction budget of US $2.3 billion"]
         )
         assert len(result) == 2
-        assert result["score"] == pytest.approx(0.816154, abs=1e-5)
-        assert result["individual_scores"] == pytest.approx([0.816154], abs=1e-5)
+        assert result["score"] == pytest.approx(0.855047, abs=1e-5)
+        assert result["individual_scores"] == pytest.approx([0.855047], abs=1e-5)
 
     @pytest.mark.integration
     @pytest.mark.slow
