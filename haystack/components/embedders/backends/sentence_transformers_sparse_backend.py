@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from typing import Any, Literal, Optional
 
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
@@ -20,7 +21,7 @@ class _SentenceTransformersSparseEmbeddingBackendFactory:
     _instances: dict[str, "_SentenceTransformersSparseEncoderEmbeddingBackend"] = {}
 
     @staticmethod
-    def get_embedding_backend(  # pylint: disable=too-many-positional-arguments
+    def get_embedding_backend(
         *,
         model: str,
         device: Optional[str] = None,
@@ -32,7 +33,19 @@ class _SentenceTransformersSparseEmbeddingBackendFactory:
         config_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
-        embedding_backend_id = f"{model}{device}{auth_token}{backend}"
+        cache_params = {
+            "model": model,
+            "device": device,
+            "auth_token": auth_token,
+            "trust_remote_code": trust_remote_code,
+            "local_files_only": local_files_only,
+            "model_kwargs": model_kwargs,
+            "tokenizer_kwargs": tokenizer_kwargs,
+            "config_kwargs": config_kwargs,
+            "backend": backend,
+        }
+
+        embedding_backend_id = json.dumps(cache_params, sort_keys=True, default=str)
 
         if embedding_backend_id in _SentenceTransformersSparseEmbeddingBackendFactory._instances:
             return _SentenceTransformersSparseEmbeddingBackendFactory._instances[embedding_backend_id]
@@ -58,7 +71,7 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
     Class to manage Sparse embeddings from Sentence Transformers.
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
         *,
         model: str,

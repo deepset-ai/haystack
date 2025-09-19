@@ -26,8 +26,6 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert embedder.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert embedder.prefix == ""
         assert embedder.suffix == ""
-        assert embedder.batch_size == 32
-        assert embedder.progress_bar is True
         assert embedder.trust_remote_code is False
         assert embedder.local_files_only is False
 
@@ -38,8 +36,6 @@ class TestSentenceTransformersSparseTextEmbedder:
             token=Secret.from_token("fake-api-token"),
             prefix="prefix",
             suffix="suffix",
-            batch_size=64,
-            progress_bar=False,
             trust_remote_code=True,
             local_files_only=True,
         )
@@ -48,8 +44,6 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert embedder.token == Secret.from_token("fake-api-token")
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
-        assert embedder.batch_size == 64
-        assert embedder.progress_bar is False
         assert embedder.trust_remote_code is True
         assert embedder.local_files_only is True
 
@@ -64,13 +58,10 @@ class TestSentenceTransformersSparseTextEmbedder:
                 "device": ComponentDevice.from_str("cpu").to_dict(),
                 "prefix": "",
                 "suffix": "",
-                "batch_size": 32,
-                "progress_bar": True,
                 "trust_remote_code": False,
                 "local_files_only": False,
                 "model_kwargs": None,
                 "tokenizer_kwargs": None,
-                "encode_kwargs": None,
                 "config_kwargs": None,
                 "backend": "torch",
             },
@@ -83,8 +74,6 @@ class TestSentenceTransformersSparseTextEmbedder:
             token=Secret.from_env_var("ENV_VAR", strict=False),
             prefix="prefix",
             suffix="suffix",
-            batch_size=64,
-            progress_bar=False,
             trust_remote_code=True,
             local_files_only=True,
             model_kwargs={"torch_dtype": torch.float32},
@@ -101,14 +90,11 @@ class TestSentenceTransformersSparseTextEmbedder:
                 "device": ComponentDevice.from_str("cuda:0").to_dict(),
                 "prefix": "prefix",
                 "suffix": "suffix",
-                "batch_size": 64,
-                "progress_bar": False,
                 "trust_remote_code": True,
                 "local_files_only": True,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
                 "config_kwargs": {"use_memory_efficient_attention": False},
-                "encode_kwargs": {"task": "clustering"},
                 "backend": "torch",
             },
         }
@@ -127,8 +113,6 @@ class TestSentenceTransformersSparseTextEmbedder:
                 "device": ComponentDevice.from_str("cpu").to_dict(),
                 "prefix": "",
                 "suffix": "",
-                "batch_size": 32,
-                "progress_bar": True,
                 "trust_remote_code": False,
                 "local_files_only": False,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
@@ -142,8 +126,6 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.prefix == ""
         assert component.suffix == ""
-        assert component.batch_size == 32
-        assert component.progress_bar is True
         assert component.trust_remote_code is False
         assert component.local_files_only is False
         assert component.model_kwargs == {"torch_dtype": torch.float32}
@@ -153,13 +135,11 @@ class TestSentenceTransformersSparseTextEmbedder:
     def test_from_dict_no_default_parameters(self):
         data = {"type": TYPE_NAME, "init_parameters": {}}
         component = SentenceTransformersSparseTextEmbedder.from_dict(data)
-        assert component.model == "naver/splade-cocondenser-ensembledistil"
+        assert component.model == "prithivida/Splade_PP_en_v2"
         assert component.device == ComponentDevice.resolve_device(None)
         assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.prefix == ""
         assert component.suffix == ""
-        assert component.batch_size == 32
-        assert component.progress_bar is True
         assert component.trust_remote_code is False
         assert component.local_files_only is False
 
@@ -172,8 +152,6 @@ class TestSentenceTransformersSparseTextEmbedder:
                 "device": None,
                 "prefix": "",
                 "suffix": "",
-                "batch_size": 32,
-                "progress_bar": True,
                 "trust_remote_code": False,
                 "local_files_only": False,
             },
@@ -184,8 +162,6 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.prefix == ""
         assert component.suffix == ""
-        assert component.batch_size == 32
-        assert component.progress_bar is True
         assert component.trust_remote_code is False
         assert component.local_files_only is False
 
@@ -261,7 +237,7 @@ class TestSentenceTransformersSparseTextEmbedder:
     )
     def test_model_onnx_backend(self, mocked_factory):
         onnx_embedder = SentenceTransformersSparseTextEmbedder(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             token=None,
             device=ComponentDevice.from_str("cpu"),
             model_kwargs={
@@ -273,7 +249,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         onnx_embedder.warm_up()
 
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
@@ -289,7 +265,7 @@ class TestSentenceTransformersSparseTextEmbedder:
     )
     def test_model_openvino_backend(self, mocked_factory):
         openvino_embedder = SentenceTransformersSparseTextEmbedder(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             token=None,
             device=ComponentDevice.from_str("cpu"),
             model_kwargs={
@@ -301,7 +277,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         openvino_embedder.warm_up()
 
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
@@ -318,7 +294,7 @@ class TestSentenceTransformersSparseTextEmbedder:
     @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "bfloat16"}, {"torch_dtype": "float16"}])
     def test_dtype_on_gpu(self, mocked_factory, model_kwargs):
         torch_dtype_embedder = SentenceTransformersSparseTextEmbedder(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             token=None,
             device=ComponentDevice.from_str("cuda:0"),
             model_kwargs=model_kwargs,
@@ -326,7 +302,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         torch_dtype_embedder.warm_up()
 
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             device="cuda:0",
             auth_token=None,
             trust_remote_code=False,
@@ -346,7 +322,7 @@ class TestSentenceTransformersSparseTextEmbedder:
 
         text = "I love Nine Inch Nails"
         embedder = SentenceTransformersSparseTextEmbedder(
-            model="naver/splade-cocondenser-ensembledistil", device=ComponentDevice.from_str("cpu")
+            model="sparse-encoder-testing/splade-bert-tiny-nq", device=ComponentDevice.from_str("cpu")
         )
         embedder.warm_up()
         result = embedder.run(text=text)

@@ -17,9 +17,9 @@ from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kw
 @component
 class SentenceTransformersSparseDocumentEmbedder:
     """
-    Calculates document embeddings using sprase embedding models from Sentence Transformers.
+    Calculates document sparse embeddings using sparse embedding models from Sentence Transformers.
 
-    It stores the embeddings in the `embedding` metadata field of each document.
+    It stores the sparse embeddings in the `sparse_embedding` metadata field of each document.
     You can also embed documents' metadata.
     Use this component in indexing pipelines to embed input documents
     and send them to DocumentWriter to write a into a Document Store.
@@ -34,15 +34,16 @@ class SentenceTransformersSparseDocumentEmbedder:
     doc_embedder.warm_up()
 
     result = doc_embedder.run([doc])
-    print(result['documents'][0].embedding)
+    print(result['documents'][0].sparse_embedding)
 
-    # [-0.07804739475250244, 0.1498992145061493, ...]
+    # SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])
     ```
     """
 
-    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913
         self,
-        model: str = "naver/splade-cocondenser-ensembledistil",
+        *,
+        model: str = "prithivida/Splade_PP_en_v2",
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
@@ -59,10 +60,10 @@ class SentenceTransformersSparseDocumentEmbedder:
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         """
-        Creates a SentenceTransformersDocumentEmbedder component.
+        Creates a SentenceTransformersSparseDocumentEmbedder component.
 
         :param model:
-            The model to use for calculating embeddings.
+            The model to use for calculating sparse embeddings.
             Pass a local path or ID of the model on Hugging Face.
         :param device:
             The device to use for loading the model.
@@ -71,8 +72,6 @@ class SentenceTransformersSparseDocumentEmbedder:
             The API token to download private models from Hugging Face.
         :param prefix:
             A string to add at the beginning of each document text.
-            Can be used to prepend the text with an instruction, as required by some embedding models,
-            such as E5 and bge.
         :param suffix:
             A string to add at the end of each document text.
         :param batch_size:
@@ -201,7 +200,7 @@ class SentenceTransformersSparseDocumentEmbedder:
 
         :returns:
             A dictionary with the following keys:
-            - `documents`: Documents with embeddings.
+            - `documents`: Documents with sparse embeddings under the `sparse_embedding` field.
         """
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(

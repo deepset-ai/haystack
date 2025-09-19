@@ -162,7 +162,7 @@ class TestSentenceTransformersDocumentEmbedder:
 
     def test_from_dict_no_default_parameters(self):
         component = SentenceTransformersSparseDocumentEmbedder.from_dict({"type": TYPE_NAME, "init_parameters": {}})
-        assert component.model == "naver/splade-cocondenser-ensembledistil"
+        assert component.model == "prithivida/Splade_PP_en_v2"
         assert component.device == ComponentDevice.resolve_device(None)
         assert component.token == Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False)
         assert component.prefix == ""
@@ -328,7 +328,7 @@ class TestSentenceTransformersDocumentEmbedder:
     )
     def test_model_onnx_backend(self, mocked_factory):
         onnx_embedder = SentenceTransformersSparseDocumentEmbedder(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             token=None,
             device=ComponentDevice.from_str("cpu"),
             model_kwargs={
@@ -340,7 +340,7 @@ class TestSentenceTransformersDocumentEmbedder:
         onnx_embedder.warm_up()
 
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
@@ -356,7 +356,7 @@ class TestSentenceTransformersDocumentEmbedder:
     )
     def test_model_openvino_backend(self, mocked_factory):
         openvino_embedder = SentenceTransformersSparseDocumentEmbedder(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             token=None,
             device=ComponentDevice.from_str("cpu"),
             model_kwargs={
@@ -368,7 +368,7 @@ class TestSentenceTransformersDocumentEmbedder:
         openvino_embedder.warm_up()
 
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
@@ -385,7 +385,7 @@ class TestSentenceTransformersDocumentEmbedder:
     @pytest.mark.parametrize("model_kwargs", [{"torch_dtype": "bfloat16"}, {"torch_dtype": "float16"}])
     def test_dtype_on_gpu(self, mocked_factory, model_kwargs):
         torch_dtype_embedder = SentenceTransformersSparseDocumentEmbedder(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             token=None,
             device=ComponentDevice.from_str("cuda:0"),
             model_kwargs=model_kwargs,
@@ -393,7 +393,7 @@ class TestSentenceTransformersDocumentEmbedder:
         torch_dtype_embedder.warm_up()
 
         mocked_factory.get_embedding_backend.assert_called_once_with(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="prithivida/Splade_PP_en_v2",
             device="cuda:0",
             auth_token=None,
             trust_remote_code=False,
@@ -417,7 +417,7 @@ class TestSentenceTransformersDocumentEmbedder:
         ]
 
         embedder = SentenceTransformersSparseDocumentEmbedder(
-            model="naver/splade-cocondenser-ensembledistil",
+            model="sparse-encoder-testing/splade-bert-tiny-nq",
             meta_fields_to_embed=["topic"],
             embedding_separator=" | ",
             device=ComponentDevice.from_str("cpu"),
