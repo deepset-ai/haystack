@@ -275,11 +275,11 @@ class MarkdownHeaderSplitter:
             )
         return page_breaks
 
-    def _split_documents_by_function(self, documents: list[Document], splitting_function: Callable) -> list[Document]:
+    def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[Document]:
         result_docs = []
         for doc in documents:
             logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
-            splits = splitting_function(doc.content)
+            splits = self._split_by_markdown_headers(doc.content)
             docs = []
             total_pages = doc.meta.get("total_pages", 0) or doc.content.count(self.page_break_character) + 1
             current_page = doc.meta.get("page_number", 1)
@@ -337,9 +337,7 @@ class MarkdownHeaderSplitter:
         if not processed_documents:
             return {"documents": []}
 
-        header_split_docs = self._split_documents_by_function(
-            processed_documents, splitting_function=self._split_by_markdown_headers
-        )
+        header_split_docs = self._split_documents_by_markdown_headers(processed_documents)
         logger.info("Header splitting produced {num_docs} documents", num_docs=len(header_split_docs))
 
         if self.secondary_split != "none":
