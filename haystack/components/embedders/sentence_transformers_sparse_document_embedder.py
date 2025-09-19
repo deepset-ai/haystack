@@ -29,6 +29,7 @@ class SentenceTransformersSparseDocumentEmbedder:
     ```python
     from haystack import Document
     from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder
+
     doc = Document(content="I love pizza!")
     doc_embedder = SentenceTransformersSparseDocumentEmbedder()
     doc_embedder.warm_up()
