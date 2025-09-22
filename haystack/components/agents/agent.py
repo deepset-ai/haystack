@@ -309,7 +309,7 @@ class Agent:
 
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
-        :return: Selected tools for the current run.
+        :returns: Selected tools for the current run.
         """
         selected_tools: Union[list[Tool], Toolset] = self.tools
         if isinstance(tools, Toolset) or isinstance(tools, list) and all(isinstance(t, Tool) for t in tools):
