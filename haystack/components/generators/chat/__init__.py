@@ -9,6 +9,7 @@ from lazy_imports import LazyImporter
 
 _import_structure = {
     "openai": ["OpenAIChatGenerator"],
+    "openai_response": ["OpenAIResponseChatGenerator"],
     "azure": ["AzureOpenAIChatGenerator"],
     "hugging_face_local": ["HuggingFaceLocalChatGenerator"],
     "hugging_face_api": ["HuggingFaceAPIChatGenerator"],
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from .hugging_face_api import HuggingFaceAPIChatGenerator as HuggingFaceAPIChatGenerator
     from .hugging_face_local import HuggingFaceLocalChatGenerator as HuggingFaceLocalChatGenerator
     from .openai import OpenAIChatGenerator as OpenAIChatGenerator
+    from .openai_response import OpenAIResponseChatGenerator as OpenAIResponseChatGenerator
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
