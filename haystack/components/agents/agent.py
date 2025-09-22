@@ -287,11 +287,11 @@ class Agent:
 
         selected_tools: Union[list[Tool], Toolset] = self.tools
         if isinstance(tools, Toolset) or isinstance(tools, list) and all(isinstance(t, Tool) for t in tools):
-            selected_tools = tools
+            selected_tools = tools  # type: ignore[assignment]
         elif isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             if not self.tools:
                 raise ValueError("No tools were configured for the Agent at initialization.")
-            selected_tool_names: list[str] = tools
+            selected_tool_names: list[str] = tools  # type: ignore[assignment]
             valid_tool_names = {tool.name for tool in self.tools}
             invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
             if invalid_tool_names:
