@@ -7,7 +7,7 @@ from typing import Any, Literal, Optional, Union
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 
-with LazyImport(message="Run 'pip install \"sentence-transformers>=4.1.0\"'") as sentence_transformers_import:
+with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as sentence_transformers_import:
     from sentence_transformers import SentenceTransformer
 
 with LazyImport(message="Run 'pip install \"pillow\"'") as pillow_import:
@@ -38,6 +38,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
 
         if embedding_backend_id in _SentenceTransformersEmbeddingBackendFactory._instances:
             return _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id]
+
         embedding_backend = _SentenceTransformersEmbeddingBackend(
             model=model,
             device=device,
@@ -50,6 +51,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
             config_kwargs=config_kwargs,
             backend=backend,
         )
+
         _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
         return embedding_backend
 

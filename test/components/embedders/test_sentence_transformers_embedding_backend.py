@@ -4,8 +4,6 @@
 
 from unittest.mock import patch
 
-import pytest
-
 from haystack.components.embedders.backends.sentence_transformers_backend import (
     _SentenceTransformersEmbeddingBackendFactory,
 )

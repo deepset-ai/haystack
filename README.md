@@ -118,25 +118,12 @@ There are several ways you can contribute to Haystack:
 
 ## Who Uses Haystack
 
-Here's a list of projects and companies using Haystack. Want to add yours? Open a PR, add it to the list and let the
-world know that you use Haystack!
+Here's a list of projects and companies using Haystack. Are you also using Haystack? Open a PR or [tell us your story](https://forms.gle/Mm3G1aEST3GAH2rn8).
 
--   [Airbus](https://www.airbus.com/en)
--   [Alcatel-Lucent](https://www.al-enterprise.com/)
--   [Apple](https://www.apple.com/)
--   [BetterUp](https://www.betterup.com/)
--   [Databricks](https://www.databricks.com/)
--   [Deepset](https://deepset.ai/)
--   [Etalab](https://www.deepset.ai/blog/improving-on-site-search-for-government-agencies-etalab)
--   [Infineon](https://www.infineon.com/)
--   [Intel](https://github.com/intel/open-domain-question-and-answer#readme)
--   [Intelijus](https://www.intelijus.ai/)
--   [Intel Labs](https://github.com/IntelLabs/fastRAG#readme)
--   [LEGO](https://github.com/larsbaunwall/bricky#readme)
--   [Meta](https://www.meta.com/about)
--   [Netflix](https://netflix.com)
--   [NOS Portugal](https://www.nos.pt/en/welcome)
--   [Nvidia](https://developer.nvidia.com/blog/reducing-development-time-for-intelligent-virtual-assistants-in-contact-centers/)
--   [PostHog](https://github.com/PostHog/max-ai#readme)
--   [Rakuten](https://www.rakuten.com/)
--   [Sooth.ai](https://www.deepset.ai/blog/advanced-neural-search-with-sooth-ai)
+- Tech & AI Innovators: [Apple](https://www.apple.com/), [Meta](https://www.meta.com/about), [Databricks](https://www.databricks.com/), [NVIDIA](https://developer.nvidia.com/blog/reducing-development-time-for-intelligent-virtual-assistants-in-contact-centers/), [PostHog](https://github.com/PostHog/max-ai#readme)
+- Public Sector: [German Federal Ministry of Research, Technology, and Space (BMFTR)](https://www.deepset.ai/case-studies/german-federal-ministry-research-technology-space-bmftr), [PD, Baden-Württemberg State](https://www.pd-g.de/)
+- Enterprise & Telecom: [Alcatel-Lucent](https://www.al-enterprise.com/), [Intel](https://github.com/intel/open-domain-question-and-answer#readme), [NOS Portugal](https://www.nos.pt/en/welcome), [TELUS Agriculture & Consumer Goods](https://www.telus.com/agcg/en)
+- Aerospace & Hardware: [Airbus](https://www.deepset.ai/case-studies/airbus), [Infineon](https://www.infineon.com/), [LEGO](https://github.com/larsbaunwall/bricky#readme)
+- Media & Entertainment: [Netflix](https://netflix.com), [Comcast](https://arxiv.org/html/2405.00801v2), [Zeit Online](https://www.deepset.ai/case-studies/zeit-online), [Rakuten](https://www.rakuten.com/)
+- Legal & Publishing: [Manz](https://www.deepset.ai/case-studies/manz), [Oxford University Press](https://corp.oup.com/)
+- Startups & Research: [YPulse](https://www.deepset.ai/case-studies/ypulse), [BetterUp](https://www.betterup.com/), [Intel Labs](https://github.com/IntelLabs/fastRAG#readme)
