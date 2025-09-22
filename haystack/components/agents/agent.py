@@ -270,6 +270,7 @@ class Agent:
         :param requires_async: Whether the agent run requires asynchronous execution.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+            When passing tool names, tools are selected from the Agent's originally configured tools.
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
         system_prompt = system_prompt or self.system_prompt
@@ -303,13 +304,20 @@ class Agent:
     def _select_tools(
         self, tools: Optional[Union[list[Tool], Toolset, list[str]]] = None
     ) -> Union[list[Tool], Toolset]:
+        """
+        Select tools for the current run based on the provided tools parameter.
+
+        :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+            When passing tool names, tools are selected from the Agent's originally configured tools.
+        :return: Selected tools for the current run.
+        """
         selected_tools: Union[list[Tool], Toolset] = self.tools
         if isinstance(tools, Toolset) or isinstance(tools, list) and all(isinstance(t, Tool) for t in tools):
-            selected_tools = tools  # type: ignore[assignment]
+            selected_tools = tools  # type: ignore[assignment] # mypy thinks this could still be list[str]
         elif isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             if not self.tools:
                 raise ValueError("No tools were configured for the Agent at initialization.")
-            selected_tool_names: list[str] = tools  # type: ignore[assignment]
+            selected_tool_names: list[str] = tools  # type: ignore[assignment] # mypy thinks this could still be list[Tool] or Toolset
             valid_tool_names = {tool.name for tool in self.tools}
             invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
             if invalid_tool_names:
@@ -337,6 +345,7 @@ class Agent:
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+            When passing tool names, tools are selected from the Agent's originally configured tools.
         """
         component_visits = snapshot.component_visits
         current_inputs = {
@@ -475,6 +484,7 @@ class Agent:
             the relevant information to restart the Agent execution from where it left off.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+            When passing tool names, tools are selected from the Agent's originally configured tools.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
