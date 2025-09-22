@@ -278,7 +278,7 @@ class ComponentTool(Tool):
         fields: dict[str, Any] = {}
 
         for input_name, socket in component.__haystack_input__._sockets_dict.items():  # type: ignore[attr-defined]
-            if inputs_from_state is not None and input_name in inputs_from_state:
+            if inputs_from_state is not None and input_name in list(inputs_from_state.values()):
                 continue
             input_type = socket.type
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
