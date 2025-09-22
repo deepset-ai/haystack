@@ -4,6 +4,7 @@
 
 import logging
 import os
+import re
 from datetime import datetime
 from typing import Any, Iterator, Optional, Union
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -1111,3 +1112,62 @@ class TestAgentTracing:
         # Clean up
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
+
+
+class TestAgentToolSelection:
+    def test_tool_selection_by_name(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        result = agent._select_tools([weather_tool.name])
+        assert result == [weather_tool]
+
+    def test_tool_selection_new_tool(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
+        result = agent._select_tools([component_tool])
+        assert result == [component_tool]
+
+    def test_tool_selection_existing_tools(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        result = agent._select_tools(None)
+        assert result == [weather_tool, component_tool]
+
+    def test_tool_selection_invalid_tool_name(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        with pytest.raises(
+            ValueError, match=("The following tool names are not valid: {'invalid_tool_name'}. Valid tool names are: .")
+        ):
+            agent._select_tools(["invalid_tool_name"])
+
+    def test_tool_selection_no_tools_configured(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="This is a system prompt.")
+        with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
+            agent._select_tools([weather_tool.name])
+
+    def test_tool_selection_invalid_type(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        with pytest.raises(
+            TypeError,
+            match=(re.escape("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")),
+        ):
+            agent._select_tools("invalid_tool_name")
