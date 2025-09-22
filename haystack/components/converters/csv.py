@@ -44,7 +44,7 @@ class CSVToDocument:
         store_full_path: bool = False,
         *,
         conversion_mode: Literal["file", "row"] = "file",
-        content_column: Optional[str] = None,
+        # content_column: Optional[str] = None,
         delimiter: str = ",",
         quotechar: str = '"',
     ):
@@ -61,9 +61,6 @@ class CSVToDocument:
         :param conversion_mode:
             - "file" (default): current behavior, one Document per CSV file whose content is the raw CSV text.
             - "row": convert each CSV row to its own Document.
-        :param content_column:
-            When ``conversion_mode="row"``, the column to use as ``Document.content``.
-            If ``None``, the content will be a human-readable "key: value" listing of that row.
         :param delimiter:
             CSV delimiter used when parsing in row mode (passed to ``csv.DictReader``).
         :param quotechar:
@@ -73,7 +70,7 @@ class CSVToDocument:
         self.encoding = encoding
         self.store_full_path = store_full_path
         self.conversion_mode = conversion_mode
-        self.content_column = content_column
+        # self.content_column = content_column
         self.delimiter = delimiter
         self.quotechar = quotechar
 
@@ -87,13 +84,18 @@ class CSVToDocument:
     def run(
         self,
         sources: list[Union[str, Path, ByteStream]],
+        *,
+        content_column: Optional[str] = None,
         meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
     ):
         """
-        Converts a CSV file to a Document.
+        Converts CSV files to a Document.
 
         :param sources:
             List of file paths or ByteStream objects.
+        :param content_column:
+            Required when ``conversion_mode="row"``. The column name whose values become
+            ``Document.content`` for each row. The column must exist in the CSV header.
         :param meta:
             Optional metadata to attach to the documents.
             This value can be either a list of dictionaries or a single dictionary.
@@ -138,6 +140,13 @@ class CSVToDocument:
                 documents.append(Document(content=data, meta=merged_metadata))
                 continue
 
+            # --- ROW MODE (strict) ---
+            # Enforce required content_column in row mode
+            if not content_column:
+                raise ValueError(
+                    "CSVToDocument(row): 'content_column' is required in run() when conversion_mode='row'."
+                )
+
             # Reviewer note: Warn for very large CSVs in row mode (memory consideration)
             try:
                 size_bytes = len(raw)
@@ -150,44 +159,29 @@ class CSVToDocument:
             except Exception:
                 pass
 
-            # Mode: row -> one Document per CSV row
+            # Create DictReader; if this fails, raise (no fallback)
             try:
                 reader = csv.DictReader(io.StringIO(data), delimiter=self.delimiter, quotechar=self.quotechar)
             except Exception as e:
-                logger.warning(
-                    "Could not parse CSV rows for {source}. Falling back to file mode. Error: {error}",
-                    source=source,
-                    error=e,
-                )
-                documents.append(Document(content=data, meta=merged_metadata))
-                continue
+                raise RuntimeError(f"CSVToDocument(row): could not parse CSV rows for {source}: {e}") from e
 
-            # Validate content_column presence; fall back to listing if missing
-            effective_content_col = self.content_column
+            # Validate header contains content_column; strict error if missing
             header = reader.fieldnames or []
-            if effective_content_col and effective_content_col not in header:
-                logger.warning(
-                    "CSVToDocument(row): content_column='{col}' not found in header for {source}; "
-                    "falling back to key: value listing.",
-                    col=effective_content_col,
-                    source=source,
+            if content_column not in header:
+                raise ValueError(
+                    f"CSVToDocument(row): content_column='{content_column}' not found in header "
+                    f"for {source}. Available columns: {header}"
                 )
-                effective_content_col = None
 
+            # Build documents; if a row processing fails, raise immediately (no skip)
             for i, row in enumerate(reader):
-                # Protect against malformed rows (reviewer suggestion)
                 try:
                     doc = self._build_document_from_row(
-                        row=row, base_meta=merged_metadata, row_index=i, content_column=effective_content_col
+                        row=row, base_meta=merged_metadata, row_index=i, content_column=content_column
                     )
-                    documents.append(doc)
                 except Exception as e:
-                    logger.warning(
-                        "CSVToDocument(row): skipping malformed row {row_index} in {source}. Error: {error}",
-                        row_index=i,
-                        source=source,
-                        error=e,
-                    )
+                    raise RuntimeError(f"CSVToDocument(row): failed to process row {i} for {source}: {e}") from e
+                documents.append(doc)
 
         return {"documents": documents}
 
@@ -197,22 +191,30 @@ class CSVToDocument:
         return "" if value is None else str(value)
 
     def _build_document_from_row(
-        self, row: dict[str, Any], base_meta: dict[str, Any], row_index: int, content_column: Optional[str]
+        self, row: dict[str, Any], base_meta: dict[str, Any], row_index: int, content_column: str
     ) -> Document:
         """
-        Create a Document from a single CSV row. Does not catch exceptions; caller wraps.
+        Build a ``Document`` from one parsed CSV row.
+
+        :param row: Mapping of column name to cell value for the current row
+            (as produced by ``csv.DictReader``).
+        :param base_meta: File-level and user-provided metadata to start from
+            (for example: ``file_path``, ``encoding``).
+        :param row_index: Zero-based row index in the CSV; stored as
+            ``row_number`` in the output document's metadata.
+        :param content_column: Column name to use for ``Document.content``.
+        :returns: A ``Document`` with chosen content and merged metadata.
+            Remaining row columns are added to ``meta`` with collision-safe
+            keys (prefixed with ``csv_`` if needed).
         """
         row_meta = dict(base_meta)
 
-        # content
-        if content_column:
-            content = self._safe_value(row.get(content_column))
-        else:
-            content = "\n".join(f"{k}: {self._safe_value(v)}" for k, v in row.items())
+        # content (strict: content_column must exist; validated by caller)
+        content = self._safe_value(row.get(content_column))
 
         # merge remaining columns into meta with collision handling
         for k, v in row.items():
-            if content_column and k == content_column:
+            if k == content_column:
                 continue
             key_to_use = k
             if key_to_use in row_meta:
