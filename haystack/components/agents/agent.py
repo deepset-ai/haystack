@@ -257,6 +257,7 @@ class Agent:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT],
         requires_async: bool,
+        *,
         system_prompt: Optional[str] = None,
         tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
         **kwargs,
@@ -326,6 +327,7 @@ class Agent:
         snapshot: AgentSnapshot,
         streaming_callback: Optional[StreamingCallbackT],
         requires_async: bool,
+        *,
         tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
     ) -> _ExecutionContext:
         """
