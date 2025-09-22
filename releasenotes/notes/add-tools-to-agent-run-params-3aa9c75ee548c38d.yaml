@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Added `tools` to agent run parameters to enhance the agent's flexibility.
+    This allows users to select only a subset of tools for the agent to use during its execution, or even add new tools dynamically.
