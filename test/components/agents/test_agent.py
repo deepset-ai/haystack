@@ -743,6 +743,62 @@ class TestAgent:
         )
         assert response["messages"][0].text == "This is the run system prompt."
 
+    def test_run_with_tools_run_param(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
+        @component
+        class MockChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+            ) -> dict[str, Any]:
+                assert tools == [weather_tool]
+                tool_message = ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                )
+                message = tool_message if not self.tool_invoked else ChatMessage.from_assistant("Hello")
+                self.tool_invoked = True
+                return {"replies": [message]}
+
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[component_tool], system_prompt="This is a system prompt.")
+        tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
+        monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
+        agent.warm_up()
+        agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
+        tool_invoker_run_mock.assert_called_once()
+        assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
+
+    def test_run_with_tools_run_param_for_tool_selection(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
+        @component
+        class MockChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+            ) -> dict[str, Any]:
+                assert tools == [weather_tool]
+                tool_message = ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                )
+                message = tool_message if not self.tool_invoked else ChatMessage.from_assistant("Hello")
+                self.tool_invoked = True
+                return {"replies": [message]}
+
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
+        monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
+        agent.warm_up()
+        agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
+        tool_invoker_run_mock.assert_called_once()
+        assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
+
     def test_run_not_warmed_up(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         chat_generator.warm_up = MagicMock()
