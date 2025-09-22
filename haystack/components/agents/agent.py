@@ -285,6 +285,23 @@ class Agent:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
 
+        selected_tools = self._select_tools(tools)
+        tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
+        generator_inputs: dict[str, Any] = {"tools": selected_tools}
+        if streaming_callback is not None:
+            tool_invoker_inputs["streaming_callback"] = streaming_callback
+            generator_inputs["streaming_callback"] = streaming_callback
+
+        return _ExecutionContext(
+            state=state,
+            component_visits=dict.fromkeys(["chat_generator", "tool_invoker"], 0),
+            chat_generator_inputs=generator_inputs,
+            tool_invoker_inputs=tool_invoker_inputs,
+        )
+
+    def _select_tools(
+        self, tools: Optional[Union[list[Tool], Toolset, list[str]]] = None
+    ) -> Union[list[Tool], Toolset]:
         selected_tools: Union[list[Tool], Toolset] = self.tools
         if isinstance(tools, Toolset) or isinstance(tools, list) and all(isinstance(t, Tool) for t in tools):
             selected_tools = tools  # type: ignore[assignment]
@@ -302,22 +319,14 @@ class Agent:
             selected_tools = [tool for tool in self.tools if tool.name in selected_tool_names]
         elif tools is not None:
             raise TypeError("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")
-
-        tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
-        generator_inputs: dict[str, Any] = {"tools": selected_tools}
-        if streaming_callback is not None:
-            tool_invoker_inputs["streaming_callback"] = streaming_callback
-            generator_inputs["streaming_callback"] = streaming_callback
-
-        return _ExecutionContext(
-            state=state,
-            component_visits=dict.fromkeys(["chat_generator", "tool_invoker"], 0),
-            chat_generator_inputs=generator_inputs,
-            tool_invoker_inputs=tool_invoker_inputs,
-        )
+        return selected_tools
 
     def _initialize_from_snapshot(
-        self, snapshot: AgentSnapshot, streaming_callback: Optional[StreamingCallbackT], requires_async: bool
+        self,
+        snapshot: AgentSnapshot,
+        streaming_callback: Optional[StreamingCallbackT],
+        requires_async: bool,
+        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
     ) -> _ExecutionContext:
         """
         Initialize execution context from an AgentSnapshot.
@@ -325,6 +334,7 @@ class Agent:
         :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
+        :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
         """
         component_visits = snapshot.component_visits
         current_inputs = {
@@ -349,8 +359,9 @@ class Agent:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
 
-        tool_invoker_inputs: dict[str, Any] = {}
-        generator_inputs: dict[str, Any] = {"tools": self.tools}
+        selected_tools = self._select_tools(tools)
+        tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
+        generator_inputs: dict[str, Any] = {"tools": selected_tools}
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
@@ -485,7 +496,7 @@ class Agent:
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=False
+                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=False, tools=tools
             )
         else:
             exe_context = self._initialize_fresh_execution(
@@ -645,7 +656,7 @@ class Agent:
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=False
+                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=False, tools=tools
             )
         else:
             exe_context = self._initialize_fresh_execution(
