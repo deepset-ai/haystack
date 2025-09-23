@@ -26,6 +26,7 @@ class MarkdownHeaderSplitter:
 
     def __init__(
         self,
+        *,
         infer_header_levels: bool = False,
         page_break_character: str = "\f",
         secondary_split: Literal["none", "word", "passage", "period", "line"] = "none",
