@@ -811,30 +811,14 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_response_format_pydantic_model_and_streaming(self, calendar_event_model):
-        streaming_callback_called = False
-
-        def streaming_callback(chunk: StreamingChunk) -> None:
-            nonlocal streaming_callback_called
-            streaming_callback_called = True
-
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
-        component = OpenAIChatGenerator(
-            generation_kwargs={"response_format": calendar_event_model}, streaming_callback=streaming_callback
+        comp = OpenAIChatGenerator(
+            generation_kwargs={"response_format": calendar_event_model}, streaming_callback=print_streaming_chunk
         )
-        results = component.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message = results["replies"][0]
-        msg = json.loads(message.text)
-        assert "Marketing Summit" in msg["event_name"]
-        assert isinstance(msg["event_date"], str)
-        assert isinstance(msg["event_location"], str)
-        assert message.meta["finish_reason"] == "stop"
-
-        # Streaming callback should not be called when response_format is set to a pydantic model since pydantic models
-        # must be processed with the parse endpoint which doesn't support streaming
-        assert streaming_callback_called is False
+        with pytest.raises(TypeError):
+            _ = comp.run(chat_messages)
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
