@@ -54,6 +54,7 @@ class MarkdownHeaderSplitter:
         self.split_threshold = split_threshold
 
         # initialize secondary_splitter only if needed
+        self.secondary_splitter: Optional[DocumentSplitter]
         if self.secondary_split != "none":
             self.secondary_splitter = DocumentSplitter(
                 split_by=self.secondary_split,
@@ -151,9 +152,9 @@ class MarkdownHeaderSplitter:
             return [{"content": text, "meta": {"header": None, "parentheaders": []}}]
 
         # process headers and build chunks
-        chunks = []
-        header_stack = [None] * 6
-        active_parents = []
+        chunks: list[dict] = []
+        header_stack: list[Optional[str]] = [None] * 6
+        active_parents: list[str] = []
 
         for i, match in enumerate(matches):
             # extract header info
@@ -174,7 +175,7 @@ class MarkdownHeaderSplitter:
             # skip splits w/o content
             if not content:
                 # Add as parent for subsequent headers
-                active_parents = [h for h in header_stack[: level - 1] if h]
+                active_parents = [h for h in header_stack[: level - 1] if h is not None]
                 active_parents.append(header_text)
                 continue
 
@@ -193,7 +194,7 @@ class MarkdownHeaderSplitter:
             )
 
             # reset active parents
-            active_parents = [h for h in header_stack[: level - 1] if h]
+            active_parents = [h for h in header_stack[: level - 1] if h is not None]
 
         logger.info("Split into {num_chunks} chunks by markdown headers.", num_chunks=len(chunks))
         return chunks
@@ -211,14 +212,16 @@ class MarkdownHeaderSplitter:
         result_docs = []
 
         for doc in documents:
+            if doc.content is None:
+                result_docs.append(doc)
+                continue
             # extract header information
             header_match = re.search(r"(#{1,6}) (.+)(?:\n|$)", doc.content)
+            content_for_splitting: str = doc.content
             if header_match:
                 content_for_splitting = doc.content[header_match.end() :]
-            else:
-                content_for_splitting = doc.content
 
-            if not content_for_splitting.strip():  # skip empty content
+            if not content_for_splitting or not content_for_splitting.strip():  # skip empty content
                 result_docs.append(doc)
                 continue
 
@@ -226,6 +229,9 @@ class MarkdownHeaderSplitter:
             current_page = doc.meta.get("page_number", 1)
 
             # use the pre-initialized secondary splitter
+            if self.secondary_splitter is None:
+                result_docs.append(doc)
+                continue
             secondary_splits = self.secondary_splitter.run(
                 documents=[Document(content=content_for_splitting, meta=doc.meta)]
             )["documents"]
@@ -236,8 +242,9 @@ class MarkdownHeaderSplitter:
                 # calculate page number for this split
                 if i > 0:  # page break counting
                     prev_content = secondary_splits[i - 1].content
-                    page_breaks = prev_content.count(self.page_break_character)
-                    accumulated_page_breaks += page_breaks
+                    if prev_content is not None:
+                        page_breaks = prev_content.count(self.page_break_character)
+                        accumulated_page_breaks += page_breaks
 
                 # set page number to meta
                 split.meta["page_number"] = current_page + accumulated_page_breaks
@@ -283,10 +290,14 @@ class MarkdownHeaderSplitter:
         result_docs = []
         for doc in documents:
             logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
+            if doc.content is None:
+                continue
             splits = self._split_by_markdown_headers(doc.content)
             docs = []
-            total_pages = doc.meta.get("total_pages", 0) or doc.content.count(self.page_break_character) + 1
-            current_page = doc.meta.get("page_number", 1)
+            total_pages = doc.meta.get("total_pages", 0) if doc.meta else 0
+            if not total_pages:
+                total_pages = doc.content.count(self.page_break_character) + 1
+            current_page = doc.meta.get("page_number", 1) if doc.meta else 1
             logger.debug(
                 "Starting page number: {current_page}, Total pages: {total_pages}",
                 current_page=current_page,
@@ -300,7 +311,7 @@ class MarkdownHeaderSplitter:
                 page_breaks = self._process_split_content(split["content"], i)
                 current_page += page_breaks
                 if split.get("meta"):
-                    meta.update(self._flatten_dict(split.get("meta")))
+                    meta.update(self._flatten_dict(split.get("meta") or {}))
                 docs.append(Document(content=split["content"], meta=meta))
             logger.debug(
                 "Split into {num_docs} documents for id={doc_id}, final page: {current_page}",
