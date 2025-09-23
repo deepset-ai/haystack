@@ -34,7 +34,7 @@ class CSVToDocument:
     results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     print(documents[0].content)
-    # 'col1,col2\now1,row1\nrow2row2\n'
+    # 'col1,col2\\nrow1,row1\\nrow2,row2\\n'
     ```
     """
 
@@ -44,7 +44,6 @@ class CSVToDocument:
         store_full_path: bool = False,
         *,
         conversion_mode: Literal["file", "row"] = "file",
-        # content_column: Optional[str] = None,
         delimiter: str = ",",
         quotechar: str = '"',
     ):
@@ -59,22 +58,20 @@ class CSVToDocument:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
         :param conversion_mode:
-            - "file" (default): current behavior, one Document per CSV file whose content is the raw CSV text.
-            - "row": convert each CSV row to its own Document.
+            - "file" (default): one Document per CSV file whose content is the raw CSV text.
+            - "row": convert each CSV row to its own Document (requires `content_column` in `run()`).
         :param delimiter:
             CSV delimiter used when parsing in row mode (passed to ``csv.DictReader``).
         :param quotechar:
             CSV quote character used when parsing in row mode (passed to ``csv.DictReader``).
         """
-
         self.encoding = encoding
         self.store_full_path = store_full_path
         self.conversion_mode = conversion_mode
-        # self.content_column = content_column
         self.delimiter = delimiter
         self.quotechar = quotechar
 
-        # Basic validation (reviewer suggestion)
+        # Basic validation
         if len(self.delimiter) != 1:
             raise ValueError("CSVToDocument: delimiter must be a single character.")
         if len(self.quotechar) != 1:
@@ -89,13 +86,14 @@ class CSVToDocument:
         meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
     ):
         """
-        Converts CSV files to a Document.
+        Converts CSV files to a Document (file mode) or to one Document per row (row mode).
 
         :param sources:
             List of file paths or ByteStream objects.
         :param content_column:
-            Required when ``conversion_mode="row"``. The column name whose values become
-            ``Document.content`` for each row. The column must exist in the CSV header.
+            **Required when** ``conversion_mode="row"``.
+            The column name whose values become ``Document.content`` for each row.
+            The column must exist in the CSV header.
         :param meta:
             Optional metadata to attach to the documents.
             This value can be either a list of dictionaries or a single dictionary.
@@ -117,11 +115,11 @@ class CSVToDocument:
             except Exception as e:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
+
             try:
                 encoding = bytestream.meta.get("encoding", self.encoding)
                 raw = io.BytesIO(bytestream.data).getvalue()
                 data = raw.decode(encoding=encoding)
-
             except Exception as e:
                 logger.warning(
                     "Could not convert file {source}. Skipping it. Error message: {error}", source=source, error=e
@@ -141,13 +139,13 @@ class CSVToDocument:
                 continue
 
             # --- ROW MODE (strict) ---
-            # Enforce required content_column in row mode
+            # Require content_column in run(); no fallback
             if not content_column:
                 raise ValueError(
                     "CSVToDocument(row): 'content_column' is required in run() when conversion_mode='row'."
                 )
 
-            # Reviewer note: Warn for very large CSVs in row mode (memory consideration)
+            # Warn for large CSVs in row mode (memory consideration)
             try:
                 size_bytes = len(raw)
                 if size_bytes > _ROW_MODE_SIZE_WARN_BYTES:
