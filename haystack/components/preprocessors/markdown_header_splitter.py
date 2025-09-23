@@ -259,6 +259,8 @@ class MarkdownHeaderSplitter:
 
         # assign unique, sequential split_id to all final chunks
         for idx, doc in enumerate(result_docs):
+            if doc.meta is None:
+                doc.meta = {}
             doc.meta["split_id"] = idx
 
         logger.info("Secondary splitting complete. Final count: {final_count} documents.", final_count=len(result_docs))
@@ -334,6 +336,12 @@ class MarkdownHeaderSplitter:
         :param documents: List of documents to split
         :param infer_header_levels: If True, attempts to infer and rewrite header levels before splitting.
             If None, uses the value from initialization.
+
+        :returns: A dictionary with the following key:
+            - `documents`: List of documents with the split texts. Each document includes:
+            - A metadata field `source_id` to track the original document.
+            - A metadata field `page_number` to track the original page number.
+            - All other metadata copied from the original document.
         """
         # validate input documents
         for doc in documents:
@@ -363,8 +371,10 @@ class MarkdownHeaderSplitter:
             final_docs = self._apply_secondary_splitting(header_split_docs)
         else:
             final_docs = header_split_docs
-
-        for idx, doc in enumerate(final_docs):
-            doc.meta["split_id"] = idx
+            # assign split_id only if secondary splitting is not applied
+            for idx, doc in enumerate(final_docs):
+                if doc.meta is None:
+                    doc.meta = {}
+                doc.meta["split_id"] = idx
 
         return {"documents": final_docs}
