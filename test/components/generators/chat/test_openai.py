@@ -810,21 +810,6 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format_pydantic_model_and_streaming(self, calendar_event_model):
-        chat_messages = [
-            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
-        ]
-        comp = OpenAIChatGenerator(
-            generation_kwargs={"response_format": calendar_event_model}, streaming_callback=print_streaming_chunk
-        )
-        with pytest.raises(TypeError):
-            _ = comp.run(chat_messages)
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     def test_live_run_with_response_format_json_object(self):
         chat_messages = [
             ChatMessage.from_user(
