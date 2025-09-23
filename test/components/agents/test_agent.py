@@ -4,6 +4,7 @@
 
 import logging
 import os
+import re
 from datetime import datetime
 from typing import Any, Iterator, Optional, Union
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -743,6 +744,62 @@ class TestAgent:
         )
         assert response["messages"][0].text == "This is the run system prompt."
 
+    def test_run_with_tools_run_param(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
+        @component
+        class MockChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+            ) -> dict[str, Any]:
+                assert tools == [weather_tool]
+                tool_message = ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                )
+                message = tool_message if not self.tool_invoked else ChatMessage.from_assistant("Hello")
+                self.tool_invoked = True
+                return {"replies": [message]}
+
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[component_tool], system_prompt="This is a system prompt.")
+        tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
+        monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
+        agent.warm_up()
+        agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
+        tool_invoker_run_mock.assert_called_once()
+        assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
+
+    def test_run_with_tools_run_param_for_tool_selection(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
+        @component
+        class MockChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+            ) -> dict[str, Any]:
+                assert tools == [weather_tool]
+                tool_message = ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                )
+                message = tool_message if not self.tool_invoked else ChatMessage.from_assistant("Hello")
+                self.tool_invoked = True
+                return {"replies": [message]}
+
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
+        monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
+        agent.warm_up()
+        agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
+        tool_invoker_run_mock.assert_called_once()
+        assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
+
     def test_run_not_warmed_up(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         chat_generator.warm_up = MagicMock()
@@ -1055,3 +1112,62 @@ class TestAgentTracing:
         # Clean up
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
+
+
+class TestAgentToolSelection:
+    def test_tool_selection_by_name(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        result = agent._select_tools([weather_tool.name])
+        assert result == [weather_tool]
+
+    def test_tool_selection_new_tool(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
+        result = agent._select_tools([component_tool])
+        assert result == [component_tool]
+
+    def test_tool_selection_existing_tools(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        result = agent._select_tools(None)
+        assert result == [weather_tool, component_tool]
+
+    def test_tool_selection_invalid_tool_name(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        with pytest.raises(
+            ValueError, match=("The following tool names are not valid: {'invalid_tool_name'}. Valid tool names are: .")
+        ):
+            agent._select_tools(["invalid_tool_name"])
+
+    def test_tool_selection_no_tools_configured(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="This is a system prompt.")
+        with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
+            agent._select_tools([weather_tool.name])
+
+    def test_tool_selection_invalid_type(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        with pytest.raises(
+            TypeError,
+            match=(re.escape("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")),
+        ):
+            agent._select_tools("invalid_tool_name")
