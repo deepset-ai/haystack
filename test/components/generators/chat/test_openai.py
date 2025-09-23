@@ -792,7 +792,7 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format(self, calendar_event_model):
+    def test_live_run_with_response_format_pydantic_model(self, calendar_event_model):
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
@@ -804,6 +804,86 @@ class TestOpenAIChatGenerator:
         assert "Marketing Summit" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_pydantic_model_and_streaming(self, calendar_event_model):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        chat_messages = [
+            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+        ]
+        component = OpenAIChatGenerator(
+            generation_kwargs={"response_format": calendar_event_model}, streaming_callback=streaming_callback
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Marketing Summit" in msg["event_name"]
+        assert isinstance(msg["event_date"], str)
+        assert isinstance(msg["event_location"], str)
+        assert message.meta["finish_reason"] == "stop"
+
+        # Streaming callback should not be called when response_format is set to a pydantic model since pydantic models
+        # must be processed with the parse endpoint which doesn't support streaming
+        assert streaming_callback_called is False
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_object(self):
+        chat_messages = [
+            ChatMessage.from_user(
+                'Answer in JSON: What\'s the capital of France? Please respond with a JSON object with the key "city". '
+                'For example: {"city": "Paris"}'
+            )
+        ]
+        comp = OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}})
+        results = comp.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "paris" in msg["city"].lower()
+        assert message.meta["finish_reason"] == "stop"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_object_streaming(self):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        chat_messages = [
+            ChatMessage.from_user(
+                'Answer in JSON: What\'s the capital of France? Please respond with a JSON object with the key "city". '
+                'For example: {"city": "Paris"}'
+            )
+        ]
+        comp = OpenAIChatGenerator(
+            generation_kwargs={"response_format": {"type": "json_object"}}, streaming_callback=streaming_callback
+        )
+        results = comp.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "paris" in msg["city"].lower()
+        assert message.meta["finish_reason"] == "stop"
+        assert streaming_callback_called is True
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -830,8 +910,8 @@ class TestOpenAIChatGenerator:
         }
 
         chat_messages = [ChatMessage.from_user("What's the capital of France?")]
-        component = OpenAIChatGenerator(generation_kwargs={"response_format": response_schema})
-        results = component.run(chat_messages)
+        comp = OpenAIChatGenerator(generation_kwargs={"response_format": response_schema})
+        results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
@@ -845,20 +925,44 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format_and_streaming(self, calendar_event_model):
-        chat_messages = [
-            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
-        ]
-        component = OpenAIChatGenerator(generation_kwargs={"response_format": calendar_event_model})
-        results = component.run(chat_messages)
+    def test_live_run_with_response_format_json_schema_streaming(self):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        response_schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "CapitalCity",
+                "strict": True,
+                "schema": {
+                    "title": "CapitalCity",
+                    "type": "object",
+                    "properties": {
+                        "city": {"title": "City", "type": "string"},
+                        "country": {"title": "Country", "type": "string"},
+                    },
+                    "required": ["city", "country"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+        chat_messages = [ChatMessage.from_user("What's the capital of France?")]
+        comp = OpenAIChatGenerator(
+            generation_kwargs={"response_format": response_schema}, streaming_callback=streaming_callback
+        )
+        results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "Marketing Summit" in msg["event_name"]
-        assert isinstance(msg["event_date"], str)
-        assert isinstance(msg["event_location"], str)
-
+        assert "Paris" in msg["city"]
+        assert isinstance(msg["country"], str)
+        assert "France" in msg["country"]
         assert message.meta["finish_reason"] == "stop"
+        assert streaming_callback_called is True
 
     def test_run_with_wrong_model(self):
         mock_client = MagicMock()
