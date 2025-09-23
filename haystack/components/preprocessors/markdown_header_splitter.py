@@ -139,7 +139,7 @@ class MarkdownHeaderSplitter:
         logger.info("Rewrote {num_headers} headers with inferred levels.", num_headers=len(matches))
         return modified_text
 
-    def _split_by_markdown_headers(self, text: str) -> list[dict]:
+    def _split_text_by_markdown_headers(self, text: str) -> list[dict]:
         """Split text by markdown headers and create chunks with appropriate metadata."""
         logger.debug("Splitting text by markdown headers")
 
@@ -265,6 +265,7 @@ class MarkdownHeaderSplitter:
         return result_docs
 
     def _flatten_dict(self, d: dict, prefix: str = "", target_dict: Optional[dict] = None) -> dict:
+        """Flatten a nested dictionary, concatenating keys with underscores."""
         if target_dict is None:
             target_dict = {}
         for key, value in d.items():
@@ -276,6 +277,7 @@ class MarkdownHeaderSplitter:
         return target_dict
 
     def _process_split_content(self, split_content: str, split_index: int) -> int:
+        """Count page breaks in the split content and log if any are found."""
         if not isinstance(split_content, str):
             return 0
         page_breaks = split_content.count(self.page_break_character)
@@ -288,12 +290,13 @@ class MarkdownHeaderSplitter:
         return page_breaks
 
     def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[Document]:
+        """Split a list of documents by markdown headers, preserving metadata."""
         result_docs = []
         for doc in documents:
             logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
             if doc.content is None:
                 continue
-            splits = self._split_by_markdown_headers(doc.content)
+            splits = self._split_text_by_markdown_headers(doc.content)
             docs = []
             total_pages = doc.meta.get("total_pages", 0) if doc.meta else 0
             if not total_pages:
