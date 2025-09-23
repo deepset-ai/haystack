@@ -1,7 +1,4 @@
 ---
-highlights: >
-  Added a MarkdownHeaderSplitter component for splitting documents at Markdown headers, with optional header level inference and secondary splitting based on Haystack's DocumentSplitter. This enables a more appropriate splitting logic for Markdown documents where sections are defined by headers, improving the structure and relevance of the resulting document chunks for downstream tasks.
-
 features:
   - |
     Introduced the `MarkdownHeaderSplitter` component:
@@ -10,27 +7,3 @@ features:
       - Supports secondary splitting (by word, passage, period, or line) for further chunking after header-based splitting using Haystack's `DocumentSplitter`.
       - Preserves and propagates metadata such as parent headers and page numbers.
       - Handles edge cases such as documents with no headers, empty content, and non-text documents.
-
-upgrade:
-  - |
-    No upgrade actions required. This is a new component and does not affect existing pipelines.
-
-enhancements:
-  - |
-    Improves preprocessing flexibility for Markdown documents, making it easier to build indexing pipelines for Markdown-files.
-
-issues:
-  - |
-    Inferring header levels can only move downwards in the header hierarchy (e.g., `##` to `###`), not back up (e.g., `###` to `##`), meaning that the algorithm may not perfectly reconstruct the original header hierarchy in cases where header levels move up again.
-
-deprecations:
-  - |
-    None.
-
-security:
-  - |
-    No security-related changes.
-
-fixes:
-  - |
-    N/A (new feature).
