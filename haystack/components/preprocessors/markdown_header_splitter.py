@@ -66,7 +66,7 @@ class MarkdownHeaderSplitter:
         else:
             self.secondary_splitter = None
 
-    def _infer_and_rewrite_header_levels(self, text: str) -> str:
+    def _infer_header_levels(self, text: str) -> str:
         """
         Infer and rewrite header levels in the markdown text.
 
@@ -276,7 +276,7 @@ class MarkdownHeaderSplitter:
                 target_dict[new_key] = value
         return target_dict
 
-    def _process_split_content(self, split_content: str, split_index: int) -> int:
+    def _count_page_breaks(self, split_content: str, split_index: int) -> int:
         """Count page breaks in the split content and log if any are found."""
         if not isinstance(split_content, str):
             return 0
@@ -312,7 +312,7 @@ class MarkdownHeaderSplitter:
                 if doc.meta:
                     meta = self._flatten_dict(doc.meta)
                 meta.update({"source_id": doc.id, "total_pages": total_pages, "page_number": current_page})
-                page_breaks = self._process_split_content(split["content"], i)
+                page_breaks = self._count_page_breaks(split["content"], i)
                 current_page += page_breaks
                 if split.get("meta"):
                     meta.update(self._flatten_dict(split.get("meta") or {}))
@@ -348,7 +348,7 @@ class MarkdownHeaderSplitter:
             if not doc.content or not doc.content.strip():
                 continue
             if infer_header_levels:
-                content = self._infer_and_rewrite_header_levels(doc.content)
+                content = self._infer_header_levels(doc.content)
                 processed_documents.append(Document(content=content, meta=doc.meta, id=doc.id))
             else:
                 processed_documents.append(doc)
