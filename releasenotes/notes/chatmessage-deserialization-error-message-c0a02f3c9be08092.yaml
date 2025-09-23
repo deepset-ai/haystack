@@ -1,0 +1,8 @@
+---
+
+fixes:
+  - |
+    Reintroduce verbose error message when deserializing a `ChatMessage` with invalid content parts.
+    While LLMs may still generate messages in the wrong format, this error provides guidance on the expected structure,
+    making retries easier and more reliable during agent runs.
+    The error message was unintentionally removed during a previous refactoring.

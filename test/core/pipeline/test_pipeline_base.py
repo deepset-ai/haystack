@@ -259,6 +259,40 @@ class TestPipelineBase:
         # instance = pipe2.get_component("some")
         # assert instance == component
 
+    def test_connect_with_nonexistent_output_socket_name(self):
+        """Test connecting using a non-existent output socket name."""
+        comp1 = component_class("Comp1", output_types={"output": int})()
+        comp2 = component_class("Comp2", input_types={"value": int})()
+        pipe = PipelineBase()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2)
+
+        with pytest.raises(PipelineConnectError) as excinfo:
+            pipe.connect("comp1.value", "comp2.value")
+
+        assert "'comp1.value' does not exist" in str(excinfo.value)
+        assert "Output connections of comp1 are: output (type int)" in str(excinfo.value)
+
+    def test_connect_with_no_output_sockets(self):
+        """Test connecting from a component that has no output sockets at all."""
+
+        @component
+        class NoOutputComponent:
+            def run(self):
+                pass
+
+        comp1 = NoOutputComponent()
+        comp2 = component_class("Comp2", input_types={"value": int})()
+        pipe = PipelineBase()
+        pipe.add_component("comp1", comp1)
+        pipe.add_component("comp2", comp2)
+
+        with pytest.raises(PipelineConnectError) as excinfo:
+            pipe.connect("comp1.value", "comp2.value")
+
+        assert "'comp1' does not have any output connections" in str(excinfo.value)
+        assert "@component.output_types" in str(excinfo.value)
+
     # UNIT
     def test_get_component_name(self):
         pipe = PipelineBase()

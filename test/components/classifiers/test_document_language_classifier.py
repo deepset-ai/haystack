@@ -42,6 +42,8 @@ class TestDocumentLanguageClassifier:
         result = classifier.run(documents=[english_document, german_document])
         assert result["documents"][0].meta["language"] == "en"
         assert result["documents"][1].meta["language"] == "unmatched"
+        assert "language" not in english_document.meta
+        assert "language" not in german_document.meta
 
     def test_warning_if_no_language_detected(self, caplog):
         with caplog.at_level(logging.WARNING):

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from dataclasses import replace
 from typing import Any, Optional
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -232,12 +233,14 @@ class TransformersZeroShotDocumentClassifier:
 
         predictions = self.pipeline(texts, self.labels, multi_label=self.multi_label, batch_size=batch_size)
 
+        new_documents = []
         for prediction, document in zip(predictions, documents):
             formatted_prediction = {
                 "label": prediction["labels"][0],
                 "score": prediction["scores"][0],
                 "details": dict(zip(prediction["labels"], prediction["scores"])),
             }
-            document.meta["classification"] = formatted_prediction
+            new_meta = {**document.meta, "classification": formatted_prediction}
+            new_documents.append(replace(document, meta=new_meta))
 
-        return {"documents": documents}
+        return {"documents": new_documents}

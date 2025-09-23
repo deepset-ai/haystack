@@ -62,6 +62,13 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
             print("[ASSISTANT]\n", flush=True, end="")
         print(chunk.content, flush=True, end="")
 
+    ## Reasoning content streaming
+    # Print the reasoning content of the chunk (from ChatGenerator)
+    if chunk.reasoning:
+        if chunk.start:
+            print("[REASONING]\n", flush=True, end="")
+        print(chunk.reasoning.reasoning_text, flush=True, end="")
+
     # End of LLM assistant message so we add two new lines
     # This ensures spacing between multiple LLM messages (e.g. Agent) or multiple Tool Call Results
     if chunk.finish_reason is not None:

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix tracing context not propagated to tools when running via ToolInvoker.run_async

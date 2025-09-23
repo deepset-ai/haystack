@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Updated `SentenceWindowRetriever`'s source_id_meta_field parameter to also accept a list of strings. If a list of fields are provided, then only documents matching both fields will be retrieved.

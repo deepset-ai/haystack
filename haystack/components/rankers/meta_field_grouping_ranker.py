@@ -94,14 +94,17 @@ class MetaFieldGroupingRanker:
         for doc in documents:
             group_value = str(doc.meta.get(self.group_by, ""))
 
-            if group_value:
-                subgroup_value = "no_subgroup"
-                if self.subgroup_by and self.subgroup_by in doc.meta:
-                    subgroup_value = doc.meta[self.subgroup_by]
-
-                document_groups[group_value][subgroup_value].append(doc)
-            else:
+            # If no group value, add to no_group_docs and continue
+            if not group_value:
                 no_group_docs.append(doc)
+                continue
+
+            # Get subgroup value or use a default if not specified
+            subgroup_value = "no_subgroup"
+            if self.subgroup_by and self.subgroup_by in doc.meta:
+                subgroup_value = str(doc.meta[self.subgroup_by])
+
+            document_groups[group_value][subgroup_value].append(doc)
 
         ordered_docs = []
         for subgroups in document_groups.values():

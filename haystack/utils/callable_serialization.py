@@ -6,7 +6,6 @@ import inspect
 from typing import Any, Callable
 
 from haystack.core.errors import DeserializationError, SerializationError
-from haystack.tools.tool import Tool
 from haystack.utils.type_serialization import thread_safe_import
 
 
@@ -51,6 +50,9 @@ def deserialize_callable(callable_handle: str) -> Callable:
     :return: The callable
     :raises DeserializationError: If the callable cannot be found
     """
+    # Import here to avoid circular imports
+    from haystack.tools.tool import Tool
+
     parts = callable_handle.split(".")
 
     for i in range(len(parts), 0, -1):

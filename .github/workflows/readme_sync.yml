@@ -21,15 +21,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        run: pip install "hatch==${{ env.HATCH_VERSION }}" "click<8.3.0"
 
       - name: Generate API docs
         env:

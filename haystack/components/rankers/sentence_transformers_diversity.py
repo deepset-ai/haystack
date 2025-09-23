@@ -10,7 +10,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
-with LazyImport(message="Run 'pip install \"sentence-transformers>=4.1.0\"'") as torch_and_sentence_transformers_import:
+with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as torch_and_sentence_transformers_import:
     import torch
     from sentence_transformers import SentenceTransformer
 
@@ -184,7 +184,7 @@ class SentenceTransformersDiversityRanker:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.strategy = DiversityRankingStrategy.from_str(strategy) if isinstance(strategy, str) else strategy
-        self.lambda_threshold = lambda_threshold or 0.5
+        self.lambda_threshold = lambda_threshold
         self._check_lambda_threshold(self.lambda_threshold, self.strategy)
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
@@ -353,7 +353,7 @@ class SentenceTransformersDiversityRanker:
 
         texts_to_embed = self._prepare_texts_to_embed(documents)
         doc_embeddings, query_embedding = self._embed_and_normalize(query, texts_to_embed)
-        top_k = top_k if top_k else len(documents)
+        top_k = min(top_k, len(documents))
 
         selected: list[int] = []
         query_similarities_as_tensor = query_embedding @ doc_embeddings.T
@@ -375,9 +375,8 @@ class SentenceTransformersDiversityRanker:
                 if mmr_score > best_score:
                     best_score = mmr_score
                     best_idx = idx
-            if best_idx is None:
-                raise ValueError("No best document found, check if the documents list contains any documents.")
-            selected.append(best_idx)
+            # loop condition ensures unselected docs exist with valid scores
+            selected.append(best_idx)  # type: ignore[arg-type]
 
         return [documents[i] for i in selected]
 
@@ -421,8 +420,8 @@ class SentenceTransformersDiversityRanker:
 
         if top_k is None:
             top_k = self.top_k
-        elif not 0 < top_k <= len(documents):
-            raise ValueError(f"top_k must be between 1 and {len(documents)}, but got {top_k}")
+        if top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
 
         if self.strategy == DiversityRankingStrategy.MAXIMUM_MARGIN_RELEVANCE:
             if lambda_threshold is None:

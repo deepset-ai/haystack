@@ -4,7 +4,7 @@
 
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Any, Optional, Union
 
@@ -204,10 +204,12 @@ class NamedEntityExtractor:
                 f"got {len(annotations)} but expected {len(documents)}"
             )
 
+        new_documents = []
         for doc, doc_annotations in zip(documents, annotations):
-            doc.meta[self._METADATA_KEY] = doc_annotations
+            new_meta = {**doc.meta, self._METADATA_KEY: doc_annotations}
+            new_documents.append(replace(doc, meta=new_meta))
 
-        return {"documents": documents}
+        return {"documents": new_documents}
 
     def to_dict(self) -> dict[str, Any]:
         """

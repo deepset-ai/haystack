@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    A snapshot of the last successful step is also raised when an error occurs during a `Pipeline` run. Allowing the caller to catch it to inspect the possible reason
+    for crash and use it to resume the pipeline execution from that point onwards.

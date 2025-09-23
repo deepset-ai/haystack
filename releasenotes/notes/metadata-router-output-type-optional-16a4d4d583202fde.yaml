@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed the `from_dict` method of `MetadataRouter` so the `output_type` parameter introduced in Haystack 2.17 is now optional when loading from YAML. This ensures compatibility with older Haystack pipelines.

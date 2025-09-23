@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import pytest
@@ -156,6 +156,31 @@ class TestLinkContentFetcher:
             mock_get.return_value = mock_response
             with pytest.raises(httpx.HTTPStatusError):
                 fetcher.run(["https://non_existent_website_dot.com/"])
+
+    def test_request_headers_merging_and_ua_override(self):
+        # Patch the Client class to control the instance created by LinkContentFetcher
+        with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:
+            client = ClientMock.return_value
+            client.headers = {}  # base headers used in the merge
+            mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+            client.get.return_value = mock_response
+
+            fetcher = LinkContentFetcher(
+                user_agents=["ua-sync-1", "ua-sync-2"],
+                request_headers={
+                    "Accept-Language": "fr-FR",
+                    "X-Test": "1",
+                    "User-Agent": "will-be-overridden",  # rotating UA must override this
+                },
+            )
+
+            _ = fetcher.run(urls=["https://example.com"])["streams"]
+
+            client.get.assert_called_once()
+            sent_headers = client.get.call_args.kwargs["headers"]
+            assert sent_headers["X-Test"] == "1"
+            assert sent_headers["Accept-Language"] == "fr-FR"
+            assert sent_headers["User-Agent"] == "ua-sync-1"  # rotating UA wins
 
     @pytest.mark.integration
     def test_link_content_fetcher_html(self):
@@ -356,3 +381,26 @@ class TestLinkContentFetcherAsync:
         streams = (await fetcher.run_async([HTML_URL]))["streams"]
         assert len(streams) == 1
         assert "Haystack" in streams[0].data.decode("utf-8")
+
+    @pytest.mark.asyncio
+    async def test_request_headers_merging_and_ua_override(self):
+        # Patch the AsyncClient class to control the instance created by LinkContentFetcher
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
+            aclient = AsyncClientMock.return_value
+            aclient.headers = {}  # base headers used in the merge
+
+            mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+            aclient.get = AsyncMock(return_value=mock_response)
+
+            fetcher = LinkContentFetcher(
+                user_agents=["ua-async-1", "ua-async-2"],
+                request_headers={"Accept-Language": "de-DE", "X-Async": "true", "User-Agent": "ignored-here-too"},
+            )
+
+            _ = (await fetcher.run_async(urls=["https://example.com"]))["streams"]
+
+            assert aclient.get.await_count == 1
+            sent_headers = aclient.get.call_args.kwargs["headers"]
+            assert sent_headers["X-Async"] == "true"
+            assert sent_headers["Accept-Language"] == "de-DE"
+            assert sent_headers["User-Agent"] == "ua-async-1"  # rotating UA wins
