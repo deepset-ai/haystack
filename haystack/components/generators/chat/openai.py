@@ -473,12 +473,12 @@ class OpenAIChatGenerator:
         # for structured outputs with streaming, we use openai's create endpoint
         # we pass a key `openai_endpoint` as a hint to the run method to use the create endpoint
         # this key will be removed before the API call is made
-        return {
-            **base_args,
-            "stream": streaming_callback is not None,
-            "response_format": response_format,
-            "openai_endpoint": "create",
-        }
+        final_args = {**base_args, "stream": is_streaming, "openai_endpoint": "create"}
+
+        # We only set the response_format parameter if it's not None since None is not a valid value in the API.
+        if response_format:
+            final_args["response_format"] = response_format
+        return final_args
 
     def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
