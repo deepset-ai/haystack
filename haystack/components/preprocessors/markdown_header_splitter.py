@@ -55,7 +55,6 @@ class MarkdownHeaderSplitter:
         self.split_threshold = split_threshold
 
         # initialize secondary_splitter only if needed
-        self.secondary_splitter: Optional[DocumentSplitter]
         if self.secondary_split != "none":
             self.secondary_splitter = DocumentSplitter(
                 split_by=self.secondary_split,
@@ -63,8 +62,6 @@ class MarkdownHeaderSplitter:
                 split_overlap=self.split_overlap,
                 split_threshold=self.split_threshold,
             )
-        else:
-            self.secondary_splitter = None
 
     def _infer_header_levels(self, text: str) -> str:
         """
@@ -216,6 +213,7 @@ class MarkdownHeaderSplitter:
             if doc.content is None:
                 result_docs.append(doc)
                 continue
+
             # extract header information
             header_match = re.search(r"(#{1,6}) (.+)(?:\n|$)", doc.content)
             content_for_splitting: str = doc.content
@@ -229,10 +227,6 @@ class MarkdownHeaderSplitter:
             # track page from meta
             current_page = doc.meta.get("page_number", 1)
 
-            # use the pre-initialized secondary splitter
-            if self.secondary_splitter is None:
-                result_docs.append(doc)
-                continue
             secondary_splits = self.secondary_splitter.run(
                 documents=[Document(content=content_for_splitting, meta=doc.meta)]
             )["documents"]
@@ -382,11 +376,13 @@ class MarkdownHeaderSplitter:
         header_split_docs = self._split_documents_by_markdown_headers(processed_documents)
         logger.info("Header splitting produced {num_docs} documents", num_docs=len(header_split_docs))
 
-        if self.secondary_split != "none":
-            final_docs = self._apply_secondary_splitting(header_split_docs)
-        else:
-            final_docs = header_split_docs
-            # assign split_id only if secondary splitting is not applied
+        # secondary splitting if configured
+        final_docs = (
+            self._apply_secondary_splitting(header_split_docs) if self.secondary_split != "none" else header_split_docs
+        )
+
+        # assign split_id if not already done in secondary splitting
+        if self.secondary_split == "none":
             for idx, doc in enumerate(final_docs):
                 if doc.meta is None:
                     doc.meta = {}
