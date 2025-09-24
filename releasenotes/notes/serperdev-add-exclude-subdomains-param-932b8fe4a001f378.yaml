@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Add `exclude_subdomains` parameter to `SerperDevWebSearch` component. When set to `True`, this parameter
+    restricts search results to only the exact domains specified in `allowed_domains`, excluding any subdomains.
+    For example, with `allowed_domains=["example.com"]` and `exclude_subdomains=True`, results from
+    "blog.example.com" or "shop.example.com" will be filtered out, returning only results from "example.com".
+    The parameter defaults to `False` to maintain backward compatibility with existing behavior.

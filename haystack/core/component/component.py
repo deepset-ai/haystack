@@ -605,7 +605,7 @@ class _Component:
 
         return new_cls
 
-    # Call signature when the the decorator is usead without parens (@component).
+    # Call signature when the decorator is used without parens (@component).
     @overload
     def __call__(self, cls: type[T]) -> type[T]: ...
 

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from dataclasses import replace
 from typing import Optional
 
 from haystack import Document, component, logging
@@ -89,14 +90,17 @@ class DocumentLanguageClassifier:
         output: dict[str, list[Document]] = {language: [] for language in self.languages}
         output["unmatched"] = []
 
+        new_documents = []
         for document in documents:
             detected_language = self._detect_language(document)
+            new_meta = {**document.meta}
             if detected_language in self.languages:
-                document.meta["language"] = detected_language
+                new_meta["language"] = detected_language
             else:
-                document.meta["language"] = "unmatched"
+                new_meta["language"] = "unmatched"
+            new_documents.append(replace(document, meta=new_meta))
 
-        return {"documents": documents}
+        return {"documents": new_documents}
 
     def _detect_language(self, document: Document) -> Optional[str]:
         language = None

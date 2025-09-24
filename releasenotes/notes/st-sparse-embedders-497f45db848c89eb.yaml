@@ -1,0 +1,21 @@
+---
+features:
+  - |
+    Introduce `SentenceTransformersSparseTextEmbedder` and `SentenceTransformersSparseDocumentEmbedder` components.
+    These components embed text and documents using sparse embedding models compatible with
+    Sentence Transformers.
+    Sparse embeddings are interpretable, efficient when used with inverted indexes, combine classic information
+    retrieval with neural models, and are complementary to dense embeddings.
+    Currently, the produced `SparseEmbedding` objects are compatible with the `QdrantDocumentStore`.
+
+    Usage example:
+    ```python
+    from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
+    ```
+    text_embedder = SentenceTransformersSparseTextEmbedder()
+    text_embedder.warm_up()
+
+    print(text_embedder.run("I love pizza!"))
+
+    # {'sparse_embedding': SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])}
+    ```

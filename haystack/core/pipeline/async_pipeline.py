@@ -71,7 +71,12 @@ class AsyncPipeline(PipelineBase):
                 # Important: contextvars (e.g. active tracing Span) don’t propagate to running loop's ThreadPoolExecutor
                 # We use ctx.run(...) to preserve context like the active tracing span
                 ctx = contextvars.copy_context()
-                outputs = await loop.run_in_executor(None, lambda: ctx.run(lambda: instance.run(**component_inputs)))
+                try:
+                    outputs = await loop.run_in_executor(
+                        None, lambda: ctx.run(lambda: instance.run(**component_inputs))
+                    )
+                except Exception as error:
+                    raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
 
             component_visits[component_name] += 1
 
@@ -256,13 +261,17 @@ class AsyncPipeline(PipelineBase):
                 )
                 component_inputs = self._consume_component_inputs(component_name, comp_dict, inputs_state)
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
-                component_pipeline_outputs = await self._run_component_async(
-                    component_name=component_name,
-                    component=comp_dict,
-                    component_inputs=component_inputs,
-                    component_visits=component_visits,
-                    parent_span=parent_span,
-                )
+
+                try:
+                    component_pipeline_outputs = await self._run_component_async(
+                        component_name=component_name,
+                        component=comp_dict,
+                        component_inputs=component_inputs,
+                        component_visits=component_visits,
+                        parent_span=parent_span,
+                    )
+                except PipelineRuntimeError as error:
+                    raise error
 
                 # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                 pruned = self._write_component_outputs(
@@ -300,14 +309,17 @@ class AsyncPipeline(PipelineBase):
                 component_inputs = self._add_missing_input_defaults(component_inputs, comp_dict["input_sockets"])
 
                 async def _runner():
-                    async with ready_sem:
-                        component_pipeline_outputs = await self._run_component_async(
-                            component_name=component_name,
-                            component=comp_dict,
-                            component_inputs=component_inputs,
-                            component_visits=component_visits,
-                            parent_span=parent_span,
-                        )
+                    try:
+                        async with ready_sem:
+                            component_pipeline_outputs = await self._run_component_async(
+                                component_name=component_name,
+                                component=comp_dict,
+                                component_inputs=component_inputs,
+                                component_visits=component_visits,
+                                parent_span=parent_span,
+                            )
+                    except PipelineRuntimeError as error:
+                        raise error
 
                     # Distribute outputs to downstream inputs; also prune outputs based on `include_outputs_from`
                     pruned = self._write_component_outputs(
@@ -676,7 +688,20 @@ class AsyncPipeline(PipelineBase):
             Or if a Component fails or returns output in an unsupported type.
         :raises PipelineMaxComponentRuns:
             If a Component reaches the maximum number of times it can be run in this Pipeline.
+        :raises RuntimeError:
+            If called from within an async context. Use `run_async` instead.
         """
-        return asyncio.run(
-            self.run_async(data=data, include_outputs_from=include_outputs_from, concurrency_limit=concurrency_limit)
-        )
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop: safe to use asyncio.run()
+            return asyncio.run(
+                self.run_async(
+                    data=data, include_outputs_from=include_outputs_from, concurrency_limit=concurrency_limit
+                )
+            )
+        else:
+            # Running loop present: do not create the coroutine and do not call asyncio.run()
+            raise RuntimeError(
+                "Cannot call run() from within an async context. Use 'await pipeline.run_async(...)' instead."
+            )

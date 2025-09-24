@@ -174,6 +174,27 @@ class TestMetadataRouter:
         }
         assert router.output_type == list[Union[ByteStream, Document]]
 
+    def test_from_dict_no_output_type(self):
+        router_dict = {
+            "type": "haystack.components.routers.metadata_router.MetadataRouter",
+            "init_parameters": {
+                "rules": {
+                    "edge_1": {
+                        "operator": "AND",
+                        "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
+                    }
+                }
+            },
+        }
+        router = MetadataRouter.from_dict(router_dict)
+        assert router.rules == {
+            "edge_1": {
+                "operator": "AND",
+                "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
+            }
+        }
+        assert router.output_type == list[Document]
+
     def test_metadata_router_in_pipeline(self):
         document_store = InMemoryDocumentStore()
         p = Pipeline()

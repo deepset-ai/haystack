@@ -135,6 +135,8 @@ class TestTransformersZeroShotDocumentClassifier:
         assert component.pipeline is not None
         assert result["documents"][0].to_dict()["classification"]["label"] == "positive"
         assert result["documents"][1].to_dict()["classification"]["label"] == "negative"
+        assert "classification" not in positive_document.to_dict()
+        assert "classification" not in negative_document.to_dict()
 
     @pytest.mark.integration
     @pytest.mark.slow
@@ -150,6 +152,8 @@ class TestTransformersZeroShotDocumentClassifier:
         assert component.pipeline is not None
         assert result["documents"][0].to_dict()["classification"]["label"] == "positive"
         assert result["documents"][1].to_dict()["classification"]["label"] == "negative"
+        assert "classification" not in positive_document.to_dict()
+        assert "classification" not in negative_document.to_dict()
 
     def test_serialization_and_deserialization_pipeline(self):
         pipeline = Pipeline()

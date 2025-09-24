@@ -100,6 +100,7 @@ class LinkContentFetcher:
         timeout: int = 3,
         http2: bool = False,
         client_kwargs: Optional[dict] = None,
+        request_headers: Optional[dict[str, str]] = None,
     ):
         """
         Initializes the component.
@@ -122,6 +123,7 @@ class LinkContentFetcher:
         self.timeout = timeout
         self.http2 = http2
         self.client_kwargs = client_kwargs or {}
+        self.request_headers = request_headers or {}
 
         # Configure default client settings
         self.client_kwargs.setdefault("timeout", timeout)
@@ -167,9 +169,11 @@ class LinkContentFetcher:
             after=self._switch_user_agent,
         )
         def get_response(url):
-            # we need to copy because we modify the headers
-            headers = REQUEST_HEADERS.copy()
-            headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]
+            # Build headers with precedence:
+            # client defaults -> component defaults -> user-provided -> rotating UA
+            base = dict(self._client.headers)
+            headers = {**base, **REQUEST_HEADERS, **self.request_headers}
+            headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]  # rotation wins
             response = self._client.get(url, headers=headers)
             response.raise_for_status()
             return response
@@ -374,7 +378,8 @@ class LinkContentFetcher:
 
         while attempt <= self.retry_attempts:
             try:
-                headers = REQUEST_HEADERS.copy()
+                base = dict(client.headers)
+                headers = {**base, **REQUEST_HEADERS, **self.request_headers}
                 headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]
                 response = await client.get(url, headers=headers)
                 response.raise_for_status()

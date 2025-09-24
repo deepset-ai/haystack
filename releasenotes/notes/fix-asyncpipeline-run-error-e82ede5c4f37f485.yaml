@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Raise a `RuntimeError` when `AsyncPipeline.run` is called from within an async context, indicating that `run_async` should be used instead.

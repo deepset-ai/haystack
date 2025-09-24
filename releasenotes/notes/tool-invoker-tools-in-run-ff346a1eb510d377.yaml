@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    The `ToolInvoker` `run` method now accepts a list of tools. When provided, this list overrides the tools set
+    in the constructor, allowing you to switch tools at runtime in previously built pipelines.

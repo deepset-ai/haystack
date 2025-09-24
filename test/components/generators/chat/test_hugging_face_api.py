@@ -878,7 +878,7 @@ class TestHuggingFaceAPIChatGenerator:
 
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen2.5-VL-7B-Instruct", "provider": "hyperbolic"},
+            api_params={"model": "Qwen/Qwen2.5-VL-32B-Instruct", "provider": "fireworks-ai"},
             generation_kwargs={"max_tokens": 20},
         )
 

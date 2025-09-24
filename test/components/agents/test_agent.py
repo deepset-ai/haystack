@@ -4,6 +4,7 @@
 
 import logging
 import os
+import re
 from datetime import datetime
 from typing import Any, Iterator, Optional, Union
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,13 +13,12 @@ import pytest
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
-from haystack import Pipeline, tracing
+from haystack import Pipeline, component, tracing
 from haystack.components.agents import Agent
 from haystack.components.agents.state import merge_lists
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
-from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
@@ -101,11 +101,9 @@ def openai_mock_chat_completion_chunk():
         yield mock_chat_completion_create
 
 
-class MockChatGeneratorWithoutTools(ChatGenerator):
+@component
+class MockChatGeneratorWithoutTools:
     """A mock chat generator that implements ChatGenerator protocol but doesn't support tools."""
-
-    __haystack_input__ = MagicMock(_sockets_dict={})
-    __haystack_output__ = MagicMock(_sockets_dict={})
 
     def to_dict(self) -> dict[str, Any]:
         return {"type": "MockChatGeneratorWithoutTools", "data": {}}
@@ -114,16 +112,15 @@ class MockChatGeneratorWithoutTools(ChatGenerator):
     def from_dict(cls, data: dict[str, Any]) -> "MockChatGeneratorWithoutTools":
         return cls()
 
+    @component.output_types(replies=list[ChatMessage])
     def run(self, messages: list[ChatMessage]) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
 
-class MockChatGeneratorWithoutRunAsync(ChatGenerator):
+@component
+class MockChatGeneratorWithoutRunAsync:
     """A mock chat generator that implements ChatGenerator protocol but doesn't have run_async method."""
 
-    __haystack_input__ = MagicMock(_sockets_dict={})
-    __haystack_output__ = MagicMock(_sockets_dict={})
-
     def to_dict(self) -> dict[str, Any]:
         return {"type": "MockChatGeneratorWithoutRunAsync", "data": {}}
 
@@ -131,17 +128,15 @@ class MockChatGeneratorWithoutRunAsync(ChatGenerator):
     def from_dict(cls, data: dict[str, Any]) -> "MockChatGeneratorWithoutRunAsync":
         return cls()
 
+    @component.output_types(replies=list[ChatMessage])
     def run(
         self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
     ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
 
-class MockChatGeneratorWithRunAsync(ChatGenerator):
-    __haystack_supports_async__ = True
-    __haystack_input__ = MagicMock(_sockets_dict={})
-    __haystack_output__ = MagicMock(_sockets_dict={})
-
+@component
+class MockChatGenerator:
     def to_dict(self) -> dict[str, Any]:
         return {"type": "MockChatGeneratorWithoutRunAsync", "data": {}}
 
@@ -149,11 +144,13 @@ class MockChatGeneratorWithRunAsync(ChatGenerator):
     def from_dict(cls, data: dict[str, Any]) -> "MockChatGeneratorWithoutRunAsync":
         return cls()
 
+    @component.output_types(replies=list[ChatMessage])
     def run(
         self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
     ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
+    @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
     ) -> dict[str, Any]:
@@ -736,6 +733,73 @@ class TestAgent:
         response = agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
         assert response["messages"][0].text == "This is a system prompt."
 
+    def test_run_with_system_prompt_run_param(self, weather_tool):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(
+            chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is the init system prompt."
+        )
+        agent.warm_up()
+        response = agent.run(
+            [ChatMessage.from_user("What is the weather in Berlin?")], system_prompt="This is the run system prompt."
+        )
+        assert response["messages"][0].text == "This is the run system prompt."
+
+    def test_run_with_tools_run_param(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
+        @component
+        class MockChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+            ) -> dict[str, Any]:
+                assert tools == [weather_tool]
+                tool_message = ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                )
+                message = tool_message if not self.tool_invoked else ChatMessage.from_assistant("Hello")
+                self.tool_invoked = True
+                return {"replies": [message]}
+
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[component_tool], system_prompt="This is a system prompt.")
+        tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
+        monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
+        agent.warm_up()
+        agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool])
+        tool_invoker_run_mock.assert_called_once()
+        assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
+
+    def test_run_with_tools_run_param_for_tool_selection(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
+        @component
+        class MockChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+            ) -> dict[str, Any]:
+                assert tools == [weather_tool]
+                tool_message = ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                )
+                message = tool_message if not self.tool_invoked else ChatMessage.from_assistant("Hello")
+                self.tool_invoked = True
+                return {"replies": [message]}
+
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        tool_invoker_run_mock = MagicMock(wraps=agent._tool_invoker.run)
+        monkeypatch.setattr(agent._tool_invoker, "run", tool_invoker_run_mock)
+        agent.warm_up()
+        agent.run([ChatMessage.from_user("What is the weather in Berlin?")], tools=[weather_tool.name])
+        tool_invoker_run_mock.assert_called_once()
+        assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
+
     def test_run_not_warmed_up(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         chat_generator.warm_up = MagicMock()
@@ -818,7 +882,7 @@ class TestAgent:
 
     @pytest.mark.asyncio
     async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool):
-        chat_generator = MockChatGeneratorWithRunAsync()
+        chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
         agent.warm_up()
 
@@ -904,8 +968,8 @@ class TestAgentTracing:
             "chat_generator",
             "MockChatGeneratorWithoutRunAsync",
             '{"messages": "list", "tools": "list"}',
-            "{}",
-            "{}",
+            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "typing.Union[list[haystack.tools.tool.Tool], haystack.tools.toolset.Toolset, NoneType]", "senders": []}}',  # noqa: E501
+            '{"replies": {"type": "list", "receivers": []}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
@@ -913,7 +977,7 @@ class TestAgentTracing:
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
             '["text"]',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null, "break_point": null, "snapshot": null}',  # noqa: E501
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',  # noqa: E501
             1,
         ]
@@ -927,7 +991,7 @@ class TestAgentTracing:
 
     @pytest.mark.asyncio
     async def test_agent_tracing_span_async_run(self, caplog, monkeypatch, weather_tool):
-        chat_generator = MockChatGeneratorWithRunAsync()
+        chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
 
         tracing.tracer.is_content_tracing_enabled = True
@@ -962,10 +1026,10 @@ class TestAgentTracing:
 
         expected_tag_values = [
             "chat_generator",
-            "MockChatGeneratorWithRunAsync",
+            "MockChatGenerator",
             '{"messages": "list", "tools": "list"}',
-            "{}",
-            "{}",
+            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "typing.Union[list[haystack.tools.tool.Tool], haystack.tools.toolset.Toolset, NoneType]", "senders": []}}',  # noqa: E501
+            '{"replies": {"type": "list", "receivers": []}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
@@ -973,7 +1037,7 @@ class TestAgentTracing:
             '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
             '["text"]',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null, "break_point": null, "snapshot": null}',  # noqa: E501
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
             1,
         ]
@@ -1048,3 +1112,62 @@ class TestAgentTracing:
         # Clean up
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
+
+
+class TestAgentToolSelection:
+    def test_tool_selection_by_name(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        result = agent._select_tools([weather_tool.name])
+        assert result == [weather_tool]
+
+    def test_tool_selection_new_tool(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
+        result = agent._select_tools([component_tool])
+        assert result == [component_tool]
+
+    def test_tool_selection_existing_tools(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        result = agent._select_tools(None)
+        assert result == [weather_tool, component_tool]
+
+    def test_tool_selection_invalid_tool_name(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        with pytest.raises(
+            ValueError, match=("The following tool names are not valid: {'invalid_tool_name'}. Valid tool names are: .")
+        ):
+            agent._select_tools(["invalid_tool_name"])
+
+    def test_tool_selection_no_tools_configured(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="This is a system prompt.")
+        with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
+            agent._select_tools([weather_tool.name])
+
+    def test_tool_selection_invalid_type(self, weather_tool: Tool, component_tool: Tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(
+            chat_generator=chat_generator,
+            tools=[weather_tool, component_tool],
+            system_prompt="This is a system prompt.",
+        )
+        with pytest.raises(
+            TypeError,
+            match=(re.escape("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")),
+        ):
+            agent._select_tools("invalid_tool_name")

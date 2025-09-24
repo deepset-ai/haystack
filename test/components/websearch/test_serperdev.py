@@ -146,6 +146,7 @@ class TestSerperDevSearchAPI:
                 "api_key": {"env_vars": ["SERPERDEV_API_KEY"], "strict": True, "type": "env_var"},
                 "top_k": 10,
                 "allowed_domains": ["test.com"],
+                "exclude_subdomains": False,
                 "search_params": {"param": "test"},
             },
         }
@@ -202,6 +203,109 @@ class TestSerperDevSearchAPI:
         documents = results["documents"]
         links = results["links"]
         assert len(documents) == len(links) == 10
-        assert all(isinstance(doc, Document) for doc in results)
+        assert all(isinstance(doc, Document) for doc in documents)
         assert all(isinstance(link, str) for link in links)
         assert all(link.startswith("http") for link in links)
+
+    def test_exclude_subdomains_filtering(self, monkeypatch):
+        """Test that exclude_subdomains parameter properly filters results."""
+        monkeypatch.setenv("SERPERDEV_API_KEY", "test-api-key")
+
+        # Mock response with mixed domains and subdomains
+        mock_response = {
+            "organic": [
+                {
+                    "title": "Main domain result",
+                    "link": "https://example.com/page1",
+                    "snippet": "Content from main domain",
+                },
+                {
+                    "title": "Subdomain result 1",
+                    "link": "https://blog.example.com/post1",
+                    "snippet": "Content from blog subdomain",
+                },
+                {
+                    "title": "Subdomain result 2",
+                    "link": "https://shop.example.com/product1",
+                    "snippet": "Content from shop subdomain",
+                },
+                {
+                    "title": "Different domain result",
+                    "link": "https://other.com/page1",
+                    "snippet": "Content from different domain",
+                },
+            ]
+        }
+
+        with patch("haystack.components.websearch.serper_dev.requests") as mock_requests:
+            mock_requests.post.return_value = Mock(status_code=200, json=lambda: mock_response)
+
+            # Test with exclude_subdomains=False (default behavior)
+            ws_include = SerperDevWebSearch(
+                api_key=Secret.from_token("test-api-key"), allowed_domains=["example.com"], exclude_subdomains=False
+            )
+            results_include = ws_include.run(query="test query")
+
+            # Should include main domain and subdomains but exclude other domains
+            assert len(results_include["documents"]) == 3  # example.com + 2 subdomains
+            assert len(results_include["links"]) == 3
+
+            included_links = results_include["links"]
+            assert "https://example.com/page1" in included_links
+            assert "https://blog.example.com/post1" in included_links
+            assert "https://shop.example.com/product1" in included_links
+            assert "https://other.com/page1" not in included_links
+
+            # Test with exclude_subdomains=True
+            ws_exclude = SerperDevWebSearch(
+                api_key=Secret.from_token("test-api-key"), allowed_domains=["example.com"], exclude_subdomains=True
+            )
+            results_exclude = ws_exclude.run(query="test query")
+
+            # Should only include main domain, exclude subdomains and other domains
+            assert len(results_exclude["documents"]) == 1  # only example.com
+            assert len(results_exclude["links"]) == 1
+
+            excluded_links = results_exclude["links"]
+            assert "https://example.com/page1" in excluded_links
+            assert "https://blog.example.com/post1" not in excluded_links
+            assert "https://shop.example.com/product1" not in excluded_links
+            assert "https://other.com/page1" not in excluded_links
+
+    def test_is_domain_allowed_helper_method(self, monkeypatch):
+        """Test the _is_domain_allowed helper method directly."""
+        monkeypatch.setenv("SERPERDEV_API_KEY", "test-api-key")
+
+        # Test with exclude_subdomains=False
+        ws_include = SerperDevWebSearch(
+            api_key=Secret.from_token("test-api-key"),
+            allowed_domains=["example.com", "test.org"],
+            exclude_subdomains=False,
+        )
+
+        # Should allow main domains and subdomains
+        assert ws_include._is_domain_allowed("https://example.com/page") == True
+        assert ws_include._is_domain_allowed("https://blog.example.com/post") == True
+        assert ws_include._is_domain_allowed("https://shop.example.com/product") == True
+        assert ws_include._is_domain_allowed("https://test.org/page") == True
+        assert ws_include._is_domain_allowed("https://sub.test.org/page") == True
+        assert ws_include._is_domain_allowed("https://other.com/page") == False
+
+        # Test with exclude_subdomains=True
+        ws_exclude = SerperDevWebSearch(
+            api_key=Secret.from_token("test-api-key"),
+            allowed_domains=["example.com", "test.org"],
+            exclude_subdomains=True,
+        )
+
+        # Should only allow exact domain matches
+        assert ws_exclude._is_domain_allowed("https://example.com/page") == True
+        assert ws_exclude._is_domain_allowed("https://blog.example.com/post") == False
+        assert ws_exclude._is_domain_allowed("https://shop.example.com/product") == False
+        assert ws_exclude._is_domain_allowed("https://test.org/page") == True
+        assert ws_exclude._is_domain_allowed("https://sub.test.org/page") == False
+        assert ws_exclude._is_domain_allowed("https://other.com/page") == False
+
+        # Test with no allowed_domains (should allow all)
+        ws_no_filter = SerperDevWebSearch(api_key=Secret.from_token("test-api-key"), allowed_domains=None)
+        assert ws_no_filter._is_domain_allowed("https://any.domain.com/page") == True
