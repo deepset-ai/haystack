@@ -145,7 +145,7 @@ class OpenAIResponsesChatGenerator:
                 Bigger values mean the model will be less likely to repeat the same token in the text.
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
-            - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+            - `text_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
                 If provided, the output will always be validated against this
                 format (unless the model returns a tool call).
                 For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
@@ -154,7 +154,13 @@ class OpenAIResponsesChatGenerator:
                   Older models only support basic version of structured outputs through `{"type": "json_object"}`.
                   For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
                 - For structured outputs with streaming,
-                  the `response_format` must be a JSON schema and not a Pydantic model.
+                  the `text_format` must be a JSON schema and not a Pydantic model.
+            - `reasoning`: A dictionary of parameters for reasoning. For example:
+                - `summary`: The summary of the reasoning.
+                - `effort`: The effort of the reasoning.
+                - `generate_summary`: Whether to generate a summary of the reasoning.
+                Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
+                For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
@@ -328,8 +334,7 @@ class OpenAIResponsesChatGenerator:
 
         else:
             assert isinstance(responses, Response), "Unexpected response type for non-streaming request."
-            completions = [_convert_response_to_chat_message(responses, output) for output in responses.output]
-
+            completions = [_convert_response_to_chat_message(responses)]
         return {"replies": completions}
 
     @component.output_types(replies=list[ChatMessage])
@@ -399,7 +404,11 @@ class OpenAIResponsesChatGenerator:
 
         else:
             assert isinstance(responses, Response), "Unexpected response type for non-streaming request."
-            completions = [_convert_response_to_chat_message(responses, output) for output in responses.output]
+            completions = []
+            for output in responses.output:
+                completion = _convert_response_to_chat_message(responses, output)
+                if completion is not None:
+                    completions.append(completion)
 
         return {"replies": completions}
 
@@ -415,7 +424,7 @@ class OpenAIResponsesChatGenerator:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
-        response_format = generation_kwargs.pop("response_format", None)
+        text_format = generation_kwargs.pop("text_format", None)
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
@@ -439,11 +448,11 @@ class OpenAIResponsesChatGenerator:
 
         base_args = {"model": self.model, "input": openai_formatted_messages, **openai_tools, **generation_kwargs}
 
-        if response_format:
+        if text_format and issubclass(text_format, BaseModel):
             return {
                 **base_args,
                 "stream": streaming_callback is not None,
-                "text_format": response_format,
+                "text_format": text_format,
                 "openai_endpoint": "parse",
             }
         # we pass a key `openai_endpoint` as a hint to the run method to use the create or parse endpoint
@@ -462,7 +471,10 @@ class OpenAIResponsesChatGenerator:
             if chunk_delta:
                 chunks.append(chunk_delta)
                 callback(chunk_delta)
-        return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
+        chat_message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+        chat_message.meta["status"] = "completed"
+        chat_message.meta.pop("finish_reason")
+        return [chat_message]
 
     async def _handle_async_stream_response(
         self, responses: AsyncStream, callback: AsyncStreamingCallbackT
@@ -479,9 +491,7 @@ class OpenAIResponsesChatGenerator:
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
 
-def _convert_response_to_chat_message(
-    responses: Union[Response, ParsedResponse], output: ResponseOutputItem
-) -> ChatMessage:
+def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]) -> ChatMessage:
     """
     Converts the non-streaming response from the OpenAI API to a ChatMessage.
 
@@ -490,34 +500,41 @@ def _convert_response_to_chat_message(
     :return: The ChatMessage.
     """
 
-    print(output)
-    print(responses)
     tool_calls = []
     text = ""
-
-    if output.type == "reasoning":
-        content = output.content
-        text = ReasoningContent(reasoning_text=content[0].text if content else "", extra=output.to_dict())
-    elif output.type == "message":
-        content = output.content
-        text = content[0].text if content else ""
-    elif output.type == "function_call":
-        try:
-            arguments = json.loads(output.arguments)
-        except json.JSONDecodeError:
-            logger.warning(
-                "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
-                "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
-                "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                _id=output.id,
-                _name=output.name,
-                _arguments=output.arguments,
-            )
+    reasoning = None
+    for output in responses.output:
+        if output.type == "reasoning":
+            # openai doesn't return the reasoning tokens, but we can view summary if its enabled
+            # https://platform.openai.com/docs/guides/reasoning#reasoning-summaries
+            summaries = output.summary
+            extra = output.to_dict()
+            # we dont need the summary in the extra
+            extra.pop("summary")
+            reasoning_text = "\n".join([summary.text for summary in summaries if summaries])
+            if reasoning_text:
+                reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
+        elif output.type == "message":
+            content = output.content
+            text = content[0].text if content else ""
+        elif output.type == "function_call":
+            try:
+                arguments = json.loads(output.arguments)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
+                    "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
+                    "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
+                    _id=output.id,
+                    _name=output.name,
+                    _arguments=output.arguments,
+                )
             arguments = {}
-        tool_calls = [ToolCall(id=output.id, tool_name=output.name, arguments=arguments)]
+            tool_calls = [ToolCall(id=output.id, tool_name=output.name, arguments=arguments)]
 
     chat_message = ChatMessage.from_assistant(
         text=text if text else "",
+        reasoning=reasoning,
         tool_calls=tool_calls,
         meta={"model": responses.model, "status": output.status, "usage": _serialize_usage(responses.usage)},
     )
