@@ -63,7 +63,7 @@ class MarkdownHeaderSplitter:
                 split_threshold=self.split_threshold,
             )
 
-    def _infer_header_levels(self, text: str) -> str:
+    def _infer_header_levels(self, text: str, doc_id: Optional[str] = None) -> str:
         """
         Infer and rewrite header levels in the markdown text.
 
@@ -75,6 +75,9 @@ class MarkdownHeaderSplitter:
 
         This is useful for documents where all headers are at the same level, such as
         output from document conversion tools like docling.
+
+        :param text: The text to process
+        :param doc_id: Optional document ID for logging context
         """
         logger.debug("Inferring and rewriting header levels")
 
@@ -83,7 +86,10 @@ class MarkdownHeaderSplitter:
         matches = list(re.finditer(pattern, text))
 
         if not matches:
-            logger.info("No headers found in document; skipping header level inference.")
+            logger.info(
+                "No headers found in document{doc_ref}; skipping header level inference.",
+                doc_ref=f" (id: {doc_id})" if doc_id else "",
+            )
             return text
 
         modified_text = text
@@ -365,7 +371,7 @@ class MarkdownHeaderSplitter:
             if not doc.content or not doc.content.strip():
                 continue
             if infer_header_levels:
-                content = self._infer_header_levels(doc.content)
+                content = self._infer_header_levels(doc.content, doc_id=doc.id)
                 processed_documents.append(Document(content=content, meta=doc.meta, id=doc.id))
             else:
                 processed_documents.append(doc)
