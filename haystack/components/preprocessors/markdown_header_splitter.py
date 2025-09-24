@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @component
 class MarkdownHeaderSplitter:
     """
-    Split documents at Markdown headers, with optional secondary splitting and header level inference.
+    Split documents at ATX-style Markdown headers (#), with optional secondary splitting and header level inference.
 
     This component processes text documents by:
     - Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
@@ -137,7 +137,7 @@ class MarkdownHeaderSplitter:
         return modified_text
 
     def _split_text_by_markdown_headers(self, text: str) -> list[dict]:
-        """Split text by markdown headers and create chunks with appropriate metadata."""
+        """Split text by ATX-style headers (#) and create chunks with appropriate metadata."""
         logger.debug("Splitting text by markdown headers")
 
         # find headers
