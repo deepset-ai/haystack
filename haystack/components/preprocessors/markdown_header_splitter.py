@@ -236,19 +236,15 @@ class MarkdownHeaderSplitter:
             secondary_splits = self.secondary_splitter.run(
                 documents=[Document(content=content_for_splitting, meta=doc.meta)]
             )["documents"]
-            accumulated_page_breaks = 0  # track page breaks
 
             # split processing
             for i, split in enumerate(secondary_splits):
                 # calculate page number for this split
-                if i > 0:  # page break counting
-                    prev_content = secondary_splits[i - 1].content
-                    if prev_content is not None:
-                        page_breaks = prev_content.count(self.page_break_character)
-                        accumulated_page_breaks += page_breaks
+                if i > 0 and secondary_splits[i - 1].content:
+                    _, current_page = self._count_page_breaks_and_update(secondary_splits[i - 1].content, current_page)
 
                 # set page number to meta
-                split.meta["page_number"] = current_page + accumulated_page_breaks
+                split.meta["page_number"] = current_page
 
                 # preserve header metadata
                 for key in ["header", "parentheaders"]:
@@ -278,18 +274,29 @@ class MarkdownHeaderSplitter:
                 target_dict[new_key] = value
         return target_dict
 
-    def _count_page_breaks(self, split_content: str, split_index: int) -> int:
-        """Count page breaks in the split content and log if any are found."""
-        if not isinstance(split_content, str):
-            return 0
-        page_breaks = split_content.count(self.page_break_character)
+    def _count_page_breaks_and_update(self, content: str, current_page: int) -> tuple[int, int]:
+        """
+        Count page breaks in content and return updated page count.
+
+        :param content: Content to check for page breaks
+        :param current_page: Current page number
+        :return: Tuple of (page_breaks_count, new_current_page)
+        """
+        if not isinstance(content, str):
+            return 0, current_page
+
+        page_breaks = content.count(self.page_break_character)
+        new_page_number = current_page + page_breaks
+
         if page_breaks > 0:
             logger.debug(
-                "Found {page_breaks} page breaks in split {split_index}",
+                "Found {page_breaks} page breaks, page number updated: {old} → {new}",
                 page_breaks=page_breaks,
-                split_index=split_index,
+                old=current_page,
+                new=new_page_number,
             )
-        return page_breaks
+
+        return page_breaks, new_page_number
 
     def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[Document]:
         """Split a list of documents by markdown headers, preserving metadata."""
@@ -300,9 +307,8 @@ class MarkdownHeaderSplitter:
                 continue
             splits = self._split_text_by_markdown_headers(doc.content)
             docs = []
-            total_pages = doc.meta.get("total_pages", 0) if doc.meta else 0
-            if not total_pages:
-                total_pages = doc.content.count(self.page_break_character) + 1
+            total_pages = self._calculate_total_pages(doc.content, doc.meta.get("total_pages", 0) if doc.meta else 0)
+
             current_page = doc.meta.get("page_number", 1) if doc.meta else 1
             logger.debug(
                 "Starting page number: {current_page}, Total pages: {total_pages}",
@@ -314,8 +320,7 @@ class MarkdownHeaderSplitter:
                 if doc.meta:
                     meta = self._flatten_dict(doc.meta)
                 meta.update({"source_id": doc.id, "total_pages": total_pages, "page_number": current_page})
-                page_breaks = self._count_page_breaks(split["content"], i)
-                current_page += page_breaks
+                _, current_page = self._count_page_breaks_and_update(split["content"], current_page)
                 if split.get("meta"):
                     meta.update(self._flatten_dict(split.get("meta") or {}))
                 docs.append(Document(content=split["content"], meta=meta))
@@ -327,6 +332,16 @@ class MarkdownHeaderSplitter:
             )
             result_docs.extend(docs)
         return result_docs
+
+    def _calculate_total_pages(self, content: str, existing_total: int = 0) -> int:
+        """Calculate total pages based on content and existing metadata."""
+        if existing_total > 0:
+            return existing_total
+
+        if not isinstance(content, str):
+            return 1
+
+        return content.count(self.page_break_character) + 1
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document], infer_header_levels: Optional[bool] = None) -> dict[str, list[Document]]:
