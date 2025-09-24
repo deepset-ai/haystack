@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added `system_prompt` to agent run parameters to enhance customization and control over agent behavior.

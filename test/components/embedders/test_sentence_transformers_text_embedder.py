@@ -279,48 +279,6 @@ class TestSentenceTransformersTextEmbedder:
         with pytest.raises(TypeError, match="SentenceTransformersTextEmbedder expects a string as input"):
             embedder.run(text=list_integers_input)
 
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_trunc(self, monkeypatch):
-        """
-        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector
-        space
-        """
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-        checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
-        text = "a nice text to embed"
-
-        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint)
-        embedder_def.warm_up()
-        result_def = embedder_def.run(text=text)
-        embedding_def = result_def["embedding"]
-
-        embedder_trunc = SentenceTransformersTextEmbedder(model=checkpoint, truncate_dim=128)
-        embedder_trunc.warm_up()
-        result_trunc = embedder_trunc.run(text=text)
-        embedding_trunc = result_trunc["embedding"]
-
-        assert len(embedding_def) == 768
-        assert len(embedding_trunc) == 128
-
-    @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_quantization(self):
-        """
-        sentence-transformers/paraphrase-albert-small-v2 maps sentences & paragraphs to a 768 dimensional dense vector
-        space
-        """
-        checkpoint = "sentence-transformers/paraphrase-albert-small-v2"
-        text = "a nice text to embed"
-
-        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint, precision="int8")
-        embedder_def.warm_up()
-        result_def = embedder_def.run(text=text)
-        embedding_def = result_def["embedding"]
-
-        assert len(embedding_def) == 768
-        assert all(isinstance(el, int) for el in embedding_def)
-
     def test_embed_encode_kwargs(self):
         embedder = SentenceTransformersTextEmbedder(model="model", encode_kwargs={"task": "retrieval.query"})
         embedder.embedding_backend = MagicMock()
@@ -416,3 +374,49 @@ class TestSentenceTransformersTextEmbedder:
             config_kwargs=None,
             backend="torch",
         )
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_run_trunc(self, monkeypatch):
+        """
+        sentence-transformers-testing/stsb-bert-tiny-safetensors maps sentences & paragraphs to a 128 dimensional dense
+        vector space
+        """
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        checkpoint = "sentence-transformers-testing/stsb-bert-tiny-safetensors"
+        text = "a nice text to embed"
+
+        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint)
+        embedder_def.warm_up()
+        result_def = embedder_def.run(text=text)
+        embedding_def = result_def["embedding"]
+
+        embedder_trunc = SentenceTransformersTextEmbedder(model=checkpoint, truncate_dim=64)
+        embedder_trunc.warm_up()
+        result_trunc = embedder_trunc.run(text=text)
+        embedding_trunc = result_trunc["embedding"]
+
+        assert len(embedding_def) == 128
+        assert len(embedding_trunc) == 64
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_run_quantization(self, monkeypatch):
+        """
+        sentence-transformers-testing/stsb-bert-tiny-safetensors maps sentences & paragraphs to a 128 dimensional dense
+        vector space
+        """
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+        monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
+        checkpoint = "sentence-transformers-testing/stsb-bert-tiny-safetensors"
+        text = "a nice text to embed"
+
+        embedder_def = SentenceTransformersTextEmbedder(model=checkpoint, precision="int8")
+        embedder_def.warm_up()
+        result_def = embedder_def.run(text=text)
+        embedding_def = result_def["embedding"]
+
+        assert len(embedding_def) == 128
+        assert all(isinstance(el, int) for el in embedding_def)

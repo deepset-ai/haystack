@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
+from haystack.utils import deserialize_callable, serialize_callable
 
 
 def serialize_class_instance(obj: Any) -> dict[str, Any]:
@@ -116,6 +117,11 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:
         schema = {"type": type_name}
         return {"serialization_schema": schema, "serialized_data": pure}
 
+    # Handle callable functions serialization
+    elif callable(payload) and not isinstance(payload, type):
+        serialized = serialize_callable(payload)
+        return {"serialization_schema": {"type": "typing.Callable"}, "serialized_data": serialized}
+
     # Handle arbitrary objects with __dict__
     elif hasattr(payload, "__dict__"):
         type_name = generate_qualified_class_name(type(payload))
@@ -160,12 +166,17 @@ def _convert_to_basic_types(value: Any) -> Any:
     - Objects with __dict__ attribute: converted to plain dictionaries
     - Dictionaries: recursively converted values while preserving keys
     - Sequences (list, tuple, set): recursively converted while preserving type
+    - Function objects: converted to None (functions cannot be serialized)
     - Primitive types: returned as-is
 
     """
     # dataclass‐style objects
     if hasattr(value, "to_dict") and callable(value.to_dict):
         return _convert_to_basic_types(value.to_dict())
+
+    # Handle function objects - they cannot be serialized, so we return None
+    if callable(value) and not isinstance(value, type):
+        return None
 
     # arbitrary objects with __dict__
     if hasattr(value, "__dict__"):
@@ -269,6 +280,10 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint
     elif schema_type in ("null", "boolean", "integer", "number", "string"):
         return data
 
+    # Handle callable functions
+    elif schema_type == "typing.Callable":
+        return deserialize_callable(data)
+
     # Handle custom class types
     else:
         return _deserialize_value({"type": schema_type, "data": data})
@@ -305,7 +320,11 @@ def _deserialize_value(value: Any) -> Any:  # pylint: disable=too-many-return-st
         if t in ("null", "boolean", "integer", "number", "string"):
             return payload
 
-        # 1.d) Custom class
+        # 1.d) Callable
+        if t == "typing.Callable":
+            return deserialize_callable(payload)
+
+        # 1.e) Custom class
         cls = import_class_by_name(t)
         # first, recursively deserialize the inner payload
         deserialized_payload = {k: _deserialize_value(v) for k, v in payload.items()}

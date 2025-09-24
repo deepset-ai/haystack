@@ -5,7 +5,9 @@
 import os
 from typing import Any, Optional, Union
 
+from openai.lib._pydantic import to_strict_json_schema
 from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
+from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -123,6 +125,16 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
                 Higher values make the model less likely to repeat the token.
             - `logit_bias`: Adds a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
+            - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+                If provided, the output will always be validated against this
+                format (unless the model returns a tool call).
+                For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+                Notes:
+                - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
+                  Older models only support basic version of structured outputs through `{"type": "json_object"}`.
+                  For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
+                - For structured outputs with streaming,
+                  the `response_format` must be a JSON schema and not a Pydantic model.
         :param default_headers: Default headers to use for the AzureOpenAI client.
         :param tools:
             A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
@@ -201,6 +213,20 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         azure_ad_token_provider_name = None
         if self.azure_ad_token_provider:
             azure_ad_token_provider_name = serialize_callable(self.azure_ad_token_provider)
+        # If the response format is a Pydantic model, it's converted to openai's json schema format
+        # If it's already a json schema, it's left as is
+        generation_kwargs = self.generation_kwargs.copy()
+        response_format = generation_kwargs.get("response_format")
+        if response_format and issubclass(response_format, BaseModel):
+            json_schema = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": response_format.__name__,
+                    "strict": True,
+                    "schema": to_strict_json_schema(response_format),
+                },
+            }
+            generation_kwargs["response_format"] = json_schema
         return default_to_dict(
             self,
             azure_endpoint=self.azure_endpoint,
@@ -208,7 +234,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             organization=self.organization,
             api_version=self.api_version,
             streaming_callback=callback_name,
-            generation_kwargs=self.generation_kwargs,
+            generation_kwargs=generation_kwargs,
             timeout=self.timeout,
             max_retries=self.max_retries,
             api_key=self.api_key.to_dict() if self.api_key is not None else None,

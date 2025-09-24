@@ -36,6 +36,10 @@ class CustomClassNoFromDict:
         return {"key": "value", "more": False}
 
 
+def simple_calc_function(x: int) -> int:
+    return x * 2
+
+
 def test_serialize_class_instance():
     result = serialize_class_instance(CustomClass())
     assert result == {"data": {"key": "value", "more": False}, "type": "test_base_serialization.CustomClass"}
@@ -468,3 +472,22 @@ def test_serializing_and_deserializing_custom_class_type():
     deserialized_data = _deserialize_value_with_schema(serialized_data)
     assert deserialized_data["numbers"] == 1
     assert isinstance(deserialized_data["custom_type"], CustomClass)
+
+
+def test_serialize_value_with_callable():
+    result = _serialize_value_with_schema(simple_calc_function)
+    assert result == {
+        "serialization_schema": {"type": "typing.Callable"},
+        "serialized_data": "test_base_serialization.simple_calc_function",
+    }
+
+
+def test_deserialize_value_with_callable():
+    serialized_data = {
+        "serialization_schema": {"type": "typing.Callable"},
+        "serialized_data": "test_base_serialization.simple_calc_function",
+    }
+
+    result = _deserialize_value_with_schema(serialized_data)
+    assert result is simple_calc_function
+    assert result(5) == 10
