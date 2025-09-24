@@ -45,7 +45,7 @@ dependencies = [
   "tqdm",
   "tenacity!=8.4.0",
   "lazy-imports",
-  "openai>=1.56.1",
+  "openai>=1.99.2",
   "pydantic",
   "Jinja2",
   "posthog!=3.12.0",        # telemetry # 3.12.0 was problematic https://github.com/PostHog/posthog-python/issues/187
