@@ -53,6 +53,7 @@ class MarkdownHeaderSplitter:
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
+        self._header_pattern = r"(?m)^(#{1,6}) (.+)$"  # ATX-style .md-headers
 
         # initialize secondary_splitter only if needed
         if self.secondary_split != "none":
@@ -82,8 +83,7 @@ class MarkdownHeaderSplitter:
         logger.debug("Inferring and rewriting header levels")
 
         # find headers
-        pattern = r"(?m)^(#{1,6}) (.+)$"
-        matches = list(re.finditer(pattern, text))
+        matches = list(re.finditer(self._header_pattern, text))
 
         if not matches:
             logger.info(
@@ -147,8 +147,7 @@ class MarkdownHeaderSplitter:
         logger.debug("Splitting text by markdown headers")
 
         # find headers
-        pattern = r"(?m)^(#{1,6}) (.+)$"
-        matches = list(re.finditer(pattern, text))
+        matches = list(re.finditer(self._header_pattern, text))
 
         # return unsplit if no headers found
         if not matches:
@@ -221,7 +220,7 @@ class MarkdownHeaderSplitter:
                 continue
 
             # extract header information
-            header_match = re.search(r"(#{1,6}) (.+)(?:\n|$)", doc.content)
+            header_match = re.search(self._header_pattern, doc.content)
             content_for_splitting: str = doc.content
             if header_match:
                 content_for_splitting = doc.content[header_match.end() :]
