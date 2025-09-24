@@ -309,7 +309,7 @@ class MarkdownHeaderSplitter:
                 current_page=current_page,
                 total_pages=total_pages,
             )
-            for i, split in enumerate(splits):
+            for split in splits:
                 meta = {}
                 if doc.meta:
                     meta = self._flatten_dict(doc.meta)
