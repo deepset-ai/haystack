@@ -104,8 +104,21 @@ def test_split_infer_header_levels():
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    # Should rewrite headers to # and ##
-    assert split_docs[0].content.startswith("## H2") or split_docs[0].content.startswith("# H1")
+
+    # Should have exactly one document
+    assert len(split_docs) == 1
+
+    # Extract header information from metadata instead of content
+    h1_doc = next((doc for doc in split_docs if doc.meta["header"] == "H1"), None)
+    h2_doc = next((doc for doc in split_docs if doc.meta["header"] == "H2"), None)
+
+    # Check proper doc creation
+    assert h1_doc is None
+    assert h2_doc is not None
+
+    # Check that headers are properly leveled (looking at content)
+    assert "H1" in h2_doc.meta["parentheaders"]
+    assert "## H2" in h2_doc.content
 
 
 def test_infer_header_levels_complex():
