@@ -38,7 +38,20 @@ class MarkdownHeaderSplitter:
         Initialize the MarkdownHeaderSplitter.
 
         :param infer_header_levels: If True, attempts to infer and rewrite header levels based on content structure.
-            Useful for documents where all headers use the same level. Defaults to False.
+            Useful for documents where all headers use the same level (e.g., all "##", as with PDFs parsed by Docling).
+            For example, a document like:
+                "## Title
+                 ## Introduction
+                 Introductory text
+                 ## Methods
+                 Method details"
+            Would be normalized to:
+                "# Title
+                 ## Introduction
+                 Introductory text
+                 ## Methods
+                 Method details"
+            This attempts to maintain proper hierarchical structure. Defaults to False.
         :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\f").
         :param secondary_split: Optional secondary split condition after header splitting.
             Options are "none", "word", "passage", "period", "line". Defaults to "none".
@@ -348,8 +361,22 @@ class MarkdownHeaderSplitter:
         Run the markdown header splitter with optional secondary splitting.
 
         :param documents: List of documents to split
-        :param infer_header_levels: If True, attempts to infer and rewrite header levels before splitting.
-            If None, uses the value from initialization.
+        :param infer_header_levels: If True, attempts to infer and rewrite header levels based on content structure.
+            Useful for documents where all headers use the same level (e.g., all "##", as with PDFs parsed by Docling).
+            For example, a document like:
+                "## Title
+                 ## Introduction
+                 Introductory text
+                 ## Methods
+                 Method details"
+            Would be normalized to:
+                "# Title
+                 ## Introduction
+                 Introductory text
+                 ## Methods
+                 Method details"
+            This attempts to maintain proper hierarchical structure. Defaults to False.
+            If None, uses the instance's initialized infer_header_levels setting.
 
         :returns: A dictionary with the following key:
             - `documents`: List of documents with the split texts. Each document includes:
