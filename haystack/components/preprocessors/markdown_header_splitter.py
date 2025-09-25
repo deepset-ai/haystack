@@ -409,14 +409,13 @@ class MarkdownHeaderSplitter:
                 if self.skip_empty_documents:
                     logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                     continue
-                else:
-                    # keep empty documents
-                    processed_documents.append(doc)
-                    logger.warning(
-                        "Document ID {doc_id} has an empty content. Keeping this document as per configuration.",
-                        doc_id=doc.id,
-                    )
-                    continue
+                # keep empty documents
+                processed_documents.append(doc)
+                logger.warning(
+                    "Document ID {doc_id} has an empty content. Keeping this document as per configuration.",
+                    doc_id=doc.id,
+                )
+                continue
 
             if infer_header_levels:
                 content = self._infer_header_levels(doc.content, doc_id=doc.id)
