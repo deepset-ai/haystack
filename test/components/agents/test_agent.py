@@ -29,7 +29,13 @@ from haystack.tracing.logging_tracer import LoggingTracer
 from haystack.utils import Secret, serialize_callable
 
 
-def streaming_callback_for_serde(chunk: StreamingChunk):
+def sync_streaming_callback(chunk: StreamingChunk) -> None:
+    """A synchronous streaming callback."""
+    pass
+
+
+async def async_streaming_callback(chunk: StreamingChunk) -> None:
+    """An asynchronous streaming callback."""
     pass
 
 
@@ -501,18 +507,16 @@ class TestAgent:
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
         agent = Agent(
-            chat_generator=generator,
-            tools=[weather_tool, component_tool],
-            streaming_callback=streaming_callback_for_serde,
+            chat_generator=generator, tools=[weather_tool, component_tool], streaming_callback=sync_streaming_callback
         )
 
         serialized_agent = agent.to_dict()
 
         init_parameters = serialized_agent["init_parameters"]
-        assert init_parameters["streaming_callback"] == "test_agent.streaming_callback_for_serde"
+        assert init_parameters["streaming_callback"] == "test_agent.sync_streaming_callback"
 
         deserialized_agent = Agent.from_dict(serialized_agent)
-        assert deserialized_agent.streaming_callback is streaming_callback_for_serde
+        assert deserialized_agent.streaming_callback is sync_streaming_callback
 
     def test_exit_conditions_validation(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
@@ -927,6 +931,36 @@ class TestAgent:
         assert result["messages"] is not None
         assert result["last_message"] is not None
         assert streaming_callback_called
+
+    def test_run_with_async_streaming_callback_fails(self, weather_tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
+        agent.warm_up()
+
+        with pytest.raises(ValueError, match="The init callback cannot be a coroutine"):
+            agent.run([ChatMessage.from_user("Hello")])
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_sync_streaming_callback_fails(self, weather_tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=sync_streaming_callback)
+        agent.warm_up()
+
+        with pytest.raises(ValueError, match="The init callback must be async compatible"):
+            await agent.run_async([ChatMessage.from_user("Hello")])
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_async_streaming_callbac(self, weather_tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
+        agent.warm_up()
+
+        # This should not raise any exception
+        result = await agent.run_async([ChatMessage.from_user("Hello")])
+
+        assert "messages" in result
+        assert len(result["messages"]) == 2
+        assert result["messages"][1].text == "Hello from run_async"
 
 
 class TestAgentTracing:
