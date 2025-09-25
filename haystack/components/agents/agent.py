@@ -25,7 +25,13 @@ from haystack.core.serialization import component_to_dict, default_from_dict, de
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, PipelineSnapshot, ToolBreakpoint
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
-from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
+from haystack.tools import (
+    Tool,
+    Toolset,
+    deserialize_tools_or_toolset_inplace,
+    serialize_tools_or_toolset,
+    warm_up_tools,
+)
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
@@ -196,6 +202,10 @@ class Agent:
         if not self._is_warmed_up:
             if hasattr(self.chat_generator, "warm_up"):
                 self.chat_generator.warm_up()
+
+            # Warm up tools
+            warm_up_tools(self.tools)
+
             self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:

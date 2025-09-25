@@ -23,6 +23,7 @@ from haystack.tools import (
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
 from haystack.tools.errors import ToolInvocationError
 from haystack.tracing.utils import _serializable_value
@@ -250,6 +251,9 @@ class ToolInvoker:
         """
         if not tools:
             raise ValueError("ToolInvoker requires at least one tool.")
+
+        # Warm up tools
+        warm_up_tools(tools)
 
         if isinstance(tools, Toolset):
             converted_tools = list(tools)

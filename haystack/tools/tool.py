@@ -98,6 +98,12 @@ class Tool:
         """
         return {"name": self.name, "description": self.description, "parameters": self.parameters}
 
+    def warm_up(self) -> None:
+        """
+        Warm up the Tool.
+        """
+        pass
+
     def invoke(self, **kwargs: Any) -> Any:
         """
         Invoke the Tool with the provided keyword arguments.

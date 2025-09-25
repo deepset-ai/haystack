@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization import import_class_by_name
@@ -71,3 +71,22 @@ def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools
             deserialized_tools.append(tool_class.from_dict(tool))
 
         data[key] = deserialized_tools
+
+
+def warm_up_tools(tools: Optional[Union[list[Tool], Toolset]] = None) -> None:
+    """
+    Warm up tools or a toolset.
+
+    :param tools: A list of Tool objects or a Toolset to warm up.
+    """
+    if tools is None:
+        return
+
+    if isinstance(tools, list):
+        # If tools is a list, warm up each tool individually
+        for tool in tools:
+            if hasattr(tool, "warm_up"):
+                tool.warm_up()
+    # If tools is a Toolset, warm up the toolset
+    elif hasattr(tools, "warm_up"):
+        tools.warm_up()

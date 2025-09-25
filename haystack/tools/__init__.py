@@ -10,7 +10,7 @@ from haystack.tools.tool import Tool, _check_duplicate_tool_names
 from haystack.tools.toolset import Toolset
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.pipeline_tool import PipelineTool
-from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
+from haystack.tools.utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset, warm_up_tools
 
 __all__ = [
     "_check_duplicate_tool_names",
@@ -22,4 +22,5 @@ __all__ = [
     "Tool",
     "Toolset",
     "tool",
+    "warm_up_tools",
 ]
