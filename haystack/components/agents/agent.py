@@ -20,7 +20,7 @@ from haystack.core.pipeline.breakpoint import (
     _validate_tool_breakpoint_is_valid,
 )
 from haystack.core.pipeline.pipeline import Pipeline
-from haystack.core.pipeline.utils import _deepcopy_with_exceptions
+from haystack.core.pipeline.utils import _deepcopy_with_exceptions, warm_tools_on_component
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, PipelineSnapshot, ToolBreakpoint
@@ -401,7 +401,7 @@ class Agent:
         """
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
-
+        warm_tools_on_component(self, "tools")
         if break_point and snapshot:
             raise ValueError(
                 "break_point and snapshot cannot be provided at the same time. The agent run will be aborted."

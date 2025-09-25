@@ -828,10 +828,14 @@ class PipelineBase:  # noqa: PLW1641
         It's the node's responsibility to make sure this method can be called at every `Pipeline.run()`
         without re-initializing everything.
         """
+        from haystack.core.pipeline.utils import warm_tools_on_component
+
         for node in self.graph.nodes:
-            if hasattr(self.graph.nodes[node]["instance"], "warm_up"):
+            instance = self.graph.nodes[node]["instance"]
+            if hasattr(instance, "warm_up"):
                 logger.info("Warming up component {node}...", node=node)
-                self.graph.nodes[node]["instance"].warm_up()
+                instance.warm_up()
+            warm_tools_on_component(instance)
 
     @staticmethod
     def _create_component_span(
