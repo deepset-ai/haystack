@@ -359,11 +359,7 @@ class Agent:
         state_data = current_inputs["tool_invoker"]["state"].data
         state = State(schema=self.state_schema, data=state_data)
 
-        if isinstance(snapshot.break_point.break_point, ToolBreakpoint):
-            skip_chat_generator = True
-        else:
-            skip_chat_generator = False
-
+        skip_chat_generator = isinstance(snapshot.break_point.break_point, ToolBreakpoint)
         streaming_callback = current_inputs["chat_generator"].get("streaming_callback", streaming_callback)
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
