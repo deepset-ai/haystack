@@ -663,13 +663,13 @@ class Agent:
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=False, tools=tools
+                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=True, tools=tools
             )
         else:
             exe_context = self._initialize_fresh_execution(
                 messages=messages,
                 streaming_callback=streaming_callback,
-                requires_async=False,
+                requires_async=True,
                 system_prompt=system_prompt,
                 tools=tools,
                 **kwargs,
