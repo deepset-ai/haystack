@@ -147,7 +147,7 @@ class MockChatGenerator:
         return {"type": "MockChatGeneratorWithoutRunAsync", "data": {}}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "MockChatGeneratorWithoutRunAsync":
+    def from_dict(cls, data: dict[str, Any]) -> "MockChatGenerator":
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
