@@ -932,6 +932,19 @@ class TestAgent:
         assert result["last_message"] is not None
         assert streaming_callback_called
 
+    @pytest.mark.asyncio
+    async def test_run_async_with_async_streaming_callback(self, weather_tool):
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
+        agent.warm_up()
+
+        # This should not raise any exception
+        result = await agent.run_async([ChatMessage.from_user("Hello")])
+
+        assert "messages" in result
+        assert len(result["messages"]) == 2
+        assert result["messages"][1].text == "Hello from run_async"
+
     def test_run_with_async_streaming_callback_fails(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
@@ -948,19 +961,6 @@ class TestAgent:
 
         with pytest.raises(ValueError, match="The init callback must be async compatible"):
             await agent.run_async([ChatMessage.from_user("Hello")])
-
-    @pytest.mark.asyncio
-    async def test_run_async_with_async_streaming_callbac(self, weather_tool):
-        chat_generator = MockChatGenerator()
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=async_streaming_callback)
-        agent.warm_up()
-
-        # This should not raise any exception
-        result = await agent.run_async([ChatMessage.from_user("Hello")])
-
-        assert "messages" in result
-        assert len(result["messages"]) == 2
-        assert result["messages"][1].text == "Hello from run_async"
 
 
 class TestAgentTracing:
