@@ -5,12 +5,12 @@
 import os
 from pathlib import Path
 from typing import Any, Optional, Union
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from haystack import component
 from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.dataclasses import ChatMessage, ToolCall
@@ -487,6 +487,35 @@ class TestAgentBreakpoints:
             )
             agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint)
 
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    @pytest.mark.integration
+    def test_live_resume_from_tool_invoker(self, tmp_path, weather_tool):
+        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o"), tools=[weather_tool])
+        debug_path = str(tmp_path / "debug_snapshots")
+        agent_breakpoint = AgentBreakpoint(
+            break_point=ToolBreakpoint(component_name="tool_invoker", snapshot_file_path=debug_path),
+            agent_name="test_agent",
+        )
+
+        try:
+            agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint)
+        except BreakpointException:
+            pass
+
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))
+        assert len(snapshot_files) > 0
+        latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
+
+        result = agent.run(
+            messages=[ChatMessage.from_user("This is actually ignored when resuming from snapshot.")],
+            snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
+        )
+
+        assert "messages" in result
+        assert "last_message" in result
+        assert len(result["messages"]) == 4
+        assert "berlin" in result["last_message"].text.lower()
+
 
 class TestAsyncAgentBreakpoints:
     @pytest.mark.asyncio
@@ -517,17 +546,17 @@ class TestAsyncAgentBreakpoints:
     @pytest.mark.asyncio
     async def test_resume_from_chat_generator_async(self, agent, tmp_path):
         debug_path = str(tmp_path / "debug_snapshots")
-        messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         chat_generator_bp = Breakpoint(component_name="chat_generator", snapshot_file_path=debug_path)
         agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name="test_agent")
 
         try:
-            await agent.run_async(messages=messages, break_point=agent_breakpoint)
+            await agent.run_async(
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint
+            )
         except BreakpointException:
             pass
 
         snapshot_files = list(Path(debug_path).glob("test_agent_chat_generator_*.json"))
-
         assert len(snapshot_files) > 0
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
@@ -538,7 +567,7 @@ class TestAsyncAgentBreakpoints:
 
         assert "messages" in result
         assert "last_message" in result
-        assert len(result["messages"]) > 0
+        assert len(result["messages"]) == 4
 
     @pytest.mark.asyncio
     async def test_resume_from_tool_invoker_async(self, agent, tmp_path):
