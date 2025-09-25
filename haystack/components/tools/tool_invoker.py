@@ -252,8 +252,13 @@ class ToolInvoker:
             raise ValueError("ToolInvoker requires at least one tool.")
 
         if isinstance(tools, Toolset):
+            # warmup the toolset
+            tools.warmup()
             converted_tools = list(tools)
         else:
+            # warmup the tools
+            for tool in tools:
+                tool.warmup()
             converted_tools = tools
 
         _check_duplicate_tool_names(converted_tools)
