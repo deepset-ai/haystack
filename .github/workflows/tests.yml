@@ -30,7 +30,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.9"
-  HATCH_VERSION: "1.14.1"
+  HATCH_VERSION: "1.14.2"
 
 jobs:
   format:
