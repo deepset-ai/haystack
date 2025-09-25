@@ -4,17 +4,27 @@
 
 import os
 from pathlib import Path
+from typing import Any, Optional, Union
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from haystack import component
 from haystack.components.agents import Agent
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, Breakpoint, ToolBreakpoint
-from haystack.tools import Tool
-from test.components.agents.test_agent import MockChatGenerator, weather_function
+from haystack.tools import Tool, Toolset
+
+
+def weather_function(location):
+    weather_info = {
+        "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
+        "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
+        "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
+    }
+    return weather_info.get(location, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
 @pytest.fixture
@@ -27,18 +37,56 @@ def weather_tool():
     )
 
 
+@component
+class MockChatGenerator:
+    def __init__(self):
+        self._counter = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"type": "MockChatGenerator", "data": {}}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "MockChatGenerator":
+        return cls()
+
+    @component.output_types(replies=list[ChatMessage])
+    def run(
+        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+    ) -> dict[str, Any]:
+        if self._counter == 0:
+            self._counter += 1
+            return {
+                "replies": [
+                    ChatMessage.from_assistant(
+                        "I'll help you check the weather.",
+                        tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
+                    )
+                ]
+            }
+        else:
+            return {"replies": [ChatMessage.from_assistant("The weather in Berlin is sunny.")]}
+
+    @component.output_types(replies=list[ChatMessage])
+    async def run_async(
+        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+    ) -> dict[str, Any]:
+        if self._counter == 0:
+            self._counter += 1
+            return {
+                "replies": [
+                    ChatMessage.from_assistant(
+                        "I'll help you check the weather.",
+                        tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
+                    )
+                ]
+            }
+        else:
+            return {"replies": [ChatMessage.from_assistant("The weather in Berlin is sunny.")]}
+
+
 @pytest.fixture
 def agent(weather_tool):
-    mock_messages = [
-        ChatMessage.from_assistant(
-            "I'll help you check the weather.",
-            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
-        )
-    ]
-    agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
-    agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
-    agent.chat_generator.run_async = AsyncMock(return_value={"replies": mock_messages})
-    return agent
+    return Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
 
 
 @pytest.fixture
@@ -84,7 +132,7 @@ class TestAgentBreakpoints:
                                     "properties": {"location": {"type": "string"}},
                                     "required": ["location"],
                                 },
-                                "function": "test.components.agents.test_agent.weather_function",
+                                "function": "test_agent_breakpoints.weather_function",
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
@@ -144,7 +192,7 @@ class TestAgentBreakpoints:
                                     "properties": {"location": {"type": "string"}},
                                     "required": ["location"],
                                 },
-                                "function": "test.components.agents.test_agent.weather_function",
+                                "function": "test_agent_breakpoints.weather_function",
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
@@ -216,7 +264,7 @@ class TestAgentBreakpoints:
                                     "properties": {"location": {"type": "string"}},
                                     "required": ["location"],
                                 },
-                                "function": "test.components.agents.test_agent.weather_function",
+                                "function": "test_agent_breakpoints.weather_function",
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
@@ -310,7 +358,7 @@ class TestAgentBreakpoints:
                                     "properties": {"location": {"type": "string"}},
                                     "required": ["location"],
                                 },
-                                "function": "test.components.agents.test_agent.weather_function",
+                                "function": "test_agent_breakpoints.weather_function",
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
@@ -367,8 +415,10 @@ class TestAgentBreakpoints:
 
     def test_resume_from_chat_generator(self, agent, tmp_path):
         debug_path = str(tmp_path / "debug_snapshots")
-        chat_generator_bp = Breakpoint(component_name="chat_generator", snapshot_file_path=debug_path)
-        agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name="test_agent")
+        agent_breakpoint = AgentBreakpoint(
+            break_point=Breakpoint(component_name="chat_generator", snapshot_file_path=debug_path),
+            agent_name="test_agent",
+        )
 
         try:
             agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint)
@@ -380,13 +430,14 @@ class TestAgentBreakpoints:
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
         result = agent.run(
-            messages=[ChatMessage.from_user("Continue from where we left off.")],
+            messages=[ChatMessage.from_user("This is actually ignored when resuming from snapshot.")],
             snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
         )
 
         assert "messages" in result
         assert "last_message" in result
-        assert len(result["messages"]) > 0
+        # There should be 4 messages: user + assistant + tool call result + final assistant message
+        assert len(result["messages"]) == 4
 
     def test_resume_from_tool_invoker(self, agent, tmp_path):
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
