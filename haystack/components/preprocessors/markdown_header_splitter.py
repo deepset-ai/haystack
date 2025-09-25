@@ -33,6 +33,7 @@ class MarkdownHeaderSplitter:
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
+        skip_empty_documents: bool = True,
     ):
         """
         Initialize the MarkdownHeaderSplitter.
@@ -59,6 +60,8 @@ class MarkdownHeaderSplitter:
         :param split_overlap: The number of overlapping units for each split when using secondary splitting.
             Defaults to 0.
         :param split_threshold: The minimum number of units per split when using secondary splitting. Defaults to 0.
+        :param skip_empty_documents: If True, skip documents with empty content. If False, process empty documents.
+            Defaults to True.
         """
         self.infer_header_levels = infer_header_levels
         self.page_break_character = page_break_character
@@ -66,6 +69,7 @@ class MarkdownHeaderSplitter:
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
+        self.skip_empty_documents = skip_empty_documents
         self._header_pattern = r"(?m)^(#{1,6}) (.+)$"  # ATX-style .md-headers
 
         # initialize secondary_splitter only if needed
@@ -386,6 +390,13 @@ class MarkdownHeaderSplitter:
         """
         # validate input documents
         for doc in documents:
+            if doc.content is None:
+                raise ValueError(
+                    (
+                        "MarkdownHeaderSplitter only works with text documents but content for document ID"
+                        f" {doc.id} is None."
+                    )
+                )
             if not isinstance(doc.content, str):
                 raise ValueError("MarkdownHeaderSplitter only works with text documents (str content).")
 
@@ -393,9 +404,20 @@ class MarkdownHeaderSplitter:
 
         processed_documents = []
         for doc in documents:
-            # skip empty documents
+            # handle empty documents
             if not doc.content or not doc.content.strip():
-                continue
+                if self.skip_empty_documents:
+                    logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
+                    continue
+                else:
+                    # keep empty documents
+                    processed_documents.append(doc)
+                    logger.warning(
+                        "Document ID {doc_id} has an empty content. Keeping this document as per configuration.",
+                        doc_id=doc.id,
+                    )
+                    continue
+
             if infer_header_levels:
                 content = self._infer_header_levels(doc.content, doc_id=doc.id)
                 processed_documents.append(Document(content=content, meta=doc.meta, id=doc.id))
