@@ -28,75 +28,342 @@ def weather_tool():
 
 
 @pytest.fixture
-def mock_chat_generator():
-    generator = MockChatGenerator()
-    reply = {
-        "replies": [
-            ChatMessage.from_assistant(
-                "I'll help you check the weather.",
-                tool_calls=[{"tool_name": "weather_tool", "tool_args": {"location": "Berlin"}}],
-            )
-        ]
-    }
-
-    def run(messages, tools=None, **kwargs):
-        return reply
-
-    async def run_async(messages, tools=None, **kwargs):
-        return reply
-
-    generator.run = run
-    generator.run_async = run_async
-    return generator
-
-
-@pytest.fixture
-def agent(mock_chat_generator, weather_tool):
-    return Agent(
-        chat_generator=mock_chat_generator,
-        tools=[weather_tool],
-        system_prompt="You are a helpful assistant that can use tools to help users.",
-        max_agent_steps=10,  # Increase max steps to allow breakpoints to trigger
-    )
-
-
-@pytest.fixture
-def mock_agent_with_tool_calls(monkeypatch, weather_tool):
-    monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-    generator = MockChatGenerator()
+def agent(weather_tool):
     mock_messages = [
-        ChatMessage.from_assistant("First response"),
-        ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]),
+        ChatMessage.from_assistant(
+            "I'll help you check the weather.",
+            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
+        )
     ]
-    agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=10)  # Increase max steps
-    agent.warm_up()
+    agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
     agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
     agent.chat_generator.run_async = AsyncMock(return_value={"replies": mock_messages})
     return agent
 
 
+@pytest.fixture
+def chat_generator_serialization_schema():
+    return {
+        "type": "object",
+        "properties": {
+            "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+            "tools": {"type": "array", "items": {"type": "haystack.tools.tool.Tool"}},
+        },
+    }
+
+
 class TestAgentBreakpoints:
-    def test_run_with_chat_generator_breakpoint(self, agent):
-        messages = [ChatMessage.from_user("What's the weather in Berlin?")]
-        chat_generator_bp = Breakpoint(component_name="chat_generator", visit_count=0)
-        agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name="test_agent")
+    def test_run_with_chat_generator_breakpoint(self, agent, chat_generator_serialization_schema):
+        agent_breakpoint = AgentBreakpoint(
+            break_point=Breakpoint(component_name="chat_generator"), agent_name="test_agent"
+        )
         with pytest.raises(BreakpointException) as exc_info:
-            agent.run(messages=messages, break_point=agent_breakpoint)
+            agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint)
+        assert isinstance(exc_info.value, BreakpointException)
         assert exc_info.value.component == "chat_generator"
-        assert "messages" in exc_info.value.inputs["chat_generator"]["serialized_data"]
+        assert exc_info.value.inputs == {
+            "chat_generator": {
+                "serialization_schema": chat_generator_serialization_schema,
+                "serialized_data": {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "meta": {},
+                            "name": None,
+                            "content": [{"text": "What's the weather in Berlin?"}],
+                        }
+                    ],
+                    "tools": [
+                        {
+                            "type": "haystack.tools.tool.Tool",
+                            "data": {
+                                "name": "weather_tool",
+                                "description": "Provides weather information for a given location.",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {"location": {"type": "string"}},
+                                    "required": ["location"],
+                                },
+                                "function": "test.components.agents.test_agent.weather_function",
+                                "outputs_to_string": None,
+                                "inputs_from_state": None,
+                                "outputs_to_state": None,
+                            },
+                        }
+                    ],
+                },
+            },
+            "tool_invoker": {
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {
+                        "messages": {"type": "array", "items": {}},
+                        "state": {"type": "haystack.components.agents.state.state.State"},
+                        "tools": {"type": "array", "items": {"type": "haystack.tools.tool.Tool"}},
+                    },
+                },
+                "serialized_data": {
+                    "messages": [],
+                    "state": {
+                        "schema": {
+                            "messages": {
+                                "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
+                                "handler": "haystack.components.agents.state.state_utils.merge_lists",
+                            }
+                        },
+                        "data": {
+                            "serialization_schema": {
+                                "type": "object",
+                                "properties": {
+                                    "messages": {
+                                        "type": "array",
+                                        "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
+                                    }
+                                },
+                            },
+                            "serialized_data": {
+                                "messages": [
+                                    {
+                                        "role": "user",
+                                        "meta": {},
+                                        "name": None,
+                                        "content": [{"text": "What's the weather in Berlin?"}],
+                                    }
+                                ]
+                            },
+                        },
+                    },
+                    "tools": [
+                        {
+                            "type": "haystack.tools.tool.Tool",
+                            "data": {
+                                "name": "weather_tool",
+                                "description": "Provides weather information for a given location.",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {"location": {"type": "string"}},
+                                    "required": ["location"],
+                                },
+                                "function": "test.components.agents.test_agent.weather_function",
+                                "outputs_to_string": None,
+                                "inputs_from_state": None,
+                                "outputs_to_state": None,
+                            },
+                        }
+                    ],
+                },
+            },
+        }
+        assert exc_info.value.results == {
+            "schema": {
+                "messages": {
+                    "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
+                    "handler": "haystack.components.agents.state.state_utils.merge_lists",
+                }
+            },
+            "data": {
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {
+                        "messages": {
+                            "type": "array",
+                            "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
+                        }
+                    },
+                },
+                "serialized_data": {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "meta": {},
+                            "name": None,
+                            "content": [{"text": "What's the weather in Berlin?"}],
+                        }
+                    ]
+                },
+            },
+        }
 
-    def test_run_with_tool_invoker_breakpoint(self, mock_agent_with_tool_calls):
-        messages = [ChatMessage.from_user("What's the weather in Berlin?")]
-        tool_bp = ToolBreakpoint(component_name="tool_invoker", visit_count=0, tool_name="weather_tool")
-        agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test_agent")
+    def test_run_with_tool_invoker_breakpoint(self, agent, chat_generator_serialization_schema):
+        agent_breakpoint = AgentBreakpoint(
+            break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="weather_tool"), agent_name="test_agent"
+        )
         with pytest.raises(BreakpointException) as exc_info:
-            mock_agent_with_tool_calls.run(messages=messages, break_point=agent_breakpoint)
+            agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint)
 
+        assert isinstance(exc_info.value, BreakpointException)
         assert exc_info.value.component == "tool_invoker"
-        assert {"chat_generator", "tool_invoker"} == set(exc_info.value.inputs.keys())
-        assert "serialization_schema" in exc_info.value.inputs["chat_generator"]
-        assert "serialized_data" in exc_info.value.inputs["chat_generator"]
-        assert "messages" in exc_info.value.inputs["chat_generator"]["serialized_data"]
+        assert exc_info.value.inputs == {
+            "chat_generator": {
+                "serialization_schema": chat_generator_serialization_schema,
+                "serialized_data": {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "meta": {},
+                            "name": None,
+                            "content": [{"text": "What's the weather in Berlin?"}],
+                        }
+                    ],
+                    "tools": [
+                        {
+                            "type": "haystack.tools.tool.Tool",
+                            "data": {
+                                "name": "weather_tool",
+                                "description": "Provides weather information for a given location.",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {"location": {"type": "string"}},
+                                    "required": ["location"],
+                                },
+                                "function": "test.components.agents.test_agent.weather_function",
+                                "outputs_to_string": None,
+                                "inputs_from_state": None,
+                                "outputs_to_state": None,
+                            },
+                        }
+                    ],
+                },
+            },
+            "tool_invoker": {
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {
+                        "messages": {
+                            "type": "array",
+                            "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
+                        },
+                        "state": {"type": "haystack.components.agents.state.state.State"},
+                        "tools": {"type": "array", "items": {"type": "haystack.tools.tool.Tool"}},
+                    },
+                },
+                "serialized_data": {
+                    "messages": [
+                        {
+                            "role": "assistant",
+                            "meta": {},
+                            "name": None,
+                            "content": [
+                                {"text": "I'll help you check the weather."},
+                                {
+                                    "tool_call": {
+                                        "tool_name": "weather_tool",
+                                        "arguments": {"location": "Berlin"},
+                                        "id": None,
+                                    }
+                                },
+                            ],
+                        }
+                    ],
+                    "state": {
+                        "schema": {
+                            "messages": {
+                                "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
+                                "handler": "haystack.components.agents.state.state_utils.merge_lists",
+                            }
+                        },
+                        "data": {
+                            "serialization_schema": {
+                                "type": "object",
+                                "properties": {
+                                    "messages": {
+                                        "type": "array",
+                                        "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
+                                    }
+                                },
+                            },
+                            "serialized_data": {
+                                "messages": [
+                                    {
+                                        "role": "user",
+                                        "meta": {},
+                                        "name": None,
+                                        "content": [{"text": "What's the weather in Berlin?"}],
+                                    },
+                                    {
+                                        "role": "assistant",
+                                        "meta": {},
+                                        "name": None,
+                                        "content": [
+                                            {"text": "I'll help you check the weather."},
+                                            {
+                                                "tool_call": {
+                                                    "tool_name": "weather_tool",
+                                                    "arguments": {"location": "Berlin"},
+                                                    "id": None,
+                                                }
+                                            },
+                                        ],
+                                    },
+                                ]
+                            },
+                        },
+                    },
+                    "tools": [
+                        {
+                            "type": "haystack.tools.tool.Tool",
+                            "data": {
+                                "name": "weather_tool",
+                                "description": "Provides weather information for a given location.",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {"location": {"type": "string"}},
+                                    "required": ["location"],
+                                },
+                                "function": "test.components.agents.test_agent.weather_function",
+                                "outputs_to_string": None,
+                                "inputs_from_state": None,
+                                "outputs_to_state": None,
+                            },
+                        }
+                    ],
+                },
+            },
+        }
+        assert exc_info.value.results == {
+            "schema": {
+                "messages": {
+                    "type": "list[haystack.dataclasses.chat_message.ChatMessage]",
+                    "handler": "haystack.components.agents.state.state_utils.merge_lists",
+                }
+            },
+            "data": {
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {
+                        "messages": {
+                            "type": "array",
+                            "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
+                        }
+                    },
+                },
+                "serialized_data": {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "meta": {},
+                            "name": None,
+                            "content": [{"text": "What's the weather in Berlin?"}],
+                        },
+                        {
+                            "role": "assistant",
+                            "meta": {},
+                            "name": None,
+                            "content": [
+                                {"text": "I'll help you check the weather."},
+                                {
+                                    "tool_call": {
+                                        "tool_name": "weather_tool",
+                                        "arguments": {"location": "Berlin"},
+                                        "id": None,
+                                    }
+                                },
+                            ],
+                        },
+                    ]
+                },
+            },
+        }
 
     def test_resume_from_chat_generator(self, agent, tmp_path):
         debug_path = str(tmp_path / "debug_snapshots")
@@ -121,14 +388,14 @@ class TestAgentBreakpoints:
         assert "last_message" in result
         assert len(result["messages"]) > 0
 
-    def test_resume_from_tool_invoker(self, mock_agent_with_tool_calls, tmp_path):
+    def test_resume_from_tool_invoker(self, agent, tmp_path):
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         debug_path = str(tmp_path / "debug_snapshots")
         tool_bp = ToolBreakpoint(component_name="tool_invoker", snapshot_file_path=debug_path)
         agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test_agent")
 
         try:
-            mock_agent_with_tool_calls.run(messages=messages, break_point=agent_breakpoint)
+            agent.run(messages=messages, break_point=agent_breakpoint)
         except BreakpointException:
             pass
 
@@ -136,8 +403,8 @@ class TestAgentBreakpoints:
         assert len(snapshot_files) > 0
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
-        result = mock_agent_with_tool_calls.run(
-            messages=[ChatMessage.from_user("Continue from where we left off.")],
+        result = agent.run(
+            messages=[ChatMessage.from_user("This is actually ignored when resuming from snapshot.")],
             snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
         )
 
@@ -145,49 +412,53 @@ class TestAgentBreakpoints:
         assert "last_message" in result
         assert len(result["messages"]) > 0
 
-    def test_invalid_combination_breakpoint_and_pipeline_snapshot(self, mock_agent_with_tool_calls):
+    def test_invalid_combination_breakpoint_and_pipeline_snapshot(self, agent):
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         tool_bp = ToolBreakpoint(component_name="tool_invoker", tool_name="weather_tool")
         agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test_agent")
         with pytest.raises(ValueError, match="break_point and snapshot cannot be provided at the same time"):
-            mock_agent_with_tool_calls.run(
+            agent.run(
                 messages=messages,
                 break_point=agent_breakpoint,
                 snapshot=AgentSnapshot(component_inputs={}, component_visits={}, break_point=agent_breakpoint),
             )
 
-    def test_breakpoint_with_invalid_component(self, mock_agent_with_tool_calls):
+    def test_breakpoint_with_invalid_component_name(self):
         invalid_bp = Breakpoint(component_name="invalid_breakpoint")
         with pytest.raises(ValueError):
             AgentBreakpoint(break_point=invalid_bp, agent_name="test_agent")
 
-    def test_breakpoint_with_invalid_tool_name(self, mock_agent_with_tool_calls):
-        tool_breakpoint = ToolBreakpoint(component_name="tool_invoker", tool_name="invalid_tool")
+    def test_breakpoint_with_invalid_tool_name(self, agent):
         with pytest.raises(ValueError, match="Tool 'invalid_tool' is not available in the agent's tools"):
-            agent_breakpoints = AgentBreakpoint(break_point=tool_breakpoint, agent_name="test_agent")
-            mock_agent_with_tool_calls.run(
-                messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoints
+            agent_breakpoint = AgentBreakpoint(
+                break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="invalid_tool"),
+                agent_name="test_agent",
             )
+            agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint)
 
 
 class TestAsyncAgentBreakpoints:
     @pytest.mark.asyncio
     async def test_run_async_with_chat_generator_breakpoint(self, agent):
-        messages = [ChatMessage.from_user("What's the weather in Berlin?")]
-        chat_generator_bp = Breakpoint(component_name="chat_generator")
-        agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name="test_agent")
+        agent_breakpoint = AgentBreakpoint(
+            break_point=Breakpoint(component_name="chat_generator"), agent_name="test_agent"
+        )
         with pytest.raises(BreakpointException) as exc_info:
-            await agent.run_async(messages=messages, break_point=agent_breakpoint)
+            await agent.run_async(
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint
+            )
         assert exc_info.value.component == "chat_generator"
         assert "messages" in exc_info.value.inputs["chat_generator"]["serialized_data"]
 
     @pytest.mark.asyncio
-    async def test_run_async_with_tool_invoker_breakpoint(self, mock_agent_with_tool_calls):
-        messages = [ChatMessage.from_user("What's the weather in Berlin?")]
-        tool_bp = ToolBreakpoint(component_name="tool_invoker", tool_name="weather_tool")
-        agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test")
+    async def test_run_async_with_tool_invoker_breakpoint(self, agent):
+        agent_breakpoint = AgentBreakpoint(
+            break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="weather_tool"), agent_name="test"
+        )
         with pytest.raises(BreakpointException) as exc_info:
-            await mock_agent_with_tool_calls.run_async(messages=messages, break_point=agent_breakpoint)
+            await agent.run_async(
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint
+            )
 
         assert exc_info.value.component == "tool_invoker"
         assert "messages" in exc_info.value.inputs["tool_invoker"]["serialized_data"]
@@ -210,7 +481,7 @@ class TestAsyncAgentBreakpoints:
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
         result = await agent.run_async(
-            messages=[ChatMessage.from_user("Continue from where we left off.")],
+            messages=[ChatMessage.from_user("This is actually ignored when resuming from snapshot.")],
             snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
         )
 
@@ -219,14 +490,14 @@ class TestAsyncAgentBreakpoints:
         assert len(result["messages"]) > 0
 
     @pytest.mark.asyncio
-    async def test_resume_from_tool_invoker_async(self, mock_agent_with_tool_calls, tmp_path):
+    async def test_resume_from_tool_invoker_async(self, agent, tmp_path):
         debug_path = str(tmp_path / "debug_snapshots")
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         tool_bp = ToolBreakpoint(component_name="tool_invoker", tool_name="weather_tool", snapshot_file_path=debug_path)
         agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test_agent")
 
         try:
-            await mock_agent_with_tool_calls.run_async(messages=messages, break_point=agent_breakpoint)
+            await agent.run_async(messages=messages, break_point=agent_breakpoint)
         except BreakpointException:
             pass
 
@@ -235,8 +506,8 @@ class TestAsyncAgentBreakpoints:
         assert len(snapshot_files) > 0
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
-        result = await mock_agent_with_tool_calls.run_async(
-            messages=[ChatMessage.from_user("Continue from where we left off.")],
+        result = await agent.run_async(
+            messages=[ChatMessage.from_user("This is actually ignored when resuming from snapshot.")],
             snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
         )
 
@@ -245,26 +516,22 @@ class TestAsyncAgentBreakpoints:
         assert len(result["messages"]) > 0
 
     @pytest.mark.asyncio
-    async def test_invalid_combination_breakpoint_and_pipeline_snapshot_async(self, mock_agent_with_tool_calls):
+    async def test_invalid_combination_breakpoint_and_pipeline_snapshot_async(self, agent):
         tool_bp = ToolBreakpoint(component_name="tool_invoker", visit_count=0, tool_name="weather_tool")
         agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test")
         with pytest.raises(ValueError, match="break_point and snapshot cannot be provided at the same time"):
-            await mock_agent_with_tool_calls.run_async(
+            await agent.run_async(
                 messages=[ChatMessage.from_user("What's the weather in Berlin?")],
                 break_point=agent_breakpoint,
                 snapshot=AgentSnapshot(component_inputs={}, component_visits={}, break_point=agent_breakpoint),
             )
 
     @pytest.mark.asyncio
-    async def test_breakpoint_with_invalid_component_async(self, mock_agent_with_tool_calls):
-        with pytest.raises(ValueError):
-            AgentBreakpoint(break_point=Breakpoint(component_name="invalid_breakpoint"), agent_name="test")
-
-    @pytest.mark.asyncio
-    async def test_breakpoint_with_invalid_tool_name_async(self, mock_agent_with_tool_calls):
-        tool_breakpoint = ToolBreakpoint(component_name="tool_invoker", tool_name="invalid_tool")
-        agent_breakpoint = AgentBreakpoint(break_point=tool_breakpoint, agent_name="test")
+    async def test_breakpoint_with_invalid_tool_name_async(self, agent):
+        agent_breakpoint = AgentBreakpoint(
+            break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="invalid_tool"), agent_name="test"
+        )
         with pytest.raises(ValueError, match="Tool 'invalid_tool' is not available in the agent's tools"):
-            await mock_agent_with_tool_calls.run_async(
+            await agent.run_async(
                 messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint
             )
