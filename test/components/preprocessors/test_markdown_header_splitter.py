@@ -221,12 +221,15 @@ def test_invalid_split_parameters_at_init():
 
 def test_empty_content_handling():
     """Test handling of documents with empty content."""
-    splitter = MarkdownHeaderSplitter()
+    splitter_skip = MarkdownHeaderSplitter()  # skip empty documents by default
     docs = [Document(content="")]
-    result = splitter.run(documents=docs)
-
-    # DocumentSplitter skips empty documents by default
+    result = splitter_skip.run(documents=docs)
     assert len(result["documents"]) == 0
+
+    splitter_no_skip = MarkdownHeaderSplitter(skip_empty_documents=False)
+    docs = [Document(content="")]
+    result = splitter_no_skip.run(documents=docs)
+    assert len(result["documents"]) == 1
 
 
 # Output format and split ID checks
