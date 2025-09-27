@@ -1,0 +1,3 @@
+fixes:
+  - |
+    Refactored SentenceTransformers backend to ensure unique embedding IDs by incorporating all relevant arguments and streamlined initialization using kwargs.
