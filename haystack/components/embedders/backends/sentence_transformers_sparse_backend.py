@@ -3,11 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Literal, Optional
 
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.lazy_imports import LazyImport
-from haystack.utils.auth import Secret
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as sentence_transformers_import:
     from sentence_transformers import SparseEncoder
@@ -21,46 +19,13 @@ class _SentenceTransformersSparseEmbeddingBackendFactory:
     _instances: dict[str, "_SentenceTransformersSparseEncoderEmbeddingBackend"] = {}
 
     @staticmethod
-    def get_embedding_backend(
-        *,
-        model: str,
-        device: Optional[str] = None,
-        auth_token: Optional[Secret] = None,
-        trust_remote_code: bool = False,
-        local_files_only: bool = False,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
-        backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
-        cache_params = {
-            "model": model,
-            "device": device,
-            "auth_token": auth_token,
-            "trust_remote_code": trust_remote_code,
-            "local_files_only": local_files_only,
-            "model_kwargs": model_kwargs,
-            "tokenizer_kwargs": tokenizer_kwargs,
-            "config_kwargs": config_kwargs,
-            "backend": backend,
-        }
-
-        embedding_backend_id = json.dumps(cache_params, sort_keys=True, default=str)
+    def get_embedding_backend(**kwargs):
+        embedding_backend_id = json.dumps(kwargs, sort_keys=True, default=str)
 
         if embedding_backend_id in _SentenceTransformersSparseEmbeddingBackendFactory._instances:
             return _SentenceTransformersSparseEmbeddingBackendFactory._instances[embedding_backend_id]
 
-        embedding_backend = _SentenceTransformersSparseEncoderEmbeddingBackend(
-            model=model,
-            device=device,
-            auth_token=auth_token,
-            trust_remote_code=trust_remote_code,
-            local_files_only=local_files_only,
-            model_kwargs=model_kwargs,
-            tokenizer_kwargs=tokenizer_kwargs,
-            config_kwargs=config_kwargs,
-            backend=backend,
-        )
+        embedding_backend = _SentenceTransformersSparseEncoderEmbeddingBackend(**kwargs)
 
         _SentenceTransformersSparseEmbeddingBackendFactory._instances[embedding_backend_id] = embedding_backend
         return embedding_backend
@@ -71,31 +36,22 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
     Class to manage Sparse embeddings from Sentence Transformers.
     """
 
-    def __init__(
-        self,
-        *,
-        model: str,
-        device: Optional[str] = None,
-        auth_token: Optional[Secret] = None,
-        trust_remote_code: bool = False,
-        local_files_only: bool = False,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
-        backend: Literal["torch", "onnx", "openvino"] = "torch",
-    ):
+    def __init__(self, **kwargs):
         sentence_transformers_import.check()
 
+        auth_token = kwargs.get("auth_token")
+        resolved_token = auth_token.resolve_value() if auth_token else None
+
         self.model = SparseEncoder(
-            model_name_or_path=model,
-            device=device,
-            token=auth_token.resolve_value() if auth_token else None,
-            trust_remote_code=trust_remote_code,
-            local_files_only=local_files_only,
-            model_kwargs=model_kwargs,
-            tokenizer_kwargs=tokenizer_kwargs,
-            config_kwargs=config_kwargs,
-            backend=backend,
+            model_name_or_path=kwargs["model"],
+            device=kwargs.get("device"),
+            token=resolved_token,
+            trust_remote_code=kwargs.get("trust_remote_code", False),
+            local_files_only=kwargs.get("local_files_only", False),
+            model_kwargs=kwargs.get("model_kwargs"),
+            tokenizer_kwargs=kwargs.get("tokenizer_kwargs"),
+            config_kwargs=kwargs.get("config_kwargs"),
+            backend=kwargs.get("backend", "torch"),
         )
 
     def embed(self, *, data: list[str], **kwargs) -> list[SparseEmbedding]:
