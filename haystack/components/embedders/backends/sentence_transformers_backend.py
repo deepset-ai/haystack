@@ -24,6 +24,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
 
     @staticmethod
     def get_embedding_backend(  # pylint: disable=too-many-positional-arguments
+        *,
         model: str,
         device: Optional[str] = None,
         auth_token: Optional[Secret] = None,
@@ -77,6 +78,7 @@ class _SentenceTransformersEmbeddingBackend:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
+        *,
         model: str,
         device: Optional[str] = None,
         auth_token: Optional[Secret] = None,
