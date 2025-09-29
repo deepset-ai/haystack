@@ -348,47 +348,39 @@ class Pipeline(PipelineBase):
                     component_inputs["break_point"] = None
 
                 # Scenario 2: A breakpoint is provided to stop the pipeline at a specific component
-                if break_point:
-                    should_trigger_breakpoint = False
-                    should_create_snapshot = False
+                component_break_point_triggered = (
+                    break_point
+                    and isinstance(break_point, Breakpoint)
+                    and break_point.component_name == component_name
+                    and break_point.visit_count == component_visits[component_name]
+                )
+                agent_break_point_triggered = (
+                    break_point
+                    and isinstance(break_point, AgentBreakpoint)
+                    and component_name == break_point.agent_name
+                )
+                if component_break_point_triggered or agent_break_point_triggered:
+                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
+                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
+                    new_pipeline_snapshot = _create_pipeline_snapshot(
+                        inputs=pipeline_snapshot_inputs_serialised,
+                        break_point=break_point,
+                        component_visits=component_visits,
+                        original_input_data=data,
+                        ordered_component_names=ordered_component_names,
+                        include_outputs_from=include_outputs_from,
+                        pipeline_outputs=pipeline_outputs,
+                    )
 
-                    # Scenario 2.1: an AgentBreakpoint is provided to stop the pipeline at a specific component
+                    # An AgentBreakpoint is provided to stop the pipeline at a specific component so we pass on the
+                    # breakpoint and snapshot to the Agent component
                     if isinstance(break_point, AgentBreakpoint) and component_name == break_point.agent_name:
-                        should_create_snapshot = True
                         component_inputs["break_point"] = break_point
+                        component_inputs["parent_snapshot"] = new_pipeline_snapshot
 
-                    # Scenario 2.2: a regular breakpoint is provided to stop the pipeline at a specific component and
-                    # visit count
-                    elif (
-                        isinstance(break_point, Breakpoint)
-                        and break_point.component_name == component_name
-                        and break_point.visit_count == component_visits[component_name]
-                    ):
-                        should_trigger_breakpoint = True
-                        should_create_snapshot = True
-
-                    if should_create_snapshot:
-                        pipeline_snapshot_inputs_serialised = deepcopy(inputs)
-                        pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
-                        new_pipeline_snapshot = _create_pipeline_snapshot(
-                            inputs=pipeline_snapshot_inputs_serialised,
-                            break_point=break_point,
-                            component_visits=component_visits,
-                            original_input_data=data,
-                            ordered_component_names=ordered_component_names,
-                            include_outputs_from=include_outputs_from,
-                            pipeline_outputs=pipeline_outputs,
-                        )
-
-                        # add the parent_snapshot to agent inputs if needed
-                        if isinstance(break_point, AgentBreakpoint) and component_name == break_point.agent_name:
-                            component_inputs["parent_snapshot"] = new_pipeline_snapshot
-
-                        # trigger the breakpoint if needed
-                        if should_trigger_breakpoint:
-                            _trigger_break_point(
-                                pipeline_snapshot=new_pipeline_snapshot, pipeline_outputs=pipeline_outputs
-                            )
+                    # trigger the breakpoint if needed
+                    if component_break_point_triggered:
+                        _trigger_break_point(pipeline_snapshot=new_pipeline_snapshot, pipeline_outputs=pipeline_outputs)
 
                 try:
                     component_outputs = self._run_component(
