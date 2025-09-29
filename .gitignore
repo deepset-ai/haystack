@@ -61,6 +61,15 @@ coverage.xml
 *.mo
 *.pot
 
+# Docs website (Docusaurus)
+docs-website/.docusaurus/
+docs-website/build/
+docs-website/node_modules/
+docs-website/.cache-loader/
+docs-website/.eslintcache
+docs-website/.netlify/
+docs-website/coverage/
+
 # Django stuff:
 *.log
 local_settings.py
