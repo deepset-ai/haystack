@@ -14,20 +14,18 @@ logger = logging.getLogger(__name__)
 @component
 class MarkdownHeaderSplitter:
     """
-    Split documents at ATX-style Markdown headers (#), with optional secondary splitting and header level inference.
+    Split documents at ATX-style Markdown headers (#), with optional secondary splitting.
 
     This component processes text documents by:
     - Splitting them into chunks at Markdown headers (e.g., '#', '##', etc.), preserving header hierarchy as metadata.
-    - Optionally inferring and rewriting header levels for documents where header structure is ambiguous.
-    - Optionally applying a secondary split (by word, passage, period, or line) to each chunk.
-      This is done in haystack's DocumentSplitter.
+    - Optionally applying a secondary split (by word, passage, period, or line) to each chunk
+      (using haystack's DocumentSplitter).
     - Preserving and propagating metadata such as parent headers, page numbers, and split IDs.
     """
 
     def __init__(
         self,
         *,
-        infer_header_levels: bool = False,
         page_break_character: str = "\f",
         secondary_split: Literal["none", "word", "passage", "period", "line"] = "none",
         split_length: int = 200,
@@ -38,21 +36,6 @@ class MarkdownHeaderSplitter:
         """
         Initialize the MarkdownHeaderSplitter.
 
-        :param infer_header_levels: If True, attempts to infer and rewrite header levels based on content structure.
-            Useful for documents where all headers use the same level (e.g., all "##", as with PDFs parsed by Docling).
-            For example, a document like:
-                "## Title
-                 ## Introduction
-                 Introductory text
-                 ## Methods
-                 Method details"
-            Would be normalized to:
-                "# Title
-                 ## Introduction
-                 Introductory text
-                 ## Methods
-                 Method details"
-            This attempts to maintain proper hierarchical structure. Defaults to False.
         :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\f").
         :param secondary_split: Optional secondary split condition after header splitting.
             Options are "none", "word", "passage", "period", "line". Defaults to "none".
@@ -63,7 +46,6 @@ class MarkdownHeaderSplitter:
         :param skip_empty_documents: If True, skip documents with empty content. If False, process empty documents.
             Defaults to True.
         """
-        self.infer_header_levels = infer_header_levels
         self.page_break_character = page_break_character
         self.secondary_split = secondary_split
         self.split_length = split_length
@@ -80,84 +62,6 @@ class MarkdownHeaderSplitter:
                 split_overlap=self.split_overlap,
                 split_threshold=self.split_threshold,
             )
-
-    def _infer_header_levels(self, text: str, doc_id: Optional[str] = None) -> str:
-        """
-        Infer and rewrite header levels in the markdown text.
-
-        This function analyzes the document structure to infer proper header levels:
-        - First header is always level 1
-        - If there's content between headers, the next header stays at the same level
-        - If there's no content between headers, the next header goes one level deeper
-        - Header levels never exceed 6 (the maximum in markdown)
-
-        This is useful for documents where all headers are at the same level, such as
-        output from document conversion tools like docling.
-
-        :param text: The text to process
-        :param doc_id: Optional document ID for logging context
-        """
-        logger.debug("Inferring and rewriting header levels")
-
-        # find headers
-        matches = list(re.finditer(self._header_pattern, text))
-
-        if not matches:
-            logger.info(
-                "No headers found in document{doc_ref}; skipping header level inference.",
-                doc_ref=f" (id: {doc_id})" if doc_id else "",
-            )
-            return text
-
-        modified_text = text
-        offset = 0  # track offset due to length changes in headers
-
-        # track header structure
-        current_level = 1
-        header_stack = [1]  # always start with level 1
-
-        for i, match in enumerate(matches):
-            original_header = match.group(0)
-            header_text = match.group(2).strip()
-
-            # check if there's content between this header and the previous one
-            has_content = False
-            if i > 0:
-                prev_end = matches[i - 1].end()
-                current_start = match.start()
-                content_between = text[prev_end:current_start].strip()
-                has_content = bool(content_between)
-
-            # first header is always level 1
-            if i == 0:
-                inferred_level = 1
-            elif has_content:
-                # stay at the same level if there's content
-                inferred_level = current_level
-            else:
-                # go one level deeper if there's no content
-                inferred_level = min(current_level + 1, 6)
-
-            # update tracking variables
-            current_level = inferred_level
-            header_stack = header_stack[:inferred_level]
-            while len(header_stack) < inferred_level:
-                header_stack.append(1)
-
-            # new header with inferred level
-            new_prefix = "#" * inferred_level
-            new_header = f"{new_prefix} {header_text}"
-
-            # replace old header
-            start_pos = match.start() + offset
-            end_pos = match.end() + offset
-            modified_text = modified_text[:start_pos] + new_header + modified_text[end_pos:]
-
-            # update offset
-            offset += len(new_header) - len(original_header)
-
-        logger.info("Rewrote {num_headers} headers with inferred levels.", num_headers=len(matches))
-        return modified_text
 
     def _split_text_by_markdown_headers(self, text: str) -> list[dict]:
         """Split text by ATX-style headers (#) and create chunks with appropriate metadata."""
@@ -360,33 +264,17 @@ class MarkdownHeaderSplitter:
         return content.count(self.page_break_character) + 1
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document], infer_header_levels: Optional[bool] = None) -> dict[str, list[Document]]:
+    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Run the markdown header splitter with optional secondary splitting.
 
         :param documents: List of documents to split
-        :param infer_header_levels: If True, attempts to infer and rewrite header levels based on content structure.
-            Useful for documents where all headers use the same level (e.g., all "##", as with PDFs parsed by Docling).
-            For example, a document like:
-                "## Title
-                 ## Introduction
-                 Introductory text
-                 ## Methods
-                 Method details"
-            Would be normalized to:
-                "# Title
-                 ## Introduction
-                 Introductory text
-                 ## Methods
-                 Method details"
-            This attempts to maintain proper hierarchical structure. Defaults to False.
-            If None, uses the instance's initialized infer_header_levels setting.
 
         :returns: A dictionary with the following key:
             - `documents`: List of documents with the split texts. Each document includes:
-            - A metadata field `source_id` to track the original document.
-            - A metadata field `page_number` to track the original page number.
-            - All other metadata copied from the original document.
+                - A metadata field `source_id` to track the original document.
+                - A metadata field `page_number` to track the original page number.
+                - All other metadata copied from the original document.
         """
         # validate input documents
         for doc in documents:
@@ -399,8 +287,6 @@ class MarkdownHeaderSplitter:
                 )
             if not isinstance(doc.content, str):
                 raise ValueError("MarkdownHeaderSplitter only works with text documents (str content).")
-
-        infer_header_levels = infer_header_levels if infer_header_levels is not None else self.infer_header_levels
 
         processed_documents = []
         for doc in documents:
@@ -417,11 +303,7 @@ class MarkdownHeaderSplitter:
                 )
                 continue
 
-            if infer_header_levels:
-                content = self._infer_header_levels(doc.content, doc_id=doc.id)
-                processed_documents.append(Document(content=content, meta=doc.meta, id=doc.id))
-            else:
-                processed_documents.append(doc)
+            processed_documents.append(doc)
 
         if not processed_documents:
             return {"documents": []}
