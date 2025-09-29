@@ -359,7 +359,7 @@ class Pipeline(PipelineBase):
                     and isinstance(break_point, AgentBreakpoint)
                     and component_name == break_point.agent_name
                 )
-                if component_break_point_triggered or agent_break_point_triggered:
+                if break_point and (component_break_point_triggered or agent_break_point_triggered):
                     pipeline_snapshot_inputs_serialised = deepcopy(inputs)
                     pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
                     new_pipeline_snapshot = _create_pipeline_snapshot(
