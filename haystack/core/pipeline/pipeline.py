@@ -380,7 +380,7 @@ class Pipeline(PipelineBase):
 
                     # trigger the breakpoint if needed
                     if component_break_point_triggered:
-                        _trigger_break_point(pipeline_snapshot=new_pipeline_snapshot, pipeline_outputs=pipeline_outputs)
+                        _trigger_break_point(pipeline_snapshot=new_pipeline_snapshot)
 
                 try:
                     component_outputs = self._run_component(
