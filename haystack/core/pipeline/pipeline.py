@@ -334,18 +334,18 @@ class Pipeline(PipelineBase):
                 # Scenario 1: Pipeline snapshot is provided to resume the pipeline at a specific component
                 # Deserialize the component_inputs if they are passed in the pipeline_snapshot.
                 # this check will prevent other component_inputs generated at runtime from being deserialized
-                if pipeline_snapshot and component_name in pipeline_snapshot.pipeline_state.inputs.keys():
-                    for key, value in component_inputs.items():
-                        component_inputs[key] = _deserialize_value_with_schema(value)
+                if pipeline_snapshot:
+                    if component_name in pipeline_snapshot.pipeline_state.inputs.keys():
+                        for key, value in component_inputs.items():
+                            component_inputs[key] = _deserialize_value_with_schema(value)
 
-                # If we are resuming from an AgentBreakpoint, we inject the agent_snapshot into the Agents inputs
-                if (
-                    pipeline_snapshot
-                    and isinstance(pipeline_snapshot.break_point, AgentBreakpoint)
-                    and component_name == pipeline_snapshot.break_point.agent_name
-                ):
-                    component_inputs["snapshot"] = pipeline_snapshot.agent_snapshot
-                    component_inputs["break_point"] = None
+                    # If we are resuming from an AgentBreakpoint, we inject the agent_snapshot into the Agents inputs
+                    if (
+                        isinstance(pipeline_snapshot.break_point, AgentBreakpoint)
+                        and component_name == pipeline_snapshot.break_point.agent_name
+                    ):
+                        component_inputs["snapshot"] = pipeline_snapshot.agent_snapshot
+                        component_inputs["break_point"] = None
 
                 # Scenario 2: A breakpoint is provided to stop the pipeline at a specific component
                 component_break_point_triggered = (
