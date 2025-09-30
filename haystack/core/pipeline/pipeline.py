@@ -347,7 +347,7 @@ class Pipeline(PipelineBase):
                         component_inputs["snapshot"] = pipeline_snapshot.agent_snapshot
                         component_inputs["break_point"] = None
 
-                # Scenario 2: A breakpoint is provided to stop the pipeline at a specific component
+                # Scenario 2: A break point is provided to stop the pipeline at a specific component
                 component_break_point_triggered = (
                     break_point
                     and isinstance(break_point, Breakpoint)
@@ -372,9 +372,9 @@ class Pipeline(PipelineBase):
                         pipeline_outputs=pipeline_outputs,
                     )
 
-                    # An AgentBreakpoint is provided to stop the pipeline at a specific component so we pass on the
-                    # breakpoint and snapshot to the Agent component
-                    if isinstance(break_point, AgentBreakpoint) and component_name == break_point.agent_name:
+                    # An AgentBreakpoint is provided to stop the pipeline at an Agent component so we pass on the
+                    # break point and snapshot to the Agent's inputs
+                    if agent_break_point_triggered:
                         component_inputs["break_point"] = break_point
                         component_inputs["parent_snapshot"] = new_pipeline_snapshot
 
