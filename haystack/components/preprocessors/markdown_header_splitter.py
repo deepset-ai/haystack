@@ -52,7 +52,7 @@ class MarkdownHeaderSplitter:
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
         self.skip_empty_documents = skip_empty_documents
-        self._header_pattern = r"(?m)^(#{1,6}) (.+)$"  # ATX-style .md-headers
+        self._header_pattern = re.compile(r"(?m)^(#{1,6}) (.+)$")  # ATX-style .md-headers
 
         # initialize secondary_splitter only if needed
         if self.secondary_split != "none":
