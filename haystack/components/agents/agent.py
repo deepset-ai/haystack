@@ -213,7 +213,7 @@ class Agent:
     def _prepare_generator_inputs(
         self,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None
+        generation_kwargs: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Prepare inputs for the chat generator."""
         generator_inputs: Dict[str, Any] = {"tools": self.tools}
@@ -241,7 +241,7 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         generation_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Process messages and execute tools until an exit condition is met.
@@ -280,7 +280,9 @@ class Agent:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
-        generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback, generation_kwargs=generation_kwargs)
+        generator_inputs = self._prepare_generator_inputs(
+            streaming_callback=streaming_callback, generation_kwargs=generation_kwargs
+        )
         with self._create_agent_span() as span:
             span.set_content_tag(
                 "haystack.agent.input",
@@ -346,7 +348,7 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         generation_kwargs: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Asynchronously process messages and execute tools until the exit condition is met.
@@ -389,7 +391,9 @@ class Agent:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
-        generator_inputs = self._prepare_generator_inputs(streaming_callback=streaming_callback, generation_kwargs=generation_kwargs)
+        generator_inputs = self._prepare_generator_inputs(
+            streaming_callback=streaming_callback, generation_kwargs=generation_kwargs
+        )
         with self._create_agent_span() as span:
             span.set_content_tag(
                 "haystack.agent.input",
