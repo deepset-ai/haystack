@@ -5,12 +5,21 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
-from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
+from openai.lib._pydantic import to_strict_json_schema
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionChunk,
+    ChatCompletionMessage,
+    ChatCompletionMessageCustomToolCall,
+    ParsedChatCompletion,
+    ParsedChatCompletionMessage,
+)
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
+from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
@@ -90,12 +99,12 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         tools_strict: bool = False,
-        http_client_kwargs: Optional[Dict[str, Any]] = None,
+        http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-4o-mini
@@ -133,6 +142,16 @@ class OpenAIChatGenerator:
                 Bigger values mean the model will be less likely to repeat the same token in the text.
             - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
                 values are the bias to add to that token.
+            - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+                If provided, the output will always be validated against this
+                format (unless the model returns a tool call).
+                For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+                Notes:
+                - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
+                  Older models only support basic version of structured outputs through `{"type": "json_object"}`.
+                  For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
+                - For structured outputs with streaming,
+                  the `response_format` must be a JSON schema and not a Pydantic model.
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
@@ -148,6 +167,7 @@ class OpenAIChatGenerator:
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
+
         """
         self.api_key = api_key
         self.model = model
@@ -168,7 +188,7 @@ class OpenAIChatGenerator:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
-        client_kwargs: Dict[str, Any] = {
+        client_kwargs: dict[str, Any] = {
             "api_key": api_key.resolve_value(),
             "organization": organization,
             "base_url": api_base_url,
@@ -181,13 +201,13 @@ class OpenAIChatGenerator:
             http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
         )
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
         return {"model": self.model}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -195,13 +215,29 @@ class OpenAIChatGenerator:
             The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
+        generation_kwargs = self.generation_kwargs.copy()
+        response_format = generation_kwargs.get("response_format")
+
+        # If the response format is a Pydantic model, it's converted to openai's json schema format
+        # If it's already a json schema, it's left as is
+        if response_format and issubclass(response_format, BaseModel):
+            json_schema = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": response_format.__name__,
+                    "strict": True,
+                    "schema": to_strict_json_schema(response_format),
+                },
+            }
+            generation_kwargs["response_format"] = json_schema
+
         return default_to_dict(
             self,
             model=self.model,
             streaming_callback=callback_name,
             api_base_url=self.api_base_url,
             organization=self.organization,
-            generation_kwargs=self.generation_kwargs,
+            generation_kwargs=generation_kwargs,
             api_key=self.api_key.to_dict(),
             timeout=self.timeout,
             max_retries=self.max_retries,
@@ -211,7 +247,7 @@ class OpenAIChatGenerator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "OpenAIChatGenerator":
+    def from_dict(cls, data: dict[str, Any]) -> "OpenAIChatGenerator":
         """
         Deserialize this component from a dictionary.
 
@@ -223,18 +259,19 @@ class OpenAIChatGenerator:
         deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
+
         if serialized_callback_handler:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
         return default_from_dict(cls, data)
 
-    @component.output_types(replies=List[ChatMessage])
+    @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -267,6 +304,7 @@ class OpenAIChatGenerator:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
+        chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion, ParsedChatCompletion]
 
         api_args = self._prepare_api_call(
             messages=messages,
@@ -275,9 +313,9 @@ class OpenAIChatGenerator:
             tools=tools,
             tools_strict=tools_strict,
         )
-        chat_completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
-            **api_args
-        )
+        openai_endpoint = api_args.pop("openai_endpoint")
+        openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
+        chat_completion = openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
@@ -299,14 +337,14 @@ class OpenAIChatGenerator:
 
         return {"replies": completions}
 
-    @component.output_types(replies=List[ChatMessage])
+    @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -341,6 +379,7 @@ class OpenAIChatGenerator:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
+        chat_completion: Union[AsyncStream[ChatCompletionChunk], ChatCompletion, ParsedChatCompletion]
 
         if len(messages) == 0:
             return {"replies": []}
@@ -353,9 +392,9 @@ class OpenAIChatGenerator:
             tools_strict=tools_strict,
         )
 
-        chat_completion: Union[
-            AsyncStream[ChatCompletionChunk], ChatCompletion
-        ] = await self.async_client.chat.completions.create(**api_args)
+        openai_endpoint = api_args.pop("openai_endpoint")
+        openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
+        chat_completion = await openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
             completions = await self._handle_async_stream_response(
@@ -380,14 +419,21 @@ class OpenAIChatGenerator:
     def _prepare_api_call(  # noqa: PLR0913
         self,
         *,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[Union[list[Tool], Toolset]] = None,
         tools_strict: Optional[bool] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+
+        is_streaming = streaming_callback is not None
+        num_responses = generation_kwargs.pop("n", 1)
+
+        if is_streaming and num_responses > 1:
+            raise ValueError("Cannot stream multiple responses, please set n=1.")
+        response_format = generation_kwargs.pop("response_format", None)
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
@@ -409,23 +455,34 @@ class OpenAIChatGenerator:
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
 
-        is_streaming = streaming_callback is not None
-        num_responses = generation_kwargs.pop("n", 1)
-        if is_streaming and num_responses > 1:
-            raise ValueError("Cannot stream multiple responses, please set n=1.")
-
-        return {
+        base_args = {
             "model": self.model,
-            "messages": openai_formatted_messages,  # type: ignore[arg-type] # openai expects list of specific message types
-            "stream": streaming_callback is not None,
+            "messages": openai_formatted_messages,
             "n": num_responses,
             **openai_tools,
             **generation_kwargs,
         }
 
-    def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> List[ChatMessage]:
+        if response_format and not is_streaming:
+            # for structured outputs without streaming, we use openai's parse endpoint
+            # Note: `stream` cannot be passed to chat.completions.parse
+            # we pass a key `openai_endpoint` as a hint to the run method to use the parse endpoint
+            # this key will be removed before the API call is made
+            return {**base_args, "response_format": response_format, "openai_endpoint": "parse"}
+
+        # for structured outputs with streaming, we use openai's create endpoint
+        # we pass a key `openai_endpoint` as a hint to the run method to use the create endpoint
+        # this key will be removed before the API call is made
+        final_args = {**base_args, "stream": is_streaming, "openai_endpoint": "create"}
+
+        # We only set the response_format parameter if it's not None since None is not a valid value in the API.
+        if response_format:
+            final_args["response_format"] = response_format
+        return final_args
+
+    def _handle_stream_response(self, chat_completion: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
-        chunks: List[StreamingChunk] = []
+        chunks: list[StreamingChunk] = []
         for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
             chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
@@ -437,9 +494,9 @@ class OpenAIChatGenerator:
 
     async def _handle_async_stream_response(
         self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
-    ) -> List[ChatMessage]:
+    ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
-        chunks: List[StreamingChunk] = []
+        chunks: list[StreamingChunk] = []
         async for chunk in chat_completion:  # pylint: disable=not-an-iterable
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
             chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
@@ -450,7 +507,7 @@ class OpenAIChatGenerator:
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
 
-def _check_finish_reason(meta: Dict[str, Any]) -> None:
+def _check_finish_reason(meta: dict[str, Any]) -> None:
     if meta["finish_reason"] == "length":
         logger.warning(
             "The completion for index {index} has been truncated before reaching a natural stopping point. "
@@ -466,7 +523,9 @@ def _check_finish_reason(meta: Dict[str, Any]) -> None:
         )
 
 
-def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice: Choice) -> ChatMessage:
+def _convert_chat_completion_to_chat_message(
+    completion: Union[ChatCompletion, ParsedChatCompletion], choice: Choice
+) -> ChatMessage:
     """
     Converts the non-streaming response from the OpenAI API to a ChatMessage.
 
@@ -474,10 +533,13 @@ def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice:
     :param choice: The choice returned by the OpenAI API.
     :return: The ChatMessage.
     """
-    message: ChatCompletionMessage = choice.message
+    message: Union[ChatCompletionMessage, ParsedChatCompletionMessage] = choice.message
     text = message.content
     tool_calls = []
-    if openai_tool_calls := message.tool_calls:
+    if message.tool_calls:
+        # we currently only support function tools (not custom tools)
+        # https://platform.openai.com/docs/guides/function-calling#custom-tools
+        openai_tool_calls = [tc for tc in message.tool_calls if not isinstance(tc, ChatCompletionMessageCustomToolCall)]
         for openai_tc in openai_tool_calls:
             arguments_str = openai_tc.function.arguments
             try:
@@ -503,11 +565,12 @@ def _convert_chat_completion_to_chat_message(completion: ChatCompletion, choice:
             "usage": _serialize_usage(completion.usage),
         },
     )
+
     return chat_message
 
 
 def _convert_chat_completion_chunk_to_streaming_chunk(
-    chunk: ChatCompletionChunk, previous_chunks: List[StreamingChunk], component_info: Optional[ComponentInfo] = None
+    chunk: ChatCompletionChunk, previous_chunks: list[StreamingChunk], component_info: Optional[ComponentInfo] = None
 ) -> StreamingChunk:
     """
     Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
@@ -520,7 +583,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     :returns:
         A StreamingChunk object representing the content of the chunk from the OpenAI API.
     """
-    finish_reason_mapping: Dict[str, FinishReason] = {
+    finish_reason_mapping: dict[str, FinishReason] = {
         "stop": "stop",
         "length": "length",
         "content_filter": "content_filter",

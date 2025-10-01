@@ -11,10 +11,10 @@ on:
       - ".github/workflows/docusaurus_sync.yml"
 
 env:
-  HATCH_VERSION: "1.14.1"
+  HATCH_VERSION: "1.14.2"
   PYTHON_VERSION: "3.9"
   DOCS_REPO: "deepset-ai/haystack-docs"
-  DOCS_REPO_PATH: "docs/api/haystack-api"
+  DOCS_REPO_PATH: "reference/haystack-api"
 
 jobs:
   sync:
@@ -24,10 +24,10 @@ jobs:
 
     steps:
       - name: Checkout Haystack repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
@@ -39,7 +39,7 @@ jobs:
         run: hatch run readme:sync "../config_docusaurus/*"
 
       - name: Checkout Docusaurus repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ${{ env.DOCS_REPO }}
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}

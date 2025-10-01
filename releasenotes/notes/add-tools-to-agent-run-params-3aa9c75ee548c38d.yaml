@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Added `tools` to agent run parameters to enhance the agent's flexibility.
+    Users can now choose a subset of tools for the agent at runtime by providing a list of tool names, or supply an entirely new set by passing Tool objects or a Toolset.

@@ -4,6 +4,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 import torch
 
@@ -350,16 +351,34 @@ class TestSentenceTransformersSimilarityRanker:
         out = ranker.run(query="test", documents=documents)
         assert len(out["documents"]) == 1
 
+    def test_scores_cast_to_python_float_when_numpy_scalars_returned(self):
+        mock_cross_encoder = MagicMock()
+        ranker = SentenceTransformersSimilarityRanker(model="model")
+        ranker._cross_encoder = mock_cross_encoder
+
+        # Simulate backend returning numpy scalar types
+        mock_cross_encoder.rank.return_value = [
+            {"score": np.float32(0.123), "corpus_id": 0},
+            {"score": np.float64(0.456), "corpus_id": 1},
+        ]
+
+        documents = [Document(content="doc 0"), Document(content="doc 1")]
+        out = ranker.run(query="test", documents=documents)
+
+        assert len(out["documents"]) == 2
+        for d in out["documents"]:
+            assert isinstance(d.score, float)
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run(self):
-        ranker = SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+        ranker = SentenceTransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
         ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
         expected_first_text = "Sarajevo"
-        expected_scores = [2.2864143829792738e-05, 0.00012495707778725773, 0.009869757108390331]
+        expected_scores = [0.14568544924259186, 0.18189962208271027, 0.5728498697280884]
 
         docs_before = [Document(content=text) for text in docs_before_texts]
         output = ranker.run(query=query, documents=docs_before)
@@ -373,10 +392,15 @@ class TestSentenceTransformersSimilarityRanker:
         assert docs_after[1].score == pytest.approx(sorted_scores[1], abs=1e-6)
         assert docs_after[2].score == pytest.approx(sorted_scores[2], abs=1e-6)
 
+        for doc in docs_after:
+            assert isinstance(doc.score, float)
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_top_k(self):
-        ranker = SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", top_k=2)
+        ranker = SentenceTransformersSimilarityRanker(
+            model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", top_k=2
+        )
         ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
@@ -393,13 +417,19 @@ class TestSentenceTransformersSimilarityRanker:
         sorted_scores = sorted([doc.score for doc in docs_after], reverse=True)
         assert [doc.score for doc in docs_after] == sorted_scores
 
+        for doc in docs_after:
+            assert isinstance(doc.score, float)
+
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run_single_document(self):
-        ranker = SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2", device=None)
+        ranker = SentenceTransformersSimilarityRanker(
+            model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", device=None
+        )
         ranker.warm_up()
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)
         docs_after = output["documents"]
 
         assert len(docs_after) == 1
+        assert isinstance(docs_after[0].score, float)

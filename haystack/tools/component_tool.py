@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Dict, Optional, Union, get_args, get_origin
+from typing import Any, Callable, Optional, Union, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
 
@@ -18,6 +18,7 @@ from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema
 from haystack.tools.parameters_schema_utils import _get_component_param_descriptions, _resolve_type
+from haystack.tools.tool import _deserialize_outputs_to_state, _serialize_outputs_to_state
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,8 @@ class ComponentTool(Tool):
     To use ComponentTool, you first need a Haystack component - either an existing one or a new one you create.
     You can create a ComponentTool from the component by passing the component to the ComponentTool constructor.
     Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component.
+
+    ## Usage Example:
 
     ```python
     from haystack import component, Pipeline
@@ -88,12 +91,12 @@ class ComponentTool(Tool):
         component: Component,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        parameters: Optional[Dict[str, Any]] = None,
+        parameters: Optional[dict[str, Any]] = None,
         *,
-        outputs_to_string: Optional[Dict[str, Union[str, Callable[[Any], str]]]] = None,
-        inputs_from_state: Optional[Dict[str, str]] = None,
-        outputs_to_state: Optional[Dict[str, Dict[str, Union[str, Callable]]]] = None,
-    ):
+        outputs_to_string: Optional[dict[str, Union[str, Callable[[Any], str]]]] = None,
+        inputs_from_state: Optional[dict[str, str]] = None,
+        outputs_to_state: Optional[dict[str, dict[str, Union[str, Callable]]]] = None,
+    ) -> None:
         """
         Create a Tool instance from a Haystack component.
 
@@ -209,30 +212,18 @@ class ComponentTool(Tool):
         )
         self._component = component
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the ComponentTool to a dictionary.
         """
-        serialized_component = component_to_dict(obj=self._component, name=self.name)
-
-        serialized: Dict[str, Any] = {
-            "component": serialized_component,
+        serialized: dict[str, Any] = {
+            "component": component_to_dict(obj=self._component, name=self.name),
             "name": self.name,
             "description": self.description,
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
-            # This is soft-copied as to not modify the attributes in place
-            "outputs_to_state": self.outputs_to_state.copy() if self.outputs_to_state else None,
+            "outputs_to_state": _serialize_outputs_to_state(self.outputs_to_state) if self.outputs_to_state else None,
         }
-
-        if self.outputs_to_state is not None:
-            serialized_outputs = {}
-            for key, config in self.outputs_to_state.items():
-                serialized_config = config.copy()
-                if "handler" in config:
-                    serialized_config["handler"] = serialize_callable(config["handler"])
-                serialized_outputs[key] = serialized_config
-            serialized["outputs_to_state"] = serialized_outputs
 
         if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
             # This is soft-copied as to not modify the attributes in place
@@ -244,7 +235,7 @@ class ComponentTool(Tool):
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Tool":
+    def from_dict(cls, data: dict[str, Any]) -> "ComponentTool":
         """
         Deserializes the ComponentTool from a dictionary.
         """
@@ -253,13 +244,7 @@ class ComponentTool(Tool):
         component = component_from_dict(cls=component_class, data=inner_data["component"], name=inner_data["name"])
 
         if "outputs_to_state" in inner_data and inner_data["outputs_to_state"]:
-            deserialized_outputs = {}
-            for key, config in inner_data["outputs_to_state"].items():
-                deserialized_config = config.copy()
-                if "handler" in config:
-                    deserialized_config["handler"] = deserialize_callable(config["handler"])
-                deserialized_outputs[key] = deserialized_config
-            inner_data["outputs_to_state"] = deserialized_outputs
+            inner_data["outputs_to_state"] = _deserialize_outputs_to_state(inner_data["outputs_to_state"])
 
         if (
             inner_data.get("outputs_to_string") is not None
@@ -279,7 +264,7 @@ class ComponentTool(Tool):
             outputs_to_state=inner_data.get("outputs_to_state", None),
         )
 
-    def _create_tool_parameters_schema(self, component: Component, inputs_from_state: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_tool_parameters_schema(self, component: Component, inputs_from_state: dict[str, Any]) -> dict[str, Any]:
         """
         Creates an OpenAI tools schema from a component's run method parameters.
 
@@ -290,10 +275,10 @@ class ComponentTool(Tool):
         component_run_description, param_descriptions = _get_component_param_descriptions(component)
 
         # collect fields (types and defaults) and descriptions from function parameters
-        fields: Dict[str, Any] = {}
+        fields: dict[str, Any] = {}
 
         for input_name, socket in component.__haystack_input__._sockets_dict.items():  # type: ignore[attr-defined]
-            if inputs_from_state is not None and input_name in inputs_from_state:
+            if inputs_from_state is not None and input_name in list(inputs_from_state.values()):
                 continue
             input_type = socket.type
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
@@ -304,7 +289,7 @@ class ComponentTool(Tool):
             resolved_type = _resolve_type(input_type)
             fields[input_name] = (resolved_type, Field(default=default, description=description))
 
-        parameters_schema: Dict[str, Any] = {}
+        parameters_schema: dict[str, Any] = {}
         try:
             model = create_model(component.run.__name__, __doc__=component_run_description, **fields)
             parameters_schema = model.model_json_schema()

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed parameter schema generation in `ComponentTool` when using `inputs_from_state`. Previously, parameters were only removed from the schema if the state key and parameter name matched exactly. For example, `inputs_from_state={"text": "text"}` removed `text` as expected, but `inputs_from_state={"state_text": "text"}` did not. This is now resolved, and such cases work as intended.

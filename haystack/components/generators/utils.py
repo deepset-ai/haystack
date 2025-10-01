@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Dict, List
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
@@ -63,13 +62,20 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
             print("[ASSISTANT]\n", flush=True, end="")
         print(chunk.content, flush=True, end="")
 
+    ## Reasoning content streaming
+    # Print the reasoning content of the chunk (from ChatGenerator)
+    if chunk.reasoning:
+        if chunk.start:
+            print("[REASONING]\n", flush=True, end="")
+        print(chunk.reasoning.reasoning_text, flush=True, end="")
+
     # End of LLM assistant message so we add two new lines
     # This ensures spacing between multiple LLM messages (e.g. Agent) or multiple Tool Call Results
     if chunk.finish_reason is not None:
         print("\n\n", flush=True, end="")
 
 
-def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> ChatMessage:
+def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> ChatMessage:
     """
     Connects the streaming chunks into a single ChatMessage.
 
@@ -81,7 +87,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
     tool_calls = []
 
     # Process tool calls if present in any chunk
-    tool_call_data: Dict[int, Dict[str, str]] = {}  # Track tool calls by index
+    tool_call_data: dict[int, dict[str, str]] = {}  # Track tool calls by index
     for chunk in chunks:
         if chunk.tool_calls:
             for tool_call in chunk.tool_calls:
@@ -104,11 +110,11 @@ def _convert_streaming_chunks_to_chat_message(chunks: List[StreamingChunk]) -> C
     for key in sorted_keys:
         tool_call_dict = tool_call_data[key]
         try:
-            arguments = json.loads(tool_call_dict["arguments"])
+            arguments = json.loads(tool_call_dict.get("arguments", "{}")) if tool_call_dict.get("arguments") else {}
             tool_calls.append(ToolCall(id=tool_call_dict["id"], tool_name=tool_call_dict["name"], arguments=arguments))
         except json.JSONDecodeError:
             logger.warning(
-                "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
+                "The LLM provider returned a malformed JSON string for tool call arguments. This tool call "
                 "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
                 "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
                 _id=tool_call_dict["id"],

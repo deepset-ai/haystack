@@ -2,23 +2,39 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from copy import deepcopy
-from typing import Any, Dict, List, Literal, Optional, Set, Union
+from typing import Any, Literal, Optional, Union
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
+from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
+from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
 
 logger = logging.getLogger(__name__)
+
+with LazyImport("Run 'pip install \"arrow>=1.3.0\"'") as arrow_import:
+    import arrow  # pylint: disable=unused-import
+
+NO_TEXT_ERROR_MESSAGE = "ChatMessages from {role} role must contain text. Received ChatMessage with no text: {message}"
+
+FILTER_NOT_ALLOWED_ERROR_MESSAGE = (
+    "The templatize_part filter cannot be used with a template containing a list of"
+    "ChatMessage objects. Use a string template or remove the templatize_part filter "
+    "from the template."
+)
 
 
 @component
 class ChatPromptBuilder:
     """
-    Renders a chat prompt from a template string using Jinja2 syntax.
+    Renders a chat prompt from a template using Jinja2 syntax.
+
+    A template can be a list of `ChatMessage` objects, or a special string, as shown in the usage examples.
 
     It constructs prompts using static or dynamic templates, which you can update for each pipeline run.
 
@@ -28,7 +44,7 @@ class ChatPromptBuilder:
 
     ### Usage examples
 
-    #### With static prompt template
+    #### Static ChatMessage prompt template
 
     ```python
     template = [ChatMessage.from_user("Translate to {{ target_language }}. Context: {{ snippet }}; Translation:")]
@@ -36,7 +52,7 @@ class ChatPromptBuilder:
     builder.run(target_language="spanish", snippet="I can't speak spanish.")
     ```
 
-    #### Overriding static template at runtime
+    #### Overriding static ChatMessage template at runtime
 
     ```python
     template = [ChatMessage.from_user("Translate to {{ target_language }}. Context: {{ snippet }}; Translation:")]
@@ -48,7 +64,7 @@ class ChatPromptBuilder:
     builder.run(target_language="spanish", snippet="I can't speak spanish.", template=summary_template)
     ```
 
-    #### With dynamic prompt template
+    #### Dynamic ChatMessage prompt template
 
     ```python
     from haystack.components.builders import ChatPromptBuilder
@@ -97,19 +113,42 @@ class ChatPromptBuilder:
     'total_tokens': 238}})]}}
     ```
 
+    #### String prompt template
+    ```python
+    from haystack.components.builders import ChatPromptBuilder
+    from haystack.dataclasses.image_content import ImageContent
+
+    template = \"\"\"
+    {% message role="system" %}
+    You are a helpful assistant.
+    {% endmessage %}
+
+    {% message role="user" %}
+    Hello! I am {{user_name}}. What's the difference between the following images?
+    {% for image in images %}
+    {{ image | templatize_part }}
+    {% endfor %}
+    {% endmessage %}
+    \"\"\"
+
+    images = [ImageContent.from_file_path("apple.jpg"), ImageContent.from_file_path("orange.jpg")]
+
+    builder = ChatPromptBuilder(template=template)
+    builder.run(user_name="John", images=images)
+    ```
     """
 
     def __init__(
         self,
-        template: Optional[List[ChatMessage]] = None,
-        required_variables: Optional[Union[List[str], Literal["*"]]] = None,
-        variables: Optional[List[str]] = None,
+        template: Optional[Union[list[ChatMessage], str]] = None,
+        required_variables: Optional[Union[list[str], Literal["*"]]] = None,
+        variables: Optional[list[str]] = None,
     ):
         """
         Constructs a ChatPromptBuilder component.
 
         :param template:
-            A list of `ChatMessage` objects. The component looks for Jinja2 template syntax and
+            A list of `ChatMessage` objects or a string template. The component looks for Jinja2 template syntax and
             renders the prompt with the provided variables. Provide the template in either
             the `init` method` or the `run` method.
         :param required_variables:
@@ -123,26 +162,32 @@ class ChatPromptBuilder:
         """
         self._variables = variables
         self._required_variables = required_variables
-        self.required_variables = required_variables or []
         self.template = template
-        variables = variables or []
-        try:
-            # The Jinja2TimeExtension needs an optional dependency to be installed.
-            # If it's not available we can do without it and use the ChatPromptBuilder as is.
-            self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension])
-        except ImportError:
-            self._env = SandboxedEnvironment()
 
+        self._env = SandboxedEnvironment(extensions=[ChatMessageExtension])
+        self._env.filters["templatize_part"] = templatize_part
+        if arrow_import.is_successful():
+            self._env.add_extension(Jinja2TimeExtension)
+
+        extracted_variables = []
         if template and not variables:
-            for message in template:
-                if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                    # infer variables from template
-                    if message.text is None:
-                        raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
-                    ast = self._env.parse(message.text)
-                    template_variables = meta.find_undeclared_variables(ast)
-                    variables += list(template_variables)
-        self.variables = variables
+            if isinstance(template, list):
+                for message in template:
+                    if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
+                        # infer variables from template
+                        if message.text is None:
+                            raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
+                        if message.text and "templatize_part" in message.text:
+                            raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
+                        ast = self._env.parse(message.text)
+                        template_variables = meta.find_undeclared_variables(ast)
+                        extracted_variables += list(template_variables)
+            elif isinstance(template, str):
+                ast = self._env.parse(template)
+                extracted_variables = list(meta.find_undeclared_variables(ast))
+
+        self.variables = variables or extracted_variables
+        self.required_variables = required_variables or []
 
         if len(self.variables) > 0 and required_variables is None:
             logger.warning(
@@ -160,11 +205,11 @@ class ChatPromptBuilder:
             else:
                 component.set_input_type(self, var, Any, "")
 
-    @component.output_types(prompt=List[ChatMessage])
+    @component.output_types(prompt=list[ChatMessage])
     def run(
         self,
-        template: Optional[List[ChatMessage]] = None,
-        template_variables: Optional[Dict[str, Any]] = None,
+        template: Optional[Union[list[ChatMessage], str]] = None,
+        template_variables: Optional[dict[str, Any]] = None,
         **kwargs,
     ):
         """
@@ -175,7 +220,8 @@ class ChatPromptBuilder:
         To overwrite pipeline kwargs, you can set the `template_variables` parameter.
 
         :param template:
-            An optional list of `ChatMessage` objects to overwrite ChatPromptBuilder's default template.
+            An optional list of `ChatMessage` objects or string template to overwrite ChatPromptBuilder's default
+            template.
             If `None`, the default template provided at initialization is used.
         :param template_variables:
             An optional dictionary of template variables to overwrite the pipeline variables.
@@ -200,7 +246,7 @@ class ChatPromptBuilder:
                 f"Please provide a valid list of ChatMessage instances to render the prompt."
             )
 
-        if not all(isinstance(message, ChatMessage) for message in template):
+        if isinstance(template, list) and not all(isinstance(message, ChatMessage) for message in template):
             raise ValueError(
                 f"The {self.__class__.__name__} expects a list containing only ChatMessage instances. "
                 f"The provided list contains other types. Please ensure that all elements in the list "
@@ -208,23 +254,49 @@ class ChatPromptBuilder:
             )
 
         processed_messages = []
-        for message in template:
-            if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                self._validate_variables(set(template_variables_combined.keys()))
-                if message.text is None:
-                    raise ValueError(f"The provided ChatMessage has no text. ChatMessage: {message}")
-                compiled_template = self._env.from_string(message.text)
-                rendered_text = compiled_template.render(template_variables_combined)
-                # deep copy the message to avoid modifying the original message
-                rendered_message: ChatMessage = deepcopy(message)
-                rendered_message._content = [TextContent(text=rendered_text)]
-                processed_messages.append(rendered_message)
-            else:
-                processed_messages.append(message)
+        if isinstance(template, list):
+            for message in template:
+                if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
+                    self._validate_variables(set(template_variables_combined.keys()))
+                    if message.text is None:
+                        raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
+                    if message.text and "templatize_part" in message.text:
+                        raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
+                    compiled_template = self._env.from_string(message.text)
+                    rendered_text = compiled_template.render(template_variables_combined)
+                    # deep copy the message to avoid modifying the original message
+                    rendered_message: ChatMessage = deepcopy(message)
+                    rendered_message._content = [TextContent(text=rendered_text)]
+                    processed_messages.append(rendered_message)
+                else:
+                    processed_messages.append(message)
+        elif isinstance(template, str):
+            self._validate_variables(set(template_variables_combined.keys()))
+            processed_messages = self._render_chat_messages_from_str_template(template, template_variables_combined)
 
         return {"prompt": processed_messages}
 
-    def _validate_variables(self, provided_variables: Set[str]):
+    def _render_chat_messages_from_str_template(
+        self, template: str, template_variables: dict[str, Any]
+    ) -> list[ChatMessage]:
+        """
+        Renders a chat message from a string template.
+
+        This must be used in conjunction with the `ChatMessageExtension` Jinja2 extension
+        and the `templatize_part` filter.
+        """
+        compiled_template = self._env.from_string(template)
+        rendered = compiled_template.render(template_variables)
+
+        messages = []
+        for line in rendered.strip().split("\n"):
+            line = line.strip()
+            if line:
+                messages.append(ChatMessage.from_dict(json.loads(line)))
+
+        return messages
+
+    def _validate_variables(self, provided_variables: set[str]):
         """
         Checks if all the required template variables are provided.
 
@@ -245,24 +317,25 @@ class ChatPromptBuilder:
                 f"Required variables: {required_variables}. Provided variables: {provided_variables}."
             )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of the component.
 
         :returns:
             Serialized dictionary representation of the component.
         """
-        if self.template is not None:
+        template: Optional[Union[list[dict[str, Any]], str]] = None
+        if isinstance(self.template, list):
             template = [m.to_dict() for m in self.template]
-        else:
-            template = None
+        elif isinstance(self.template, str):
+            template = self.template
 
         return default_to_dict(
             self, template=template, variables=self._variables, required_variables=self._required_variables
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ChatPromptBuilder":
+    def from_dict(cls, data: dict[str, Any]) -> "ChatPromptBuilder":
         """
         Deserialize this component from a dictionary.
 
@@ -275,6 +348,9 @@ class ChatPromptBuilder:
         init_parameters = data["init_parameters"]
         template = init_parameters.get("template")
         if template:
-            init_parameters["template"] = [ChatMessage.from_dict(d) for d in template]
+            if isinstance(template, list):
+                init_parameters["template"] = [ChatMessage.from_dict(d) for d in template]
+            elif isinstance(template, str):
+                init_parameters["template"] = template
 
         return default_from_dict(cls, data)

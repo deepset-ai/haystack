@@ -20,9 +20,9 @@ and LLMs into pipelines to build end-to-end NLP applications and solve your use 
 - [Documentation](#documentation)
 - [Features](#features)
 - [Use Cases](#features)
-- [deepset AI Platform (Managed Solution)](#-tip)
 - [Hayhooks (REST API Deployment)](#-tip-1)
-- [🆕 deepset Studio](#-deepset-studio-your-development-environment-for-haystack)
+- [Haystack Enterprise](#haystack-enterprise-best-practices-and-expert-support)
+- [deepset Studio](#-deepset-studio-your-development-environment-for-haystack)
 - [Telemetry](#telemetry)
 - [🖖 Community](#-community)
 - [Contributing to Haystack](#contributing-to-haystack)
@@ -73,22 +73,27 @@ Some examples of what you can do with Haystack:
 -   Use **user feedback** to evaluate, benchmark, and continuously improve your models.
 
 > [!TIP]
-><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-platform-logo-alternative.jpeg"  width=20%>
->
-> Are you looking for a managed solution that benefits from Haystack? [deepset AI Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
-
-> [!TIP]
 >
 > Would you like to deploy and serve Haystack pipelines as REST APIs yourself? [Hayhooks](https://github.com/deepset-ai/hayhooks) provides a simple way to wrap your pipelines with custom logic and expose them via HTTP endpoints, including OpenAI-compatible chat completion endpoints and compatibility with fully-featured chat interfaces like [open-webui](https://openwebui.com/).
 
-## 🆕 deepset Studio: Your Development Environment for Haystack
+## Haystack Enterprise: Best Practices and Expert Support
+
+Get expert support from the Haystack team, build faster with enterprise-grade templates, and scale securely with deployment guides for cloud and on-prem environments - all with **Haystack Enterprise**. Read more about it our [announcement post](https://haystack.deepset.ai/blog/announcing-haystack-enterprise).
+
+👉 [Get Haystack Enterprise](https://www.deepset.ai/products-and-services/haystack-enterprise?utm_source=github.com&utm_medium=referral&utm_campaign=haystack_enterprise) 
+
+## deepset Studio: Your Development Environment for Haystack
 
 Use **deepset Studio** to visually create, deploy, and test your Haystack pipelines. Learn more about it in our [announcement post](https://haystack.deepset.ai/blog/announcing-studio).
 
 ![studio](https://github.com/user-attachments/assets/e4f09746-20b5-433e-8261-eca224ac23b3)
 
-
 👉 [Sign up](https://landing.deepset.ai/deepset-studio-signup)!
+
+> [!TIP]
+><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-platform-logo-alternative.jpeg"  width=20%>
+>
+> Are you looking for a managed solution that benefits from Haystack? [deepset AI Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
 
 ## Telemetry
 
@@ -113,24 +118,12 @@ There are several ways you can contribute to Haystack:
 
 ## Who Uses Haystack
 
-Here's a list of projects and companies using Haystack. Want to add yours? Open a PR, add it to the list and let the
-world know that you use Haystack!
+Here's a list of projects and companies using Haystack. Are you also using Haystack? Open a PR or [tell us your story](https://forms.gle/Mm3G1aEST3GAH2rn8).
 
--   [Airbus](https://www.airbus.com/en)
--   [Alcatel-Lucent](https://www.al-enterprise.com/)
--   [Apple](https://www.apple.com/)
--   [BetterUp](https://www.betterup.com/)
--   [Databricks](https://www.databricks.com/)
--   [Deepset](https://deepset.ai/)
--   [Etalab](https://www.deepset.ai/blog/improving-on-site-search-for-government-agencies-etalab)
--   [Infineon](https://www.infineon.com/)
--   [Intel](https://github.com/intel/open-domain-question-and-answer#readme)
--   [Intelijus](https://www.intelijus.ai/)
--   [Intel Labs](https://github.com/IntelLabs/fastRAG#readme)
--   [LEGO](https://github.com/larsbaunwall/bricky#readme)
--   [Netflix](https://netflix.com)
--   [NOS Portugal](https://www.nos.pt/en/welcome)
--   [Nvidia](https://developer.nvidia.com/blog/reducing-development-time-for-intelligent-virtual-assistants-in-contact-centers/)
--   [PostHog](https://github.com/PostHog/max-ai#readme)
--   [Rakuten](https://www.rakuten.com/)
--   [Sooth.ai](https://www.deepset.ai/blog/advanced-neural-search-with-sooth-ai)
+- Tech & AI Innovators: [Apple](https://www.apple.com/), [Meta](https://www.meta.com/about), [Databricks](https://www.databricks.com/), [NVIDIA](https://developer.nvidia.com/blog/reducing-development-time-for-intelligent-virtual-assistants-in-contact-centers/), [PostHog](https://github.com/PostHog/max-ai#readme)
+- Public Sector: [German Federal Ministry of Research, Technology, and Space (BMFTR)](https://www.deepset.ai/case-studies/german-federal-ministry-research-technology-space-bmftr), [PD, Baden-Württemberg State](https://www.pd-g.de/)
+- Enterprise & Telecom: [Alcatel-Lucent](https://www.al-enterprise.com/), [Intel](https://github.com/intel/open-domain-question-and-answer#readme), [NOS Portugal](https://www.nos.pt/en/welcome), [TELUS Agriculture & Consumer Goods](https://www.telus.com/agcg/en)
+- Aerospace & Hardware: [Airbus](https://www.deepset.ai/case-studies/airbus), [Infineon](https://www.infineon.com/), [LEGO](https://github.com/larsbaunwall/bricky#readme)
+- Media & Entertainment: [Netflix](https://netflix.com), [Comcast](https://arxiv.org/html/2405.00801v2), [Zeit Online](https://www.deepset.ai/case-studies/zeit-online), [Rakuten](https://www.rakuten.com/)
+- Legal & Publishing: [Manz](https://www.deepset.ai/case-studies/manz), [Oxford University Press](https://corp.oup.com/)
+- Startups & Research: [YPulse](https://www.deepset.ai/case-studies/ypulse), [BetterUp](https://www.betterup.com/), [Intel Labs](https://github.com/IntelLabs/fastRAG#readme)

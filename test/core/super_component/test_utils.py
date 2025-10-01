@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 from haystack.core.component.types import GreedyVariadic, Variadic
 from haystack.core.super_component.utils import _is_compatible
@@ -83,52 +83,52 @@ class TestTypeCompatibility:
         assert is_compat and common == int
 
         # List type compatibility
-        variadic_list = Variadic[List[int]]
-        greedy_list = GreedyVariadic[List[int]]
+        variadic_list = Variadic[list[int]]
+        greedy_list = GreedyVariadic[list[int]]
 
-        is_compat, common = _is_compatible(variadic_list, List[int])
-        assert is_compat and common == List[int]
+        is_compat, common = _is_compatible(variadic_list, list[int])
+        assert is_compat and common == list[int]
 
-        is_compat, common = _is_compatible(List[int], variadic_list)
-        assert is_compat and common == List[int]
+        is_compat, common = _is_compatible(list[int], variadic_list)
+        assert is_compat and common == list[int]
 
-        is_compat, common = _is_compatible(greedy_list, List[int])
-        assert is_compat and common == List[int]
+        is_compat, common = _is_compatible(greedy_list, list[int])
+        assert is_compat and common == list[int]
 
-        is_compat, common = _is_compatible(List[int], greedy_list)
-        assert is_compat and common == List[int]
+        is_compat, common = _is_compatible(list[int], greedy_list)
+        assert is_compat and common == list[int]
 
     def test_nested_type_unwrapping(self):
         """Test nested type unwrapping behavior with unwrap_nested parameter."""
         # Test with unwrap_nested=True (default)
-        nested_optional = Variadic[List[Optional[int]]]
+        nested_optional = Variadic[list[Optional[int]]]
 
-        is_compat, common = _is_compatible(nested_optional, List[int])
-        assert is_compat and common == List[int]
+        is_compat, common = _is_compatible(nested_optional, list[int])
+        assert is_compat and common == list[int]
 
-        is_compat, common = _is_compatible(List[int], nested_optional)
-        assert is_compat and common == List[int]
+        is_compat, common = _is_compatible(list[int], nested_optional)
+        assert is_compat and common == list[int]
 
-        nested_union = Variadic[List[Union[int, None]]]
+        nested_union = Variadic[list[Union[int, None]]]
 
-        is_compat, common = _is_compatible(nested_union, List[int])
-        assert is_compat and common == List[int]
+        is_compat, common = _is_compatible(nested_union, list[int])
+        assert is_compat and common == list[int]
 
-        is_compat, common = _is_compatible(List[int], nested_union)
-        assert is_compat and common == List[int]
+        is_compat, common = _is_compatible(list[int], nested_union)
+        assert is_compat and common == list[int]
 
     def test_complex_nested_types(self):
         """Test complex nested type scenarios."""
         # Multiple levels of nesting
-        complex_type = Variadic[List[List[Variadic[int]]]]
-        target_type = List[List[int]]
+        complex_type = Variadic[list[list[Variadic[int]]]]
+        target_type = list[list[int]]
 
         # With unwrap_nested=True
         is_compat, common = _is_compatible(complex_type, target_type)
-        assert is_compat and common == List[List[int]]
+        assert is_compat and common == list[list[int]]
 
         is_compat, common = _is_compatible(target_type, complex_type)
-        assert is_compat and common == List[List[int]]
+        assert is_compat and common == list[list[int]]
 
         # With unwrap_nested=False
         is_compat, common = _is_compatible(complex_type, target_type, unwrap_nested=False)
@@ -158,7 +158,7 @@ class TestTypeCompatibility:
         assert is_compat and common == int
 
         # Nested Variadic and GreedyVariadic
-        nested_var = Variadic[List[GreedyVariadic[int]]]
+        nested_var = Variadic[list[GreedyVariadic[int]]]
 
-        is_compat, common = _is_compatible(nested_var, List[int])
-        assert is_compat and common == List[int]
+        is_compat, common = _is_compatible(nested_var, list[int])
+        assert is_compat and common == list[int]

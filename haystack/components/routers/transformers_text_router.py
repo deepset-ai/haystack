@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -72,10 +72,10 @@ class TransformersTextRouter:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str,
-        labels: Optional[List[str]] = None,
+        labels: Optional[list[str]] = None,
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[Dict[str, Any]] = None,
+        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
         Initializes the TransformersTextRouter component.
@@ -117,7 +117,7 @@ class TransformersTextRouter:
 
         self.pipeline: Optional["Pipeline"] = None
 
-    def _get_telemetry_data(self) -> Dict[str, Any]:
+    def _get_telemetry_data(self) -> dict[str, Any]:
         """
         Data that is sent to Posthog for usage analytics.
         """
@@ -133,14 +133,16 @@ class TransformersTextRouter:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
 
         # Verify labels from the model configuration file match provided labels
-        labels = set(self.pipeline.model.config.label2id.keys())
-        if set(self.labels) != labels:
-            raise ValueError(
-                f"The provided labels do not match the labels in the model configuration file. "
-                f"Provided labels: {self.labels}. Model labels: {labels}"
-            )
+        label2id = self.pipeline.model.config.label2id
+        if label2id is not None:
+            labels = set(label2id.keys())
+            if set(self.labels) != labels:
+                raise ValueError(
+                    f"The provided labels do not match the labels in the model configuration file. "
+                    f"Provided labels: {self.labels}. Model labels: {labels}"
+                )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
@@ -162,7 +164,7 @@ class TransformersTextRouter:
         return serialization_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TransformersTextRouter":
+    def from_dict(cls, data: dict[str, Any]) -> "TransformersTextRouter":
         """
         Deserializes the component from a dictionary.
 
@@ -176,7 +178,7 @@ class TransformersTextRouter:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
 
-    def run(self, text: str) -> Dict[str, str]:
+    def run(self, text: str) -> dict[str, str]:
         """
         Routes the text strings to different connections based on a category label.
 

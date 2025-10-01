@@ -3,12 +3,12 @@ import os
 import sys
 import traceback
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from haystack import logging  # pylint: disable=unused-import  # this is needed to avoid circular imports
 
 
-def validate_module_imports(root_dir: str, exclude_subdirs: Optional[List[str]] = None) -> tuple[list, list]:
+def validate_module_imports(root_dir: str, exclude_subdirs: Optional[list[str]] = None) -> tuple[list, list]:
     """
     Recursively search for all Python modules and attempt to import them.
 

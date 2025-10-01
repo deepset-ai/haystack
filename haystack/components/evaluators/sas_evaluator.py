@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from numpy import mean as np_mean
 
@@ -11,7 +11,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, expit
 from haystack.utils.auth import Secret, deserialize_secrets_inplace
 
-with LazyImport(message="Run 'pip install \"sentence-transformers>=4.1.0\"'") as sas_import:
+with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as sas_import:
     from sentence_transformers import CrossEncoder, SentenceTransformer, util
     from transformers import AutoConfig
 
@@ -82,7 +82,7 @@ class SASEvaluator:
         self._token = token
         self._similarity_model: Union[SentenceTransformer, CrossEncoder, None] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
 
@@ -98,7 +98,7 @@ class SASEvaluator:
         )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SASEvaluator":
+    def from_dict(cls, data: dict[str, Any]) -> "SASEvaluator":
         """
         Deserialize this component from a dictionary.
 
@@ -137,8 +137,8 @@ class SASEvaluator:
         else:
             self._similarity_model = SentenceTransformer(self._model, device=device, use_auth_token=token)
 
-    @component.output_types(score=float, individual_scores=List[float])
-    def run(self, ground_truth_answers: List[str], predicted_answers: List[str]) -> Dict[str, Any]:
+    @component.output_types(score=float, individual_scores=list[float])
+    def run(self, ground_truth_answers: list[str], predicted_answers: list[str]) -> dict[str, Any]:
         """
         SASEvaluator component run method.
 

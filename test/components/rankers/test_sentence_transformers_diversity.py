@@ -37,6 +37,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.document_suffix == ""
         assert component.meta_fields_to_embed == []
         assert component.embedding_separator == "\n"
+        assert component.lambda_threshold == 0.5
 
     def test_init_with_custom_parameters(self):
         component = SentenceTransformersDiversityRanker(
@@ -51,6 +52,7 @@ class TestSentenceTransformersDiversityRanker:
             document_suffix="document suffix",
             meta_fields_to_embed=["meta_field"],
             embedding_separator="--",
+            lambda_threshold=0,
         )
         assert component.model_name_or_path == "sentence-transformers/msmarco-distilbert-base-v4"
         assert component.top_k == 5
@@ -63,6 +65,7 @@ class TestSentenceTransformersDiversityRanker:
         assert component.document_suffix == "document suffix"
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.embedding_separator == "--"
+        assert component.lambda_threshold == 0
 
     def test_to_dict(self):
         component = SentenceTransformersDiversityRanker()
@@ -381,7 +384,7 @@ class TestSentenceTransformersDiversityRanker:
         query = "test"
         documents = [Document(content="doc1"), Document(content="doc2"), Document(content="doc3")]
 
-        with pytest.raises(ValueError, match="top_k must be between"):
+        with pytest.raises(ValueError, match="top_k must be > 0"):
             ranker.run(query=query, documents=documents, top_k=-5)
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
@@ -580,7 +583,7 @@ class TestSentenceTransformersDiversityRanker:
     def test_run_real_world_use_case(self, similarity, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity
+            model="sentence-transformers-testing/stsb-bert-tiny-safetensors", similarity=similarity
         )
         ranker.warm_up()
         query = "What are the reasons for long-standing animosities between Russia and Poland?"
@@ -667,20 +670,22 @@ class TestSentenceTransformersDiversityRanker:
         ]
 
         ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", similarity=similarity, strategy="maximum_margin_relevance"
+            model="sentence-transformers-testing/stsb-bert-tiny-safetensors",
+            similarity=similarity,
+            strategy="maximum_margin_relevance",
         )
         ranker.warm_up()
 
         # lambda_threshold=1, the most relevant document should be returned first
         results = ranker.run(query=query, documents=docs, lambda_threshold=1, top_k=len(docs))
         expected = [
-            "Solar power generation",
-            "Wind turbine technology",
             "Geothermal energy extraction",
-            "Hydroelectric dam systems",
+            "Wind turbine technology",
+            "Solar power generation",
             "Biomass fuel production",
-            "Ancient Egyptian hieroglyphics",
+            "Hydroelectric dam systems",
             "Baking sourdough bread",
+            "Ancient Egyptian hieroglyphics",
             "18th-century French literature",
         ]
         assert [doc.content for doc in results["documents"]] == expected
@@ -688,13 +693,13 @@ class TestSentenceTransformersDiversityRanker:
         # lambda_threshold=0, after the most relevant one, diverse documents should be returned
         results = ranker.run(query=query, documents=docs, lambda_threshold=0, top_k=len(docs))
         expected = [
-            "Solar power generation",
+            "Geothermal energy extraction",
+            "18th-century French literature",
             "Ancient Egyptian hieroglyphics",
             "Baking sourdough bread",
-            "18th-century French literature",
+            "Solar power generation",
             "Biomass fuel production",
             "Hydroelectric dam systems",
-            "Geothermal energy extraction",
             "Wind turbine technology",
         ]
         assert [doc.content for doc in results["documents"]] == expected

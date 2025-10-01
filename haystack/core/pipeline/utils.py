@@ -6,11 +6,10 @@ import heapq
 from copy import deepcopy
 from functools import wraps
 from itertools import count
-from typing import Any, List, Optional, Tuple
+from typing import Any, Optional
 
 from haystack import logging
 from haystack.core.component import Component
-from haystack.tools import Tool, Toolset
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,10 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
     :returns:
         A deep-copied version of the object, or the original object if deepcopying fails.
     """
+    # Import here to avoid circular imports
+    from haystack.tools.tool import Tool
+    from haystack.tools.toolset import Toolset
+
     if isinstance(obj, (list, tuple, set)):
         return type(obj)(_deepcopy_with_exceptions(v) for v in obj)
 
@@ -51,7 +54,7 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
         return obj
 
 
-def parse_connect_string(connection: str) -> Tuple[str, Optional[str]]:
+def parse_connect_string(connection: str) -> tuple[str, Optional[str]]:
     """
     Returns component-connection pairs from a connect_to/from string.
 
@@ -80,7 +83,7 @@ class FIFOPriorityQueue:
         Initialize a new FIFO priority queue.
         """
         # List of tuples (priority, count, item) where count ensures FIFO order
-        self._queue: List[Tuple[int, int, Any]] = []
+        self._queue: list[tuple[int, int, Any]] = []
         # Counter to maintain insertion order for equal priorities
         self._counter = count()
 
@@ -100,7 +103,7 @@ class FIFOPriorityQueue:
         entry = (priority, next_count, item)
         heapq.heappush(self._queue, entry)
 
-    def pop(self) -> Tuple[int, Any]:
+    def pop(self) -> tuple[int, Any]:
         """
         Remove and return the highest priority item from the queue.
 
@@ -116,7 +119,7 @@ class FIFOPriorityQueue:
         priority, _, item = heapq.heappop(self._queue)
         return priority, item
 
-    def peek(self) -> Tuple[int, Any]:
+    def peek(self) -> tuple[int, Any]:
         """
         Return but don't remove the highest priority item from the queue.
 
@@ -132,7 +135,7 @@ class FIFOPriorityQueue:
         priority, _, item = self._queue[0]
         return priority, item
 
-    def get(self) -> Optional[Tuple[int, Any]]:
+    def get(self) -> Optional[tuple[int, Any]]:
         """
         Remove and return the highest priority item from the queue.
 
@@ -183,7 +186,6 @@ def args_deprecated(func):
         msg = (
             "Warning: In an upcoming release, this method will require keyword arguments for all parameters. "
             "Please update your code to use keyword arguments to ensure future compatibility. "
-            "Example: pipeline.draw(path='output.png', server_url='https://custom-server.com')"
         )
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
 

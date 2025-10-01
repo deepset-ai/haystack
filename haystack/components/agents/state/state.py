@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional, get_args
 
 from haystack.dataclasses import ChatMessage
 from haystack.utils import _deserialize_value_with_schema, _serialize_value_with_schema
@@ -13,7 +13,7 @@ from haystack.utils.type_serialization import deserialize_type, serialize_type
 from .state_utils import _is_list_type, _is_valid_type, merge_lists, replace_values
 
 
-def _schema_to_dict(schema: Dict[str, Any]) -> Dict[str, Any]:
+def _schema_to_dict(schema: dict[str, Any]) -> dict[str, Any]:
     """
     Convert a schema dictionary to a serializable format.
 
@@ -32,7 +32,7 @@ def _schema_to_dict(schema: Dict[str, Any]) -> Dict[str, Any]:
     return serialized_schema
 
 
-def _schema_from_dict(schema: Dict[str, Any]) -> Dict[str, Any]:
+def _schema_from_dict(schema: dict[str, Any]) -> dict[str, Any]:
     """
     Convert a serialized schema dictionary back to its original format.
 
@@ -52,7 +52,7 @@ def _schema_from_dict(schema: Dict[str, Any]) -> Dict[str, Any]:
     return deserialized_schema
 
 
-def _validate_schema(schema: Dict[str, Any]) -> None:
+def _validate_schema(schema: dict[str, Any]) -> None:
     """
     Validate that a schema dictionary meets all required constraints.
 
@@ -69,22 +69,49 @@ def _validate_schema(schema: Dict[str, Any]) -> None:
             raise ValueError(f"StateSchema: 'type' for key '{param}' must be a Python type, got {definition['type']}")
         if definition.get("handler") is not None and not callable(definition["handler"]):
             raise ValueError(f"StateSchema: 'handler' for key '{param}' must be callable or None")
-        if param == "messages" and definition["type"] != List[ChatMessage]:
-            raise ValueError(f"StateSchema: 'messages' must be of type List[ChatMessage], got {definition['type']}")
+        if param == "messages":  # definition["type"] != list[ChatMessage] but split to cover also List[ChatMessage]
+            if not _is_list_type(definition["type"]):
+                raise ValueError(f"StateSchema: 'messages' must be of type list[ChatMessage], got {definition['type']}")
+            # Check if the list contains ChatMessage elements
+            args = get_args(definition["type"])
+            if not args or not issubclass(args[0], ChatMessage):
+                raise ValueError(f"StateSchema: 'messages' must be of type list[ChatMessage], got {definition['type']}")
 
 
 class State:
     """
-    A class that wraps a StateSchema and maintains an internal _data dictionary.
+    State is a container for storing shared information during the execution of an Agent and its tools.
 
-    Each schema entry has:
+    For instance, State can be used to store documents, context, and intermediate results.
+
+    Internally it wraps a `_data` dictionary defined by a `schema`. Each schema entry has:
+    ```json
       "parameter_name": {
-        "type": SomeType,
-        "handler": Optional[Callable[[Any, Any], Any]]
+        "type": SomeType,  # expected type
+        "handler": Optional[Callable[[Any, Any], Any]]  # merge/update function
       }
+      ```
+
+    Handlers control how values are merged when using the `set()` method:
+    - For list types: defaults to `merge_lists` (concatenates lists)
+    - For other types: defaults to `replace_values` (overwrites existing value)
+
+    A `messages` field with type `list[ChatMessage]` is automatically added to the schema.
+
+    This makes it possible for the Agent to read from and write to the same context.
+
+    ### Usage example
+    ```python
+    from haystack.components.agents.state import State
+
+    my_state = State(
+        schema={"gh_repo_name": {"type": str}, "user_name": {"type": str}},
+        data={"gh_repo_name": "my_repo", "user_name": "my_user_name"}
+    )
+    ```
     """
 
-    def __init__(self, schema: Dict[str, Any], data: Optional[Dict[str, Any]] = None):
+    def __init__(self, schema: dict[str, Any], data: Optional[dict[str, Any]] = None):
         """
         Initialize a State object with a schema and optional data.
 
@@ -98,7 +125,7 @@ class State:
         _validate_schema(schema)
         self.schema = deepcopy(schema)
         if self.schema.get("messages") is None:
-            self.schema["messages"] = {"type": List[ChatMessage], "handler": merge_lists}
+            self.schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
         self._data = data or {}
 
         # Set default handlers if not provided in schema
@@ -170,7 +197,7 @@ class State:
         return serialized
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]):
+    def from_dict(cls, data: dict[str, Any]):
         """
         Convert a dictionary back to a State object.
         """

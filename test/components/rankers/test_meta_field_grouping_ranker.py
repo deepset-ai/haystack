@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Dict
+from typing import Any
 
 from haystack import Pipeline
 from haystack.components.rankers.meta_field_grouping_ranker import MetaFieldGroupingRanker
@@ -97,7 +97,7 @@ class TestMetaFieldGroupingRanker:
         """
         Test if the MetaFieldGroupingRanker component can handle list values in the metadata.
         """
-        ranker = MetaFieldGroupingRanker(group_by="value_list", subgroup_by="subvaluelist", sort_docs_by="split_id")
+        ranker = MetaFieldGroupingRanker(group_by="value_list", subgroup_by="sub_value_list", sort_docs_by="split_id")
         result = ranker.run(documents=DOC_LIST)
         assert "documents" in result
         assert len(DOC_LIST) == len(result["documents"])
@@ -176,6 +176,6 @@ class TestMetaFieldGroupingRanker:
         pipeline.add_component("ranker", ranker)
         pipeline_yaml_str = pipeline.dumps()
         pipeline_reloaded = Pipeline().loads(pipeline_yaml_str)
-        result: Dict[str, Any] = pipeline_reloaded.run(data={"documents": DOC_LIST})
+        result: dict[str, Any] = pipeline_reloaded.run(data={"documents": DOC_LIST})
         result = result["ranker"]
         assert result_single == result
