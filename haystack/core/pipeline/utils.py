@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import heapq
+from collections.abc import Iterable
 from copy import deepcopy
 from functools import wraps
 from itertools import count
@@ -12,6 +13,62 @@ from haystack import logging
 from haystack.core.component import Component
 
 logger = logging.getLogger(__name__)
+
+
+def warm_tools_on_component(component: Any, field_name: Optional[str] = None) -> None:
+    """
+    Warm any Tool or Toolset instances reachable from a component.
+
+    :param component: The component to search for tools
+    :param field_name: Optional specific field name to check instead of searching all attributes
+    """
+    # Import locally to avoid circular dependencies
+    from haystack.tools.tool import Tool
+    from haystack.tools.toolset import Toolset
+
+    attributes = [field_name] if field_name else dir(component)
+
+    for attr_name in attributes:
+        try:
+            attr_value = getattr(component, attr_name)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.debug(
+                "Failed to access attribute {attr_name} on component {component}: {exc}",
+                attr_name=attr_name,
+                component=component.__class__.__name__,
+                exc=exc,
+            )
+            continue
+
+        if attr_value is None or callable(attr_value):
+            continue
+
+        for candidate in _iter_tool_candidates(attr_value):
+            try:
+                if isinstance(candidate, (Tool, Toolset)):
+                    logger.debug("Warming up tools for component {component}", component=component.__class__.__name__)
+                    candidate.warm_up()
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.debug(
+                    "Failed to warm tool candidate from attribute {attr_name} on component {component}: {exc}",
+                    attr_name=attr_name,
+                    component=component.__class__.__name__,
+                    exc=exc,
+                )
+
+
+def _iter_tool_candidates(value: Any) -> Iterable[Any]:
+    """Yield potential Tool or Toolset instances from a value."""
+    from haystack.tools.tool import Tool
+    from haystack.tools.toolset import Toolset
+
+    if isinstance(value, (Tool, Toolset)):
+        return (value,)
+
+    if isinstance(value, Iterable) and not isinstance(value, (str, bytes, dict)):
+        return value
+
+    return ()
 
 
 def _deepcopy_with_exceptions(obj: Any) -> Any:

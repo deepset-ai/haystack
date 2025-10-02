@@ -185,6 +185,12 @@ class Toolset:
             return item in self.tools
         return False
 
+    def warm_up(self) -> None:
+        """
+        Warm up the Toolset.
+        """
+        pass
+
     def add(self, tool: Union[Tool, "Toolset"]) -> None:
         """
         Add a new Tool or merge another Toolset.
@@ -262,7 +268,7 @@ class Toolset:
         if isinstance(other, Tool):
             combined_tools = self.tools + [other]
         elif isinstance(other, Toolset):
-            combined_tools = self.tools + list(other)
+            return _ToolsetWrapper([self, other])
         elif isinstance(other, list) and all(isinstance(item, Tool) for item in other):
             combined_tools = self.tools + other
         else:
@@ -289,3 +295,68 @@ class Toolset:
         :returns: The Tool at the specified index
         """
         return self.tools[index]
+
+
+class _ToolsetWrapper(Toolset):
+    """
+    A wrapper that holds multiple toolsets and provides a unified interface.
+
+    This is used internally when combining different types of toolsets to preserve
+    their individual configurations while still being usable with ToolInvoker.
+    """
+
+    def __init__(self, toolsets: list[Toolset]):
+        self.toolsets = toolsets
+        # Check for duplicate tool names across all toolsets
+        all_tools = []
+        for toolset in toolsets:
+            all_tools.extend(list(toolset))
+        _check_duplicate_tool_names(all_tools)
+        super().__init__(tools=all_tools)
+
+    def __iter__(self):
+        """Iterate over all tools from all toolsets."""
+        for toolset in self.toolsets:
+            yield from toolset
+
+    def __contains__(self, item):
+        """Check if a tool is in any of the toolsets."""
+        return any(item in toolset for toolset in self.toolsets)
+
+    def warm_up(self):
+        """Warm up all toolsets."""
+        for toolset in self.toolsets:
+            toolset.warm_up()
+
+    def __len__(self):
+        """Return total number of tools across all toolsets."""
+        return sum(len(toolset) for toolset in self.toolsets)
+
+    def __getitem__(self, index):
+        """Get a tool by index across all toolsets."""
+        current_index = 0
+        for toolset in self.toolsets:
+            toolset_len = len(toolset)
+            if current_index + toolset_len > index:
+                return toolset[index - current_index]
+            current_index += toolset_len
+        raise IndexError("ToolsetWrapper index out of range")
+
+    def __add__(self, other):
+        """Add another toolset or tool to this wrapper."""
+        # Import here to avoid circular reference issues
+        from haystack.tools.toolset import Toolset
+
+        if isinstance(other, Toolset):
+            # Add the toolset to our list
+            new_toolsets = self.toolsets + [other]
+        elif isinstance(other, Tool):
+            # Convert tool to a basic toolset and add it
+            new_toolsets = self.toolsets + [Toolset([other])]
+        elif isinstance(other, list) and all(isinstance(item, Tool) for item in other):
+            # Convert list of tools to a basic toolset and add it
+            new_toolsets = self.toolsets + [Toolset(other)]
+        else:
+            raise TypeError(f"Cannot add {type(other).__name__} to ToolsetWrapper")
+
+        return _ToolsetWrapper(new_toolsets)
