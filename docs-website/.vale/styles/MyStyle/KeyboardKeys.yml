@@ -1,0 +1,11 @@
+extends: existence
+message: "Keyboard keys should be capitalized (e.g., 'Delete', 'F2')."
+level: warning
+scope: text
+tokens:
+  - delete
+  - enter
+  - shift
+  - ctrl
+  - tab
+  - esc

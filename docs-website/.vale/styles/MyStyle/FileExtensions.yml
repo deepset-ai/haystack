@@ -1,0 +1,11 @@
+extends: substitution
+message: "Use uppercase for file extensions (e.g., '%s' → '%s')."
+level: warning
+ignorecase: false
+swap:
+  txt: TXT
+  pdf: PDF
+  json: JSON
+  js: JS
+  csv: CSV
+  xml: XML

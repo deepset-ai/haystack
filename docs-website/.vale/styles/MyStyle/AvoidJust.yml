@@ -1,0 +1,7 @@
+extends: existence
+message: "'just' is often unnecessary. Consider removing it for clarity."
+level: suggestion
+nonword: true
+scope: text
+tokens:
+  - just

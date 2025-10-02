@@ -1,0 +1,63 @@
+---
+id: "installation"
+title: "Installation"
+excerpt: "See how to quickly install Haystack with pip or conda."
+hidden: false
+createdAt: "Tue Aug 16 2022 10:08:21 GMT+0000 (Coordinated Universal Time)"
+updatedAt: "Tue Apr 29 2025 12:43:59 GMT+0000 (Coordinated Universal Time)"
+---
+# Package Installation
+
+Use [pip](https://github.com/pypa/pip) to install only the Haystack code:
+
+```shell
+pip install haystack-ai
+```
+
+Alternatively, you can use [conda](https://docs.conda.io/projects/conda/en/stable/):
+
+```shell
+conda config --add channels conda-forge/label/haystack-ai_rc
+conda install haystack-ai
+```
+
+<br />
+
+<details>
+
+<summary>Were you already using Haystack 1.x?</summary>
+
+> 🚧 Warning
+>
+> Installing `farm-haystack` and `haystack-ai` in the same Python environment (virtualenv, Colab, or system) causes problems.
+>
+> Installing both packages in the same environment can somehow work or fail in obscure ways. We suggest installing only one of these packages per Python environment. Make sure that you remove both packages if they are installed in the same environment, followed by installing only one of them:
+>
+> ```bash
+> pip uninstall -y farm-haystack haystack-ai
+> pip install haystack-ai
+> ```
+>
+> If you have any questions, please reach out to us on the [GitHub Discussion](https://github.com/deepset-ai/haystack/discussions) or [Discord](https://discord.com/invite/VBpFzsgRVF).
+
+</details>
+
+# Contributing to Haystack
+
+If you would like to contribute to the Haystack, check our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
+
+To be able to make changes to Haystack code, install with the following commands:
+
+```shell
+# Clone the repo
+git clone https://github.com/deepset-ai/haystack.git
+
+# Move into the cloned folder
+cd haystack
+
+# Upgrade pip
+pip install --upgrade pip
+
+# Install Haystack in editable mode
+pip install -e '.[dev]'
+```

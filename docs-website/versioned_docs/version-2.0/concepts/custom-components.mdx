@@ -1,0 +1,83 @@
+---
+title: "Creating Custom Components"
+id: "custom-components"
+description: "Create your own components and use them standalone or in pipelines."
+---
+With Haystack, you can easily create any custom components for various tasks, from filtering results to integrating with external software. You can then insert, reuse, and share these components within Haystack or even with an external audience by packaging them and submitting them to [Haystack Integrations](/docs/integrations)!
+
+# Requirements
+
+Here are the requirements for all custom components:
+
+- `@component`: This decorator marks a class as a component, allowing it to be used in a pipeline.
+- `run()`: This is a required method in every component. It accepts input arguments and returns a `dict`. The inputs can either come from the pipeline when it's executed, or from the output of another component when connected using `connect()`. The `run()` method should be compatible with the input/output definitions declared for the component. See an [Extended Example](#extended-example) below to check how it works.
+
+## Inputs and Outputs
+
+Next, define the inputs and outputs for your component.
+
+### Inputs
+
+You can choose between three input options:
+
+- `set_input_type`: This method defines or updates a single input socket for a component instance. It's ideal for adding or modifying a specific input at runtime without affecting others. Use this when you need to dynamically set or modify a single input based on specific conditions.
+- `set_input_types`: This method allows you to define multiple input sockets at once, replacing any existing inputs. It's useful when you know all the inputs the component will need and want to configure them in bulk. Use this when you want to define multiple inputs during initialization.
+- Declaring arguments directly in the `run()` method. Use this method when the component's inputs are static and known at the time of class definition.
+
+### Outputs
+
+You can choose between two output options:
+
+- `@component.output_types`: This decorator defines the output types and names at the time of class definition. The output names and types must match the `dict` returned by the `run()` method. Use this when the output types are static and known in advance. This decorator is cleaner and more readable for static components.
+- `set_output_types`: This method defines or updates multiple output sockets for a component instance at runtime. It's useful when you need flexibility in configuring outputs dynamically. Use this when the output types need to be set at runtime for greater flexibility.
+
+# Short Example
+
+Here is an example of a simple minimal component setup:
+
+```python
+from haystack import component
+
+@component
+class WelcomeTextGenerator:
+  """
+  A component generating personal welcome message and making it upper case
+  """
+  @component.output_types(welcome_text=str, note=str)
+  def run(self, name:str):
+    return {"welcome_text": f'Hello {name}, welcome to Haystack!'.upper(), "note": "welcome message is ready"}
+
+```
+
+Here, the custom component `WelcomeTextGenerator` accepts one input: `name` string and returns two outputs: `welcome_text` and `note`.
+
+# Extended Example
+
+Click on the Recipe below to see how to create two custom components and connect them in a Haystack pipeline.
+
+MISSING RECIPE
+
+# Extending the Existing Components
+
+To extend already existing components in Haystack, subclass an existing component and use the `@component` decorator to mark it. Override or extend the `run()` method to process inputs and outputs. Call `super()` with the derived class name from the init of the derived class to avoid initialization issues:
+
+```python
+class DerivedComponent(BaseComponent):
+    def __init__(self):
+        super(DerivedComponent, self).__init__()
+
+# ...
+
+dc = DerivedComponent()  # ok
+```
+
+An example of an extended component is Haystack's [FaithfulnessEvaluator](https://github.com/deepset-ai/haystack/blob/e5a80722c22c59eb99416bf0cd712f6de7cd581a/haystack/components/evaluators/faithfulness.py) derived from LLMEvaluator.
+
+# Additional References
+
+🧑‍🍳 Cookbooks:
+
+- [Build quizzes and adventures with Character Codex and llamafile](https://haystack.deepset.ai/cookbook/charactercodex_llamafile/)
+- [Run tasks concurrently within a custom component](https://haystack.deepset.ai/cookbook/concurrent_tasks/)
+- [Chat With Your SQL Database](https://haystack.deepset.ai/cookbook/chat_with_sql_3_ways/)
+- [Hacker News Summaries with Custom Components](https://haystack.deepset.ai/cookbook/hackernews-custom-component-rag/)

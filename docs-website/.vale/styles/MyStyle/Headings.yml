@@ -1,0 +1,5 @@
+extends: capitalization
+message: "Headings and titles should use title case (e.g., 'Create a Workspace in deepset Cloud')."
+level: warning
+scope: heading
+style: AP

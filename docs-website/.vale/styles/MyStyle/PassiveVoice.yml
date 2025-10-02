@@ -1,0 +1,9 @@
+extends: existence
+message: "Rephrase passive or indirect constructions like '%s' to be more active and direct."
+level: suggestion
+nonword: true
+scope: text
+tokens:
+  - allows you to
+  - enables you to
+  - is used to
