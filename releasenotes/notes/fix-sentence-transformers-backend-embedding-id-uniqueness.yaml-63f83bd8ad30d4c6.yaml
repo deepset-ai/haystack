@@ -1,0 +1,3 @@
+fixes:
+  - |
+    Refactored `SentenceTransformersEmbeddingBackend` to ensure unique embedding IDs by incorporating all relevant arguments.

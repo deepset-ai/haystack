@@ -14,7 +14,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.9"
-  HATCH_VERSION: "1.14.1"
+  HATCH_VERSION: "1.14.2"
   HAYSTACK_MPS_ENABLED: false
   HAYSTACK_XPU_ENABLED: false
 
@@ -60,6 +60,8 @@ jobs:
               - "haystack/components/converters/tika.py"
               - "haystack/components/embedders/hugging_face_api_document_embedder.py"
               - "haystack/components/embedders/hugging_face_api_text_embedder.py"
+              - "haystack/components/embedders/backends/sentence_transformers_backend.py"
+              - "haystack/components/embedders/backends/sentence_transformers_sparse_backend.py"
               - "haystack/components/embedders/image/sentence_transformers_doc_image_embedder.py"
               - "haystack/components/embedders/sentence_transformers_text_embedder.py"
               - "haystack/components/embedders/sentence_transformers_sparse_document_embedder.py"

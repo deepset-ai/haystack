@@ -11,7 +11,7 @@ on:
       - ".github/workflows/docusaurus_sync.yml"
 
 env:
-  HATCH_VERSION: "1.14.1"
+  HATCH_VERSION: "1.14.2"
   PYTHON_VERSION: "3.9"
   DOCS_REPO: "deepset-ai/haystack-docs"
   DOCS_REPO_PATH: "reference/haystack-api"

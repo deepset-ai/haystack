@@ -15,13 +15,19 @@ def test_factory_behavior(mock_sentence_transformer):
     embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
         model="my_model", device="cpu"
     )
-    same_embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend("my_model", "cpu")
+    same_embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
+        model="my_model", device="cpu"
+    )
     another_embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
         model="another_model", device="cpu"
+    )
+    yet_another_embedding_backend = _SentenceTransformersEmbeddingBackendFactory.get_embedding_backend(
+        model="my_model", device="cpu", trust_remote_code=True
     )
 
     assert same_embedding_backend is embedding_backend
     assert another_embedding_backend is not embedding_backend
+    assert yet_another_embedding_backend is not embedding_backend
 
 
 @patch("haystack.components.embedders.backends.sentence_transformers_backend.SentenceTransformer")

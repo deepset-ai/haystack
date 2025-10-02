@@ -2,14 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Protocol, TypeVar
+from typing import Any, Protocol
 
 from haystack.dataclasses import ChatMessage
 
 # Ellipsis are needed to define the Protocol but pylint complains. See https://github.com/pylint-dev/pylint/issues/9319.
 # pylint: disable=unnecessary-ellipsis
-
-T = TypeVar("T", bound="ChatGenerator")
 
 
 class ChatGenerator(Protocol):
