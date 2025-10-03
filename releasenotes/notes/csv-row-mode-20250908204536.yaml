@@ -1,0 +1,3 @@
+---
+features:
+  - "CSVToDocument: add `conversion_mode='row'` with optional `content_column`; each row becomes a `Document`; remaining columns stored in `meta`; default 'file' mode preserved."
