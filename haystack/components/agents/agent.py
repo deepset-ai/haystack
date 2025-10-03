@@ -259,6 +259,7 @@ class Agent:
         requires_async: bool,
         *,
         system_prompt: Optional[str] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
         **kwargs,
     ) -> _ExecutionContext:
@@ -269,6 +270,8 @@ class Agent:
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
+        :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
+            override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param kwargs: Additional data to pass to the State used by the Agent.
@@ -293,6 +296,8 @@ class Agent:
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
+        if generation_kwargs is not None:
+            generator_inputs["generation_kwargs"] = generation_kwargs
 
         return _ExecutionContext(
             state=state,
@@ -339,6 +344,7 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT],
         requires_async: bool,
         *,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
     ) -> _ExecutionContext:
         """
@@ -347,6 +353,8 @@ class Agent:
         :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
+        :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
+            override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         """
@@ -371,6 +379,8 @@ class Agent:
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
+        if generation_kwargs is not None:
+            generator_inputs["generation_kwargs"] = generation_kwargs
 
         return _ExecutionContext(
             state=state,
@@ -461,6 +471,7 @@ class Agent:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
@@ -473,6 +484,8 @@ class Agent:
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
+        :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
+            override the parameters passed during component initialization.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
         :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
@@ -503,7 +516,11 @@ class Agent:
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=False, tools=tools
+                snapshot=snapshot,
+                streaming_callback=streaming_callback,
+                requires_async=False,
+                tools=tools,
+                generation_kwargs=generation_kwargs,
             )
         else:
             exe_context = self._initialize_fresh_execution(
@@ -512,6 +529,7 @@ class Agent:
                 requires_async=False,
                 system_prompt=system_prompt,
                 tools=tools,
+                generation_kwargs=generation_kwargs,
                 **kwargs,
             )
 
@@ -618,6 +636,7 @@ class Agent:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
@@ -634,6 +653,8 @@ class Agent:
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: An asynchronous callback that will be invoked when a response is streamed from the
             LLM. The same callback can be configured to emit tool results when a tool is called.
+        :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
+            override the parameters passed during component initialization.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
         :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
@@ -663,7 +684,11 @@ class Agent:
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=True, tools=tools
+                snapshot=snapshot,
+                streaming_callback=streaming_callback,
+                requires_async=True,
+                tools=tools,
+                generation_kwargs=generation_kwargs,
             )
         else:
             exe_context = self._initialize_fresh_execution(
@@ -672,6 +697,7 @@ class Agent:
                 requires_async=True,
                 system_prompt=system_prompt,
                 tools=tools,
+                generation_kwargs=generation_kwargs,
                 **kwargs,
             )
 
