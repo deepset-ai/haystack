@@ -8,6 +8,7 @@ from typing import Any, Optional, Union
 
 from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.memory import Mem0MemoryStore
 from haystack.components.tools import ToolInvoker
 from haystack.core.component.component import component
 from haystack.core.errors import PipelineRuntimeError
@@ -105,6 +106,7 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT] = None,
         raise_on_tool_invocation_failure: bool = False,
         tool_invoker_kwargs: Optional[dict[str, Any]] = None,
+        memory_store: Optional[Mem0MemoryStore] = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -123,6 +125,8 @@ class Agent:
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param tool_invoker_kwargs: Additional keyword arguments to pass to the ToolInvoker.
+        :param memory_store: The memory store to use for the agent. MemoryStore can be configured with
+        MemoryConfig to provide user_id and database configuration.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If the exit_conditions are not valid.
         """
@@ -162,7 +166,7 @@ class Agent:
         self.max_agent_steps = max_agent_steps
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
         self.streaming_callback = streaming_callback
-
+        self.memory_store = memory_store
         output_types = {"last_message": ChatMessage}
         for param, config in self.state_schema.items():
             output_types[param] = config["type"]
@@ -216,6 +220,7 @@ class Agent:
             streaming_callback=serialize_callable(self.streaming_callback) if self.streaming_callback else None,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
             tool_invoker_kwargs=self.tool_invoker_kwargs,
+            memory_store=self.memory_store.to_dict(),
         )
 
     @classmethod
@@ -490,10 +495,24 @@ class Agent:
         :raises RuntimeError: If the Agent component wasn't warmed up before calling `run()`.
         :raises BreakpointException: If an agent breakpoint is triggered.
         """
+
+        agent_memory = []
+
+        if self.memory_store:
+            agent_memory = self.memory_store.search_memories(
+                query=messages[-1].text,
+                user_id=self.memory_store.memory_config.user_id,
+                filters=self.memory_store.memory_config.filters,
+            )
+
+        print("AGENT MEMORY: ", agent_memory)
+
+        combined_messages = messages + agent_memory
+
         # We pop parent_snapshot from kwargs to avoid passing it into State.
         parent_snapshot = kwargs.pop("parent_snapshot", None)
         agent_inputs = {
-            "messages": messages,
+            "messages": combined_messages,
             "streaming_callback": streaming_callback,
             "break_point": break_point,
             "snapshot": snapshot,
@@ -507,7 +526,7 @@ class Agent:
             )
         else:
             exe_context = self._initialize_fresh_execution(
-                messages=messages,
+                messages=combined_messages,
                 streaming_callback=streaming_callback,
                 requires_async=False,
                 system_prompt=system_prompt,
