@@ -9,8 +9,39 @@ import pytest
 from haystack import component
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline import Pipeline
-from haystack.core.pipeline.breakpoint import _transform_json_structure, load_pipeline_snapshot
-from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot
+from haystack.core.pipeline.breakpoint import (
+    _transform_json_structure,
+    _trigger_chat_generator_breakpoint,
+    _trigger_tool_invoker_breakpoint,
+    load_pipeline_snapshot,
+)
+from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses.breakpoints import (
+    AgentBreakpoint,
+    AgentSnapshot,
+    Breakpoint,
+    PipelineSnapshot,
+    PipelineState,
+    ToolBreakpoint,
+)
+
+
+@pytest.fixture
+def make_pipeline_snapshot():
+    def _make(break_point: AgentBreakpoint) -> PipelineSnapshot:
+        return PipelineSnapshot(
+            break_point=break_point,
+            pipeline_state=PipelineState(inputs={}, component_visits={"agent": 0}, pipeline_outputs={}),
+            original_input_data={},
+            ordered_component_names=["agent"],
+            agent_snapshot=AgentSnapshot(
+                break_point=break_point,
+                component_inputs={"chat_generator": {}, "tool_invoker": {"serialized_data": {"state": {}}}},
+                component_visits={"chat_generator": 0, "tool_invoker": 0},
+            ),
+        )
+
+    return _make
 
 
 def test_transform_json_structure_unwraps_sender_value():
@@ -111,3 +142,52 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path):
         assert "comp1" in loaded_snapshot.include_outputs_from
         assert loaded_snapshot.break_point.component_name == "comp2"
         assert loaded_snapshot.break_point.visit_count == 0
+
+
+def test_trigger_tool_invoker_breakpoint(make_pipeline_snapshot):
+    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot(
+        break_point=AgentBreakpoint("agent", ToolBreakpoint(component_name="tool_invoker"))
+    )
+    with pytest.raises(BreakpointException):
+        _trigger_tool_invoker_breakpoint(
+            llm_messages=[ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="tool1", arguments={})])],
+            pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint,
+        )
+
+
+def test_trigger_tool_invoker_breakpoint_no_raise(make_pipeline_snapshot):
+    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot(
+        break_point=AgentBreakpoint("agent", ToolBreakpoint(component_name="tool_invoker", tool_name="tool2"))
+    )
+    # This should not raise since the tool call is for "tool1", not "tool2"
+    _trigger_tool_invoker_breakpoint(
+        llm_messages=[ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="tool1", arguments={})])],
+        pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint,
+    )
+
+
+def test_trigger_tool_invoker_breakpoint_specific_tool(make_pipeline_snapshot):
+    """
+    This is to test if a specific tool is set in the ToolBreakpoint, the BreakpointException is raised even when
+    there are multiple tool calls in the message.
+    """
+    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot(
+        break_point=AgentBreakpoint("agent", ToolBreakpoint(component_name="tool_invoker", tool_name="tool2"))
+    )
+    with pytest.raises(BreakpointException):
+        _trigger_tool_invoker_breakpoint(
+            llm_messages=[
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="tool1", arguments={}), ToolCall(tool_name="tool2", arguments={})]
+                )
+            ],
+            pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint,
+        )
+
+
+def test_trigger_chat_generator_breakpoint(make_pipeline_snapshot):
+    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot(
+        break_point=AgentBreakpoint("agent", Breakpoint(component_name="chat_generator"))
+    )
+    with pytest.raises(BreakpointException):
+        _trigger_chat_generator_breakpoint(pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint)
