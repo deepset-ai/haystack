@@ -526,9 +526,7 @@ def _trigger_tool_invoker_breakpoint(*, llm_messages: list[ChatMessage], pipelin
     else:
         # Break only for the specific tool
         should_break = any(
-            tc.tool_name == tool_breakpoint.tool_name
-            for msg in llm_messages
-            for tc in msg.tool_calls or []
+            tc.tool_name == tool_breakpoint.tool_name for msg in llm_messages for tc in msg.tool_calls or []
         )
 
     if not should_break:
