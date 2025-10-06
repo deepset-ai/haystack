@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import base64
+import json
 import logging
 import os
 from datetime import datetime
@@ -16,12 +16,18 @@ from openai.types.chat import (
     ChatCompletionChunk,
     ChatCompletionMessage,
     ChatCompletionMessageFunctionToolCall,
+    ParsedChatCompletion,
+    ParsedChatCompletionMessage,
+    ParsedChoice,
+    ParsedFunction,
+    ParsedFunctionToolCall,
     chat_completion_chunk,
 )
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
 from openai.types.chat.chat_completion_message_function_tool_call import Function
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
+from pydantic import BaseModel
 
 from haystack import component
 from haystack.components.generators.chat.openai import (
@@ -34,6 +40,17 @@ from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingC
 from haystack.tools import ComponentTool, Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
+
+
+class CalendarEvent(BaseModel):
+    event_name: str
+    event_date: str
+    event_location: str
+
+
+@pytest.fixture
+def calendar_event_model():
+    return CalendarEvent
 
 
 @pytest.fixture
@@ -90,6 +107,40 @@ def weather_function(city: str) -> dict[str, Any]:
         "Rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
     }
     return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
+
+
+# mock chat completions with structured outputs
+@pytest.fixture
+def mock_parsed_chat_completion():
+    with patch("openai.resources.chat.completions.Completions.parse") as mock_chat_completion_parse:
+        completion = ParsedChatCompletion[CalendarEvent](
+            id="json_foo",
+            model="gpt-4o-mini-2024-07-18",
+            object="chat.completion",
+            choices=[
+                ParsedChoice[CalendarEvent](
+                    finish_reason="stop",
+                    index=0,
+                    message=ParsedChatCompletionMessage[CalendarEvent](
+                        content='{"event_name":"Team Meeting","event_date":"2024-03-15",'
+                        '"event_location":"Conference Room A"}',
+                        refusal=None,
+                        role="assistant",
+                        annotations=[],
+                        audio=None,
+                        function_call=None,
+                        tool_calls=None,
+                        parsed=CalendarEvent(
+                            event_name="Team Meeting", event_date="2024-03-15", event_location="Conference Room A"
+                        ),
+                    ),
+                )
+            ],
+            created=1757328264,
+            usage=CompletionUsage(completion_tokens=29, prompt_tokens=86, total_tokens=115),
+        )
+        mock_chat_completion_parse.return_value = completion
+        yield mock_chat_completion_parse
 
 
 @component
@@ -217,7 +268,7 @@ class TestOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch):
+    def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
 
         monkeypatch.setenv("ENV_VAR", "test-api-key")
@@ -226,7 +277,11 @@ class TestOpenAIChatGenerator:
             model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={
+                "max_tokens": 10,
+                "some_test_param": "test-params",
+                "response_format": calendar_event_model,
+            },
             tools=[tool],
             tools_strict=True,
             max_retries=10,
@@ -245,7 +300,28 @@ class TestOpenAIChatGenerator:
                 "max_retries": 10,
                 "timeout": 100.0,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {
+                    "max_tokens": 10,
+                    "some_test_param": "test-params",
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "CalendarEvent",
+                            "strict": True,
+                            "schema": {
+                                "properties": {
+                                    "event_name": {"title": "Event Name", "type": "string"},
+                                    "event_date": {"title": "Event Date", "type": "string"},
+                                    "event_location": {"title": "Event Location", "type": "string"},
+                                },
+                                "required": ["event_name", "event_date", "event_location"],
+                                "title": "CalendarEvent",
+                                "type": "object",
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
+                },
                 "tools": [
                     {
                         "type": "haystack.tools.tool.Tool",
@@ -401,6 +477,28 @@ class TestOpenAIChatGenerator:
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
+    def test_run_with_response_format(self, chat_messages, mock_parsed_chat_completion):
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"), generation_kwargs={"response_format": CalendarEvent}
+        )
+        response = component.run(chat_messages)
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion
+
+    def test_run_with_response_format_in_run_method(self, chat_messages, mock_parsed_chat_completion):
+        component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        response = component.run(chat_messages, generation_kwargs={"response_format": CalendarEvent})
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion
+
     def test_run_with_wrapped_stream_simulation(self, chat_messages, openai_mock_stream):
         streaming_callback_called = False
 
@@ -523,6 +621,66 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "tool_calls"
         assert message.meta["usage"]["completion_tokens"] == 40
 
+    def test_run_with_tools_and_response_format(self, tools, mock_parsed_chat_completion):
+        """
+        Test the run method with tools and response format
+            When tools are used, the function call overrides the schema passed in response_format
+        """
+        with patch("openai.resources.chat.completions.Completions.parse") as mock_chat_completion_parse:
+            completion = ParsedChatCompletion[CalendarEvent](
+                id="foo",
+                model="gpt-4",
+                object="chat.completion",
+                choices=[
+                    ParsedChoice[CalendarEvent](
+                        finish_reason="tool_calls",
+                        logprobs=None,
+                        index=0,
+                        message=ParsedChatCompletionMessage[CalendarEvent](
+                            role="assistant",
+                            tool_calls=[
+                                ParsedFunctionToolCall(
+                                    id="123",
+                                    type="function",
+                                    function=ParsedFunction(name="weather", arguments='{"city": "Paris"}'),
+                                )
+                            ],
+                        ),
+                    )
+                ],
+                created=int(datetime.now().timestamp()),
+                usage=CompletionUsage(
+                    completion_tokens=40,
+                    prompt_tokens=57,
+                    total_tokens=97,
+                    completion_tokens_details=CompletionTokensDetails(
+                        accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
+                    ),
+                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                ),
+            )
+            mock_chat_completion_parse.return_value = completion
+
+            component = OpenAIChatGenerator(
+                api_key=Secret.from_token("test-api-key"), tools=tools[:1], tools_strict=True
+            )
+            response_with_format = component.run(
+                [ChatMessage.from_user("What's the weather like in Paris?")],
+                generation_kwargs={"response_format": CalendarEvent},
+            )
+
+        assert len(response_with_format["replies"]) == 1
+        message_with_format = response_with_format["replies"][0]
+        assert not message_with_format.texts
+        assert not message_with_format.text
+        assert message_with_format.tool_calls
+        tool_call = message_with_format.tool_call
+        assert isinstance(tool_call, ToolCall)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert message_with_format.meta["finish_reason"] == "tool_calls"
+        assert message_with_format.meta["usage"]["completion_tokens"] == 40
+
     def test_run_with_tools_streaming(self, mock_chat_completion_chunk_with_tools, tools):
         streaming_callback_called = False
 
@@ -601,6 +759,18 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "tool_calls"
         assert message.meta["usage"]["completion_tokens"] == 47
 
+    def test_run_with_response_format_and_streaming_pydantic_model(self, calendar_event_model):
+        chat_messages = [
+            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+        ]
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"response_format": calendar_event_model},
+            streaming_callback=print_streaming_chunk,
+        )
+        with pytest.raises(TypeError):
+            component.run(chat_messages)
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -616,6 +786,152 @@ class TestOpenAIChatGenerator:
         assert "gpt-4o" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_pydantic_model(self, calendar_event_model):
+        chat_messages = [
+            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+        ]
+        component = OpenAIChatGenerator(generation_kwargs={"response_format": calendar_event_model})
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Marketing Summit" in msg["event_name"]
+        assert isinstance(msg["event_date"], str)
+        assert isinstance(msg["event_location"], str)
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_object(self):
+        chat_messages = [
+            ChatMessage.from_user(
+                'Answer in JSON: What\'s the capital of France? Please respond with a JSON object with the key "city". '
+                'For example: {"city": "Paris"}'
+            )
+        ]
+        comp = OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}})
+        results = comp.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "paris" in msg["city"].lower()
+        assert message.meta["finish_reason"] == "stop"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_object_streaming(self):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        chat_messages = [
+            ChatMessage.from_user(
+                'Answer in JSON: What\'s the capital of France? Please respond with a JSON object with the key "city". '
+                'For example: {"city": "Paris"}'
+            )
+        ]
+        comp = OpenAIChatGenerator(
+            generation_kwargs={"response_format": {"type": "json_object"}}, streaming_callback=streaming_callback
+        )
+        results = comp.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "paris" in msg["city"].lower()
+        assert message.meta["finish_reason"] == "stop"
+        assert streaming_callback_called is True
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_schema(self):
+        response_schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "CapitalCity",
+                "strict": True,
+                "schema": {
+                    "title": "CapitalCity",
+                    "type": "object",
+                    "properties": {
+                        "city": {"title": "City", "type": "string"},
+                        "country": {"title": "Country", "type": "string"},
+                    },
+                    "required": ["city", "country"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+        chat_messages = [ChatMessage.from_user("What's the capital of France?")]
+        comp = OpenAIChatGenerator(generation_kwargs={"response_format": response_schema})
+        results = comp.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Paris" in msg["city"]
+        assert isinstance(msg["country"], str)
+        assert "France" in msg["country"]
+        assert message.meta["finish_reason"] == "stop"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format_json_schema_streaming(self):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        response_schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "CapitalCity",
+                "strict": True,
+                "schema": {
+                    "title": "CapitalCity",
+                    "type": "object",
+                    "properties": {
+                        "city": {"title": "City", "type": "string"},
+                        "country": {"title": "Country", "type": "string"},
+                    },
+                    "required": ["city", "country"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+        chat_messages = [ChatMessage.from_user("What's the capital of France?")]
+        comp = OpenAIChatGenerator(
+            generation_kwargs={"response_format": response_schema}, streaming_callback=streaming_callback
+        )
+        results = comp.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Paris" in msg["city"]
+        assert isinstance(msg["country"], str)
+        assert "France" in msg["country"]
+        assert message.meta["finish_reason"] == "stop"
+        assert streaming_callback_called is True
 
     def test_run_with_wrong_model(self):
         mock_client = MagicMock()

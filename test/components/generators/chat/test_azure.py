@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import os
 from typing import Any, Optional
 
 import pytest
 from openai import OpenAIError
+from pydantic import BaseModel
 
 from haystack import Pipeline, component
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
@@ -16,6 +18,17 @@ from haystack.tools import ComponentTool, Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
 from haystack.utils.azure import default_azure_ad_token_provider
+
+
+class CalendarEvent(BaseModel):
+    event_name: str
+    event_date: str
+    event_location: str
+
+
+@pytest.fixture
+def calendar_event_model():
+    return CalendarEvent
 
 
 def get_weather(city: str) -> dict[str, Any]:
@@ -141,7 +154,7 @@ class TestAzureOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch):
+    def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIChatGenerator(
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
@@ -150,7 +163,11 @@ class TestAzureOpenAIChatGenerator:
             streaming_callback=print_streaming_chunk,
             timeout=2.5,
             max_retries=10,
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={
+                "max_tokens": 10,
+                "some_test_param": "test-params",
+                "response_format": calendar_event_model,
+            },
             azure_ad_token_provider=default_azure_ad_token_provider,
             http_client_kwargs={"proxy": "http://localhost:8080"},
         )
@@ -167,7 +184,28 @@ class TestAzureOpenAIChatGenerator:
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "timeout": 2.5,
                 "max_retries": 10,
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {
+                    "max_tokens": 10,
+                    "some_test_param": "test-params",
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "CalendarEvent",
+                            "strict": True,
+                            "schema": {
+                                "properties": {
+                                    "event_name": {"title": "Event Name", "type": "string"},
+                                    "event_date": {"title": "Event Date", "type": "string"},
+                                    "event_location": {"title": "Event Location", "type": "string"},
+                                },
+                                "required": ["event_name", "event_date", "event_location"],
+                                "title": "CalendarEvent",
+                                "type": "object",
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
+                },
                 "tools": None,
                 "tools_strict": False,
                 "default_headers": {},
@@ -330,6 +368,33 @@ class TestAzureOpenAIChatGenerator:
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
+
+    @pytest.mark.skipif(
+        not os.environ.get("AZURE_OPENAI_API_KEY", None),
+        reason="Export an env var called AZURE_OPENAI_API_KEY containing the Azure OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_response_format(self):
+        class CalendarEvent(BaseModel):
+            event_name: str
+            event_date: str
+            event_location: str
+
+        chat_messages = [
+            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+        ]
+        component = AzureOpenAIChatGenerator(
+            api_version="2024-08-01-preview", generation_kwargs={"response_format": CalendarEvent}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Marketing Summit" in msg["event_name"]
+        assert isinstance(msg["event_date"], str)
+        assert isinstance(msg["event_location"], str)
+
+        assert message.meta["finish_reason"] == "stop"
 
     def test_to_dict_with_toolset(self, tools, monkeypatch):
         """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""

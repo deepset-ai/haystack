@@ -11,7 +11,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, expit
 from haystack.utils.auth import Secret, deserialize_secrets_inplace
 
-with LazyImport(message="Run 'pip install \"sentence-transformers>=4.1.0\"'") as sas_import:
+with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as sas_import:
     from sentence_transformers import CrossEncoder, SentenceTransformer, util
     from transformers import AutoConfig
 
