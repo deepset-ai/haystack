@@ -11,18 +11,18 @@ from haystack.core.errors import BreakpointException
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import (
     _transform_json_structure,
-    _trigger_tool_invoker_breakpoint,
     _trigger_chat_generator_breakpoint,
+    _trigger_tool_invoker_breakpoint,
     load_pipeline_snapshot,
 )
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.breakpoints import (
     AgentBreakpoint,
+    AgentSnapshot,
     Breakpoint,
     PipelineSnapshot,
     PipelineState,
     ToolBreakpoint,
-    AgentSnapshot,
 )
 
 
