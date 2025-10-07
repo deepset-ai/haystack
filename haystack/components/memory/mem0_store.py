@@ -19,14 +19,12 @@ class MemoryConfig:
     """
     Search criteria for memory retrieval operations.
 
-    :param user_id: User identifier for scoping the search
     :param query: Text query to search for
     :param backend_config: Configuration dictionary for Mem0 client
     :param filters: Additional filters to apply on search
     :param top_k: Maximum number of results to return
     """
 
-    user_id: str
     query: Optional[str] = None
     backend_config: Optional[dict[Any, Any]] = None
     filters: Optional[dict[str, Any]] = None
@@ -42,40 +40,27 @@ class Mem0MemoryStore:
     :param kwargs: Additional configuration parameters for Mem0 client
     """
 
-    def __init__(self, api_key: Optional[str] = None, memory_config: Optional[MemoryConfig] = None):
+    def __init__(self, user_id: str, api_key: Optional[str] = None, memory_config: Optional[dict[str, Any]] = None):
         mem0_import.check()
         self.api_key = api_key or os.getenv("MEM0_API_KEY")
         if not self.api_key:
             raise ValueError("Mem0 API key must be provided either as parameter or MEM0_API_KEY environment variable")
 
-        self.memory_config = memory_config
-        self.client = None
+        self.user_id = user_id
+        if memory_config:
+            self.client = MemoryClient.from_config(memory_config)
+        else:
+            self.client = MemoryClient(api_key=self.api_key)
+        self.search_criteria = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the store configuration to a dictionary."""
-        return default_to_dict(self, api_key=self.api_key, config=self.config)
+        return default_to_dict(self, api_key=self.api_key, config=self.search_criteria)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Mem0MemoryStore":
         """Deserialize the store from a dictionary."""
         return default_from_dict(cls, data)
-
-    def set_memory_config(
-        self,
-        user_id: str,
-        query: Optional[str] = None,
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-    ):
-        """
-        Set the memory configuration for the memory store.
-        """
-        self.memory_config = MemoryConfig(user_id=user_id, query=query, filters=filters, top_k=top_k)
-        self.client = (
-            MemoryClient.from_config(self.memory_config.backend_config)
-            if self.memory_config.backend_config
-            else MemoryClient(api_key=self.api_key)
-        )
 
     def add_memories(self, messages: list[ChatMessage]) -> list[str]:
         """
@@ -95,7 +80,7 @@ class Mem0MemoryStore:
                 # Mem0 primarily uses user_id as the main identifier
                 # org_id and session_id are stored in metadata for filtering
                 result = self.client.add(
-                    messages=mem0_message, user_id=self.memory_config.user_id, metadata=message.meta, infer=False
+                    messages=mem0_message, user_id=self.user_id, metadata=message.meta, infer=False
                 )
                 # Mem0 returns different response formats, handle both
                 memory_id = result.get("id") or result.get("memory_id") or str(result)
@@ -105,29 +90,39 @@ class Mem0MemoryStore:
 
         return added_ids
 
+    def set_search_criteria(
+        self, query: Optional[str] = None, filters: Optional[dict[str, Any]] = None, top_k: Optional[int] = None
+    ):
+        """
+        Set the memory configuration for the memory store.
+        """
+        self.search_criteria = {"query": query, "filters": filters, "top_k": top_k}
+
     def search_memories(
-        self, query: str, user_id: str, filters: Optional[dict[str, Any]] = None, top_k: int = 10
+        self, query: Optional[str] = None, filters: Optional[dict[str, Any]] = None, top_k: int = 10
     ) -> list[ChatMessage]:
         """
         Search for memories in Mem0.
 
-        :param query: Text query to search for
+        :param query: Text query to search for. If not provided, all memories will be returned.
         :param user_id: User identifier for scoping the search
         :param filters: Additional filters to apply on search. For more details on mem0 filters, see https://mem0.ai/docs/search/
         :param top_k: Maximum number of results to return
         :returns: List of ChatMessage memories matching the criteria
         """
         # Prepare filters for Mem0
-        search_filters = filters or {}
+        search_query = query or self.search_criteria["query"]
+        search_filters = filters or self.search_criteria["filters"] or {}
+        search_top_k = top_k or self.search_criteria["top_k"] or 10
 
-        mem0_filters = {"AND": [{"user_id": user_id}, search_filters]}
+        mem0_filters = {"AND": [{"user_id": self.user_id}, search_filters]}
 
         try:
-            if not query:
-                results = self.client.get_all(filters=mem0_filters, top_k=top_k)
+            if not search_query:
+                results = self.client.get_all(filters=mem0_filters, top_k=search_top_k)
             else:
                 results = self.client.search(
-                    query=query, limit=top_k, filters=mem0_filters, user_id=user_id or self.memory_config.user_id
+                    query=search_query, limit=search_top_k, filters=mem0_filters, user_id=self.user_id
                 )
             memories = [
                 ChatMessage.from_assistant(text=result["memory"], meta=result["metadata"]) for result in results
@@ -147,6 +142,6 @@ class Mem0MemoryStore:
         :param user_id: User identifier for scoping the deletion
         """
         try:
-            self.client.delete_all(user_id=user_id or self.memory_config.user_id)
+            self.client.delete_all(user_id=user_id or self.user_id)
         except Exception as e:
             raise RuntimeError(f"Failed to delete memories for user {user_id}: {e}") from e

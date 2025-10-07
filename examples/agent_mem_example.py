@@ -26,16 +26,10 @@ def get_recommendation(category: str) -> str:
     return recommendations.get(category, "I'll learn your preferences to give better recommendations!")
 
 
-memory_store = Mem0MemoryStore(api_key=os.getenv("MEM0_API_KEY"))
-memory_store.set_memory_config(user_id="test_123")
-
-"""
-User can setup opensearch config and filters using memory_store.set_memory_config() e.g.
-
-memory_store.set_memory_config( user_id="test_123",
-                                backend_config=opensearch_config,
-                                filters={"categories": {"contains": "movie"}})
-"""
+# User initializes the memory store with config and user_id
+memory_store = Mem0MemoryStore(user_id="test_123", api_key=os.getenv("MEM0_API_KEY"))
+# User may use class method to set search criteria
+memory_store.set_search_criteria(filters={"categories": {"contains": "movie"}})
 
 
 # Agent Setup
@@ -57,3 +51,5 @@ agent = Agent(
 # Run the Agent
 agent.warm_up()
 response = agent.run(messages=[ChatMessage.from_user("Recommend me a movie to watch on Friday night.")])
+
+print(response["messages"])

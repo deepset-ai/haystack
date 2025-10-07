@@ -500,11 +500,7 @@ class Agent:
 
         # Retrieve memories from the memory store
         if self.memory_store:
-            agent_memory = self.memory_store.search_memories(
-                query=messages[-1].text,
-                user_id=self.memory_store.memory_config.user_id,
-                filters=self.memory_store.memory_config.filters,
-            )
+            agent_memory = self.memory_store.search_memories(query=messages[-1].text)
 
         combined_messages = messages + agent_memory
 
