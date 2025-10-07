@@ -14,23 +14,6 @@ with LazyImport(message="Run 'pip install mem0ai'") as mem0_import:
     from mem0 import MemoryClient
 
 
-@dataclass
-class MemoryConfig:
-    """
-    Search criteria for memory retrieval operations.
-
-    :param query: Text query to search for
-    :param backend_config: Configuration dictionary for Mem0 client
-    :param filters: Additional filters to apply on search
-    :param top_k: Maximum number of results to return
-    """
-
-    query: Optional[str] = None
-    backend_config: Optional[dict[Any, Any]] = None
-    filters: Optional[dict[str, Any]] = None
-    top_k: Optional[int] = None
-
-
 class Mem0MemoryStore:
     """
     A memory store implementation using Mem0 as the backend.
@@ -47,10 +30,15 @@ class Mem0MemoryStore:
             raise ValueError("Mem0 API key must be provided either as parameter or MEM0_API_KEY environment variable")
 
         self.user_id = user_id
+
+        # If an OpenSearch config is provided, use it to initialize the Mem0 client
         if memory_config:
             self.client = MemoryClient.from_config(memory_config)
         else:
             self.client = MemoryClient(api_key=self.api_key)
+
+        # Search criteria is used to store the search criteria for the memory store
+        # User can set the search criteria using the set_search_criteria method
         self.search_criteria = None
 
     def to_dict(self) -> dict[str, Any]:
