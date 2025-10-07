@@ -57,6 +57,3 @@ agent = Agent(
 # Run the Agent
 agent.warm_up()
 response = agent.run(messages=[ChatMessage.from_user("Recommend me a movie to watch on Friday night.")])
-
-# Output
-print(response["messages"])

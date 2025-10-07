@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from haystack import default_from_dict, default_to_dict
-from haystack.dataclasses.chat_message import ChatMessage
+from haystack.dataclasses.chat_message import ChatMessage, ChatRole
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install mem0ai'") as mem0_import:
@@ -77,12 +77,11 @@ class Mem0MemoryStore:
             else MemoryClient(api_key=self.api_key)
         )
 
-    def add_memories(self, user_id: str, messages: list[ChatMessage]) -> list[str]:
+    def add_memories(self, messages: list[ChatMessage]) -> list[str]:
         """
         Add ChatMessage memories to Mem0.
 
         :param messages: List of ChatMessage objects with memory metadata
-        :param user_id: User identifier associated with the memories
         :returns: List of memory IDs for the added messages
         """
         added_ids = []
@@ -90,14 +89,14 @@ class Mem0MemoryStore:
         for message in messages:
             if not message.text:
                 continue
-            mem0_message = [{"role": message.role, "content": message.text}]
-            print(mem0_message)
-            print("META: ", message.meta)
+            mem0_message = [{"role": "user", "content": message.text}]
 
             try:
                 # Mem0 primarily uses user_id as the main identifier
                 # org_id and session_id are stored in metadata for filtering
-                result = self.client.add(messages=mem0_message, user_id=user_id, metadata=message.meta, infer=False)
+                result = self.client.add(
+                    messages=mem0_message, user_id=self.memory_config.user_id, metadata=message.meta, infer=False
+                )
                 # Mem0 returns different response formats, handle both
                 memory_id = result.get("id") or result.get("memory_id") or str(result)
                 added_ids.append(memory_id)
@@ -127,8 +126,9 @@ class Mem0MemoryStore:
             if not query:
                 results = self.client.get_all(filters=mem0_filters, top_k=top_k)
             else:
-                results = self.client.search(query=query, limit=top_k, filters=mem0_filters, user_id=user_id)
-            print("RESULTS: ", results)
+                results = self.client.search(
+                    query=query, limit=top_k, filters=mem0_filters, user_id=user_id or self.memory_config.user_id
+                )
             memories = [
                 ChatMessage.from_assistant(text=result["memory"], meta=result["metadata"]) for result in results
             ]
@@ -138,40 +138,15 @@ class Mem0MemoryStore:
         except Exception as e:
             raise RuntimeError(f"Failed to search memories: {e}") from e
 
-    def update_memories(self, messages: list[ChatMessage]) -> int:
-        """
-        Update ChatMessage memories in Mem0.
-
-        :param messages: List of ChatMessage memories to update (must have memory_id in meta)
-        :returns: Number of records actually updated
-        """
-
-        for message in messages:
-            memory_id = message.meta.get("memory_id")
-            if not memory_id:
-                raise ValueError("ChatMessage must have memory_id in meta to be updated")
-
-            metadata = {
-                "role": message.role.value,
-                "updated_at": datetime.now().isoformat(),
-                **{k: v for k, v in message.meta.items() if k not in ["memory_id", "user_id"]},
-            }
-
-            try:
-                self.client.update(memory_id=memory_id, data=message.text or str(message), metadata=metadata)
-            except Exception as e:
-                raise RuntimeError(f"Failed to update memory {memory_id}: {e}") from e
-
     # mem0 doesn't allow passing filter to delete endpoint,
     # we can delete all memories for a user by passing the user_id
-    def delete_all_memories(self, user_id: str):
+    def delete_all_memories(self, user_id: Optional[str] = None):
         """
         Delete memory records from Mem0.
 
         :param user_id: User identifier for scoping the deletion
         """
-
         try:
-            self.client.delete_all(user_id=user_id)
+            self.client.delete_all(user_id=user_id or self.memory_config.user_id)
         except Exception as e:
             raise RuntimeError(f"Failed to delete memories for user {user_id}: {e}") from e

@@ -498,14 +498,13 @@ class Agent:
 
         agent_memory = []
 
+        # Retrieve memories from the memory store
         if self.memory_store:
             agent_memory = self.memory_store.search_memories(
                 query=messages[-1].text,
                 user_id=self.memory_store.memory_config.user_id,
                 filters=self.memory_store.memory_config.filters,
             )
-
-        print("AGENT MEMORY: ", agent_memory)
 
         combined_messages = messages + agent_memory
 
@@ -630,6 +629,9 @@ class Agent:
         result = {**exe_context.state.data}
         if msgs := result.get("messages"):
             result["last_message"] = msgs[-1]
+
+        # Add the new conversation as memories to the memory store
+        self.memory_store.add_memories(result["messages"])
         return result
 
     async def run_async(
