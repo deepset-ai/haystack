@@ -1,0 +1,124 @@
+@font-face {
+  font-display: swap;
+  font-family: "Haffer";
+  font-weight: 400;
+  src: url("/fonts/HafferRegular/font.woff2") format("woff2"),
+       url("/fonts/HafferRegular/font.woff") format("woff");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Haffer";
+  font-weight: 600;
+  src: url("/fonts/HafferBold/font.woff2") format("woff2"),
+       url("/fonts/HafferBold/font.woff") format("woff");
+}
+
+:root {
+  --ifm-color-primary: #23A193;
+  --ifm-color-primary-dark: #1C877C;
+  --ifm-color-primary-darker: #176D64;
+  --ifm-color-primary-darkest: #12524D;
+  --ifm-color-primary-light: #A0F4EB;
+  --ifm-color-primary-lighter: #C7F5F1;
+  --ifm-color-primary-lightest: #E5FCFA;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --ifm-font-family-base:    "Haffer", "GreycliffCF", sans-serif;
+  --ifm-font-family-heading: "Haffer", "GreycliffCF", sans-serif;
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #A0F4EB;
+  --ifm-color-primary-dark: #7EE1D9;
+  --ifm-color-primary-darker: #5DCFC7;
+  --ifm-color-primary-darkest: #3CBDB5;
+  --ifm-color-primary-light: #C7F9F3;
+  --ifm-color-primary-lighter: #DBFCF8;
+  --ifm-color-primary-lightest: #EFFDFC;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+body {
+  font-family: var(--ifm-font-family-base);
+}
+
+/* 5) Headings weight & family */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--ifm-font-family-heading);
+  font-weight: 700;
+}
+
+/* 6) Buttons, spacing, etc. (optional) */
+button, .button {
+  border-radius: 8px;
+}
+
+.container {
+  max-width: 1200px;
+}
+
+.theme-code-block-with-lang {
+  position: relative;
+}
+.code-block-language-badge {
+  position: absolute;
+  top: var(--ifm-pre-padding);
+  right: var(--ifm-pre-padding);
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--ifm-color-primary);
+  font-size: 0.75em;
+  text-transform: uppercase;
+  padding: 0.15em 0.5em;
+  border-radius: 0.25rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pagination-nav {
+  display: none;
+}
+
+/* Top Navbar active state styling - using dc-docs approach with haystack-docs colors */
+.navbar__item.navbar__link--active,
+.navbar__item.navbar__link--active:hover {
+  color: var(--ifm-color-primary) !important;
+  font-weight: 600;
+}
+
+/* Style for the Docs and API Reference navbar items */
+.navbar__item[href*="/docs/"],
+.navbar__item[href*="/reference/"] {
+  transition: color 0.2s ease;
+}
+
+.navbar__item[href*="/docs/"]:hover,
+.navbar__item[href*="/reference/"]:hover {
+  color: var(--ifm-color-primary);
+}
+
+/* Active state for API Reference section */
+.navbar__item[href*="/reference/"].navbar__link--active,
+.navbar__item[href*="/reference/"].navbar__link--active:hover {
+  color: var(--ifm-color-primary) !important;
+  font-weight: 600;
+}
+
+/* Highlight Docs section when on docs pages */
+.navbar__item[href="/docs/overview/intro"] {
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+/* Footer section titles - make them bold and prominent */
+.footer .footer__title,
+.footer .footer__col .footer__title,
+.footer__links .footer__col .footer__title,
+.footer--dark .footer__title {
+  font-weight: 900 !important;
+  color: #ffffff !important;
+  font-size: 1.1em !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}

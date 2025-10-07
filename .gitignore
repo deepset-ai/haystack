@@ -153,6 +153,7 @@ dmypy.json
 haystack/document_store/qa.db
 **/mlruns/**
 src
+!docs-website/src/
 models
 saved_models
 *_build
