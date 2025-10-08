@@ -303,13 +303,8 @@ class _ToolsetWrapper(Toolset):
     """
 
     def __init__(self, toolsets: list[Toolset]):
+        super().__init__([tool for toolset in toolsets for tool in toolset])
         self.toolsets = toolsets
-        # Check for duplicate tool names across all toolsets
-        all_tools = [tool for toolset in toolsets for tool in toolset]
-        # Don't call super().__init__() to avoid redundant duplicate check in __post_init__
-        # We check here and set tools directly
-        _check_duplicate_tool_names(all_tools)
-        self.tools = all_tools
 
     def __iter__(self):
         """Iterate over all tools from all toolsets."""
