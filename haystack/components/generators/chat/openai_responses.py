@@ -225,7 +225,7 @@ class OpenAIResponsesChatGenerator:
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         generation_kwargs = self.generation_kwargs.copy()
-        response_format = generation_kwargs.get("response_format")
+        response_format = generation_kwargs.get("text_format")
 
         # If the response format is a Pydantic model, it's converted to openai's json schema format
         # If it's already a json schema, it's left as is
@@ -238,7 +238,7 @@ class OpenAIResponsesChatGenerator:
                     "schema": to_strict_json_schema(response_format),
                 },
             }
-            generation_kwargs["response_format"] = json_schema
+            generation_kwargs["text_format"] = json_schema
 
         return default_to_dict(
             self,
@@ -325,6 +325,8 @@ class OpenAIResponsesChatGenerator:
         openai_endpoint = api_args.pop("openai_endpoint")
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
+        print(type(responses))
+        print(responses)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(

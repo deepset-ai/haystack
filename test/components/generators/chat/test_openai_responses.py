@@ -161,7 +161,7 @@ class TestOpenAIResponsesChatGenerator:
             http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
         )
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-5-mini"
+        assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 40.0
@@ -214,7 +214,7 @@ class TestOpenAIResponsesChatGenerator:
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_env_var("ENV_VAR"),
-            model="gpt-4o-mini",
+            model="gpt-5-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params", "text_format": calendar_event_model},
