@@ -310,9 +310,9 @@ class _ToolsetWrapper(Toolset):
         # Check for duplicate tool names across all toolsets
         all_tools = [tool for toolset in toolsets for tool in toolset]
         _check_duplicate_tool_names(all_tools)
-        # super().__init__() not called intentionally
+        super().__init__()  # empty intentionally
         # we override all methods and manage toolsets directly here
-        self.tools = all_tools  # Set this for compatibility with base Toolset
+        self.tools = all_tools
 
     def __iter__(self):
         """Iterate over all tools from all toolsets."""
