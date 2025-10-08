@@ -42,6 +42,7 @@ def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools
             return
 
         # Check if it's a serialized Toolset (a dict with "type" and "data" keys)
+        # This handles the case where tools are organized in a Toolset container
         if isinstance(serialized_tools, dict) and all(k in serialized_tools for k in ["type", "data"]):
             toolset_class_name = serialized_tools.get("type")
             if not toolset_class_name:
