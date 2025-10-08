@@ -103,7 +103,8 @@ class Tool:
         Prepare the Tool for use.
 
         Override this method to establish connections to remote services, load models,
-        or perform other resource-intensive initialization.
+        or perform other resource-intensive initialization. This method should be idempotent,
+        as it may be called multiple times.
         """
         pass
 

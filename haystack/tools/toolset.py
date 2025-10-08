@@ -190,6 +190,7 @@ class Toolset:
         Prepare the Toolset for use.
 
         Override this method to set up shared resources like database connections or HTTP sessions.
+        This method should be idempotent, as it may be called multiple times.
         """
         pass
 
