@@ -187,7 +187,9 @@ class Toolset:
 
     def warm_up(self) -> None:
         """
-        Warm up the Toolset.
+        Prepare the Toolset for use.
+
+        Override this method to set up shared resources like database connections or HTTP sessions.
         """
         pass
 

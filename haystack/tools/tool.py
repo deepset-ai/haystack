@@ -100,7 +100,10 @@ class Tool:
 
     def warm_up(self) -> None:
         """
-        Warm up the Tool.
+        Prepare the Tool for use.
+
+        Override this method to establish connections to remote services, load models,
+        or perform other resource-intensive initialization.
         """
         pass
 
