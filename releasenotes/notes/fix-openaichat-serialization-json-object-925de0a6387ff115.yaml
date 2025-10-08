@@ -2,4 +2,4 @@
 fixes:
   - |
     Ensure that the `OpenAIChatGenerator` is properly serialized when `response_format` in `generation_kwargs` is
-    provided as a dictionary (for example, {`"type": "json_object"}`). Previously, this caused serialization errors.
+    provided as a dictionary (for example, `{"type": "json_object"}`). Previously, this caused serialization errors.
