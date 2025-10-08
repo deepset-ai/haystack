@@ -269,18 +269,12 @@ class Toolset:
         :raises ValueError: If the combination would result in duplicate tool names
         """
         if isinstance(other, Tool):
-            combined_tools = self.tools + [other]
-        elif isinstance(other, Toolset):
+            return Toolset(tools=self.tools + [other])
+        if isinstance(other, Toolset):
             return _ToolsetWrapper([self, other])
-        elif isinstance(other, list) and all(isinstance(item, Tool) for item in other):
-            combined_tools = self.tools + other
-        else:
-            raise TypeError(f"Cannot add {type(other).__name__} to Toolset")
-
-        # Check for duplicates
-        _check_duplicate_tool_names(combined_tools)
-
-        return Toolset(tools=combined_tools)
+        if isinstance(other, list) and all(isinstance(item, Tool) for item in other):
+            return Toolset(tools=self.tools + other)
+        raise TypeError(f"Cannot add {type(other).__name__} to Toolset")
 
     def __len__(self) -> int:
         """
@@ -312,9 +306,9 @@ class _ToolsetWrapper(Toolset):
         self.toolsets = toolsets
         # Check for duplicate tool names across all toolsets
         all_tools = [tool for toolset in toolsets for tool in toolset]
+        # Don't call super().__init__() to avoid redundant duplicate check in __post_init__
+        # We check here and set tools directly
         _check_duplicate_tool_names(all_tools)
-        super().__init__()  # empty intentionally
-        # we override all methods and manage toolsets directly here
         self.tools = all_tools
 
     def __iter__(self):
