@@ -1,6 +1,6 @@
 # Haystack Docs Website
 
-This folder contains the Docusaurus-powered Haystack documentation website. It was migrated from the standalone `haystack-docs` repository into the monorepo under `docs-website/`.
+This folder contains the Docusaurus-powered Haystack documentation website.
 
 ## Prerequisites
 
