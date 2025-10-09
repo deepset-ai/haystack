@@ -102,6 +102,27 @@ Optional configuration:
 
 ## Troubleshooting
 
+### Blank page
+
+If you see a blank page when running `npm start`:
+
+```bash
+# Clear Docusaurus cache and restart
+npm run clear
+npm start
+```
+
+If the issue persists, you may need to build once to generate route metadata:
+
+```bash
+npm run build
+npm start
+```
+
+This happens because Docusaurus needs to generate internal routing metadata for versioned docs on first run.
+
+### General issues
+
 Clear cached data if something looks off:
 
 ```bash
