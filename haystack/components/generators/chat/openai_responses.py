@@ -325,8 +325,6 @@ class OpenAIResponsesChatGenerator:
         openai_endpoint = api_args.pop("openai_endpoint")
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
-        print(type(responses))
-        print(responses)
 
         if streaming_callback is not None:
             completions = self._handle_stream_response(
@@ -505,6 +503,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
     tool_calls = []
     text = ""
     reasoning = None
+    print("RESPONSES: ", responses)
     for output in responses.output:
         if output.type == "reasoning":
             # openai doesn't return the reasoning tokens, but we can view summary if its enabled
@@ -531,11 +530,11 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     _name=output.name,
                     _arguments=output.arguments,
                 )
-            arguments = {}
+
             tool_calls = [ToolCall(id=output.id, tool_name=output.name, arguments=arguments)]
 
     chat_message = ChatMessage.from_assistant(
-        text=text if text else "",
+        text=text if text else None,
         reasoning=reasoning,
         tool_calls=tool_calls,
         meta={"model": responses.model, "status": output.status, "usage": _serialize_usage(responses.usage)},
@@ -557,7 +556,6 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
     :returns:
         A StreamingChunk object representing the content of the chunk from the OpenAI Responses API.
     """
-
     if chunk.type == "response.output_text.delta":
         # if item is a ResponseTextDeltaEvent
         meta = chunk.to_dict()
@@ -570,7 +568,7 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
             start=len(previous_chunks) == 1,
             meta=meta,
         )
-    if chunk.type == "response.completed":
+    elif chunk.type == "response.completed":
         return StreamingChunk(
             content=chunk.response.output_text,
             component_info=component_info,
@@ -580,6 +578,20 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
                 "received_at": datetime.now().isoformat(),
                 "usage": _serialize_usage(chunk.response.usage),
             },
+        )
+    elif chunk.type == "response.output_item.done" and chunk.item.type == "function_call":
+        function = chunk.item.name
+        arguments = chunk.item.arguments
+        meta = chunk.to_dict()
+        tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item.id, tool_name=function, arguments=arguments)
+        return StreamingChunk(
+            content="",
+            component_info=component_info,
+            index=chunk.output_index,
+            tool_calls=[tool_call],
+            finish_reason=None,
+            start=len(previous_chunks) == 1,
+            meta=meta,
         )
 
 

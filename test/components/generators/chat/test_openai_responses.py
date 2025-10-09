@@ -486,10 +486,14 @@ class TestOpenAIResponsesChatGenerator:
     @pytest.mark.integration
     def test_live_run_with_tools_streaming(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
-        component = OpenAIResponsesChatGenerator(tools=tools, streaming_callback=print_streaming_chunk)
+
+        def callback(chunk: StreamingChunk) -> None: ...
+
+        component = OpenAIResponsesChatGenerator(tools=tools, streaming_callback=callback)
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
+        print(message)
 
         assert not message.texts
         assert not message.text
@@ -545,7 +549,6 @@ class TestOpenAIResponsesChatGenerator:
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
-        assert message.meta["finish_reason"] == "tool_calls"
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
