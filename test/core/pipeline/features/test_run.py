@@ -5169,7 +5169,7 @@ some,header,row
                 expected_outputs={"a_joiner": {"documents": expected_csv_docs + expected_splits_docs}},
                 expected_component_calls={
                     ("router", 1): {"sources": sources, "meta": None},
-                    ("csv_converter", 1): {"sources": [sources[0]], "meta": None},
+                    ("csv_converter", 1): {"sources": [sources[0]], "meta": None, "content_column": None},
                     ("txt_converter", 1): {"sources": [sources[1]], "meta": None},
                     ("json_converter", 1): {"sources": [sources[2]], "meta": None},
                     ("b_joiner", 1): {
