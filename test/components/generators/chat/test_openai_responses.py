@@ -424,7 +424,7 @@ class TestOpenAIResponsesChatGenerator:
 
     def test_run_with_wrong_model(self):
         mock_client = MagicMock()
-        mock_client.chat.completions.create.side_effect = OpenAIError("Invalid model name")
+        mock_client.responses.create.side_effect = OpenAIError("Invalid model name")
 
         generator = OpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong"
@@ -563,7 +563,7 @@ class TestOpenAIResponsesChatGenerator:
 
         chat_messages = [ChatMessage.from_user(content_parts=["What does this image show? Max 5 words", image_content])]
 
-        generator = OpenAIResponsesChatGenerator(model="gpt-4.1-nano")
+        generator = OpenAIResponsesChatGenerator(model="gpt-5-nano")
         results = generator.run(chat_messages)
 
         assert len(results["replies"]) == 1

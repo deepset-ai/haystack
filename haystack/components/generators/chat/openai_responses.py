@@ -9,17 +9,7 @@ from typing import Any, Optional, Union
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.lib._pydantic import to_strict_json_schema
-from openai.types.responses import (
-    ParsedResponse,
-    ParsedResponseOutputMessage,
-    Response,
-    ResponseFunctionToolCall,
-    ResponseOutputItem,
-    ResponseOutputMessage,
-    ResponseReasoningItem,
-    ResponseStreamEvent,
-    ResponseUsage,
-)
+from openai.types.responses import ParsedResponse, Response, ResponseOutputRefusal, ResponseStreamEvent
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -28,7 +18,6 @@ from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
-    FinishReason,
     ReasoningContent,
     StreamingCallbackT,
     StreamingChunk,
@@ -331,7 +320,6 @@ class OpenAIResponsesChatGenerator:
                 responses,  # type: ignore
                 streaming_callback,
             )
-
         else:
             assert isinstance(responses, Response), "Unexpected response type for non-streaming request."
             completions = [_convert_response_to_chat_message(responses)]
@@ -404,12 +392,7 @@ class OpenAIResponsesChatGenerator:
 
         else:
             assert isinstance(responses, Response), "Unexpected response type for non-streaming request."
-            completions = []
-            for output in responses.output:
-                completion = _convert_response_to_chat_message(responses, output)
-                if completion is not None:
-                    completions.append(completion)
-
+            completions = [_convert_response_to_chat_message(responses)]
         return {"replies": completions}
 
     def _prepare_api_call(  # noqa: PLR0913
@@ -427,7 +410,7 @@ class OpenAIResponsesChatGenerator:
         text_format = generation_kwargs.pop("text_format", None)
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
-        openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
+        openai_formatted_messages = [message.to_openai_dict_format(is_responses_api=True) for message in messages]
 
         tools = tools or self.tools
         if isinstance(tools, Toolset):
@@ -503,8 +486,10 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
     tool_calls = []
     text = ""
     reasoning = None
-    print("RESPONSES: ", responses)
     for output in responses.output:
+        if isinstance(output, ResponseOutputRefusal):
+            logger.warning(f"OpenAI returned a refusal output: {output}")
+            continue
         if output.type == "reasoning":
             # openai doesn't return the reasoning tokens, but we can view summary if its enabled
             # https://platform.openai.com/docs/guides/reasoning#reasoning-summaries
@@ -517,7 +502,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                 reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
         elif output.type == "message":
             content = output.content
-            text = content[0].text if content else ""
+            text = content[0].text if content else ""  # type: ignore[union-attr]
         elif output.type == "function_call":
             try:
                 arguments = json.loads(output.arguments)
@@ -531,13 +516,13 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     _arguments=output.arguments,
                 )
 
-            tool_calls = [ToolCall(id=output.id, tool_name=output.name, arguments=arguments)]
-
+            tool_calls.append(ToolCall(id=output.id, tool_name=output.name, arguments=arguments))
+    status = getattr(responses.output, "status", "completed")
     chat_message = ChatMessage.from_assistant(
         text=text if text else None,
         reasoning=reasoning,
         tool_calls=tool_calls,
-        meta={"model": responses.model, "status": output.status, "usage": _serialize_usage(responses.usage)},
+        meta={"model": responses.model, "status": status, "usage": _serialize_usage(responses.usage)},
     )
 
     return chat_message
@@ -593,6 +578,14 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
             start=len(previous_chunks) == 1,
             meta=meta,
         )
+    chunk_message = StreamingChunk(
+        content="",
+        component_info=component_info,
+        index=getattr(chunk, "output_index", None),
+        finish_reason=None,
+        meta=chunk.to_dict(),
+    )
+    return chunk_message
 
 
 def _serialize_usage(usage):

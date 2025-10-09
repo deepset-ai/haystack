@@ -578,7 +578,9 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
 
         raise ValueError(f"Missing 'content' or '_content' in serialized ChatMessage: `{data}`")
 
-    def to_openai_dict_format(self, require_tool_call_ids: bool = True) -> dict[str, Any]:
+    def to_openai_dict_format(
+        self, require_tool_call_ids: bool = True, is_responses_api: bool = False
+    ) -> dict[str, Any]:
         """
         Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
 
@@ -623,17 +625,29 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
             content = []
             for part in self._content:
                 if isinstance(part, TextContent):
-                    content.append({"type": "text", "text": part.text})
+                    text_type = "text" if not is_responses_api else "input_text"
+                    content.append({"type": text_type, "text": part.text})
                 elif isinstance(part, ImageContent):
-                    image_item: dict[str, Any] = {
-                        "type": "image_url",
-                        # If no MIME type is provided, default to JPEG.
-                        # OpenAI API appears to tolerate MIME type mismatches.
-                        "image_url": {"url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}"},
-                    }
-                    if part.detail:
-                        image_item["image_url"]["detail"] = part.detail
-                    content.append(image_item)
+                    image_item: dict[str, Any]
+                    if is_responses_api:
+                        image_item = {
+                            "type": "input_image",
+                            # If no MIME type is provided, default to JPEG.
+                            # OpenAI API appears to tolerate MIME type mismatches.
+                            "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
+                        }
+
+                        content.append(image_item)
+                    else:
+                        image_item = {
+                            "type": "image_url" if not is_responses_api else "input_image",
+                            # If no MIME type is provided, default to JPEG.
+                            # OpenAI API appears to tolerate MIME type mismatches.
+                            "image_url": {"url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}"},
+                        }
+                        if part.detail:
+                            image_item["image_url"]["detail"] = part.detail
+                        content.append(image_item)
             openai_msg["content"] = content
             return openai_msg
 
