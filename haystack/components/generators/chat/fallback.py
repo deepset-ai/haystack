@@ -85,7 +85,7 @@ class FallbackChatGenerator:
         return default_from_dict(cls, data)
 
     # ---------------------- Execution helpers ----------------------
-    def _run_single_sync(
+    def _run_single_sync(  # pylint: disable=too-many-positional-arguments
         self,
         gen: Any,
         messages: list[ChatMessage],
@@ -97,7 +97,7 @@ class FallbackChatGenerator:
             messages=messages, generation_kwargs=generation_kwargs, tools=tools, streaming_callback=streaming_callback
         )
 
-    async def _run_single_async(
+    async def _run_single_async(  # pylint: disable=too-many-positional-arguments
         self,
         gen: Any,
         messages: list[ChatMessage],
