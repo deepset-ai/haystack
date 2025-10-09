@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from typing import Any
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import Tool, Toolset
@@ -150,7 +149,7 @@ class FallbackChatGenerator:
                 )
                 return {"replies": replies, "meta": meta}
             except Exception as e:  # noqa: BLE001 - fallback logic should handle any exception
-                logger.warning("Generator %s failed with error: %s", gen_name, e)
+                logger.warning("Generator {generator} failed with error: {error}", generator=gen_name, error=e)
                 failed.append(gen_name)
                 last_error = e
 
@@ -189,7 +188,7 @@ class FallbackChatGenerator:
                 )
                 return {"replies": replies, "meta": meta}
             except Exception as e:  # noqa: BLE001 - fallback logic should handle any exception
-                logger.warning("Generator %s failed with error: %s", gen_name, e)
+                logger.warning("Generator {generator} failed with error: {error}", generator=gen_name, error=e)
                 failed.append(gen_name)
                 last_error = e
 
