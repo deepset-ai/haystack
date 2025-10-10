@@ -1,5 +1,4 @@
-// SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
-//
+// Copyright (c) 2025 deepset-ai GmbH. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 export default {
