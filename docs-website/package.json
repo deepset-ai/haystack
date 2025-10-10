@@ -1,0 +1,49 @@
+{
+  "name": "my-website",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "docusaurus": "docusaurus",
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "swizzle": "docusaurus swizzle",
+    "deploy": "docusaurus deploy",
+    "clear": "docusaurus clear",
+    "serve": "docusaurus serve",
+    "write-translations": "docusaurus write-translations",
+    "write-heading-ids": "docusaurus write-heading-ids",
+    "update-next-version": "node scripts/update-next-version.js",
+    "create-version": "node scripts/create-new-version.js"
+  },
+  "dependencies": {
+    "@docusaurus/core": "^3.8.1",
+    "@docusaurus/plugin-content-docs": "^3.8.1",
+    "@docusaurus/plugin-ideal-image": "^3.8.1",
+    "@docusaurus/preset-classic": "^3.8.1",
+    "@mdx-js/react": "^3.0.0",
+    "clsx": "^2.0.0",
+    "prism-react-renderer": "^2.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "^0.32.6"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "^3.8.1",
+    "@docusaurus/types": "^3.8.1"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 5 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0"
+  }
+}
