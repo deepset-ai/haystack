@@ -5,26 +5,11 @@
 import json
 import logging
 import os
-from datetime import datetime
-from typing import Any, Optional, Union
-from unittest.mock import ANY, MagicMock, patch
+from typing import Any, Optional
+from unittest.mock import MagicMock
 
 import pytest
 from openai import OpenAIError
-from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
-from openai.types.chat.chat_completion_message_function_tool_call import Function
-from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
-from openai.types.responses import (
-    ParsedResponse,
-    ParsedResponseOutputMessage,
-    Response,
-    ResponseFunctionToolCall,
-    ResponseOutputItem,
-    ResponseOutputMessage,
-    ResponseReasoningItem,
-    ResponseStreamEvent,
-    ResponseUsage,
-)
 from pydantic import BaseModel
 
 from haystack import component
@@ -33,32 +18,10 @@ from haystack.components.generators.chat.openai_responses import (
     _convert_response_to_chat_message,
     _convert_streaming_response_chunk_to_streaming_chunk,
 )
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, print_streaming_chunk
-from haystack.dataclasses import (
-    AsyncStreamingCallbackT,
-    ChatMessage,
-    ChatRole,
-    ComponentInfo,
-    FinishReason,
-    ImageContent,
-    ReasoningContent,
-    StreamingCallbackT,
-    StreamingChunk,
-    SyncStreamingCallbackT,
-    ToolCall,
-    ToolCallDelta,
-    select_streaming_callback,
-)
-from haystack.tools import (
-    ComponentTool,
-    Tool,
-    Toolset,
-    _check_duplicate_tool_names,
-    deserialize_tools_or_toolset_inplace,
-    serialize_tools_or_toolset,
-)
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
-from haystack.utils.http_client import init_http_client
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, ToolCall
+from haystack.tools import ComponentTool, Tool, Toolset
+from haystack.utils import Secret
 
 logger = logging.getLogger(__name__)
 
@@ -136,12 +99,14 @@ class TestOpenAIResponsesChatGenerator:
         with pytest.raises(ValueError):
             OpenAIResponsesChatGenerator()
 
-    def test_init_fail_with_duplicate_tool_names(self, monkeypatch, tools):
+    def test_run_fail_with_duplicate_tool_names(self, monkeypatch, tools):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
         duplicate_tools = [tools[0], tools[0]]
         with pytest.raises(ValueError):
-            OpenAIResponsesChatGenerator(tools=duplicate_tools)
+            chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
+            component = OpenAIResponsesChatGenerator(tools=duplicate_tools)
+            component.run(chat_messages)
 
     def test_init_with_parameters(self, monkeypatch):
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=lambda x: x)
@@ -346,8 +311,6 @@ class TestOpenAIResponsesChatGenerator:
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator()
         results = component.run(chat_messages)
-        print("NEW RESULTS")
-        print(results)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
@@ -384,7 +347,6 @@ class TestOpenAIResponsesChatGenerator:
         ]
         component = OpenAIResponsesChatGenerator(generation_kwargs={"text_format": calendar_event_model})
         results = component.run(chat_messages)
-        print(results)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
@@ -414,7 +376,6 @@ class TestOpenAIResponsesChatGenerator:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        print(message)
         msg = json.loads(message.text)
         assert "Marketing Summit" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
@@ -463,7 +424,6 @@ class TestOpenAIResponsesChatGenerator:
 
         # Metadata checks
         metadata = message.meta
-        print(metadata)
         assert "gpt-5-mini" in metadata["model"]
         assert metadata["status"] == "completed"
 
@@ -493,7 +453,6 @@ class TestOpenAIResponsesChatGenerator:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
-        print(message)
 
         assert not message.texts
         assert not message.text
@@ -575,3 +534,35 @@ class TestOpenAIResponsesChatGenerator:
         assert message.is_from(ChatRole.ASSISTANT)
         assert not message.tool_calls
         assert not message.tool_call_results
+
+    def test_live_run_with_openai_tools(self):
+        """
+        Test the use of generator with a list of OpenAI tools and MCP tools.
+        """
+        chat_messages = [ChatMessage.from_user("What was a positive news story from today?")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5",
+            tools=[
+                {"type": "web_search_preview"},
+                {
+                    "type": "mcp",
+                    "server_label": "dmcp",
+                    "server_description": "A Dungeons and Dragons MCP server to assist with dice rolling.",
+                    "server_url": "https://dmcp-server.deno.dev/sse",
+                    "require_approval": "never",
+                },
+            ],
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        assert message.meta["status"] == "completed"
+
+        chat_messages = [ChatMessage.from_user("Roll 2d4+1")]
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+        assert message.meta["status"] == "completed"
+
+    # def test_live_run_with_structured_output_and_streaming(self):
+    # def test_live_run_with_reasoning_and_streaming(self):

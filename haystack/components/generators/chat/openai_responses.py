@@ -93,7 +93,7 @@ class OpenAIResponsesChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset, dict[str, Any]]] = None,
         tools_strict: bool = False,
         http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
@@ -146,7 +146,7 @@ class OpenAIResponsesChatGenerator:
                   the `text_format` must be a JSON schema and not a Pydantic model.
             - `reasoning`: A dictionary of parameters for reasoning. For example:
                 - `summary`: The summary of the reasoning.
-                - `effort`: The effort of the reasoning.
+                - `effort`: The level of effort to put into the reasoning. Can be `low`, `medium` or `high`.
                 - `generate_summary`: Whether to generate a summary of the reasoning.
                 Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
                 For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
@@ -158,7 +158,7 @@ class OpenAIResponsesChatGenerator:
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :param tools:
             A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-            list of `Tool` objects or a `Toolset` instance.
+            list of `Tool` objects, a `Toolset` instance or a dictionary of OpenAI tool definitions.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -179,7 +179,7 @@ class OpenAIResponsesChatGenerator:
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
         # Check for duplicate tool names
-        _check_duplicate_tool_names(list(self.tools or []))
+        # _check_duplicate_tool_names(list(self.tools or []))
 
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -228,6 +228,12 @@ class OpenAIResponsesChatGenerator:
                 },
             }
             generation_kwargs["text_format"] = json_schema
+        serialized_tools: Union[dict[str, Any], list[dict[str, Any]], None] = None
+        if self.tools and isinstance(self.tools, list) and not isinstance(self.tools[0], Tool):
+            serialized_tools = self.tools
+        else:
+            # function returns correct type but mypy doesn't know it
+            serialized_tools = serialize_tools_or_toolset(self.tools)  # type: ignore[arg-type]
 
         return default_to_dict(
             self,
@@ -239,7 +245,7 @@ class OpenAIResponsesChatGenerator:
             api_key=self.api_key.to_dict(),
             timeout=self.timeout,
             max_retries=self.max_retries,
-            tools=serialize_tools_or_toolset(self.tools),
+            tools=serialized_tools,
             tools_strict=self.tools_strict,
             http_client_kwargs=self.http_client_kwargs,
         )
@@ -254,7 +260,19 @@ class OpenAIResponsesChatGenerator:
             The deserialized component instance.
         """
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
-        deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
+
+        # we only deserialize the tools if they are haystack tools
+        # because openai tools are not serialized in the same way
+
+        tools = data["init_parameters"].get("tools")
+        if tools and (
+            isinstance(tools, dict)
+            and tools.get("type") == "haystack.tools.toolset.Toolset"
+            or isinstance(tools, list)
+            and tools[0].get("type") == "haystack.tools.tool.Tool"
+        ):
+            deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
+
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
 
@@ -269,7 +287,7 @@ class OpenAIResponsesChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset, dict[str, Any]]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -286,7 +304,7 @@ class OpenAIResponsesChatGenerator:
         :param tools:
             A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
             `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects or a `Toolset` instance.
+            `Tool` objects, a `Toolset` instance or a dictionary of OpenAI tool definitions.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -332,7 +350,7 @@ class OpenAIResponsesChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset, dict[str, Any]]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -353,7 +371,7 @@ class OpenAIResponsesChatGenerator:
         :param tools:
             A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
             `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects or a `Toolset` instance.
+            `Tool` objects, a `Toolset` instance or a dictionary of OpenAI tool definitions.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -401,7 +419,7 @@ class OpenAIResponsesChatGenerator:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset, dict[str, Any]]] = None,
         tools_strict: Optional[bool] = None,
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
@@ -413,20 +431,28 @@ class OpenAIResponsesChatGenerator:
         openai_formatted_messages = [message.to_openai_dict_format(is_responses_api=True) for message in messages]
 
         tools = tools or self.tools
-        if isinstance(tools, Toolset):
-            tools = list(tools)
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
-        _check_duplicate_tool_names(tools)
 
         openai_tools = {}
+        # Build tool definitions
+        tool_definitions: Optional[list[dict[str, Any]]] = None
         if tools:
-            tool_definitions = []
-            for t in tools:
-                function_spec = {**t.tool_spec}
-                if tools_strict:
-                    function_spec["strict"] = True
-                    function_spec["parameters"]["additionalProperties"] = False
-                tool_definitions.append({"type": "function", **function_spec})
+            if isinstance(tools, list) and not isinstance(tools[0], Tool):
+                # Predefined OpenAI/MCP-style tools
+                tool_definitions = tools
+
+            # Convert all tool objects or dicts to the correct OpenAI-compatible structure
+            else:
+                if isinstance(tools, Toolset):
+                    tools = list(tools)
+                _check_duplicate_tool_names(tools)  # type: ignore[arg-type]
+                for t in tools:
+                    function_spec = {**t.tool_spec}  # type: ignore[union-attr]
+                    if tools_strict:
+                        function_spec["strict"] = True
+                        function_spec["parameters"]["additionalProperties"] = False
+                    tool_definitions.append({"type": "function", "function": function_spec})  # type: ignore[union-attr]
+
             openai_tools = {"tools": tool_definitions}
 
         base_args = {"model": self.model, "input": openai_formatted_messages, **openai_tools, **generation_kwargs}
@@ -471,7 +497,10 @@ class OpenAIResponsesChatGenerator:
             if chunk_delta:
                 chunks.append(chunk_delta)
                 await callback(chunk_delta)
-        return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
+        chat_message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+        chat_message.meta["status"] = "completed"
+        chat_message.meta.pop("finish_reason")
+        return [chat_message]
 
 
 def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]) -> ChatMessage:
@@ -484,7 +513,6 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
     """
 
     tool_calls = []
-    text = ""
     reasoning = None
     for output in responses.output:
         if isinstance(output, ResponseOutputRefusal):
@@ -500,9 +528,9 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
             reasoning_text = "\n".join([summary.text for summary in summaries if summaries])
             if reasoning_text:
                 reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
-        elif output.type == "message":
-            content = output.content
-            text = content[0].text if content else ""  # type: ignore[union-attr]
+        # elif output.type == "message":
+        # content = output.content
+        # text = content[0].text if content else ""  # type: ignore[union-attr]
         elif output.type == "function_call":
             try:
                 arguments = json.loads(output.arguments)
@@ -519,7 +547,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
             tool_calls.append(ToolCall(id=output.id, tool_name=output.name, arguments=arguments))
     status = getattr(responses.output, "status", "completed")
     chat_message = ChatMessage.from_assistant(
-        text=text if text else None,
+        text=responses.output_text if responses.output_text else None,
         reasoning=reasoning,
         tool_calls=tool_calls,
         meta={"model": responses.model, "status": status, "usage": _serialize_usage(responses.usage)},
