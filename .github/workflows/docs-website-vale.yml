@@ -1,0 +1,42 @@
+name: Vale Lint
+
+on:
+  pull_request:
+    paths:
+      - 'docs-website/**'
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs-website/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  vale:
+    name: Run Vale
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install mdx2vast
+        run: npm install -g mdx2vast
+
+      - name: Vale
+        uses: errata-ai/vale-action@v2
+        with:
+          files: |
+            docs-website/docs
+            docs-website/versioned_docs
+          reporter: github-pr-review
+          fail_on_error: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true

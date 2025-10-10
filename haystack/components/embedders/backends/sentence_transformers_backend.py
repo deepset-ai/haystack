@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from typing import Any, Literal, Optional, Union
 
 from haystack.lazy_imports import LazyImport
@@ -23,6 +24,7 @@ class _SentenceTransformersEmbeddingBackendFactory:
 
     @staticmethod
     def get_embedding_backend(  # pylint: disable=too-many-positional-arguments
+        *,
         model: str,
         device: Optional[str] = None,
         auth_token: Optional[Secret] = None,
@@ -34,7 +36,20 @@ class _SentenceTransformersEmbeddingBackendFactory:
         config_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
-        embedding_backend_id = f"{model}{device}{auth_token}{truncate_dim}{backend}"
+        cache_params = {
+            "model": model,
+            "device": device,
+            "auth_token": auth_token,
+            "trust_remote_code": trust_remote_code,
+            "local_files_only": local_files_only,
+            "truncate_dim": truncate_dim,
+            "model_kwargs": model_kwargs,
+            "tokenizer_kwargs": tokenizer_kwargs,
+            "config_kwargs": config_kwargs,
+            "backend": backend,
+        }
+
+        embedding_backend_id = json.dumps(cache_params, sort_keys=True, default=str)
 
         if embedding_backend_id in _SentenceTransformersEmbeddingBackendFactory._instances:
             return _SentenceTransformersEmbeddingBackendFactory._instances[embedding_backend_id]
@@ -63,6 +78,7 @@ class _SentenceTransformersEmbeddingBackend:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
+        *,
         model: str,
         device: Optional[str] = None,
         auth_token: Optional[Secret] = None,

@@ -220,7 +220,7 @@ class OpenAIChatGenerator:
 
         # If the response format is a Pydantic model, it's converted to openai's json schema format
         # If it's already a json schema, it's left as is
-        if response_format and issubclass(response_format, BaseModel):
+        if response_format and isinstance(response_format, type) and issubclass(response_format, BaseModel):
             json_schema = {
                 "type": "json_schema",
                 "json_schema": {

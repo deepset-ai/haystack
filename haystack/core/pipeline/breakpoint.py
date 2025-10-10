@@ -285,12 +285,11 @@ def _transform_json_structure(data: Union[dict[str, Any], list[Any], Any]) -> An
     return data
 
 
-def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot, pipeline_outputs: dict[str, Any]) -> None:
+def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot) -> None:
     """
     Trigger a breakpoint by saving a snapshot and raising exception.
 
     :param pipeline_snapshot: The current pipeline snapshot containing the state and break point
-    :param pipeline_outputs: Current pipeline outputs
     :raises PipelineBreakpointException: When breakpoint is triggered
     """
     _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
@@ -303,7 +302,10 @@ def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot, pipeline_output
     component_visits = pipeline_snapshot.pipeline_state.component_visits
     msg = f"Breaking at component {component_name} at visit count {component_visits[component_name]}"
     raise BreakpointException(
-        message=msg, component=component_name, inputs=pipeline_snapshot.pipeline_state.inputs, results=pipeline_outputs
+        message=msg,
+        component=component_name,
+        inputs=pipeline_snapshot.pipeline_state.inputs,
+        results=pipeline_snapshot.pipeline_state.pipeline_outputs,
     )
 
 
@@ -524,7 +526,7 @@ def _trigger_tool_invoker_breakpoint(*, llm_messages: list[ChatMessage], pipelin
     else:
         # Break only for the specific tool
         should_break = any(
-            msg.tool_call and msg.tool_call.tool_name == tool_breakpoint.tool_name for msg in llm_messages
+            tc.tool_name == tool_breakpoint.tool_name for msg in llm_messages for tc in msg.tool_calls or []
         )
 
     if not should_break:
