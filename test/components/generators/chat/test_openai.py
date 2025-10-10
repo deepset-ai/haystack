@@ -341,6 +341,31 @@ class TestOpenAIChatGenerator:
             },
         }
 
+    def test_to_dict_with_response_format_json_object(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_env_var("OPENAI_API_KEY"),
+            model="gpt-4o-mini",
+            generation_kwargs={"response_format": {"type": "json_object"}},
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+            "init_parameters": {
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "model": "gpt-4o-mini",
+                "api_base_url": None,
+                "organization": None,
+                "streaming_callback": None,
+                "generation_kwargs": {"response_format": {"type": "json_object"}},
+                "tools": None,
+                "tools_strict": False,
+                "max_retries": None,
+                "timeout": None,
+                "http_client_kwargs": None,
+            },
+        }
+
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
