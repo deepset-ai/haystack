@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+//
+// SPDX-License-Identifier: Apache-2.0
+
 import React, {useEffect, useState} from 'react';
 import Root from '@theme-original/Root';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
