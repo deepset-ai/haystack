@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    Added OpenAIResponsesChatGenerator that uses OpenAI's Responses API.
+
+    ```python
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+    from haystack.dataclasses import ChatMessage
+
+    gen = OpenAIResponsesChatGenerator(model="o3-mini", generation_kwargs={"reasoning": {"effort": "low"}})
+
+    response = gen.run(
+        messages=[
+            ChatMessage.from_user("Briefly explain the theoretical background of the Quantum Computing?")
+        ]
+    )
