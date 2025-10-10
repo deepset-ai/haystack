@@ -359,15 +359,7 @@ class Agent:
         state_data = current_inputs["tool_invoker"]["state"].data
         state = State(schema=self.state_schema, data=state_data)
 
-        if isinstance(snapshot.break_point.break_point, ToolBreakpoint):
-            messages = current_inputs["tool_invoker"]["messages"]
-            skip_chat_generator = True
-        else:
-            messages = current_inputs["chat_generator"]["messages"]
-            skip_chat_generator = False
-
-        state.set("messages", messages)
-
+        skip_chat_generator = isinstance(snapshot.break_point.break_point, ToolBreakpoint)
         streaming_callback = current_inputs["chat_generator"].get("streaming_callback", streaming_callback)
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
@@ -671,13 +663,13 @@ class Agent:
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=False, tools=tools
+                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=True, tools=tools
             )
         else:
             exe_context = self._initialize_fresh_execution(
                 messages=messages,
                 streaming_callback=streaming_callback,
-                requires_async=False,
+                requires_async=True,
                 system_prompt=system_prompt,
                 tools=tools,
                 **kwargs,

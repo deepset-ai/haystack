@@ -358,7 +358,7 @@ class ToolInvoker:
 
         Tool arguments take precedence in the following order:
           - LLM overrides state if the same param is present in both
-          - local tool.inputs mappings (if any)
+          - local tool.inputs_from_state mappings (if any)
           - function signature name matching
         """
         final_args = dict(llm_args)  # start with LLM-provided
