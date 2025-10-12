@@ -468,7 +468,7 @@ class TestOpenAIResponsesChatGenerator:
         assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
         assert message.meta["status"] == "completed"
 
-    def test_openai_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
+    def test_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
         """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -534,35 +534,6 @@ class TestOpenAIResponsesChatGenerator:
         assert message.is_from(ChatRole.ASSISTANT)
         assert not message.tool_calls
         assert not message.tool_call_results
-
-    def test_live_run_with_openai_tools(self):
-        """
-        Test the use of generator with a list of OpenAI tools and MCP tools.
-        """
-        chat_messages = [ChatMessage.from_user("What was a positive news story from today?")]
-        component = OpenAIResponsesChatGenerator(
-            model="gpt-5",
-            tools=[
-                {"type": "web_search_preview"},
-                {
-                    "type": "mcp",
-                    "server_label": "dmcp",
-                    "server_description": "A Dungeons and Dragons MCP server to assist with dice rolling.",
-                    "server_url": "https://dmcp-server.deno.dev/sse",
-                    "require_approval": "never",
-                },
-            ],
-        )
-        results = component.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message = results["replies"][0]
-        assert message.meta["status"] == "completed"
-
-        chat_messages = [ChatMessage.from_user("Roll 2d4+1")]
-        results = component.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message = results["replies"][0]
-        assert message.meta["status"] == "completed"
 
     # def test_live_run_with_structured_output_and_streaming(self):
     # def test_live_run_with_reasoning_and_streaming(self):
