@@ -73,8 +73,7 @@ def test_split_parentheaders(sample_text):
     assert "Header 1" in subheader_doc.meta["parent_headers"]
     assert "Header 1.2" in subheader_doc.meta["parent_headers"]
     h3_doc = next((doc for doc in split_docs if doc.meta["header"] == "H3"), None)
-    if h3_doc:
-        assert h3_doc.meta["parent_headers"] == ["H1", "H2"]
+    assert h3_doc.meta["parent_headers"] == ["H1", "H2"]
 
 
 def test_split_no_headers():
@@ -98,8 +97,16 @@ def test_split_multiple_documents(sample_text):
     ]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
+
+    assert len(split_docs) == 8
+
     headers = {doc.meta["header"] for doc in split_docs}
     assert {"Another Header", "H1", "H2"}.issubset(headers)
+
+    # Verify that all documents have a split_id and they're sequential
+    split_ids = [doc.meta.get("split_id") for doc in split_docs]
+    assert all(split_id is not None for split_id in split_ids)
+    assert split_ids == list(range(len(split_ids)))
 
 
 def test_split_only_headers():
