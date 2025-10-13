@@ -38,7 +38,7 @@ class MarkdownHeaderSplitter:
 
         :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\f").
         :param secondary_split: Optional secondary split condition after header splitting.
-            Options are "none", "word", "passage", "period", "line". Defaults to "none".
+            Options are None, "word", "passage", "period", "line". Defaults to None.
         :param split_length: The maximum number of units in each split when using secondary splitting. Defaults to 200.
         :param split_overlap: The number of overlapping units for each split when using secondary splitting.
             Defaults to 0.
@@ -55,7 +55,7 @@ class MarkdownHeaderSplitter:
         self._header_pattern = re.compile(r"(?m)^(#{1,6}) (.+)$")  # ATX-style .md-headers
 
         # initialize secondary_splitter only if needed
-        if self.secondary_split != "none":
+        if self.secondary_split:
             self.secondary_splitter = DocumentSplitter(
                 split_by=self.secondary_split,
                 split_length=self.split_length,
@@ -129,7 +129,7 @@ class MarkdownHeaderSplitter:
 
         Ensures page counting is maintained across splits.
         """
-        if self.secondary_split == "none":
+        if not self.secondary_split:
             return documents
 
         logger.info("Applying secondary splitting by {secondary_split}", secondary_split=self.secondary_split)
@@ -313,11 +313,11 @@ class MarkdownHeaderSplitter:
 
         # secondary splitting if configured
         final_docs = (
-            self._apply_secondary_splitting(header_split_docs) if self.secondary_split != "none" else header_split_docs
+            self._apply_secondary_splitting(header_split_docs) if not self.secondary_split else header_split_docs
         )
 
         # assign split_id if not already done in secondary splitting
-        if self.secondary_split == "none":
+        if not self.secondary_split:
             for idx, doc in enumerate(final_docs):
                 if doc.meta is None:
                     doc.meta = {}
