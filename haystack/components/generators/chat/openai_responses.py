@@ -435,7 +435,7 @@ class OpenAIResponsesChatGenerator:
 
         openai_tools = {}
         # Build tool definitions
-        tool_definitions: Optional[list[dict[str, Any]]] = None
+        tool_definitions: Optional[list[dict[str, Any]]] = []
         if tools:
             if isinstance(tools, list) and not isinstance(tools[0], Tool):
                 # Predefined OpenAI/MCP-style tools
@@ -451,7 +451,7 @@ class OpenAIResponsesChatGenerator:
                     if tools_strict:
                         function_spec["strict"] = True
                         function_spec["parameters"]["additionalProperties"] = False
-                    tool_definitions.append({"type": "function", "function": function_spec})  # type: ignore[union-attr]
+                    tool_definitions.append({"type": "function", **function_spec})  # type: ignore[union-attr]
 
             openai_tools = {"tools": tool_definitions}
 
