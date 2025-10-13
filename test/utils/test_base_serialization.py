@@ -76,171 +76,185 @@ def test_deserialize_class_instance_invalid_data():
         deserialize_class_instance({"type": "test_base_serialization.CustomClassNoFromDict", "data": {}})
 
 
-def test_serialize_value_primitive_types():
-    numbers = 1
-    string = "test"
-    _bool = True
-    none = None
-    result = _serialize_value_with_schema(numbers)
-    assert result == {"serialization_schema": {"type": "integer"}, "serialized_data": 1}
-    result = _serialize_value_with_schema(string)
-    assert result == {"serialization_schema": {"type": "string"}, "serialized_data": "test"}
-    result = _serialize_value_with_schema(_bool)
-    assert result == {"serialization_schema": {"type": "boolean"}, "serialized_data": True}
-    result = _serialize_value_with_schema(none)
-    assert result == {"serialization_schema": {"type": "null"}, "serialized_data": None}
+@pytest.mark.parametrize(
+    "value,result",
+    [
+        # integer
+        (1, {"serialization_schema": {"type": "integer"}, "serialized_data": 1}),
+        # float
+        (1.5, {"serialization_schema": {"type": "number"}, "serialized_data": 1.5}),
+        # string
+        ("test", {"serialization_schema": {"type": "string"}, "serialized_data": "test"}),
+        # boolean
+        (True, {"serialization_schema": {"type": "boolean"}, "serialized_data": True}),
+        (False, {"serialization_schema": {"type": "boolean"}, "serialized_data": False}),
+        # None
+        (None, {"serialization_schema": {"type": "null"}, "serialized_data": None}),
+    ],
+)
+def test_serialize_and_deserialize_primitive_types(value, result):
+    assert _serialize_value_with_schema(value) == result
+    assert _deserialize_value_with_schema(result) == value
 
 
-def test_deserialize_value_primitive_types():
-    result = _deserialize_value_with_schema({"serialization_schema": {"type": "integer"}, "serialized_data": 1})
-    assert result == 1
-    result = _deserialize_value_with_schema({"serialization_schema": {"type": "string"}, "serialized_data": "test"})
-    assert result == "test"
-    result = _deserialize_value_with_schema({"serialization_schema": {"type": "boolean"}, "serialized_data": True})
-    assert result == True
-    result = _deserialize_value_with_schema({"serialization_schema": {"type": "null"}, "serialized_data": None})
-    assert result == None
-
-
-def test_serialize_value_with_sequences():
-    sequences = [1, 2, 3]
-    set_sequences = {1, 2, 3}
-    tuple_sequences = (1, 2, 3)
-    result = _serialize_value_with_schema(sequences)
-    assert result == {
-        "serialization_schema": {"type": "array", "items": {"type": "integer"}},
-        "serialized_data": [1, 2, 3],
-    }
-    result = _serialize_value_with_schema(set_sequences)
-    assert result == {
-        "serialization_schema": {"type": "array", "items": {"type": "integer"}, "uniqueItems": True},
-        "serialized_data": [1, 2, 3],
-    }
-    result = _serialize_value_with_schema(tuple_sequences)
-    assert result == {
-        "serialization_schema": {"type": "array", "items": {"type": "integer"}, "minItems": 3, "maxItems": 3},
-        "serialized_data": [1, 2, 3],
-    }
-
-
-def test_deserialize_value_with_sequences():
-    sequences = [1, 2, 3]
-    set_sequences = {1, 2, 3}
-    tuple_sequences = (1, 2, 3)
-    result = _deserialize_value_with_schema(
-        {"serialization_schema": {"type": "array", "items": {"type": "integer"}}, "serialized_data": [1, 2, 3]}
-    )
-    assert result == sequences
-    result = _deserialize_value_with_schema(
-        {
-            "serialization_schema": {"type": "array", "items": {"type": "integer"}, "uniqueItems": True},
-            "serialized_data": [1, 2, 3],
-        }
-    )
-    assert result == set_sequences
-    result = _deserialize_value_with_schema(
-        {
-            "serialization_schema": {
-                "type": "array",
-                "items": {"type": "integer"},
-                "collection_type": "tuple",
-                "minItems": 3,
-                "maxItems": 3,
+@pytest.mark.parametrize(
+    "value,result",
+    [
+        # empty dict
+        ({}, {"serialization_schema": {"type": "object", "properties": {}}, "serialized_data": {}}),
+        # empty list
+        ([], {"serialization_schema": {"type": "array", "items": {}}, "serialized_data": []}),
+        # empty tuple
+        (
+            (),
+            {
+                "serialization_schema": {"type": "array", "items": {}, "minItems": 0, "maxItems": 0},
+                "serialized_data": [],
             },
-            "serialized_data": [1, 2, 3],
-        }
-    )
-    assert result == tuple_sequences
-
-
-def test_serializing_and_deserializing_nested_lists():
-    nested_lists = [[1, 2], [3, 4]]
-
-    serialized_nested_lists = _serialize_value_with_schema(nested_lists)
-    assert serialized_nested_lists == {
-        "serialization_schema": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}}},
-        "serialized_data": [[1, 2], [3, 4]],
-    }
-
-    deserialized_nested_lists = _deserialize_value_with_schema(serialized_nested_lists)
-    assert deserialized_nested_lists == nested_lists
-
-
-def test_serializing_and_deserializing_nested_answer_lists():
-    """Test that _deserialize_value_with_schema handles nested lists"""
-
-    nested_answers_list = [
-        [
-            GeneratedAnswer(
-                data="Paris",
-                query="What is the capital of France?",
-                documents=[Document(content="Paris is the capital of France")],
-                meta={"page": 1},
-            )
-        ],
-        [
-            GeneratedAnswer(
-                data="Berlin",
-                query="What is the capital of Germany?",
-                documents=[Document(content="Berlin is the capital of Germany")],
-                meta={"page": 1},
-            )
-        ],
-    ]
-    serialized_nested_answers_list = _serialize_value_with_schema(nested_answers_list)
-    assert serialized_nested_answers_list == {
-        "serialization_schema": {
-            "type": "array",
-            "items": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
-        },
-        "serialized_data": [
-            [
-                {
-                    "type": "haystack.dataclasses.answer.GeneratedAnswer",
-                    "init_parameters": {
-                        "data": "Paris",
-                        "query": "What is the capital of France?",
-                        "documents": [
-                            {
-                                "id": "413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
-                                "content": "Paris is the capital of France",
-                                "blob": None,
-                                "meta": {},
-                                "score": None,
-                                "embedding": None,
-                                "sparse_embedding": None,
-                            }
-                        ],
-                        "meta": {"page": 1},
+        ),
+        # empty set
+        (set(), {"serialization_schema": {"type": "array", "items": {}, "uniqueItems": True}, "serialized_data": []}),
+        # nested empty structures
+        (
+            {"empty_list": [], "empty_dict": {}, "nested_empty": {"empty": []}},
+            {
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {
+                        "empty_list": {"type": "array", "items": {}},
+                        "empty_dict": {"type": "object", "properties": {}},
+                        "nested_empty": {"type": "object", "properties": {"empty": {"type": "array", "items": {}}}},
                     },
-                }
-            ],
-            [
-                {
-                    "type": "haystack.dataclasses.answer.GeneratedAnswer",
-                    "init_parameters": {
-                        "data": "Berlin",
-                        "query": "What is the capital of Germany?",
-                        "documents": [
-                            {
-                                "id": "c7b5b839963fcbf9b394b24c883731e840c3170ace33afb7af87a2de8a257f6f",
-                                "content": "Berlin is the capital of Germany",
-                                "blob": None,
-                                "meta": {},
-                                "score": None,
-                                "embedding": None,
-                                "sparse_embedding": None,
-                            }
-                        ],
-                        "meta": {"page": 1},
-                    },
-                }
-            ],
-        ],
-    }
+                },
+                "serialized_data": {"empty_list": [], "empty_dict": {}, "nested_empty": {"empty": []}},
+            },
+        ),
+    ],
+)
+def test_serializing_and_deserializing_empty_structures(value, result):
+    assert _serialize_value_with_schema(value) == result
+    assert _deserialize_value_with_schema(result) == value
 
-    deserialized_nested_answers_list = _deserialize_value_with_schema(serialized_nested_answers_list)
-    assert deserialized_nested_answers_list == nested_answers_list
+
+@pytest.mark.parametrize(
+    "value,result",
+    [
+        # list
+        (
+            [1, 2, 3],
+            {"serialization_schema": {"type": "array", "items": {"type": "integer"}}, "serialized_data": [1, 2, 3]},
+        ),
+        # set
+        (
+            {1, 2, 3},
+            {
+                "serialization_schema": {"type": "array", "items": {"type": "integer"}, "uniqueItems": True},
+                "serialized_data": [1, 2, 3],
+            },
+        ),
+        # tuple
+        (
+            (1, 2, 3),
+            {
+                "serialization_schema": {"type": "array", "items": {"type": "integer"}, "minItems": 3, "maxItems": 3},
+                "serialized_data": [1, 2, 3],
+            },
+        ),
+        # nested list
+        (
+            [[1, 2], [3, 4]],
+            {
+                "serialization_schema": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}}},
+                "serialized_data": [[1, 2], [3, 4]],
+            },
+        ),
+        # list of set
+        (
+            [{1, 2}, {3, 4}],
+            {
+                "serialization_schema": {
+                    "items": {"items": {"type": "integer"}, "type": "array", "uniqueItems": True},
+                    "type": "array",
+                },
+                "serialized_data": [[1, 2], [3, 4]],
+            },
+        ),
+        # nested list of GeneratedAnswer
+        (
+            [
+                [
+                    GeneratedAnswer(
+                        data="Paris",
+                        query="What is the capital of France?",
+                        documents=[Document(content="Paris is the capital of France", id="1")],
+                        meta={"page": 1},
+                    )
+                ],
+                [
+                    GeneratedAnswer(
+                        data="Berlin",
+                        query="What is the capital of Germany?",
+                        documents=[Document(content="Berlin is the capital of Germany", id="2")],
+                        meta={"page": 1},
+                    )
+                ],
+            ],
+            {
+                "serialization_schema": {
+                    "type": "array",
+                    "items": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
+                },
+                "serialized_data": [
+                    [
+                        {
+                            "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                            "init_parameters": {
+                                "data": "Paris",
+                                "query": "What is the capital of France?",
+                                "documents": [
+                                    {
+                                        "id": "1",
+                                        "content": "Paris is the capital of France",
+                                        "blob": None,
+                                        "meta": {},
+                                        "score": None,
+                                        "embedding": None,
+                                        "sparse_embedding": None,
+                                    }
+                                ],
+                                "meta": {"page": 1},
+                            },
+                        }
+                    ],
+                    [
+                        {
+                            "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                            "init_parameters": {
+                                "data": "Berlin",
+                                "query": "What is the capital of Germany?",
+                                "documents": [
+                                    {
+                                        "id": "2",
+                                        "content": "Berlin is the capital of Germany",
+                                        "blob": None,
+                                        "meta": {},
+                                        "score": None,
+                                        "embedding": None,
+                                        "sparse_embedding": None,
+                                    }
+                                ],
+                                "meta": {"page": 1},
+                            },
+                        }
+                    ],
+                ],
+            },
+        ),
+    ],
+)
+def test_serialize_and_deserialize_sequence_types(value, result):
+    assert _serialize_value_with_schema(value) == result
+    assert _deserialize_value_with_schema(result) == value
 
 
 def test_serializing_and_deserializing_nested_dicts():
@@ -264,39 +278,6 @@ def test_serializing_and_deserializing_nested_dicts():
 
     deserialized_nested_dicts = _deserialize_value_with_schema(serialized_nested_dicts)
     assert deserialized_nested_dicts == data
-
-
-def test_serializing_and_deserializing_nested_sets():
-    nested_sets = [{1, 2}, {3, 4}]
-
-    result = _serialize_value_with_schema(nested_sets)
-    assert result == {
-        "serialization_schema": {
-            "items": {"items": {"type": "integer"}, "type": "array", "uniqueItems": True},
-            "type": "array",
-        },
-        "serialized_data": [[1, 2], [3, 4]],
-    }
-
-    result = _deserialize_value_with_schema(
-        {
-            "serialization_schema": {
-                "items": {"items": {"type": "integer"}, "type": "array", "uniqueItems": True},
-                "type": "array",
-            },
-            "serialized_data": [[1, 2], [3, 4]],
-        }
-    )
-    assert result == nested_sets
-
-
-def test_serializing_and_deserializing_empty_structures():
-    """Test that _deserialize_value_with_schema handles empty structures"""
-    data = {"empty_list": [], "empty_dict": {}, "nested_empty": {"empty": []}}
-    serialized_data = _serialize_value_with_schema(data)
-    result = _deserialize_value_with_schema(serialized_data)
-
-    assert result == data
 
 
 def test_serialize_value_with_schema():
@@ -384,7 +365,7 @@ def test_serialize_value_with_schema():
 
 
 def test_deserialize_value_with_schema():
-    serialized__data = {
+    serialized_data = {
         "serialization_schema": {
             "type": "object",
             "properties": {
@@ -443,7 +424,7 @@ def test_deserialize_value_with_schema():
         },
     }
 
-    result = _deserialize_value_with_schema(serialized__data)
+    result = _deserialize_value_with_schema(serialized_data)
     assert result["numbers"] == 1
     assert isinstance(result["messages"][0], ChatMessage)
     assert result["messages"][0].text == "Hello, world!"
