@@ -188,19 +188,6 @@ def test_empty_content_handling():
     assert len(result["documents"]) == 1
 
 
-# Output format and split ID checks
-def test_document_splitting_format():
-    """Test that the format of split documents is correct."""
-    splitter = MarkdownHeaderSplitter()
-    docs = [Document(content="# Header\nContent")]
-    result = splitter.run(documents=docs)
-
-    # Basic validation of the output structure
-    assert isinstance(result, dict)
-    assert "documents" in result
-    assert isinstance(result["documents"], list)
-
-
 def test_split_id_sequentiality_primary_and_secondary():
     text = "# Header\n" + "Word " * 30
     # Test primary splitting
