@@ -152,7 +152,7 @@ def _primitive_schema_type(value: Any) -> str:
     return "string"  # fallback
 
 
-def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint: disable=too-many-return-statements, # noqa: PLR0911, PLR0912
+def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
     """
     Deserializes a value with schema information back to its original form.
 
@@ -178,7 +178,7 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint
 
     schema_type = schema.get("type")
 
-    # TODO This should be dropped now that we are at Haystack 2.18
+    # TODO Should this be dropped now that we are at Haystack 2.18
     if not schema_type:
         # for backward compatibility till Haystack 2.16 we use legacy implementation
         raise DeserializationError(
@@ -201,98 +201,57 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint
         return result
 
     # Handle array case
-    elif schema_type == "array":
-        # Cache frequently accessed schema properties
-        item_schema = schema["items"]
-        # If item_type is None means that the array is empty
-        item_type = item_schema.get("type")
-        is_set = schema.get("uniqueItems") is True
-        is_tuple = schema.get("minItems") is not None and schema.get("maxItems") is not None
-
+    if schema_type == "array":
         # Deserialize each item
-        if item_type in ("object", "array"):
-            deserialized_items = [
-                _deserialize_value_with_schema({"serialization_schema": item_schema, "serialized_data": item})
-                for item in data
-            ]
+        deserialized_items = [
+            _deserialize_value_with_schema({"serialization_schema": schema["items"], "serialized_data": item})
+            for item in data
+        ]
+        # Is a set if uniqueItems is True
+        if schema.get("uniqueItems") is True:
+            final_array = set(deserialized_items)
+        # Is a tuple if minItems and maxItems are set and equal
+        elif schema.get("minItems") is not None and schema.get("maxItems") is not None:
+            final_array = tuple(deserialized_items)
         else:
-            deserialized_items = [_deserialize_value({"type": item_type, "data": item}) for item in data]
-
-        # Handle different collection types
-        if is_set:
-            return set(deserialized_items)
-        if is_tuple:
-            return tuple(deserialized_items)
-        return list(deserialized_items)
+            # Otherwise, it's a list
+            final_array = list(deserialized_items)
+        return final_array
 
     # Handle primitive types
-    elif schema_type in _PRIMITIVE_TO_SCHEMA_MAP.values():
+    if schema_type in _PRIMITIVE_TO_SCHEMA_MAP.values():
         return data
 
     # Handle callable functions
-    elif schema_type == "typing.Callable":
+    if schema_type == "typing.Callable":
         return deserialize_callable(data)
 
     # Handle custom class types
-    else:
-        return _deserialize_value({"type": schema_type, "data": data})
+    return _deserialize_value({"type": schema_type, "data": data})
 
 
-def _deserialize_value(value: Any) -> Any:  # pylint: disable=too-many-return-statements # noqa: PLR0911
+def _deserialize_value(value: dict[str, Any]) -> Any:
     """
     Helper function to deserialize values from their envelope format {"type": T, "data": D}.
 
-    Handles four cases:
-    - Typed envelopes: {"type": T, "data": D} where T determines deserialization method
-    - Plain dicts: recursively deserialize values
-    - Collections (list/tuple/set): recursively deserialize elements
-    - Other values: return as-is
-
     :param value: The value to deserialize
-    :returns: The deserialized value
-
+    :returns:
+        The deserialized value
     """
     # 1) Envelope case
-    if isinstance(value, dict) and "type" in value and "data" in value:
-        value_type = value["type"]
-        payload = value["data"]
+    value_type = value["type"]
+    payload = value["data"]
 
-        # 1.a) Array
-        if value_type == "array":
-            return [_deserialize_value(child) for child in payload]
+    # Custom class where value_type is a qualified class name
+    cls = import_class_by_name(value_type)
 
-        # 1.b) Generic object/dict
-        if value_type == "object":
-            return {k: _deserialize_value(v) for k, v in payload.items()}
+    # try from_dict (e.g. Haystack dataclasses and Components)
+    if hasattr(cls, "from_dict") and callable(cls.from_dict):
+        return cls.from_dict(payload)
 
-        # 1.c) Primitive
-        if value_type in ("null", "boolean", "integer", "number", "string"):
-            return payload
-
-        # 1.d) Callable
-        if value_type == "typing.Callable":
-            return deserialize_callable(payload)
-
-        # 1.e) Custom class (value_type is "any" or a fully qualified class name)
-        cls = import_class_by_name(value_type)
-        # first, recursively deserialize the inner payload
-        deserialized_payload = {k: _deserialize_value(v) for k, v in payload.items()}
-        # try from_dict
-        if hasattr(cls, "from_dict") and callable(cls.from_dict):
-            return cls.from_dict(deserialized_payload)
-        # fallback: set attributes on a blank instance
-        instance = cls.__new__(cls)
-        for attr_name, attr_value in deserialized_payload.items():
-            setattr(instance, attr_name, attr_value)
-        return instance
-
-    # 2) Plain dict (no envelope) → recurse
-    if isinstance(value, dict):
-        return {k: _deserialize_value(v) for k, v in value.items()}
-
-    # 3) Collections → recurse
-    if isinstance(value, (list, tuple, set)):
-        return type(value)(_deserialize_value(v) for v in value)
-
-    # 4) Fallback (shouldn't usually happen with our schema)
-    return value
+    # fallback: set attributes on a blank instance
+    deserialized_payload = {k: _deserialize_value(v) for k, v in payload.items()}
+    instance = cls.__new__(cls)
+    for attr_name, attr_value in deserialized_payload.items():
+        setattr(instance, attr_name, attr_value)
+    return instance

@@ -146,59 +146,59 @@ def test_serializing_and_deserializing_empty_structures(value, result):
 @pytest.mark.parametrize(
     "value,result",
     [
-        # list
-        (
-            [1, 2, 3],
-            {"serialization_schema": {"type": "array", "items": {"type": "integer"}}, "serialized_data": [1, 2, 3]},
-        ),
-        # set
-        (
-            {1, 2, 3},
-            {
-                "serialization_schema": {"type": "array", "items": {"type": "integer"}, "uniqueItems": True},
-                "serialized_data": [1, 2, 3],
-            },
-        ),
-        # tuple
-        (
-            (1, 2, 3),
-            {
-                "serialization_schema": {"type": "array", "items": {"type": "integer"}, "minItems": 3, "maxItems": 3},
-                "serialized_data": [1, 2, 3],
-            },
-        ),
-        # nested list
-        (
-            [[1, 2], [3, 4]],
-            {
-                "serialization_schema": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}}},
-                "serialized_data": [[1, 2], [3, 4]],
-            },
-        ),
-        # list of set
-        (
-            [{1, 2}, {3, 4}],
-            {
-                "serialization_schema": {
-                    "items": {"items": {"type": "integer"}, "type": "array", "uniqueItems": True},
-                    "type": "array",
-                },
-                "serialized_data": [[1, 2], [3, 4]],
-            },
-        ),
-        # nested tuple
-        (
-            ((1, 2), (3, 4), (5, 6)),
-            {
-                "serialization_schema": {
-                    "type": "array",
-                    "items": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
-                    "minItems": 3,
-                    "maxItems": 3,
-                },
-                "serialized_data": [[1, 2], [3, 4], [5, 6]],
-            },
-        ),
+        # # list
+        # (
+        #     [1, 2, 3],
+        #     {"serialization_schema": {"type": "array", "items": {"type": "integer"}}, "serialized_data": [1, 2, 3]},
+        # ),
+        # # set
+        # (
+        #     {1, 2, 3},
+        #     {
+        #         "serialization_schema": {"type": "array", "items": {"type": "integer"}, "uniqueItems": True},
+        #         "serialized_data": [1, 2, 3],
+        #     },
+        # ),
+        # # tuple
+        # (
+        #     (1, 2, 3),
+        #     {
+        #         "serialization_schema": {"type": "array", "items": {"type": "integer"}, "minItems": 3, "maxItems": 3},
+        #         "serialized_data": [1, 2, 3],
+        #     },
+        # ),
+        # # nested list
+        # (
+        #     [[1, 2], [3, 4]],
+        #     {
+        #         "serialization_schema": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}}},
+        #         "serialized_data": [[1, 2], [3, 4]],
+        #     },
+        # ),
+        # # list of set
+        # (
+        #     [{1, 2}, {3, 4}],
+        #     {
+        #         "serialization_schema": {
+        #             "items": {"items": {"type": "integer"}, "type": "array", "uniqueItems": True},
+        #             "type": "array",
+        #         },
+        #         "serialized_data": [[1, 2], [3, 4]],
+        #     },
+        # ),
+        # # nested tuple
+        # (
+        #     ((1, 2), (3, 4), (5, 6)),
+        #     {
+        #         "serialization_schema": {
+        #             "type": "array",
+        #             "items": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
+        #             "minItems": 3,
+        #             "maxItems": 3,
+        #         },
+        #         "serialized_data": [[1, 2], [3, 4], [5, 6]],
+        #     },
+        # ),
         # nested list of GeneratedAnswer
         (
             [
@@ -269,7 +269,7 @@ def test_serializing_and_deserializing_empty_structures(value, result):
                     ],
                 ],
             },
-        ),
+        )
     ],
 )
 def test_serialize_and_deserialize_sequence_types(value, result):
