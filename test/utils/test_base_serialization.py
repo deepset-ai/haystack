@@ -186,6 +186,19 @@ def test_serializing_and_deserializing_empty_structures(value, result):
                 "serialized_data": [[1, 2], [3, 4]],
             },
         ),
+        # nested tuple
+        (
+            ((1, 2), (3, 4), (5, 6)),
+            {
+                "serialization_schema": {
+                    "type": "array",
+                    "items": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
+                    "minItems": 3,
+                    "maxItems": 3,
+                },
+                "serialized_data": [[1, 2], [3, 4], [5, 6]],
+            },
+        ),
         # nested list of GeneratedAnswer
         (
             [

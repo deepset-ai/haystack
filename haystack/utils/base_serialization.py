@@ -190,58 +190,40 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint
 
     # Handle object case (dictionary with properties)
     if schema_type == "object":
-        properties = schema.get("properties")
-        # TODO In what situation is properties missing if type is object?
-        if properties:
-            result: dict[str, Any] = {}
-
-            # TODO In what situation is properties present but data is not a dict?
-            if isinstance(data, dict):
-                for field, raw_value in data.items():
-                    field_schema = properties.get(field)
-                    # TODO In what situation is field_schema missing? If can be missing we should log a warning
-                    #      otherwise we are silently skipping fields
-                    if field_schema:
-                        # Recursively deserialize each field - avoid creating temporary dict
-                        result[field] = _deserialize_value_with_schema(
-                            {"serialization_schema": field_schema, "serialized_data": raw_value}
-                        )
-
-            return result
-        else:
-            # TODO No test hits this branch b/c schema_type object is only created for dicts with properties in
-            #      _serialize_value_with_schema. Do we need this branch?
-            return _deserialize_value(data)
+        properties = schema["properties"]
+        result: dict[str, Any] = {}
+        for field, raw_value in data.items():
+            field_schema = properties[field]
+            # Recursively deserialize each field - avoid creating temporary dict
+            result[field] = _deserialize_value_with_schema(
+                {"serialization_schema": field_schema, "serialized_data": raw_value}
+            )
+        return result
 
     # Handle array case
     elif schema_type == "array":
         # Cache frequently accessed schema properties
-        item_schema = schema.get("items", {})
-        item_type = item_schema.get("type", "any")
+        item_schema = schema["items"]
+        # If item_type is None means that the array is empty
+        item_type = item_schema.get("type")
         is_set = schema.get("uniqueItems") is True
         is_tuple = schema.get("minItems") is not None and schema.get("maxItems") is not None
 
-        # Handle nested objects/arrays first (most complex case)
+        # Deserialize each item
         if item_type in ("object", "array"):
-            return [
+            deserialized_items = [
                 _deserialize_value_with_schema({"serialization_schema": item_schema, "serialized_data": item})
                 for item in data
             ]
-
-        # Helper function to deserialize individual items
-        def deserialize_item(item):
-            if item_type == "any":
-                return _deserialize_value(item)
-            else:
-                return _deserialize_value({"type": item_type, "data": item})
+        else:
+            deserialized_items = [_deserialize_value({"type": item_type, "data": item}) for item in data]
 
         # Handle different collection types
         if is_set:
-            return {deserialize_item(item) for item in data}
-        elif is_tuple:
-            return tuple(deserialize_item(item) for item in data)
-        else:
-            return [deserialize_item(item) for item in data]
+            return set(deserialized_items)
+        if is_tuple:
+            return tuple(deserialized_items)
+        return list(deserialized_items)
 
     # Handle primitive types
     elif schema_type in _PRIMITIVE_TO_SCHEMA_MAP.values():
@@ -291,7 +273,7 @@ def _deserialize_value(value: Any) -> Any:  # pylint: disable=too-many-return-st
         if value_type == "typing.Callable":
             return deserialize_callable(payload)
 
-        # 1.e) Custom class
+        # 1.e) Custom class (value_type is "any" or a fully qualified class name)
         cls = import_class_by_name(value_type)
         # first, recursively deserialize the inner payload
         deserialized_payload = {k: _deserialize_value(v) for k, v in payload.items()}
