@@ -1,6 +1,6 @@
 ---
 features:
   - |
-    Added the ability to resume an Agent from an AgentSnapshot while specifying a new breakpoint in the same run call.
+    Added the ability to resume an `Agent` from an `AgentSnapshot` while specifying a new breakpoint in the same run call.
     This allows stepwise debugging and precise control over chat generator inputs tool inputs before execution, improving flexibility when inspecting intermediate states.
     This addresses a previous limitation where passing both a snapshot and a breakpoint simultaneously would throw an exception.
