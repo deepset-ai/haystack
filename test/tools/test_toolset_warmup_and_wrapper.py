@@ -107,18 +107,19 @@ class TestToolsetWrapper:
         assert toolset2.was_warmed_up
 
     def test_wrapper_with_tool_invoker(self, add_tool, multiply_tool):
-        """Test that _ToolsetWrapper works with ToolInvoker and tools are warmed up during init."""
+        """Test that _ToolsetWrapper works with ToolInvoker and tools are warmed up."""
         toolset1 = WarmupTrackingToolset([add_tool])
         toolset2 = WarmupTrackingToolset([multiply_tool])
         wrapper = toolset1 + toolset2
 
-        # ToolInvoker should warm up tools during initialization
+        # ToolInvoker should warm up tools when warm_up is called
         invoker = ToolInvoker(tools=wrapper)
+        invoker.warm_up()
 
         assert len(invoker._tools_with_names) == 2
         assert "add" in invoker._tools_with_names
         assert "multiply" in invoker._tools_with_names
-        # Verify warmup was called on each toolset during ToolInvoker init
+        # Verify warmup was called on each toolset
         assert toolset1.was_warmed_up
         assert toolset2.was_warmed_up
 
