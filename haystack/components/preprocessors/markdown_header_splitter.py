@@ -27,7 +27,7 @@ class MarkdownHeaderSplitter:
         self,
         *,
         page_break_character: str = "\f",
-        secondary_split: Literal["none", "word", "passage", "period", "line"] = "none",
+        secondary_split: Optional[Literal["word", "passage", "period", "line"]] = None,
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
