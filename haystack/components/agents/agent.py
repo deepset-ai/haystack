@@ -196,7 +196,7 @@ class Agent:
         if not self._is_warmed_up:
             if hasattr(self.chat_generator, "warm_up"):
                 self.chat_generator.warm_up()
-            if hasattr(self._tool_invoker, "warm_up"):
+            if hasattr(self._tool_invoker, "warm_up") and self._tool_invoker is not None:
                 self._tool_invoker.warm_up()
             self._is_warmed_up = True
 
