@@ -249,6 +249,8 @@ def _deserialize_value(value: dict[str, Any]) -> Any:
     if hasattr(cls, "from_dict") and callable(cls.from_dict):
         return cls.from_dict(payload)
 
+    # TODO If we reach this point we should probably log a warning that from_dict is missing and recommend to users
+    #      to implement it for their custom classes
     # fallback: set attributes on a blank instance
     deserialized_payload = {k: _deserialize_value(v) for k, v in payload.items()}
     instance = cls.__new__(cls)

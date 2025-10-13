@@ -391,6 +391,8 @@ class Pipeline(PipelineBase):
                         parent_span=span,
                     )
                 except PipelineRuntimeError as error:
+                    # TODO Wrap creation of the pipeline snapshot with try-except in case it fails
+                    #      (e.g. serialization issue)
                     out_dir = _get_output_dir("pipeline_snapshot")
                     break_point = Breakpoint(
                         component_name=component_name,
