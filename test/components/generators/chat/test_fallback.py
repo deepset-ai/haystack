@@ -101,11 +101,8 @@ def test_init_validation():
     with pytest.raises(ValueError):
         FallbackChatGenerator(generators=[])
 
-    class _NoRun:
-        pass
-
-    with pytest.raises(TypeError):
-        FallbackChatGenerator(generators=[_NoRun()])  # type: ignore[arg-type]
+    gen = FallbackChatGenerator(generators=[_DummySuccessGen(text="A")])
+    assert len(gen.generators) == 1
 
 
 def test_sequential_first_success():

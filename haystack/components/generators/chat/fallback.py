@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
@@ -55,15 +55,8 @@ class FallbackChatGenerator:
             msg = "'generators' must be a non-empty list"
             raise ValueError(msg)
 
-        # Validation via duck-typing: require a callable 'run' method
-        for gen in generators:
-            if not hasattr(gen, "run") or not callable(gen.run):
-                msg = "All items in 'generators' must expose a callable 'run' method (duck-typed ChatGenerator)"
-                raise TypeError(msg)
-
         self.generators = list(generators)
 
-    # ---------------------- Serialization ----------------------
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component, including nested generators when they support serialization."""
         return default_to_dict(self, generators=[gen.to_dict() for gen in self.generators if hasattr(gen, "to_dict")])
@@ -84,14 +77,13 @@ class FallbackChatGenerator:
         data["init_parameters"] = init_params
         return default_from_dict(cls, data)
 
-    # ---------------------- Execution helpers ----------------------
     def _run_single_sync(  # pylint: disable=too-many-positional-arguments
         self,
         gen: Any,
         messages: list[ChatMessage],
-        generation_kwargs: dict[str, Any] | None,
-        tools: (list[Tool] | Toolset) | None,
-        streaming_callback: StreamingCallbackT | None,
+        generation_kwargs: Union[dict[str, Any], None],
+        tools: Union[list[Tool], Toolset, None],
+        streaming_callback: Union[StreamingCallbackT, None],
     ) -> dict[str, Any]:
         return gen.run(
             messages=messages, generation_kwargs=generation_kwargs, tools=tools, streaming_callback=streaming_callback
@@ -101,9 +93,9 @@ class FallbackChatGenerator:
         self,
         gen: Any,
         messages: list[ChatMessage],
-        generation_kwargs: dict[str, Any] | None,
-        tools: (list[Tool] | Toolset) | None,
-        streaming_callback: StreamingCallbackT | None,
+        generation_kwargs: Union[dict[str, Any], None],
+        tools: Union[list[Tool], Toolset, None],
+        streaming_callback: Union[StreamingCallbackT, None],
     ) -> dict[str, Any]:
         if hasattr(gen, "run_async") and callable(gen.run_async):
             return await gen.run_async(
@@ -120,18 +112,17 @@ class FallbackChatGenerator:
             streaming_callback=streaming_callback,
         )
 
-    # ---------------------- Public API ----------------------
     @component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
     def run(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: dict[str, Any] | None = None,
-        tools: (list[Tool] | Toolset) | None = None,
-        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: Union[dict[str, Any], None] = None,
+        tools: Union[list[Tool], Toolset, None] = None,
+        streaming_callback: Union[StreamingCallbackT, None] = None,
     ) -> dict[str, Any]:
         """Execute generators sequentially until one succeeds, returning its replies and enriched metadata."""
         failed: list[str] = []
-        last_error: BaseException | None = None
+        last_error: Union[BaseException, None] = None
 
         for idx, gen in enumerate(self.generators):
             gen_name = gen.__class__.__name__
@@ -164,13 +155,13 @@ class FallbackChatGenerator:
     async def run_async(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: dict[str, Any] | None = None,
-        tools: (list[Tool] | Toolset) | None = None,
-        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: Union[dict[str, Any], None] = None,
+        tools: Union[list[Tool], Toolset, None] = None,
+        streaming_callback: Union[StreamingCallbackT, None] = None,
     ) -> dict[str, Any]:
         """Asynchronously execute generators in order, returning the first successful result with metadata."""
         failed: list[str] = []
-        last_error: BaseException | None = None
+        last_error: Union[BaseException, None] = None
 
         for idx, gen in enumerate(self.generators):
             gen_name = gen.__class__.__name__
