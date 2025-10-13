@@ -188,30 +188,41 @@ def test_empty_content_handling():
     assert len(result["documents"]) == 1
 
 
-def test_split_id_sequentiality_primary_and_secondary():
-    text = "# Header\n" + "Word " * 30
+def test_split_id_sequentiality_primary_and_secondary(sample_text):
     # Test primary splitting
     splitter = MarkdownHeaderSplitter()
-    docs = [Document(content=text)]
+    docs = [Document(content=sample_text)]
     result = splitter.run(documents=docs)
-    split_ids = [doc.meta["split_id"] for doc in result["documents"]]
+    split_docs = result["documents"]
+
+    # Test number of documents
+    assert len(split_docs) == 5
+
+    # Check that split_ids are sequential
+    split_ids = [doc.meta["split_id"] for doc in split_docs]
     assert split_ids == list(range(len(split_ids)))
 
     # Test secondary splitting
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=5)
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3)
+    docs = [Document(content=sample_text)]
     result = splitter.run(documents=docs)
-    split_ids = [doc.meta["split_id"] for doc in result["documents"]]
-    assert split_ids == list(range(len(split_ids)))
-    docs = [Document(content=text)]
-    result = splitter.run(documents=docs)
-    split_ids = [doc.meta["split_id"] for doc in result["documents"]]
+    split_docs = result["documents"]
+
+    # Test number of documents
+    assert len(split_docs) == 10
+
+    split_ids = [doc.meta["split_id"] for doc in split_docs]
     assert split_ids == list(range(len(split_ids)))
 
-    # Test secondary splitting
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=5)
+    # Test with multiple input documents
+    docs = [Document(content=sample_text), Document(content="# Another Header\nSome more content here.")]
     result = splitter.run(documents=docs)
-    split_ids = [doc.meta["split_id"] for doc in result["documents"]]
-    assert split_ids == list(range(len(split_ids)))
+    split_docs = result["documents"]
+
+    # Test number of documents
+    assert len(split_docs) == 12
+
+    split_ids = [doc.meta["split_id"] for doc in split_docs]
     assert split_ids == list(range(len(split_ids)))
 
 
