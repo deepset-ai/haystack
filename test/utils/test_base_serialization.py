@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from enum import Enum
+
 import pytest
 
 from haystack.core.errors import DeserializationError, SerializationError
@@ -12,6 +14,11 @@ from haystack.utils.base_serialization import (
     deserialize_class_instance,
     serialize_class_instance,
 )
+
+
+class CustomEnum(Enum):
+    ONE = "one"
+    TWO = "two"
 
 
 class CustomClass:
@@ -257,10 +264,9 @@ def test_serialize_and_deserialize_sequence_types(value, result):
     assert _deserialize_value_with_schema(result) == value
 
 
-def test_serializing_and_deserializing_nested_dicts():
+def test_serialize_and_deserialize_nested_dicts():
     data = {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}}
-    serialized_nested_dicts = _serialize_value_with_schema(data)
-    assert serialized_nested_dicts == {
+    expected = {
         "serialization_schema": {
             "type": "object",
             "properties": {
@@ -275,30 +281,28 @@ def test_serializing_and_deserializing_nested_dicts():
         },
         "serialized_data": {"key1": {"nested1": "value1", "nested2": {"deep": "value2"}}},
     }
+    assert _serialize_value_with_schema(data) == expected
+    assert _deserialize_value_with_schema(expected) == data
 
-    deserialized_nested_dicts = _deserialize_value_with_schema(serialized_nested_dicts)
-    assert deserialized_nested_dicts == data
 
-
-def test_serialize_value_with_schema():
+def test_serialize_and_deserialize_value_with_schema_with_various_types():
     data = {
         "numbers": 1,
         "messages": [ChatMessage.from_user(text="Hello, world!"), ChatMessage.from_assistant(text="Hello, world!")],
         "user_id": "123",
         "dict_of_lists": {"numbers": [1, 2, 3]},
-        "documents": [Document(content="Hello, world!")],
+        "documents": [Document(content="Hello, world!", id="1")],
         "list_of_dicts": [{"numbers": [1, 2, 3]}],
         "answers": [
             GeneratedAnswer(
                 data="Paris",
                 query="What is the capital of France?",
-                documents=[Document(content="Paris is the capital of France")],
+                documents=[Document(content="Paris is the capital of France", id="2")],
                 meta={"page": 1},
             )
         ],
     }
-    result = _serialize_value_with_schema(data)
-    assert result == {
+    expected = {
         "serialization_schema": {
             "type": "object",
             "properties": {
@@ -330,7 +334,7 @@ def test_serialize_value_with_schema():
             "dict_of_lists": {"numbers": [1, 2, 3]},
             "documents": [
                 {
-                    "id": "e0f8c9e42f5535600aee6c5224bf4478b73bcf0a1bcba6f357bf162e88ff985d",
+                    "id": "1",
                     "content": "Hello, world!",
                     "blob": None,
                     "score": None,
@@ -347,7 +351,7 @@ def test_serialize_value_with_schema():
                         "query": "What is the capital of France?",
                         "documents": [
                             {
-                                "id": "413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
+                                "id": "2",
                                 "content": "Paris is the capital of France",
                                 "blob": None,
                                 "meta": {},
@@ -362,77 +366,8 @@ def test_serialize_value_with_schema():
             ],
         },
     }
-
-
-def test_deserialize_value_with_schema():
-    serialized_data = {
-        "serialization_schema": {
-            "type": "object",
-            "properties": {
-                "numbers": {"type": "integer"},
-                "messages": {"type": "array", "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
-                "user_id": {"type": "string"},
-                "dict_of_lists": {
-                    "type": "object",
-                    "properties": {"numbers": {"type": "array", "items": {"type": "integer"}}},
-                },
-                "documents": {"type": "array", "items": {"type": "haystack.dataclasses.document.Document"}},
-                "list_of_dicts": {"type": "array", "items": {"type": "string"}},
-                "answers": {"type": "array", "items": {"type": "haystack.dataclasses.answer.GeneratedAnswer"}},
-            },
-        },
-        "serialized_data": {
-            "numbers": 1,
-            "messages": [
-                {"role": "user", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]},
-                {"role": "assistant", "meta": {}, "name": None, "content": [{"text": "Hello, world!"}]},
-            ],
-            "user_id": "123",
-            "dict_of_lists": {"numbers": [1, 2, 3]},
-            "documents": [
-                {
-                    "id": "e0f8c9e42f5535600aee6c5224bf4478b73bcf0a1bcba6f357bf162e88ff985d",
-                    "content": "Hello, world!",
-                    "blob": None,
-                    "score": None,
-                    "embedding": None,
-                    "sparse_embedding": None,
-                }
-            ],
-            "list_of_dicts": [{"numbers": [1, 2, 3]}],
-            "answers": [
-                {
-                    "type": "haystack.dataclasses.answer.GeneratedAnswer",
-                    "init_parameters": {
-                        "data": "Paris",
-                        "query": "What is the capital of France?",
-                        "documents": [
-                            {
-                                "id": "413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
-                                "content": "Paris is the capital of France",
-                                "blob": None,
-                                "meta": {},
-                                "score": None,
-                                "embedding": None,
-                                "sparse_embedding": None,
-                            }
-                        ],
-                        "meta": {"page": 1},
-                    },
-                }
-            ],
-        },
-    }
-
-    result = _deserialize_value_with_schema(serialized_data)
-    assert result["numbers"] == 1
-    assert isinstance(result["messages"][0], ChatMessage)
-    assert result["messages"][0].text == "Hello, world!"
-    assert result["user_id"] == "123"
-    assert result["dict_of_lists"] == {"numbers": [1, 2, 3]}
-    assert isinstance(result["documents"][0], Document)
-    assert result["documents"][0].content == "Hello, world!"
-    assert isinstance(result["answers"][0], GeneratedAnswer)
+    assert _serialize_value_with_schema(data) == expected
+    assert _deserialize_value_with_schema(expected) == data
 
 
 def test_serializing_and_deserializing_custom_class_type():
@@ -455,20 +390,17 @@ def test_serializing_and_deserializing_custom_class_type():
     assert isinstance(deserialized_data["custom_type"], CustomClass)
 
 
-def test_serialize_value_with_callable():
-    result = _serialize_value_with_schema(simple_calc_function)
-    assert result == {
+def test_serialize_and_deserialize_value_with_callable():
+    expected = {
         "serialization_schema": {"type": "typing.Callable"},
         "serialized_data": "test_base_serialization.simple_calc_function",
     }
+    assert _serialize_value_with_schema(simple_calc_function) == expected
+    assert _deserialize_value_with_schema(expected) == simple_calc_function
 
 
-def test_deserialize_value_with_callable():
-    serialized_data = {
-        "serialization_schema": {"type": "typing.Callable"},
-        "serialized_data": "test_base_serialization.simple_calc_function",
-    }
-
-    result = _deserialize_value_with_schema(serialized_data)
-    assert result is simple_calc_function
-    assert result(5) == 10
+def test_serialize_and_deserialize_value_with_enum():
+    data = CustomEnum.ONE
+    expected = {"serialization_schema": {"type": "test_base_serialization.CustomEnum"}, "serialized_data": "ONE"}
+    assert _serialize_value_with_schema(data) == expected
+    assert _deserialize_value_with_schema(expected) == data
