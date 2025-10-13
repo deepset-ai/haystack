@@ -389,7 +389,7 @@ class Agent:
             for "tool_invoker".
         :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
         :raises RuntimeError: If the Agent component wasn't warmed up before calling `run()`.
-        :raises ValueError: If both break_point and snapshot are provided, or if the break_point is invalid.
+        :raises ValueError: If the break_point is invalid.
         """
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
