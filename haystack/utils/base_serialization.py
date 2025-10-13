@@ -90,8 +90,11 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:
 
     # Handle array case - iterate through elements
     elif isinstance(payload, (list, tuple, set)):
-        # Convert to list for consistent handling
-        pure_list = _convert_to_basic_types(list(payload))
+        # Serialize each item in the array
+        serialized_list = []
+        for item in payload:
+            serialized_value = _serialize_value_with_schema(item)
+            serialized_list.append(serialized_value["serialized_data"])
 
         # Determine item type from first element (if any)
         if payload:
@@ -108,14 +111,13 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:
             base_schema["minItems"] = len(payload)
             base_schema["maxItems"] = len(payload)
 
-        return {"serialization_schema": base_schema, "serialized_data": pure_list}
+        return {"serialization_schema": base_schema, "serialized_data": serialized_list}
 
     # Handle Haystack style objects (e.g. dataclasses and Components)
     elif hasattr(payload, "to_dict") and callable(payload.to_dict):
         type_name = generate_qualified_class_name(type(payload))
-        pure = _convert_to_basic_types(payload)
         schema = {"type": type_name}
-        return {"serialization_schema": schema, "serialized_data": pure}
+        return {"serialization_schema": schema, "serialized_data": payload.to_dict()}
 
     # Handle callable functions serialization
     elif callable(payload) and not isinstance(payload, type):
@@ -125,14 +127,16 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:
     # Handle arbitrary objects with __dict__
     elif hasattr(payload, "__dict__"):
         type_name = generate_qualified_class_name(type(payload))
-        pure = _convert_to_basic_types(vars(payload))
+        serialized_data = {}
+        for key, value in vars(payload).items():
+            serialized_value = _serialize_value_with_schema(value)
+            serialized_data[key] = serialized_value["serialized_data"]
         schema = {"type": type_name}
-        return {"serialization_schema": schema, "serialized_data": pure}
+        return {"serialization_schema": schema, "serialized_data": serialized_data}
 
     # Handle primitives
     else:
-        prim_type = _primitive_schema_type(payload)
-        schema = {"type": prim_type}
+        schema = {"type": _primitive_schema_type(payload)}
         return {"serialization_schema": schema, "serialized_data": payload}
 
 
@@ -151,47 +155,6 @@ def _primitive_schema_type(value: Any) -> str:
     if isinstance(value, str):
         return "string"
     return "string"  # fallback
-
-
-def _convert_to_basic_types(value: Any) -> Any:
-    """
-    Helper function to recursively convert complex Python objects into their basic type equivalents.
-
-    This helper function traverses through nested data structures and converts all complex
-    objects (custom classes, dataclasses, etc.) into basic Python types (dict, list, str,
-    int, float, bool, None) that can be easily serialized.
-
-    The function handles:
-    - Objects with to_dict() methods: converted using their to_dict implementation
-    - Objects with __dict__ attribute: converted to plain dictionaries
-    - Dictionaries: recursively converted values while preserving keys
-    - Sequences (list, tuple, set): recursively converted while preserving type
-    - Function objects: converted to None (functions cannot be serialized)
-    - Primitive types: returned as-is
-
-    """
-    # dataclass‐style objects
-    if hasattr(value, "to_dict") and callable(value.to_dict):
-        return _convert_to_basic_types(value.to_dict())
-
-    # Handle function objects - they cannot be serialized, so we return None
-    if callable(value) and not isinstance(value, type):
-        return None
-
-    # arbitrary objects with __dict__
-    if hasattr(value, "__dict__"):
-        return {k: _convert_to_basic_types(v) for k, v in vars(value).items()}
-
-    # dicts
-    if isinstance(value, dict):
-        return {k: _convert_to_basic_types(v) for k, v in value.items()}
-
-    # sequences
-    if isinstance(value, (list, tuple, set)):
-        return [_convert_to_basic_types(v) for v in value]
-
-    # primitive
-    return value
 
 
 def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint: disable=too-many-return-statements, # noqa: PLR0911, PLR0912
