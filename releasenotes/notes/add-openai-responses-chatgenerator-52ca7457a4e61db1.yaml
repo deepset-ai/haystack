@@ -1,16 +1,51 @@
 ---
 features:
   - |
-    Added OpenAIResponsesChatGenerator that uses OpenAI's Responses API.
+    Added the OpenAIResponsesChatGenerator, a new component that integrates OpenAI's Responses API into Haystack.
+    This unlocks several advanced capabilities from the Responses API:
+    - Allowing retrieval of concise summaries of the model's reasoning process.
+    - Allowing the use of Haystack Tool objects, Toolset instances, and native OpenAI or MCP tool formats.
+    - Structured outputs using pydantic models via the `text_format` parameter.
 
+
+    Example with reasoning and web search tool:
     ```python
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.dataclasses import ChatMessage
 
-    gen = OpenAIResponsesChatGenerator(model="o3-mini", generation_kwargs={"reasoning": {"effort": "low"}})
+    chat_generator = OpenAIResponsesChatGenerator(
+        model="o3-mini",
+        generation_kwargs={
+            {"summary": "auto", "effort": "low"}
+        },
+        tools=[{"type": "web_search"}]
+    )
 
-    response = gen.run(
+    response = chat_generator.run(
         messages=[
-            ChatMessage.from_user("Briefly explain the theoretical background of the Quantum Computing?")
+            ChatMessage.from_user("What's a positive news story from today?")
         ]
     )
+    print(response["replies"][0].text)
+    ```
+
+    Example with structured output:
+    ```python
+    from pydantic import BaseModel
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+    from haystack.dataclasses import ChatMessage
+
+    class WeatherInfo(BaseModel):
+        location: str
+        temperature: float
+        conditions: str
+
+    chat_generator = OpenAIResponsesChatGenerator(
+        model="gpt-5-mini",
+        generation_kwargs={"text_format": WeatherInfo}
+    )
+
+    response = chat_generator.run(
+        messages=[ChatMessage.from_user("What's the weather in Paris?")]
+    )
+    ```
