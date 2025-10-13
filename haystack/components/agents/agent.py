@@ -394,11 +394,6 @@ class Agent:
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
 
-        if break_point and snapshot:
-            raise ValueError(
-                "break_point and snapshot cannot be provided at the same time. The agent run will be aborted."
-            )
-
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
             _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
 
