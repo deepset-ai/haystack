@@ -8,6 +8,8 @@ from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.utils import deserialize_callable, serialize_callable
 
+_PRIMITIVE_TO_SCHEMA_MAP = {type(None): "null", bool: "boolean", int: "integer", float: "number", str: "string"}
+
 
 def serialize_class_instance(obj: Any) -> dict[str, Any]:
     """
@@ -127,11 +129,11 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:
     # Handle arbitrary objects with __dict__
     elif hasattr(payload, "__dict__"):
         type_name = generate_qualified_class_name(type(payload))
+        schema = {"type": type_name}
         serialized_data = {}
         for key, value in vars(payload).items():
             serialized_value = _serialize_value_with_schema(value)
             serialized_data[key] = serialized_value["serialized_data"]
-        schema = {"type": type_name}
         return {"serialization_schema": schema, "serialized_data": serialized_data}
 
     # Handle primitives
@@ -144,16 +146,9 @@ def _primitive_schema_type(value: Any) -> str:
     """
     Helper function to determine the schema type for primitive values.
     """
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "boolean"
-    if isinstance(value, int):
-        return "integer"
-    if isinstance(value, float):
-        return "number"
-    if isinstance(value, str):
-        return "string"
+    for py_type, schema_value in _PRIMITIVE_TO_SCHEMA_MAP.items():
+        if isinstance(value, py_type):
+            return schema_value
     return "string"  # fallback
 
 
@@ -166,6 +161,8 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint
          "serialization_schema": {"type": "integer"} or {"type": "object", "properties": {...}},
          "serialized_data": <the actual data>
       }
+
+    NOTE: For array types we only support homogeneous lists (all elements of the same type).
 
     :param serialized: The serialized dict with schema and data.
     :returns: The deserialized value in its original form.
@@ -181,6 +178,7 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint
 
     schema_type = schema.get("type")
 
+    # TODO This should be dropped now that we are at Haystack 2.18
     if not schema_type:
         # for backward compatibility till Haystack 2.16 we use legacy implementation
         raise DeserializationError(
@@ -193,12 +191,16 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint
     # Handle object case (dictionary with properties)
     if schema_type == "object":
         properties = schema.get("properties")
+        # TODO In what situation is properties missing if type is object?
         if properties:
             result: dict[str, Any] = {}
 
+            # TODO In what situation is properties present but data is not a dict?
             if isinstance(data, dict):
                 for field, raw_value in data.items():
                     field_schema = properties.get(field)
+                    # TODO In what situation is field_schema missing? If can be missing we should log a warning
+                    #      otherwise we are silently skipping fields
                     if field_schema:
                         # Recursively deserialize each field - avoid creating temporary dict
                         result[field] = _deserialize_value_with_schema(
@@ -207,6 +209,8 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint
 
             return result
         else:
+            # TODO No test hits this branch b/c schema_type object is only created for dicts with properties in
+            #      _serialize_value_with_schema. Do we need this branch?
             return _deserialize_value(data)
 
     # Handle array case
@@ -240,7 +244,7 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:  # pylint
             return [deserialize_item(item) for item in data]
 
     # Handle primitive types
-    elif schema_type in ("null", "boolean", "integer", "number", "string"):
+    elif schema_type in _PRIMITIVE_TO_SCHEMA_MAP.values():
         return data
 
     # Handle callable functions
@@ -268,27 +272,27 @@ def _deserialize_value(value: Any) -> Any:  # pylint: disable=too-many-return-st
     """
     # 1) Envelope case
     if isinstance(value, dict) and "type" in value and "data" in value:
-        t = value["type"]
+        value_type = value["type"]
         payload = value["data"]
 
         # 1.a) Array
-        if t == "array":
+        if value_type == "array":
             return [_deserialize_value(child) for child in payload]
 
         # 1.b) Generic object/dict
-        if t == "object":
+        if value_type == "object":
             return {k: _deserialize_value(v) for k, v in payload.items()}
 
         # 1.c) Primitive
-        if t in ("null", "boolean", "integer", "number", "string"):
+        if value_type in ("null", "boolean", "integer", "number", "string"):
             return payload
 
         # 1.d) Callable
-        if t == "typing.Callable":
+        if value_type == "typing.Callable":
             return deserialize_callable(payload)
 
         # 1.e) Custom class
-        cls = import_class_by_name(t)
+        cls = import_class_by_name(value_type)
         # first, recursively deserialize the inner payload
         deserialized_payload = {k: _deserialize_value(v) for k, v in payload.items()}
         # try from_dict
