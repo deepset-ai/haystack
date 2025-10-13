@@ -43,8 +43,23 @@ def test_basic_split(sample_text):
     assert "Subheader 1.2.3" in headers
 
     # Check that content is present and correct
+    header1_doc = next(doc for doc in split_docs if doc.meta["header"] == "Header 1")
+    assert "Content under header 1." in header1_doc.content
+
+    subheader111_doc = next(doc for doc in split_docs if doc.meta["header"] == "Subheader 1.1.1")
+    assert "Content under sub-header 1.1.1" in subheader111_doc.content
+
+    subheader121_doc = next(doc for doc in split_docs if doc.meta["header"] == "Subheader 1.2.1")
+    assert "Content under header 1.2.1." in subheader121_doc.content
+
+    subheader122_doc = next(doc for doc in split_docs if doc.meta["header"] == "Subheader 1.2.2")
+    assert "Content under header 1.2.2." in subheader122_doc.content
+
+    subheader123_doc = next(doc for doc in split_docs if doc.meta["header"] == "Subheader 1.2.3")
+    assert "Content under header 1.2.3." in subheader123_doc.content
+
+    # Ensure all documents have a header in their metadata
     for doc in split_docs:
-        assert doc.content.startswith("#") or doc.content.startswith("##") or doc.content.startswith("###")
         assert doc.meta.get("header") is not None
 
 
