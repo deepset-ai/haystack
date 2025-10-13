@@ -73,7 +73,7 @@ class MarkdownHeaderSplitter:
         # return unsplit if no headers found
         if not matches:
             logger.info("No headers found in document; returning full document as single chunk.")
-            return [{"content": text, "meta": {"header": None, "parentheaders": []}}]
+            return [{"content": text, "meta": {"header": None, "parent_headers": []}}]
 
         # process headers and build chunks
         chunks: list[dict] = []
@@ -104,7 +104,7 @@ class MarkdownHeaderSplitter:
                 continue
 
             # get parent headers
-            parentheaders = list(active_parents)
+            parent_headers = list(active_parents)
 
             logger.debug(
                 "Creating chunk for header '{header_text}' at level {level}", header_text=header_text, level=level
@@ -113,7 +113,7 @@ class MarkdownHeaderSplitter:
             chunks.append(
                 {
                     "content": f"{header_prefix} {header_text}\n{content}",
-                    "meta": {"header": header_text, "parentheaders": parentheaders},
+                    "meta": {"header": header_text, "parent_headers": parent_headers},
                 }
             )
 
@@ -167,7 +167,7 @@ class MarkdownHeaderSplitter:
                 split.meta["page_number"] = current_page
 
                 # preserve header metadata
-                for key in ["header", "parentheaders"]:
+                for key in ["header", "parent_headers"]:
                     if key in doc.meta:
                         split.meta[key] = doc.meta[key]
 

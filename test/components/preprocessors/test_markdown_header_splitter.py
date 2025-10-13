@@ -70,11 +70,11 @@ def test_split_parentheaders(sample_text):
     split_docs = result["documents"]
     # Check parentheaders for both a deep subheader and a simple one
     subheader_doc = next(doc for doc in split_docs if doc.meta["header"] == "Subheader 1.2.2")
-    assert "Header 1" in subheader_doc.meta["parentheaders"]
-    assert "Header 1.2" in subheader_doc.meta["parentheaders"]
+    assert "Header 1" in subheader_doc.meta["parent_headers"]
+    assert "Header 1.2" in subheader_doc.meta["parent_headers"]
     h3_doc = next((doc for doc in split_docs if doc.meta["header"] == "H3"), None)
     if h3_doc:
-        assert h3_doc.meta["parentheaders"] == ["H1", "H2"]
+        assert h3_doc.meta["parent_headers"] == ["H1", "H2"]
 
 
 def test_split_no_headers():
