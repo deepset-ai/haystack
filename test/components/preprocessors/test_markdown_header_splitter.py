@@ -135,7 +135,9 @@ def test_preserve_document_metadata():
 
     # New metadata should be added
     assert "header" in split_docs[0].meta
+    assert split_docs[0].meta["header"] == "Header"
     assert "split_id" in split_docs[0].meta
+    assert split_docs[0].meta["split_id"] == 0
 
 
 # Error and edge case handling
