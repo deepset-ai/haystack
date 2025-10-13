@@ -252,9 +252,6 @@ class ToolInvoker:
         if not tools:
             raise ValueError("ToolInvoker requires at least one tool.")
 
-        # Warm up tools
-        warm_up_tools(tools)
-
         if isinstance(tools, Toolset):
             converted_tools = list(tools)
         else:
@@ -489,6 +486,14 @@ class ToolInvoker:
                 tool_calls.append(tool_call)
 
         return tool_calls, tool_call_params, error_messages
+
+    def warm_up(self):
+        """
+        Warm up the tool invoker.
+
+        This will warm up the tools registered in the tool invoker.
+        """
+        warm_up_tools(self.tools)
 
     @component.output_types(tool_messages=list[ChatMessage], state=State)
     def run(
