@@ -312,9 +312,7 @@ class MarkdownHeaderSplitter:
         logger.info("Header splitting produced {num_docs} documents", num_docs=len(header_split_docs))
 
         # secondary splitting if configured
-        final_docs = (
-            self._apply_secondary_splitting(header_split_docs) if not self.secondary_split else header_split_docs
-        )
+        final_docs = self._apply_secondary_splitting(header_split_docs) if self.secondary_split else header_split_docs
 
         # assign split_id if not already done in secondary splitting
         if not self.secondary_split:
