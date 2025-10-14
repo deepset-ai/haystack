@@ -187,7 +187,7 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failur
 
     try:
         snapshot_dir.mkdir(parents=True, exist_ok=True)
-        with open(snapshot_file_path / file_name, "w") as f_out:
+        with open(full_path, "w") as f_out:
             json.dump(pipeline_snapshot.to_dict(), f_out, indent=2)
         logger.info(
             "Pipeline snapshot saved to '{full_path}'. You can use this file to debug or resume the pipeline.",
