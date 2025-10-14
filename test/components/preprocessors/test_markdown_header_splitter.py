@@ -290,10 +290,7 @@ def test_page_break_handling_with_multiple_headers():
     # Collect page numbers for each header
     header1_pages = [doc.meta.get("page_number") for doc in split_docs if doc.meta.get("header") == "Header 1"]
     header2_pages = [doc.meta.get("page_number") for doc in split_docs if doc.meta.get("header") == "Header 2"]
-    # Both headers should have splits with page_number 1 and 2 for Header 1, and 1 and 2 for Header 2
-    # (relative to their own chunk)
     assert min(header1_pages) == 1
-    assert max(header1_pages) >= 2
-    # header2_pages may start at 2 if the previous header's last chunk ended with a page break
-    assert min(header2_pages) >= 1
-    assert max(header2_pages) >= 2
+    assert max(header1_pages) == 2
+    assert min(header2_pages) == 2
+    assert max(header2_pages) == 3
