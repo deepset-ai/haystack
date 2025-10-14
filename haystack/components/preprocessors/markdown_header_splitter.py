@@ -79,6 +79,7 @@ class MarkdownHeaderSplitter:
         chunks: list[dict] = []
         header_stack: list[Optional[str]] = [None] * 6
         active_parents: list[str] = []
+        has_content = False  # Flag to track if any header has content
 
         for i, match in enumerate(matches):
             # extract header info
@@ -103,6 +104,7 @@ class MarkdownHeaderSplitter:
                 active_parents.append(header_text)
                 continue
 
+            has_content = True  # At least one header has content
             # get parent headers
             parent_headers = list(active_parents)
 
@@ -119,6 +121,11 @@ class MarkdownHeaderSplitter:
 
             # reset active parents
             active_parents = [h for h in header_stack[: level - 1] if h is not None]
+
+        # return doc unchunked if no headers have content
+        if not has_content:
+            logger.info("Document contains only headers with no content; returning original document.")
+            return [{"content": text, "meta": {}}]
 
         logger.info("Split into {num_chunks} chunks by markdown headers.", num_chunks=len(chunks))
         return chunks
