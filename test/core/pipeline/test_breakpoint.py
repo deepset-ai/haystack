@@ -284,7 +284,7 @@ class TestCreatePipelineSnapshot:
         assert any("Failed to serialize original input data for `pipeline.run`." in msg for msg in caplog.messages)
 
 
-def test_save_pipeline_snapshot_raises_on_failure(self, tmp_path, caplog):
+def test_save_pipeline_snapshot_raises_on_failure(tmp_path, caplog):
     snapshot = _create_pipeline_snapshot(
         inputs={},
         component_inputs={},
