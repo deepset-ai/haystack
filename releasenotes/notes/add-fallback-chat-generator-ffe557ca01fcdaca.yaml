@@ -1,6 +1,6 @@
 ---
 highlights: >
-  Introduced `FallbackChatGenerator` to orchestrate sequential retries across chat providers, bolstering production reliability, tightening latency budgets, and preserving answer guarantees during provider outages.
+  Introduced `FallbackChatGenerator` that tries multiple chat providers one by one, improving reliability in production and making sure you get answers even when some provider fails.
 features:
   - |
-    Added `FallbackChatGenerator`, enabling pipelines to automatically retry multiple chat generators and return the first successful response with rich metadata about the attempted fallbacks.
+    Added `FallbackChatGenerator` that automatically retries different chat generators and returns first successful response with detailed information about which providers were tried.
