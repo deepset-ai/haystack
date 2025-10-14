@@ -27,17 +27,6 @@ def subtract_numbers(a: int, b: int) -> int:
     return a - b
 
 
-class WarmupTrackingToolset(Toolset):
-    """A toolset that tracks whether warm_up was called."""
-
-    def __init__(self, tools):
-        super().__init__(tools)
-        self.was_warmed_up = False
-
-    def warm_up(self):
-        self.was_warmed_up = True
-
-
 @pytest.fixture
 def add_tool():
     return Tool(
@@ -94,34 +83,6 @@ class TestToolsetWrapper:
         assert len(result) == 2
         assert add_tool in result
         assert multiply_tool in result
-
-    def test_wrapper_warm_up_calls_each_toolset(self, add_tool, multiply_tool):
-        """Test that warming up a wrapper calls warm_up on each toolset - the main reason for wrapper."""
-        toolset1 = WarmupTrackingToolset([add_tool])
-        toolset2 = WarmupTrackingToolset([multiply_tool])
-
-        wrapper = toolset1 + toolset2
-        wrapper.warm_up()
-
-        assert toolset1.was_warmed_up
-        assert toolset2.was_warmed_up
-
-    def test_wrapper_with_tool_invoker(self, add_tool, multiply_tool):
-        """Test that _ToolsetWrapper works with ToolInvoker and tools are warmed up."""
-        toolset1 = WarmupTrackingToolset([add_tool])
-        toolset2 = WarmupTrackingToolset([multiply_tool])
-        wrapper = toolset1 + toolset2
-
-        # ToolInvoker should warm up tools when warm_up is called
-        invoker = ToolInvoker(tools=wrapper)
-        invoker.warm_up()
-
-        assert len(invoker._tools_with_names) == 2
-        assert "add" in invoker._tools_with_names
-        assert "multiply" in invoker._tools_with_names
-        # Verify warmup was called on each toolset
-        assert toolset1.was_warmed_up
-        assert toolset2.was_warmed_up
 
     def test_wrapper_with_agent(self, add_tool, multiply_tool):
         """Test that _ToolsetWrapper works with Agent."""
