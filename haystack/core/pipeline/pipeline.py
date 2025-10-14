@@ -360,10 +360,9 @@ class Pipeline(PipelineBase):
                     and component_name == break_point.agent_name
                 )
                 if break_point and (component_break_point_triggered or agent_break_point_triggered):
-                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
-                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
                     new_pipeline_snapshot = _create_pipeline_snapshot(
-                        inputs=pipeline_snapshot_inputs_serialised,
+                        inputs=deepcopy(inputs),
+                        component_inputs=deepcopy(component_inputs),
                         break_point=break_point,
                         component_visits=component_visits,
                         original_input_data=data,
@@ -378,7 +377,7 @@ class Pipeline(PipelineBase):
                         component_inputs["break_point"] = break_point
                         component_inputs["parent_snapshot"] = new_pipeline_snapshot
 
-                    # trigger the breakpoint if needed
+                    # trigger the break point if needed
                     if component_break_point_triggered:
                         _trigger_break_point(pipeline_snapshot=new_pipeline_snapshot)
 
@@ -398,11 +397,10 @@ class Pipeline(PipelineBase):
                         snapshot_file_path=out_dir,
                     )
 
-                    # Create a snapshot of the last good state of the pipeline before the error occurred.
-                    pipeline_snapshot_inputs_serialised = deepcopy(inputs)
-                    pipeline_snapshot_inputs_serialised[component_name] = deepcopy(component_inputs)
-                    last_good_state_snapshot = _create_pipeline_snapshot(
-                        inputs=pipeline_snapshot_inputs_serialised,
+                    # Create a snapshot of the state of the pipeline before the error occurred.
+                    pipeline_snapshot = _create_pipeline_snapshot(
+                        inputs=deepcopy(inputs),
+                        component_inputs=deepcopy(component_inputs),
                         break_point=break_point,
                         component_visits=component_visits,
                         original_input_data=data,
@@ -415,23 +413,12 @@ class Pipeline(PipelineBase):
                     # We take the agent snapshot and attach it to the pipeline snapshot we create here.
                     # We also update the break_point to be an AgentBreakpoint.
                     if error.pipeline_snapshot and error.pipeline_snapshot.agent_snapshot:
-                        last_good_state_snapshot.agent_snapshot = error.pipeline_snapshot.agent_snapshot
-                        last_good_state_snapshot.break_point = error.pipeline_snapshot.agent_snapshot.break_point
+                        pipeline_snapshot.agent_snapshot = error.pipeline_snapshot.agent_snapshot
+                        pipeline_snapshot.break_point = error.pipeline_snapshot.agent_snapshot.break_point
 
-                    # Attach the last good state snapshot to the error before re-raising it and saving to disk
-                    error.pipeline_snapshot = last_good_state_snapshot
-
-                    try:
-                        _save_pipeline_snapshot(pipeline_snapshot=last_good_state_snapshot)
-                        logger.info(
-                            "Saved a snapshot of the pipeline's last valid state to '{out_path}'. "
-                            "Review this snapshot to debug the error and resume the pipeline from here.",
-                            out_path=out_dir,
-                        )
-                    except Exception as save_error:
-                        logger.error(
-                            "Failed to save a snapshot of the pipeline's last valid state with error: {e}", e=save_error
-                        )
+                    # Attach the pipeline snapshot to the error before re-raising
+                    error.pipeline_snapshot = pipeline_snapshot
+                    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot, raise_on_failure=False)
                     raise error
 
                 # Updates global input state with component outputs and returns outputs that should go to
