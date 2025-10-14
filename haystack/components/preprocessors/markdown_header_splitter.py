@@ -173,12 +173,6 @@ class MarkdownHeaderSplitter:
 
                 result_docs.append(split)
 
-        # assign unique, sequential split_id to all final chunks
-        for idx, doc in enumerate(result_docs):
-            if doc.meta is None:
-                doc.meta = {}
-            doc.meta["split_id"] = idx
-
         logger.info("Secondary splitting complete. Final count: {final_count} documents.", final_count=len(result_docs))
         return result_docs
 
@@ -314,11 +308,10 @@ class MarkdownHeaderSplitter:
         # secondary splitting if configured
         final_docs = self._apply_secondary_splitting(header_split_docs) if self.secondary_split else header_split_docs
 
-        # assign split_id if not already done in secondary splitting
-        if not self.secondary_split:
-            for idx, doc in enumerate(final_docs):
-                if doc.meta is None:
-                    doc.meta = {}
-                doc.meta["split_id"] = idx
+        # assign split_id to all output documents
+        for idx, doc in enumerate(final_docs):
+            if doc.meta is None:
+                doc.meta = {}
+            doc.meta["split_id"] = idx
 
         return {"documents": final_docs}
