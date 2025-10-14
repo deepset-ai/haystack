@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added `warm_up()` support to the Tools system, enabling tools to perform resource-intensive initialization
+    before execution. Tools and Toolsets can now override the `warm_up()` method to establish connections to
+    remote services, load models, or perform other preparatory operations. The `ToolInvoker` and `Agent`
+    automatically call `warm_up()` on their tools during their own warm-up phase, ensuring tools are ready
+    before use.
