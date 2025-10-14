@@ -23,13 +23,11 @@ class Tool:
 
     Initialization and warm-up:
         The Tool (or any derived subclass) initialization should be lightweight and accept only
-        basic Python types (strings, numbers, booleans, etc.) or iterables and dictionaries
-        containing such values.
+        basic Python types (see the fields of this Tool class for examples).
 
         For resource-intensive operations like establishing connections to remote services or
         loading models, override the `warm_up()` method. This method is called before the Tool
         is used and should be idempotent, as it may be called multiple times.
-        This guidance applies to all derived subclasses of Tool as well.
 
     :param name:
         Name of the Tool.
