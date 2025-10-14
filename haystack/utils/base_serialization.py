@@ -103,6 +103,7 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # pylint: dis
             serialized_list.append(serialized_value["serialized_data"])
 
         # Determine item type from first element (if any)
+        # NOTE: We do not support mixed-type lists
         if payload:
             first = next(iter(payload))
             item_schema = _serialize_value_with_schema(first)
