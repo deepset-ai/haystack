@@ -412,8 +412,15 @@ def test_serialize_and_deserialize_value_with_callable():
     assert _deserialize_value_with_schema(expected) == simple_calc_function
 
 
-# def test_serialize_and_deserialize_value_with_enum():
-#     data = CustomEnum.ONE
-#     expected = {"serialization_schema": {"type": "test_base_serialization.CustomEnum"}, "serialized_data": "ONE"}
-#     assert _serialize_value_with_schema(data) == expected
-#     assert _deserialize_value_with_schema(expected) == data
+def test_serialize_and_deserialize_value_with_enum():
+    data = CustomEnum.ONE
+    expected = {"serialization_schema": {"type": "test_base_serialization.CustomEnum"}, "serialized_data": "ONE"}
+    assert _serialize_value_with_schema(data) == expected
+    assert _deserialize_value_with_schema(expected) == data
+
+
+def test_deserialize_value_with_wrong_value():
+    with pytest.raises(DeserializationError, match="Value 'NOT_VALID' is not a valid member of Enum"):
+        _deserialize_value_with_schema(
+            {"serialization_schema": {"type": "test_base_serialization.CustomEnum"}, "serialized_data": "NOT_VALID"}
+        )

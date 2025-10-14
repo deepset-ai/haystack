@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from enum import Enum
 from typing import Any
 
 from haystack.core.errors import DeserializationError, SerializationError
@@ -126,6 +127,11 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:
         serialized = serialize_callable(payload)
         return {"serialization_schema": {"type": "typing.Callable"}, "serialized_data": serialized}
 
+    # Handle Enums
+    elif isinstance(payload, Enum):
+        type_name = generate_qualified_class_name(type(payload))
+        return {"serialization_schema": {"type": type_name}, "serialized_data": payload.name}
+
     # Handle arbitrary objects with __dict__
     elif hasattr(payload, "__dict__"):
         type_name = generate_qualified_class_name(type(payload))
@@ -178,7 +184,6 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
 
     schema_type = schema.get("type")
 
-    # TODO Should this be dropped now that we are at Haystack 2.18
     if not schema_type:
         # for backward compatibility till Haystack 2.16 we use legacy implementation
         raise DeserializationError(
@@ -234,9 +239,16 @@ def _deserialize_value(value: dict[str, Any]) -> Any:
     """
     Helper function to deserialize values from their envelope format {"type": T, "data": D}.
 
+    This handles:
+    - Custom classes (with a from_dict method)
+    - Enums
+    - Fallback for arbitrary classes (sets attributes on a blank instance)
+
     :param value: The value to deserialize
     :returns:
         The deserialized value
+    :raises DeserializationError:
+        If the type cannot be imported or the value is not valid for the type.
     """
     # 1) Envelope case
     value_type = value["type"]
@@ -249,8 +261,13 @@ def _deserialize_value(value: dict[str, Any]) -> Any:
     if hasattr(cls, "from_dict") and callable(cls.from_dict):
         return cls.from_dict(payload)
 
-    # TODO If we reach this point we should probably log a warning that from_dict is missing and recommend to users
-    #      to implement it for their custom classes
+    # handle enum types
+    if issubclass(cls, Enum):
+        try:
+            return cls[payload]
+        except Exception as e:
+            raise DeserializationError(f"Value '{payload}' is not a valid member of Enum '{value_type}'") from e
+
     # fallback: set attributes on a blank instance
     deserialized_payload = {k: _deserialize_value(v) for k, v in payload.items()}
     instance = cls.__new__(cls)
