@@ -216,7 +216,7 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
         # Is a set if uniqueItems is True
         if schema.get("uniqueItems") is True:
             final_array = set(deserialized_items)
-        # Is a tuple if minItems and maxItems are set and equal
+        # Is a tuple if minItems and maxItems are set
         elif schema.get("minItems") is not None and schema.get("maxItems") is not None:
             final_array = tuple(deserialized_items)
         else:
