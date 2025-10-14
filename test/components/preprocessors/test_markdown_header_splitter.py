@@ -267,18 +267,14 @@ def test_secondary_split_with_threshold():
 
 def test_page_break_handling_in_secondary_split():
     text = "# Header\nFirst page\fSecond page\fThird page"
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=2)
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=1)
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    # The page_number should increment at each page break
     page_numbers = [doc.meta.get("page_number") for doc in split_docs]
     # Should start at 1 and increment at each \f
     assert page_numbers[0] == 1
-    assert 2 in page_numbers
-    # Remove: assert 3 in page_numbers
-    # Instead, check that the max page number is 2 or 3, depending on split alignment
-    assert max(page_numbers) >= 2
+    assert max(page_numbers) == 3
 
 
 def test_page_break_handling_with_multiple_headers():
