@@ -284,23 +284,22 @@ class TestCreatePipelineSnapshot:
         assert any("Failed to serialize original input data for `pipeline.run`." in msg for msg in caplog.messages)
 
 
-class TestSavePipelineSnapshot:
-    def test_save_pipeline_snapshot_raises_on_failure(self, tmp_path, caplog):
-        snapshot = _create_pipeline_snapshot(
-            inputs={},
-            component_inputs={},
-            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
-            component_visits={"comp1": 1, "comp2": 0},
-            original_input_data={},
-            ordered_component_names=["comp1", "comp2"],
-            include_outputs_from={"comp1"},
-            # We use a non-serializable type (bytes) directly in pipeline outputs to trigger the error
-            pipeline_outputs={"comp1": {"result": b"test"}},
-        )
+def test_save_pipeline_snapshot_raises_on_failure(self, tmp_path, caplog):
+    snapshot = _create_pipeline_snapshot(
+        inputs={},
+        component_inputs={},
+        break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+        component_visits={"comp1": 1, "comp2": 0},
+        original_input_data={},
+        ordered_component_names=["comp1", "comp2"],
+        include_outputs_from={"comp1"},
+        # We use a non-serializable type (bytes) directly in pipeline outputs to trigger the error
+        pipeline_outputs={"comp1": {"result": b"test"}},
+    )
 
-        with pytest.raises(TypeError):
-            _save_pipeline_snapshot(snapshot)
+    with pytest.raises(TypeError):
+        _save_pipeline_snapshot(snapshot)
 
-        with caplog.at_level(logging.ERROR):
-            _save_pipeline_snapshot(snapshot, raise_on_failure=False)
-            assert any("Failed to save pipeline snapshot to" in msg for msg in caplog.messages)
+    with caplog.at_level(logging.ERROR):
+        _save_pipeline_snapshot(snapshot, raise_on_failure=False)
+        assert any("Failed to save pipeline snapshot to" in msg for msg in caplog.messages)
