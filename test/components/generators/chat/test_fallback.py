@@ -109,7 +109,7 @@ def test_sequential_first_success():
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
     res = gen.run([ChatMessage.from_user("hi")])
     assert res["replies"][0].text == "A"
-    assert res["meta"]["successful_generator_index"] == 0
+    assert res["meta"]["successful_chat_generator_index"] == 0
     assert res["meta"]["total_attempts"] == 1
 
 
@@ -117,8 +117,8 @@ def test_sequential_second_success_after_failure():
     gen = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen(text="B")])
     res = gen.run([ChatMessage.from_user("hi")])
     assert res["replies"][0].text == "B"
-    assert res["meta"]["successful_generator_index"] == 1
-    assert res["meta"]["failed_generators"]
+    assert res["meta"]["successful_chat_generator_index"] == 1
+    assert res["meta"]["failed_chat_generators"]
 
 
 def test_all_fail_raises():
@@ -189,7 +189,7 @@ def test_automatic_completion_mode_without_streaming():
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="completion")])
     res = gen.run([ChatMessage.from_user("hi")])
     assert res["replies"][0].text == "completion"
-    assert res["meta"]["successful_generator_index"] == 0
+    assert res["meta"]["successful_chat_generator_index"] == 0
 
 
 def test_automatic_ttft_mode_with_streaming():
@@ -261,8 +261,8 @@ def test_failover_trigger_429_rate_limit():
     result = fallback.run([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_rate_limit"
-    assert result["meta"]["successful_generator_index"] == 1
-    assert result["meta"]["failed_generators"] == ["_DummyHTTPErrorGen"]
+    assert result["meta"]["successful_chat_generator_index"] == 1
+    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 def test_failover_trigger_401_authentication():
@@ -273,8 +273,8 @@ def test_failover_trigger_401_authentication():
     result = fallback.run([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_auth"
-    assert result["meta"]["successful_generator_index"] == 1
-    assert result["meta"]["failed_generators"] == ["_DummyHTTPErrorGen"]
+    assert result["meta"]["successful_chat_generator_index"] == 1
+    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 def test_failover_trigger_400_bad_request():
@@ -285,8 +285,8 @@ def test_failover_trigger_400_bad_request():
     result = fallback.run([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_bad_request"
-    assert result["meta"]["successful_generator_index"] == 1
-    assert result["meta"]["failed_generators"] == ["_DummyHTTPErrorGen"]
+    assert result["meta"]["successful_chat_generator_index"] == 1
+    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 def test_failover_trigger_500_server_error():
@@ -297,8 +297,8 @@ def test_failover_trigger_500_server_error():
     result = fallback.run([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_server_error"
-    assert result["meta"]["successful_generator_index"] == 1
-    assert result["meta"]["failed_generators"] == ["_DummyHTTPErrorGen"]
+    assert result["meta"]["successful_chat_generator_index"] == 1
+    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 def test_failover_trigger_multiple_errors():
@@ -311,8 +311,8 @@ def test_failover_trigger_multiple_errors():
     result = fallback.run([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_all_errors"
-    assert result["meta"]["successful_generator_index"] == 3
-    assert len(result["meta"]["failed_generators"]) == 3
+    assert result["meta"]["successful_chat_generator_index"] == 3
+    assert len(result["meta"]["failed_chat_generators"]) == 3
 
 
 def test_failover_trigger_all_generators_fail():
@@ -326,8 +326,8 @@ def test_failover_trigger_all_generators_fail():
         fallback.run([ChatMessage.from_user("test")])
 
     error_msg = str(exc_info.value)
-    assert "All 3 generators failed" in error_msg
-    assert "Failed generators: [_DummyHTTPErrorGen, _DummyHTTPErrorGen, _DummyHTTPErrorGen]" in error_msg
+    assert "All 3 chat generators failed" in error_msg
+    assert "Failed chat generators: [_DummyHTTPErrorGen, _DummyHTTPErrorGen, _DummyHTTPErrorGen]" in error_msg
 
 
 @pytest.mark.asyncio
@@ -339,8 +339,8 @@ async def test_failover_trigger_429_rate_limit_async():
     result = await fallback.run_async([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_rate_limit"
-    assert result["meta"]["successful_generator_index"] == 1
-    assert result["meta"]["failed_generators"] == ["_DummyHTTPErrorGen"]
+    assert result["meta"]["successful_chat_generator_index"] == 1
+    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 @pytest.mark.asyncio
@@ -352,5 +352,5 @@ async def test_failover_trigger_401_authentication_async():
     result = await fallback.run_async([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_auth"
-    assert result["meta"]["successful_generator_index"] == 1
-    assert result["meta"]["failed_generators"] == ["_DummyHTTPErrorGen"]
+    assert result["meta"]["successful_chat_generator_index"] == 1
+    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]

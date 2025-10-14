@@ -21,13 +21,13 @@ class FallbackChatGenerator:
     """
     A chat generator wrapper that tries multiple chat generators sequentially.
 
-    It forwards all parameters transparently to the underlying generators and returns the first successful result.
-    Calls generators sequentially until one succeeds. Falls back on any exception raised by a generator.
-    If all generators fail, it raises a RuntimeError with details.
+    It forwards all parameters transparently to the underlying chat generators and returns the first successful result.
+    Calls chat generators sequentially until one succeeds. Falls back on any exception raised by a generator.
+    If all chat generators fail, it raises a RuntimeError with details.
 
-    Timeout enforcement is fully delegated to the underlying generators. The fallback mechanism will only
+    Timeout enforcement is fully delegated to the underlying chat generators. The fallback mechanism will only
     work correctly if the underlying chat generators implement proper timeout handling and raise exceptions
-    when timeouts occur. For predictable latency guarantees, ensure your generators:
+    when timeouts occur. For predictable latency guarantees, ensure your chat generators:
     - Support a `timeout` parameter in their initialization
     - Implement timeout as total wall-clock time (shared deadline for both streaming and non-streaming)
     - Raise timeout exceptions (e.g., TimeoutError, asyncio.TimeoutError, httpx.TimeoutException) when exceeded
@@ -58,15 +58,15 @@ class FallbackChatGenerator:
         self.chat_generators = list(chat_generators)
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize the component, including nested generators when they support serialization."""
+        """Serialize the component, including nested chat generators when they support serialization."""
         return default_to_dict(
             self, chat_generators=[gen.to_dict() for gen in self.chat_generators if hasattr(gen, "to_dict")]
         )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator:
-        """Rebuild the component from a serialized representation, restoring nested generators."""
-        # Reconstruct nested generators from their serialized dicts
+        """Rebuild the component from a serialized representation, restoring nested chat generators."""
+        # Reconstruct nested chat generators from their serialized dicts
         init_params = data.get("init_parameters", {})
         serialized = init_params.get("chat_generators") or []
         deserialized: list[Any] = []
@@ -122,7 +122,7 @@ class FallbackChatGenerator:
         tools: Union[list[Tool], Toolset, None] = None,
         streaming_callback: Union[StreamingCallbackT, None] = None,
     ) -> dict[str, Any]:
-        """Execute generators sequentially until one succeeds, returning its replies and enriched metadata."""
+        """Execute chat generators sequentially until one succeeds, returning its replies and enriched metadata."""
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
 
@@ -134,10 +134,10 @@ class FallbackChatGenerator:
                 meta = dict(result.get("meta", {}))
                 meta.update(
                     {
-                        "successful_generator_index": idx,
-                        "successful_generator_class": gen_name,
+                        "successful_chat_generator_index": idx,
+                        "successful_chat_generator_class": gen_name,
                         "total_attempts": idx + 1,
-                        "failed_generators": failed,
+                        "failed_chat_generators": failed,
                     }
                 )
                 return {"replies": replies, "meta": meta}
@@ -150,8 +150,8 @@ class FallbackChatGenerator:
 
         failed_names = ", ".join(failed)
         msg = (
-            f"All {len(self.chat_generators)} generators failed. "
-            f"Last error: {last_error}. Failed generators: [{failed_names}]"
+            f"All {len(self.chat_generators)} chat generators failed. "
+            f"Last error: {last_error}. Failed chat generators: [{failed_names}]"
         )
         raise RuntimeError(msg)
 
@@ -163,7 +163,7 @@ class FallbackChatGenerator:
         tools: Union[list[Tool], Toolset, None] = None,
         streaming_callback: Union[StreamingCallbackT, None] = None,
     ) -> dict[str, Any]:
-        """Asynchronously execute generators in order, returning the first successful result with metadata."""
+        """Asynchronously execute chat generators in order, returning the first successful result with metadata."""
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
 
@@ -175,21 +175,23 @@ class FallbackChatGenerator:
                 meta = dict(result.get("meta", {}))
                 meta.update(
                     {
-                        "successful_generator_index": idx,
-                        "successful_generator_class": gen_name,
+                        "successful_chat_generator_index": idx,
+                        "successful_chat_generator_class": gen_name,
                         "total_attempts": idx + 1,
-                        "failed_generators": failed,
+                        "failed_chat_generators": failed,
                     }
                 )
                 return {"replies": replies, "meta": meta}
             except Exception as e:  # noqa: BLE001 - fallback logic should handle any exception
-                logger.warning("Generator {generator} failed with error: {error}", generator=gen_name, error=e)
+                logger.warning(
+                    "ChatGenerator {chat_generator} failed with error: {error}", chat_generator=gen_name, error=e
+                )
                 failed.append(gen_name)
                 last_error = e
 
         failed_names = ", ".join(failed)
         msg = (
-            f"All {len(self.chat_generators)} generators failed. "
-            f"Last error: {last_error}. Failed generators: [{failed_names}]"
+            f"All {len(self.chat_generators)} chat generators failed. "
+            f"Last error: {last_error}. Failed chat generators: [{failed_names}]"
         )
         raise RuntimeError(msg)
