@@ -21,13 +21,10 @@ class Tool:
     Accurate definitions of the textual attributes such as `name` and `description`
     are important for the Language Model to correctly prepare the call.
 
-    Initialization and warm-up:
-        The Tool (or any derived subclass) initialization should be lightweight and accept only
-        basic Python types (see the fields of this Tool class for examples).
-
-        For resource-intensive operations like establishing connections to remote services or
-        loading models, override the `warm_up()` method. This method is called before the Tool
-        is used and should be idempotent, as it may be called multiple times.
+    For resource-intensive operations like establishing connections to remote services or
+    loading models, override the `warm_up()` method. This method is called before the Tool
+    is used and should be idempotent, as it may be called multiple times during
+    pipeline/agent setup.
 
     :param name:
         Name of the Tool.

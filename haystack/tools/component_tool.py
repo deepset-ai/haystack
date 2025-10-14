@@ -212,6 +212,13 @@ class ComponentTool(Tool):
         )
         self._component = component
 
+    def warm_up(self):
+        """
+        Prepare the ComponentTool for use.
+        """
+        if hasattr(self._component, "warm_up"):
+            self._component.warm_up()
+
     def to_dict(self) -> dict[str, Any]:
         """
         Serializes the ComponentTool to a dictionary.
