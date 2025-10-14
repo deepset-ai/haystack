@@ -258,7 +258,6 @@ def test_secondary_split_with_threshold():
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    # The last chunk should have at least split_threshold words if possible
     for doc in split_docs[:-1]:
         assert len(doc.content.split()) == 3
     # The last chunk should have at least 2 words (threshold)
