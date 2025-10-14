@@ -116,6 +116,28 @@ def faulty_invoker(faulty_tool):
     return ToolInvoker(tools=[faulty_tool], raise_on_failure=True, convert_result_to_json_string=False)
 
 
+class WarmupTrackingTool(Tool):
+    """A tool that tracks whether warm_up was called."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.was_warmed_up = False
+
+    def warm_up(self):
+        self.was_warmed_up = True
+
+
+class WarmupTrackingToolset(Toolset):
+    """A toolset that tracks whether warm_up was called."""
+
+    def __init__(self, tools):
+        super().__init__(tools)
+        self.was_warmed_up = False
+
+    def warm_up(self):
+        self.was_warmed_up = True
+
+
 class TestToolInvokerCore:
     def test_init(self, weather_tool):
         invoker = ToolInvoker(tools=[weather_tool])
@@ -976,3 +998,91 @@ class TestToolInvokerUtilities:
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"temperature": "14"}
+
+
+class TestWarmUpTools:
+    """Tests for Tool/Toolset warm_up through ToolInvoker"""
+
+    def test_tool_invoker_warm_up_with_single_tool(self):
+        """Test that ToolInvoker.warm_up() calls warm_up on a single tool."""
+        tool = WarmupTrackingTool(
+            name="test_tool",
+            description="A test tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "test",
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+
+        assert not tool.was_warmed_up
+        invoker.warm_up()
+        assert tool.was_warmed_up
+
+    def test_tool_invoker_warm_up_with_multiple_tools(self):
+        """Test that ToolInvoker.warm_up() calls warm_up on multiple tools."""
+        tool1 = WarmupTrackingTool(
+            name="tool1",
+            description="First tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool1",
+        )
+        tool2 = WarmupTrackingTool(
+            name="tool2",
+            description="Second tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool2",
+        )
+
+        invoker = ToolInvoker(tools=[tool1, tool2])
+
+        assert not tool1.was_warmed_up
+        assert not tool2.was_warmed_up
+
+        invoker.warm_up()
+
+        assert tool1.was_warmed_up
+        assert tool2.was_warmed_up
+
+    def test_tool_invoker_warm_up_with_toolset(self, weather_tool):
+        """Test that ToolInvoker.warm_up() calls warm_up on the toolset."""
+        toolset = WarmupTrackingToolset([weather_tool])
+        invoker = ToolInvoker(tools=toolset)
+
+        assert not toolset.was_warmed_up
+        invoker.warm_up()
+        assert toolset.was_warmed_up
+
+    def test_tool_invoker_warm_up_with_mixed_toolsets(self):
+        """Test that ToolInvoker.warm_up() works with combined toolsets using concatenation."""
+        # Create first toolset with a tracking tool
+        tool1 = WarmupTrackingTool(
+            name="tool1",
+            description="First tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool1",
+        )
+        toolset1 = WarmupTrackingToolset([tool1])
+
+        # Create second toolset with another tracking tool
+        tool2 = WarmupTrackingTool(
+            name="tool2",
+            description="Second tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool2",
+        )
+        toolset2 = WarmupTrackingToolset([tool2])
+
+        # Combine toolsets using the + operator (creates _ToolsetWrapper)
+        combined = toolset1 + toolset2
+
+        # Create invoker with the combined toolset
+        invoker = ToolInvoker(tools=combined)
+
+        assert not toolset1.was_warmed_up
+        assert not toolset2.was_warmed_up
+
+        invoker.warm_up()
+
+        # Both toolsets should be warmed up
+        assert toolset1.was_warmed_up
+        assert toolset2.was_warmed_up

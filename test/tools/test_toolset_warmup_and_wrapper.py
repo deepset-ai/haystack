@@ -157,29 +157,3 @@ class TestToolsetWrapper:
         toolset_with_dup = Toolset([add_tool])
         with pytest.raises(ValueError, match="Duplicate tool names found"):
             _ = result + toolset_with_dup
-
-
-class TestWarmUpTools:
-    """Tests for the warm_up_tools utility function"""
-
-    def test_warm_up_tools_with_list_and_toolset(self, add_tool, multiply_tool):
-        """Test warm_up_tools works with both list of tools and Toolset."""
-        # List of tools
-        tools_list = [add_tool, multiply_tool]
-        warm_up_tools(tools_list)  # Should not raise
-
-        # Toolset
-        toolset = WarmupTrackingToolset([add_tool])
-        warm_up_tools(toolset)
-        assert toolset.was_warmed_up
-
-    def test_warm_up_tools_with_wrapper(self, add_tool, multiply_tool):
-        """Test warm_up_tools with a _ToolsetWrapper delegates to each toolset."""
-        toolset1 = WarmupTrackingToolset([add_tool])
-        toolset2 = WarmupTrackingToolset([multiply_tool])
-        wrapper = toolset1 + toolset2
-
-        warm_up_tools(wrapper)
-
-        assert toolset1.was_warmed_up
-        assert toolset2.was_warmed_up
