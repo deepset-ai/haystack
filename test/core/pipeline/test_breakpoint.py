@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import logging
 
 import pytest
 
@@ -10,12 +11,14 @@ from haystack import component
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import (
+    _create_pipeline_snapshot,
+    _save_pipeline_snapshot,
     _transform_json_structure,
     _trigger_chat_generator_breakpoint,
     _trigger_tool_invoker_breakpoint,
     load_pipeline_snapshot,
 )
-from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses import ByteStream, ChatMessage, Document, ToolCall
 from haystack.dataclasses.breakpoints import (
     AgentBreakpoint,
     AgentSnapshot,
@@ -27,7 +30,7 @@ from haystack.dataclasses.breakpoints import (
 
 
 @pytest.fixture
-def make_pipeline_snapshot():
+def make_pipeline_snapshot_with_agent_snapshot():
     def _make(break_point: AgentBreakpoint) -> PipelineSnapshot:
         return PipelineSnapshot(
             break_point=break_point,
@@ -144,8 +147,8 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path):
         assert loaded_snapshot.break_point.visit_count == 0
 
 
-def test_trigger_tool_invoker_breakpoint(make_pipeline_snapshot):
-    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot(
+def test_trigger_tool_invoker_breakpoint(make_pipeline_snapshot_with_agent_snapshot):
+    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot_with_agent_snapshot(
         break_point=AgentBreakpoint("agent", ToolBreakpoint(component_name="tool_invoker"))
     )
     with pytest.raises(BreakpointException):
@@ -155,8 +158,8 @@ def test_trigger_tool_invoker_breakpoint(make_pipeline_snapshot):
         )
 
 
-def test_trigger_tool_invoker_breakpoint_no_raise(make_pipeline_snapshot):
-    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot(
+def test_trigger_tool_invoker_breakpoint_no_raise(make_pipeline_snapshot_with_agent_snapshot):
+    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot_with_agent_snapshot(
         break_point=AgentBreakpoint("agent", ToolBreakpoint(component_name="tool_invoker", tool_name="tool2"))
     )
     # This should not raise since the tool call is for "tool1", not "tool2"
@@ -166,12 +169,12 @@ def test_trigger_tool_invoker_breakpoint_no_raise(make_pipeline_snapshot):
     )
 
 
-def test_trigger_tool_invoker_breakpoint_specific_tool(make_pipeline_snapshot):
+def test_trigger_tool_invoker_breakpoint_specific_tool(make_pipeline_snapshot_with_agent_snapshot):
     """
     This is to test if a specific tool is set in the ToolBreakpoint, the BreakpointException is raised even when
     there are multiple tool calls in the message.
     """
-    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot(
+    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot_with_agent_snapshot(
         break_point=AgentBreakpoint("agent", ToolBreakpoint(component_name="tool_invoker", tool_name="tool2"))
     )
     with pytest.raises(BreakpointException):
@@ -185,9 +188,130 @@ def test_trigger_tool_invoker_breakpoint_specific_tool(make_pipeline_snapshot):
         )
 
 
-def test_trigger_chat_generator_breakpoint(make_pipeline_snapshot):
-    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot(
+def test_trigger_chat_generator_breakpoint(make_pipeline_snapshot_with_agent_snapshot):
+    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot_with_agent_snapshot(
         break_point=AgentBreakpoint("agent", Breakpoint(component_name="chat_generator"))
     )
     with pytest.raises(BreakpointException):
         _trigger_chat_generator_breakpoint(pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint)
+
+
+class TestCreatePipelineSnapshot:
+    def test_create_pipeline_snapshot_all_fields(self):
+        break_point = Breakpoint(component_name="comp2")
+        ordered_component_names = ["comp1", "comp2"]
+        include_outputs_from = {"comp1"}
+
+        snapshot = _create_pipeline_snapshot(
+            inputs={"comp1": {"input_value": [{"sender": None, "value": "test"}]}, "comp2": {}},
+            component_inputs={"input_value": "processed_test"},
+            break_point=break_point,
+            component_visits={"comp1": 1, "comp2": 0},
+            original_input_data={"comp1": {"input_value": "test"}},
+            ordered_component_names=ordered_component_names,
+            include_outputs_from=include_outputs_from,
+            pipeline_outputs={"comp1": {"result": "processed_test"}},
+        )
+
+        assert snapshot.original_input_data == {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {"comp1": {"type": "object", "properties": {"input_value": {"type": "string"}}}},
+            },
+            "serialized_data": {"comp1": {"input_value": "test"}},
+        }
+        assert snapshot.ordered_component_names == ordered_component_names
+        assert snapshot.break_point == break_point
+        assert snapshot.agent_snapshot is None
+        assert snapshot.include_outputs_from == include_outputs_from
+        assert snapshot.pipeline_state == PipelineState(
+            inputs={
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {
+                        "comp1": {"type": "object", "properties": {"input_value": {"type": "string"}}},
+                        "comp2": {"type": "object", "properties": {"input_value": {"type": "string"}}},
+                    },
+                },
+                "serialized_data": {"comp1": {"input_value": "test"}, "comp2": {"input_value": "processed_test"}},
+            },
+            component_visits={"comp1": 1, "comp2": 0},
+            pipeline_outputs={"comp1": {"result": "processed_test"}},
+        )
+
+    def test_create_pipeline_snapshot_with_dataclasses_in_pipeline_outputs(self):
+        snapshot = _create_pipeline_snapshot(
+            inputs={},
+            component_inputs={},
+            break_point=Breakpoint(component_name="comp2"),
+            component_visits={"comp1": 1, "comp2": 0},
+            original_input_data={},
+            ordered_component_names=["comp1", "comp2"],
+            include_outputs_from={"comp1"},
+            pipeline_outputs={"comp1": {"result": ChatMessage.from_user("hello")}},
+        )
+
+        assert snapshot.pipeline_state == PipelineState(
+            inputs={
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {"comp2": {"type": "object", "properties": {}}},
+                },
+                "serialized_data": {"comp2": {}},
+            },
+            component_visits={"comp1": 1, "comp2": 0},
+            pipeline_outputs={"comp1": {"result": ChatMessage.from_user("hello")}},
+        )
+
+    def test_create_pipeline_snapshot_non_serializable_inputs(self, caplog):
+        class NonSerializable:
+            def to_dict(self):
+                raise TypeError("Cannot serialize")
+
+        with caplog.at_level(logging.WARNING):
+            _create_pipeline_snapshot(
+                inputs={"comp1": {"input_value": [{"sender": None, "value": NonSerializable()}]}, "comp2": {}},
+                component_inputs={},
+                break_point=Breakpoint(component_name="comp2"),
+                component_visits={"comp1": 1, "comp2": 0},
+                original_input_data={"comp1": {"input_value": NonSerializable()}},
+                ordered_component_names=["comp1", "comp2"],
+                include_outputs_from={"comp1"},
+                pipeline_outputs={},
+            )
+
+        assert any("Failed to serialize the inputs of the current pipeline state" in msg for msg in caplog.messages)
+        assert any("Failed to serialize original input data for `pipeline.run`." in msg for msg in caplog.messages)
+
+
+class TestSavePipelineSnapshot:
+    def test_save_pipeline_snapshot_raises_on_failure_document(self, tmp_path):
+        snapshot = _create_pipeline_snapshot(
+            inputs={},
+            component_inputs={},
+            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+            component_visits={"comp1": 1, "comp2": 0},
+            original_input_data={},
+            ordered_component_names=["comp1", "comp2"],
+            include_outputs_from={"comp1"},
+            pipeline_outputs={"comp1": {"result": Document(blob=ByteStream(data=b"test"))}},
+        )
+
+        with pytest.raises(TypeError):
+            _save_pipeline_snapshot(snapshot)
+
+    def test_save_pipeline_snapshot_raises_on_failure(self, tmp_path):
+        snapshot = _create_pipeline_snapshot(
+            inputs={},
+            component_inputs={},
+            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+            component_visits={"comp1": 1, "comp2": 0},
+            original_input_data={},
+            ordered_component_names=["comp1", "comp2"],
+            include_outputs_from={"comp1"},
+            # We use a non-serializable type (bytes) directly in pipeline outputs to trigger the error
+            pipeline_outputs={"comp1": {"result": b"test"}},
+        )
+
+        with pytest.raises(TypeError):
+            _save_pipeline_snapshot(snapshot)
