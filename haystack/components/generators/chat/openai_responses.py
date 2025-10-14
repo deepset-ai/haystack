@@ -18,10 +18,12 @@ from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
+    ImageContent,
     ReasoningContent,
     StreamingCallbackT,
     StreamingChunk,
     SyncStreamingCallbackT,
+    TextContent,
     ToolCall,
     ToolCallDelta,
     select_streaming_callback,
@@ -64,27 +66,15 @@ class OpenAIResponsesChatGenerator:
 
     messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 
-    client = OpenAIResponsesChatGenerator()
+    client = OpenAIResponsesChatGenerator(generation_kwargs={"reasoning": {"effort": "low", "summary": "auto"}})
     response = client.run(messages)
     print(response)
     ```
-    Output:
-    ```
-    {'replies':
-        [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=
-        [TextContent(text="Natural Language Processing (NLP) is a branch of artificial intelligence
-            that focuses on enabling computers to understand, interpret, and generate human language in
-            a way that is meaningful and useful.")],
-         _name=None,
-         _meta={'model': 'gpt-4o-mini', 'status': 'completed',
-         'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})
-        ]
-    }
-    ```
     """
 
-    def __init__(  # pylint: disable=too-many-positional-arguments
+    def __init__(
         self,
+        *,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-5-mini",
         streaming_callback: Optional[StreamingCallbackT] = None,
@@ -119,21 +109,14 @@ class OpenAIResponsesChatGenerator:
            See OpenAI [documentation](https://platform.openai.com/docs/api-reference/responses) for
             more details.
             Some of the supported parameters:
-            - `max_tokens`: The maximum number of tokens the output text can have.
-            - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
-                Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
+            - `background`: Whether to run the model response in the background.
+            - `temperature`: What sampling temperature to use. Higher values like 0.8 will make the output more random,
+                while lower values like 0.2 will make it more focused and deterministic.
             - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
                 considers the results of the tokens with top_p probability mass. For example, 0.1 means only the tokens
                 comprising the top 10% probability mass are considered.
-            - `n`: How many completions to generate for each prompt. For example, if the LLM gets 3 prompts and n is 2,
-                it will generate two completions for each of the three prompts, ending up with 6 completions in total.
-            - `stop`: One or more sequences after which the LLM should stop generating tokens.
-            - `presence_penalty`: What penalty to apply if a token is already present at all. Bigger values mean
-                the model will be less likely to repeat the same token in the text.
-            - `frequency_penalty`: What penalty to apply if a token has already been generated in the text.
-                Bigger values mean the model will be less likely to repeat the same token in the text.
-            - `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
-                values are the bias to add to that token.
+            - `previous_response_id`: The ID of the previous response.
+                Use this to create multi-turn conversations.
             - `text_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
                 If provided, the output will always be validated against this
                 format (unless the model returns a tool call).
@@ -157,11 +140,14 @@ class OpenAIResponsesChatGenerator:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-            list of `Tool` objects, a `Toolset` instance or a dictionary of OpenAI tool definitions.
+            The tools that the model can use to prepare calls. This parameter can accept either a
+            list of Haystack `Tool` objects, a Haystack `Toolset` instance or a dictionary of
+            OpenAI/MCP tool definitions.
+            For details on tool support, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses/create#responses-create-tools).
         :param tools_strict:
-            Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-            the schema provided in the `parameters` field of the tool definition, but this may increase latency.
+            Whether to enable strict schema adherence for tool calls. If set to `False`, the model may not exactly
+            follow the schema provided in the `parameters` field of the tool definition. In Response API, tool calls
+            are strict by default.
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
@@ -178,8 +164,6 @@ class OpenAIResponsesChatGenerator:
         self.tools = tools  # Store tools as-is, whether it's a list or a Toolset
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
-        # Check for duplicate tool names
-        # _check_duplicate_tool_names(list(self.tools or []))
 
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -291,7 +275,7 @@ class OpenAIResponsesChatGenerator:
         tools_strict: Optional[bool] = None,
     ):
         """
-        Invokes chat completion based on the provided messages and generation parameters.
+        Invokes response generation based on the provided messages and generation parameters.
 
         :param messages:
             A list of ChatMessage instances representing the input messages.
@@ -334,14 +318,14 @@ class OpenAIResponsesChatGenerator:
         responses = openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
-            completions = self._handle_stream_response(
+            response_output = self._handle_stream_response(
                 responses,  # type: ignore
                 streaming_callback,
             )
         else:
             assert isinstance(responses, Response), "Unexpected response type for non-streaming request."
-            completions = [_convert_response_to_chat_message(responses)]
-        return {"replies": completions}
+            response_output = [_convert_response_to_chat_message(responses)]
+        return {"replies": response_output}
 
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
@@ -354,7 +338,7 @@ class OpenAIResponsesChatGenerator:
         tools_strict: Optional[bool] = None,
     ):
         """
-        Asynchronously invokes chat completion based on the provided messages and generation parameters.
+        Asynchronously invokes response generation based on the provided messages and generation parameters.
 
         This is the asynchronous version of the `run` method. It has the same parameters and return values
         but can be used with `await` in async code.
@@ -403,15 +387,15 @@ class OpenAIResponsesChatGenerator:
         responses = await openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
-            completions = await self._handle_async_stream_response(
+            response_output = await self._handle_async_stream_response(
                 responses,  # type: ignore
                 streaming_callback,
             )
 
         else:
             assert isinstance(responses, Response), "Unexpected response type for non-streaming request."
-            completions = [_convert_response_to_chat_message(responses)]
-        return {"replies": completions}
+            response_output = [_convert_response_to_chat_message(responses)]
+        return {"replies": response_output}
 
     def _prepare_api_call(  # noqa: PLR0913
         self,
@@ -428,7 +412,7 @@ class OpenAIResponsesChatGenerator:
         text_format = generation_kwargs.pop("text_format", None)
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
-        openai_formatted_messages = [message.to_openai_dict_format(is_responses_api=True) for message in messages]
+        openai_formatted_messages = [convert_message_to_responses_api_format(message) for message in messages]
 
         tools = tools or self.tools
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
@@ -448,9 +432,9 @@ class OpenAIResponsesChatGenerator:
                 _check_duplicate_tool_names(tools)  # type: ignore[arg-type]
                 for t in tools:
                     function_spec = {**t.tool_spec}  # type: ignore[union-attr]
-                    if tools_strict:
-                        function_spec["strict"] = True
-                        function_spec["parameters"]["additionalProperties"] = False
+                    if not tools_strict:
+                        function_spec["strict"] = False
+                    function_spec["parameters"]["additionalProperties"] = False
                     tool_definitions.append({"type": "function", **function_spec})  # type: ignore[union-attr]
 
             openai_tools = {"tools": tool_definitions}
@@ -528,9 +512,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
             reasoning_text = "\n".join([summary.text for summary in summaries if summaries])
             if reasoning_text:
                 reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
-        # elif output.type == "message":
-        # content = output.content
-        # text = content[0].text if content else ""  # type: ignore[union-attr]
+
         elif output.type == "function_call":
             try:
                 arguments = json.loads(output.arguments)
@@ -546,12 +528,20 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
             tool_calls.append(ToolCall(id=output.id, tool_name=output.name, arguments=arguments))
     status = getattr(responses.output, "status", "completed")
+    meta = responses.to_dict()
+    # remove output and reasoning from meta
+    # we need response id and other info for multi turn conversations
+    meta.pop("output")
+    meta.pop("reasoning")
+    meta["status"] = status
+    meta["usage"] = _serialize_usage(responses.usage)
     chat_message = ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
         reasoning=reasoning,
         tool_calls=tool_calls,
-        meta={"model": responses.model, "status": status, "usage": _serialize_usage(responses.usage)},
+        meta=meta,
     )
+    print(f"ChatMessage: {meta}")
 
     return chat_message
 
@@ -628,3 +618,95 @@ def _serialize_usage(usage):
         return [_serialize_usage(item) for item in usage]
     else:
         return usage
+
+
+def convert_message_to_responses_api_format(message: ChatMessage, require_tool_call_ids: bool = True) -> dict[str, Any]:
+    """
+    Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
+
+    :param require_tool_call_ids:
+        If True (default), enforces that each Tool Call includes a non-null `id` attribute.
+        Set to False to allow Tool Calls without `id`, which may be suitable for shallow OpenAI-compatible APIs.
+    :returns:
+        The ChatMessage in the format expected by OpenAI's Chat API.
+
+    :raises ValueError:
+        If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
+        `id` attribute.
+    """
+    text_contents = message.texts
+    tool_calls = message.tool_calls
+    tool_call_results = message.tool_call_results
+    images = message.images
+
+    if not text_contents and not tool_calls and not tool_call_results and not images:
+        raise ValueError(
+            "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`, or `ImageContent`."
+        )
+    if len(tool_call_results) > 0 and len(message._content) > 1:
+        raise ValueError(
+            "For OpenAI compatibility, a `ChatMessage` with a `ToolCallResult` cannot contain any other content."
+        )
+
+    openai_msg: dict[str, Any] = {"role": message._role.value}
+
+    # Add name field if present
+    if message._name is not None:
+        openai_msg["name"] = message._name
+
+    # user message
+    if openai_msg["role"] == "user":
+        if len(message._content) == 1 and isinstance(message._content[0], TextContent):
+            openai_msg["content"] = message.text
+            return openai_msg
+
+        # if the user message contains a list of text and images, OpenAI expects a list of dictionaries
+        content = []
+        for part in message._content:
+            if isinstance(part, TextContent):
+                text_type = "input_text"
+                content.append({"type": text_type, "text": part.text})
+            elif isinstance(part, ImageContent):
+                image_item: dict[str, Any]
+                image_item = {
+                    "type": "input_image",
+                    # If no MIME type is provided, default to JPEG.
+                    # OpenAI API appears to tolerate MIME type mismatches.
+                    "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
+                }
+
+                content.append(image_item)
+
+        openai_msg["content"] = content
+        return openai_msg
+
+    # tool message
+    if tool_call_results:
+        result = tool_call_results[0]
+        openai_msg["content"] = result.result
+        if result.origin.id is not None:
+            openai_msg["tool_call_id"] = result.origin.id
+        elif require_tool_call_ids:
+            raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
+        # OpenAI does not provide a way to communicate errors in tool invocations, so we ignore the error field
+        return openai_msg
+
+    # system and assistant messages
+    # OpenAI Chat Completions API does not support reasoning content, so we ignore it
+    if text_contents:
+        openai_msg["content"] = text_contents[0]
+    if tool_calls:
+        openai_tool_calls = []
+        for tc in tool_calls:
+            openai_tool_call = {
+                "type": "function",
+                # We disable ensure_ascii so special chars like emojis are not converted
+                "function": {"name": tc.tool_name, "arguments": json.dumps(tc.arguments, ensure_ascii=False)},
+            }
+            if tc.id is not None:
+                openai_tool_call["id"] = tc.id
+            elif require_tool_call_ids:
+                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
+            openai_tool_calls.append(openai_tool_call)
+        openai_msg["tool_calls"] = openai_tool_calls
+    return openai_msg

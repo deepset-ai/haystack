@@ -317,6 +317,7 @@ class TestOpenAIResponsesChatGenerator:
         assert "gpt-5-mini" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
+        assert message.meta["id"] is not None
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
