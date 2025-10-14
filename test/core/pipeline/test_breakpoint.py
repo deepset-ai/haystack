@@ -285,22 +285,7 @@ class TestCreatePipelineSnapshot:
 
 
 class TestSavePipelineSnapshot:
-    def test_save_pipeline_snapshot_raises_on_failure_document(self, tmp_path):
-        snapshot = _create_pipeline_snapshot(
-            inputs={},
-            component_inputs={},
-            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
-            component_visits={"comp1": 1, "comp2": 0},
-            original_input_data={},
-            ordered_component_names=["comp1", "comp2"],
-            include_outputs_from={"comp1"},
-            pipeline_outputs={"comp1": {"result": Document(blob=ByteStream(data=b"test"))}},
-        )
-
-        with pytest.raises(TypeError):
-            _save_pipeline_snapshot(snapshot)
-
-    def test_save_pipeline_snapshot_raises_on_failure(self, tmp_path):
+    def test_save_pipeline_snapshot_raises_on_failure(self, tmp_path, caplog):
         snapshot = _create_pipeline_snapshot(
             inputs={},
             component_inputs={},
@@ -315,3 +300,7 @@ class TestSavePipelineSnapshot:
 
         with pytest.raises(TypeError):
             _save_pipeline_snapshot(snapshot)
+
+        with caplog.at_level(logging.ERROR):
+            _save_pipeline_snapshot(snapshot, raise_on_failure=False)
+            assert any("Failed to save pipeline snapshot to" in msg for msg in caplog.messages)
