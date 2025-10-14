@@ -115,8 +115,9 @@ def test_split_only_headers():
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    # Should not create chunks for headers with no content
-    assert len(split_docs) == 0
+    # Return doc without content unchunked
+    assert len(split_docs) == 1
+    assert split_docs[0].content == text
 
 
 # Metadata preservation
