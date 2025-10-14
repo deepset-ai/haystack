@@ -1086,3 +1086,33 @@ class TestWarmUpTools:
         # Both toolsets should be warmed up
         assert toolset1.was_warmed_up
         assert toolset2.was_warmed_up
+
+    def test_tool_invoker_warm_up_is_idempotent(self):
+        """Test that ToolInvoker.warm_up() is idempotent and only warms up once."""
+
+        class WarmupCountingTool(Tool):
+            """A tool that counts how many times warm_up was called."""
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.warm_up_count = 0
+
+            def warm_up(self):
+                self.warm_up_count += 1
+
+        tool = WarmupCountingTool(
+            name="counting_tool",
+            description="A tool that counts warm_up calls",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "test",
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+
+        # Call warm_up multiple times
+        invoker.warm_up()
+        invoker.warm_up()
+        invoker.warm_up()
+
+        # Should only be warmed up once
+        assert tool.warm_up_count == 1

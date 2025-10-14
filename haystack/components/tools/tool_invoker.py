@@ -216,6 +216,7 @@ class ToolInvoker:
         self.convert_result_to_json_string = convert_result_to_json_string
 
         self._tools_with_names = self._validate_and_prepare_tools(tools)
+        self._is_warmed_up = False
 
     @staticmethod
     def _make_context_bound_invoke(tool_to_invoke: Tool, final_args: dict[str, Any]) -> Callable[[], Any]:
@@ -492,8 +493,11 @@ class ToolInvoker:
         Warm up the tool invoker.
 
         This will warm up the tools registered in the tool invoker.
+        This method is idempotent and will only warm up the tools once.
         """
-        warm_up_tools(self.tools)
+        if not self._is_warmed_up:
+            warm_up_tools(self.tools)
+            self._is_warmed_up = True
 
     @component.output_types(tool_messages=list[ChatMessage], state=State)
     def run(
