@@ -47,33 +47,35 @@ class FallbackChatGenerator:
     - Any other exception
     """
 
-    def __init__(self, generators: list[ChatGenerator]):
+    def __init__(self, chat_generators: list[ChatGenerator]):
         """
-        :param generators: A non-empty list of chat generator components to try in order.
+        :param chat_generators: A non-empty list of chat generator components to try in order.
         """
-        if not generators:
-            msg = "'generators' must be a non-empty list"
+        if not chat_generators:
+            msg = "'chat_generators' must be a non-empty list"
             raise ValueError(msg)
 
-        self.generators = list(generators)
+        self.chat_generators = list(chat_generators)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component, including nested generators when they support serialization."""
-        return default_to_dict(self, generators=[gen.to_dict() for gen in self.generators if hasattr(gen, "to_dict")])
+        return default_to_dict(
+            self, chat_generators=[gen.to_dict() for gen in self.chat_generators if hasattr(gen, "to_dict")]
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator:
         """Rebuild the component from a serialized representation, restoring nested generators."""
         # Reconstruct nested generators from their serialized dicts
         init_params = data.get("init_parameters", {})
-        serialized = init_params.get("generators") or []
+        serialized = init_params.get("chat_generators") or []
         deserialized: list[Any] = []
         for g in serialized:
             # Use the generic component deserializer available in Haystack
             holder = {"component": g}
             deserialize_component_inplace(holder, key="component")
             deserialized.append(holder["component"])
-        init_params["generators"] = deserialized
+        init_params["chat_generators"] = deserialized
         data["init_parameters"] = init_params
         return default_from_dict(cls, data)
 
@@ -124,7 +126,7 @@ class FallbackChatGenerator:
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
 
-        for idx, gen in enumerate(self.generators):
+        for idx, gen in enumerate(self.chat_generators):
             gen_name = gen.__class__.__name__
             try:
                 result = self._run_single_sync(gen, messages, generation_kwargs, tools, streaming_callback)
@@ -146,7 +148,7 @@ class FallbackChatGenerator:
 
         failed_names = ", ".join(failed)
         msg = (
-            f"All {len(self.generators)} generators failed. "
+            f"All {len(self.chat_generators)} generators failed. "
             f"Last error: {last_error}. Failed generators: [{failed_names}]"
         )
         raise RuntimeError(msg)
@@ -163,7 +165,7 @@ class FallbackChatGenerator:
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
 
-        for idx, gen in enumerate(self.generators):
+        for idx, gen in enumerate(self.chat_generators):
             gen_name = gen.__class__.__name__
             try:
                 result = await self._run_single_async(gen, messages, generation_kwargs, tools, streaming_callback)
@@ -185,7 +187,7 @@ class FallbackChatGenerator:
 
         failed_names = ", ".join(failed)
         msg = (
-            f"All {len(self.generators)} generators failed. "
+            f"All {len(self.chat_generators)} generators failed. "
             f"Last error: {last_error}. Failed generators: [{failed_names}]"
         )
         raise RuntimeError(msg)

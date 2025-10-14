@@ -99,14 +99,14 @@ class _DummyFailGen:
 
 def test_init_validation():
     with pytest.raises(ValueError):
-        FallbackChatGenerator(generators=[])
+        FallbackChatGenerator(chat_generators=[])
 
-    gen = FallbackChatGenerator(generators=[_DummySuccessGen(text="A")])
-    assert len(gen.generators) == 1
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
+    assert len(gen.chat_generators) == 1
 
 
 def test_sequential_first_success():
-    gen = FallbackChatGenerator(generators=[_DummySuccessGen(text="A")])
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
     res = gen.run([ChatMessage.from_user("hi")])
     assert res["replies"][0].text == "A"
     assert res["meta"]["successful_generator_index"] == 0
@@ -114,7 +114,7 @@ def test_sequential_first_success():
 
 
 def test_sequential_second_success_after_failure():
-    gen = FallbackChatGenerator(generators=[_DummyFailGen(), _DummySuccessGen(text="B")])
+    gen = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen(text="B")])
     res = gen.run([ChatMessage.from_user("hi")])
     assert res["replies"][0].text == "B"
     assert res["meta"]["successful_generator_index"] == 1
@@ -122,7 +122,7 @@ def test_sequential_second_success_after_failure():
 
 
 def test_all_fail_raises():
-    gen = FallbackChatGenerator(generators=[_DummyFailGen(), _DummyFailGen()])
+    gen = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummyFailGen()])
     with pytest.raises(RuntimeError):
         gen.run([ChatMessage.from_user("hi")])
 
@@ -130,7 +130,7 @@ def test_all_fail_raises():
 def test_timeout_handling_sync():
     slow = _DummySuccessGen(text="slow", delay=0.01)
     fast = _DummySuccessGen(text="fast", delay=0.0)
-    gen = FallbackChatGenerator(generators=[slow, fast])
+    gen = FallbackChatGenerator(chat_generators=[slow, fast])
     res = gen.run([ChatMessage.from_user("hi")])
     assert res["replies"][0].text == "slow"
 
@@ -139,7 +139,7 @@ def test_timeout_handling_sync():
 async def test_timeout_handling_async():
     slow = _DummySuccessGen(text="slow", delay=0.01)
     fast = _DummySuccessGen(text="fast", delay=0.0)
-    gen = FallbackChatGenerator(generators=[slow, fast])
+    gen = FallbackChatGenerator(chat_generators=[slow, fast])
     res = await gen.run_async([ChatMessage.from_user("hi")])
     assert res["replies"][0].text == "slow"
 
@@ -150,7 +150,7 @@ def test_streaming_callback_forwarding_sync():
     def cb(x: Any) -> None:
         calls.append(x)
 
-    gen = FallbackChatGenerator(generators=[_DummySuccessGen(text="A")])
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
     _ = gen.run([ChatMessage.from_user("hi")], streaming_callback=cb)
     assert calls
 
@@ -162,31 +162,31 @@ async def test_streaming_callback_forwarding_async():
     def cb(x: Any) -> None:
         calls.append(x)
 
-    gen = FallbackChatGenerator(generators=[_DummySuccessGen(text="A")])
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
     _ = await gen.run_async([ChatMessage.from_user("hi")], streaming_callback=cb)
     assert calls
 
 
 def test_serialization_roundtrip():
-    original = FallbackChatGenerator(generators=[_DummySuccessGen(text="hello")])
+    original = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="hello")])
     data = original.to_dict()
     restored = FallbackChatGenerator.from_dict(data)
     assert isinstance(restored, FallbackChatGenerator)
-    assert len(restored.generators) == 1
+    assert len(restored.chat_generators) == 1
     res = restored.run([ChatMessage.from_user("hi")])
     assert res["replies"][0].text == "hello"
 
-    original = FallbackChatGenerator(generators=[_DummySuccessGen(text="hello"), _DummySuccessGen(text="world")])
+    original = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="hello"), _DummySuccessGen(text="world")])
     data = original.to_dict()
     restored = FallbackChatGenerator.from_dict(data)
     assert isinstance(restored, FallbackChatGenerator)
-    assert len(restored.generators) == 2
+    assert len(restored.chat_generators) == 2
     res = restored.run([ChatMessage.from_user("hi")])
     assert res["replies"][0].text == "hello"
 
 
 def test_automatic_completion_mode_without_streaming():
-    gen = FallbackChatGenerator(generators=[_DummySuccessGen(text="completion")])
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="completion")])
     res = gen.run([ChatMessage.from_user("hi")])
     assert res["replies"][0].text == "completion"
     assert res["meta"]["successful_generator_index"] == 0
@@ -198,7 +198,7 @@ def test_automatic_ttft_mode_with_streaming():
     def cb(x: Any) -> None:
         calls.append(x)
 
-    gen = FallbackChatGenerator(generators=[_DummySuccessGen(text="streaming")])
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="streaming")])
     res = gen.run([ChatMessage.from_user("hi")], streaming_callback=cb)
     assert res["replies"][0].text == "streaming"
     assert calls
@@ -211,7 +211,7 @@ async def test_automatic_ttft_mode_with_streaming_async():
     def cb(x: Any) -> None:
         calls.append(x)
 
-    gen = FallbackChatGenerator(generators=[_DummySuccessGen(text="streaming_async")])
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="streaming_async")])
     res = await gen.run_async([ChatMessage.from_user("hi")], streaming_callback=cb)
     assert res["replies"][0].text == "streaming_async"
     assert calls
@@ -257,7 +257,7 @@ def test_failover_trigger_429_rate_limit():
     rate_limit_gen = _DummyHTTPErrorGen(text="rate_limited", error=create_http_error(429, "Rate limit exceeded"))
     success_gen = _DummySuccessGen(text="success_after_rate_limit")
 
-    fallback = FallbackChatGenerator(generators=[rate_limit_gen, success_gen])
+    fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_rate_limit"
@@ -269,7 +269,7 @@ def test_failover_trigger_401_authentication():
     auth_error_gen = _DummyHTTPErrorGen(text="auth_failed", error=create_http_error(401, "Authentication failed"))
     success_gen = _DummySuccessGen(text="success_after_auth")
 
-    fallback = FallbackChatGenerator(generators=[auth_error_gen, success_gen])
+    fallback = FallbackChatGenerator(chat_generators=[auth_error_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_auth"
@@ -281,7 +281,7 @@ def test_failover_trigger_400_bad_request():
     bad_request_gen = _DummyHTTPErrorGen(text="bad_request", error=create_http_error(400, "Context length exceeded"))
     success_gen = _DummySuccessGen(text="success_after_bad_request")
 
-    fallback = FallbackChatGenerator(generators=[bad_request_gen, success_gen])
+    fallback = FallbackChatGenerator(chat_generators=[bad_request_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_bad_request"
@@ -293,7 +293,7 @@ def test_failover_trigger_500_server_error():
     server_error_gen = _DummyHTTPErrorGen(text="server_error", error=create_http_error(500, "Internal server error"))
     success_gen = _DummySuccessGen(text="success_after_server_error")
 
-    fallback = FallbackChatGenerator(generators=[server_error_gen, success_gen])
+    fallback = FallbackChatGenerator(chat_generators=[server_error_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_server_error"
@@ -307,7 +307,7 @@ def test_failover_trigger_multiple_errors():
     server_error_gen = _DummyHTTPErrorGen(text="server_error", error=create_http_error(500, "Internal server error"))
     success_gen = _DummySuccessGen(text="success_after_all_errors")
 
-    fallback = FallbackChatGenerator(generators=[rate_limit_gen, auth_error_gen, server_error_gen, success_gen])
+    fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, auth_error_gen, server_error_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_all_errors"
@@ -320,7 +320,7 @@ def test_failover_trigger_all_generators_fail():
     auth_error_gen = _DummyHTTPErrorGen(text="auth_failed", error=create_http_error(401, "Authentication failed"))
     server_error_gen = _DummyHTTPErrorGen(text="server_error", error=create_http_error(500, "Internal server error"))
 
-    fallback = FallbackChatGenerator(generators=[rate_limit_gen, auth_error_gen, server_error_gen])
+    fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, auth_error_gen, server_error_gen])
 
     with pytest.raises(RuntimeError) as exc_info:
         fallback.run([ChatMessage.from_user("test")])
@@ -335,7 +335,7 @@ async def test_failover_trigger_429_rate_limit_async():
     rate_limit_gen = _DummyHTTPErrorGen(text="rate_limited", error=create_http_error(429, "Rate limit exceeded"))
     success_gen = _DummySuccessGen(text="success_after_rate_limit")
 
-    fallback = FallbackChatGenerator(generators=[rate_limit_gen, success_gen])
+    fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, success_gen])
     result = await fallback.run_async([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_rate_limit"
@@ -348,7 +348,7 @@ async def test_failover_trigger_401_authentication_async():
     auth_error_gen = _DummyHTTPErrorGen(text="auth_failed", error=create_http_error(401, "Authentication failed"))
     success_gen = _DummySuccessGen(text="success_after_auth")
 
-    fallback = FallbackChatGenerator(generators=[auth_error_gen, success_gen])
+    fallback = FallbackChatGenerator(chat_generators=[auth_error_gen, success_gen])
     result = await fallback.run_async([ChatMessage.from_user("test")])
 
     assert result["replies"][0].text == "success_after_auth"
