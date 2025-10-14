@@ -140,7 +140,7 @@ class FallbackChatGenerator:
                 )
                 return {"replies": replies, "meta": meta}
             except Exception as e:  # noqa: BLE001 - fallback logic should handle any exception
-                logger.warning("Generator {generator} failed with error: {error}", generator=gen_name, error=e)
+                logger.warning("ChatGenerator {chat_generator} failed with error: {error}", chat_generator=gen_name, error=e)
                 failed.append(gen_name)
                 last_error = e
 
