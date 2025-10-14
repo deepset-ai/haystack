@@ -5,9 +5,12 @@
 from enum import Enum
 from typing import Any, Union
 
+from haystack import logging
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.utils import deserialize_callable, serialize_callable
+
+logger = logging.getLogger(__name__)
 
 _PRIMITIVE_TO_SCHEMA_MAP = {type(None): "null", bool: "boolean", int: "integer", float: "number", str: "string"}
 
@@ -155,6 +158,9 @@ def _primitive_schema_type(value: Any) -> str:
     for py_type, schema_value in _PRIMITIVE_TO_SCHEMA_MAP.items():
         if isinstance(value, py_type):
             return schema_value
+    logger.warning(
+        "Unsupported primitive type '{value_type}', falling back to 'string'", value_type=type(value).__name__
+    )
     return "string"  # fallback
 
 
