@@ -17,6 +17,7 @@ from haystack.tools import (
     Toolset,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
@@ -84,7 +85,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         max_retries: Optional[int] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         default_headers: Optional[dict[str, str]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset, list[Toolset]]] = None,
         tools_strict: bool = False,
         *,
         azure_ad_token_provider: Optional[Union[AzureADTokenProvider, AsyncAzureADTokenProvider]] = None,
@@ -138,8 +139,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
                   the `response_format` must be a JSON schema and not a Pydantic model.
         :param default_headers: Default headers to use for the AzureOpenAI client.
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-            list of `Tool` objects or a `Toolset` instance.
+            A list of tools, a Toolset, or a list of Toolset instances for which the model can prepare calls.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -179,7 +179,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
-        _check_duplicate_tool_names(list(tools or []))
+        _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
         self.tools = tools
         self.tools_strict = tools_strict
 

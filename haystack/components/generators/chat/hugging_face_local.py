@@ -189,7 +189,7 @@ class HuggingFaceLocalChatGenerator:
 
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(flatten_tools_or_toolsets(tools or []))
+        _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
 
         huggingface_pipeline_kwargs = huggingface_pipeline_kwargs or {}
         generation_kwargs = generation_kwargs or {}
@@ -538,7 +538,7 @@ class HuggingFaceLocalChatGenerator:
         tools = tools or self.tools
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        flat_tools = flatten_tools_or_toolsets(tools or [])
+        flat_tools = flatten_tools_or_toolsets(tools)
         _check_duplicate_tool_names(flat_tools)
 
         tokenizer = self.pipeline.tokenizer
