@@ -53,6 +53,8 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
+          cd docs-website
+
           if [[ -n $(git status -s) ]]; then
             echo "Syncing docs with Docusaurus..."
             git add .
