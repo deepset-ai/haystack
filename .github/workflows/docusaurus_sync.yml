@@ -12,9 +12,7 @@ on:
 
 env:
   HATCH_VERSION: "1.14.2"
-  PYTHON_VERSION: "3.9"
-  DOCS_REPO: "deepset-ai/haystack-docs"
-  DOCS_REPO_PATH: "reference/haystack-api"
+  PYTHON_VERSION: "3.11"
 
 jobs:
   sync:
@@ -34,21 +32,14 @@ jobs:
       - name: Install Hatch
         run: pip install hatch==${{ env.HATCH_VERSION }}
 
-      - name: Generate API docs for Docusaurus
+      - name: Generate API reference for Docusaurus
         # This command simply runs ./.github/utils/pydoc-markdown.sh with a specific config path
         run: hatch run readme:sync "../config_docusaurus/*"
 
-      - name: Checkout Docusaurus repo
-        uses: actions/checkout@v5
-        with:
-          repository: ${{ env.DOCS_REPO }}
-          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-          path: haystack-docs
-
-      - name: Sync generated docs to Docusaurus repo
+      - name: Sync generated API reference to docs folder
         run: |
           SOURCE_PATH="docs/pydoc/temp"
-          DEST_PATH="haystack-docs/${{ env.DOCS_REPO_PATH }}"
+          DEST_PATH="docs-website/reference/haystack-api"
 
           echo "Syncing from $SOURCE_PATH to $DEST_PATH"
           mkdir -p $DEST_PATH
@@ -57,12 +48,12 @@ jobs:
 
       - name: Commit and push changes
         env:
-            GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          cd haystack-docs
+          cd docs-website
 
           if [[ -n $(git status -s) ]]; then
             echo "Syncing docs with Docusaurus..."
