@@ -24,10 +24,18 @@ jobs:
           echo ""
 
           echo "=== CHECKING BOT PERMISSIONS ==="
-          # Use a temporary file to avoid token exposure in logs
-          if permission_response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                                    -H "Accept: application/vnd.github.v3+json" \
-                                    https://api.github.com/repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission 2>/dev/null) && [ -n "$permission_response" ]; then
+          # Check who the token belongs to first
+          echo "Checking token owner..."
+          if token_owner=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                                -H "Accept: application/vnd.github.v3+json" \
+                                https://api.github.com/user 2>/dev/null) && [ -n "$token_owner" ]; then
+            token_user=$(echo "$token_owner" | jq -r '.login')
+            echo "Token belongs to: $token_user"
+
+            # Now check permissions for the token owner
+            if permission_response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                                        -H "Accept: application/vnd.github.v3+json" \
+                                        "https://api.github.com/repos/${{ github.repository }}/collaborators/$token_user/permission" 2>/dev/null) && [ -n "$permission_response" ]; then
             permission_level=$(echo "$permission_response" | jq -r '.permission // "unknown"')
             echo "Bot permission level: $permission_level"
 
@@ -38,8 +46,11 @@ jobs:
             else
               echo "❌ Bot has $permission_level permissions - cannot bypass branch protection"
             fi
+            else
+              echo "❌ Failed to check permissions for token owner"
+            fi
           else
-            echo "❌ Failed to check bot permissions"
+            echo "❌ Failed to identify token owner"
           fi
 
           echo ""
