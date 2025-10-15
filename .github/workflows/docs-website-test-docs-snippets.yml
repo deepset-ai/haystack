@@ -9,6 +9,7 @@ on:
         description: 'Haystack version to test against (e.g., 2.16.1, main)'
         required: false
         default: 'main'
+        type: string
 
   # TEMPORARILY DISABLED
   # push:
