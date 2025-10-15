@@ -27,7 +27,7 @@ from haystack.utils.misc import _get_output_dir
 
 if TYPE_CHECKING:
     from haystack.components.agents.agent import _ExecutionContext
-    from haystack.tools import Tool, Toolset, flatten_tools_or_toolsets
+    from haystack.tools import Tool, Toolset
 
 logger = logging.getLogger(__name__)
 
@@ -355,6 +355,8 @@ def _validate_tool_breakpoint_is_valid(
     :param tools: List of Tool objects, a Toolset, or a list of Toolset instances that the agent can use.
     :raises ValueError: If any tool name in ToolBreakpoints is not available in the agent's tools.
     """
+    from haystack.tools.utils import flatten_tools_or_toolsets  # avoid circular import
+
     available_tool_names = {tool.name for tool in flatten_tools_or_toolsets(tools)}
     tool_breakpoint = agent_breakpoint.break_point
     # Assert added for mypy to pass, but this is already checked before this function is called
