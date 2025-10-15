@@ -1115,6 +1115,44 @@ class TestOpenAIChatGenerator:
         assert not message.tool_calls
         assert not message.tool_call_results
 
+    def test_init_with_list_of_toolsets(self, monkeypatch, tools):
+        """Test initialization with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        toolset1 = Toolset([tools[0]])
+        toolset2 = Toolset([tools[1]])
+
+        component = OpenAIChatGenerator(tools=[toolset1, toolset2])
+
+        assert component.tools == [toolset1, toolset2]
+        assert isinstance(component.tools, list)
+        assert len(component.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in component.tools)
+
+    def test_serde_with_list_of_toolsets(self, monkeypatch, tools):
+        """Test serialization and deserialization with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        toolset1 = Toolset([tools[0]])
+        toolset2 = Toolset([tools[1]])
+
+        component = OpenAIChatGenerator(tools=[toolset1, toolset2])
+        data = component.to_dict()
+
+        # Verify serialization preserves list[Toolset] structure
+        tools_data = data["init_parameters"]["tools"]
+        assert isinstance(tools_data, list)
+        assert len(tools_data) == 2
+        assert all(isinstance(ts, dict) for ts in tools_data)
+        assert tools_data[0]["type"] == "haystack.tools.toolset.Toolset"
+        assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
+
+        # Deserialize and verify
+        deserialized = OpenAIChatGenerator.from_dict(data)
+        assert isinstance(deserialized.tools, list)
+        assert len(deserialized.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in deserialized.tools)
+
 
 @pytest.fixture
 def chat_completion_chunks():

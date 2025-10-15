@@ -585,3 +585,185 @@ class TestToolsetWithToolInvoker:
         assert deserialized_invoker._tools_with_names == invoker._tools_with_names
         assert deserialized_invoker.raise_on_failure == invoker.raise_on_failure
         assert deserialized_invoker.convert_result_to_json_string == invoker.convert_result_to_json_string
+
+
+class TestToolsetList:
+    """Tests for list[Toolset] functionality."""
+
+    def test_tool_invoker_with_list_of_toolsets(self, weather_tool):
+        """Test that ToolInvoker can be initialized with a list of Toolsets."""
+        add_tool = Tool(
+            name="add",
+            description="Add two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=add_numbers,
+        )
+
+        toolset1 = Toolset([weather_tool])
+        toolset2 = Toolset([add_tool])
+
+        invoker = ToolInvoker(tools=[toolset1, toolset2])
+
+        # Verify tools are flattened internally
+        assert "weather_tool" in invoker._tools_with_names
+        assert "add" in invoker._tools_with_names
+        assert len(invoker._tools_with_names) == 2
+
+    def test_tool_invoker_run_with_list_of_toolsets(self, weather_tool):
+        """Test running ToolInvoker with a list of Toolsets."""
+        add_tool = Tool(
+            name="add",
+            description="Add two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=add_numbers,
+        )
+
+        toolset1 = Toolset([weather_tool])
+        toolset2 = Toolset([add_tool])
+
+        invoker = ToolInvoker(tools=[toolset1, toolset2])
+
+        # Call both tools
+        weather_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        add_call = ToolCall(tool_name="add", arguments={"a": 5, "b": 3})
+        message = ChatMessage.from_assistant(tool_calls=[weather_call, add_call])
+
+        result = invoker.run(messages=[message])
+
+        assert len(result["tool_messages"]) == 2
+        assert "mostly sunny" in result["tool_messages"][0].tool_call_result.result
+        assert "8" in result["tool_messages"][1].tool_call_result.result
+
+    def test_tool_invoker_serde_with_list_of_toolsets(self, weather_tool):
+        """Test serialization and deserialization of ToolInvoker with a list of Toolsets."""
+        add_tool = Tool(
+            name="add",
+            description="Add two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=add_numbers,
+        )
+
+        toolset1 = Toolset([weather_tool])
+        toolset2 = Toolset([add_tool])
+
+        invoker = ToolInvoker(tools=[toolset1, toolset2])
+        data = invoker.to_dict()
+
+        # Verify serialization preserves list[Toolset] structure
+        tools_data = data["init_parameters"]["tools"]
+        assert isinstance(tools_data, list)
+        assert len(tools_data) == 2
+        assert all(isinstance(ts, dict) for ts in tools_data)
+        assert tools_data[0]["type"] == "haystack.tools.toolset.Toolset"
+        assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
+
+        # Deserialize and verify
+        deserialized_invoker = ToolInvoker.from_dict(data)
+        assert isinstance(deserialized_invoker.tools, list)
+        assert len(deserialized_invoker.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in deserialized_invoker.tools)
+        assert deserialized_invoker._tools_with_names == invoker._tools_with_names
+
+    def test_pipeline_with_list_of_toolsets(self):
+        """Test that a Pipeline can serialize/deserialize with a list of Toolsets."""
+        add_tool = Tool(
+            name="add",
+            description="Add two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=add_numbers,
+        )
+
+        multiply_tool = Tool(
+            name="multiply",
+            description="Multiply two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=multiply_numbers,
+        )
+
+        toolset1 = Toolset([add_tool])
+        toolset2 = Toolset([multiply_tool])
+
+        pipeline = Pipeline()
+        pipeline.add_component("tool_invoker", ToolInvoker(tools=[toolset1, toolset2]))
+
+        pipeline_dict = pipeline.to_dict()
+
+        # Verify the serialized structure
+        tool_invoker_dict = pipeline_dict["components"]["tool_invoker"]
+        tools_data = tool_invoker_dict["init_parameters"]["tools"]
+        assert isinstance(tools_data, list)
+        assert len(tools_data) == 2
+        assert all(ts["type"] == "haystack.tools.toolset.Toolset" for ts in tools_data)
+
+        # Deserialize and verify functionality
+        new_pipeline = Pipeline.from_dict(pipeline_dict)
+        assert new_pipeline == pipeline
+
+        # Run the pipeline to verify it works
+        tool_call = ToolCall(tool_name="add", arguments={"a": 10, "b": 5})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+        result = new_pipeline.run(data={"tool_invoker": {"messages": [message]}})
+
+        assert "tool_invoker" in result
+        assert len(result["tool_invoker"]["tool_messages"]) == 1
+        assert "15" in result["tool_invoker"]["tool_messages"][0].tool_call_result.result
+
+    def test_list_of_toolsets_runtime_override(self, weather_tool):
+        """Test that list of Toolsets can be passed as runtime override to ToolInvoker.run()."""
+        add_tool = Tool(
+            name="add",
+            description="Add two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=add_numbers,
+        )
+
+        multiply_tool = Tool(
+            name="multiply",
+            description="Multiply two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=multiply_numbers,
+        )
+
+        # Initialize with one toolset
+        toolset1 = Toolset([weather_tool])
+        invoker = ToolInvoker(tools=toolset1)
+
+        # Override with a different list of toolsets at runtime
+        toolset2 = Toolset([add_tool])
+        toolset3 = Toolset([multiply_tool])
+
+        add_call = ToolCall(tool_name="add", arguments={"a": 3, "b": 7})
+        message = ChatMessage.from_assistant(tool_calls=[add_call])
+
+        result = invoker.run(messages=[message], tools=[toolset2, toolset3])
+
+        assert len(result["tool_messages"]) == 1
+        assert "10" in result["tool_messages"][0].tool_call_result.result
