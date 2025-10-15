@@ -4,7 +4,7 @@
 
 import inspect
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
@@ -25,7 +25,13 @@ from haystack.core.serialization import component_to_dict, default_from_dict, de
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, PipelineSnapshot, ToolBreakpoint
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
-from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
+from haystack.tools import (
+    Tool,
+    Toolset,
+    deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
+    serialize_tools_or_toolset,
+)
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
@@ -97,7 +103,7 @@ class Agent:
         self,
         *,
         chat_generator: ChatGenerator,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset, list[Toolset]]] = None,
         system_prompt: Optional[str] = None,
         exit_conditions: Optional[list[str]] = None,
         state_schema: Optional[dict[str, Any]] = None,
@@ -110,7 +116,7 @@ class Agent:
         Initialize the agent component.
 
         :param chat_generator: An instance of the chat generator that your agent should use. It must support tools.
-        :param tools: List of Tool objects or a Toolset that the agent can use.
+        :param tools: List of Tool objects, a Toolset, or a list of Toolset instances that the agent can use.
         :param system_prompt: System prompt for the agent.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
@@ -134,7 +140,8 @@ class Agent:
                 "The Agent component requires a chat generator that supports tools."
             )
 
-        valid_exits = ["text"] + [tool.name for tool in tools or []]
+        all_tools = flatten_tools_or_toolsets(tools)
+        valid_exits = ["text"] + [tool.name for tool in all_tools]
         if exit_conditions is None:
             exit_conditions = ["text"]
         if not all(condition in valid_exits for condition in exit_conditions):
@@ -259,7 +266,7 @@ class Agent:
         requires_async: bool,
         *,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[list[Tool], Toolset, list[str], list[Toolset]]] = None,
         **kwargs,
     ) -> _ExecutionContext:
         """
@@ -302,8 +309,8 @@ class Agent:
         )
 
     def _select_tools(
-        self, tools: Optional[Union[list[Tool], Toolset, list[str]]] = None
-    ) -> Union[list[Tool], Toolset]:
+        self, tools: Optional[Union[list[Tool], Toolset, list[str], list[Toolset]]] = None
+    ) -> Union[list[Tool], Toolset, list[Toolset]]:
         """
         Select tools for the current run based on the provided tools parameter.
 
@@ -314,24 +321,36 @@ class Agent:
             or if any provided tool name is not valid.
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
-        selected_tools: Union[list[Tool], Toolset] = self.tools
-        if isinstance(tools, Toolset) or isinstance(tools, list) and all(isinstance(t, Tool) for t in tools):
-            selected_tools = tools  # type: ignore[assignment] # mypy thinks this could still be list[str]
-        elif isinstance(tools, list) and all(isinstance(t, str) for t in tools):
+        if tools is None:
+            return self.tools
+
+        if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             if not self.tools:
                 raise ValueError("No tools were configured for the Agent at initialization.")
-            selected_tool_names: list[str] = tools  # type: ignore[assignment] # mypy thinks this could still be list[Tool] or Toolset
-            valid_tool_names = {tool.name for tool in self.tools}
+            available_tools = flatten_tools_or_toolsets(self.tools)
+            selected_tool_names = cast(list[str], tools)
+            valid_tool_names = {tool.name for tool in available_tools}
             invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
             if invalid_tool_names:
                 raise ValueError(
                     f"The following tool names are not valid: {invalid_tool_names}. "
                     f"Valid tool names are: {valid_tool_names}."
                 )
-            selected_tools = [tool for tool in self.tools if tool.name in selected_tool_names]
-        elif tools is not None:
-            raise TypeError("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")
-        return selected_tools
+            return [tool for tool in available_tools if tool.name in selected_tool_names]
+
+        if isinstance(tools, Toolset):
+            return tools
+
+        if isinstance(tools, list) and tools and isinstance(tools[0], Toolset):
+            return cast(list[Toolset], tools)
+
+        if isinstance(tools, list) and all(isinstance(t, Tool) for t in tools):
+            return cast(list[Tool], tools)
+
+        raise TypeError(
+            "tools must be a list of Tool objects, a Toolset, a list of Toolset instances, "
+            "or a list of tool names (strings)."
+        )
 
     def _initialize_from_snapshot(
         self,

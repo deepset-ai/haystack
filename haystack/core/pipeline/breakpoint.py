@@ -345,7 +345,7 @@ def _create_agent_snapshot(
 
 
 def _validate_tool_breakpoint_is_valid(
-    agent_breakpoint: AgentBreakpoint, tools: Union[list["Tool"], "Toolset"]
+    agent_breakpoint: AgentBreakpoint, tools: Union[list["Tool"], "Toolset", list["Toolset"]]
 ) -> None:
     """
     Validates the AgentBreakpoint passed to the agent.
@@ -353,11 +353,13 @@ def _validate_tool_breakpoint_is_valid(
     Validates that the tool name in ToolBreakpoints correspond to a tool available in the agent.
 
     :param agent_breakpoint: AgentBreakpoint object containing breakpoints for the agent components.
-    :param tools: List of Tool objects or a Toolset that the agent can use.
+    :param tools: List of Tool objects, a Toolset, or a list of Toolset instances that the agent can use.
     :raises ValueError: If any tool name in ToolBreakpoints is not available in the agent's tools.
     """
+    from haystack.tools import flatten_tools_or_toolsets
 
-    available_tool_names = {tool.name for tool in tools}
+    flat_tools = flatten_tools_or_toolsets(tools)
+    available_tool_names = {tool.name for tool in flat_tools}
     tool_breakpoint = agent_breakpoint.break_point
     # Assert added for mypy to pass, but this is already checked before this function is called
     assert isinstance(tool_breakpoint, ToolBreakpoint)

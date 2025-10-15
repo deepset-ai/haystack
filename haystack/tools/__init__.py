@@ -11,12 +11,14 @@ from haystack.tools.toolset import Toolset
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.pipeline_tool import PipelineTool
 from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
+from haystack.tools.utils import flatten_tools_or_toolsets
 
 __all__ = [
     "_check_duplicate_tool_names",
     "ComponentTool",
     "create_tool_from_function",
     "deserialize_tools_or_toolset_inplace",
+    "flatten_tools_or_toolsets",
     "PipelineTool",
     "serialize_tools_or_toolset",
     "Tool",

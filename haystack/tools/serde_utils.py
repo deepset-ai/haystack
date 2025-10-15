@@ -11,19 +11,27 @@ from haystack.tools.toolset import Toolset
 
 
 def serialize_tools_or_toolset(
-    tools: Union[Toolset, list[Tool], None],
+    tools: Union[Toolset, list[Tool], list[Toolset], None],
 ) -> Union[dict[str, Any], list[dict[str, Any]], None]:
     """
-    Serialize a Toolset or a list of Tools to a dictionary or a list of tool dictionaries.
+    Serialize tools or toolsets to dictionaries.
 
-    :param tools: A Toolset, a list of Tools, or None
-    :returns: A dictionary, a list of tool dictionaries, or None if tools is None
+    :param tools: A Toolset, a list of Tools, a list of Toolset instances, or None
+    :returns: Serialized representation preserving Toolset boundaries when provided
     """
     if tools is None:
         return None
     if isinstance(tools, Toolset):
         return tools.to_dict()
-    return [tool.to_dict() for tool in tools]
+    if isinstance(tools, list):
+        serialized: list[dict[str, Any]] = []
+        for item in tools:
+            if isinstance(item, (Toolset, Tool)):
+                serialized.append(item.to_dict())
+            else:
+                raise TypeError("Items in the tools list must be Tool or Toolset instances.")
+        return serialized
+    raise TypeError("tools must be Toolset, list[Tool], list[Toolset], or None")
 
 
 def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools") -> None:
@@ -58,16 +66,27 @@ def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools
         if not isinstance(serialized_tools, list):
             raise TypeError(f"The value of '{key}' is not a list or a dictionary")
 
-        deserialized_tools = []
+        deserialized_tools: list[Union[Tool, Toolset]] = []
+        contains_toolset = False
+        contains_tool = False
         for tool in serialized_tools:
             if not isinstance(tool, dict):
                 raise TypeError(f"Serialized tool '{tool}' is not a dictionary")
 
             # different classes are allowed: Tool, ComponentTool, etc.
             tool_class = import_class_by_name(tool["type"])
-            if not issubclass(tool_class, Tool):
-                raise TypeError(f"Class '{tool_class}' is not a subclass of Tool")
-
-            deserialized_tools.append(tool_class.from_dict(tool))
+            if issubclass(tool_class, Toolset):
+                deserialized_tools.append(tool_class.from_dict(tool))
+                contains_toolset = True
+            elif issubclass(tool_class, Tool):
+                deserialized_tools.append(tool_class.from_dict(tool))
+                contains_tool = True
+            else:
+                raise TypeError(f"Class '{tool_class}' is neither Tool nor Toolset")
 
         data[key] = deserialized_tools
+        if contains_toolset and not contains_tool:
+            return
+        if contains_tool and not contains_toolset:
+            return
+        # If both Tool and Toolset instances are present, we simply return the mixed list.
