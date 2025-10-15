@@ -22,6 +22,7 @@ from haystack.tools import (
     Toolset,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
 )
 from haystack.tools.errors import ToolInvocationError
@@ -171,7 +172,7 @@ class ToolInvoker:
 
     def __init__(
         self,
-        tools: Union[list[Tool], Toolset],
+        tools: Union[list[Union[Tool, Toolset]], Toolset],
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
@@ -183,7 +184,7 @@ class ToolInvoker:
         Initialize the ToolInvoker component.
 
         :param tools:
-            A list of tools that can be invoked or a Toolset instance that can resolve tools.
+            A list of Tool and/or Toolset objects, or a Toolset instance that can resolve tools.
         :param raise_on_failure:
             If True, the component will raise an exception in case of errors
             (tool not found, tool invocation errors, tool result conversion errors).
@@ -240,7 +241,7 @@ class ToolInvoker:
         return _runner
 
     @staticmethod
-    def _validate_and_prepare_tools(tools: Union[list[Tool], Toolset]) -> dict[str, Tool]:
+    def _validate_and_prepare_tools(tools: Union[list[Union[Tool, Toolset]], Toolset]) -> dict[str, Tool]:
         """
         Validates and prepares tools for use by the ToolInvoker.
 
@@ -251,10 +252,7 @@ class ToolInvoker:
         if not tools:
             raise ValueError("ToolInvoker requires at least one tool.")
 
-        if isinstance(tools, Toolset):
-            converted_tools = list(tools)
-        else:
-            converted_tools = tools
+        converted_tools = flatten_tools_or_toolsets(tools)
 
         _check_duplicate_tool_names(converted_tools)
         tool_names = [tool.name for tool in converted_tools]
@@ -494,7 +492,7 @@ class ToolInvoker:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
     ) -> dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
@@ -625,7 +623,7 @@ class ToolInvoker:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
     ) -> dict[str, Any]:
         """
         Asynchronously processes ChatMessage objects containing tool calls.
