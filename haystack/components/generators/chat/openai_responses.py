@@ -38,6 +38,8 @@ from haystack.tools import (
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.http_client import init_http_client
 
+from .openai import _serialize_usage
+
 logger = logging.getLogger(__name__)
 
 
@@ -268,9 +270,9 @@ class OpenAIResponsesChatGenerator:
     def run(
         self,
         messages: list[ChatMessage],
+        *,
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        *,
         tools: Optional[Union[list[Tool], Toolset, dict[str, Any]]] = None,
         tools_strict: Optional[bool] = None,
     ):
@@ -286,12 +288,15 @@ class OpenAIResponsesChatGenerator:
             override the parameters passed during component initialization.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses/create).
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-            `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects, a `Toolset` instance or a dictionary of OpenAI tool definitions.
+            The tools that the model can use to prepare calls. If set, it will override the
+            `tools` parameter set during component initialization. This parameter can accept either a
+            list of Haystack `Tool` objects, a Haystack `Toolset` instance or a dictionary of
+            OpenAI/MCP tool definitions.
+            For details on tool support, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses/create#responses-create-tools).
         :param tools_strict:
-            Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-            the schema provided in the `parameters` field of the tool definition, but this may increase latency.
+            Whether to enable strict schema adherence for tool calls. If set to `False`, the model may not exactly
+            follow the schema provided in the `parameters` field of the tool definition. In Response API, tool calls
+            are strict by default.
             If set, it will override the `tools_strict` parameter set during component initialization.
 
         :returns:
@@ -331,9 +336,9 @@ class OpenAIResponsesChatGenerator:
     async def run_async(
         self,
         messages: list[ChatMessage],
+        *,
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        *,
         tools: Optional[Union[list[Tool], Toolset, dict[str, Any]]] = None,
         tools_strict: Optional[bool] = None,
     ):
@@ -606,29 +611,15 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
     return chunk_message
 
 
-def _serialize_usage(usage):
-    """Convert OpenAI usage object to serializable dict recursively"""
-    if hasattr(usage, "model_dump"):
-        return usage.model_dump()
-    elif hasattr(usage, "__dict__"):
-        return {k: _serialize_usage(v) for k, v in usage.__dict__.items() if not k.startswith("_")}
-    elif isinstance(usage, dict):
-        return {k: _serialize_usage(v) for k, v in usage.items()}
-    elif isinstance(usage, list):
-        return [_serialize_usage(item) for item in usage]
-    else:
-        return usage
-
-
 def convert_message_to_responses_api_format(message: ChatMessage, require_tool_call_ids: bool = True) -> dict[str, Any]:
     """
-    Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
+    Convert a ChatMessage to the dictionary format expected by OpenAI's Responses API.
 
     :param require_tool_call_ids:
         If True (default), enforces that each Tool Call includes a non-null `id` attribute.
         Set to False to allow Tool Calls without `id`, which may be suitable for shallow OpenAI-compatible APIs.
     :returns:
-        The ChatMessage in the format expected by OpenAI's Chat API.
+        The ChatMessage in the format expected by OpenAI's Responses API.
 
     :raises ValueError:
         If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
