@@ -512,7 +512,7 @@ def _check_finish_reason(meta: dict[str, Any]) -> None:
     if meta["finish_reason"] == "length":
         logger.warning(
             "The completion for index {index} has been truncated before reaching a natural stopping point. "
-            "Increase the max_tokens parameter to allow for longer completions.",
+            "Increase the max_completion_tokens parameter to allow for longer completions.",
             index=meta["index"],
             finish_reason=meta["finish_reason"],
         )
