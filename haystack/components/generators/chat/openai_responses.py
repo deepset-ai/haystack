@@ -111,7 +111,6 @@ class OpenAIResponsesChatGenerator:
            See OpenAI [documentation](https://platform.openai.com/docs/api-reference/responses) for
             more details.
             Some of the supported parameters:
-            - `background`: Whether to run the model response in the background.
             - `temperature`: What sampling temperature to use. Higher values like 0.8 will make the output more random,
                 while lower values like 0.2 will make it more focused and deterministic.
             - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -321,6 +320,7 @@ class OpenAIResponsesChatGenerator:
         openai_endpoint = api_args.pop("openai_endpoint")
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
+        print(f"Responses: {responses}")
 
         if streaming_callback is not None:
             response_output = self._handle_stream_response(
@@ -532,7 +532,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                 )
 
             tool_calls.append(ToolCall(id=output.id, tool_name=output.name, arguments=arguments))
-    status = getattr(responses.output, "status", "completed")
+    status = getattr(responses.output, "status", None)
     meta = responses.to_dict()
     # remove output and reasoning from meta
     # we need response id and other info for multi turn conversations
@@ -546,7 +546,6 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
         tool_calls=tool_calls,
         meta=meta,
     )
-    print(f"ChatMessage: {meta}")
 
     return chat_message
 
@@ -629,10 +628,12 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
     tool_calls = message.tool_calls
     tool_call_results = message.tool_call_results
     images = message.images
+    reasonings = message.reasonings
 
-    if not text_contents and not tool_calls and not tool_call_results and not images:
+    if not text_contents and not tool_calls and not tool_call_results and not images and not reasonings:
         raise ValueError(
-            "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`, or `ImageContent`."
+            """A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`,
+              `ImageContent`, or `ReasoningContent`."""
         )
     if len(tool_call_results) > 0 and len(message._content) > 1:
         raise ValueError(
@@ -683,7 +684,6 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
         return openai_msg
 
     # system and assistant messages
-    # OpenAI Chat Completions API does not support reasoning content, so we ignore it
     if text_contents:
         openai_msg["content"] = text_contents[0]
     if tool_calls:
@@ -700,4 +700,8 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
                 raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
             openai_tool_calls.append(openai_tool_call)
         openai_msg["tool_calls"] = openai_tool_calls
+
+    if reasonings:
+        openai_msg["content"].append("Previous reasoning summary: " + reasonings[0].reasoning_text)
+
     return openai_msg
