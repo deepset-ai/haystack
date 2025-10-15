@@ -140,8 +140,7 @@ class Agent:
                 "The Agent component requires a chat generator that supports tools."
             )
 
-        all_tools = flatten_tools_or_toolsets(tools)
-        valid_exits = ["text"] + [tool.name for tool in all_tools]
+        valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
         if exit_conditions is None:
             exit_conditions = ["text"]
         if not all(condition in valid_exits for condition in exit_conditions):

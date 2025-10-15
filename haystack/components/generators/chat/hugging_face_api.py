@@ -104,8 +104,7 @@ def _convert_tools_to_hfapi_tools(
     parameters_name = "arguments" if hasattr(ChatCompletionInputFunctionDefinition, "arguments") else "parameters"
 
     hf_tools = []
-    flat_tools = flatten_tools_or_toolsets(tools)
-    for tool in flat_tools:
+    for tool in flatten_tools_or_toolsets(tools):
         hf_tools_args = {"name": tool.name, "description": tool.description, parameters_name: tool.parameters}
 
         hf_tools.append(
@@ -366,7 +365,7 @@ class HuggingFaceAPIChatGenerator:
 
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(flatten_tools_or_toolsets(tools or []))
+        _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
@@ -454,7 +453,7 @@ class HuggingFaceAPIChatGenerator:
         tools = tools or self.tools
         if tools and self.streaming_callback:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        flat_tools = flatten_tools_or_toolsets(tools or [])
+        flat_tools = flatten_tools_or_toolsets(tools)
         _check_duplicate_tool_names(flat_tools)
 
         # validate and select the streaming callback
@@ -506,7 +505,7 @@ class HuggingFaceAPIChatGenerator:
         tools = tools or self.tools
         if tools and self.streaming_callback:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        flat_tools = flatten_tools_or_toolsets(tools or [])
+        flat_tools = flatten_tools_or_toolsets(tools)
         _check_duplicate_tool_names(flat_tools)
 
         # validate and select the streaming callback
