@@ -355,8 +355,7 @@ def _validate_tool_breakpoint_is_valid(
     :param tools: List of Tool objects, a Toolset, or a list of Toolset instances that the agent can use.
     :raises ValueError: If any tool name in ToolBreakpoints is not available in the agent's tools.
     """
-    flat_tools = flatten_tools_or_toolsets(tools)
-    available_tool_names = {tool.name for tool in flat_tools}
+    available_tool_names = {tool.name for tool in flatten_tools_or_toolsets(tools)}
     tool_breakpoint = agent_breakpoint.break_point
     # Assert added for mypy to pass, but this is already checked before this function is called
     assert isinstance(tool_breakpoint, ToolBreakpoint)
