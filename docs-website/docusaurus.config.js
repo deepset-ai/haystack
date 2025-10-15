@@ -46,7 +46,7 @@ const config = {
             'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
           versions: {
             current: {
-              label: 'Next',
+              label: '2.19',
               path: 'next',
               banner: 'unreleased',
             },
@@ -84,7 +84,7 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: 'Next',
+            label: '2.19',
             path: 'next',
             banner: 'unreleased',
           },
