@@ -1,0 +1,64 @@
+name: Test Bot Permissions
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check bot admin permissions
+        env:
+          GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+        run: |
+          echo "=== BOT PERMISSION ANALYSIS ==="
+          echo "Repository: ${{ github.repository }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Event: ${{ github.event_name }}"
+          echo ""
+
+          echo "=== CHECKING BOT PERMISSIONS ==="
+          # Use a temporary file to avoid token exposure in logs
+          if permission_response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                                    -H "Accept: application/vnd.github.v3+json" \
+                                    https://api.github.com/repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission 2>/dev/null) && [ -n "$permission_response" ]; then
+            permission_level=$(echo "$permission_response" | jq -r '.permission // "unknown"')
+            echo "Bot permission level: $permission_level"
+
+            if [ "$permission_level" = "admin" ]; then
+              echo "✅ Bot has ADMIN permissions - can bypass branch protection"
+            elif [ "$permission_level" = "write" ]; then
+              echo "⚠️  Bot has WRITE permissions - may not bypass branch protection"
+            else
+              echo "❌ Bot has $permission_level permissions - cannot bypass branch protection"
+            fi
+          else
+            echo "❌ Failed to check bot permissions"
+          fi
+
+          echo ""
+          echo "=== CHECKING BRANCH PROTECTION ==="
+          if protection_response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                                      -H "Accept: application/vnd.github.v3+json" \
+                                      https://api.github.com/repos/${{ github.repository }}/branches/main/protection 2>/dev/null) && echo "$protection_response" | jq -e '.required_status_checks' > /dev/null 2>&1; then
+            echo "✅ Branch protection is ACTIVE on main branch"
+            echo "Required status checks: $(echo "$protection_response" | jq -r '.required_status_checks.required_status_checks | length')"
+            echo "Strict status checks: $(echo "$protection_response" | jq -r '.required_status_checks.strict')"
+            echo "Dismiss stale reviews: $(echo "$protection_response" | jq -r '.required_pull_request_reviews.dismiss_stale_reviews')"
+          else
+            echo "❌ No branch protection found on main branch"
+          fi
+
+          echo ""
+          echo "=== SUMMARY ==="
+          if [ "$permission_level" = "admin" ]; then
+            echo "🎉 Bot should be able to bypass branch protection"
+          else
+            echo "⚠️  Bot may not be able to bypass branch protection"
+          fi
