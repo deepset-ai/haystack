@@ -213,7 +213,7 @@ class TestOpenAIChatGenerator:
             model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             timeout=40.0,
             max_retries=1,
             tools=[tool],
@@ -223,7 +223,7 @@ class TestOpenAIChatGenerator:
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 40.0
         assert component.client.max_retries == 1
         assert component.tools == [tool]
@@ -238,12 +238,12 @@ class TestOpenAIChatGenerator:
             model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 100.0
         assert component.client.max_retries == 10
 
@@ -278,7 +278,7 @@ class TestOpenAIChatGenerator:
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={
-                "max_tokens": 10,
+                "max_completion_tokens": 10,
                 "some_test_param": "test-params",
                 "response_format": calendar_event_model,
             },
@@ -301,7 +301,7 @@ class TestOpenAIChatGenerator:
                 "timeout": 100.0,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {
-                    "max_tokens": 10,
+                    "max_completion_tokens": 10,
                     "some_test_param": "test-params",
                     "response_format": {
                         "type": "json_schema",
@@ -377,7 +377,7 @@ class TestOpenAIChatGenerator:
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "max_retries": 10,
                 "timeout": 100.0,
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
                 "tools": [
                     {
                         "type": "haystack.tools.tool.Tool",
@@ -399,7 +399,7 @@ class TestOpenAIChatGenerator:
         assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.api_base_url == "test-base-url"
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
         assert component.tools == [
             Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
@@ -419,7 +419,7 @@ class TestOpenAIChatGenerator:
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
                 "tools": None,
             },
         }
@@ -439,13 +439,14 @@ class TestOpenAIChatGenerator:
 
     def test_run_with_params(self, chat_messages, openai_mock_chat_completion):
         component = OpenAIChatGenerator(
-            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
         )
         response = component.run(chat_messages)
 
         # check that the component calls the OpenAI API with the correct parameters
         _, kwargs = openai_mock_chat_completion.call_args
-        assert kwargs["max_tokens"] == 10
+        assert kwargs["max_completion_tokens"] == 10
         assert kwargs["temperature"] == 0.5
 
         # check that the tools are not passed to the OpenAI API (the generator is initialized without tools)
@@ -573,7 +574,7 @@ class TestOpenAIChatGenerator:
         # check truncation warning
         message_template = (
             "The completion for index {index} has been truncated before reaching a natural stopping point. "
-            "Increase the max_tokens parameter to allow for longer completions."
+            "Increase the max_completion_tokens parameter to allow for longer completions."
         )
 
         for index in [1, 3]:

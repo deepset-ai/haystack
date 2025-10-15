@@ -35,14 +35,14 @@ class TestAzureOpenAIGenerator:
             azure_endpoint="some-non-existing-endpoint",
             azure_deployment="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             azure_ad_token_provider=default_azure_ad_token_provider,
         )
         assert component.client.api_key == "fake-api-key"
         assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.timeout == 30.0
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.azure_ad_token_provider is not None
         assert component.max_retries == 5
 
@@ -53,7 +53,7 @@ class TestAzureOpenAIGenerator:
             azure_endpoint="some-non-existing-endpoint",
             azure_deployment="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             azure_ad_token_provider=default_azure_ad_token_provider,
             max_retries=0,
         )
@@ -61,7 +61,7 @@ class TestAzureOpenAIGenerator:
         assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.timeout == 30.0
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.azure_ad_token_provider is not None
         assert component.max_retries == 0
 
@@ -99,7 +99,7 @@ class TestAzureOpenAIGenerator:
             timeout=3.5,
             max_retries=10,
             http_client_kwargs={"proxy": "http://localhost:8080"},
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             azure_ad_token_provider=default_azure_ad_token_provider,
         )
 
@@ -118,7 +118,7 @@ class TestAzureOpenAIGenerator:
                 "timeout": 3.5,
                 "max_retries": 10,
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
                 "default_headers": {},
                 "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
             },
