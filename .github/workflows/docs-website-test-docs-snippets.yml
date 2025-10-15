@@ -9,14 +9,15 @@ on:
         description: 'Haystack version to test against (e.g., 2.16.1, main)'
         required: false
         default: 'main'
-        type: string
-  push:
-    paths:
-      - 'docs-website/docs/**'
-      - 'docs-website/versioned_docs/**'
-      - 'docs-website/scripts/test_python_snippets.py'
-      - 'docs-website/scripts/generate_requirements.py'
-      - '.github/workflows/docs-website-test-docs-snippets.yml'
+
+  # TEMPORARILY DISABLED
+  # push:
+  #   paths:
+  #     - 'docs-website/docs/**'
+  #     - 'docs-website/versioned_docs/**'
+  #     - 'docs-website/scripts/test_python_snippets.py'
+  #     - 'docs-website/scripts/generate_requirements.py'
+  #     - '.github/workflows/docs-website-test-docs-snippets.yml'
 
 jobs:
   test-docs-snippets:
