@@ -149,6 +149,9 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failur
     Save the pipeline snapshot dictionary to a JSON file.
 
     - The filename is generated based on the component name, visit count, and timestamp.
+        - The component name is taken from the break point's `component_name`.
+        - The visit count is taken from the pipeline state's `component_visits` for the component name.
+        - The timestamp is taken from the pipeline snapshot's `timestamp` or the current time if not available.
     - The file path is taken from the break point's `snapshot_file_path`.
     - If the `snapshot_file_path` is None, the function will return without saving.
 
@@ -214,11 +217,15 @@ def _create_pipeline_snapshot(
     Create a snapshot of the pipeline at the point where the breakpoint was triggered.
 
     :param inputs: The current pipeline snapshot inputs.
+    :param component_inputs: The inputs to the component that triggered the breakpoint.
     :param break_point: The breakpoint that triggered the snapshot, can be AgentBreakpoint or Breakpoint.
     :param component_visits: The visit count of the component that triggered the breakpoint.
     :param original_input_data: The original input data.
     :param ordered_component_names: The ordered component names.
     :param include_outputs_from: Set of component names whose outputs should be included in the pipeline results.
+    :param pipeline_outputs: The current outputs of the pipeline.
+    :returns:
+        A PipelineSnapshot containing the state of the pipeline at the point of the breakpoint.
     """
     if isinstance(break_point, AgentBreakpoint):
         component_name = break_point.agent_name
