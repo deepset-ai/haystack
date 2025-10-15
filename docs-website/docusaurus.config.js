@@ -51,7 +51,7 @@ const config = {
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.0',
+          lastVersion: '2.1',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -81,7 +81,15 @@ const config = {
         editUrl: 'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
         showLastUpdateAuthor: false,
         showLastUpdateTime: false,
-          exclude: ['**/_templates/**'],
+        exclude: ['**/_templates/**'],
+        versions: {
+          current: {
+            label: 'Next',
+            path: 'next',
+            banner: 'unreleased',
+          },
+        },
+        lastVersion: '2.1',
       },
     ],
   ],
