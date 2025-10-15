@@ -27,8 +27,7 @@ from haystack.utils.misc import _get_output_dir
 
 if TYPE_CHECKING:
     from haystack.components.agents.agent import _ExecutionContext
-    from haystack.tools.tool import Tool
-    from haystack.tools.toolset import Toolset
+    from haystack.tools import Tool, Toolset, flatten_tools_or_toolsets
 
 logger = logging.getLogger(__name__)
 
@@ -356,8 +355,6 @@ def _validate_tool_breakpoint_is_valid(
     :param tools: List of Tool objects, a Toolset, or a list of Toolset instances that the agent can use.
     :raises ValueError: If any tool name in ToolBreakpoints is not available in the agent's tools.
     """
-    from haystack.tools import flatten_tools_or_toolsets
-
     flat_tools = flatten_tools_or_toolsets(tools)
     available_tool_names = {tool.name for tool in flat_tools}
     tool_breakpoint = agent_breakpoint.break_point
