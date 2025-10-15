@@ -358,7 +358,7 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT],
         requires_async: bool,
         *,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[list[Tool], Toolset, list[str], list[Toolset]]] = None,
     ) -> _ExecutionContext:
         """
         Initialize execution context from an AgentSnapshot.
@@ -478,7 +478,7 @@ class Agent:
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[list[Tool], Toolset, list[str], list[Toolset]]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -635,7 +635,7 @@ class Agent:
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[list[Tool], Toolset, list[str], list[Toolset]]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """

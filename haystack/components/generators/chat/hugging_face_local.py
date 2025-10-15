@@ -446,7 +446,7 @@ class HuggingFaceLocalChatGenerator:
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset, list[Toolset]]] = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes text generation inference based on the provided messages and generation parameters.

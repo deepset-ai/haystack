@@ -272,7 +272,7 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[Union[list[Tool], Toolset, list[Toolset]]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
