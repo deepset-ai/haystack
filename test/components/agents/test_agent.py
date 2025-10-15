@@ -1202,6 +1202,11 @@ class TestAgentToolSelection:
         )
         with pytest.raises(
             TypeError,
-            match=(re.escape("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")),
+            match=(
+                re.escape(
+                    "tools must be a list of Tool objects, a Toolset, a list of Toolset instances, "
+                    "or a list of tool names (strings)."
+                )
+            ),
         ):
             agent._select_tools("invalid_tool_name")
