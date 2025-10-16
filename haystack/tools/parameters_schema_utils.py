@@ -16,6 +16,22 @@ from haystack.dataclasses import ChatMessage
 logger = logging.getLogger(__name__)
 
 
+# Schema placeholder models for Tool and Toolset
+# These are used during JSON schema generation to represent non-serializable types
+class _ToolSchemaPlaceholder(BaseModel):
+    """Placeholder model representing a Tool for JSON schema generation."""
+
+    name: str = Field(description="Name of the tool")
+    description: str = Field(description="Description of the tool")
+    parameters: dict[str, Any] = Field(description="JSON schema of the tool parameters")
+
+
+class _ToolsetSchemaPlaceholder(BaseModel):
+    """Placeholder model representing a Toolset for JSON schema generation."""
+
+    tools: list[_ToolSchemaPlaceholder] = Field(description="List of tools in the toolset")
+
+
 def _get_param_descriptions(method: Callable) -> tuple[str, dict[str, str]]:
     """
     Extracts parameter descriptions from the method's docstring using docstring_parser.
@@ -135,7 +151,7 @@ def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
     return model
 
 
-def _resolve_type(_type: Any) -> Any:
+def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
     """
     Recursively resolve and convert complex type annotations, transforming dataclasses into Pydantic-compatible types.
 
@@ -148,6 +164,17 @@ def _resolve_type(_type: Any) -> Any:
     :returns:
         A fully resolved type, with all dataclass types converted to Pydantic models
     """
+    # Special handling for Tool and Toolset types - replace with schema placeholders
+    # These types contain Callables which cannot be serialized to JSON Schema
+    from haystack.tools.tool import Tool
+    from haystack.tools.toolset import Toolset
+
+    if _type is Tool:
+        return _ToolSchemaPlaceholder
+
+    if _type is Toolset:
+        return _ToolsetSchemaPlaceholder
+
     if is_dataclass(_type):
         return _dataclass_to_pydantic_model(_type)
 

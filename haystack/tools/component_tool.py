@@ -277,14 +277,8 @@ class ComponentTool(Tool):
         # collect fields (types and defaults) and descriptions from function parameters
         fields: dict[str, Any] = {}
 
-        # Parameters that should be excluded from the schema generation
-        # These are typically configuration parameters that aren't meant to be provided by LLMs
-        excluded_params = {"tools", "tools_strict"}
-
         for input_name, socket in component.__haystack_input__._sockets_dict.items():  # type: ignore[attr-defined]
             if inputs_from_state is not None and input_name in list(inputs_from_state.values()):
-                continue
-            if input_name in excluded_params:
                 continue
             input_type = socket.type
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
