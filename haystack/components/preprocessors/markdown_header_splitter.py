@@ -278,6 +278,7 @@ class MarkdownHeaderSplitter:
             - `documents`: List of documents with the split texts. Each document includes:
                 - A metadata field `source_id` to track the original document.
                 - A metadata field `page_number` to track the original page number.
+                - A metadata field `split_id` to uniquely identify each split chunk.
                 - All other metadata copied from the original document.
         """
         # validate input documents
@@ -319,8 +320,6 @@ class MarkdownHeaderSplitter:
 
         # assign split_id to all output documents
         for idx, doc in enumerate(final_docs):
-            if doc.meta is None:
-                doc.meta = {}
             doc.meta["split_id"] = idx
 
         return {"documents": final_docs}
