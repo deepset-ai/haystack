@@ -17,6 +17,7 @@ from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
     Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
@@ -136,7 +137,7 @@ class HuggingFaceLocalChatGenerator:
         huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
         stop_words: Optional[list[str]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tool_parsing_function: Optional[Callable[[str], Optional[list[ToolCall]]]] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
     ) -> None:
@@ -335,7 +336,7 @@ class HuggingFaceLocalChatGenerator:
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Invoke text generation inference based on the provided messages and generation parameters.
@@ -446,7 +447,7 @@ class HuggingFaceLocalChatGenerator:
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes text generation inference based on the provided messages and generation parameters.
@@ -519,7 +520,7 @@ class HuggingFaceLocalChatGenerator:
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ) -> dict[str, Any]:
         """
         Prepares the inputs for the Hugging Face pipeline.

@@ -2,13 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional
 
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
 
+if TYPE_CHECKING:
+    from haystack.tools import ToolsType
 
-def flatten_tools_or_toolsets(tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]]) -> list[Tool]:
+
+def flatten_tools_or_toolsets(tools: "Optional[ToolsType]") -> list[Tool]:
     """
     Flatten tools from various formats into a list of Tool instances.
 

@@ -28,6 +28,7 @@ from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_stre
 from haystack.tools import (
     Tool,
     Toolset,
+    ToolsType,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
@@ -103,7 +104,7 @@ class Agent:
         self,
         *,
         chat_generator: ChatGenerator,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         system_prompt: Optional[str] = None,
         exit_conditions: Optional[list[str]] = None,
         state_schema: Optional[dict[str, Any]] = None,
@@ -265,7 +266,7 @@ class Agent:
         requires_async: bool,
         *,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs,
     ) -> _ExecutionContext:
         """
@@ -307,9 +308,7 @@ class Agent:
             tool_invoker_inputs=tool_invoker_inputs,
         )
 
-    def _select_tools(
-        self, tools: Optional[Union[list[Union[Tool, Toolset]], Toolset, list[str]]] = None
-    ) -> Union[list[Union[Tool, Toolset]], Toolset]:
+    def _select_tools(self, tools: Optional[Union[ToolsType, list[str]]] = None) -> ToolsType:
         """
         Select tools for the current run based on the provided tools parameter.
 
@@ -356,7 +355,7 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT],
         requires_async: bool,
         *,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
     ) -> _ExecutionContext:
         """
         Initialize execution context from an AgentSnapshot.
@@ -476,7 +475,7 @@ class Agent:
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -633,7 +632,7 @@ class Agent:
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """

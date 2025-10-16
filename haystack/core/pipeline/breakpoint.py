@@ -27,7 +27,7 @@ from haystack.utils.misc import _get_output_dir
 
 if TYPE_CHECKING:
     from haystack.components.agents.agent import _ExecutionContext
-    from haystack.tools import Tool, Toolset
+    from haystack.tools import Tool, Toolset, ToolsType
 
 logger = logging.getLogger(__name__)
 
@@ -343,9 +343,7 @@ def _create_agent_snapshot(
     )
 
 
-def _validate_tool_breakpoint_is_valid(
-    agent_breakpoint: AgentBreakpoint, tools: Union[list[Union["Tool", "Toolset"]], "Toolset"]
-) -> None:
+def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools: "ToolsType") -> None:
     """
     Validates the AgentBreakpoint passed to the agent.
 

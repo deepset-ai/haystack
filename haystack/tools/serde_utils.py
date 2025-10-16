@@ -2,17 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization import import_class_by_name
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
 
+if TYPE_CHECKING:
+    from haystack.tools import ToolsType
 
-def serialize_tools_or_toolset(
-    tools: Union[Toolset, list[Union[Tool, Toolset]], None],
-) -> Union[dict[str, Any], list[dict[str, Any]], None]:
+
+def serialize_tools_or_toolset(tools: "Optional[ToolsType]") -> Union[dict[str, Any], list[dict[str, Any]], None]:
     """
     Serialize tools or toolsets to dictionaries.
 

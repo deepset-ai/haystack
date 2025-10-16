@@ -13,8 +13,7 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.tools import (
-    Tool,
-    Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
@@ -85,7 +84,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         max_retries: Optional[int] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         default_headers: Optional[dict[str, str]] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: bool = False,
         *,
         azure_ad_token_provider: Optional[Union[AzureADTokenProvider, AsyncAzureADTokenProvider]] = None,

@@ -36,8 +36,7 @@ from haystack.dataclasses import (
     select_streaming_callback,
 )
 from haystack.tools import (
-    Tool,
-    Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
@@ -103,7 +102,7 @@ class OpenAIChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: bool = False,
         http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
@@ -272,7 +271,7 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -345,7 +344,7 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -423,7 +422,7 @@ class OpenAIChatGenerator:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method

@@ -8,7 +8,7 @@ import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
 from haystack.components.agents import State
 from haystack.core.component.component import component
@@ -19,7 +19,7 @@ from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingCh
 from haystack.tools import (
     ComponentTool,
     Tool,
-    Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
@@ -172,7 +172,7 @@ class ToolInvoker:
 
     def __init__(
         self,
-        tools: Union[list[Union[Tool, Toolset]], Toolset],
+        tools: ToolsType,
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
@@ -241,7 +241,7 @@ class ToolInvoker:
         return _runner
 
     @staticmethod
-    def _validate_and_prepare_tools(tools: Union[list[Union[Tool, Toolset]], Toolset]) -> dict[str, Tool]:
+    def _validate_and_prepare_tools(tools: ToolsType) -> dict[str, Tool]:
         """
         Validates and prepares tools for use by the ToolInvoker.
 
@@ -492,7 +492,7 @@ class ToolInvoker:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ) -> dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
@@ -623,7 +623,7 @@ class ToolInvoker:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ) -> dict[str, Any]:
         """
         Asynchronously processes ChatMessage objects containing tool calls.

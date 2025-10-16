@@ -21,8 +21,7 @@ from haystack.dataclasses import (
 from haystack.dataclasses.streaming_chunk import FinishReason
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
-    Tool,
-    Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
@@ -94,9 +93,7 @@ def _convert_hfapi_tool_calls(hfapi_tool_calls: Optional[list["ChatCompletionOut
     return tool_calls
 
 
-def _convert_tools_to_hfapi_tools(
-    tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]],
-) -> Optional[list["ChatCompletionInputTool"]]:
+def _convert_tools_to_hfapi_tools(tools: Optional[ToolsType]) -> Optional[list["ChatCompletionInputTool"]]:
     if not tools:
         return None
 
@@ -299,7 +296,7 @@ class HuggingFaceAPIChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         stop_words: Optional[list[str]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ):
         """
         Initialize the HuggingFaceAPIChatGenerator instance.
@@ -424,7 +421,7 @@ class HuggingFaceAPIChatGenerator:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
@@ -473,7 +470,7 @@ class HuggingFaceAPIChatGenerator:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Union[Tool, Toolset]], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
