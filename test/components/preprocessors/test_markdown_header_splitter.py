@@ -81,10 +81,10 @@ def test_split_no_headers():
     docs = [Document(content="No headers here."), Document(content="Just some text without headers.")]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    # Should return one doc per input, header is None
+    # Should return one doc per input, and no header key in meta
     assert len(split_docs) == 2
     for doc in split_docs:
-        assert doc.meta["header"] is None
+        assert "header" not in doc.meta
 
 
 def test_split_multiple_documents(sample_text):
