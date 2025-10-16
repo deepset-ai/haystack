@@ -8,7 +8,6 @@ import pytest
 
 from haystack import Document, Pipeline, component
 from haystack.components.agents import Agent
-from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.tools import ToolInvoker
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import PipelineRuntimeError
