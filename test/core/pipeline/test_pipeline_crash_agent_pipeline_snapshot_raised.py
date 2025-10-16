@@ -2,19 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 from typing import Optional, Union
 
 import pytest
 
 from haystack import Document, Pipeline, component
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.tools import ToolInvoker
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import PipelineRuntimeError
-from haystack.dataclasses import ChatMessage
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.tools import Tool, Toolset, create_tool_from_function
@@ -44,16 +42,21 @@ calculator_tool = create_tool_from_function(
 
 
 @component
-class FailingChatGenerator:
-    """A chat generator that raises an exception to simulate a crash."""
+class TestChatGenerator:
+    def __init__(self, fail_on_call: bool):
+        self.fail_on_call = fail_on_call
 
+    @component.output_types(replies=list[ChatMessage])
     def run(self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs) -> dict:
-        raise Exception("Error in chat generator component")  # Simulate a crash in the chat generator
-
-    async def run_async(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
-    ) -> dict:
-        raise Exception("Error in chat generator component")  # Simulate a crash in the chat generator
+        if self.fail_on_call:
+            # Simulate a crash in the chat generator
+            raise Exception("Error in chat generator component")
+        else:
+            return {
+                "replies": [
+                    ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="factorial", arguments={"n": 5})])
+                ]
+            }
 
 
 @component
@@ -83,7 +86,7 @@ def test_pipeline_with_chat_generator_crash():
     """Test pipeline crash handling when chat generator fails."""
     pipe = build_pipeline(
         agent=Agent(
-            chat_generator=FailingChatGenerator(), tools=[calculator_tool], state_schema={"calc_result": {"type": int}}
+            chat_generator=TestChatGenerator(True), tools=[calculator_tool], state_schema={"calc_result": {"type": int}}
         )
     )
 
@@ -94,7 +97,7 @@ def test_pipeline_with_chat_generator_crash():
 
     assert "Error in chat generator component" in str(exception_info.value)
     assert exception_info.value.component_name == "chat_generator"
-    assert exception_info.value.component_type == FailingChatGenerator
+    assert exception_info.value.component_type == TestChatGenerator
     assert "math_agent_chat_generator" in exception_info.value.pipeline_snapshot_file_path
 
     pipeline_snapshot = exception_info.value.pipeline_snapshot
@@ -125,19 +128,12 @@ def test_pipeline_with_chat_generator_crash():
         _ = pipe.run(data={}, pipeline_snapshot=pipeline_snapshot)
 
 
-@pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
 def test_pipeline_with_tool_call_crash():
     """Test pipeline crash handling when a tool call fails."""
     pipe = build_pipeline(
         agent=Agent(
-            chat_generator=OpenAIChatGenerator(),
+            chat_generator=TestChatGenerator(False),
             tools=[calculator_tool, failing_factorial_tool],
-            exit_conditions=["calculator"],
-            streaming_callback=print_streaming_chunk,
             state_schema={"calc_result": {"type": int}, "factorial_result": {"type": int}},
             raise_on_tool_invocation_failure=True,
         )
