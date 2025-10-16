@@ -151,7 +151,7 @@ def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
     return model
 
 
-def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911
+def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911  # pylint: disable=too-many-return-statements
     """
     Recursively resolve and convert complex type annotations, transforming dataclasses into Pydantic-compatible types.
 
