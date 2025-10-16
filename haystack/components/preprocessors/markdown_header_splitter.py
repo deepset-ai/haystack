@@ -242,6 +242,8 @@ class MarkdownHeaderSplitter:
                 if doc.meta:
                     meta = self._flatten_dict(doc.meta)
                 meta.update({"source_id": doc.id, "total_pages": total_pages, "page_number": current_page})
+                if split.get("meta"):
+                    meta.update(split["meta"])
                 current_page = self._update_page_number_with_breaks(split["content"], current_page)
                 docs.append(Document(content=split["content"], meta=meta))
             logger.debug(
