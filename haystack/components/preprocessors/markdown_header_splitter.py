@@ -221,6 +221,7 @@ class MarkdownHeaderSplitter:
 
     def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[Document]:
         """Split a list of documents by markdown headers, preserving metadata."""
+
         result_docs = []
         for doc in documents:
             logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
@@ -229,11 +230,11 @@ class MarkdownHeaderSplitter:
                 continue
             splits = self._split_text_by_markdown_headers(doc.content, doc.id)
             docs = []
-            total_pages = self._calculate_total_pages(doc.content, 0)
 
             current_page = doc.meta.get("page_number", 1) if doc.meta else 1
+            total_pages = doc.content.count(self.page_break_character) + 1
             logger.debug(
-                "Starting page number: {current_page}, Total pages: {total_pages}",
+                "Processing page number: {current_page} out of {total_pages}",
                 current_page=current_page,
                 total_pages=total_pages,
             )
@@ -241,7 +242,7 @@ class MarkdownHeaderSplitter:
                 meta = {}
                 if doc.meta:
                     meta = self._flatten_dict(doc.meta)
-                meta.update({"source_id": doc.id, "total_pages": total_pages, "page_number": current_page})
+                meta.update({"source_id": doc.id, "page_number": current_page})
                 if split.get("meta"):
                     meta.update(split["meta"])
                 current_page = self._update_page_number_with_breaks(split["content"], current_page)
@@ -254,13 +255,6 @@ class MarkdownHeaderSplitter:
             )
             result_docs.extend(docs)
         return result_docs
-
-    def _calculate_total_pages(self, content: str, existing_total: int = 0) -> int:
-        """Calculate total pages based on content and existing metadata."""
-        if existing_total > 0:
-            return existing_total
-
-        return content.count(self.page_break_character) + 1
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:
