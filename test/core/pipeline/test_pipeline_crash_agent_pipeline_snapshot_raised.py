@@ -11,13 +11,13 @@ from haystack import Document, Pipeline, component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.tools import ToolInvoker
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import PipelineRuntimeError
-from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult
+from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.tools import Toolset
-from haystack.tools.tool import Tool
+from haystack.tools import Tool, Toolset, create_tool_from_function
 
 
 def calculate(expression: str) -> dict:
@@ -29,31 +29,17 @@ def calculate(expression: str) -> dict:
         return {"error": str(e)}
 
 
-def factorial(n: int) -> dict:
-    """Calculate the factorial of a number."""
-    if n < 0:
-        return {"error": "Factorial is not defined for negative numbers"}
-    result = 1
-    for i in range(1, n + 1):
-        result *= i
-    return {"result": result}
-
-
 def factorial_failing(n: int) -> dict:
-    """Calculate the factorial of a number - failing version for testing."""
+    """Calculate the factorial of a number."""
     raise Exception("Error in factorial tool")  # Simulate a crash in the tool
 
 
-calculator_tool = Tool(
-    name="calculator",
-    description="Evaluate basic math expressions.",
-    parameters={
-        "type": "object",
-        "properties": {"expression": {"type": "string", "description": "Math expression to evaluate"}},
-        "required": ["expression"],
-    },
-    function=calculate,
-    outputs_to_state={"calc_result": {"source": "result"}},
+failing_factorial_tool = create_tool_from_function(
+    function=factorial_failing, name="factorial", outputs_to_state={"factorial_result": {"source": "result"}}
+)
+
+calculator_tool = create_tool_from_function(
+    function=calculate, name="calculator", outputs_to_state={"calc_result": {"source": "result"}}
 )
 
 
@@ -70,92 +56,17 @@ class FailingChatGenerator:
         raise Exception("Error in chat generator component")  # Simulate a crash in the chat generator
 
 
-def build_agent_with_failing_chat_generator():
-    """Build an agent with calculator and factorial tools, using a failing chat generator."""
-    factorial_tool = Tool(
-        name="factorial",
-        description="Calculate the factorial of a number.",
-        parameters={
-            "type": "object",
-            "properties": {"n": {"type": "integer", "description": "Number to calculate the factorial of"}},
-            "required": ["n"],
-        },
-        function=factorial,
-        outputs_to_state={"factorial_result": {"source": "result"}},
-    )
-
-    agent = Agent(
-        chat_generator=FailingChatGenerator(),
-        tools=[calculator_tool, factorial_tool],
-        exit_conditions=["calculator"],
-        streaming_callback=print_streaming_chunk,
-        state_schema={"calc_result": {"type": int}, "factorial_result": {"type": int}},
-        raise_on_tool_invocation_failure=True,
-    )
-
-    return agent
-
-
-def build_agent_with_failing_tool():
-    """Build an agent with calculator and failing factorial tools."""
-    factorial_tool = Tool(
-        name="factorial",
-        description="Calculate the factorial of a number.",
-        parameters={
-            "type": "object",
-            "properties": {"n": {"type": "integer", "description": "Number to calculate the factorial of"}},
-            "required": ["n"],
-        },
-        function=factorial_failing,
-        outputs_to_state={"factorial_result": {"source": "result"}},
-    )
-
-    agent = Agent(
-        chat_generator=OpenAIChatGenerator(),
-        tools=[calculator_tool, factorial_tool],
-        exit_conditions=["calculator"],
-        streaming_callback=print_streaming_chunk,
-        state_schema={"calc_result": {"type": int}, "factorial_result": {"type": int}},
-        raise_on_tool_invocation_failure=True,
-    )
-
-    return agent
-
-
 @component
 class ExtractResults:
-    """Component to extract results from agent responses."""
-
     @component.output_types(documents=list[Document])
     def run(self, responses: list[ChatMessage]) -> dict:
-        results = []
-        for msg in responses:
-            if text := msg.text:
-                results.append(Document(content=f"{text}"))
-                continue
-
-            # If the message contains ToolCall object extract the tool name, arguments and arguments
-            if isinstance(msg._content[0], ToolCall):
-                for tool_call in msg._content:
-                    tool_name = tool_call.tool_name
-                    arguments = tool_call.arguments
-                    results.append(Document(content=f"{tool_name} - Arguments: {arguments}"))
-
-            # If the message contains ToolCallResult extract the tool name, arguments and arguments
-            if isinstance(msg._content[0], ToolCallResult):
-                for tool_call_result in msg._content:
-                    tool_name = tool_call_result.origin.tool_name
-                    result = tool_call_result.result
-                    results.append(Document(content=f"{tool_name} - Result: {result}"))
-
-        return {"documents": results}
+        return {"documents": [Document(content=resp.text) for resp in responses]}
 
 
-def build_pipeline_with_failing_chat_generator():
-    """Build a pipeline with failing chat generator agent, extractor, and document writer."""
+def build_pipeline(agent: Agent):
+    """Build a pipeline with the given agent, extractor, and document writer."""
     doc_store = InMemoryDocumentStore()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
-    agent = build_agent_with_failing_chat_generator()
     extractor = ExtractResults()
 
     pipe = Pipeline()
@@ -165,41 +76,29 @@ def build_pipeline_with_failing_chat_generator():
     pipe.connect("math_agent.messages", "extractor.responses")
     pipe.connect("extractor.documents", "doc_writer.documents")
 
-    return pipe, doc_store
+    return pipe
 
 
-def build_pipeline_with_failing_tool():
-    """Build a pipeline with failing tool agent, extractor, and document writer."""
-    doc_store = InMemoryDocumentStore()
-    doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
-    agent = build_agent_with_failing_tool()
-    extractor = ExtractResults()
-
-    pipe = Pipeline()
-    pipe.add_component(instance=agent, name="math_agent")
-    pipe.add_component(instance=extractor, name="extractor")
-    pipe.add_component(instance=doc_writer, name="doc_writer")
-    pipe.connect("math_agent.messages", "extractor.responses")
-    pipe.connect("extractor.documents", "doc_writer.documents")
-
-    return pipe, doc_store
-
-
-@pytest.mark.integration
 def test_pipeline_with_chat_generator_crash():
     """Test pipeline crash handling when chat generator fails."""
-    pipe, doc_store = build_pipeline_with_failing_chat_generator()
+    pipe = build_pipeline(
+        agent=Agent(
+            chat_generator=FailingChatGenerator(), tools=[calculator_tool], state_schema={"calc_result": {"type": int}}
+        )
+    )
 
-    test_data = {
-        "math_agent": {"messages": [ChatMessage.from_user("What is 7 * (4 + 2)? What is the factorial of 5?")]}
-    }
+    test_data = {"math_agent": {"messages": [ChatMessage.from_user("What is 7 * (4 + 2)?")]}}
 
     with pytest.raises(PipelineRuntimeError) as exception_info:
         _ = pipe.run(data=test_data)
 
+    assert "Error in chat generator component" in str(exception_info.value)
+    assert exception_info.value.component_name == "chat_generator"
+    assert exception_info.value.component_type == FailingChatGenerator
+    assert "math_agent_chat_generator" in exception_info.value.pipeline_snapshot_file_path
+
     pipeline_snapshot = exception_info.value.pipeline_snapshot
     assert pipeline_snapshot is not None, "Pipeline snapshot should be captured in the exception"
-    assert "Error in chat generator component" in str(exception_info.value)
 
     assert pipeline_snapshot.original_input_data is not None
     assert pipeline_snapshot.ordered_component_names == ["doc_writer", "extractor", "math_agent"]
@@ -233,7 +132,16 @@ def test_pipeline_with_chat_generator_crash():
 )
 def test_pipeline_with_tool_call_crash():
     """Test pipeline crash handling when a tool call fails."""
-    pipe, doc_store = build_pipeline_with_failing_tool()
+    pipe = build_pipeline(
+        agent=Agent(
+            chat_generator=OpenAIChatGenerator(),
+            tools=[calculator_tool, failing_factorial_tool],
+            exit_conditions=["calculator"],
+            streaming_callback=print_streaming_chunk,
+            state_schema={"calc_result": {"type": int}, "factorial_result": {"type": int}},
+            raise_on_tool_invocation_failure=True,
+        )
+    )
 
     test_data = {
         "math_agent": {"messages": [ChatMessage.from_user("What is 7 * (4 + 2)? What is the factorial of 5?")]}
@@ -242,9 +150,13 @@ def test_pipeline_with_tool_call_crash():
     with pytest.raises(PipelineRuntimeError) as exception_info:
         _ = pipe.run(data=test_data)
 
+    assert "Error in factorial tool" in str(exception_info.value), "Exception message should contain tool error"
+    assert exception_info.value.component_name == "tool_invoker"
+    assert exception_info.value.component_type == ToolInvoker
+    assert "math_agent_tool_invoker" in exception_info.value.pipeline_snapshot_file_path
+
     pipeline_snapshot = exception_info.value.pipeline_snapshot
     assert pipeline_snapshot is not None, "Pipeline snapshot should be captured in the exception"
-    assert "Error in factorial tool" in str(exception_info.value), "Exception message should contain tool error"
 
     assert pipeline_snapshot.original_input_data is not None
     assert pipeline_snapshot.ordered_component_names == ["doc_writer", "extractor", "math_agent"]
