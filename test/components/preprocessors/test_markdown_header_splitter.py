@@ -280,9 +280,57 @@ def test_page_break_handling_with_multiple_headers():
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
     # Collect page numbers for each header
-    header1_pages = [doc.meta.get("page_number") for doc in split_docs if doc.meta.get("header") == "Header 1"]
-    header2_pages = [doc.meta.get("page_number") for doc in split_docs if doc.meta.get("header") == "Header 2"]
-    assert min(header1_pages) == 1
-    assert max(header1_pages) == 2
-    assert min(header2_pages) == 2
-    assert max(header2_pages) == 3
+    assert len(split_docs) == 4
+
+    # Split 1
+    assert split_docs[0].content == "\nPage 1\fPage "
+    assert split_docs[0].meta == {
+        "source_id": ANY,
+        "total_pages": 3,
+        "page_number": 1,
+        "header": "Header 1",
+        "parent_headers": [],
+        "split_id": 0,
+        "split_idx_start": 0,
+    }
+
+    # Split 2
+    assert split_docs[1].content == "2"
+    assert split_docs[1].meta == {
+        "source_id": ANY,
+        "total_pages": 3,
+        "page_number": 2,
+        "header": "Header 1",
+        "parent_headers": [],
+        "split_id": 1,
+        "split_idx_start": 13,
+    }
+
+    # Split 3
+    assert split_docs[2].content == "\nPage 3\fPage "
+    assert split_docs[2].meta == {
+        "source_id": ANY,
+        "total_pages": 3,
+        "page_number": 2,
+        "header": "Header 2",
+        "parent_headers": [],
+        "split_id": 2,
+        "split_idx_start": 0,
+    }
+
+    # Split 4
+    assert split_docs[3].content == "4"
+    assert split_docs[3].meta == {
+        "source_id": ANY,
+        "total_pages": 3,
+        "page_number": 3,
+        "header": "Header 2",
+        "parent_headers": [],
+        "split_id": 3,
+        "split_idx_start": 13,
+    }
+
+    # Check reconstruction
+    # NOTE: This doesn't seem to pass currently
+    reconstructed_text = "".join(doc.content for doc in split_docs)
+    assert reconstructed_text == text
