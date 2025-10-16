@@ -75,7 +75,7 @@ class MarkdownHeaderSplitter:
             logger.info(
                 "No headers found in document {doc_id}; returning full document as single chunk.", doc_id=doc_id
             )
-            return [{"content": text, "meta": {"header": None, "parent_headers": []}}]
+            return [{"content": text, "meta": {}}]
 
         # process headers and build chunks
         chunks: list[dict] = []
