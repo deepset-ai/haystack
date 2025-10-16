@@ -6,5 +6,5 @@ features:
 
 deprecations:
   - |
-    Deprecated the `inputs` and `results` parameters in `BreakpointException`. These will be removed in the 2.20.0 release.
+    Added a DeprecationWarning for the `inputs` and `results` parameters in `BreakpointException`. These will be removed in the 2.20.0 release.
     Use the `pipeline_snapshot` parameter to access equivalent information.
