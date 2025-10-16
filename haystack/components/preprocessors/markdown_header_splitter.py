@@ -138,9 +138,6 @@ class MarkdownHeaderSplitter:
 
         Ensures page counting is maintained across splits.
         """
-        if not self.secondary_split:
-            return documents
-
         result_docs = []
 
         for doc in documents:
