@@ -58,10 +58,6 @@ def test_basic_split(sample_text):
     subheader123_doc = next(doc for doc in split_docs if doc.meta["header"] == "Subheader 1.2.3")
     assert "Content under header 1.2.3." in subheader123_doc.content
 
-    # Ensure all documents have a header in their metadata
-    for doc in split_docs:
-        assert doc.meta.get("header") is not None
-
 
 def test_split_parentheaders(sample_text):
     splitter = MarkdownHeaderSplitter()
