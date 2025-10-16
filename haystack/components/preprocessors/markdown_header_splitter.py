@@ -227,6 +227,7 @@ class MarkdownHeaderSplitter:
         result_docs = []
         for doc in documents:
             logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
+            # mypy: doc.content is Optional[str], so we must check for None before passing to splitting method
             if doc.content is None:
                 continue
             splits = self._split_text_by_markdown_headers(doc.content, doc.id)
