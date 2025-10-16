@@ -63,7 +63,7 @@ class MarkdownHeaderSplitter:
                 split_threshold=self.split_threshold,
             )
 
-    def _split_text_by_markdown_headers(self, text: str) -> list[dict]:
+    def _split_text_by_markdown_headers(self, text: str, doc_id: str) -> list[dict]:
         """Split text by ATX-style headers (#) and create chunks with appropriate metadata."""
         logger.debug("Splitting text by markdown headers")
 
@@ -72,7 +72,9 @@ class MarkdownHeaderSplitter:
 
         # return unsplit if no headers found
         if not matches:
-            logger.info("No headers found in document; returning full document as single chunk.")
+            logger.info(
+                "No headers found in document {doc_id}; returning full document as single chunk.", doc_id=doc_id
+            )
             return [{"content": text, "meta": {"header": None, "parent_headers": []}}]
 
         # process headers and build chunks
@@ -99,13 +101,12 @@ class MarkdownHeaderSplitter:
 
             # skip splits w/o content
             if not content:
-                # Add as parent for subsequent headers
+                # add as parent for subsequent headers
                 active_parents = [h for h in header_stack[: level - 1] if h is not None]
                 active_parents.append(header_text)
                 continue
 
-            has_content = True  # At least one header has content
-            # get parent headers
+            has_content = True  # at least one header has content
             parent_headers = list(active_parents)
 
             logger.debug(
@@ -124,7 +125,9 @@ class MarkdownHeaderSplitter:
 
         # return doc unchunked if no headers have content
         if not has_content:
-            logger.info("Document contains only headers with no content; returning original document.")
+            logger.info(
+                "Document {doc_id} contains only headers with no content; returning original document.", doc_id=doc_id
+            )
             return [{"content": text, "meta": {}}]
 
         logger.info("Split into {num_chunks} chunks by markdown headers.", num_chunks=len(chunks))
@@ -226,7 +229,7 @@ class MarkdownHeaderSplitter:
             logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
             if doc.content is None:
                 continue
-            splits = self._split_text_by_markdown_headers(doc.content)
+            splits = self._split_text_by_markdown_headers(doc.content, doc.id)
             docs = []
             total_pages = self._calculate_total_pages(doc.content, doc.meta.get("total_pages", 0) if doc.meta else 0)
 
