@@ -232,7 +232,7 @@ class MarkdownHeaderSplitter:
                 continue
             splits = self._split_text_by_markdown_headers(doc.content, doc.id)
             docs = []
-            total_pages = self._calculate_total_pages(doc.content, doc.meta.get("total_pages", 0) if doc.meta else 0)
+            total_pages = self._calculate_total_pages(doc.content, 0)
 
             current_page = doc.meta.get("page_number", 1) if doc.meta else 1
             logger.debug(
