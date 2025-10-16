@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    - Added `pipeline_snapshot` and `pipeline_snapshot_file_path` parameters to `BreakpointException` to provide more context when a pipeline breakpoint is triggered.
+    - Added `pipeline_snapshot_file_path` parameter to `PipelineRuntimeError` to include a reference to the stored pipeline snapshot so it can be easily found.
+
+deprecations:
+  - |
+    Deprecated the `inputs` and `results` parameters in `BreakpointException`. These will be removed in the 2.20.0 release.
+    Use the `pipeline_snapshot` parameter to access equivalent information.

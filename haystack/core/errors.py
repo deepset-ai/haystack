@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any, Optional
 
 from haystack.dataclasses.breakpoints import PipelineSnapshot
@@ -18,10 +19,12 @@ class PipelineRuntimeError(Exception):
         component_type: Optional[type],
         message: str,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        pipeline_snapshot_file_path: Optional[str] = None,
     ) -> None:
         self.component_name = component_name
         self.component_type = component_type
         self.pipeline_snapshot = pipeline_snapshot
+        self.pipeline_snapshot_file_path = pipeline_snapshot_file_path
         super().__init__(message)
 
     @classmethod
@@ -111,11 +114,21 @@ class BreakpointException(Exception):
         component: Optional[str] = None,
         inputs: Optional[dict[str, Any]] = None,
         results: Optional[dict[str, Any]] = None,
+        pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        pipeline_snapshot_file_path: Optional[str] = None,
     ):
         super().__init__(message)
         self.component = component
+        self.pipeline_snapshot = pipeline_snapshot
+        self.pipeline_snapshot_file_path = pipeline_snapshot_file_path
+
         self.inputs = inputs
         self.results = results
+        warnings.warn(
+            "The `inputs` and `results` parameters will be removed in the 2.20.0 release. "
+            "Please use the `pipeline_snapshot` to access this information.",
+            DeprecationWarning,
+        )
 
 
 class PipelineInvalidPipelineSnapshotError(Exception):
