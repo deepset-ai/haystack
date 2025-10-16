@@ -246,8 +246,6 @@ class MarkdownHeaderSplitter:
                     meta = self._flatten_dict(doc.meta)
                 meta.update({"source_id": doc.id, "total_pages": total_pages, "page_number": current_page})
                 current_page = self._update_page_number_with_breaks(split["content"], current_page)
-                if split.get("meta"):
-                    meta.update(self._flatten_dict(split.get("meta") or {}))
                 docs.append(Document(content=split["content"], meta=meta))
             logger.debug(
                 "Split into {num_docs} documents for id={doc_id}, final page: {current_page}",
@@ -262,9 +260,6 @@ class MarkdownHeaderSplitter:
         """Calculate total pages based on content and existing metadata."""
         if existing_total > 0:
             return existing_total
-
-        if not isinstance(content, str):
-            return 1
 
         return content.count(self.page_break_character) + 1
 
