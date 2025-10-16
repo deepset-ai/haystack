@@ -130,7 +130,6 @@ class MarkdownHeaderSplitter:
             )
             return [{"content": text, "meta": {}}]
 
-        logger.info("Split into {num_chunks} chunks by markdown headers.", num_chunks=len(chunks))
         return chunks
 
     def _apply_secondary_splitting(self, documents: list[Document]) -> list[Document]:
@@ -142,7 +141,6 @@ class MarkdownHeaderSplitter:
         if not self.secondary_split:
             return documents
 
-        logger.info("Applying secondary splitting by {secondary_split}", secondary_split=self.secondary_split)
         result_docs = []
 
         for doc in documents:
@@ -183,7 +181,9 @@ class MarkdownHeaderSplitter:
 
                 result_docs.append(split)
 
-        logger.info("Secondary splitting complete. Final count: {final_count} documents.", final_count=len(result_docs))
+        logger.debug(
+            "Secondary splitting complete. Final count: {final_count} documents.", final_count=len(result_docs)
+        )
         return result_docs
 
     def _flatten_dict(self, d: dict, prefix: str = "", target_dict: Optional[dict] = None) -> dict:
@@ -313,7 +313,6 @@ class MarkdownHeaderSplitter:
             return {"documents": []}
 
         header_split_docs = self._split_documents_by_markdown_headers(processed_documents)
-        logger.info("Header splitting produced {num_docs} documents", num_docs=len(header_split_docs))
 
         # secondary splitting if configured
         final_docs = self._apply_secondary_splitting(header_split_docs) if self.secondary_split else header_split_docs
