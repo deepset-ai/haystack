@@ -473,6 +473,23 @@ class TestComponentTool:
         assert result["output_a"] == "A processed: test input"
         assert result["output_b"] == "B processed: test input"
 
+    def test_warm_up_is_idempotent(self):
+        """Test that calling warm_up multiple times only warms up the component once."""
+        from unittest.mock import MagicMock
+
+        component = SimpleComponent()
+        component.warm_up = MagicMock()
+
+        tool = ComponentTool(component=component)
+
+        # Call warm_up multiple times
+        tool.warm_up()
+        tool.warm_up()
+        tool.warm_up()
+
+        # Component's warm_up should only be called once
+        component.warm_up.assert_called_once()
+
 
 class TestComponentToolInPipeline:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
