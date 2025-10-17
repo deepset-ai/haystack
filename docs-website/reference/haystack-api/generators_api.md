@@ -1752,3 +1752,141 @@ If set, it will override the `tools_strict` parameter set during component initi
 A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
+<a id="chat/fallback"></a>
+
+# Module chat/fallback
+
+<a id="chat/fallback.FallbackChatGenerator"></a>
+
+## FallbackChatGenerator
+
+A chat generator wrapper that tries multiple chat generators sequentially.
+
+It forwards all parameters transparently to the underlying chat generators and returns the first successful result.
+Calls chat generators sequentially until one succeeds. Falls back on any exception raised by a generator.
+If all chat generators fail, it raises a RuntimeError with details.
+
+Timeout enforcement is fully delegated to the underlying chat generators. The fallback mechanism will only
+work correctly if the underlying chat generators implement proper timeout handling and raise exceptions
+when timeouts occur. For predictable latency guarantees, ensure your chat generators:
+- Support a `timeout` parameter in their initialization
+- Implement timeout as total wall-clock time (shared deadline for both streaming and non-streaming)
+- Raise timeout exceptions (e.g., TimeoutError, asyncio.TimeoutError, httpx.TimeoutException) when exceeded
+
+Note: Most well-implemented chat generators (OpenAI, Anthropic, Cohere, etc.) support timeout parameters
+with consistent semantics. For HTTP-based LLM providers, a single timeout value (e.g., `timeout=30`)
+typically applies to all connection phases: connection setup, read, write, and pool. For streaming
+responses, read timeout is the maximum gap between chunks. For non-streaming, it's the time limit for
+receiving the complete response.
+
+Failover is automatically triggered when a generator raises any exception, including:
+- Timeout errors (if the generator implements and raises them)
+- Rate limit errors (429)
+- Authentication errors (401)
+- Context length errors (400)
+- Server errors (500+)
+- Any other exception
+
+<a id="chat/fallback.FallbackChatGenerator.__init__"></a>
+
+#### FallbackChatGenerator.\_\_init\_\_
+
+```python
+def __init__(chat_generators: list[ChatGenerator])
+```
+
+Creates an instance of FallbackChatGenerator.
+
+**Arguments**:
+
+- `chat_generators`: A non-empty list of chat generator components to try in order.
+
+<a id="chat/fallback.FallbackChatGenerator.to_dict"></a>
+
+#### FallbackChatGenerator.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize the component, including nested chat generators when they support serialization.
+
+<a id="chat/fallback.FallbackChatGenerator.from_dict"></a>
+
+#### FallbackChatGenerator.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator
+```
+
+Rebuild the component from a serialized representation, restoring nested chat generators.
+
+<a id="chat/fallback.FallbackChatGenerator.run"></a>
+
+#### FallbackChatGenerator.run
+
+```python
+@component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
+def run(
+    messages: list[ChatMessage],
+    generation_kwargs: Union[dict[str, Any], None] = None,
+    tools: Union[list[Tool], Toolset, None] = None,
+    streaming_callback: Union[StreamingCallbackT,
+                              None] = None) -> dict[str, Any]
+```
+
+Execute chat generators sequentially until one succeeds.
+
+**Arguments**:
+
+- `messages`: The conversation history as a list of ChatMessage instances.
+- `generation_kwargs`: Optional parameters for the chat generator (e.g., temperature, max_tokens).
+- `tools`: Optional Tool instances or Toolset for function calling capabilities.
+- `streaming_callback`: Optional callable for handling streaming responses.
+
+**Raises**:
+
+- `RuntimeError`: If all chat generators fail.
+
+**Returns**:
+
+A dictionary with:
+- "replies": Generated ChatMessage instances from the first successful generator.
+- "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
+  total_attempts, failed_chat_generators, plus any metadata from the successful generator.
+
+<a id="chat/fallback.FallbackChatGenerator.run_async"></a>
+
+#### FallbackChatGenerator.run\_async
+
+```python
+@component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
+async def run_async(
+    messages: list[ChatMessage],
+    generation_kwargs: Union[dict[str, Any], None] = None,
+    tools: Union[list[Tool], Toolset, None] = None,
+    streaming_callback: Union[StreamingCallbackT,
+                              None] = None) -> dict[str, Any]
+```
+
+Asynchronously execute chat generators sequentially until one succeeds.
+
+**Arguments**:
+
+- `messages`: The conversation history as a list of ChatMessage instances.
+- `generation_kwargs`: Optional parameters for the chat generator (e.g., temperature, max_tokens).
+- `tools`: Optional Tool instances or Toolset for function calling capabilities.
+- `streaming_callback`: Optional callable for handling streaming responses.
+
+**Raises**:
+
+- `RuntimeError`: If all chat generators fail.
+
+**Returns**:
+
+A dictionary with:
+- "replies": Generated ChatMessage instances from the first successful generator.
+- "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
+  total_attempts, failed_chat_generators, plus any metadata from the successful generator.
+
