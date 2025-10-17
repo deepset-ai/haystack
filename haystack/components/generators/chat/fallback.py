@@ -49,6 +49,7 @@ class FallbackChatGenerator:
 
     def __init__(self, chat_generators: list[ChatGenerator]):
         """
+        Creates an instance of FallbackChatGenerator.
         :param chat_generators: A non-empty list of chat generator components to try in order.
         """
         if not chat_generators:
