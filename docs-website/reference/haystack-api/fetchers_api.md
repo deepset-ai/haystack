@@ -1,7 +1,8 @@
 ---
-title: Fetchers
+title: "Fetchers"
 id: fetchers-api
-description: Fetches content from a list of URLs and returns a list of extracted content streams.
+description: "Fetches content from a list of URLs and returns a list of extracted content streams."
+slug: "/fetchers-api"
 ---
 
 <a id="link_content"></a>
@@ -140,3 +141,4 @@ This is the asynchronous version of the `run` method with the same parameters an
 **Returns**:
 
 `ByteStream` objects representing the extracted content.
+

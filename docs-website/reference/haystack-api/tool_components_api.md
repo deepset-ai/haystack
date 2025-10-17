@@ -1,7 +1,8 @@
 ---
-title: Tool Components
+title: "Tool Components"
 id: tool-components-api
-description: Components related to Tool Calling.
+description: "Components related to Tool Calling."
+slug: "/tool-components-api"
 ---
 
 <a id="tool_invoker"></a>
@@ -305,3 +306,4 @@ Deserializes the component from a dictionary.
 **Returns**:
 
 The deserialized component.
+

@@ -1,7 +1,8 @@
 ---
-title: Embedders
+title: "Embedders"
 id: embedders-api
-description: Transforms queries into vectors to look for similar or relevant Documents.
+description: "Transforms queries into vectors to look for similar or relevant Documents."
+slug: "/embedders-api"
 ---
 
 <a id="azure_document_embedder"></a>
@@ -1768,3 +1769,4 @@ Embed a list of documents.
 
 A dictionary with the following keys:
 - `documents`: Documents with embeddings.
+

@@ -46,20 +46,15 @@ jobs:
           # Using rsync to copy files. This will also remove files in dest that are no longer in source.
           rsync -av --delete --exclude='.git/' "$SOURCE_PATH/" "$DEST_PATH/"
 
-      - name: Commit and push changes
-        env:
-            GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          cd docs-website
-
-          if [[ -n $(git status -s) ]]; then
-            echo "Syncing docs with Docusaurus..."
-            git add .
-            git commit -m "docs: Sync Haystack API reference"
-            git push
-          else
-            echo "No changes to sync with Docusaurus."
-          fi
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          commit-message: "Sync Haystack API reference on Docusaurus"
+          branch: sync-docusaurus-api-reference
+          base: main
+          title: "docs: sync Haystack API reference on Docusaurus"
+          add-paths: |
+            docs-website/reference/haystack-api
+          body: |
+            This PR syncs the Haystack API reference on Docusaurus. Just approve and merge it.

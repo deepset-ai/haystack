@@ -1,7 +1,8 @@
 ---
-title: Websearch
+title: "Websearch"
 id: websearch-api
-description: Web search engine for Haystack.
+description: "Web search engine for Haystack."
+slug: "/websearch-api"
 ---
 
 <a id="serper_dev"></a>
@@ -224,3 +225,4 @@ Uses [SearchApi](https://www.searchapi.io/) to search the web.
 A dictionary with the following keys:
 - "documents": List of documents returned by the search engine.
 - "links": List of links returned by the search engine.
+

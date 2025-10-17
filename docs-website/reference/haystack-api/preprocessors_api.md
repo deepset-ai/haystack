@@ -1,7 +1,8 @@
 ---
-title: PreProcessors
+title: "PreProcessors"
 id: preprocessors-api
-description: Preprocess your Documents and texts. Clean, split, and more.
+description: "Preprocess your Documents and texts. Clean, split, and more."
+slug: "/preprocessors-api"
 ---
 
 <a id="csv_document_cleaner"></a>
@@ -642,7 +643,7 @@ This is done until all chunks are smaller than the split_length parameter.
 
 **Example**:
 
-
+  
 ```python
 from haystack import Document
 from haystack.components.preprocessors import RecursiveDocumentSplitter
@@ -797,3 +798,4 @@ Cleans up the given list of strings.
 
 A dictionary with the following key:
 - `texts`:  the cleaned list of strings.
+
