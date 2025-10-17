@@ -1,7 +1,8 @@
 ---
-title: Generators
+title: "Generators"
 id: generators-api
-description: Enables text generation using LLMs.
+description: "Enables text generation using LLMs."
+slug: "/generators-api"
 ---
 
 <a id="azure"></a>
@@ -98,7 +99,8 @@ For more information, see the [HTTPX documentation](https://www.python-httpx.org
 the OpenAI endpoint. See [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat) for
 more details.
 Some of the supported parameters:
-- `max_tokens`: The maximum number of tokens the output text can have.
+- `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+    including visible output tokens and reasoning tokens.
 - `temperature`: The sampling temperature to use. Higher values mean the model takes more risks.
     Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -547,7 +549,8 @@ omitted, and the default system prompt of the model is used.
 the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
 more details.
 Some of the supported parameters:
-- `max_tokens`: The maximum number of tokens the output text can have.
+- `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+    including visible output tokens and reasoning tokens.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
     Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -861,7 +864,8 @@ If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable,
 - `generation_kwargs`: Other parameters to use for the model. These parameters are sent directly to
 the OpenAI endpoint. For details, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 Some of the supported parameters:
-- `max_tokens`: The maximum number of tokens the output text can have.
+- `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+    including visible output tokens and reasoning tokens.
 - `temperature`: The sampling temperature to use. Higher values mean the model takes more risks.
     Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: Nucleus sampling is an alternative to sampling with temperature, where the model considers
@@ -1604,7 +1608,8 @@ as an argument.
 the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
 more details.
 Some of the supported parameters:
-- `max_tokens`: The maximum number of tokens the output text can have.
+- `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+    including visible output tokens and reasoning tokens.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
     Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -1746,3 +1751,4 @@ If set, it will override the `tools_strict` parameter set during component initi
 
 A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
+

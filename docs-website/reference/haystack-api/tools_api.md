@@ -1,7 +1,8 @@
 ---
-title: Tools
+title: "Tools"
 id: tools-api
-description: Unified abstractions to represent tools across the framework.
+description: "Unified abstractions to represent tools across the framework."
+slug: "/tools-api"
 ---
 
 <a id="tool"></a>
@@ -484,11 +485,11 @@ to manage and use them as a unit in Haystack pipelines.
    # Use the toolset with a ToolInvoker or ChatGenerator component
    invoker = ToolInvoker(tools=math_toolset)
    ```
-
+  
   2. Base class for dynamic tool loading:
   By subclassing Toolset, you can create implementations that dynamically load tools
   from external sources like OpenAPI URLs, MCP servers, or other resources.
-
+  
 
 **Example**:
 
@@ -549,11 +550,11 @@ to manage and use them as a unit in Haystack pipelines.
    calculator_toolset = CalculatorToolset()
    invoker = ToolInvoker(tools=calculator_toolset)
    ```
-
+  
   Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
   making it behave like a list of Tools. This makes it compatible with components that expect
   iterable tools, such as ToolInvoker or Haystack chat generators.
-
+  
   When implementing a custom Toolset subclass for dynamic tool loading:
   - Perform the dynamic loading in the __init__ method
   - Override to_dict() and from_dict() methods if your tools are defined dynamically
@@ -726,3 +727,4 @@ Get a Tool by index.
 **Returns**:
 
 The Tool at the specified index
+

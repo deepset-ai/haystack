@@ -1,7 +1,8 @@
 ---
-title: Agents
+title: "Agents"
 id: agents-api
-description: Tool-using agents with provider-agnostic chat model support.
+description: "Tool-using agents with provider-agnostic chat model support."
+slug: "/agents-api"
 ---
 
 <a id="agent"></a>
@@ -366,3 +367,4 @@ def from_dict(cls, data: dict[str, Any])
 ```
 
 Convert a dictionary back to a State object.
+

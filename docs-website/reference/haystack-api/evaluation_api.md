@@ -1,7 +1,8 @@
 ---
-title: Evaluation
+title: "Evaluation"
 id: evaluation-api
-description: Represents the results of evaluation.
+description: "Represents the results of evaluation."
+slug: "/evaluation-api"
 ---
 
 <a id="eval_run_result"></a>
@@ -106,3 +107,4 @@ Generates a report with detailed scores for each metric from two evaluation runs
 
 JSON or DataFrame with a comparison of the detailed scores, in case the output is set to a CSV file,
 a message confirming the successful write or an error message.
+

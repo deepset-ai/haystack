@@ -1,7 +1,8 @@
 ---
-title: Retrievers
+title: "Retrievers"
 id: retrievers-api
-description: Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query.
+description: "Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query."
+slug: "/retrievers-api"
 ---
 
 <a id="auto_merging_retriever"></a>
@@ -746,3 +747,4 @@ A dictionary with the following keys:
 - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
                       document surrounding them. The documents are sorted by the `split_idx_start`
                       meta field.
+

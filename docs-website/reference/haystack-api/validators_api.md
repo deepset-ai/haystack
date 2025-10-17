@@ -1,7 +1,8 @@
 ---
-title: Validators
+title: "Validators"
 id: validators-api
-description: Validators validate LLM outputs
+description: "Validators validate LLM outputs"
+slug: "/validators-api"
 ---
 
 <a id="json_schema"></a>
@@ -141,3 +142,4 @@ dictionaries.
 A dictionary with the following keys:
 - "validated": A list of messages if the last message is valid.
 - "validation_error": A list of messages if the last message is invalid.
+

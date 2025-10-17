@@ -1,7 +1,8 @@
 ---
-title: Audio
+title: "Audio"
 id: audio-api
-description: Transcribes audio files.
+description: "Transcribes audio files."
+slug: "/audio-api"
 ---
 
 <a id="whisper_local"></a>
@@ -263,3 +264,4 @@ Transcribes the list of audio files into a list of documents.
 A dictionary with the following keys:
 - `documents`: A list of documents, one document for each file.
 The content of each document is the transcribed text.
+

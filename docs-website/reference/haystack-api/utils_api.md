@@ -1,271 +1,47 @@
 ---
-title: Utils
+title: "Utils"
 id: utils-api
-description: Utility functions and classes used across the library.
+description: "Utility functions and classes used across the library."
+slug: "/utils-api"
 ---
 
-<a id="azure"></a>
+<a id="jinja2_extensions"></a>
 
-# Module azure
+# Module jinja2\_extensions
 
-<a id="azure.default_azure_ad_token_provider"></a>
+<a id="jinja2_extensions.Jinja2TimeExtension"></a>
 
-#### default\_azure\_ad\_token\_provider
+## Jinja2TimeExtension
 
-```python
-def default_azure_ad_token_provider() -> str
-```
+<a id="jinja2_extensions.Jinja2TimeExtension.__init__"></a>
 
-Get a Azure AD token using the DefaultAzureCredential and the "https://cognitiveservices.azure.com/.default" scope.
-
-<a id="jupyter"></a>
-
-# Module jupyter
-
-<a id="jupyter.is_in_jupyter"></a>
-
-#### is\_in\_jupyter
+#### Jinja2TimeExtension.\_\_init\_\_
 
 ```python
-def is_in_jupyter() -> bool
+def __init__(environment: Environment)
 ```
 
-Returns `True` if in Jupyter or Google Colab, `False` otherwise.
-
-<a id="url_validation"></a>
-
-# Module url\_validation
-
-<a id="url_validation.is_valid_http_url"></a>
-
-#### is\_valid\_http\_url
-
-```python
-def is_valid_http_url(url: str) -> bool
-```
-
-Check if a URL is a valid HTTP/HTTPS URL.
-
-<a id="auth"></a>
-
-# Module auth
-
-<a id="auth.SecretType"></a>
-
-## SecretType
-
-<a id="auth.SecretType.from_str"></a>
-
-#### SecretType.from\_str
-
-```python
-@staticmethod
-def from_str(string: str) -> "SecretType"
-```
-
-Convert a string to a SecretType.
+Initializes the JinjaTimeExtension object.
 
 **Arguments**:
 
-- `string`: The string to convert.
+- `environment`: The Jinja2 environment to initialize the extension with.
+It provides the context where the extension will operate.
 
-<a id="auth.Secret"></a>
+<a id="jinja2_extensions.Jinja2TimeExtension.parse"></a>
 
-## Secret
-
-Encapsulates a secret used for authentication.
-
-Usage example:
-```python
-from haystack.components.generators import OpenAIGenerator
-from haystack.utils import Secret
-
-generator = OpenAIGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
-```
-
-<a id="auth.Secret.from_token"></a>
-
-#### Secret.from\_token
+#### Jinja2TimeExtension.parse
 
 ```python
-@staticmethod
-def from_token(token: str) -> "Secret"
+def parse(parser: Any) -> Union[nodes.Node, list[nodes.Node]]
 ```
 
-Create a token-based secret. Cannot be serialized.
+Parse the template expression to determine how to handle the datetime formatting.
 
 **Arguments**:
 
-- `token`: The token to use for authentication.
-
-<a id="auth.Secret.from_env_var"></a>
-
-#### Secret.from\_env\_var
-
-```python
-@staticmethod
-def from_env_var(env_vars: Union[str, list[str]],
-                 *,
-                 strict: bool = True) -> "Secret"
-```
-
-Create an environment variable-based secret. Accepts one or more environment variables.
-
-Upon resolution, it returns a string token from the first environment variable that is set.
-
-**Arguments**:
-
-- `env_vars`: A single environment variable or an ordered list of
-candidate environment variables.
-- `strict`: Whether to raise an exception if none of the environment
-variables are set.
-
-<a id="auth.Secret.to_dict"></a>
-
-#### Secret.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Convert the secret to a JSON-serializable dictionary.
-
-Some secrets may not be serializable.
-
-**Returns**:
-
-The serialized policy.
-
-<a id="auth.Secret.from_dict"></a>
-
-#### Secret.from\_dict
-
-```python
-@staticmethod
-def from_dict(dict: dict[str, Any]) -> "Secret"
-```
-
-Create a secret from a JSON-serializable dictionary.
-
-**Arguments**:
-
-- `dict`: The dictionary with the serialized data.
-
-**Returns**:
-
-The deserialized secret.
-
-<a id="auth.Secret.resolve_value"></a>
-
-#### Secret.resolve\_value
-
-```python
-@abstractmethod
-def resolve_value() -> Optional[Any]
-```
-
-Resolve the secret to an atomic value. The semantics of the value is secret-dependent.
-
-**Returns**:
-
-The value of the secret, if any.
-
-<a id="auth.Secret.type"></a>
-
-#### Secret.type
-
-```python
-@property
-@abstractmethod
-def type() -> SecretType
-```
-
-The type of the secret.
-
-<a id="auth.deserialize_secrets_inplace"></a>
-
-#### deserialize\_secrets\_inplace
-
-```python
-def deserialize_secrets_inplace(data: dict[str, Any],
-                                keys: Iterable[str],
-                                *,
-                                recursive: bool = False) -> None
-```
-
-Deserialize secrets in a dictionary inplace.
-
-**Arguments**:
-
-- `data`: The dictionary with the serialized data.
-- `keys`: The keys of the secrets to deserialize.
-- `recursive`: Whether to recursively deserialize nested dictionaries.
-
-<a id="callable_serialization"></a>
-
-# Module callable\_serialization
-
-<a id="callable_serialization.serialize_callable"></a>
-
-#### serialize\_callable
-
-```python
-def serialize_callable(callable_handle: Callable) -> str
-```
-
-Serializes a callable to its full path.
-
-**Arguments**:
-
-- `callable_handle`: The callable to serialize
-
-**Returns**:
-
-The full path of the callable
-
-<a id="callable_serialization.deserialize_callable"></a>
-
-#### deserialize\_callable
-
-```python
-def deserialize_callable(callable_handle: str) -> Callable
-```
-
-Deserializes a callable given its full import path as a string.
-
-**Arguments**:
-
-- `callable_handle`: The full path of the callable_handle
-
-**Raises**:
-
-- `DeserializationError`: If the callable cannot be found
-
-**Returns**:
-
-The callable
-
-<a id="asynchronous"></a>
-
-# Module asynchronous
-
-<a id="asynchronous.is_callable_async_compatible"></a>
-
-#### is\_callable\_async\_compatible
-
-```python
-def is_callable_async_compatible(func: Callable) -> bool
-```
-
-Returns if the given callable is usable inside a component's `run_async` method.
-
-**Arguments**:
-
-- `callable`: The callable to check.
-
-**Returns**:
-
-True if the callable is compatible, False otherwise.
+- `parser`: The parser object that processes the template expressions and manages the syntax tree.
+It's used to interpret the template's structure.
 
 <a id="requests_utils"></a>
 
@@ -423,6 +199,233 @@ When param is `None`, HTTP 408, 418, 429 and 503 will be retried.
 
 The `httpx.Response` object.
 
+<a id="asynchronous"></a>
+
+# Module asynchronous
+
+<a id="asynchronous.is_callable_async_compatible"></a>
+
+#### is\_callable\_async\_compatible
+
+```python
+def is_callable_async_compatible(func: Callable) -> bool
+```
+
+Returns if the given callable is usable inside a component's `run_async` method.
+
+**Arguments**:
+
+- `callable`: The callable to check.
+
+**Returns**:
+
+True if the callable is compatible, False otherwise.
+
+<a id="base_serialization"></a>
+
+# Module base\_serialization
+
+<a id="base_serialization.serialize_class_instance"></a>
+
+#### serialize\_class\_instance
+
+```python
+def serialize_class_instance(obj: Any) -> dict[str, Any]
+```
+
+Serializes an object that has a `to_dict` method into a dictionary.
+
+**Arguments**:
+
+- `obj`: The object to be serialized.
+
+**Raises**:
+
+- `SerializationError`: If the object does not have a `to_dict` method.
+
+**Returns**:
+
+A dictionary representation of the object.
+
+<a id="base_serialization.deserialize_class_instance"></a>
+
+#### deserialize\_class\_instance
+
+```python
+def deserialize_class_instance(data: dict[str, Any]) -> Any
+```
+
+Deserializes an object from a dictionary representation generated by `auto_serialize_class_instance`.
+
+**Arguments**:
+
+- `data`: The dictionary to deserialize from.
+
+**Raises**:
+
+- `DeserializationError`: If the serialization data is malformed, the class type cannot be imported, or the
+class does not have a `from_dict` method.
+
+**Returns**:
+
+The deserialized object.
+
+<a id="callable_serialization"></a>
+
+# Module callable\_serialization
+
+<a id="callable_serialization.serialize_callable"></a>
+
+#### serialize\_callable
+
+```python
+def serialize_callable(callable_handle: Callable) -> str
+```
+
+Serializes a callable to its full path.
+
+**Arguments**:
+
+- `callable_handle`: The callable to serialize
+
+**Returns**:
+
+The full path of the callable
+
+<a id="callable_serialization.deserialize_callable"></a>
+
+#### deserialize\_callable
+
+```python
+def deserialize_callable(callable_handle: str) -> Callable
+```
+
+Deserializes a callable given its full import path as a string.
+
+**Arguments**:
+
+- `callable_handle`: The full path of the callable_handle
+
+**Raises**:
+
+- `DeserializationError`: If the callable cannot be found
+
+**Returns**:
+
+The callable
+
+<a id="deserialization"></a>
+
+# Module deserialization
+
+<a id="deserialization.deserialize_document_store_in_init_params_inplace"></a>
+
+#### deserialize\_document\_store\_in\_init\_params\_inplace
+
+```python
+def deserialize_document_store_in_init_params_inplace(
+        data: dict[str, Any], key: str = "document_store") -> None
+```
+
+Deserializes a generic document store from the init_parameters of a serialized component in place.
+
+**Arguments**:
+
+- `data`: The dictionary to deserialize from.
+- `key`: The key in the `data["init_parameters"]` dictionary where the document store is specified.
+
+**Raises**:
+
+- `DeserializationError`: If the document store is not properly specified in the serialization data or its type cannot be imported.
+
+**Returns**:
+
+The dictionary, with the document store deserialized.
+
+<a id="deserialization.deserialize_chatgenerator_inplace"></a>
+
+#### deserialize\_chatgenerator\_inplace
+
+```python
+def deserialize_chatgenerator_inplace(data: dict[str, Any],
+                                      key: str = "chat_generator") -> None
+```
+
+Deserialize a ChatGenerator in a dictionary inplace.
+
+**Arguments**:
+
+- `data`: The dictionary with the serialized data.
+- `key`: The key in the dictionary where the ChatGenerator is stored.
+
+**Raises**:
+
+- `DeserializationError`: If the key is missing in the serialized data, the value is not a dictionary,
+the type key is missing, the class cannot be imported, or the class lacks a 'from_dict' method.
+
+<a id="deserialization.deserialize_component_inplace"></a>
+
+#### deserialize\_component\_inplace
+
+```python
+def deserialize_component_inplace(data: dict[str, Any],
+                                  key: str = "chat_generator") -> None
+```
+
+Deserialize a Component in a dictionary inplace.
+
+**Arguments**:
+
+- `data`: The dictionary with the serialized data.
+- `key`: The key in the dictionary where the Component is stored. Default is "chat_generator".
+
+**Raises**:
+
+- `DeserializationError`: If the key is missing in the serialized data, the value is not a dictionary,
+the type key is missing, the class cannot be imported, or the class lacks a 'from_dict' method.
+
+<a id="url_validation"></a>
+
+# Module url\_validation
+
+<a id="url_validation.is_valid_http_url"></a>
+
+#### is\_valid\_http\_url
+
+```python
+def is_valid_http_url(url: str) -> bool
+```
+
+Check if a URL is a valid HTTP/HTTPS URL.
+
+<a id="azure"></a>
+
+# Module azure
+
+<a id="azure.default_azure_ad_token_provider"></a>
+
+#### default\_azure\_ad\_token\_provider
+
+```python
+def default_azure_ad_token_provider() -> str
+```
+
+Get a Azure AD token using the DefaultAzureCredential and the "https://cognitiveservices.azure.com/.default" scope.
+
+<a id="jupyter"></a>
+
+# Module jupyter
+
+<a id="jupyter.is_in_jupyter"></a>
+
+#### is\_in\_jupyter
+
+```python
+def is_in_jupyter() -> bool
+```
+
+Returns `True` if in Jupyter or Google Colab, `False` otherwise.
+
 <a id="filters"></a>
 
 # Module filters
@@ -451,45 +454,6 @@ Return whether `filters` match the Document or the ByteStream.
 
 For a detailed specification of the filters, refer to the
 `DocumentStore.filter_documents()` protocol documentation.
-
-<a id="misc"></a>
-
-# Module misc
-
-<a id="misc.expand_page_range"></a>
-
-#### expand\_page\_range
-
-```python
-def expand_page_range(page_range: list[Union[str, int]]) -> list[int]
-```
-
-Takes a list of page numbers and ranges and expands them into a list of page numbers.
-
-For example, given a page_range=['1-3', '5', '8', '10-12'] the function will return [1, 2, 3, 5, 8, 10, 11, 12]
-
-**Arguments**:
-
-- `page_range`: List of page numbers and ranges
-
-**Returns**:
-
-An expanded list of page integers
-
-<a id="misc.expit"></a>
-
-#### expit
-
-```python
-def expit(
-        x: Union[float, ndarray[Any, Any]]) -> Union[float, ndarray[Any, Any]]
-```
-
-Compute logistic sigmoid function. Maps input values to a range between 0 and 1
-
-**Arguments**:
-
-- `x`: input value. Can be a scalar or a numpy array.
 
 <a id="device"></a>
 
@@ -957,32 +921,6 @@ Create a component device representation from a JSON-serialized dictionary.
 
 The deserialized component device.
 
-<a id="http_client"></a>
-
-# Module http\_client
-
-<a id="http_client.init_http_client"></a>
-
-#### init\_http\_client
-
-```python
-def init_http_client(
-    http_client_kwargs: Optional[dict[str, Any]] = None,
-    async_client: bool = False
-) -> Union[httpx.Client, httpx.AsyncClient, None]
-```
-
-Initialize an httpx client based on the http_client_kwargs.
-
-**Arguments**:
-
-- `http_client_kwargs`: The kwargs to pass to the httpx client.
-- `async_client`: Whether to initialize an async client.
-
-**Returns**:
-
-A httpx client or an async httpx client.
-
 <a id="type_serialization"></a>
 
 # Module type\_serialization
@@ -1052,6 +990,200 @@ on the performance of the import for single-threaded environments.
 
 - `module_name`: the module to import
 
+<a id="misc"></a>
+
+# Module misc
+
+<a id="misc.expand_page_range"></a>
+
+#### expand\_page\_range
+
+```python
+def expand_page_range(page_range: list[Union[str, int]]) -> list[int]
+```
+
+Takes a list of page numbers and ranges and expands them into a list of page numbers.
+
+For example, given a page_range=['1-3', '5', '8', '10-12'] the function will return [1, 2, 3, 5, 8, 10, 11, 12]
+
+**Arguments**:
+
+- `page_range`: List of page numbers and ranges
+
+**Returns**:
+
+An expanded list of page integers
+
+<a id="misc.expit"></a>
+
+#### expit
+
+```python
+def expit(
+        x: Union[float, ndarray[Any, Any]]) -> Union[float, ndarray[Any, Any]]
+```
+
+Compute logistic sigmoid function. Maps input values to a range between 0 and 1
+
+**Arguments**:
+
+- `x`: input value. Can be a scalar or a numpy array.
+
+<a id="auth"></a>
+
+# Module auth
+
+<a id="auth.SecretType"></a>
+
+## SecretType
+
+<a id="auth.SecretType.from_str"></a>
+
+#### SecretType.from\_str
+
+```python
+@staticmethod
+def from_str(string: str) -> "SecretType"
+```
+
+Convert a string to a SecretType.
+
+**Arguments**:
+
+- `string`: The string to convert.
+
+<a id="auth.Secret"></a>
+
+## Secret
+
+Encapsulates a secret used for authentication.
+
+Usage example:
+```python
+from haystack.components.generators import OpenAIGenerator
+from haystack.utils import Secret
+
+generator = OpenAIGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
+```
+
+<a id="auth.Secret.from_token"></a>
+
+#### Secret.from\_token
+
+```python
+@staticmethod
+def from_token(token: str) -> "Secret"
+```
+
+Create a token-based secret. Cannot be serialized.
+
+**Arguments**:
+
+- `token`: The token to use for authentication.
+
+<a id="auth.Secret.from_env_var"></a>
+
+#### Secret.from\_env\_var
+
+```python
+@staticmethod
+def from_env_var(env_vars: Union[str, list[str]],
+                 *,
+                 strict: bool = True) -> "Secret"
+```
+
+Create an environment variable-based secret. Accepts one or more environment variables.
+
+Upon resolution, it returns a string token from the first environment variable that is set.
+
+**Arguments**:
+
+- `env_vars`: A single environment variable or an ordered list of
+candidate environment variables.
+- `strict`: Whether to raise an exception if none of the environment
+variables are set.
+
+<a id="auth.Secret.to_dict"></a>
+
+#### Secret.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Convert the secret to a JSON-serializable dictionary.
+
+Some secrets may not be serializable.
+
+**Returns**:
+
+The serialized policy.
+
+<a id="auth.Secret.from_dict"></a>
+
+#### Secret.from\_dict
+
+```python
+@staticmethod
+def from_dict(dict: dict[str, Any]) -> "Secret"
+```
+
+Create a secret from a JSON-serializable dictionary.
+
+**Arguments**:
+
+- `dict`: The dictionary with the serialized data.
+
+**Returns**:
+
+The deserialized secret.
+
+<a id="auth.Secret.resolve_value"></a>
+
+#### Secret.resolve\_value
+
+```python
+@abstractmethod
+def resolve_value() -> Optional[Any]
+```
+
+Resolve the secret to an atomic value. The semantics of the value is secret-dependent.
+
+**Returns**:
+
+The value of the secret, if any.
+
+<a id="auth.Secret.type"></a>
+
+#### Secret.type
+
+```python
+@property
+@abstractmethod
+def type() -> SecretType
+```
+
+The type of the secret.
+
+<a id="auth.deserialize_secrets_inplace"></a>
+
+#### deserialize\_secrets\_inplace
+
+```python
+def deserialize_secrets_inplace(data: dict[str, Any],
+                                keys: Iterable[str],
+                                *,
+                                recursive: bool = False) -> None
+```
+
+Deserialize secrets in a dictionary inplace.
+
+**Arguments**:
+
+- `data`: The dictionary with the serialized data.
+- `keys`: The keys of the secrets to deserialize.
+- `recursive`: Whether to recursively deserialize nested dictionaries.
+
 <a id="jinja2_chat_extension"></a>
 
 # Module jinja2\_chat\_extension
@@ -1081,7 +1213,7 @@ Hello! I am {{user_name}}. Please describe the images.
 {% endfor %}
 {% endmessage %}
 ```
-
+  
   ### How it works
   1. The `{% message %}` tag is used to define a chat message.
   2. The message can contain text and other structured content parts.
@@ -1138,159 +1270,29 @@ Jinja filter to convert an ChatMessageContentT object into JSON string wrapped i
 
 A JSON string wrapped in special XML content tags
 
-<a id="jinja2_extensions"></a>
+<a id="http_client"></a>
 
-# Module jinja2\_extensions
+# Module http\_client
 
-<a id="jinja2_extensions.Jinja2TimeExtension"></a>
+<a id="http_client.init_http_client"></a>
 
-## Jinja2TimeExtension
-
-<a id="jinja2_extensions.Jinja2TimeExtension.__init__"></a>
-
-#### Jinja2TimeExtension.\_\_init\_\_
+#### init\_http\_client
 
 ```python
-def __init__(environment: Environment)
+def init_http_client(
+    http_client_kwargs: Optional[dict[str, Any]] = None,
+    async_client: bool = False
+) -> Union[httpx.Client, httpx.AsyncClient, None]
 ```
 
-Initializes the JinjaTimeExtension object.
+Initialize an httpx client based on the http_client_kwargs.
 
 **Arguments**:
 
-- `environment`: The Jinja2 environment to initialize the extension with.
-It provides the context where the extension will operate.
-
-<a id="jinja2_extensions.Jinja2TimeExtension.parse"></a>
-
-#### Jinja2TimeExtension.parse
-
-```python
-def parse(parser: Any) -> Union[nodes.Node, list[nodes.Node]]
-```
-
-Parse the template expression to determine how to handle the datetime formatting.
-
-**Arguments**:
-
-- `parser`: The parser object that processes the template expressions and manages the syntax tree.
-It's used to interpret the template's structure.
-
-<a id="deserialization"></a>
-
-# Module deserialization
-
-<a id="deserialization.deserialize_document_store_in_init_params_inplace"></a>
-
-#### deserialize\_document\_store\_in\_init\_params\_inplace
-
-```python
-def deserialize_document_store_in_init_params_inplace(
-        data: dict[str, Any], key: str = "document_store") -> None
-```
-
-Deserializes a generic document store from the init_parameters of a serialized component in place.
-
-**Arguments**:
-
-- `data`: The dictionary to deserialize from.
-- `key`: The key in the `data["init_parameters"]` dictionary where the document store is specified.
-
-**Raises**:
-
-- `DeserializationError`: If the document store is not properly specified in the serialization data or its type cannot be imported.
+- `http_client_kwargs`: The kwargs to pass to the httpx client.
+- `async_client`: Whether to initialize an async client.
 
 **Returns**:
 
-The dictionary, with the document store deserialized.
+A httpx client or an async httpx client.
 
-<a id="deserialization.deserialize_chatgenerator_inplace"></a>
-
-#### deserialize\_chatgenerator\_inplace
-
-```python
-def deserialize_chatgenerator_inplace(data: dict[str, Any],
-                                      key: str = "chat_generator") -> None
-```
-
-Deserialize a ChatGenerator in a dictionary inplace.
-
-**Arguments**:
-
-- `data`: The dictionary with the serialized data.
-- `key`: The key in the dictionary where the ChatGenerator is stored.
-
-**Raises**:
-
-- `DeserializationError`: If the key is missing in the serialized data, the value is not a dictionary,
-the type key is missing, the class cannot be imported, or the class lacks a 'from_dict' method.
-
-<a id="deserialization.deserialize_component_inplace"></a>
-
-#### deserialize\_component\_inplace
-
-```python
-def deserialize_component_inplace(data: dict[str, Any],
-                                  key: str = "chat_generator") -> None
-```
-
-Deserialize a Component in a dictionary inplace.
-
-**Arguments**:
-
-- `data`: The dictionary with the serialized data.
-- `key`: The key in the dictionary where the Component is stored. Default is "chat_generator".
-
-**Raises**:
-
-- `DeserializationError`: If the key is missing in the serialized data, the value is not a dictionary,
-the type key is missing, the class cannot be imported, or the class lacks a 'from_dict' method.
-
-<a id="base_serialization"></a>
-
-# Module base\_serialization
-
-<a id="base_serialization.serialize_class_instance"></a>
-
-#### serialize\_class\_instance
-
-```python
-def serialize_class_instance(obj: Any) -> dict[str, Any]
-```
-
-Serializes an object that has a `to_dict` method into a dictionary.
-
-**Arguments**:
-
-- `obj`: The object to be serialized.
-
-**Raises**:
-
-- `SerializationError`: If the object does not have a `to_dict` method.
-
-**Returns**:
-
-A dictionary representation of the object.
-
-<a id="base_serialization.deserialize_class_instance"></a>
-
-#### deserialize\_class\_instance
-
-```python
-def deserialize_class_instance(data: dict[str, Any]) -> Any
-```
-
-Deserializes an object from a dictionary representation generated by `auto_serialize_class_instance`.
-
-**Arguments**:
-
-- `data`: The dictionary to deserialize from.
-
-**Raises**:
-
-- `DeserializationError`: If the serialization data is malformed, the class type cannot be imported, or the
-class does not have a `from_dict` method.
-
-**Returns**:
-
-The deserialized object.

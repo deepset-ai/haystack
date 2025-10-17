@@ -1,7 +1,8 @@
 ---
-title: Routers
+title: "Routers"
 id: routers-api
-description: Routers is a group of components that route queries or Documents to other components that can handle them best.
+description: "Routers is a group of components that route queries or Documents to other components that can handle them best."
+slug: "/routers-api"
 ---
 
 <a id="conditional_router"></a>
@@ -1238,3 +1239,4 @@ Routes the text strings to different connections based on a category label.
 **Returns**:
 
 A dictionary with the label as key and the text as value.
+
