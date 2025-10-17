@@ -50,6 +50,7 @@ class FallbackChatGenerator:
     def __init__(self, chat_generators: list[ChatGenerator]):
         """
         Creates an instance of FallbackChatGenerator.
+
         :param chat_generators: A non-empty list of chat generator components to try in order.
         """
         if not chat_generators:
@@ -123,7 +124,19 @@ class FallbackChatGenerator:
         tools: Union[list[Tool], Toolset, None] = None,
         streaming_callback: Union[StreamingCallbackT, None] = None,
     ) -> dict[str, Any]:
-        """Execute chat generators sequentially until one succeeds, returning its replies and enriched metadata."""
+        """
+        Execute chat generators sequentially until one succeeds.
+
+        :param messages: The conversation history as a list of ChatMessage instances.
+        :param generation_kwargs: Optional parameters for the chat generator (e.g., temperature, max_tokens).
+        :param tools: Optional Tool instances or Toolset for function calling capabilities.
+        :param streaming_callback: Optional callback for streaming responses. If None, returns batch responses.
+        :returns: A dictionary with:
+            - "replies": Generated ChatMessage instances from the first successful generator.
+            - "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
+              total_attempts, failed_chat_generators, plus any metadata from the successful generator.
+        :raises RuntimeError: If all chat generators fail.
+        """
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
 
@@ -164,7 +177,19 @@ class FallbackChatGenerator:
         tools: Union[list[Tool], Toolset, None] = None,
         streaming_callback: Union[StreamingCallbackT, None] = None,
     ) -> dict[str, Any]:
-        """Asynchronously execute chat generators in order, returning the first successful result with metadata."""
+        """
+        Asynchronously execute chat generators sequentially until one succeeds.
+
+        :param messages: The conversation history as a list of ChatMessage instances.
+        :param generation_kwargs: Optional parameters for the chat generator (e.g., temperature, max_tokens).
+        :param tools: Optional Tool instances or Toolset for function calling capabilities.
+        :param streaming_callback: Optional callback for streaming responses. If None, returns batch responses.
+        :returns: A dictionary with:
+            - "replies": Generated ChatMessage instances from the first successful generator.
+            - "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
+              total_attempts, failed_chat_generators, plus any metadata from the successful generator.
+        :raises RuntimeError: If all chat generators fail.
+        """
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
 
