@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Enhanced the tools parameter across all tool-accepting components (Agent, ToolInvoker, OpenAIChatGenerator, AzureOpenAIChatGenerator, HuggingFaceAPIChatGenerator, HuggingFaceLocalChatGenerator) to accept mixed lists of Tool and Toolset objects. Previously, components required either a list of Tool objects OR a single Toolset, but not both in the same list. Now users can organize tools into logical Toolsets while also including standalone Tool objects, providing greater flexibility in tool organization. For example: `Agent(chat_generator=generator, tools=[math_toolset, weather_toolset, standalone_tool])`. This change is fully backward compatible and preserves structure during serialization/deserialization, enabling proper round-trip support for mixed tool configurations.
