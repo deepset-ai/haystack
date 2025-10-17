@@ -37,12 +37,12 @@ def serialize_tools_or_toolset(tools: "Optional[ToolsType]") -> Union[dict[str, 
 
 def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools") -> None:
     """
-    Deserialize a list of Tools or a Toolset in a dictionary inplace.
+    Deserialize a list of Tools and/or Toolsets, or a single Toolset in a dictionary inplace.
 
     :param data:
         The dictionary with the serialized data.
     :param key:
-        The key in the dictionary where the list of Tools or Toolset is stored.
+        The key in the dictionary where the list of Tools and/or Toolsets, or single Toolset is stored.
     """
     if key in data:
         serialized_tools = data[key]
@@ -72,7 +72,7 @@ def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools
             if not isinstance(tool, dict):
                 raise TypeError(f"Serialized tool '{tool}' is not a dictionary")
 
-            # different classes are allowed: Tool, ComponentTool, etc.
+            # different classes are allowed: Tool, ComponentTool, Toolset, etc.
             tool_class = import_class_by_name(tool["type"])
             if issubclass(tool_class, (Tool, Toolset)):
                 deserialized_tools.append(tool_class.from_dict(tool))

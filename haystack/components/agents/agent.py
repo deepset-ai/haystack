@@ -326,7 +326,7 @@ class Agent:
             if not self.tools:
                 raise ValueError("No tools were configured for the Agent at initialization.")
             available_tools = flatten_tools_or_toolsets(self.tools)
-            selected_tool_names = cast(list[str], tools)
+            selected_tool_names = cast(list[str], tools)  # mypy thinks this could still be list[Tool] or Toolset
             valid_tool_names = {tool.name for tool in available_tools}
             invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
             if invalid_tool_names:
@@ -340,7 +340,7 @@ class Agent:
             return tools
 
         if isinstance(tools, list):
-            return cast(list[Union[Tool, Toolset]], tools)
+            return cast(list[Union[Tool, Toolset]], tools)  # mypy can't narrow the Union type from isinstance check
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."

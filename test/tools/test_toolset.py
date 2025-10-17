@@ -591,7 +591,7 @@ class TestToolsetList:
     """Tests for list[Toolset] functionality."""
 
     def test_tool_invoker_with_list_of_toolsets(self, weather_tool):
-        """Test that ToolInvoker can be initialized with a list of Toolsets."""
+        """Test that ToolInvoker can be initialized with a mixed list of Tools and Toolsets."""
         add_tool = Tool(
             name="add",
             description="Add two numbers",
@@ -602,16 +602,28 @@ class TestToolsetList:
             },
             function=add_numbers,
         )
+        multiply_tool = Tool(
+            name="multiply",
+            description="Multiply two numbers",
+            parameters={
+                "type": "object",
+                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                "required": ["a", "b"],
+            },
+            function=multiply_numbers,
+        )
 
         toolset1 = Toolset([weather_tool])
+        # Mix: Toolset, standalone Tool, another Toolset
         toolset2 = Toolset([add_tool])
 
-        invoker = ToolInvoker(tools=[toolset1, toolset2])
+        invoker = ToolInvoker(tools=[toolset1, multiply_tool, toolset2])
 
         # Verify tools are flattened internally
         assert "weather_tool" in invoker._tools_with_names
+        assert "multiply" in invoker._tools_with_names
         assert "add" in invoker._tools_with_names
-        assert len(invoker._tools_with_names) == 2
+        assert len(invoker._tools_with_names) == 3
 
     def test_tool_invoker_run_with_list_of_toolsets(self, weather_tool):
         """Test running ToolInvoker with a list of Toolsets."""

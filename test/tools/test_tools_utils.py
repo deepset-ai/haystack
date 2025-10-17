@@ -159,8 +159,8 @@ class TestFlattenToolsOrToolsets:
         with pytest.raises(TypeError, match="tools must be list\\[Union\\[Tool, Toolset\\]\\], Toolset, or None"):
             flatten_tools_or_toolsets({"key": "value"})
 
-    def test_flatten_nested_toolsets(self, add_tool, multiply_tool, subtract_tool):
-        """Test flattening multiple levels of Toolsets."""
+    def test_flatten_multiple_toolsets(self, add_tool, multiply_tool, subtract_tool):
+        """Test flattening a list of multiple Toolsets."""
         toolset1 = Toolset([add_tool])
         toolset2 = Toolset([multiply_tool])
         toolset3 = Toolset([subtract_tool])

@@ -1211,17 +1211,23 @@ class TestAgentToolSelection:
             agent._select_tools("invalid_tool_name")
 
     def test_tool_selection_with_list_of_toolsets(self, weather_tool: Tool, component_tool: Tool):
-        """Test that list of Toolsets can be passed to agent."""
+        """Test that list of Toolsets and Tools can be passed to agent."""
         chat_generator = MockChatGenerator()
         toolset1 = Toolset([weather_tool])
+        standalone_tool = Tool(
+            name="standalone",
+            description="A standalone tool",
+            parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
+            function=lambda x: f"Result: {x}",
+        )
         toolset2 = Toolset([component_tool])
 
-        agent = Agent(chat_generator=chat_generator, tools=[toolset1, toolset2])
+        agent = Agent(chat_generator=chat_generator, tools=[toolset1, standalone_tool, toolset2])
         result = agent._select_tools(None)
 
-        assert result == [toolset1, toolset2]
+        assert result == [toolset1, standalone_tool, toolset2]
         assert isinstance(result, list)
-        assert all(isinstance(ts, Toolset) for ts in result)
+        assert len(result) == 3
 
     def test_agent_serde_with_list_of_toolsets(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
         """Test Agent serialization and deserialization with a list of Toolsets."""
