@@ -130,7 +130,7 @@ class FallbackChatGenerator:
         :param messages: The conversation history as a list of ChatMessage instances.
         :param generation_kwargs: Optional parameters for the chat generator (e.g., temperature, max_tokens).
         :param tools: Optional Tool instances or Toolset for function calling capabilities.
-        :param streaming_callback: Optional callback for streaming responses. If None, returns batch responses.
+        :param streaming_callback: Optional callable for handling streaming responses.
         :returns: A dictionary with:
             - "replies": Generated ChatMessage instances from the first successful generator.
             - "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
@@ -183,7 +183,7 @@ class FallbackChatGenerator:
         :param messages: The conversation history as a list of ChatMessage instances.
         :param generation_kwargs: Optional parameters for the chat generator (e.g., temperature, max_tokens).
         :param tools: Optional Tool instances or Toolset for function calling capabilities.
-        :param streaming_callback: Optional callback for streaming responses. If None, returns batch responses.
+        :param streaming_callback: Optional callable for handling streaming responses.
         :returns: A dictionary with:
             - "replies": Generated ChatMessage instances from the first successful generator.
             - "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
