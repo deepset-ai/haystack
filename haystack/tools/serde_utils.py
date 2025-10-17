@@ -68,26 +68,15 @@ def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools
             raise TypeError(f"The value of '{key}' is not a list or a dictionary")
 
         deserialized_tools: list[Union[Tool, Toolset]] = []
-        contains_toolset = False
-        contains_tool = False
         for tool in serialized_tools:
             if not isinstance(tool, dict):
                 raise TypeError(f"Serialized tool '{tool}' is not a dictionary")
 
             # different classes are allowed: Tool, ComponentTool, etc.
             tool_class = import_class_by_name(tool["type"])
-            if issubclass(tool_class, Toolset):
+            if issubclass(tool_class, Toolset) or issubclass(tool_class, Tool):
                 deserialized_tools.append(tool_class.from_dict(tool))
-                contains_toolset = True
-            elif issubclass(tool_class, Tool):
-                deserialized_tools.append(tool_class.from_dict(tool))
-                contains_tool = True
             else:
                 raise TypeError(f"Class '{tool_class}' is neither Tool nor Toolset")
 
         data[key] = deserialized_tools
-        if contains_toolset and not contains_tool:
-            return
-        if contains_tool and not contains_toolset:
-            return
-        # If both Tool and Toolset instances are present, we simply return the mixed list.

@@ -339,10 +339,7 @@ class Agent:
         if isinstance(tools, Toolset):
             return tools
 
-        if isinstance(tools, list) and tools and isinstance(tools[0], Toolset):
-            return cast(list[Union[Tool, Toolset]], tools)
-
-        if isinstance(tools, list) and all(isinstance(t, Tool) for t in tools):
+        if isinstance(tools, list):
             return cast(list[Union[Tool, Toolset]], tools)
 
         raise TypeError(
