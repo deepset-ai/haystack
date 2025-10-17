@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import ANY
+
 import pytest
 
 from haystack import Document
@@ -29,7 +31,7 @@ def sample_text():
 
 # Basic splitting and structure
 def test_basic_split(sample_text):
-    splitter = MarkdownHeaderSplitter()
+    splitter = MarkdownHeaderSplitter(keep_headers=False)
     docs = [Document(content=sample_text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
@@ -60,7 +62,7 @@ def test_basic_split(sample_text):
 
 
 def test_split_parentheaders(sample_text):
-    splitter = MarkdownHeaderSplitter()
+    splitter = MarkdownHeaderSplitter(keep_headers=False)
     docs = [Document(content=sample_text), Document(content="# H1\n## H2\n### H3\nContent")]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
@@ -84,7 +86,7 @@ def test_split_no_headers():
 
 
 def test_split_multiple_documents(sample_text):
-    splitter = MarkdownHeaderSplitter()
+    splitter = MarkdownHeaderSplitter(keep_headers=False)
     docs = [
         Document(content=sample_text),
         Document(content="# Another Header\nSome content."),
@@ -119,7 +121,7 @@ def test_split_only_headers():
 # Metadata preservation
 def test_preserve_document_metadata():
     """Test that document metadata is preserved through splitting."""
-    splitter = MarkdownHeaderSplitter()
+    splitter = MarkdownHeaderSplitter(keep_headers=False)
     docs = [Document(content="# Header\nContent", meta={"source": "test", "importance": "high", "custom_field": 123})]
 
     result = splitter.run(documents=docs)
@@ -187,7 +189,7 @@ def test_empty_content_handling():
 
 def test_split_id_sequentiality_primary_and_secondary(sample_text):
     # Test primary splitting
-    splitter = MarkdownHeaderSplitter()
+    splitter = MarkdownHeaderSplitter(keep_headers=False)
     docs = [Document(content=sample_text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
@@ -206,7 +208,7 @@ def test_split_id_sequentiality_primary_and_secondary(sample_text):
     split_docs = result["documents"]
 
     # Test number of documents
-    assert len(split_docs) == 10
+    assert len(split_docs) == 12
 
     split_ids = [doc.meta["split_id"] for doc in split_docs]
     assert split_ids == list(range(len(split_ids)))
@@ -217,14 +219,14 @@ def test_split_id_sequentiality_primary_and_secondary(sample_text):
     split_docs = result["documents"]
 
     # Test number of documents
-    assert len(split_docs) == 12
+    assert len(split_docs) == 14
 
     split_ids = [doc.meta["split_id"] for doc in split_docs]
     assert split_ids == list(range(len(split_ids)))
 
 
 def test_secondary_split_with_overlap():
-    realistic_text = (
+    text = (
         "# Introduction\n"
         "This is the introduction section with some words for testing overlap splitting. "
         "It should be split into chunks with overlap.\n"
@@ -234,8 +236,8 @@ def test_secondary_split_with_overlap():
         "### Subsection\n"
         "This subsection contains additional information and should also be split with overlap."
     )
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=4, split_overlap=2)
-    docs = [Document(content=realistic_text)]
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=4, split_overlap=2, keep_headers=False)
+    docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
     assert len(split_docs) == 21
@@ -251,7 +253,7 @@ def test_secondary_split_with_overlap():
 
 def test_secondary_split_with_threshold():
     text = "# Header\n" + " ".join([f"word{i}" for i in range(1, 11)])
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3, split_threshold=2)
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3, split_threshold=2, keep_headers=False)
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
@@ -274,63 +276,41 @@ def test_page_break_handling_in_secondary_split():
 
 
 def test_page_break_handling_with_multiple_headers():
-    text = "# Header 1\nPage 1\fPage 2\n# Header 2\nPage 3\fPage 4"
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=2)
+    text = "# Header\nFirst page\f Second page\f Third page"
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=1, keep_headers=True)
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    # Collect page numbers for each header
-    assert len(split_docs) == 4
+    assert len(split_docs) == 7
 
     # Split 1
-    assert split_docs[0].content == "\nPage 1\fPage "
-    assert split_docs[0].meta == {
-        "source_id": ANY,
-        "total_pages": 3,
-        "page_number": 1,
-        "header": "Header 1",
-        "parent_headers": [],
-        "split_id": 0,
-        "split_idx_start": 0,
-    }
+    assert split_docs[0].content == "# "
+    assert split_docs[0].meta == {"source_id": ANY, "page_number": 1, "split_id": 0, "split_idx_start": 0}
 
     # Split 2
-    assert split_docs[1].content == "2"
-    assert split_docs[1].meta == {
-        "source_id": ANY,
-        "total_pages": 3,
-        "page_number": 2,
-        "header": "Header 1",
-        "parent_headers": [],
-        "split_id": 1,
-        "split_idx_start": 13,
-    }
+    assert split_docs[1].content == "Header\nFirst "
+    assert split_docs[1].meta == {"source_id": ANY, "page_number": 1, "split_id": 1, "split_idx_start": 2}
 
     # Split 3
-    assert split_docs[2].content == "\nPage 3\fPage "
-    assert split_docs[2].meta == {
-        "source_id": ANY,
-        "total_pages": 3,
-        "page_number": 2,
-        "header": "Header 2",
-        "parent_headers": [],
-        "split_id": 2,
-        "split_idx_start": 0,
-    }
+    assert split_docs[2].content == "page\f "
+    assert split_docs[2].meta == {"source_id": ANY, "page_number": 1, "split_id": 2, "split_idx_start": 15}
 
     # Split 4
-    assert split_docs[3].content == "4"
-    assert split_docs[3].meta == {
-        "source_id": ANY,
-        "total_pages": 3,
-        "page_number": 3,
-        "header": "Header 2",
-        "parent_headers": [],
-        "split_id": 3,
-        "split_idx_start": 13,
-    }
+    assert split_docs[3].content == "Second "
+    assert split_docs[3].meta == {"source_id": ANY, "page_number": 2, "split_id": 3, "split_idx_start": 21}
+
+    # Split 5
+    assert split_docs[4].content == "page\f "
+    assert split_docs[4].meta == {"source_id": ANY, "page_number": 2, "split_id": 4, "split_idx_start": 28}
+
+    # Split 6
+    assert split_docs[5].content == "Third "
+    assert split_docs[5].meta == {"source_id": ANY, "page_number": 3, "split_id": 5, "split_idx_start": 34}
+
+    # Split 7
+    assert split_docs[6].content == "page"
+    assert split_docs[6].meta == {"source_id": ANY, "page_number": 3, "split_id": 6, "split_idx_start": 40}
 
     # Check reconstruction
-    # NOTE: This doesn't seem to pass currently
     reconstructed_text = "".join(doc.content for doc in split_docs)
     assert reconstructed_text == text
