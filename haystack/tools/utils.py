@@ -4,11 +4,7 @@
 
 from typing import TYPE_CHECKING, Optional
 
-from haystack.tools.tool import Tool
-from haystack.tools.toolset import Toolset
-
-if TYPE_CHECKING:
-    from haystack.tools import ToolsType
+from haystack.tools import Tool, Toolset, ToolsType
 
 
 def flatten_tools_or_toolsets(tools: "Optional[ToolsType]") -> list[Tool]:
