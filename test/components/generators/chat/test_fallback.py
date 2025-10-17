@@ -4,7 +4,7 @@
 
 import asyncio
 import time
-from typing import Any, Optional, Union
+from typing import Any, Optional
 from urllib.error import HTTPError as URLLibHTTPError
 
 import pytest
@@ -12,7 +12,7 @@ import pytest
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat.fallback import FallbackChatGenerator
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
-from haystack.tools import Tool, Toolset
+from haystack.tools import ToolsType
 
 
 @component
@@ -33,7 +33,7 @@ class _DummySuccessGen:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ) -> dict[str, Any]:
         if self.delay:
@@ -46,7 +46,7 @@ class _DummySuccessGen:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ) -> dict[str, Any]:
         if self.delay:
@@ -78,7 +78,7 @@ class _DummyFailGen:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ) -> dict[str, Any]:
         if self.delay:
@@ -89,7 +89,7 @@ class _DummyFailGen:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ) -> dict[str, Any]:
         if self.delay:
@@ -242,7 +242,7 @@ class _DummyHTTPErrorGen:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ) -> dict[str, Any]:
         if self.error:

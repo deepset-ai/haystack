@@ -17,8 +17,10 @@ from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     Tool,
     Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
 )
 from haystack.utils import (
@@ -135,7 +137,7 @@ class HuggingFaceLocalChatGenerator:
         huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
         stop_words: Optional[list[str]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tool_parsing_function: Optional[Callable[[str], Optional[list[ToolCall]]]] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
     ) -> None:
@@ -176,8 +178,7 @@ class HuggingFaceLocalChatGenerator:
             For some chat models, the output includes both the new text and the original prompt.
             In these cases, make sure your prompt has no stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
-        :param tools: A list of tools or a Toolset for which the model can prepare calls.
-            This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :param tool_parsing_function:
             A callable that takes a string and returns a list of ToolCall objects or None.
             If None, the default_tool_parser will be used which extracts tool calls using a predefined pattern.
@@ -189,7 +190,7 @@ class HuggingFaceLocalChatGenerator:
 
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(list(tools or []))
+        _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
 
         huggingface_pipeline_kwargs = huggingface_pipeline_kwargs or {}
         generation_kwargs = generation_kwargs or {}
@@ -335,7 +336,7 @@ class HuggingFaceLocalChatGenerator:
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Invoke text generation inference based on the provided messages and generation parameters.
@@ -343,9 +344,8 @@ class HuggingFaceLocalChatGenerator:
         :param messages: A list of ChatMessage objects representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :param streaming_callback: An optional callable for handling streaming responses.
-        :param tools: A list of tools or a Toolset for which the model can prepare calls. If set, it will override
-            the `tools` parameter provided during initialization. This parameter can accept either a list
-            of `Tool` objects or a `Toolset` instance.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
@@ -447,7 +447,7 @@ class HuggingFaceLocalChatGenerator:
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes text generation inference based on the provided messages and generation parameters.
@@ -458,8 +458,8 @@ class HuggingFaceLocalChatGenerator:
         :param messages: A list of ChatMessage objects representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :param streaming_callback: An optional callable for handling streaming responses.
-        :param tools: A list of tools or a Toolset for which the model can prepare calls.
-            This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
@@ -520,7 +520,7 @@ class HuggingFaceLocalChatGenerator:
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ) -> dict[str, Any]:
         """
         Prepares the inputs for the Hugging Face pipeline.
@@ -528,7 +528,7 @@ class HuggingFaceLocalChatGenerator:
         :param messages: A list of ChatMessage objects representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :param streaming_callback: An optional callable for handling streaming responses.
-        :param tools: A list of tools or a Toolset for which the model can prepare calls.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :returns: A dictionary containing the prepared prompt, tokenizer, generation kwargs, and tools.
         :raises RuntimeError: If the generation model has not been loaded.
         :raises ValueError: If both tools and streaming_callback are provided.
@@ -539,10 +539,8 @@ class HuggingFaceLocalChatGenerator:
         tools = tools or self.tools
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(list(tools or []))
-
-        if isinstance(tools, Toolset):
-            tools = list(tools)
+        flat_tools = flatten_tools_or_toolsets(tools)
+        _check_duplicate_tool_names(flat_tools)
 
         tokenizer = self.pipeline.tokenizer
         # initialized text-generation/text2text-generation pipelines always have a non-None tokenizer
@@ -579,7 +577,7 @@ class HuggingFaceLocalChatGenerator:
             tokenize=False,
             chat_template=self.chat_template,
             add_generation_prompt=True,
-            tools=[tc.tool_spec for tc in tools] if tools else None,
+            tools=[tc.tool_spec for tc in flat_tools] if flat_tools else None,
         )
         # prepared_prompt is a string since we set tokenize=False https://hf.co/docs/transformers/main/chat_templating
         assert isinstance(prepared_prompt, str)
@@ -593,7 +591,7 @@ class HuggingFaceLocalChatGenerator:
             "prepared_prompt": prepared_prompt,
             "tokenizer": tokenizer,
             "generation_kwargs": generation_kwargs,
-            "tools": tools,
+            "tools": flat_tools,
             "stop_words": stop_words,
         }
 
@@ -615,7 +613,7 @@ class HuggingFaceLocalChatGenerator:
         :param tokenizer: The tokenizer used for generation.
         :param generation_kwargs: The generation parameters.
         :param stop_words: A list of stop words to remove from the replies.
-        :param tools: A list of tools or a Toolset for which the model can prepare calls.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
             This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
         """
         replies = [o.get("generated_text", "") for o in hf_pipeline_output]

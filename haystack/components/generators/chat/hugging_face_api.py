@@ -21,10 +21,10 @@ from haystack.dataclasses import (
 from haystack.dataclasses.streaming_chunk import FinishReason
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
-    Tool,
-    Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
@@ -93,9 +93,7 @@ def _convert_hfapi_tool_calls(hfapi_tool_calls: Optional[list["ChatCompletionOut
     return tool_calls
 
 
-def _convert_tools_to_hfapi_tools(
-    tools: Optional[Union[list[Tool], Toolset]],
-) -> Optional[list["ChatCompletionInputTool"]]:
+def _convert_tools_to_hfapi_tools(tools: Optional[ToolsType]) -> Optional[list["ChatCompletionInputTool"]]:
     if not tools:
         return None
 
@@ -103,7 +101,7 @@ def _convert_tools_to_hfapi_tools(
     parameters_name = "arguments" if hasattr(ChatCompletionInputFunctionDefinition, "arguments") else "parameters"
 
     hf_tools = []
-    for tool in tools:
+    for tool in flatten_tools_or_toolsets(tools):
         hf_tools_args = {"name": tool.name, "description": tool.description, parameters_name: tool.parameters}
 
         hf_tools.append(
@@ -298,7 +296,7 @@ class HuggingFaceAPIChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         stop_words: Optional[list[str]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ):
         """
         Initialize the HuggingFaceAPIChatGenerator instance.
@@ -328,10 +326,10 @@ class HuggingFaceAPIChatGenerator:
         :param streaming_callback:
             An optional callable for handling streaming responses.
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls.
+            A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
             The chosen model should support tool/function calling, according to the model card.
             Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
-            unexpected behavior. This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
+            unexpected behavior.
         """
 
         huggingface_hub_import.check()
@@ -364,7 +362,7 @@ class HuggingFaceAPIChatGenerator:
 
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(list(tools or []))
+        _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
 
         # handle generation kwargs setup
         generation_kwargs = generation_kwargs.copy() if generation_kwargs else {}
@@ -423,7 +421,7 @@ class HuggingFaceAPIChatGenerator:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
@@ -452,7 +450,8 @@ class HuggingFaceAPIChatGenerator:
         tools = tools or self.tools
         if tools and self.streaming_callback:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(list(tools or []))
+        flat_tools = flatten_tools_or_toolsets(tools)
+        _check_duplicate_tool_names(flat_tools)
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(
@@ -461,9 +460,6 @@ class HuggingFaceAPIChatGenerator:
 
         if streaming_callback:
             return self._run_streaming(formatted_messages, generation_kwargs, streaming_callback)
-
-        if tools and isinstance(tools, Toolset):
-            tools = list(tools)
 
         hf_tools = _convert_tools_to_hfapi_tools(tools)
 
@@ -474,7 +470,7 @@ class HuggingFaceAPIChatGenerator:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
     ):
         """
@@ -506,16 +502,14 @@ class HuggingFaceAPIChatGenerator:
         tools = tools or self.tools
         if tools and self.streaming_callback:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
-        _check_duplicate_tool_names(list(tools or []))
+        flat_tools = flatten_tools_or_toolsets(tools)
+        _check_duplicate_tool_names(flat_tools)
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(self.streaming_callback, streaming_callback, requires_async=True)
 
         if streaming_callback:
             return await self._run_streaming_async(formatted_messages, generation_kwargs, streaming_callback)
-
-        if tools and isinstance(tools, Toolset):
-            tools = list(tools)
 
         hf_tools = _convert_tools_to_hfapi_tools(tools)
 
