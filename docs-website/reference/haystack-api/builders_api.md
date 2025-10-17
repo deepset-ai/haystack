@@ -1,7 +1,8 @@
 ---
-title: Builders
+title: "Builders"
 id: builders-api
-description: Extract the output of a Generator to an Answer format, and build prompts.
+description: "Extract the output of a Generator to an Answer format, and build prompts."
+slug: "/builders-api"
 ---
 
 <a id="answer_builder"></a>
@@ -507,3 +508,4 @@ Deserialize this component from a dictionary.
 **Returns**:
 
 The deserialized component.
+

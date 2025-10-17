@@ -1,7 +1,8 @@
 ---
-title: Connectors
+title: "Connectors"
 id: connectors-api
-description: Various connectors to integrate with external services.
+description: "Various connectors to integrate with external services."
+slug: "/connectors-api"
 ---
 
 <a id="openapi_service"></a>
@@ -243,3 +244,4 @@ Invokes a REST endpoint specified in the OpenAPI specification.
 **Returns**:
 
 Dictionary containing the service response
+

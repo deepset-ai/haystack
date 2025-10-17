@@ -1,7 +1,8 @@
 ---
-title: Classifiers
+title: "Classifiers"
 id: classifiers-api
-description: Classify documents based on the provided labels.
+description: "Classify documents based on the provided labels."
+slug: "/classifiers-api"
 ---
 
 <a id="document_language_classifier"></a>
@@ -258,3 +259,4 @@ the `details` key within the `classification` dictionary.
 
 A dictionary with the following key:
 - `documents`: A list of documents with an added metadata field called `classification`.
+
