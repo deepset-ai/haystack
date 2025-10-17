@@ -205,18 +205,6 @@ class MarkdownHeaderSplitter:
         )
         return result_docs
 
-    def _flatten_dict(self, d: dict, prefix: str = "", target_dict: Optional[dict] = None) -> dict:
-        """Flatten a nested dictionary, concatenating keys with underscores."""
-        if target_dict is None:
-            target_dict = {}
-        for key, value in d.items():
-            new_key = f"{prefix}{key}" if prefix else key
-            if isinstance(value, dict):
-                self._flatten_dict(value, f"{new_key}_", target_dict)
-            else:
-                target_dict[new_key] = value
-        return target_dict
-
     def _update_page_number_with_breaks(self, content: str, current_page: int) -> int:
         """
         Update page number based on page breaks in content.
@@ -263,7 +251,7 @@ class MarkdownHeaderSplitter:
             for split in splits:
                 meta = {}
                 if doc.meta:
-                    meta = self._flatten_dict(doc.meta)
+                    meta = doc.meta.copy()
                 meta.update({"source_id": doc.id, "page_number": current_page})
                 if split.get("meta"):
                     meta.update(split["meta"])
