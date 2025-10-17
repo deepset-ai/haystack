@@ -27,6 +27,7 @@ class MarkdownHeaderSplitter:
         self,
         *,
         page_break_character: str = "\f",
+        keep_headers: bool = True,
         secondary_split: Optional[Literal["word", "passage", "period", "line"]] = None,
         split_length: int = 200,
         split_overlap: int = 0,
@@ -37,6 +38,8 @@ class MarkdownHeaderSplitter:
         Initialize the MarkdownHeaderSplitter.
 
         :param page_break_character: Character used to identify page breaks. Defaults to form feed ("\f").
+        :param keep_headers: If True, headers are kept in the content. If False, headers are moved to metadata.
+            Defaults to True.
         :param secondary_split: Optional secondary split condition after header splitting.
             Options are None, "word", "passage", "period", "line". Defaults to None.
         :param split_length: The maximum number of units in each split when using secondary splitting. Defaults to 200.
@@ -52,6 +55,7 @@ class MarkdownHeaderSplitter:
         self.split_overlap = split_overlap
         self.split_threshold = split_threshold
         self.skip_empty_documents = skip_empty_documents
+        self.keep_headers = keep_headers
         self._header_pattern = re.compile(r"(?m)^(#{1,6}) (.+)$")  # ATX-style .md-headers
 
         # initialize secondary_splitter only if needed
@@ -80,8 +84,9 @@ class MarkdownHeaderSplitter:
         # process headers and build chunks
         chunks: list[dict] = []
         header_stack: list[Optional[str]] = [None] * 6
-        active_parents: list[str] = []
-        has_content = False  # Flag to track if any header has content
+        active_parents: list[str] = []  # track active parent headers
+        pending_headers: list[str] = []  # store empty headers to prepend to next content
+        has_content = False  # flag to track if any header has content
 
         for i, match in enumerate(matches):
             # extract header info
@@ -99,11 +104,16 @@ class MarkdownHeaderSplitter:
             for j in range(level, 6):
                 header_stack[j] = None
 
+            # prepare header_line if keep_headers
+            header_line = f"{header_prefix} {header_text}"
+
             # skip splits w/o content
             if not content:
                 # add as parent for subsequent headers
                 active_parents = [h for h in header_stack[: level - 1] if h is not None]
                 active_parents.append(header_text)
+                if self.keep_headers:
+                    pending_headers.append(header_line)
                 continue
 
             has_content = True  # at least one header has content
@@ -113,12 +123,21 @@ class MarkdownHeaderSplitter:
                 "Creating chunk for header '{header_text}' at level {level}", header_text=header_text, level=level
             )
 
-            chunks.append(
-                {
-                    "content": f"{header_prefix} {header_text}\n{content}",
-                    "meta": {"header": header_text, "parent_headers": parent_headers},
-                }
-            )
+            if self.keep_headers:
+                # add pending & current header to content
+                chunk_content = ""
+                if pending_headers:
+                    chunk_content += "\n".join(pending_headers) + "\n"
+                chunk_content += f"{header_line}\n{content}"
+                chunks.append(
+                    {
+                        "content": chunk_content,
+                        "meta": {} if self.keep_headers else {"header": header_text, "parent_headers": parent_headers},
+                    }
+                )
+                pending_headers = []  # reset pending headers
+            else:
+                chunks.append({"content": content, "meta": {"header": header_text, "parent_headers": parent_headers}})
 
             # reset active parents
             active_parents = [h for h in header_stack[: level - 1] if h is not None]
@@ -145,11 +164,13 @@ class MarkdownHeaderSplitter:
                 result_docs.append(doc)
                 continue
 
-            # extract header information
-            header_match = re.search(self._header_pattern, doc.content)
             content_for_splitting: str = doc.content
-            if header_match:
-                content_for_splitting = doc.content[header_match.end() :]
+
+            if not self.keep_headers:  # skip header extraction if keep_headers
+                # extract header information
+                header_match = re.search(self._header_pattern, doc.content)
+                if header_match:
+                    content_for_splitting = doc.content[header_match.end() :]
 
             if not content_for_splitting or not content_for_splitting.strip():  # skip empty content
                 result_docs.append(doc)
@@ -171,10 +192,11 @@ class MarkdownHeaderSplitter:
                 # set page number to meta
                 split.meta["page_number"] = current_page
 
-                # preserve header metadata
-                for key in ["header", "parent_headers"]:
-                    if key in doc.meta:
-                        split.meta[key] = doc.meta[key]
+                # preserve header metadata if we're not keeping headers in content
+                if not self.keep_headers:
+                    for key in ["header", "parent_headers"]:
+                        if key in doc.meta:
+                            split.meta[key] = doc.meta[key]
 
                 result_docs.append(split)
 
