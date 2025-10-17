@@ -458,8 +458,8 @@ class HuggingFaceLocalChatGenerator:
         :param messages: A list of ChatMessage objects representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :param streaming_callback: An optional callable for handling streaming responses.
-        :param tools: A list of tools or a Toolset for which the model can prepare calls.
-            This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
@@ -528,7 +528,7 @@ class HuggingFaceLocalChatGenerator:
         :param messages: A list of ChatMessage objects representing the input messages.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :param streaming_callback: An optional callable for handling streaming responses.
-        :param tools: A list of tools or a Toolset for which the model can prepare calls.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :returns: A dictionary containing the prepared prompt, tokenizer, generation kwargs, and tools.
         :raises RuntimeError: If the generation model has not been loaded.
         :raises ValueError: If both tools and streaming_callback are provided.
@@ -613,7 +613,7 @@ class HuggingFaceLocalChatGenerator:
         :param tokenizer: The tokenizer used for generation.
         :param generation_kwargs: The generation parameters.
         :param stop_words: A list of stop words to remove from the replies.
-        :param tools: A list of tools or a Toolset for which the model can prepare calls.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
             This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
         """
         replies = [o.get("generated_text", "") for o in hf_pipeline_output]

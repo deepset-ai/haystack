@@ -245,7 +245,8 @@ class ToolInvoker:
         """
         Validates and prepares tools for use by the ToolInvoker.
 
-        :param tools: A list of tools or a Toolset instance.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+
         :returns: A dictionary mapping tool names to Tool instances.
         :raises ValueError: If no tools are provided or if duplicate tool names are found.
         """
@@ -509,8 +510,8 @@ class ToolInvoker:
             Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
             If False, the `streaming_callback` will not be passed to the tool invocation.
             If None, the value from the constructor will be used.
-        :param tools:
-            A list of tools to use for the tool invoker. If set, overrides the tools set in the constructor.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :returns:
             A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
             Each ChatMessage objects wraps the result of a tool invocation.
@@ -641,8 +642,8 @@ class ToolInvoker:
             Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
             If False, the `streaming_callback` will not be passed to the tool invocation.
             If None, the value from the constructor will be used.
-        :param tools:
-            A list of tools to use for the tool invoker. If set, overrides the tools set in the constructor.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :returns:
             A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
             Each ChatMessage objects wraps the result of a tool invocation.

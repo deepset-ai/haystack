@@ -286,9 +286,8 @@ class OpenAIChatGenerator:
             override the parameters passed during component initialization.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-            `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects or a `Toolset` instance.
+            A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -362,10 +361,8 @@ class OpenAIChatGenerator:
             Additional keyword arguments for text generation. These parameters will
             override the parameters passed during component initialization.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-        :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-            `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects or a `Toolset` instance.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
