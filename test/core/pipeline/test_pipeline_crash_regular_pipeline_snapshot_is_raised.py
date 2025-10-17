@@ -81,6 +81,11 @@ class TestPipelineOutputsRaisedInException:
                 },
             )
 
+        assert "Component name: 'embedding_retriever'" in str(exc_info.value)
+        assert exc_info.value.component_name == "embedding_retriever"
+        assert exc_info.value.component_type == InvalidOutputEmbeddingRetriever
+        assert "embedding_retriever" in exc_info.value.pipeline_snapshot_file_path
+
         pipeline_snapshot = exc_info.value.pipeline_snapshot
         pipeline_outputs = pipeline_snapshot.pipeline_state.pipeline_outputs
         assert pipeline_outputs is not None, "Pipeline outputs should be captured in the exception"
