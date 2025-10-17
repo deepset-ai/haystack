@@ -1,0 +1,10 @@
+extends: existence
+message: "Avoid weak filler words like '%s'."
+level: suggestion
+nonword: true
+scope: text
+tokens:
+  - just
+  - simply
+  - basically
+  - leverage

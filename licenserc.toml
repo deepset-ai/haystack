@@ -19,6 +19,7 @@ excludes = [
     "CITATION.cff",
     "docker",
     "docs",
+    "docs-website",
     "examples",
     "proposals",
     "releasenotes",

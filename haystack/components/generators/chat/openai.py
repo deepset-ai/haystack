@@ -127,7 +127,8 @@ class OpenAIChatGenerator:
             the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
             more details.
             Some of the supported parameters:
-            - `max_tokens`: The maximum number of tokens the output text can have.
+            - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+                including visible output tokens and reasoning tokens.
             - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
                 Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
             - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -511,7 +512,7 @@ def _check_finish_reason(meta: dict[str, Any]) -> None:
     if meta["finish_reason"] == "length":
         logger.warning(
             "The completion for index {index} has been truncated before reaching a natural stopping point. "
-            "Increase the max_tokens parameter to allow for longer completions.",
+            "Increase the max_completion_tokens parameter to allow for longer completions.",
             index=meta["index"],
             finish_reason=meta["finish_reason"],
         )
