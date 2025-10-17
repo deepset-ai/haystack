@@ -322,8 +322,6 @@ def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot) -> None:
     raise BreakpointException(
         message=msg,
         component=component_name,
-        inputs=pipeline_snapshot.pipeline_state.inputs,
-        results=pipeline_snapshot.pipeline_state.pipeline_outputs,
         pipeline_snapshot=pipeline_snapshot,
         pipeline_snapshot_file_path=full_file_path,
     )
@@ -516,8 +514,6 @@ def _trigger_chat_generator_breakpoint(*, pipeline_snapshot: PipelineSnapshot) -
     raise BreakpointException(
         message=msg,
         component=break_point.component_name,
-        inputs=pipeline_snapshot.agent_snapshot.component_inputs,
-        results=pipeline_snapshot.agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"],
         pipeline_snapshot=pipeline_snapshot,
         pipeline_snapshot_file_path=full_file_path,
     )
@@ -566,8 +562,6 @@ def _trigger_tool_invoker_breakpoint(*, llm_messages: list[ChatMessage], pipelin
     raise BreakpointException(
         message=msg,
         component=tool_breakpoint.component_name,
-        inputs=pipeline_snapshot.agent_snapshot.component_inputs,
-        results=pipeline_snapshot.agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"],
         pipeline_snapshot=pipeline_snapshot,
         pipeline_snapshot_file_path=full_file_path,
     )
