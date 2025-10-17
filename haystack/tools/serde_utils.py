@@ -74,7 +74,7 @@ def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools
 
             # different classes are allowed: Tool, ComponentTool, etc.
             tool_class = import_class_by_name(tool["type"])
-            if issubclass(tool_class, Toolset) or issubclass(tool_class, Tool):
+            if issubclass(tool_class, (Tool, Toolset)):
                 deserialized_tools.append(tool_class.from_dict(tool))
             else:
                 raise TypeError(f"Class '{tool_class}' is neither Tool nor Toolset")
