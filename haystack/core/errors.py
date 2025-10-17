@@ -128,6 +128,9 @@ class BreakpointException(Exception):
         If an AgentBreakpoint caused this exception, returns the inputs of the agent's internal components.
         Otherwise, returns the current inputs of the pipeline.
         """
+        if not self.pipeline_snapshot:
+            return None
+
         if self.pipeline_snapshot.agent_snapshot:
             return self.pipeline_snapshot.agent_snapshot.component_inputs
         return self.pipeline_snapshot.pipeline_state.inputs
@@ -140,6 +143,9 @@ class BreakpointException(Exception):
         If an AgentBreakpoint caused this exception, returns the current results of the agent.
         Otherwise, returns the current outputs of the pipeline.
         """
+        if not self.pipeline_snapshot:
+            return None
+
         if self.pipeline_snapshot.agent_snapshot:
             return self.pipeline_snapshot.agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"]
         return self.pipeline_snapshot.pipeline_state.pipeline_outputs
