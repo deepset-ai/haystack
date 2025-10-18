@@ -255,3 +255,78 @@ class SentenceWindowRetriever:
             context_documents.extend(context_docs_sorted)
 
         return {"context_windows": context_text, "context_documents": context_documents}
+
+    @component.output_types(context_windows=list[str], context_documents=list[Document])
+    async def run_async(self, retrieved_documents: list[Document], window_size: Optional[int] = None):
+        """
+        Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
+
+        Implements the logic behind the sentence-window technique, retrieving the surrounding documents of a given
+        document from the document store.
+
+        :param retrieved_documents: List of retrieved documents from the previous retriever.
+        :param window_size: The number of documents to retrieve before and after the relevant one. This will overwrite
+                            the `window_size` parameter set in the constructor.
+        :returns:
+            A dictionary with the following keys:
+                - `context_windows`: A list of strings, where each string represents the concatenated text from the
+                                     context window of the corresponding document in `retrieved_documents`.
+                - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
+                                      document surrounding them. The documents are sorted by the `split_idx_start`
+                                      meta field.
+
+        """
+        window_size = window_size or self.window_size
+
+        if window_size < 1:
+            raise ValueError("The window_size parameter must be greater than 0.")
+
+        if (
+            not all(self.split_id_meta_field in doc.meta for doc in retrieved_documents)
+            and self.raise_on_missing_meta_fields
+        ):
+            raise ValueError(f"The retrieved documents must have '{self.split_id_meta_field}' in their metadata.")
+
+        if (
+            not all(field in doc.meta for doc in retrieved_documents for field in self._source_id_meta_fields)
+            and self.raise_on_missing_meta_fields
+        ):
+            raise ValueError(f"The retrieved documents must have '{self.source_id_meta_field}' in their metadata.")
+
+        context_text = []
+        context_documents = []
+        for doc in retrieved_documents:
+            source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
+            split_id = doc.meta.get(self.split_id_meta_field)
+
+            if any(source_id is None for source_id in source_ids) or split_id is None:
+                logger.warning(
+                    "Document {doc_id} is missing required metadata fields to be used with "
+                    "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
+                    doc_id=doc.id,
+                    source_id=self._source_id_meta_fields,
+                    split_id=self.split_id_meta_field,
+                )
+                context_text.append(doc.content or "")
+                context_documents.append(doc)
+                continue
+
+            min_before = split_id - window_size
+            max_after = split_id + window_size
+            source_id_filters = [
+                {"field": f"meta.{source_id_meta_field}", "operator": "==", "value": source_id}
+                for source_id_meta_field, source_id in zip(self._source_id_meta_fields, source_ids)
+            ]
+            conditions = [
+                {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},
+                {"field": f"meta.{self.split_id_meta_field}", "operator": "<=", "value": max_after},
+                *source_id_filters,
+            ]
+            context_docs = await self.document_store.filter_documents_async(
+                {"operator": "AND", "conditions": conditions}
+            )
+            context_text.append(self.merge_documents_text(context_docs))
+            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
+            context_documents.extend(context_docs_sorted)
+
+        return {"context_windows": context_text, "context_documents": context_documents}
