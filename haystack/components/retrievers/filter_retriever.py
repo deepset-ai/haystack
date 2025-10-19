@@ -96,7 +96,7 @@ class FilterRetriever:
     @component.output_types(documents=list[Document])
     async def run_async(self, filters: Optional[dict[str, Any]] = None):
         """
-        Run the FilterRetriever on the given input data.
+        Asynchronously run the FilterRetriever on the given input data.
 
         :param filters:
             A dictionary with filters to narrow down the search space.

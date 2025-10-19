@@ -171,7 +171,7 @@ class AutoMergingRetriever:
     @component.output_types(documents=list[Document])
     async def run_async(self, documents: list[Document]):
         """
-        Run the AutoMergingRetriever.
+        Asynchronously run the AutoMergingRetriever.
 
         Recursively groups documents by their parents and merges them if they meet the threshold,
         continuing up the hierarchy until no more merges are possible.
