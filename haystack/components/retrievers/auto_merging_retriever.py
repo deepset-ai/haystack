@@ -196,7 +196,7 @@ class AutoMergingRetriever:
 
             return parent_doc
 
-        def _try_merge_level(docs_to_merge: list[Document], docs_to_return: list[Document]) -> list[Document]:
+        async def _try_merge_level(docs_to_merge: list[Document], docs_to_return: list[Document]) -> list[Document]:
             parent_doc_id_to_child_docs: dict[str, list[Document]] = defaultdict(list)  # to group documents by parent
 
             for doc in docs_to_merge:
@@ -208,7 +208,7 @@ class AutoMergingRetriever:
             # Process each parent group
             merged_docs = []
             for parent_doc_id, child_docs in parent_doc_id_to_child_docs.items():
-                parent_doc = _get_parent_doc(parent_doc_id)
+                parent_doc = await _get_parent_doc(parent_doc_id)
 
                 # Calculate merge score
                 score = len(child_docs) / len(parent_doc.meta["__children_ids"])
@@ -222,6 +222,6 @@ class AutoMergingRetriever:
                 return merged_docs + docs_to_return
 
             # Recursively try to merge the next level
-            return _try_merge_level(merged_docs, docs_to_return)
+            return await _try_merge_level(merged_docs, docs_to_return)
 
-        return {"documents": _try_merge_level(documents, [])}
+        return {"documents": await _try_merge_level(documents, [])}
