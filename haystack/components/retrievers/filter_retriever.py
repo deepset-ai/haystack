@@ -92,3 +92,17 @@ class FilterRetriever:
             A list of retrieved documents.
         """
         return {"documents": self.document_store.filter_documents(filters=filters or self.filters)}
+
+    @component.output_types(documents=list[Document])
+    async def run_async(self, filters: Optional[dict[str, Any]] = None):
+        """
+        Run the FilterRetriever on the given input data.
+
+        :param filters:
+            A dictionary with filters to narrow down the search space.
+            If not specified, the FilterRetriever uses the values provided at initialization.
+        :returns:
+            A list of retrieved documents.
+        """
+        out_documents = await self.document_store.filter_documents_async(filters=filters or self.filters)
+        return {"documents": out_documents}
