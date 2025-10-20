@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
@@ -204,55 +204,15 @@ class SentenceWindowRetriever:
 
         """
         window_size = window_size or self.window_size
-
-        if window_size < 1:
-            raise ValueError("The window_size parameter must be greater than 0.")
-
-        if (
-            not all(self.split_id_meta_field in doc.meta for doc in retrieved_documents)
-            and self.raise_on_missing_meta_fields
-        ):
-            raise ValueError(f"The retrieved documents must have '{self.split_id_meta_field}' in their metadata.")
-
-        if (
-            not all(field in doc.meta for doc in retrieved_documents for field in self._source_id_meta_fields)
-            and self.raise_on_missing_meta_fields
-        ):
-            raise ValueError(f"The retrieved documents must have '{self.source_id_meta_field}' in their metadata.")
+        self._raise_if_windows_size_is_negative(window_size)
+        self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
         context_text = []
         context_documents = []
         for doc in retrieved_documents:
-            source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
-            split_id = doc.meta.get(self.split_id_meta_field)
-
-            if any(source_id is None for source_id in source_ids) or split_id is None:
-                logger.warning(
-                    "Document {doc_id} is missing required metadata fields to be used with "
-                    "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
-                    doc_id=doc.id,
-                    source_id=self._source_id_meta_fields,
-                    split_id=self.split_id_meta_field,
-                )
-                context_text.append(doc.content or "")
-                context_documents.append(doc)
-                continue
-
-            min_before = split_id - window_size
-            max_after = split_id + window_size
-            source_id_filters = [
-                {"field": f"meta.{source_id_meta_field}", "operator": "==", "value": source_id}
-                for source_id_meta_field, source_id in zip(self._source_id_meta_fields, source_ids)
-            ]
-            conditions = [
-                {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},
-                {"field": f"meta.{self.split_id_meta_field}", "operator": "<=", "value": max_after},
-                *source_id_filters,
-            ]
-            context_docs = self.document_store.filter_documents({"operator": "AND", "conditions": conditions})
-            context_text.append(self.merge_documents_text(context_docs))
-            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
-            context_documents.extend(context_docs_sorted)
+            text, docs = self._retrieve_context_for_document(doc, window_size)
+            context_text.append(text)
+            context_documents.extend(docs)
 
         return {"context_windows": context_text, "context_documents": context_documents}
 
@@ -277,10 +237,23 @@ class SentenceWindowRetriever:
 
         """
         window_size = window_size or self.window_size
+        self._raise_if_windows_size_is_negative(window_size)
+        self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
+        context_text = []
+        context_documents = []
+        for doc in retrieved_documents:
+            text, docs = await self._retrieve_context_for_document_async(doc, window_size)
+            context_text.append(text)
+            context_documents.extend(docs)
+
+        return {"context_windows": context_text, "context_documents": context_documents}
+
+    def _raise_if_windows_size_is_negative(self, window_size: int) -> None:
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
 
+    def _raise_if_documents_do_not_have_expected_metadata(self, retrieved_documents: list[Document]) -> None:
         if (
             not all(self.split_id_meta_field in doc.meta for doc in retrieved_documents)
             and self.raise_on_missing_meta_fields
@@ -293,40 +266,60 @@ class SentenceWindowRetriever:
         ):
             raise ValueError(f"The retrieved documents must have '{self.source_id_meta_field}' in their metadata.")
 
-        context_text = []
-        context_documents = []
-        for doc in retrieved_documents:
-            source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
-            split_id = doc.meta.get(self.split_id_meta_field)
+    def _retrieve_context_for_document(self, doc: Document, window_size: int) -> tuple[str, list[Document]]:
+        source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
+        split_id = doc.meta.get(self.split_id_meta_field)
 
-            if any(source_id is None for source_id in source_ids) or split_id is None:
-                logger.warning(
-                    "Document {doc_id} is missing required metadata fields to be used with "
-                    "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
-                    doc_id=doc.id,
-                    source_id=self._source_id_meta_fields,
-                    split_id=self.split_id_meta_field,
-                )
-                context_text.append(doc.content or "")
-                context_documents.append(doc)
-                continue
-
-            min_before = split_id - window_size
-            max_after = split_id + window_size
-            source_id_filters = [
-                {"field": f"meta.{source_id_meta_field}", "operator": "==", "value": source_id}
-                for source_id_meta_field, source_id in zip(self._source_id_meta_fields, source_ids)
-            ]
-            conditions = [
-                {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},
-                {"field": f"meta.{self.split_id_meta_field}", "operator": "<=", "value": max_after},
-                *source_id_filters,
-            ]
-            context_docs = await self.document_store.filter_documents_async(
-                {"operator": "AND", "conditions": conditions}
+        if any(source_id is None for source_id in source_ids) or split_id is None:
+            logger.warning(
+                "Document {doc_id} is missing required metadata fields to be used with "
+                "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
+                doc_id=doc.id,
+                source_id=self._source_id_meta_fields,
+                split_id=self.split_id_meta_field,
             )
-            context_text.append(self.merge_documents_text(context_docs))
-            context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
-            context_documents.extend(context_docs_sorted)
+            return (doc.content or "", [doc])
 
-        return {"context_windows": context_text, "context_documents": context_documents}
+        assert split_id is not None
+        filter_conditions = self._build_filter_conditions(split_id, window_size, source_ids)
+        context_docs = self.document_store.filter_documents(filter_conditions)
+        context_text = self.merge_documents_text(context_docs)
+        context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
+
+        return context_text, context_docs_sorted
+
+    async def _retrieve_context_for_document_async(self, doc: Document, window_size: int) -> tuple[str, list[Document]]:
+        source_ids = [doc.meta.get(field) for field in self._source_id_meta_fields]
+        split_id = doc.meta.get(self.split_id_meta_field)
+
+        if any(source_id is None for source_id in source_ids) or split_id is None:
+            logger.warning(
+                "Document {doc_id} is missing required metadata fields to be used with "
+                "SentenceWindowRetriever: {source_id} or {split_id}. Skipping context retrieval for this document.",
+                doc_id=doc.id,
+                source_id=self._source_id_meta_fields,
+                split_id=self.split_id_meta_field,
+            )
+            return (doc.content or "", [doc])
+
+        assert split_id is not None
+        filter_conditions = self._build_filter_conditions(split_id, window_size, source_ids)
+        context_docs = await self.document_store.filter_documents_async(filter_conditions)
+        context_text = self.merge_documents_text(context_docs)
+        context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
+
+        return context_text, context_docs_sorted
+
+    def _build_filter_conditions(self, split_id: int, window_size: int, source_ids: list[Any]) -> dict[str, Any]:
+        min_before = split_id - window_size
+        max_after = split_id + window_size
+        source_id_filters = [
+            {"field": f"meta.{source_id_meta_field}", "operator": "==", "value": source_id}
+            for source_id_meta_field, source_id in zip(self._source_id_meta_fields, source_ids)
+        ]
+        conditions = [
+            {"field": f"meta.{self.split_id_meta_field}", "operator": ">=", "value": min_before},
+            {"field": f"meta.{self.split_id_meta_field}", "operator": "<=", "value": max_after},
+            *source_id_filters,
+        ]
+        return {"operator": "AND", "conditions": conditions}
