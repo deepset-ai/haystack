@@ -36,10 +36,10 @@ from haystack.dataclasses import (
     select_streaming_callback,
 )
 from haystack.tools import (
-    Tool,
-    Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
@@ -102,7 +102,7 @@ class OpenAIChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: bool = False,
         http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
@@ -160,8 +160,7 @@ class OpenAIChatGenerator:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-            list of `Tool` objects or a `Toolset` instance.
+            A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -182,7 +181,7 @@ class OpenAIChatGenerator:
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
         # Check for duplicate tool names
-        _check_duplicate_tool_names(list(self.tools or []))
+        _check_duplicate_tool_names(flatten_tools_or_toolsets(self.tools))
 
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -272,7 +271,7 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -287,9 +286,8 @@ class OpenAIChatGenerator:
             override the parameters passed during component initialization.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-            `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects or a `Toolset` instance.
+            A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -345,7 +343,7 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -363,10 +361,8 @@ class OpenAIChatGenerator:
             Additional keyword arguments for text generation. These parameters will
             override the parameters passed during component initialization.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-        :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-            `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects or a `Toolset` instance.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -423,7 +419,7 @@ class OpenAIChatGenerator:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
@@ -439,16 +435,14 @@ class OpenAIChatGenerator:
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
 
-        tools = tools or self.tools
-        if isinstance(tools, Toolset):
-            tools = list(tools)
+        flattened_tools = flatten_tools_or_toolsets(tools or self.tools)
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
-        _check_duplicate_tool_names(tools)
+        _check_duplicate_tool_names(flattened_tools)
 
         openai_tools = {}
-        if tools:
+        if flattened_tools:
             tool_definitions = []
-            for t in tools:
+            for t in flattened_tools:
                 function_spec = {**t.tool_spec}
                 if tools_strict:
                     function_spec["strict"] = True
