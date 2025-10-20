@@ -24,6 +24,7 @@ from haystack.tools import (
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
 from haystack.tools.errors import ToolInvocationError
 from haystack.tracing.utils import _serializable_value
@@ -216,6 +217,7 @@ class ToolInvoker:
         self.convert_result_to_json_string = convert_result_to_json_string
 
         self._tools_with_names = self._validate_and_prepare_tools(tools)
+        self._is_warmed_up = False
 
     @staticmethod
     def _make_context_bound_invoke(tool_to_invoke: Tool, final_args: dict[str, Any]) -> Callable[[], Any]:
@@ -484,6 +486,17 @@ class ToolInvoker:
                 tool_calls.append(tool_call)
 
         return tool_calls, tool_call_params, error_messages
+
+    def warm_up(self):
+        """
+        Warm up the tool invoker.
+
+        This will warm up the tools registered in the tool invoker.
+        This method is idempotent and will only warm up the tools once.
+        """
+        if not self._is_warmed_up:
+            warm_up_tools(self.tools)
+            self._is_warmed_up = True
 
     @component.output_types(tool_messages=list[ChatMessage], state=State)
     def run(

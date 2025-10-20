@@ -211,6 +211,16 @@ class ComponentTool(Tool):
             outputs_to_string=outputs_to_string,
         )
         self._component = component
+        self._is_warmed_up = False
+
+    def warm_up(self):
+        """
+        Prepare the ComponentTool for use.
+        """
+        if not self._is_warmed_up:
+            if hasattr(self._component, "warm_up"):
+                self._component.warm_up()
+            self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
         """

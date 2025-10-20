@@ -13,7 +13,7 @@ from haystack.tools.toolset import Toolset
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.pipeline_tool import PipelineTool
 from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
-from haystack.tools.utils import flatten_tools_or_toolsets
+from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
 
 # Type alias for tools parameter - allows mixing Tools and Toolsets in a list
 ToolsType = Union[list[Union[Tool, Toolset]], Toolset]
@@ -27,7 +27,8 @@ __all__ = [
     "PipelineTool",
     "serialize_tools_or_toolset",
     "Tool",
+    "ToolsType",
     "Toolset",
     "tool",
-    "ToolsType",
+    "warm_up_tools",
 ]
