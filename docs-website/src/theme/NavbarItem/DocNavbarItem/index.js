@@ -20,7 +20,10 @@ export default function DocNavbarItem({
 }) {
   const resolvedPluginId = docsPluginId ?? DEFAULT_PLUGIN_ID;
   const {pathname} = useLocation();
-  const {activePlugin} = useActivePluginAndVersion();
+  const activePluginAndVersion = useActivePluginAndVersion();
+  const activePluginId = activePluginAndVersion?.activePlugin?.pluginId;
+  const activePluginMatches =
+    !activePluginId || activePluginId === resolvedPluginId;
   const activeDocContext = useActiveDocContext(resolvedPluginId);
   const doc = useLayoutDoc(docId, resolvedPluginId);
 
@@ -30,8 +33,6 @@ export default function DocNavbarItem({
     }
     return docsPluginId === 'reference' ? REFERENCE_PATH_PREFIX : DOCS_PATH_PREFIX;
   }, [activeBasePath, docsPluginId]);
-
-  const activePluginMatches = activePlugin?.pluginId === resolvedPluginId;
 
   const shouldHighlight = useMemo(() => {
     if (!doc || !expectedBasePath || !activePluginMatches) {
