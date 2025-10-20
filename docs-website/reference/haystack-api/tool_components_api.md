@@ -187,6 +187,19 @@ This also decides the maximum number of concurrent tool invocations.
 
 - `ValueError`: If no tools are provided or if duplicate tool names are found.
 
+<a id="tool_invoker.ToolInvoker.warm_up"></a>
+
+#### ToolInvoker.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the tool invoker.
+
+This will warm up the tools registered in the tool invoker.
+This method is idempotent and will only warm up the tools once.
+
 <a id="tool_invoker.ToolInvoker.run"></a>
 
 #### ToolInvoker.run
