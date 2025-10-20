@@ -11,23 +11,26 @@ if TYPE_CHECKING:
     from haystack.tools import ToolsType
 
 
-def warm_up_tools(tools: Optional[Union[list[Tool], Toolset]] = None) -> None:
+def warm_up_tools(tools: "Optional[ToolsType]" = None) -> None:
     """
-    Warm up tools or a toolset.
+    Warm up tools from various formats (Tools, Toolsets, or mixed lists).
 
-    :param tools: A list of Tool objects or a Toolset to warm up.
+    :param tools: A list of Tool and/or Toolset objects, a single Toolset, or None.
     """
     if tools is None:
         return
 
+    # If tools is a single Toolset, warm up the toolset itself
+    if isinstance(tools, Toolset):
+        if hasattr(tools, "warm_up"):
+            tools.warm_up()
+        return
+
+    # If tools is a list, warm up each item (Tool or Toolset)
     if isinstance(tools, list):
-        # If tools is a list, warm up each tool individually
-        for tool in tools:
-            if hasattr(tool, "warm_up"):
-                tool.warm_up()
-    # If tools is a Toolset, warm up the toolset
-    elif hasattr(tools, "warm_up"):
-        tools.warm_up()
+        for item in tools:
+            if isinstance(item, (Toolset, Tool)) and hasattr(item, "warm_up"):
+                item.warm_up()
 
 
 def flatten_tools_or_toolsets(tools: "Optional[ToolsType]") -> list[Tool]:
