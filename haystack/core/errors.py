@@ -18,10 +18,13 @@ class PipelineRuntimeError(Exception):
         component_type: Optional[type],
         message: str,
         pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        *,
+        pipeline_snapshot_file_path: Optional[str] = None,
     ) -> None:
         self.component_name = component_name
         self.component_type = component_type
         self.pipeline_snapshot = pipeline_snapshot
+        self.pipeline_snapshot_file_path = pipeline_snapshot_file_path
         super().__init__(message)
 
     @classmethod
@@ -109,13 +112,43 @@ class BreakpointException(Exception):
         self,
         message: str,
         component: Optional[str] = None,
-        inputs: Optional[dict[str, Any]] = None,
-        results: Optional[dict[str, Any]] = None,
+        pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        pipeline_snapshot_file_path: Optional[str] = None,
     ):
         super().__init__(message)
         self.component = component
-        self.inputs = inputs
-        self.results = results
+        self.pipeline_snapshot = pipeline_snapshot
+        self.pipeline_snapshot_file_path = pipeline_snapshot_file_path
+
+    @property
+    def inputs(self):
+        """
+        Returns the inputs of the pipeline or agent at the breakpoint.
+
+        If an AgentBreakpoint caused this exception, returns the inputs of the agent's internal components.
+        Otherwise, returns the current inputs of the pipeline.
+        """
+        if not self.pipeline_snapshot:
+            return None
+
+        if self.pipeline_snapshot.agent_snapshot:
+            return self.pipeline_snapshot.agent_snapshot.component_inputs
+        return self.pipeline_snapshot.pipeline_state.inputs
+
+    @property
+    def results(self):
+        """
+        Returns the results of the pipeline or agent at the breakpoint.
+
+        If an AgentBreakpoint caused this exception, returns the current results of the agent.
+        Otherwise, returns the current outputs of the pipeline.
+        """
+        if not self.pipeline_snapshot:
+            return None
+
+        if self.pipeline_snapshot.agent_snapshot:
+            return self.pipeline_snapshot.agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"]
+        return self.pipeline_snapshot.pipeline_state.pipeline_outputs
 
 
 class PipelineInvalidPipelineSnapshotError(Exception):

@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    A new component `RegexTextExtractor` which allows to extract text from chat messages or strings input based on custom regex pattern.

@@ -189,12 +189,12 @@ class PipelineSnapshot:
     """
     A dataclass to hold a snapshot of the pipeline at a specific point in time.
 
+    :param original_input_data: The original input data provided to the pipeline.
+    :param ordered_component_names: A list of component names in the order they were visited.
     :param pipeline_state: The state of the pipeline at the time of the snapshot.
     :param break_point: The breakpoint that triggered the snapshot.
     :param agent_snapshot: Optional agent snapshot if the breakpoint is an agent breakpoint.
     :param timestamp: A timestamp indicating when the snapshot was taken.
-    :param original_input_data: The original input data provided to the pipeline.
-    :param ordered_component_names: A list of component names in the order they were visited.
     :param include_outputs_from: Set of component names whose outputs should be included in the pipeline results.
     """
 

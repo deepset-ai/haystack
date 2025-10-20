@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -14,7 +15,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, Breakpoint, ToolBreakpoint
+from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.tools import Tool, Toolset
 
 
@@ -39,8 +40,15 @@ def weather_tool():
 
 @component
 class MockChatGenerator:
-    def __init__(self):
+    def __init__(self, responses: Optional[list[ChatMessage]] = None):
         self._counter = 0
+        self.responses = responses or [
+            ChatMessage.from_assistant(
+                "I'll help you check the weather.",
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
+            ),
+            ChatMessage.from_assistant("The weather in Berlin is sunny."),
+        ]
 
     def to_dict(self) -> dict[str, Any]:
         return {"type": "MockChatGenerator", "data": {}}
@@ -53,35 +61,23 @@ class MockChatGenerator:
     def run(
         self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
     ) -> dict[str, Any]:
-        if self._counter == 0:
-            self._counter += 1
-            return {
-                "replies": [
-                    ChatMessage.from_assistant(
-                        "I'll help you check the weather.",
-                        tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
-                    )
-                ]
-            }
+        if self._counter >= len(self.responses):
+            return {"replies": [self.responses[-1]]}
         else:
-            return {"replies": [ChatMessage.from_assistant("The weather in Berlin is sunny.")]}
+            result = self.responses[self._counter]
+            self._counter += 1
+            return {"replies": [result]}
 
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
     ) -> dict[str, Any]:
-        if self._counter == 0:
-            self._counter += 1
-            return {
-                "replies": [
-                    ChatMessage.from_assistant(
-                        "I'll help you check the weather.",
-                        tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
-                    )
-                ]
-            }
+        if self._counter >= len(self.responses):
+            return {"replies": [self.responses[-1]]}
         else:
-            return {"replies": [ChatMessage.from_assistant("The weather in Berlin is sunny.")]}
+            result = self.responses[self._counter]
+            self._counter += 1
+            return {"replies": [result]}
 
 
 @pytest.fixture
@@ -463,16 +459,56 @@ class TestAgentBreakpoints:
         assert "last_message" in result
         assert len(result["messages"]) > 0
 
-    def test_invalid_combination_breakpoint_and_pipeline_snapshot(self, agent):
-        messages = [ChatMessage.from_user("What's the weather in Berlin?")]
-        tool_bp = ToolBreakpoint(component_name="tool_invoker", tool_name="weather_tool")
+    def test_resume_from_tool_invoker_and_new_breakpoint(self, weather_tool, tmp_path):
+        agent = Agent(
+            chat_generator=MockChatGenerator(
+                [
+                    ChatMessage.from_assistant(tool_calls=[ToolCall("weather_tool", {"location": "Berlin"})]),
+                    ChatMessage.from_assistant(tool_calls=[ToolCall("weather_tool", {"location": "Paris"})]),
+                    ChatMessage.from_assistant(text="The weather in Berlin and Paris is sunny."),
+                ]
+            ),
+            tools=[weather_tool],
+        )
+
+        debug_path = str(tmp_path / "debug_snapshots")
+        tool_bp = ToolBreakpoint(
+            component_name="tool_invoker", tool_name="weather_tool", visit_count=0, snapshot_file_path=debug_path
+        )
         agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test_agent")
-        with pytest.raises(ValueError, match="break_point and snapshot cannot be provided at the same time"):
-            agent.run(
-                messages=messages,
-                break_point=agent_breakpoint,
-                snapshot=AgentSnapshot(component_inputs={}, component_visits={}, break_point=agent_breakpoint),
-            )
+
+        # First run to create the snapshot at the tool invoker
+        try:
+            agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint)
+        except BreakpointException:
+            pass
+
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))
+        first_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
+
+        # Now resume from snapshot and trigger new breakpoint at the next visit of the same tool
+        new_breakpoint = AgentBreakpoint(break_point=replace(tool_bp, visit_count=1), agent_name="test_agent")
+        agent_snapshot = load_pipeline_snapshot(first_snapshot_file).agent_snapshot
+        try:
+            # messages not used when resuming from snapshot
+            _ = agent.run(messages=[], break_point=new_breakpoint, snapshot=agent_snapshot)
+        except BreakpointException:
+            pass
+
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))
+        latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
+
+        # Resume again, this time the agent should complete
+        result = agent.run(
+            messages=[],
+            # Shouldn't trigger, but we pass here to show that we can pass a breakpoint even if not used
+            break_point=AgentBreakpoint(break_point=replace(tool_bp, visit_count=2), agent_name="test_agent"),
+            snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
+        )
+
+        # 1 user + 2 assistant + 2 tool call results + 1 final assistant message
+        assert len(result["messages"]) == 6
+        assert result["last_message"].text == "The weather in Berlin and Paris is sunny."
 
     def test_breakpoint_with_invalid_component_name(self):
         invalid_bp = Breakpoint(component_name="invalid_breakpoint")
@@ -596,15 +632,59 @@ class TestAsyncAgentBreakpoints:
         assert len(result["messages"]) > 0
 
     @pytest.mark.asyncio
-    async def test_invalid_combination_breakpoint_and_pipeline_snapshot_async(self, agent):
-        tool_bp = ToolBreakpoint(component_name="tool_invoker", visit_count=0, tool_name="weather_tool")
-        agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test")
-        with pytest.raises(ValueError, match="break_point and snapshot cannot be provided at the same time"):
+    async def test_resume_from_tool_invoker_and_new_breakpoint_async(self, weather_tool, tmp_path):
+        agent = Agent(
+            chat_generator=MockChatGenerator(
+                [
+                    ChatMessage.from_assistant(tool_calls=[ToolCall("weather_tool", {"location": "Berlin"})]),
+                    ChatMessage.from_assistant(tool_calls=[ToolCall("weather_tool", {"location": "Paris"})]),
+                    ChatMessage.from_assistant(text="The weather in Berlin and Paris is sunny."),
+                ]
+            ),
+            tools=[weather_tool],
+        )
+
+        debug_path = str(tmp_path / "debug_snapshots")
+        tool_bp = ToolBreakpoint(
+            component_name="tool_invoker", tool_name="weather_tool", visit_count=0, snapshot_file_path=debug_path
+        )
+        agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test_agent")
+
+        # First run to create the snapshot at the tool invoker
+        try:
             await agent.run_async(
-                messages=[ChatMessage.from_user("What's the weather in Berlin?")],
-                break_point=agent_breakpoint,
-                snapshot=AgentSnapshot(component_inputs={}, component_visits={}, break_point=agent_breakpoint),
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")], break_point=agent_breakpoint
             )
+        except BreakpointException:
+            pass
+
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))
+        assert len(snapshot_files) > 0
+        first_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
+
+        # Now resume from snapshot and trigger new breakpoint at the next visit of the same tool
+        new_breakpoint = AgentBreakpoint(break_point=replace(tool_bp, visit_count=1), agent_name="test_agent")
+        agent_snapshot = load_pipeline_snapshot(first_snapshot_file).agent_snapshot
+        try:
+            # messages not used when resuming from snapshot
+            _ = await agent.run_async(messages=[], break_point=new_breakpoint, snapshot=agent_snapshot)
+        except BreakpointException:
+            pass
+
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))
+        latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
+
+        # Resume again
+        result = await agent.run_async(
+            messages=[],
+            # Shouldn't trigger, but we pass here to show that we can pass a breakpoint even if not used
+            break_point=AgentBreakpoint(break_point=replace(tool_bp, visit_count=2), agent_name="test_agent"),
+            snapshot=load_pipeline_snapshot(latest_snapshot_file).agent_snapshot,
+        )
+
+        # 1 user + 2 assistant + 2 tool call results + 1 final assistant message
+        assert len(result["messages"]) == 6
+        assert result["last_message"].text == "The weather in Berlin and Paris is sunny."
 
     @pytest.mark.asyncio
     async def test_breakpoint_with_invalid_tool_name_async(self, agent):

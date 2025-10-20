@@ -118,13 +118,14 @@ class TestOpenAIChatGeneratorAsync:
     @pytest.mark.asyncio
     async def test_run_with_params_async(self, chat_messages, openai_mock_async_chat_completion):
         component = OpenAIChatGenerator(
-            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
         )
         response = await component.run_async(chat_messages)
 
         # check that the component calls the OpenAI API with the correct parameters
         _, kwargs = openai_mock_async_chat_completion.call_args
-        assert kwargs["max_tokens"] == 10
+        assert kwargs["max_completion_tokens"] == 10
         assert kwargs["temperature"] == 0.5
 
         # check that the tools are not passed to the OpenAI API (the generator is initialized without tools)
