@@ -41,7 +41,7 @@ calculator_tool = create_tool_from_function(
 
 
 @component
-class TestChatGenerator:
+class MockChatGenerator:
     def __init__(self, fail_on_call: bool):
         self.fail_on_call = fail_on_call
 
@@ -85,7 +85,7 @@ def test_pipeline_with_chat_generator_crash():
     """Test pipeline crash handling when chat generator fails."""
     pipe = build_pipeline(
         agent=Agent(
-            chat_generator=TestChatGenerator(True), tools=[calculator_tool], state_schema={"calc_result": {"type": int}}
+            chat_generator=MockChatGenerator(True), tools=[calculator_tool], state_schema={"calc_result": {"type": int}}
         )
     )
 
@@ -96,7 +96,7 @@ def test_pipeline_with_chat_generator_crash():
 
     assert "Error in chat generator component" in str(exception_info.value)
     assert exception_info.value.component_name == "chat_generator"
-    assert exception_info.value.component_type == TestChatGenerator
+    assert exception_info.value.component_type == MockChatGenerator
     assert "math_agent_chat_generator" in exception_info.value.pipeline_snapshot_file_path
 
     pipeline_snapshot = exception_info.value.pipeline_snapshot
@@ -131,7 +131,7 @@ def test_pipeline_with_tool_call_crash():
     """Test pipeline crash handling when a tool call fails."""
     pipe = build_pipeline(
         agent=Agent(
-            chat_generator=TestChatGenerator(False),
+            chat_generator=MockChatGenerator(False),
             tools=[calculator_tool, failing_factorial_tool],
             state_schema={"calc_result": {"type": int}, "factorial_result": {"type": int}},
             raise_on_tool_invocation_failure=True,
