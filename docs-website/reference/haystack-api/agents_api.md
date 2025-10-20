@@ -51,7 +51,7 @@ assert "messages" in result  # Contains conversation history
 ```python
 def __init__(*,
              chat_generator: ChatGenerator,
-             tools: Optional[Union[list[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              system_prompt: Optional[str] = None,
              exit_conditions: Optional[list[str]] = None,
              state_schema: Optional[dict[str, Any]] = None,
@@ -66,7 +66,7 @@ Initialize the agent component.
 **Arguments**:
 
 - `chat_generator`: An instance of the chat generator that your agent should use. It must support tools.
-- `tools`: List of Tool objects or a Toolset that the agent can use.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
 - `system_prompt`: System prompt for the agent.
 - `exit_conditions`: List of conditions that will cause the agent to return.
 Can include "text" if the agent should return when it generates a message without tool calls,
@@ -139,7 +139,7 @@ def run(messages: list[ChatMessage],
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -183,8 +183,7 @@ async def run_async(messages: list[ChatMessage],
                     break_point: Optional[AgentBreakpoint] = None,
                     snapshot: Optional[AgentSnapshot] = None,
                     system_prompt: Optional[str] = None,
-                    tools: Optional[Union[list[Tool], Toolset,
-                                          list[str]]] = None,
+                    tools: Optional[Union[ToolsType, list[str]]] = None,
                     **kwargs: Any) -> dict[str, Any]
 ```
 
