@@ -304,7 +304,8 @@ class SentenceWindowRetriever:
 
         assert split_id is not None
         filter_conditions = self._build_filter_conditions(split_id, window_size, source_ids)
-        context_docs = await self.document_store.filter_documents_async(filter_conditions)  # type: ignore
+        # Ignoring type error because DocumentStore protocol doesn't define filter_documents_async
+        context_docs = await self.document_store.filter_documents_async(filter_conditions)  # type: ignore[misc]
         context_text = self.merge_documents_text(context_docs)
         context_docs_sorted = sorted(context_docs, key=lambda doc: doc.meta[self.split_id_meta_field])
 
