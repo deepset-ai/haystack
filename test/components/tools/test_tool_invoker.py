@@ -1087,6 +1087,59 @@ class TestWarmUpTools:
         assert toolset1.was_warmed_up
         assert toolset2.was_warmed_up
 
+    def test_tool_invoker_warm_up_with_mixed_list_of_tools_and_toolsets(self):
+        """Test that ToolInvoker.warm_up() works with a mixed list of Tools and Toolsets."""
+        # Create standalone tracking tools
+        tool1 = WarmupTrackingTool(
+            name="standalone_tool1",
+            description="First standalone tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool1",
+        )
+        tool2 = WarmupTrackingTool(
+            name="standalone_tool2",
+            description="Second standalone tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool2",
+        )
+
+        # Create toolsets with tracking
+        tool3 = WarmupTrackingTool(
+            name="toolset_tool1",
+            description="Tool in toolset 1",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool3",
+        )
+        toolset1 = WarmupTrackingToolset([tool3])
+
+        tool4 = WarmupTrackingTool(
+            name="toolset_tool2",
+            description="Tool in toolset 2",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "tool4",
+        )
+        toolset2 = WarmupTrackingToolset([tool4])
+
+        # Create invoker with mixed list: Tool, Toolset, Tool, Toolset
+        invoker = ToolInvoker(tools=[tool1, toolset1, tool2, toolset2])
+
+        # Verify nothing is warmed up initially
+        assert not tool1.was_warmed_up
+        assert not tool2.was_warmed_up
+        assert not toolset1.was_warmed_up
+        assert not toolset2.was_warmed_up
+
+        # Warm up
+        invoker.warm_up()
+
+        # Verify standalone tools are warmed up
+        assert tool1.was_warmed_up
+        assert tool2.was_warmed_up
+
+        # Verify toolsets themselves are warmed up (not just their internal tools)
+        assert toolset1.was_warmed_up
+        assert toolset2.was_warmed_up
+
     def test_tool_invoker_warm_up_is_idempotent(self):
         """Test that ToolInvoker.warm_up() is idempotent and only warms up once."""
 
