@@ -1,7 +1,11 @@
 ---
 title: Extractors
-id: extractors-api
-description: Extracts predefined entities out of a piece of text.
+excerpt: Components to extract specific elements from textual data.
+category: placeholder-haystack-api
+slug: extractors-api
+parentDoc: 
+order: 65
+hidden: false
 ---
 
 <a id="named_entity_extractor"></a>
@@ -286,7 +290,7 @@ docs = [
 
 chat_generator = OpenAIChatGenerator(
     generation_kwargs={
-        "max_tokens": 500,
+        "max_completion_tokens": 500,
         "temperature": 0.0,
         "seed": 0,
         "response_format": {"type": "json_object"},
@@ -574,3 +578,74 @@ describing the failure.
 A dictionary with:
 - "documents": Successfully processed documents, updated with extracted content.
 - "failed_documents": Documents that failed processing, annotated with failure metadata.
+
+<a id="regex_text_extractor"></a>
+
+# Module regex\_text\_extractor
+
+<a id="regex_text_extractor.RegexTextExtractor"></a>
+
+## RegexTextExtractor
+
+Extracts text from chat message or string input using a regex pattern.
+
+RegexTextExtractor parses input text or ChatMessages using a provided regular expression pattern.
+It can be configured to search through all messages or only the last message in a list of ChatMessages.
+
+### Usage example
+
+```python
+from haystack_experimental.components.extractors import RegexTextExtractor
+from haystack.dataclasses import ChatMessage
+
+# Using with a string
+parser = RegexTextExtractor(regex_pattern='<issue url="(.+)">')
+result = parser.run(text_or_messages='<issue url="github.com/hahahaha">hahahah</issue>')
+# result: {"captured_text": "github.com/hahahaha"}
+
+# Using with ChatMessages
+messages = [ChatMessage.from_user('<issue url="github.com/hahahaha">hahahah</issue>')]
+result = parser.run(text_or_messages=messages)
+# result: {"captured_text": "github.com/hahahaha"}
+```
+
+<a id="regex_text_extractor.RegexTextExtractor.__init__"></a>
+
+#### RegexTextExtractor.\_\_init\_\_
+
+```python
+def __init__(regex_pattern: str)
+```
+
+Creates an instance of the RegexTextExtractor component.
+
+**Arguments**:
+
+- `regex_pattern`: The regular expression pattern used to extract text.
+The pattern should include a capture group to extract the desired text.
+Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue url="github.com/hahahaha">'`.
+
+<a id="regex_text_extractor.RegexTextExtractor.run"></a>
+
+#### RegexTextExtractor.run
+
+```python
+@component.output_types(captured_text=str, captured_texts=list[str])
+def run(text_or_messages: Union[str, list[ChatMessage]]) -> dict
+```
+
+Extracts text from input using the configured regex pattern.
+
+**Arguments**:
+
+- `text_or_messages`: Either a string or a list of ChatMessage objects to search through.
+
+**Raises**:
+
+- `None`: - ValueError: if receiving a list the last element is not a ChatMessage instance.
+
+**Returns**:
+
+- If match found: `{"captured_text": "matched text"}`
+- If no match and `return_empty_on_no_match=True`: `{}`
+

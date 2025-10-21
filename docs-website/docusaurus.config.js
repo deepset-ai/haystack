@@ -46,12 +46,12 @@ const config = {
             'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
           versions: {
             current: {
-              label: 'Next',
+              label: '2.20-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.0',
+          lastVersion: '2.19',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -81,7 +81,15 @@ const config = {
         editUrl: 'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
         showLastUpdateAuthor: false,
         showLastUpdateTime: false,
-          exclude: ['**/_templates/**'],
+        exclude: ['**/_templates/**'],
+        versions: {
+          current: {
+            label: '2.20-unstable',
+            path: 'next',
+            banner: 'unreleased',
+          },
+        },
+        lastVersion: '2.19',
       },
     ],
   ],
@@ -99,7 +107,10 @@ const config = {
           {
             type: 'docsVersionDropdown',
             position: 'left',
-            dropdownItemsAfter: [{to: '/versions', label: 'All versions'}],
+            dropdownItemsAfter: [
+              {to: '/versions', label: 'Docs versions'},
+              {to: '/reference/versions', label: 'API versions'},
+            ],
             dropdownActiveClassDisabled: true,
           },
           {
@@ -107,6 +118,7 @@ const config = {
             docId: 'overview/intro',
             label: 'Docs',
             position: 'left',
+            activeBasePath: '/docs',
           },
             {
               type: 'doc',
@@ -114,6 +126,7 @@ const config = {
               docId: 'api-index',
               label: 'API Reference',
               position: 'left',
+              activeBasePath: '/reference',
             },
           {
             href: 'https://github.com/deepset-ai/haystack/tree/main/docs-website',

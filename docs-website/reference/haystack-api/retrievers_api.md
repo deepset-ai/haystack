@@ -1,7 +1,8 @@
 ---
-title: Retrievers
+title: "Retrievers"
 id: retrievers-api
-description: Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query.
+description: "Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query."
+slug: "/retrievers-api"
 ---
 
 <a id="auto_merging_retriever"></a>
@@ -746,3 +747,35 @@ A dictionary with the following keys:
 - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
                       document surrounding them. The documents are sorted by the `split_idx_start`
                       meta field.
+
+<a id="sentence_window_retriever.SentenceWindowRetriever.run_async"></a>
+
+#### SentenceWindowRetriever.run\_async
+
+```python
+@component.output_types(context_windows=list[str],
+                        context_documents=list[Document])
+async def run_async(retrieved_documents: list[Document],
+                    window_size: Optional[int] = None)
+```
+
+Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
+
+Implements the logic behind the sentence-window technique, retrieving the surrounding documents of a given
+document from the document store.
+
+**Arguments**:
+
+- `retrieved_documents`: List of retrieved documents from the previous retriever.
+- `window_size`: The number of documents to retrieve before and after the relevant one. This will overwrite
+the `window_size` parameter set in the constructor.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `context_windows`: A list of strings, where each string represents the concatenated text from the
+                     context window of the corresponding document in `retrieved_documents`.
+- `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
+                      document surrounding them. The documents are sorted by the `split_idx_start`
+                      meta field.
+

@@ -1,7 +1,8 @@
 ---
-title: Evaluators
+title: "Evaluators"
 id: evaluators-api
-description: Evaluate your pipelines or individual components.
+description: "Evaluate your pipelines or individual components."
+slug: "/evaluators-api"
 ---
 
 <a id="answer_exact_match"></a>
@@ -1292,3 +1293,4 @@ and a list of ground truth answers. Both must be list of strings of same length.
 A dictionary with the following outputs:
 - `score`: Mean SAS score over all the predictions/ground-truth pairs.
 - `individual_scores`: A list of similarity scores for each prediction/ground-truth pair.
+

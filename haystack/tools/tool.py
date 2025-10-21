@@ -21,6 +21,11 @@ class Tool:
     Accurate definitions of the textual attributes such as `name` and `description`
     are important for the Language Model to correctly prepare the call.
 
+    For resource-intensive operations like establishing connections to remote services or
+    loading models, override the `warm_up()` method. This method is called before the Tool
+    is used and should be idempotent, as it may be called multiple times during
+    pipeline/agent setup.
+
     :param name:
         Name of the Tool.
     :param description:
@@ -97,6 +102,16 @@ class Tool:
         Return the Tool specification to be used by the Language Model.
         """
         return {"name": self.name, "description": self.description, "parameters": self.parameters}
+
+    def warm_up(self) -> None:
+        """
+        Prepare the Tool for use.
+
+        Override this method to establish connections to remote services, load models,
+        or perform other resource-intensive initialization. This method should be idempotent,
+        as it may be called multiple times.
+        """
+        pass
 
     def invoke(self, **kwargs: Any) -> Any:
         """

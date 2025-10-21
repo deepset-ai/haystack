@@ -1,7 +1,8 @@
 ---
-title: Rankers
+title: "Rankers"
 id: rankers-api
-description: Reorders a set of Documents based on their relevance to the query.
+description: "Reorders a set of Documents based on their relevance to the query."
+slug: "/rankers-api"
 ---
 
 <a id="hugging_face_tei"></a>
@@ -934,9 +935,9 @@ It uses a pre-trained cross-encoder model from Hugging Face to embed the query a
   with removal following after a deprecation period.
   Consider using SentenceTransformersSimilarityRanker instead, which provides the same functionality along with
   additional features.
-
+  
   ### Usage example
-
+  
 ```python
 from haystack import Document
 from haystack.components.rankers import TransformersSimilarityRanker
@@ -1083,3 +1084,4 @@ If `scale_score` is True and `calibration_factor` is not provided.
 
 A dictionary with the following keys:
 - `documents`: A list of documents closest to the query, sorted from most similar to least similar.
+

@@ -1,7 +1,8 @@
 ---
-title: Tool Components
+title: "Tool Components"
 id: tool-components-api
-description: Components related to Tool Calling.
+description: "Components related to Tool Calling."
+slug: "/tool-components-api"
 ---
 
 <a id="tool_invoker"></a>
@@ -152,7 +153,7 @@ print(result)
 #### ToolInvoker.\_\_init\_\_
 
 ```python
-def __init__(tools: Union[list[Tool], Toolset],
+def __init__(tools: ToolsType,
              raise_on_failure: bool = True,
              convert_result_to_json_string: bool = False,
              streaming_callback: Optional[StreamingCallbackT] = None,
@@ -165,7 +166,7 @@ Initialize the ToolInvoker component.
 
 **Arguments**:
 
-- `tools`: A list of tools that can be invoked or a Toolset instance that can resolve tools.
+- `tools`: A list of Tool and/or Toolset objects, or a Toolset instance that can resolve tools.
 - `raise_on_failure`: If True, the component will raise an exception in case of errors
 (tool not found, tool invocation errors, tool result conversion errors).
 If False, the component will return a ChatMessage object with `error=True`
@@ -186,6 +187,19 @@ This also decides the maximum number of concurrent tool invocations.
 
 - `ValueError`: If no tools are provided or if duplicate tool names are found.
 
+<a id="tool_invoker.ToolInvoker.warm_up"></a>
+
+#### ToolInvoker.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the tool invoker.
+
+This will warm up the tools registered in the tool invoker.
+This method is idempotent and will only warm up the tools once.
+
 <a id="tool_invoker.ToolInvoker.run"></a>
 
 #### ToolInvoker.run
@@ -197,7 +211,7 @@ def run(messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None) -> dict[str, Any]
+        tools: Optional[ToolsType] = None) -> dict[str, Any]
 ```
 
 Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
@@ -214,7 +228,8 @@ This allows tools to stream their results back to the client.
 Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
 If False, the `streaming_callback` will not be passed to the tool invocation.
 If None, the value from the constructor will be used.
-- `tools`: A list of tools to use for the tool invoker. If set, overrides the tools set in the constructor.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter provided during initialization.
 
 **Raises**:
 
@@ -240,7 +255,7 @@ async def run_async(
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None) -> dict[str, Any]
+        tools: Optional[ToolsType] = None) -> dict[str, Any]
 ```
 
 Asynchronously processes ChatMessage objects containing tool calls.
@@ -259,7 +274,8 @@ This allows tools to stream their results back to the client.
 Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
 If False, the `streaming_callback` will not be passed to the tool invocation.
 If None, the value from the constructor will be used.
-- `tools`: A list of tools to use for the tool invoker. If set, overrides the tools set in the constructor.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter provided during initialization.
 
 **Raises**:
 
@@ -305,3 +321,4 @@ Deserializes the component from a dictionary.
 **Returns**:
 
 The deserialized component.
+

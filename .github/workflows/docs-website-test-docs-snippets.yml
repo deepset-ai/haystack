@@ -10,13 +10,15 @@ on:
         required: false
         default: 'main'
         type: string
-  push:
-    paths:
-      - 'docs-website/docs/**'
-      - 'docs-website/versioned_docs/**'
-      - 'docs-website/scripts/test_python_snippets.py'
-      - 'docs-website/scripts/generate_requirements.py'
-      - '.github/workflows/docs-website-test-docs-snippets.yml'
+
+  # TEMPORARILY DISABLED
+  # push:
+  #   paths:
+  #     - 'docs-website/docs/**'
+  #     - 'docs-website/versioned_docs/**'
+  #     - 'docs-website/scripts/test_python_snippets.py'
+  #     - 'docs-website/scripts/generate_requirements.py'
+  #     - '.github/workflows/docs-website-test-docs-snippets.yml'
 
 jobs:
   test-docs-snippets:
@@ -27,10 +29,10 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 

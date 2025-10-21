@@ -1,7 +1,8 @@
 ---
-title: Image Converters
+title: "Image Converters"
 id: image-converters-api
-description: Various converters to transform image data from one format to another.
+description: "Various converters to transform image data from one format to another."
+slug: "/image-converters-api"
 ---
 
 <a id="document_to_image"></a>
@@ -371,3 +372,4 @@ If not provided, the page_range value will be the one set in the constructor.
 
 A dictionary with the following keys:
 - `image_contents`: A list of ImageContent objects.
+

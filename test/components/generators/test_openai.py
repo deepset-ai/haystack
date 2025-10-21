@@ -40,14 +40,14 @@ class TestOpenAIGenerator:
             model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             timeout=40.0,
             max_retries=1,
         )
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 40.0
         assert component.client.max_retries == 1
 
@@ -78,7 +78,7 @@ class TestOpenAIGenerator:
             api_base_url="test-base-url",
             organization="org-1234567",
             http_client_kwargs={"proxy": "http://localhost:8080"},
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
         )
         data = component.to_dict()
         assert data == {
@@ -91,7 +91,7 @@ class TestOpenAIGenerator:
                 "organization": "org-1234567",
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
             },
         }
 
@@ -107,14 +107,14 @@ class TestOpenAIGenerator:
                 "api_base_url": "test-base-url",
                 "http_client_kwargs": None,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
             },
         }
         component = OpenAIGenerator.from_dict(data)
         assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.api_base_url == "test-base-url"
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
         assert component.http_client_kwargs is None
 
@@ -127,7 +127,7 @@ class TestOpenAIGenerator:
                 "model": "gpt-4o-mini",
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
             },
         }
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
@@ -187,13 +187,14 @@ class TestOpenAIGenerator:
 
     def test_run_with_params(self, openai_mock_chat_completion):
         component = OpenAIGenerator(
-            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
         )
         response = component.run("What's Natural Language Processing?")
 
         # check that the component calls the OpenAI API with the correct parameters
         _, kwargs = openai_mock_chat_completion.call_args
-        assert kwargs["max_tokens"] == 10
+        assert kwargs["max_completion_tokens"] == 10
         assert kwargs["temperature"] == 0.5
 
         # check that the component returns the correct response

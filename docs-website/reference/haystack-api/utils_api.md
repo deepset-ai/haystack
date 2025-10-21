@@ -1,7 +1,8 @@
 ---
-title: Utils
+title: "Utils"
 id: utils-api
-description: Utility functions and classes used across the library.
+description: "Utility functions and classes used across the library."
+slug: "/utils-api"
 ---
 
 <a id="azure"></a>
@@ -1081,7 +1082,7 @@ Hello! I am {{user_name}}. Please describe the images.
 {% endfor %}
 {% endmessage %}
 ```
-
+  
   ### How it works
   1. The `{% message %}` tag is used to define a chat message.
   2. The message can contain text and other structured content parts.
@@ -1294,3 +1295,4 @@ class does not have a `from_dict` method.
 **Returns**:
 
 The deserialized object.
+

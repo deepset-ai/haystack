@@ -1,7 +1,8 @@
 ---
-title: Data Classes
+title: "Data Classes"
 id: data-classess-api
-description: Core classes that carry data through the system.
+description: "Core classes that carry data through the system."
+slug: "/data-classess-api"
 ---
 
 <a id="answer"></a>
@@ -1329,3 +1330,4 @@ The runtime callback takes precedence over the initial callback.
 **Returns**:
 
 The selected callback.
+

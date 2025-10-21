@@ -1,7 +1,8 @@
 ---
-title: Joiners
+title: "Joiners"
 id: joiners-api
-description: Components that join list of different objects
+description: "Components that join list of different objects"
+slug: "/joiners-api"
 ---
 
 <a id="answer_joiner"></a>
@@ -621,3 +622,4 @@ Joins strings into a list of strings
 
 A dictionary with the following keys:
 - `strings`: Merged list of strings
+

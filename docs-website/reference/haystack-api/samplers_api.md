@@ -1,7 +1,8 @@
 ---
-title: Samplers
+title: "Samplers"
 id: samplers-api
-description: Filters documents based on their similarity scores using top-p sampling.
+description: "Filters documents based on their similarity scores using top-p sampling."
+slug: "/samplers-api"
 ---
 
 <a id="top_p"></a>
@@ -84,3 +85,4 @@ method returns the document with the highest score.
 
 A dictionary with the following key:
 - `documents`: List of Document objects that have been selected based on the top-p sampling.
+

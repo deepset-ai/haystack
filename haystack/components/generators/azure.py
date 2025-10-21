@@ -99,7 +99,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             the OpenAI endpoint. See [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat) for
             more details.
             Some of the supported parameters:
-            - `max_tokens`: The maximum number of tokens the output text can have.
+            - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+                including visible output tokens and reasoning tokens.
             - `temperature`: The sampling temperature to use. Higher values mean the model takes more risks.
                 Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
             - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model

@@ -1,7 +1,8 @@
 ---
-title: Converters
+title: "Converters"
 id: converters-api
-description: Various converters to transform data from one format to another.
+description: "Various converters to transform data from one format to another."
+slug: "/converters-api"
 ---
 
 <a id="azure"></a>
@@ -144,30 +145,32 @@ The deserialized component.
 
 Converts CSV files to Documents.
 
-    By default, it uses UTF-8 encoding when converting files but
-    you can also set a custom encoding.
-    It can attach metadata to the resulting documents.
+By default, it uses UTF-8 encoding when converting files but
+you can also set a custom encoding.
+It can attach metadata to the resulting documents.
 
-    ### Usage example
+### Usage example
 
-    ```python
-    from haystack.components.converters.csv import CSVToDocument
-    converter = CSVToDocument()
-    results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
-    documents = results["documents"]
-    print(documents[0].content)
-    # 'col1,col2
-ow1,row1
-row2row2
-'
-    ```
+```python
+from haystack.components.converters.csv import CSVToDocument
+converter = CSVToDocument()
+results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
+documents = results["documents"]
+print(documents[0].content)
+# 'col1,col2\nrow1,row1\nrow2,row2\n'
+```
 
 <a id="csv.CSVToDocument.__init__"></a>
 
 #### CSVToDocument.\_\_init\_\_
 
 ```python
-def __init__(encoding: str = "utf-8", store_full_path: bool = False)
+def __init__(encoding: str = "utf-8",
+             store_full_path: bool = False,
+             *,
+             conversion_mode: Literal["file", "row"] = "file",
+             delimiter: str = ",",
+             quotechar: str = '"')
 ```
 
 Creates a CSVToDocument component.
@@ -179,6 +182,10 @@ If the encoding is specified in the metadata of a source ByteStream,
 it overrides this value.
 - `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
 If False, only the file name is stored.
+- `conversion_mode`: - "file" (default): one Document per CSV file whose content is the raw CSV text.
+- "row": convert each CSV row to its own Document (requires `content_column` in `run()`).
+- `delimiter`: CSV delimiter used when parsing in row mode (passed to ``csv.DictReader``).
+- `quotechar`: CSV quote character used when parsing in row mode (passed to ``csv.DictReader``).
 
 <a id="csv.CSVToDocument.run"></a>
 
@@ -187,14 +194,19 @@ If False, only the file name is stored.
 ```python
 @component.output_types(documents=list[Document])
 def run(sources: list[Union[str, Path, ByteStream]],
+        *,
+        content_column: Optional[str] = None,
         meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
 ```
 
-Converts a CSV file to a Document.
+Converts CSV files to a Document (file mode) or to one Document per row (row mode).
 
 **Arguments**:
 
 - `sources`: List of file paths or ByteStream objects.
+- `content_column`: **Required when** ``conversion_mode="row"``.
+The column name whose values become ``Document.content`` for each row.
+The column must exist in the CSV header.
 - `meta`: Optional metadata to attach to the documents.
 This value can be either a list of dictionaries or a single dictionary.
 If it's a single dictionary, its content is added to the metadata of all produced documents.
@@ -1618,3 +1630,4 @@ If `sources` contains ByteStream objects, their `meta` will be added to the outp
 
 A dictionary with the following keys:
 - `documents`: Created documents
+

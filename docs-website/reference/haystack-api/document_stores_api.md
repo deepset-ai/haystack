@@ -1,7 +1,8 @@
 ---
-title: Document Stores
+title: "Document Stores"
 id: document-stores-api
-description: Stores your texts and meta data and provides them to the Retriever at query time.
+description: "Stores your texts and meta data and provides them to the Retriever at query time."
+slug: "/document-stores-api"
 ---
 
 <a id="document_store"></a>
@@ -378,3 +379,4 @@ Retrieves documents that are most similar to the query embedding using a vector 
 **Returns**:
 
 A list of the top_k documents most relevant to the query.
+

@@ -1,7 +1,8 @@
 ---
-title: Tools
+title: "Tools"
 id: tools-api
-description: Unified abstractions to represent tools across the framework.
+description: "Unified abstractions to represent tools across the framework."
+slug: "/tools-api"
 ---
 
 <a id="tool"></a>
@@ -16,6 +17,11 @@ Data class representing a Tool that Language Models can prepare a call for.
 
 Accurate definitions of the textual attributes such as `name` and `description`
 are important for the Language Model to correctly prepare the call.
+
+For resource-intensive operations like establishing connections to remote services or
+loading models, override the `warm_up()` method. This method is called before the Tool
+is used and should be idempotent, as it may be called multiple times during
+pipeline/agent setup.
 
 **Arguments**:
 
@@ -60,6 +66,20 @@ def tool_spec() -> dict[str, Any]
 ```
 
 Return the Tool specification to be used by the Language Model.
+
+<a id="tool.Tool.warm_up"></a>
+
+#### Tool.warm\_up
+
+```python
+def warm_up() -> None
+```
+
+Prepare the Tool for use.
+
+Override this method to establish connections to remote services, load models,
+or perform other resource-intensive initialization. This method should be idempotent,
+as it may be called multiple times.
 
 <a id="tool.Tool.invoke"></a>
 
@@ -378,6 +398,16 @@ Example:
 
 - `ValueError`: If the component is invalid or schema generation fails.
 
+<a id="component_tool.ComponentTool.warm_up"></a>
+
+#### ComponentTool.warm\_up
+
+```python
+def warm_up()
+```
+
+Prepare the ComponentTool for use.
+
 <a id="component_tool.ComponentTool.to_dict"></a>
 
 #### ComponentTool.to\_dict
@@ -484,11 +514,11 @@ to manage and use them as a unit in Haystack pipelines.
    # Use the toolset with a ToolInvoker or ChatGenerator component
    invoker = ToolInvoker(tools=math_toolset)
    ```
-
+  
   2. Base class for dynamic tool loading:
   By subclassing Toolset, you can create implementations that dynamically load tools
   from external sources like OpenAPI URLs, MCP servers, or other resources.
-
+  
 
 **Example**:
 
@@ -549,11 +579,11 @@ to manage and use them as a unit in Haystack pipelines.
    calculator_toolset = CalculatorToolset()
    invoker = ToolInvoker(tools=calculator_toolset)
    ```
-
+  
   Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
   making it behave like a list of Tools. This makes it compatible with components that expect
   iterable tools, such as ToolInvoker or Haystack chat generators.
-
+  
   When implementing a custom Toolset subclass for dynamic tool loading:
   - Perform the dynamic loading in the __init__ method
   - Override to_dict() and from_dict() methods if your tools are defined dynamically
@@ -609,6 +639,19 @@ Supports checking by:
 **Returns**:
 
 True if contained, False otherwise
+
+<a id="toolset.Toolset.warm_up"></a>
+
+#### Toolset.warm\_up
+
+```python
+def warm_up() -> None
+```
+
+Prepare the Toolset for use.
+
+Override this method to set up shared resources like database connections or HTTP sessions.
+This method should be idempotent, as it may be called multiple times.
 
 <a id="toolset.Toolset.add"></a>
 
@@ -726,3 +769,147 @@ Get a Tool by index.
 **Returns**:
 
 The Tool at the specified index
+
+<a id="toolset._ToolsetWrapper"></a>
+
+## \_ToolsetWrapper
+
+A wrapper that holds multiple toolsets and provides a unified interface.
+
+This is used internally when combining different types of toolsets to preserve
+their individual configurations while still being usable with ToolInvoker.
+
+<a id="toolset._ToolsetWrapper.__iter__"></a>
+
+#### \_ToolsetWrapper.\_\_iter\_\_
+
+```python
+def __iter__()
+```
+
+Iterate over all tools from all toolsets.
+
+<a id="toolset._ToolsetWrapper.__contains__"></a>
+
+#### \_ToolsetWrapper.\_\_contains\_\_
+
+```python
+def __contains__(item)
+```
+
+Check if a tool is in any of the toolsets.
+
+<a id="toolset._ToolsetWrapper.warm_up"></a>
+
+#### \_ToolsetWrapper.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up all toolsets.
+
+<a id="toolset._ToolsetWrapper.__len__"></a>
+
+#### \_ToolsetWrapper.\_\_len\_\_
+
+```python
+def __len__()
+```
+
+Return total number of tools across all toolsets.
+
+<a id="toolset._ToolsetWrapper.__getitem__"></a>
+
+#### \_ToolsetWrapper.\_\_getitem\_\_
+
+```python
+def __getitem__(index)
+```
+
+Get a tool by index across all toolsets.
+
+<a id="toolset._ToolsetWrapper.__add__"></a>
+
+#### \_ToolsetWrapper.\_\_add\_\_
+
+```python
+def __add__(other)
+```
+
+Add another toolset or tool to this wrapper.
+
+<a id="toolset._ToolsetWrapper.__post_init__"></a>
+
+#### \_ToolsetWrapper.\_\_post\_init\_\_
+
+```python
+def __post_init__()
+```
+
+Validate and set up the toolset after initialization.
+
+This handles the case when tools are provided during initialization.
+
+<a id="toolset._ToolsetWrapper.add"></a>
+
+#### \_ToolsetWrapper.add
+
+```python
+def add(tool: Union[Tool, "Toolset"]) -> None
+```
+
+Add a new Tool or merge another Toolset.
+
+**Arguments**:
+
+- `tool`: A Tool instance or another Toolset to add
+
+**Raises**:
+
+- `ValueError`: If adding the tool would result in duplicate tool names
+- `TypeError`: If the provided object is not a Tool or Toolset
+
+<a id="toolset._ToolsetWrapper.to_dict"></a>
+
+#### \_ToolsetWrapper.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize the Toolset to a dictionary.
+
+**Returns**:
+
+A dictionary representation of the Toolset
+Note for subclass implementers:
+The default implementation is ideal for scenarios where Tool resolution is static. However, if your subclass
+of Toolset dynamically resolves Tool instances from external sources—such as an MCP server, OpenAPI URL, or
+a local OpenAPI specification—you should consider serializing the endpoint descriptor instead of the Tool
+instances themselves. This strategy preserves the dynamic nature of your Toolset and minimizes the overhead
+associated with serializing potentially large collections of Tool objects. Moreover, by serializing the
+descriptor, you ensure that the deserialization process can accurately reconstruct the Tool instances, even
+if they have been modified or removed since the last serialization. Failing to serialize the descriptor may
+lead to issues where outdated or incorrect Tool configurations are loaded, potentially causing errors or
+unexpected behavior.
+
+<a id="toolset._ToolsetWrapper.from_dict"></a>
+
+#### \_ToolsetWrapper.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "Toolset"
+```
+
+Deserialize a Toolset from a dictionary.
+
+**Arguments**:
+
+- `data`: Dictionary representation of the Toolset
+
+**Returns**:
+
+A new Toolset instance
+

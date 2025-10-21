@@ -1,7 +1,8 @@
 ---
-title: Pipeline
+title: "Pipeline"
 id: pipeline-api
-description: Arranges components and integrations in flow.
+description: "Arranges components and integrations in flow."
+slug: "/pipeline-api"
 ---
 
 <a id="async_pipeline"></a>
@@ -1524,3 +1525,4 @@ Validate the pipeline to check if it is blocked or has no valid entry point.
 **Raises**:
 
 - `PipelineRuntimeError`: If the pipeline is blocked or has no valid entry point.
+
