@@ -67,7 +67,7 @@ class ExtractedAnswer:
         """
         Deserialize the object from a dictionary.
 
-        This is just a test.
+        This is just a test. Trigger!!!
 
         :param data:
             Dictionary representation of the object.
