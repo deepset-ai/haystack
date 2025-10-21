@@ -118,7 +118,6 @@ const config = {
             docId: 'overview/intro',
             label: 'Docs',
             position: 'left',
-            activeBasePath: '/docs',
           },
             {
               type: 'doc',
@@ -126,7 +125,6 @@ const config = {
               docId: 'api-index',
               label: 'API Reference',
               position: 'left',
-              activeBasePath: '/reference',
             },
           {
             href: 'https://github.com/deepset-ai/haystack/tree/main/docs-website',
