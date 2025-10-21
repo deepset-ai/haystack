@@ -45,8 +45,13 @@ def test_basic_split(sample_text):
     assert "Subheader 1.2.3" in headers
 
     # Check that content is present and correct
-    header1_doc = next(doc for doc in split_docs if doc.meta["header"] == "Header 1")
-    assert "Content under header 1." in header1_doc.content
+    # Test first split
+    header1_doc = split_docs[0]
+    assert header1_doc.meta["header"] == "Header 1"
+    assert header1_doc.meta["split_id"] == 0
+    assert header1_doc.meta["page_number"] == 1
+    assert header1_doc.meta["parent_headers"] == []
+    assert header1_doc.content == "# Header 1\nContent under header 1."
 
     subheader111_doc = next(doc for doc in split_docs if doc.meta["header"] == "Subheader 1.1.1")
     assert "Content under sub-header 1.1.1" in subheader111_doc.content
