@@ -7,11 +7,11 @@ slug: "/integrations-azure_ai_search"
 
 <a id="haystack_integrations.components.retrievers.azure_ai_search.embedding_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.azure\_ai\_search.embedding\_retriever
+## Module haystack\_integrations.components.retrievers.azure\_ai\_search.embedding\_retriever
 
 <a id="haystack_integrations.components.retrievers.azure_ai_search.embedding_retriever.AzureAISearchEmbeddingRetriever"></a>
 
-## AzureAISearchEmbeddingRetriever
+### AzureAISearchEmbeddingRetriever
 
 Retrieves documents from the AzureAISearchDocumentStore using a vector similarity metric.
 Must be connected to the AzureAISearchDocumentStore to run.
@@ -107,11 +107,11 @@ Dictionary with the following keys:
 
 <a id="haystack_integrations.document_stores.azure_ai_search.document_store"></a>
 
-# Module haystack\_integrations.document\_stores.azure\_ai\_search.document\_store
+## Module haystack\_integrations.document\_stores.azure\_ai\_search.document\_store
 
 <a id="haystack_integrations.document_stores.azure_ai_search.document_store.AzureAISearchDocumentStore"></a>
 
-## AzureAISearchDocumentStore
+### AzureAISearchDocumentStore
 
 <a id="haystack_integrations.document_stores.azure_ai_search.document_store.AzureAISearchDocumentStore.__init__"></a>
 

@@ -7,11 +7,11 @@ slug: "/integrations-optimum"
 
 <a id="haystack_integrations.components.embedders.optimum.optimum_document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.optimum.optimum\_document\_embedder
+## Module haystack\_integrations.components.embedders.optimum.optimum\_document\_embedder
 
 <a id="haystack_integrations.components.embedders.optimum.optimum_document_embedder.OptimumDocumentEmbedder"></a>
 
-## OptimumDocumentEmbedder
+### OptimumDocumentEmbedder
 
 A component for computing `Document` embeddings using models loaded with the
 [HuggingFace Optimum](https://huggingface.co/docs/optimum/index) library,
@@ -178,11 +178,11 @@ The updated Documents with their embeddings.
 
 <a id="haystack_integrations.components.embedders.optimum.optimum_text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.optimum.optimum\_text\_embedder
+## Module haystack\_integrations.components.embedders.optimum.optimum\_text\_embedder
 
 <a id="haystack_integrations.components.embedders.optimum.optimum_text_embedder.OptimumTextEmbedder"></a>
 
-## OptimumTextEmbedder
+### OptimumTextEmbedder
 
 A component to embed text using models loaded with the
 [HuggingFace Optimum](https://huggingface.co/docs/optimum/index) library,
@@ -336,11 +336,11 @@ The embeddings of the text.
 
 <a id="haystack_integrations.components.embedders.optimum.pooling"></a>
 
-# Module haystack\_integrations.components.embedders.optimum.pooling
+## Module haystack\_integrations.components.embedders.optimum.pooling
 
 <a id="haystack_integrations.components.embedders.optimum.pooling.OptimumEmbedderPooling"></a>
 
-## OptimumEmbedderPooling
+### OptimumEmbedderPooling
 
 Pooling modes support by the Optimum Embedders.
 
@@ -405,11 +405,11 @@ Pooling mode.
 
 <a id="haystack_integrations.components.embedders.optimum.optimization"></a>
 
-# Module haystack\_integrations.components.embedders.optimum.optimization
+## Module haystack\_integrations.components.embedders.optimum.optimization
 
 <a id="haystack_integrations.components.embedders.optimum.optimization.OptimumEmbedderOptimizationMode"></a>
 
-## OptimumEmbedderOptimizationMode
+### OptimumEmbedderOptimizationMode
 
 [ONXX Optimization modes](https://huggingface.co/docs/optimum/onnxruntime/usage_guides/optimization)
 support by the Optimum Embedders.
@@ -459,7 +459,7 @@ Optimization mode.
 
 <a id="haystack_integrations.components.embedders.optimum.optimization.OptimumEmbedderOptimizationConfig"></a>
 
-## OptimumEmbedderOptimizationConfig
+### OptimumEmbedderOptimizationConfig
 
 Configuration for Optimum Embedder Optimization.
 
@@ -518,11 +518,11 @@ Optimization configuration.
 
 <a id="haystack_integrations.components.embedders.optimum.quantization"></a>
 
-# Module haystack\_integrations.components.embedders.optimum.quantization
+## Module haystack\_integrations.components.embedders.optimum.quantization
 
 <a id="haystack_integrations.components.embedders.optimum.quantization.OptimumEmbedderQuantizationMode"></a>
 
-## OptimumEmbedderQuantizationMode
+### OptimumEmbedderQuantizationMode
 
 [Dynamic Quantization modes](https://huggingface.co/docs/optimum/onnxruntime/usage_guides/quantization)
 support by the Optimum Embedders.
@@ -572,7 +572,7 @@ Quantization mode.
 
 <a id="haystack_integrations.components.embedders.optimum.quantization.OptimumEmbedderQuantizationConfig"></a>
 
-## OptimumEmbedderQuantizationConfig
+### OptimumEmbedderQuantizationConfig
 
 Configuration for Optimum Embedder Quantization.
 

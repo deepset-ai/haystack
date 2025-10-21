@@ -7,11 +7,11 @@ slug: "/integrations-weights-bias"
 
 <a id="haystack_integrations.components.connectors.weave.weave_connector"></a>
 
-# Module haystack\_integrations.components.connectors.weave.weave\_connector
+## Module haystack\_integrations.components.connectors.weave.weave\_connector
 
 <a id="haystack_integrations.components.connectors.weave.weave_connector.WeaveConnector"></a>
 
-## WeaveConnector
+### WeaveConnector
 
 Collects traces from your pipeline and sends them to Weights & Biases.
 
@@ -133,11 +133,11 @@ Deserialized component.
 
 <a id="haystack_integrations.tracing.weave.tracer"></a>
 
-# Module haystack\_integrations.tracing.weave.tracer
+## Module haystack\_integrations.tracing.weave.tracer
 
 <a id="haystack_integrations.tracing.weave.tracer.WeaveSpan"></a>
 
-## WeaveSpan
+### WeaveSpan
 
 A bridge between Haystack's Span interface and Weave's Call object.
 
@@ -205,7 +205,7 @@ By default, this behavior is disabled. To enable it
 
 <a id="haystack_integrations.tracing.weave.tracer.WeaveTracer"></a>
 
-## WeaveTracer
+### WeaveTracer
 
 Implements a Haystack's Tracer to make an interface with Weights and Bias Weave.
 

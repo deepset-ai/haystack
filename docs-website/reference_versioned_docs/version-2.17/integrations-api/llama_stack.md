@@ -7,11 +7,11 @@ slug: "/integrations-llama-stack"
 
 <a id="haystack_integrations.components.generators.llama_stack.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.llama\_stack.chat.chat\_generator
+## Module haystack\_integrations.components.generators.llama\_stack.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.llama_stack.chat.chat_generator.LlamaStackChatGenerator"></a>
 
-## LlamaStackChatGenerator
+### LlamaStackChatGenerator
 
 Enables text generation using Llama Stack framework.
 Llama Stack Server supports multiple inference providers, including Ollama, Together,

@@ -7,11 +7,11 @@ slug: "/integrations-aimlapi"
 
 <a id="haystack_integrations.components.generators.aimlapi.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.aimlapi.chat.chat\_generator
+## Module haystack\_integrations.components.generators.aimlapi.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.aimlapi.chat.chat_generator.AIMLAPIChatGenerator"></a>
 
-## AIMLAPIChatGenerator
+### AIMLAPIChatGenerator
 
 Enables text generation using AIMLAPI generative models.
 For supported models, see AIMLAPI documentation.

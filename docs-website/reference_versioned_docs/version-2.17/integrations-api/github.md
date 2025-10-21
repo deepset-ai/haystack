@@ -7,11 +7,11 @@ slug: "/integrations-hanlp"
 
 <a id="haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter"></a>
 
-# Module haystack\_integrations.components.preprocessors.hanlp.chinese\_document\_splitter
+## Module haystack\_integrations.components.preprocessors.hanlp.chinese\_document\_splitter
 
 <a id="haystack_integrations.components.preprocessors.hanlp.chinese_document_splitter.ChineseDocumentSplitter"></a>
 
-## ChineseDocumentSplitter
+### ChineseDocumentSplitter
 
 A DocumentSplitter for Chinese text.
 

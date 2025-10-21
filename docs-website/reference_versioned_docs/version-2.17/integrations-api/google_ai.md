@@ -7,11 +7,11 @@ slug: "/integrations-google-ai"
 
 <a id="haystack_integrations.components.generators.google_ai.gemini"></a>
 
-# Module haystack\_integrations.components.generators.google\_ai.gemini
+## Module haystack\_integrations.components.generators.google\_ai.gemini
 
 <a id="haystack_integrations.components.generators.google_ai.gemini.GoogleAIGeminiGenerator"></a>
 
-## GoogleAIGeminiGenerator
+### GoogleAIGeminiGenerator
 
 Generates text using multimodal Gemini models through Google AI Studio.
 
@@ -148,11 +148,11 @@ A dictionary containing the following key:
 
 <a id="haystack_integrations.components.generators.google_ai.chat.gemini"></a>
 
-# Module haystack\_integrations.components.generators.google\_ai.chat.gemini
+## Module haystack\_integrations.components.generators.google\_ai.chat.gemini
 
 <a id="haystack_integrations.components.generators.google_ai.chat.gemini.GoogleAIGeminiChatGenerator"></a>
 
-## GoogleAIGeminiChatGenerator
+### GoogleAIGeminiChatGenerator
 
 Completes chats using Gemini models through Google AI Studio.
 

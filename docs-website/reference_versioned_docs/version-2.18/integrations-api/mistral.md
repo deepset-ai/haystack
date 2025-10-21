@@ -7,11 +7,11 @@ slug: "/integrations-mistral"
 
 <a id="haystack_integrations.components.embedders.mistral.document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.mistral.document\_embedder
+## Module haystack\_integrations.components.embedders.mistral.document\_embedder
 
 <a id="haystack_integrations.components.embedders.mistral.document_embedder.MistralDocumentEmbedder"></a>
 
-## MistralDocumentEmbedder
+### MistralDocumentEmbedder
 
 A component for computing Document embeddings using Mistral models.
 The embedding of each Document is stored in the `embedding` field of the Document.
@@ -149,11 +149,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.mistral.text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.mistral.text\_embedder
+## Module haystack\_integrations.components.embedders.mistral.text\_embedder
 
 <a id="haystack_integrations.components.embedders.mistral.text_embedder.MistralTextEmbedder"></a>
 
-## MistralTextEmbedder
+### MistralTextEmbedder
 
 A component for embedding strings using Mistral models.
 
@@ -288,11 +288,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.generators.mistral.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.mistral.chat.chat\_generator
+## Module haystack\_integrations.components.generators.mistral.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator"></a>
 
-## MistralChatGenerator
+### MistralChatGenerator
 
 Enables text generation using Mistral AI generative models.
 For supported models, see [Mistral AI docs](https://docs.mistral.ai/platform/endpoints/`operation`/listModels).

@@ -7,11 +7,11 @@ slug: "/integrations-watsonx"
 
 <a id="haystack_integrations.components.generators.watsonx.generator"></a>
 
-# Module haystack\_integrations.components.generators.watsonx.generator
+## Module haystack\_integrations.components.generators.watsonx.generator
 
 <a id="haystack_integrations.components.generators.watsonx.generator.WatsonxGenerator"></a>
 
-## WatsonxGenerator
+### WatsonxGenerator
 
 Enables text completions using IBM's watsonx.ai foundation models.
 
@@ -221,11 +221,11 @@ including model name, finish reason, and token usage statistics.
 
 <a id="haystack_integrations.components.generators.watsonx.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.watsonx.chat.chat\_generator
+## Module haystack\_integrations.components.generators.watsonx.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.watsonx.chat.chat_generator.WatsonxChatGenerator"></a>
 
-## WatsonxChatGenerator
+### WatsonxChatGenerator
 
 Enables chat completions using IBM's watsonx.ai foundation models.
 
@@ -434,11 +434,11 @@ A dictionary with the following key:
 
 <a id="haystack_integrations.components.embedders.watsonx.document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.watsonx.document\_embedder
+## Module haystack\_integrations.components.embedders.watsonx.document\_embedder
 
 <a id="haystack_integrations.components.embedders.watsonx.document_embedder.WatsonxDocumentEmbedder"></a>
 
-## WatsonxDocumentEmbedder
+### WatsonxDocumentEmbedder
 
 Computes document embeddings using IBM watsonx.ai models.
 
@@ -564,11 +564,11 @@ A dictionary with:
 
 <a id="haystack_integrations.components.embedders.watsonx.text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.watsonx.text\_embedder
+## Module haystack\_integrations.components.embedders.watsonx.text\_embedder
 
 <a id="haystack_integrations.components.embedders.watsonx.text_embedder.WatsonxTextEmbedder"></a>
 
-## WatsonxTextEmbedder
+### WatsonxTextEmbedder
 
 Embeds strings using IBM watsonx.ai foundation models.
 

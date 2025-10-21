@@ -7,11 +7,11 @@ slug: "/integrations-chroma"
 
 <a id="haystack_integrations.components.retrievers.chroma.retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.chroma.retriever
+## Module haystack\_integrations.components.retrievers.chroma.retriever
 
 <a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaQueryTextRetriever"></a>
 
-## ChromaQueryTextRetriever
+### ChromaQueryTextRetriever
 
 A component for retrieving documents from a [Chroma database](https://docs.trychroma.com/) using the `query` API.
 
@@ -160,7 +160,7 @@ Dictionary with serialized data.
 
 <a id="haystack_integrations.components.retrievers.chroma.retriever.ChromaEmbeddingRetriever"></a>
 
-## ChromaEmbeddingRetriever
+### ChromaEmbeddingRetriever
 
 A component for retrieving documents from a [Chroma database](https://docs.trychroma.com/) using embeddings.
 
@@ -273,11 +273,11 @@ Dictionary with serialized data.
 
 <a id="haystack_integrations.document_stores.chroma.document_store"></a>
 
-# Module haystack\_integrations.document\_stores.chroma.document\_store
+## Module haystack\_integrations.document\_stores.chroma.document\_store
 
 <a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore"></a>
 
-## ChromaDocumentStore
+### ChromaDocumentStore
 
 A document store using [Chroma](https://docs.trychroma.com/) as the backend.
 
@@ -617,29 +617,29 @@ Dictionary with serialized data.
 
 <a id="haystack_integrations.document_stores.chroma.errors"></a>
 
-# Module haystack\_integrations.document\_stores.chroma.errors
+## Module haystack\_integrations.document\_stores.chroma.errors
 
 <a id="haystack_integrations.document_stores.chroma.errors.ChromaDocumentStoreError"></a>
 
-## ChromaDocumentStoreError
+### ChromaDocumentStoreError
 
 Parent class for all ChromaDocumentStore exceptions.
 
 <a id="haystack_integrations.document_stores.chroma.errors.ChromaDocumentStoreFilterError"></a>
 
-## ChromaDocumentStoreFilterError
+### ChromaDocumentStoreFilterError
 
 Raised when a filter is not valid for a ChromaDocumentStore.
 
 <a id="haystack_integrations.document_stores.chroma.errors.ChromaDocumentStoreConfigError"></a>
 
-## ChromaDocumentStoreConfigError
+### ChromaDocumentStoreConfigError
 
 Raised when a configuration is not valid for a ChromaDocumentStore.
 
 <a id="haystack_integrations.document_stores.chroma.utils"></a>
 
-# Module haystack\_integrations.document\_stores.chroma.utils
+## Module haystack\_integrations.document\_stores.chroma.utils
 
 <a id="haystack_integrations.document_stores.chroma.utils.get_embedding_function"></a>
 

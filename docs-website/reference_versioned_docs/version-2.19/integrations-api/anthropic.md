@@ -7,11 +7,11 @@ slug: "/integrations-anthropic"
 
 <a id="haystack_integrations.components.generators.anthropic.generator"></a>
 
-# Module haystack\_integrations.components.generators.anthropic.generator
+## Module haystack\_integrations.components.generators.anthropic.generator
 
 <a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator"></a>
 
-## AnthropicGenerator
+### AnthropicGenerator
 
 ```python
 @component
@@ -124,11 +124,11 @@ A dictionary containing:
 
 <a id="haystack_integrations.components.generators.anthropic.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.anthropic.chat.chat\_generator
+## Module haystack\_integrations.components.generators.anthropic.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.anthropic.chat.chat_generator.AnthropicChatGenerator"></a>
 
-## AnthropicChatGenerator
+### AnthropicChatGenerator
 
 ```python
 @component
@@ -329,11 +329,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.generators.anthropic.chat.vertex_chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.anthropic.chat.vertex\_chat\_generator
+## Module haystack\_integrations.components.generators.anthropic.chat.vertex\_chat\_generator
 
 <a id="haystack_integrations.components.generators.anthropic.chat.vertex_chat_generator.AnthropicVertexChatGenerator"></a>
 
-## AnthropicVertexChatGenerator
+### AnthropicVertexChatGenerator
 
 ```python
 @component

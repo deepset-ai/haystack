@@ -7,11 +7,11 @@ slug: "/integrations-mcp"
 
 <a id="haystack_integrations.tools.mcp.mcp_tool"></a>
 
-# Module haystack\_integrations.tools.mcp.mcp\_tool
+## Module haystack\_integrations.tools.mcp.mcp\_tool
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.AsyncExecutor"></a>
 
-## AsyncExecutor
+### AsyncExecutor
 
 Thread-safe event loop executor for running async code from sync contexts.
 
@@ -117,7 +117,7 @@ Shut down the background event loop and thread.
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.MCPError"></a>
 
-## MCPError
+### MCPError
 
 Base class for MCP-related errors.
 
@@ -137,7 +137,7 @@ Initialize the MCPError.
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.MCPConnectionError"></a>
 
-## MCPConnectionError
+### MCPConnectionError
 
 Error connecting to MCP server.
 
@@ -161,7 +161,7 @@ Initialize the MCPConnectionError.
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.MCPToolNotFoundError"></a>
 
-## MCPToolNotFoundError
+### MCPToolNotFoundError
 
 Error when a tool is not found on the server.
 
@@ -185,7 +185,7 @@ Initialize the MCPToolNotFoundError.
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.MCPInvocationError"></a>
 
-## MCPInvocationError
+### MCPInvocationError
 
 Error during tool invocation.
 
@@ -209,7 +209,7 @@ Initialize the MCPInvocationError.
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.MCPClient"></a>
 
-## MCPClient
+### MCPClient
 
 Abstract base class for MCP clients.
 
@@ -273,7 +273,7 @@ This method ensures all resources are properly released, even if errors occur.
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.StdioClient"></a>
 
-## StdioClient
+### StdioClient
 
 MCP client that connects to servers using stdio transport.
 
@@ -320,7 +320,7 @@ List of available tools on the server
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.SSEClient"></a>
 
-## SSEClient
+### SSEClient
 
 MCP client that connects to servers using SSE transport.
 
@@ -363,7 +363,7 @@ List of available tools on the server
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.StreamableHttpClient"></a>
 
-## StreamableHttpClient
+### StreamableHttpClient
 
 MCP client that connects to servers using streamable HTTP transport.
 
@@ -406,7 +406,7 @@ List of available tools on the server
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.MCPServerInfo"></a>
 
-## MCPServerInfo
+### MCPServerInfo
 
 Abstract base class for MCP server connection parameters.
 
@@ -462,7 +462,7 @@ Instance of the appropriate server info class
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.SSEServerInfo"></a>
 
-## SSEServerInfo
+### SSEServerInfo
 
 Data class that encapsulates SSE MCP server connection parameters.
 
@@ -515,7 +515,7 @@ Configured MCPClient instance
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.StreamableHttpServerInfo"></a>
 
-## StreamableHttpServerInfo
+### StreamableHttpServerInfo
 
 Data class that encapsulates streamable HTTP MCP server connection parameters.
 
@@ -561,7 +561,7 @@ Configured StreamableHttpClient instance
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.StdioServerInfo"></a>
 
-## StdioServerInfo
+### StdioServerInfo
 
 Data class that encapsulates stdio MCP server connection parameters.
 
@@ -604,7 +604,7 @@ Configured StdioMCPClient instance
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.MCPTool"></a>
 
-## MCPTool
+### MCPTool
 
 A Tool that represents a single tool from an MCP server.
 
@@ -818,7 +818,7 @@ Invoke the Tool with the provided keyword arguments.
 
 <a id="haystack_integrations.tools.mcp.mcp_tool._MCPClientSessionManager"></a>
 
-## \_MCPClientSessionManager
+### \_MCPClientSessionManager
 
 Runs an MCPClient connect/close inside the AsyncExecutor's event loop.
 
@@ -855,11 +855,11 @@ Request the worker to shut down and block until done.
 
 <a id="haystack_integrations.tools.mcp.mcp_toolset"></a>
 
-# Module haystack\_integrations.tools.mcp.mcp\_toolset
+## Module haystack\_integrations.tools.mcp.mcp\_toolset
 
 <a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset"></a>
 
-## MCPToolset
+### MCPToolset
 
 A Toolset that connects to an MCP (Model Context Protocol) server and provides
 access to its tools.

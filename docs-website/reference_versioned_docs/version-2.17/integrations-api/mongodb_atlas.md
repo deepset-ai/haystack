@@ -7,11 +7,11 @@ slug: "/integrations-mongodb-atlas"
 
 <a id="haystack_integrations.document_stores.mongodb_atlas.document_store"></a>
 
-# Module haystack\_integrations.document\_stores.mongodb\_atlas.document\_store
+## Module haystack\_integrations.document\_stores.mongodb\_atlas.document\_store
 
 <a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore"></a>
 
-## MongoDBAtlasDocumentStore
+### MongoDBAtlasDocumentStore
 
 A MongoDBAtlasDocumentStore implementation that uses the
 [MongoDB Atlas](https://www.mongodb.com/atlas/database) service that is easy to deploy, operate, and scale.
@@ -289,11 +289,11 @@ Asynchronously deletes all documents with a matching document_ids from the docum
 
 <a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.mongodb\_atlas.embedding\_retriever
+## Module haystack\_integrations.components.retrievers.mongodb\_atlas.embedding\_retriever
 
 <a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever"></a>
 
-## MongoDBAtlasEmbeddingRetriever
+### MongoDBAtlasEmbeddingRetriever
 
 Retrieves documents from the MongoDBAtlasDocumentStore by embedding similarity.
 
@@ -437,11 +437,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.mongodb\_atlas.full\_text\_retriever
+## Module haystack\_integrations.components.retrievers.mongodb\_atlas.full\_text\_retriever
 
 <a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever"></a>
 
-## MongoDBAtlasFullTextRetriever
+### MongoDBAtlasFullTextRetriever
 
 Retrieves documents from the MongoDBAtlasDocumentStore by full-text search.
 

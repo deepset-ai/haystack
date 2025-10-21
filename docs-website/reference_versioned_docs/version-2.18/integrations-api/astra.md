@@ -7,11 +7,11 @@ slug: "/integrations-astra"
 
 <a id="haystack_integrations.components.retrievers.astra.retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.astra.retriever
+## Module haystack\_integrations.components.retrievers.astra.retriever
 
 <a id="haystack_integrations.components.retrievers.astra.retriever.AstraEmbeddingRetriever"></a>
 
-## AstraEmbeddingRetriever
+### AstraEmbeddingRetriever
 
 A component for retrieving documents from an AstraDocumentStore.
 
@@ -110,11 +110,11 @@ Deserialized component.
 
 <a id="haystack_integrations.document_stores.astra.document_store"></a>
 
-# Module haystack\_integrations.document\_stores.astra.document\_store
+## Module haystack\_integrations.document\_stores.astra.document\_store
 
 <a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore"></a>
 
-## AstraDocumentStore
+### AstraDocumentStore
 
 An AstraDocumentStore document store for Haystack.
 
@@ -367,22 +367,22 @@ Deletes all documents from the document store.
 
 <a id="haystack_integrations.document_stores.astra.errors"></a>
 
-# Module haystack\_integrations.document\_stores.astra.errors
+## Module haystack\_integrations.document\_stores.astra.errors
 
 <a id="haystack_integrations.document_stores.astra.errors.AstraDocumentStoreError"></a>
 
-## AstraDocumentStoreError
+### AstraDocumentStoreError
 
 Parent class for all AstraDocumentStore errors.
 
 <a id="haystack_integrations.document_stores.astra.errors.AstraDocumentStoreFilterError"></a>
 
-## AstraDocumentStoreFilterError
+### AstraDocumentStoreFilterError
 
 Raised when an invalid filter is passed to AstraDocumentStore.
 
 <a id="haystack_integrations.document_stores.astra.errors.AstraDocumentStoreConfigError"></a>
 
-## AstraDocumentStoreConfigError
+### AstraDocumentStoreConfigError
 
 Raised when an invalid configuration is passed to AstraDocumentStore.

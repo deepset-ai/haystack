@@ -7,11 +7,11 @@ slug: "/integrations-deepeval"
 
 <a id="haystack_integrations.components.evaluators.deepeval.evaluator"></a>
 
-# Module haystack\_integrations.components.evaluators.deepeval.evaluator
+## Module haystack\_integrations.components.evaluators.deepeval.evaluator
 
 <a id="haystack_integrations.components.evaluators.deepeval.evaluator.DeepEvalEvaluator"></a>
 
-## DeepEvalEvaluator
+### DeepEvalEvaluator
 
 A component that uses the [DeepEval framework](https://docs.confident-ai.com/docs/evaluation-introduction)
 to evaluate inputs against a specific metric. Supported metrics are defined by `DeepEvalMetric`.
@@ -123,11 +123,11 @@ Deserialized component.
 
 <a id="haystack_integrations.components.evaluators.deepeval.metrics"></a>
 
-# Module haystack\_integrations.components.evaluators.deepeval.metrics
+## Module haystack\_integrations.components.evaluators.deepeval.metrics
 
 <a id="haystack_integrations.components.evaluators.deepeval.metrics.DeepEvalMetric"></a>
 
-## DeepEvalMetric
+### DeepEvalMetric
 
 Metrics supported by DeepEval.
 

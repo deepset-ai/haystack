@@ -7,11 +7,11 @@ slug: "/integrations-cohere"
 
 <a id="haystack_integrations.components.embedders.cohere.document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.cohere.document\_embedder
+## Module haystack\_integrations.components.embedders.cohere.document\_embedder
 
 <a id="haystack_integrations.components.embedders.cohere.document_embedder.CohereDocumentEmbedder"></a>
 
-## CohereDocumentEmbedder
+### CohereDocumentEmbedder
 
 A component for computing Document embeddings using Cohere models.
 
@@ -166,11 +166,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.cohere.document_image_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.cohere.document\_image\_embedder
+## Module haystack\_integrations.components.embedders.cohere.document\_image\_embedder
 
 <a id="haystack_integrations.components.embedders.cohere.document_image_embedder.CohereDocumentImageEmbedder"></a>
 
-## CohereDocumentImageEmbedder
+### CohereDocumentImageEmbedder
 
 A component for computing Document embeddings based on images using Cohere models.
 
@@ -317,11 +317,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.cohere.text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.cohere.text\_embedder
+## Module haystack\_integrations.components.embedders.cohere.text\_embedder
 
 <a id="haystack_integrations.components.embedders.cohere.text_embedder.CohereTextEmbedder"></a>
 
-## CohereTextEmbedder
+### CohereTextEmbedder
 
 A component for embedding strings using Cohere models.
 
@@ -463,7 +463,7 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.cohere.utils"></a>
 
-# Module haystack\_integrations.components.embedders.cohere.utils
+## Module haystack\_integrations.components.embedders.cohere.utils
 
 <a id="haystack_integrations.components.embedders.cohere.utils.get_async_response"></a>
 
@@ -541,11 +541,11 @@ A tuple of the embeddings and metadata.
 
 <a id="haystack_integrations.components.generators.cohere.generator"></a>
 
-# Module haystack\_integrations.components.generators.cohere.generator
+## Module haystack\_integrations.components.generators.cohere.generator
 
 <a id="haystack_integrations.components.generators.cohere.generator.CohereGenerator"></a>
 
-## CohereGenerator
+### CohereGenerator
 
 Generates text using Cohere's models through Cohere's `generate` endpoint.
 
@@ -632,11 +632,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.generators.cohere.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.cohere.chat.chat\_generator
+## Module haystack\_integrations.components.generators.cohere.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.cohere.chat.chat_generator.CohereChatGenerator"></a>
 
-## CohereChatGenerator
+### CohereChatGenerator
 
 Completes chats using Cohere's models using cohere.ClientV2 `chat` endpoint.
 
@@ -872,11 +872,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.rankers.cohere.ranker"></a>
 
-# Module haystack\_integrations.components.rankers.cohere.ranker
+## Module haystack\_integrations.components.rankers.cohere.ranker
 
 <a id="haystack_integrations.components.rankers.cohere.ranker.CohereRanker"></a>
 
-## CohereRanker
+### CohereRanker
 
 Ranks Documents based on their similarity to the query using [Cohere models](https://docs.cohere.com/reference/rerank-1).
 

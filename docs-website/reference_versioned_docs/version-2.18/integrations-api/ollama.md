@@ -7,11 +7,11 @@ slug: "/integrations-ollama"
 
 <a id="haystack_integrations.components.generators.ollama.generator"></a>
 
-# Module haystack\_integrations.components.generators.ollama.generator
+## Module haystack\_integrations.components.generators.ollama.generator
 
 <a id="haystack_integrations.components.generators.ollama.generator.OllamaGenerator"></a>
 
-## OllamaGenerator
+### OllamaGenerator
 
 Provides an interface to generate text using an LLM running on Ollama.
 
@@ -133,11 +133,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.generators.ollama.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.ollama.chat.chat\_generator
+## Module haystack\_integrations.components.generators.ollama.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.ollama.chat.chat_generator.OllamaChatGenerator"></a>
 
-## OllamaChatGenerator
+### OllamaChatGenerator
 
 Haystack Chat Generator for models served with Ollama (https://ollama.ai).
 
@@ -314,11 +314,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.ollama.document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.ollama.document\_embedder
+## Module haystack\_integrations.components.embedders.ollama.document\_embedder
 
 <a id="haystack_integrations.components.embedders.ollama.document_embedder.OllamaDocumentEmbedder"></a>
 
-## OllamaDocumentEmbedder
+### OllamaDocumentEmbedder
 
 Computes the embeddings of a list of Documents and stores the obtained vectors in the embedding field of each
 Document. It uses embedding models compatible with the Ollama Library.
@@ -431,11 +431,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.ollama.text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.ollama.text\_embedder
+## Module haystack\_integrations.components.embedders.ollama.text\_embedder
 
 <a id="haystack_integrations.components.embedders.ollama.text_embedder.OllamaTextEmbedder"></a>
 
-## OllamaTextEmbedder
+### OllamaTextEmbedder
 
 Computes the embeddings of a list of Documents and stores the obtained vectors in the embedding field of
 each Document. It uses embedding models compatible with the Ollama Library.

@@ -7,11 +7,11 @@ slug: "/integrations-openrouter"
 
 <a id="haystack_integrations.components.generators.openrouter.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.openrouter.chat.chat\_generator
+## Module haystack\_integrations.components.generators.openrouter.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.openrouter.chat.chat_generator.OpenRouterChatGenerator"></a>
 
-## OpenRouterChatGenerator
+### OpenRouterChatGenerator
 
 Enables text generation using OpenRouter generative models.
 For supported models, see [OpenRouter docs](https://openrouter.ai/models).

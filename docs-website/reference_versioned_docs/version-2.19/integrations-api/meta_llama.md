@@ -7,11 +7,11 @@ slug: "/integrations-meta-llama"
 
 <a id="haystack_integrations.components.generators.meta_llama.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.meta\_llama.chat.chat\_generator
+## Module haystack\_integrations.components.generators.meta\_llama.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.meta_llama.chat.chat_generator.MetaLlamaChatGenerator"></a>
 
-## MetaLlamaChatGenerator
+### MetaLlamaChatGenerator
 
 Enables text generation using Llama generative models.
 For supported models, see [Llama API Docs](https://llama.developer.meta.com/docs/).

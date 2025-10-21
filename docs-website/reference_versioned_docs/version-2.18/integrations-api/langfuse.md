@@ -7,11 +7,11 @@ slug: "/integrations-langfuse"
 
 <a id="haystack_integrations.components.connectors.langfuse.langfuse_connector"></a>
 
-# Module haystack\_integrations.components.connectors.langfuse.langfuse\_connector
+## Module haystack\_integrations.components.connectors.langfuse.langfuse\_connector
 
 <a id="haystack_integrations.components.connectors.langfuse.langfuse_connector.LangfuseConnector"></a>
 
-## LangfuseConnector
+### LangfuseConnector
 
 LangfuseConnector connects Haystack LLM framework with [Langfuse](https://langfuse.com) in order to enable the
 tracing of operations and data flow within various components of a pipeline.
@@ -210,11 +210,11 @@ The deserialized component instance.
 
 <a id="haystack_integrations.tracing.langfuse.tracer"></a>
 
-# Module haystack\_integrations.tracing.langfuse.tracer
+## Module haystack\_integrations.tracing.langfuse.tracer
 
 <a id="haystack_integrations.tracing.langfuse.tracer.LangfuseSpan"></a>
 
-## LangfuseSpan
+### LangfuseSpan
 
 Internal class representing a bridge between the Haystack span tracing API and Langfuse.
 
@@ -308,7 +308,7 @@ Set multiple tags on the span.
 
 <a id="haystack_integrations.tracing.langfuse.tracer.SpanContext"></a>
 
-## SpanContext
+### SpanContext
 
 Context for creating spans in Langfuse.
 
@@ -345,7 +345,7 @@ Validate the span context attributes.
 
 <a id="haystack_integrations.tracing.langfuse.tracer.SpanHandler"></a>
 
-## SpanHandler
+### SpanHandler
 
 Abstract base class for customizing how Langfuse spans are created and processed.
 
@@ -422,13 +422,13 @@ what metadata to extract and how to process it
 
 <a id="haystack_integrations.tracing.langfuse.tracer.DefaultSpanHandler"></a>
 
-## DefaultSpanHandler
+### DefaultSpanHandler
 
 DefaultSpanHandler provides the default Langfuse tracing behavior for Haystack.
 
 <a id="haystack_integrations.tracing.langfuse.tracer.LangfuseTracer"></a>
 
-## LangfuseTracer
+### LangfuseTracer
 
 Internal class representing a bridge between the Haystack tracer and Langfuse.
 

@@ -7,11 +7,11 @@ slug: "/integrations-opensearch"
 
 <a id="haystack_integrations.components.retrievers.opensearch.bm25_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.opensearch.bm25\_retriever
+## Module haystack\_integrations.components.retrievers.opensearch.bm25\_retriever
 
 <a id="haystack_integrations.components.retrievers.opensearch.bm25_retriever.OpenSearchBM25Retriever"></a>
 
-## OpenSearchBM25Retriever
+### OpenSearchBM25Retriever
 
 Fetches documents from OpenSearchDocumentStore using the keyword-based BM25 algorithm.
 
@@ -243,11 +243,11 @@ A dictionary containing the retrieved documents with the following structure:
 
 <a id="haystack_integrations.components.retrievers.opensearch.embedding_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.opensearch.embedding\_retriever
+## Module haystack\_integrations.components.retrievers.opensearch.embedding\_retriever
 
 <a id="haystack_integrations.components.retrievers.opensearch.embedding_retriever.OpenSearchEmbeddingRetriever"></a>
 
-## OpenSearchEmbeddingRetriever
+### OpenSearchEmbeddingRetriever
 
 Retrieves documents from the OpenSearchDocumentStore using a vector similarity metric.
 
@@ -511,11 +511,11 @@ Dictionary with key "documents" containing the retrieved Documents.
 
 <a id="haystack_integrations.components.retrievers.opensearch.open_search_hybrid_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.opensearch.open\_search\_hybrid\_retriever
+## Module haystack\_integrations.components.retrievers.opensearch.open\_search\_hybrid\_retriever
 
 <a id="haystack_integrations.components.retrievers.opensearch.open_search_hybrid_retriever.OpenSearchHybridRetriever"></a>
 
-## OpenSearchHybridRetriever
+### OpenSearchHybridRetriever
 
 A hybrid retriever that combines embedding-based and keyword-based retrieval from OpenSearch.
 
@@ -663,11 +663,11 @@ Dictionary with serialized data.
 
 <a id="haystack_integrations.document_stores.opensearch.document_store"></a>
 
-# Module haystack\_integrations.document\_stores.opensearch.document\_store
+## Module haystack\_integrations.document\_stores.opensearch.document\_store
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore"></a>
 
-## OpenSearchDocumentStore
+### OpenSearchDocumentStore
 
 An instance of an OpenSearch database you can use to store all types of data.
 
@@ -986,7 +986,7 @@ settings. If False, all documents will be deleted using the `delete_by_query` AP
 
 <a id="haystack_integrations.document_stores.opensearch.filters"></a>
 
-# Module haystack\_integrations.document\_stores.opensearch.filters
+## Module haystack\_integrations.document\_stores.opensearch.filters
 
 <a id="haystack_integrations.document_stores.opensearch.filters.normalize_filters"></a>
 

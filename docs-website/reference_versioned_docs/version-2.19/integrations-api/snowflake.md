@@ -7,11 +7,11 @@ slug: "/integrations-snowflake"
 
 <a id="haystack_integrations.components.retrievers.snowflake.snowflake_table_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.snowflake.snowflake\_table\_retriever
+## Module haystack\_integrations.components.retrievers.snowflake.snowflake\_table\_retriever
 
 <a id="haystack_integrations.components.retrievers.snowflake.snowflake_table_retriever.SnowflakeTableRetriever"></a>
 
-## SnowflakeTableRetriever
+### SnowflakeTableRetriever
 
 Connects to a Snowflake database to execute a SQL query using ADBC and Polars.
 Returns the results as a Pandas DataFrame (converted from a Polars DataFrame)
