@@ -343,7 +343,7 @@ def __init__(api_key: Secret = Secret.from_env_var("MISTRAL_API_KEY"),
              streaming_callback: Optional[StreamingCallbackT] = None,
              api_base_url: Optional[str] = "https://api.mistral.ai/v1",
              generation_kwargs: Optional[Dict[str, Any]] = None,
-             tools: Optional[Union[List[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              *,
              timeout: Optional[float] = None,
              max_retries: Optional[int] = None,
@@ -375,6 +375,13 @@ Some of the supported parameters:
     events as they become available, with the stream terminated by a data: [DONE] message.
 - `safe_prompt`: Whether to inject a safety prompt before all conversations.
 - `random_seed`: The seed to use for random sampling.
+ - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+    If provided, the output will always be validated against this
+    format (unless the model returns a tool call).
+    For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+    Notes:
+    - For structured outputs with streaming,
+      the `response_format` must be a JSON schema and not a Pydantic model.
 - `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
 list of `Tool` objects or a `Toolset` instance.
 - `timeout`: The timeout for the Mistral API call. If not set, it defaults to either the `OPENAI_TIMEOUT`

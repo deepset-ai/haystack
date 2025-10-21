@@ -341,9 +341,7 @@ matching documents.
 #### AstraDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: Optional[List[str]] = None,
-                     *,
-                     delete_all: Optional[bool] = None) -> None
+def delete_documents(document_ids: List[str]) -> None
 ```
 
 Deletes documents from the document store.
@@ -356,6 +354,16 @@ Deletes documents from the document store.
 **Raises**:
 
 - `MissingDocumentError`: if no document was deleted but document IDs were provided.
+
+<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.delete_all_documents"></a>
+
+#### AstraDocumentStore.delete\_all\_documents
+
+```python
+def delete_all_documents() -> None
+```
+
+Deletes all documents from the document store.
 
 <a id="haystack_integrations.document_stores.astra.errors"></a>
 
