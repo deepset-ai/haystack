@@ -46,12 +46,12 @@ const config = {
             'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
           versions: {
             current: {
-              label: '2.19-unstable',
+              label: '2.20-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.18',
+          lastVersion: '2.19',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -84,12 +84,12 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.19-unstable',
+            label: '2.20-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.18',
+        lastVersion: '2.19',
       },
     ],
   ],
