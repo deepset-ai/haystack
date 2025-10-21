@@ -83,6 +83,9 @@ def test_split_no_headers():
     assert len(split_docs) == 2
     for doc in split_docs:
         assert "header" not in doc.meta
+    # Sanity Checks
+    assert split_docs[0].content == docs[0].content
+    assert split_docs[1].content == docs[1].content
 
 
 def test_split_multiple_documents(sample_text):
