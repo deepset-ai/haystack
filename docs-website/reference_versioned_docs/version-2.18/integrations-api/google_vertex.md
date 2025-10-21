@@ -7,11 +7,11 @@ slug: "/integrations-google-vertex"
 
 <a id="haystack_integrations.components.generators.google_vertex.gemini"></a>
 
-# Module haystack\_integrations.components.generators.google\_vertex.gemini
+## Module haystack\_integrations.components.generators.google\_vertex.gemini
 
 <a id="haystack_integrations.components.generators.google_vertex.gemini.VertexAIGeminiGenerator"></a>
 
-## VertexAIGeminiGenerator
+### VertexAIGeminiGenerator
 
 `VertexAIGeminiGenerator` enables text generation using Google Gemini models.
 
@@ -140,11 +140,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.generators.google_vertex.captioner"></a>
 
-# Module haystack\_integrations.components.generators.google\_vertex.captioner
+## Module haystack\_integrations.components.generators.google\_vertex.captioner
 
 <a id="haystack_integrations.components.generators.google_vertex.captioner.VertexAIImageCaptioner"></a>
 
-## VertexAIImageCaptioner
+### VertexAIImageCaptioner
 
 `VertexAIImageCaptioner` enables text generation using Google Vertex AI imagetext generative model.
 
@@ -254,11 +254,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.generators.google_vertex.code_generator"></a>
 
-# Module haystack\_integrations.components.generators.google\_vertex.code\_generator
+## Module haystack\_integrations.components.generators.google\_vertex.code\_generator
 
 <a id="haystack_integrations.components.generators.google_vertex.code_generator.VertexAICodeGenerator"></a>
 
-## VertexAICodeGenerator
+### VertexAICodeGenerator
 
 This component enables code generation using Google Vertex AI generative model.
 
@@ -373,11 +373,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.generators.google_vertex.image_generator"></a>
 
-# Module haystack\_integrations.components.generators.google\_vertex.image\_generator
+## Module haystack\_integrations.components.generators.google\_vertex.image\_generator
 
 <a id="haystack_integrations.components.generators.google_vertex.image_generator.VertexAIImageGenerator"></a>
 
-## VertexAIImageGenerator
+### VertexAIImageGenerator
 
 This component enables image generation using Google Vertex AI generative model.
 
@@ -477,11 +477,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.generators.google_vertex.question_answering"></a>
 
-# Module haystack\_integrations.components.generators.google\_vertex.question\_answering
+## Module haystack\_integrations.components.generators.google\_vertex.question\_answering
 
 <a id="haystack_integrations.components.generators.google_vertex.question_answering.VertexAIImageQA"></a>
 
-## VertexAIImageQA
+### VertexAIImageQA
 
 This component enables text generation (image captioning) using Google Vertex AI generative models.
 
@@ -585,11 +585,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.generators.google_vertex.text_generator"></a>
 
-# Module haystack\_integrations.components.generators.google\_vertex.text\_generator
+## Module haystack\_integrations.components.generators.google\_vertex.text\_generator
 
 <a id="haystack_integrations.components.generators.google_vertex.text_generator.VertexAITextGenerator"></a>
 
-## VertexAITextGenerator
+### VertexAITextGenerator
 
 This component enables text generation using Google Vertex AI generative models.
 
@@ -706,11 +706,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.generators.google_vertex.chat.gemini"></a>
 
-# Module haystack\_integrations.components.generators.google\_vertex.chat.gemini
+## Module haystack\_integrations.components.generators.google\_vertex.chat.gemini
 
 <a id="haystack_integrations.components.generators.google_vertex.chat.gemini.VertexAIGeminiChatGenerator"></a>
 
-## VertexAIGeminiChatGenerator
+### VertexAIGeminiChatGenerator
 
 `VertexAIGeminiChatGenerator` enables chat completion using Google Gemini models.
 
@@ -898,11 +898,11 @@ A dictionary containing the following key:
 
 <a id="haystack_integrations.components.embedders.google_vertex.document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.google\_vertex.document\_embedder
+## Module haystack\_integrations.components.embedders.google\_vertex.document\_embedder
 
 <a id="haystack_integrations.components.embedders.google_vertex.document_embedder.VertexAIDocumentEmbedder"></a>
 
-## VertexAIDocumentEmbedder
+### VertexAIDocumentEmbedder
 
 Embed text using Vertex AI Embeddings API.
 
@@ -1102,11 +1102,11 @@ Deserialized component.
 
 <a id="haystack_integrations.components.embedders.google_vertex.text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.google\_vertex.text\_embedder
+## Module haystack\_integrations.components.embedders.google\_vertex.text\_embedder
 
 <a id="haystack_integrations.components.embedders.google_vertex.text_embedder.VertexAITextEmbedder"></a>
 
-## VertexAITextEmbedder
+### VertexAITextEmbedder
 
 Embed text using VertexAI Text Embeddings API.
 

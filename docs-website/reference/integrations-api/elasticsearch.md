@@ -7,11 +7,11 @@ slug: "/integrations-elasticsearch"
 
 <a id="haystack_integrations.components.retrievers.elasticsearch.bm25_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.elasticsearch.bm25\_retriever
+## Module haystack\_integrations.components.retrievers.elasticsearch.bm25\_retriever
 
 <a id="haystack_integrations.components.retrievers.elasticsearch.bm25_retriever.ElasticsearchBM25Retriever"></a>
 
-## ElasticsearchBM25Retriever
+### ElasticsearchBM25Retriever
 
 ElasticsearchBM25Retriever retrieves documents from the ElasticsearchDocumentStore using BM25 algorithm to find the
 most similar documents to a user's query.
@@ -160,11 +160,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.retrievers.elasticsearch.embedding_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.elasticsearch.embedding\_retriever
+## Module haystack\_integrations.components.retrievers.elasticsearch.embedding\_retriever
 
 <a id="haystack_integrations.components.retrievers.elasticsearch.embedding_retriever.ElasticsearchEmbeddingRetriever"></a>
 
-## ElasticsearchEmbeddingRetriever
+### ElasticsearchEmbeddingRetriever
 
 ElasticsearchEmbeddingRetriever retrieves documents from the ElasticsearchDocumentStore using vector similarity.
 
@@ -316,11 +316,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.document_stores.elasticsearch.document_store"></a>
 
-# Module haystack\_integrations.document\_stores.elasticsearch.document\_store
+## Module haystack\_integrations.document\_stores.elasticsearch.document\_store
 
 <a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore"></a>
 
-## ElasticsearchDocumentStore
+### ElasticsearchDocumentStore
 
 An ElasticsearchDocumentStore instance that works with Elastic Cloud or your own
 Elasticsearch cluster.

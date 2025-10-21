@@ -7,17 +7,17 @@ slug: "/integrations-weaviate"
 
 <a id="haystack_integrations.document_stores.weaviate.auth"></a>
 
-# Module haystack\_integrations.document\_stores.weaviate.auth
+## Module haystack\_integrations.document\_stores.weaviate.auth
 
 <a id="haystack_integrations.document_stores.weaviate.auth.SupportedAuthTypes"></a>
 
-## SupportedAuthTypes
+### SupportedAuthTypes
 
 Supported auth credentials for WeaviateDocumentStore.
 
 <a id="haystack_integrations.document_stores.weaviate.auth.AuthCredentials"></a>
 
-## AuthCredentials
+### AuthCredentials
 
 Base class for all auth credentials supported by WeaviateDocumentStore.
 Can be used to deserialize from dict any of the supported auth credentials.
@@ -57,14 +57,14 @@ All subclasses must implement this method.
 
 <a id="haystack_integrations.document_stores.weaviate.auth.AuthApiKey"></a>
 
-## AuthApiKey
+### AuthApiKey
 
 AuthCredentials for API key authentication.
 By default it will load `api_key` from the environment variable `WEAVIATE_API_KEY`.
 
 <a id="haystack_integrations.document_stores.weaviate.auth.AuthBearerToken"></a>
 
-## AuthBearerToken
+### AuthBearerToken
 
 AuthCredentials for Bearer token authentication.
 By default it will load `access_token` from the environment variable `WEAVIATE_ACCESS_TOKEN`,
@@ -74,7 +74,7 @@ and `refresh_token` from the environment variable
 
 <a id="haystack_integrations.document_stores.weaviate.auth.AuthClientCredentials"></a>
 
-## AuthClientCredentials
+### AuthClientCredentials
 
 AuthCredentials for client credentials authentication.
 By default it will load `client_secret` from the environment variable `WEAVIATE_CLIENT_SECRET`, and
@@ -84,7 +84,7 @@ separated strings. e.g "scope1" or "scope1 scope2".
 
 <a id="haystack_integrations.document_stores.weaviate.auth.AuthClientPassword"></a>
 
-## AuthClientPassword
+### AuthClientPassword
 
 AuthCredentials for username and password authentication.
 By default it will load `username` from the environment variable `WEAVIATE_USERNAME`,
@@ -95,11 +95,11 @@ separated strings. e.g "scope1" or "scope1 scope2".
 
 <a id="haystack_integrations.document_stores.weaviate.document_store"></a>
 
-# Module haystack\_integrations.document\_stores.weaviate.document\_store
+## Module haystack\_integrations.document\_stores.weaviate.document\_store
 
 <a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore"></a>
 
-## WeaviateDocumentStore
+### WeaviateDocumentStore
 
 A WeaviateDocumentStore instance you
 can use with Weaviate Cloud Services or self-hosted instances.
@@ -298,11 +298,11 @@ Reference: https://docs.weaviate.io/weaviate/manage-objects/delete#delete-all-ob
 
 <a id="haystack_integrations.components.retrievers.weaviate.bm25_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.weaviate.bm25\_retriever
+## Module haystack\_integrations.components.retrievers.weaviate.bm25\_retriever
 
 <a id="haystack_integrations.components.retrievers.weaviate.bm25_retriever.WeaviateBM25Retriever"></a>
 
-## WeaviateBM25Retriever
+### WeaviateBM25Retriever
 
 A component for retrieving documents from Weaviate using the BM25 algorithm.
 
@@ -393,11 +393,11 @@ details.
 
 <a id="haystack_integrations.components.retrievers.weaviate.embedding_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.weaviate.embedding\_retriever
+## Module haystack\_integrations.components.retrievers.weaviate.embedding\_retriever
 
 <a id="haystack_integrations.components.retrievers.weaviate.embedding_retriever.WeaviateEmbeddingRetriever"></a>
 
-## WeaviateEmbeddingRetriever
+### WeaviateEmbeddingRetriever
 
 A retriever that uses Weaviate's vector search to find similar documents based on the embeddings of the query.
 
@@ -498,11 +498,11 @@ See https://weaviate.io/developers/weaviate/api/graphql/search-operators#variabl
 
 <a id="haystack_integrations.components.retrievers.weaviate.hybrid_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.weaviate.hybrid\_retriever
+## Module haystack\_integrations.components.retrievers.weaviate.hybrid\_retriever
 
 <a id="haystack_integrations.components.retrievers.weaviate.hybrid_retriever.WeaviateHybridRetriever"></a>
 
-## WeaviateHybridRetriever
+### WeaviateHybridRetriever
 
 A retriever that uses Weaviate's hybrid search to find similar documents based on the embeddings of the query.
 

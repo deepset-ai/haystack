@@ -7,11 +7,11 @@ slug: "/integrations-stackit"
 
 <a id="haystack_integrations.components.generators.stackit.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.stackit.chat.chat\_generator
+## Module haystack\_integrations.components.generators.stackit.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.stackit.chat.chat_generator.STACKITChatGenerator"></a>
 
-## STACKITChatGenerator
+### STACKITChatGenerator
 
 Enables text generation using STACKIT generative models through their model serving service.
 
@@ -190,11 +190,11 @@ A dictionary with the following key:
 
 <a id="haystack_integrations.components.embedders.stackit.document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.stackit.document\_embedder
+## Module haystack\_integrations.components.embedders.stackit.document\_embedder
 
 <a id="haystack_integrations.components.embedders.stackit.document_embedder.STACKITDocumentEmbedder"></a>
 
-## STACKITDocumentEmbedder
+### STACKITDocumentEmbedder
 
 A component for computing Document embeddings using STACKIT as model provider.
 The embedding of each Document is stored in the `embedding` field of the Document.
@@ -336,11 +336,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.stackit.text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.stackit.text\_embedder
+## Module haystack\_integrations.components.embedders.stackit.text\_embedder
 
 <a id="haystack_integrations.components.embedders.stackit.text_embedder.STACKITTextEmbedder"></a>
 
-## STACKITTextEmbedder
+### STACKITTextEmbedder
 
 A component for embedding strings using STACKIT as model provider.
 

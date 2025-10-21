@@ -7,11 +7,11 @@ slug: "/integrations-together-ai"
 
 <a id="haystack_integrations.components.generators.together_ai.generator"></a>
 
-# Module haystack\_integrations.components.generators.together\_ai.generator
+## Module haystack\_integrations.components.generators.together\_ai.generator
 
 <a id="haystack_integrations.components.generators.together_ai.generator.TogetherAIGenerator"></a>
 
-## TogetherAIGenerator
+### TogetherAIGenerator
 
 Provides an interface to generate text using an LLM running on Together AI.
 
@@ -176,11 +176,11 @@ including model name, finish reason, and token usage statistics.
 
 <a id="haystack_integrations.components.generators.together_ai.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.together\_ai.chat.chat\_generator
+## Module haystack\_integrations.components.generators.together\_ai.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.together_ai.chat.chat_generator.TogetherAIChatGenerator"></a>
 
-## TogetherAIChatGenerator
+### TogetherAIChatGenerator
 
 Enables text generation using Together AI generative models.
 For supported models, see [Together AI docs](https://docs.together.ai/docs).

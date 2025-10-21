@@ -7,11 +7,11 @@ slug: "/integrations-pinecone"
 
 <a id="haystack_integrations.components.retrievers.pinecone.embedding_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.pinecone.embedding\_retriever
+## Module haystack\_integrations.components.retrievers.pinecone.embedding\_retriever
 
 <a id="haystack_integrations.components.retrievers.pinecone.embedding_retriever.PineconeEmbeddingRetriever"></a>
 
-## PineconeEmbeddingRetriever
+### PineconeEmbeddingRetriever
 
 Retrieves documents from the `PineconeDocumentStore`, based on their dense embeddings.
 
@@ -157,7 +157,7 @@ List of Document similar to `query_embedding`.
 
 <a id="haystack_integrations.document_stores.pinecone.document_store"></a>
 
-# Module haystack\_integrations.document\_stores.pinecone.document\_store
+## Module haystack\_integrations.document\_stores.pinecone.document\_store
 
 <a id="haystack_integrations.document_stores.pinecone.document_store.METADATA_SUPPORTED_TYPES"></a>
 
@@ -167,7 +167,7 @@ List[str] is supported and checked separately
 
 <a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore"></a>
 
-## PineconeDocumentStore
+### PineconeDocumentStore
 
 A Document Store using [Pinecone vector database](https://www.pinecone.io/).
 

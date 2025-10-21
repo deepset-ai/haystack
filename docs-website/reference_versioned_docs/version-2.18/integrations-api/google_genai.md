@@ -7,11 +7,11 @@ slug: "/integrations-google-genai"
 
 <a id="haystack_integrations.components.generators.google_genai.chat.chat_generator"></a>
 
-# Module haystack\_integrations.components.generators.google\_genai.chat.chat\_generator
+## Module haystack\_integrations.components.generators.google\_genai.chat.chat\_generator
 
 <a id="haystack_integrations.components.generators.google_genai.chat.chat_generator.GoogleGenAIChatGenerator"></a>
 
-## GoogleGenAIChatGenerator
+### GoogleGenAIChatGenerator
 
 A component for generating chat completions using Google's Gemini models via the Google Gen AI SDK.
 
@@ -271,11 +271,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.google_genai.document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.google\_genai.document\_embedder
+## Module haystack\_integrations.components.embedders.google\_genai.document\_embedder
 
 <a id="haystack_integrations.components.embedders.google_genai.document_embedder.GoogleGenAIDocumentEmbedder"></a>
 
-## GoogleGenAIDocumentEmbedder
+### GoogleGenAIDocumentEmbedder
 
 Computes document embeddings using Google AI models.
 
@@ -458,11 +458,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.google_genai.text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.google\_genai.text\_embedder
+## Module haystack\_integrations.components.embedders.google\_genai.text\_embedder
 
 <a id="haystack_integrations.components.embedders.google_genai.text_embedder.GoogleGenAITextEmbedder"></a>
 
-## GoogleGenAITextEmbedder
+### GoogleGenAITextEmbedder
 
 Embeds strings using Google AI models.
 

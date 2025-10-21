@@ -7,11 +7,11 @@ slug: "/integrations-unstructured"
 
 <a id="haystack_integrations.components.converters.unstructured.converter"></a>
 
-# Module haystack\_integrations.components.converters.unstructured.converter
+## Module haystack\_integrations.components.converters.unstructured.converter
 
 <a id="haystack_integrations.components.converters.unstructured.converter.UnstructuredFileConverter"></a>
 
-## UnstructuredFileConverter
+### UnstructuredFileConverter
 
 A component for converting files to Haystack Documents using the Unstructured API (hosted or running locally).
 

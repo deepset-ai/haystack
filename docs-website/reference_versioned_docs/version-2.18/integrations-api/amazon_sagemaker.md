@@ -7,11 +7,11 @@ slug: "/integrations-amazon-sagemaker"
 
 <a id="haystack_integrations.components.generators.amazon_sagemaker.sagemaker"></a>
 
-# Module haystack\_integrations.components.generators.amazon\_sagemaker.sagemaker
+## Module haystack\_integrations.components.generators.amazon\_sagemaker.sagemaker
 
 <a id="haystack_integrations.components.generators.amazon_sagemaker.sagemaker.SagemakerGenerator"></a>
 
-## SagemakerGenerator
+### SagemakerGenerator
 
 Enables text generation using Amazon Sagemaker.
 

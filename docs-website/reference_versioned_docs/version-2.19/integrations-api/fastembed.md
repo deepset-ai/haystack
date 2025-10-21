@@ -7,11 +7,11 @@ slug: "/fastembed-embedders"
 
 <a id="haystack_integrations.components.embedders.fastembed.fastembed_document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.fastembed.fastembed\_document\_embedder
+## Module haystack\_integrations.components.embedders.fastembed.fastembed\_document\_embedder
 
 <a id="haystack_integrations.components.embedders.fastembed.fastembed_document_embedder.FastembedDocumentEmbedder"></a>
 
-## FastembedDocumentEmbedder
+### FastembedDocumentEmbedder
 
 FastembedDocumentEmbedder computes Document embeddings using Fastembed embedding models.
 The embedding of each Document is stored in the `embedding` field of the Document.
@@ -144,11 +144,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.fastembed.fastembed\_text\_embedder
+## Module haystack\_integrations.components.embedders.fastembed.fastembed\_text\_embedder
 
 <a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder"></a>
 
-## FastembedTextEmbedder
+### FastembedTextEmbedder
 
 FastembedTextEmbedder computes string embedding using fastembed embedding models.
 
@@ -250,11 +250,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.fastembed.fastembed_sparse_document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.fastembed.fastembed\_sparse\_document\_embedder
+## Module haystack\_integrations.components.embedders.fastembed.fastembed\_sparse\_document\_embedder
 
 <a id="haystack_integrations.components.embedders.fastembed.fastembed_sparse_document_embedder.FastembedSparseDocumentEmbedder"></a>
 
-## FastembedSparseDocumentEmbedder
+### FastembedSparseDocumentEmbedder
 
 FastembedSparseDocumentEmbedder computes Document embeddings using Fastembed sparse models.
 
@@ -382,11 +382,11 @@ field set to the computed embeddings.
 
 <a id="haystack_integrations.components.embedders.fastembed.fastembed_sparse_text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.fastembed.fastembed\_sparse\_text\_embedder
+## Module haystack\_integrations.components.embedders.fastembed.fastembed\_sparse\_text\_embedder
 
 <a id="haystack_integrations.components.embedders.fastembed.fastembed_sparse_text_embedder.FastembedSparseTextEmbedder"></a>
 
-## FastembedSparseTextEmbedder
+### FastembedSparseTextEmbedder
 
 FastembedSparseTextEmbedder computes string embedding using fastembed sparse models.
 
@@ -486,11 +486,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.rankers.fastembed.ranker"></a>
 
-# Module haystack\_integrations.components.rankers.fastembed.ranker
+## Module haystack\_integrations.components.rankers.fastembed.ranker
 
 <a id="haystack_integrations.components.rankers.fastembed.ranker.FastembedRanker"></a>
 
-## FastembedRanker
+### FastembedRanker
 
 Ranks Documents based on their similarity to the query using
 [Fastembed models](https://qdrant.github.io/fastembed/examples/Supported_Models/).

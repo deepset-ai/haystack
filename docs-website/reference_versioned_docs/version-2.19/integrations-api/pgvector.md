@@ -7,11 +7,11 @@ slug: "/integrations-pgvector"
 
 <a id="haystack_integrations.components.retrievers.pgvector.embedding_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.pgvector.embedding\_retriever
+## Module haystack\_integrations.components.retrievers.pgvector.embedding\_retriever
 
 <a id="haystack_integrations.components.retrievers.pgvector.embedding_retriever.PgvectorEmbeddingRetriever"></a>
 
-## PgvectorEmbeddingRetriever
+### PgvectorEmbeddingRetriever
 
 Retrieves documents from the `PgvectorDocumentStore`, based on their dense embeddings.
 
@@ -187,11 +187,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.retrievers.pgvector.keyword_retriever"></a>
 
-# Module haystack\_integrations.components.retrievers.pgvector.keyword\_retriever
+## Module haystack\_integrations.components.retrievers.pgvector.keyword\_retriever
 
 <a id="haystack_integrations.components.retrievers.pgvector.keyword_retriever.PgvectorKeywordRetriever"></a>
 
-## PgvectorKeywordRetriever
+### PgvectorKeywordRetriever
 
 Retrieve documents from the `PgvectorDocumentStore`, based on keywords.
 
@@ -336,11 +336,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.document_stores.pgvector.document_store"></a>
 
-# Module haystack\_integrations.document\_stores.pgvector.document\_store
+## Module haystack\_integrations.document\_stores.pgvector.document\_store
 
 <a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore"></a>
 
-## PgvectorDocumentStore
+### PgvectorDocumentStore
 
 A Document Store using PostgreSQL with the [pgvector extension](https://github.com/pgvector/pgvector) installed.
 

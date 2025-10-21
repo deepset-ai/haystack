@@ -7,11 +7,11 @@ slug: "/integrations-ragas"
 
 <a id="haystack_integrations.components.evaluators.ragas.evaluator"></a>
 
-# Module haystack\_integrations.components.evaluators.ragas.evaluator
+## Module haystack\_integrations.components.evaluators.ragas.evaluator
 
 <a id="haystack_integrations.components.evaluators.ragas.evaluator.RagasEvaluator"></a>
 
-## RagasEvaluator
+### RagasEvaluator
 
 A component that uses the [Ragas framework](https://docs.ragas.io/) to evaluate
 inputs against specified Ragas metrics.

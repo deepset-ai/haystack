@@ -7,11 +7,11 @@ slug: "/integrations-llama-cpp"
 
 <a id="haystack_integrations.components.generators.llama_cpp.generator"></a>
 
-# Module haystack\_integrations.components.generators.llama\_cpp.generator
+## Module haystack\_integrations.components.generators.llama\_cpp.generator
 
 <a id="haystack_integrations.components.generators.llama_cpp.generator.LlamaCppGenerator"></a>
 
-## LlamaCppGenerator
+### LlamaCppGenerator
 
 Provides an interface to generate text using LLM via llama.cpp.
 

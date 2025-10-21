@@ -7,11 +7,11 @@ slug: "/integrations-nvidia"
 
 <a id="haystack_integrations.components.embedders.nvidia.document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.nvidia.document\_embedder
+## Module haystack\_integrations.components.embedders.nvidia.document\_embedder
 
 <a id="haystack_integrations.components.embedders.nvidia.document_embedder.NvidiaDocumentEmbedder"></a>
 
-## NvidiaDocumentEmbedder
+### NvidiaDocumentEmbedder
 
 A component for embedding documents using embedding models provided by
 [NVIDIA NIMs](https://ai.nvidia.com).
@@ -165,11 +165,11 @@ A dictionary with the following keys and values:
 
 <a id="haystack_integrations.components.embedders.nvidia.text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.nvidia.text\_embedder
+## Module haystack\_integrations.components.embedders.nvidia.text\_embedder
 
 <a id="haystack_integrations.components.embedders.nvidia.text_embedder.NvidiaTextEmbedder"></a>
 
-## NvidiaTextEmbedder
+### NvidiaTextEmbedder
 
 A component for embedding strings using embedding models provided by
 [NVIDIA NIMs](https://ai.nvidia.com).
@@ -312,11 +312,11 @@ A dictionary with the following keys and values:
 
 <a id="haystack_integrations.components.embedders.nvidia.truncate"></a>
 
-# Module haystack\_integrations.components.embedders.nvidia.truncate
+## Module haystack\_integrations.components.embedders.nvidia.truncate
 
 <a id="haystack_integrations.components.embedders.nvidia.truncate.EmbeddingTruncateMode"></a>
 
-## EmbeddingTruncateMode
+### EmbeddingTruncateMode
 
 Specifies how inputs to the NVIDIA embedding components are truncated.
 If START, the input will be truncated from the start.
@@ -344,11 +344,11 @@ Truncate mode.
 
 <a id="haystack_integrations.components.generators.nvidia.generator"></a>
 
-# Module haystack\_integrations.components.generators.nvidia.generator
+## Module haystack\_integrations.components.generators.nvidia.generator
 
 <a id="haystack_integrations.components.generators.nvidia.generator.NvidiaGenerator"></a>
 
-## NvidiaGenerator
+### NvidiaGenerator
 
 Generates text using generative models hosted with
 [NVIDIA NIM](https://ai.nvidia.com) on the [NVIDIA API Catalog](https://build.nvidia.com/explore/discover).
@@ -495,11 +495,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.rankers.nvidia.ranker"></a>
 
-# Module haystack\_integrations.components.rankers.nvidia.ranker
+## Module haystack\_integrations.components.rankers.nvidia.ranker
 
 <a id="haystack_integrations.components.rankers.nvidia.ranker.NvidiaRanker"></a>
 
-## NvidiaRanker
+### NvidiaRanker
 
 A component for ranking documents using ranking models provided by
 [NVIDIA NIMs](https://ai.nvidia.com).
@@ -639,11 +639,11 @@ A dictionary containing the ranked documents.
 
 <a id="haystack_integrations.components.rankers.nvidia.truncate"></a>
 
-# Module haystack\_integrations.components.rankers.nvidia.truncate
+## Module haystack\_integrations.components.rankers.nvidia.truncate
 
 <a id="haystack_integrations.components.rankers.nvidia.truncate.RankerTruncateMode"></a>
 
-## RankerTruncateMode
+### RankerTruncateMode
 
 Specifies how inputs to the NVIDIA ranker components are truncated.
 If NONE, the input will not be truncated and an error returned instead.

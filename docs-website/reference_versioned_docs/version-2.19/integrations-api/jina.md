@@ -7,11 +7,11 @@ slug: "/integrations-jina"
 
 <a id="haystack_integrations.components.embedders.jina.document_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.jina.document\_embedder
+## Module haystack\_integrations.components.embedders.jina.document\_embedder
 
 <a id="haystack_integrations.components.embedders.jina.document_embedder.JinaDocumentEmbedder"></a>
 
-## JinaDocumentEmbedder
+### JinaDocumentEmbedder
 
 A component for computing Document embeddings using Jina AI models.
 The embedding of each Document is stored in the `embedding` field of the Document.
@@ -136,11 +136,11 @@ A dictionary with following keys:
 
 <a id="haystack_integrations.components.embedders.jina.document_image_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.jina.document\_image\_embedder
+## Module haystack\_integrations.components.embedders.jina.document\_image\_embedder
 
 <a id="haystack_integrations.components.embedders.jina.document_image_embedder.JinaDocumentImageEmbedder"></a>
 
-## JinaDocumentImageEmbedder
+### JinaDocumentImageEmbedder
 
 A component for computing Document embeddings based on images using Jina AI multimodal models.
 
@@ -262,11 +262,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.embedders.jina.text_embedder"></a>
 
-# Module haystack\_integrations.components.embedders.jina.text\_embedder
+## Module haystack\_integrations.components.embedders.jina.text\_embedder
 
 <a id="haystack_integrations.components.embedders.jina.text_embedder.JinaTextEmbedder"></a>
 
-## JinaTextEmbedder
+### JinaTextEmbedder
 
 A component for embedding strings using Jina AI models.
 
@@ -382,11 +382,11 @@ A dictionary with following keys:
 
 <a id="haystack_integrations.components.rankers.jina.ranker"></a>
 
-# Module haystack\_integrations.components.rankers.jina.ranker
+## Module haystack\_integrations.components.rankers.jina.ranker
 
 <a id="haystack_integrations.components.rankers.jina.ranker.JinaRanker"></a>
 
-## JinaRanker
+### JinaRanker
 
 Ranks Documents based on their similarity to the query using Jina AI models.
 
@@ -493,11 +493,11 @@ A dictionary with the following keys:
 
 <a id="haystack_integrations.components.connectors.jina.reader"></a>
 
-# Module haystack\_integrations.components.connectors.jina.reader
+## Module haystack\_integrations.components.connectors.jina.reader
 
 <a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector"></a>
 
-## JinaReaderConnector
+### JinaReaderConnector
 
 A component that interacts with Jina AI's reader service to process queries and return documents.
 
