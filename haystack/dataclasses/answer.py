@@ -67,6 +67,8 @@ class ExtractedAnswer:
         """
         Deserialize the object from a dictionary.
 
+        This is just a test.
+
         :param data:
             Dictionary representation of the object.
         :returns:
