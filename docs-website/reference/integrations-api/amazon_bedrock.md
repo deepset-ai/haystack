@@ -1135,7 +1135,7 @@ def __init__(
         generation_kwargs: Optional[Dict[str, Any]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
         boto3_config: Optional[Dict[str, Any]] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         *,
         guardrail_config: Optional[Dict[str, str]] = None) -> None
 ```
@@ -1168,7 +1168,8 @@ function that handles the streaming chunks. The callback function receives a
 [StreamingChunk](https://docs.haystack.deepset.ai/docs/data-classes#streamingchunk) object and switches
 the streaming mode on.
 - `boto3_config`: The configuration for the boto3 client.
-- `tools`: A list of Tool objects or a Toolset that the model can use. Each tool should have a unique name.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+Each tool should have a unique name.
 - `guardrail_config`: Optional configuration for a guardrail that has been created in Amazon Bedrock.
 This must be provided as a dictionary matching either
 [GuardrailConfiguration](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_GuardrailConfiguration.html).
@@ -1227,12 +1228,10 @@ Instance of `AmazonBedrockChatGenerator`.
 
 ```python
 @component.output_types(replies=List[ChatMessage])
-def run(
-    messages: List[ChatMessage],
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    generation_kwargs: Optional[Dict[str, Any]] = None,
-    tools: Optional[Union[List[Tool], Toolset]] = None
-) -> Dict[str, List[ChatMessage]]
+def run(messages: List[ChatMessage],
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        tools: Optional[ToolsType] = None) -> Dict[str, List[ChatMessage]]
 ```
 
 Executes a synchronous inference call to the Amazon Bedrock model using the Converse API.
@@ -1248,7 +1247,8 @@ Supports both standard and streaming responses depending on whether a streaming 
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
 - `topP`: Nucleus sampling parameter.
-- `tools`: Optional list of Tools that the model may call during execution.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+Each tool should have a unique name.
 
 **Raises**:
 
@@ -1265,11 +1265,10 @@ A dictionary containing the model-generated replies under the `"replies"` key.
 ```python
 @component.output_types(replies=List[ChatMessage])
 async def run_async(
-    messages: List[ChatMessage],
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    generation_kwargs: Optional[Dict[str, Any]] = None,
-    tools: Optional[Union[List[Tool], Toolset]] = None
-) -> Dict[str, List[ChatMessage]]
+        messages: List[ChatMessage],
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        tools: Optional[ToolsType] = None) -> Dict[str, List[ChatMessage]]
 ```
 
 Executes an asynchronous inference call to the Amazon Bedrock model using the Converse API.
@@ -1285,7 +1284,8 @@ Designed for use cases where non-blocking or concurrent execution is desired.
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
 - `topP`: Nucleus sampling parameter.
-- `tools`: Optional list of Tool objects or a Toolset that the model can use.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+Each tool should have a unique name.
 
 **Raises**:
 

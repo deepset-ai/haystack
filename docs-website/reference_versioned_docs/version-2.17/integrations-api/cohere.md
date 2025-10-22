@@ -745,7 +745,7 @@ def __init__(api_key: Secret = Secret.from_env_var(
              streaming_callback: Optional[StreamingCallbackT] = None,
              api_base_url: Optional[str] = None,
              generation_kwargs: Optional[Dict[str, Any]] = None,
-             tools: Optional[Union[List[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              **kwargs: Any)
 ```
 
@@ -770,7 +770,8 @@ Some of the parameters are:
   `accurate` results or `fast` results.
 - 'temperature': A non-negative float that tunes the degree of randomness in generation. Lower temperatures
   mean less random generations.
-- `tools`: A list of Tool objects or a Toolset that the model can use. Each tool should have a unique name.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset that the model can use.
+Each tool should have a unique name.
 
 <a id="haystack_integrations.components.generators.cohere.chat.chat_generator.CohereChatGenerator.to_dict"></a>
 
@@ -814,7 +815,7 @@ Deserialized component.
 def run(
     messages: List[ChatMessage],
     generation_kwargs: Optional[Dict[str, Any]] = None,
-    tools: Optional[Union[List[Tool], Toolset]] = None,
+    tools: Optional[ToolsType] = None,
     streaming_callback: Optional[StreamingCallbackT] = None
 ) -> Dict[str, List[ChatMessage]]
 ```
@@ -828,8 +829,8 @@ Invoke the chat endpoint based on the provided messages and generation parameter
 potentially override the parameters passed in the __init__ method.
 For more details on the parameters supported by the Cohere API, refer to the
 Cohere [documentation](https://docs.cohere.com/reference/chat).
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. If set, it will override
-the `tools` parameter set during component initialization.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter set during component initialization.
 - `streaming_callback`: A callback function that is called when a new token is received from the stream.
 The callback function accepts StreamingChunk as an argument.
 
@@ -847,7 +848,7 @@ A dictionary with the following keys:
 async def run_async(
     messages: List[ChatMessage],
     generation_kwargs: Optional[Dict[str, Any]] = None,
-    tools: Optional[Union[List[Tool], Toolset]] = None,
+    tools: Optional[ToolsType] = None,
     streaming_callback: Optional[StreamingCallbackT] = None
 ) -> Dict[str, List[ChatMessage]]
 ```
@@ -861,8 +862,8 @@ Asynchronously invoke the chat endpoint based on the provided messages and gener
 potentially override the parameters passed in the __init__ method.
 For more details on the parameters supported by the Cohere API, refer to the
 Cohere [documentation](https://docs.cohere.com/reference/chat).
-- `tools`: A list of tools for which the model can prepare calls. If set, it will override
-the `tools` parameter set during component initialization.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter set during component initialization.
 - `streaming_callback`: A callback function that is called when a new token is received from the stream.
 
 **Returns**:
