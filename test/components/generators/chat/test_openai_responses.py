@@ -332,7 +332,7 @@ class TestOpenAIResponsesChatGenerator:
         message: ChatMessage = results["replies"][0]
         assert "Moon" in message.text
         assert "gpt-5-mini" in message.meta["model"]
-        assert message.reasoning is not None
+        assert message.reasonings is not None
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
         assert "reasoning_tokens" in message.meta["usage"]["output_tokens_details"]

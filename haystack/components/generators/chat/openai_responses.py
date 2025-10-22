@@ -31,6 +31,7 @@ from haystack.dataclasses import (
 from haystack.tools import (
     Tool,
     Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
     serialize_tools_or_toolset,
@@ -85,7 +86,7 @@ class OpenAIResponsesChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        tools: Optional[Union[list[Tool], Toolset, dict[str, Any]]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: bool = False,
         http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
@@ -213,12 +214,12 @@ class OpenAIResponsesChatGenerator:
                 },
             }
             generation_kwargs["text_format"] = json_schema
-        serialized_tools: Union[dict[str, Any], list[dict[str, Any]], None] = None
-        if self.tools and isinstance(self.tools, list) and not isinstance(self.tools[0], Tool):
+
+        if self.tools and isinstance(self.tools, list) and isinstance(self.tools[0], dict):
             serialized_tools = self.tools
         else:
             # function returns correct type but mypy doesn't know it
-            serialized_tools = serialize_tools_or_toolset(self.tools)  # type: ignore[arg-type]
+            serialized_tools = serialize_tools_or_toolset(self.tools)  # type: ignore[assignment]
 
         return default_to_dict(
             self,
@@ -272,7 +273,7 @@ class OpenAIResponsesChatGenerator:
         *,
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset, dict[str, Any]]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -320,7 +321,6 @@ class OpenAIResponsesChatGenerator:
         openai_endpoint = api_args.pop("openai_endpoint")
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
-        print(f"Responses: {responses}")
 
         if streaming_callback is not None:
             response_output = self._handle_stream_response(
@@ -339,7 +339,7 @@ class OpenAIResponsesChatGenerator:
         *,
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset, dict[str, Any]]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -408,7 +408,7 @@ class OpenAIResponsesChatGenerator:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset, dict[str, Any]]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
@@ -424,13 +424,13 @@ class OpenAIResponsesChatGenerator:
 
         openai_tools = {}
         # Build tool definitions
-        tool_definitions: Optional[list[dict[str, Any]]] = []
         if tools:
-            if isinstance(tools, list) and not isinstance(tools[0], Tool):
+            tool_definitions = []
+            if isinstance(tools, list) and isinstance(tools[0], dict):
                 # Predefined OpenAI/MCP-style tools
                 tool_definitions = tools
 
-            # Convert all tool objects or dicts to the correct OpenAI-compatible structure
+            # Convert all tool objects to the correct OpenAI-compatible structure
             else:
                 if isinstance(tools, Toolset):
                     tools = list(tools)
@@ -440,7 +440,7 @@ class OpenAIResponsesChatGenerator:
                     if not tools_strict:
                         function_spec["strict"] = False
                     function_spec["parameters"]["additionalProperties"] = False
-                    tool_definitions.append({"type": "function", **function_spec})  # type: ignore[union-attr]
+                    tool_definitions.append({"type": "function", **function_spec})  # type: ignore[arg-type]
 
             openai_tools = {"tools": tool_definitions}
 
@@ -503,6 +503,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
     tool_calls = []
     reasoning = None
+    tool_call_ids = {}
     for output in responses.output:
         if isinstance(output, ResponseOutputRefusal):
             logger.warning(f"OpenAI returned a refusal output: {output}")
@@ -530,16 +531,16 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     _name=output.name,
                     _arguments=output.arguments,
                 )
+            # We need to store both id and call_id for tool calls
+            tool_call_ids[output.id] = {"call_id": output.call_id, "status": output.status}
 
             tool_calls.append(ToolCall(id=output.id, tool_name=output.name, arguments=arguments))
-    status = getattr(responses.output, "status", None)
+
+    # we save the response as dict because it contains resp_id etc.
     meta = responses.to_dict()
-    # remove output and reasoning from meta
-    # we need response id and other info for multi turn conversations
+    # remove output from meta because it contains toolcalls, reasoning, text etc.
     meta.pop("output")
-    meta.pop("reasoning")
-    meta["status"] = status
-    meta["usage"] = _serialize_usage(responses.usage)
+    meta["tool_call_ids"] = tool_call_ids
     chat_message = ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
         reasoning=reasoning,
@@ -684,24 +685,34 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
         return openai_msg
 
     # system and assistant messages
+    openai_msg["content"] = []
+
     if text_contents:
         openai_msg["content"] = text_contents[0]
-    if tool_calls:
-        openai_tool_calls = []
-        for tc in tool_calls:
-            openai_tool_call = {
-                "type": "function",
-                # We disable ensure_ascii so special chars like emojis are not converted
-                "function": {"name": tc.tool_name, "arguments": json.dumps(tc.arguments, ensure_ascii=False)},
-            }
-            if tc.id is not None:
-                openai_tool_call["id"] = tc.id
-            elif require_tool_call_ids:
-                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
-            openai_tool_calls.append(openai_tool_call)
-        openai_msg["tool_calls"] = openai_tool_calls
 
     if reasonings:
-        openai_msg["content"].append("Previous reasoning summary: " + reasonings[0].reasoning_text)
+        for reasoning in reasonings:
+            reasoning_item = {
+                **(reasoning.extra),
+                "summary": [{"text": reasoning.reasoning_text, "type": "summary_text"}],
+            }
+            openai_msg["content"].append(reasoning_item)
+
+    if tool_calls:
+        tool_call_ids = message._meta.get("tool_call_ids", {})
+
+        for tc in tool_calls:
+            openai_tool_call = {
+                "type": "function_call",
+                # We disable ensure_ascii so special chars like emojis are not converted
+                "name": tc.tool_name,
+                "arguments": json.dumps(tc.arguments, ensure_ascii=False),
+            }
+            if tc.id is not None:
+                openai_tool_call["call_id"] = tc.id
+                openai_tool_call.update(tool_call_ids[tc.id])
+            elif require_tool_call_ids:
+                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
+            openai_msg["content"].append(openai_tool_call)
 
     return openai_msg
