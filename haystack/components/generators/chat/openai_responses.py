@@ -13,7 +13,6 @@ from openai.types.responses import ParsedResponse, Response, ResponseOutputRefus
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -29,7 +28,6 @@ from haystack.dataclasses import (
     select_streaming_callback,
 )
 from haystack.tools import (
-    Tool,
     Toolset,
     ToolsType,
     _check_duplicate_tool_names,
@@ -503,7 +501,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
     tool_calls = []
     reasoning = None
-    tool_call_ids = {}
+    tool_call_details = {}
     for output in responses.output:
         if isinstance(output, ResponseOutputRefusal):
             logger.warning(f"OpenAI returned a refusal output: {output}")
@@ -532,7 +530,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     _arguments=output.arguments,
                 )
             # We need to store both id and call_id for tool calls
-            tool_call_ids[output.id] = {"call_id": output.call_id, "status": output.status}
+            tool_call_details[output.id] = {"call_id": output.call_id, "status": output.status}
 
             tool_calls.append(ToolCall(id=output.id, tool_name=output.name, arguments=arguments))
 
@@ -540,7 +538,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
     meta = responses.to_dict()
     # remove output from meta because it contains toolcalls, reasoning, text etc.
     meta.pop("output")
-    meta["tool_call_ids"] = tool_call_ids
+    meta["tool_call_details"] = tool_call_details
     chat_message = ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
         reasoning=reasoning,
@@ -564,6 +562,7 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
     :returns:
         A StreamingChunk object representing the content of the chunk from the OpenAI Responses API.
     """
+
     if chunk.type == "response.output_text.delta":
         # if item is a ResponseTextDeltaEvent
         meta = chunk.to_dict()
@@ -587,6 +586,16 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
                 "usage": _serialize_usage(chunk.response.usage),
             },
         )
+    # after returning reasoning in parts, api returns complete reasoning
+    elif chunk.type == "response.output_item.done" and chunk.item.type == "reasoning":
+        # we remove the text from the extra because it is already in the reasoning_text
+        # rest of the information needs to be saved for chat message
+        extra = chunk.item.to_dict()
+        extra.pop("summary")
+        reasoning = ReasoningContent(reasoning_text=chunk.item.summary[0].text, extra=extra)
+        return StreamingChunk(content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning)
+
+    # after returning function call in parts, api returns complete function call
     elif chunk.type == "response.output_item.done" and chunk.item.type == "function_call":
         function = chunk.item.name
         arguments = chunk.item.arguments
@@ -700,6 +709,7 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
 
     if tool_calls:
         tool_call_ids = message._meta.get("tool_call_ids", {})
+        print(f"Tool call ids: {tool_call_ids}")
 
         for tc in tool_calls:
             openai_tool_call = {
@@ -709,10 +719,85 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
                 "arguments": json.dumps(tc.arguments, ensure_ascii=False),
             }
             if tc.id is not None:
-                openai_tool_call["call_id"] = tc.id
+                openai_tool_call["id"] = tc.id
                 openai_tool_call.update(tool_call_ids[tc.id])
             elif require_tool_call_ids:
                 raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
             openai_msg["content"].append(openai_tool_call)
 
     return openai_msg
+
+
+def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> ChatMessage:
+    """
+    Connects the streaming chunks into a single ChatMessage.
+
+    :param chunks: The list of all `StreamingChunk` objects.
+
+    :returns: The ChatMessage.
+    """
+    text = "".join([chunk.content for chunk in chunks])
+    reasoning = None
+    tool_calls = []
+    tool_call_details = {}
+
+    # Process tool calls if present in any chunk
+    tool_call_data: dict[int, dict[str, str]] = {}  # Track tool calls by index
+    for chunk in chunks:
+        if chunk.tool_calls:
+            for tool_call in chunk.tool_calls:
+                # We use the index of the tool_call to track the tool call across chunks since the ID is not always
+                # provided
+                if tool_call.index not in tool_call_data:
+                    tool_call_data[tool_call.index] = {"id": "", "name": "", "arguments": ""}
+
+                # Save the ID if present
+                if tool_call.id is not None:
+                    tool_call_data[tool_call.index]["id"] = tool_call.id
+
+                if tool_call.tool_name is not None:
+                    tool_call_data[tool_call.index]["name"] = tool_call.tool_name
+                if tool_call.arguments is not None:
+                    tool_call_data[tool_call.index]["arguments"] = tool_call.arguments
+            # this is the information we need to save to send back to API
+            call_id = chunk.meta["item"].get("call_id")
+            status = chunk.meta.get("status")
+            # no solid reasoning here but if there is no call_id, we dont store the status
+            if call_id:
+                tool_call_details.update({tool_call.id: {"call_id": call_id, "status": status}})
+
+        if chunk.reasoning:
+            reasoning = chunk.reasoning
+
+    # Convert accumulated tool call data into ToolCall objects
+    sorted_keys = sorted(tool_call_data.keys())
+    for key in sorted_keys:
+        tool_call_dict = tool_call_data[key]
+        try:
+            arguments = json.loads(tool_call_dict.get("arguments", "{}")) if tool_call_dict.get("arguments") else {}
+            tool_calls.append(ToolCall(id=tool_call_dict["id"], tool_name=tool_call_dict["name"], arguments=arguments))
+        except json.JSONDecodeError:
+            logger.warning(
+                "The LLM provider returned a malformed JSON string for tool call arguments. This tool call "
+                "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
+                "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
+                _id=tool_call_dict["id"],
+                _name=tool_call_dict["name"],
+                _arguments=tool_call_dict["arguments"],
+            )
+
+    # finish_reason can appear in different places so we look for the last one
+    finish_reasons = [chunk.finish_reason for chunk in chunks if chunk.finish_reason]
+    finish_reason = finish_reasons[-1] if finish_reasons else None
+
+    meta = {
+        "model": chunks[-1].meta.get("model"),
+        "index": 0,
+        "finish_reason": finish_reason,
+        "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
+        "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
+    }
+    if tool_call_details:
+        meta["tool_call_details"] = tool_call_details
+
+    return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta, reasoning=reasoning)

@@ -15,11 +15,9 @@ from pydantic import BaseModel
 from haystack import component
 from haystack.components.generators.chat.openai_responses import (
     OpenAIResponsesChatGenerator,
-    _convert_response_to_chat_message,
-    _convert_streaming_response_chunk_to_streaming_chunk,
+    convert_message_to_responses_api_format,
 )
-from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, ReasoningContent, StreamingChunk, ToolCall
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.utils import Secret
 
@@ -35,6 +33,9 @@ class CalendarEvent(BaseModel):
 @pytest.fixture
 def calendar_event_model():
     return CalendarEvent
+
+
+def callback(chunk: StreamingChunk) -> None: ...
 
 
 @component
@@ -116,7 +117,7 @@ class TestOpenAIResponsesChatGenerator:
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"),
             model="gpt-4o-mini",
-            streaming_callback=print_streaming_chunk,
+            streaming_callback=callback,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
             timeout=40.0,
@@ -127,7 +128,7 @@ class TestOpenAIResponsesChatGenerator:
         )
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4o-mini"
-        assert component.streaming_callback is print_streaming_chunk
+        assert component.streaming_callback is callback
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 40.0
         assert component.client.max_retries == 1
@@ -141,13 +142,13 @@ class TestOpenAIResponsesChatGenerator:
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"),
             model="gpt-4o-mini",
-            streaming_callback=print_streaming_chunk,
+            streaming_callback=callback,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4o-mini"
-        assert component.streaming_callback is print_streaming_chunk
+        assert component.streaming_callback is callback
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 100.0
         assert component.client.max_retries == 10
@@ -180,7 +181,7 @@ class TestOpenAIResponsesChatGenerator:
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_env_var("ENV_VAR"),
             model="gpt-5-mini",
-            streaming_callback=print_streaming_chunk,
+            streaming_callback=callback,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params", "text_format": calendar_event_model},
             tools=[tool],
@@ -200,7 +201,7 @@ class TestOpenAIResponsesChatGenerator:
                 "api_base_url": "test-base-url",
                 "max_retries": 10,
                 "timeout": 100.0,
-                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
+                "streaming_callback": "generators.chat.test_openai_responses.callback",
                 "generation_kwargs": {
                     "max_tokens": 10,
                     "some_test_param": "test-params",
@@ -250,7 +251,7 @@ class TestOpenAIResponsesChatGenerator:
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "model": "gpt-5-mini",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
+                "streaming_callback": "generators.chat.test_openai_responses.callback",
                 "max_retries": 10,
                 "timeout": 100.0,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
@@ -273,7 +274,7 @@ class TestOpenAIResponsesChatGenerator:
 
         assert isinstance(component, OpenAIResponsesChatGenerator)
         assert component.model == "gpt-5-mini"
-        assert component.streaming_callback is print_streaming_chunk
+        assert component.streaming_callback is callback
         assert component.api_base_url == "test-base-url"
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
@@ -294,13 +295,74 @@ class TestOpenAIResponsesChatGenerator:
                 "model": "gpt-5-mini",
                 "organization": None,
                 "api_base_url": "test-base-url",
-                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
+                "streaming_callback": "test.components.generators.chat.test_openai_responses.callback",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
                 "tools": None,
             },
         }
         with pytest.raises(ValueError):
             OpenAIResponsesChatGenerator.from_dict(data)
+
+    def test_convert_chat_message_to_responses_api_format(self):
+        chat_message = ChatMessage(
+            _role=ChatRole.ASSISTANT,
+            _content=[
+                ReasoningContent(
+                    reasoning_text="I need to use the functions.weather tool.",
+                    extra={"id": "rs_0d13efdd", "type": "reasoning"},
+                ),
+                ToolCall(tool_name="weather", arguments={"location": "Berlin"}, id="fc_0d13efdd"),
+            ],
+            _name=None,
+            # some keys are removed to keep the test concise
+            _meta={
+                "id": "resp_0d13efdd97aa4",
+                "created_at": 1761148307.0,
+                "model": "gpt-5-mini-2025-08-07",
+                "object": "response",
+                "parallel_tool_calls": True,
+                "temperature": 1.0,
+                "tool_choice": "auto",
+                "tools": [
+                    {
+                        "name": "weather",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {"location": {"type": "string"}},
+                            "required": ["location"],
+                            "additionalProperties": False,
+                        },
+                        "strict": False,
+                        "type": "function",
+                        "description": "A tool to get the weather",
+                    }
+                ],
+                "top_p": 1.0,
+                "reasoning": {"effort": "low", "summary": "detailed"},
+                "usage": {"input_tokens": 59, "output_tokens": 19, "total_tokens": 78},
+                "store": True,
+                "tool_call_ids": {"fc_0d13efdd": {"call_id": "call_a82vwFAIzku9SmBuQuecQSRq", "status": "completed"}},
+            },
+        )
+        responses_api_format = convert_message_to_responses_api_format(chat_message)
+        assert responses_api_format == {
+            "role": "assistant",
+            "content": [
+                {
+                    "id": "rs_0d13efdd",
+                    "type": "reasoning",
+                    "summary": [{"text": "I need to use the functions.weather tool.", "type": "summary_text"}],
+                },
+                {
+                    "type": "function_call",
+                    "name": "weather",
+                    "arguments": '{"location": "Berlin"}',
+                    "id": "fc_0d13efdd",
+                    "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
+                    "status": "completed",
+                },
+            ],
+        }
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -566,5 +628,37 @@ class TestOpenAIResponsesChatGenerator:
         message = results["replies"][0]
         assert message.meta["status"] == "completed"
 
-    # def test_live_run_with_structured_output_and_streaming(self):
-    # def test_live_run_with_reasoning_and_streaming(self):
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_tools_streaming_and_reasoning(self, tools):
+        chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
+
+        def callback(chunk: StreamingChunk) -> None: ...
+
+        component = OpenAIResponsesChatGenerator(
+            tools=tools,
+            streaming_callback=callback,
+            generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}},
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+
+        assert message.reasonings is not None
+        assert message.reasonings[0].reasoning_text is not None
+        assert message.reasonings[0].extra is not None
+        assert not message.text
+        assert message.tool_calls
+        tool_calls = message.tool_calls
+        assert len(tool_calls) == 2
+
+        for tool_call in tool_calls:
+            assert isinstance(tool_call, ToolCall)
+            assert tool_call.tool_name == "weather"
+
+        arguments = [tool_call.arguments for tool_call in tool_calls]
+        assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
+        assert message.meta["status"] == "completed"
