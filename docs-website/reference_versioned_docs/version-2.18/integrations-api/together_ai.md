@@ -231,7 +231,7 @@ def __init__(*,
              streaming_callback: Optional[StreamingCallbackT] = None,
              api_base_url: Optional[str] = "https://api.together.xyz/v1",
              generation_kwargs: Optional[Dict[str, Any]] = None,
-             tools: Optional[Union[List[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              timeout: Optional[float] = None,
              max_retries: Optional[int] = None,
              http_client_kwargs: Optional[Dict[str, Any]] = None)
@@ -263,8 +263,8 @@ Some of the supported parameters:
     events as they become available, with the stream terminated by a data: [DONE] message.
 - `safe_prompt`: Whether to inject a safety prompt before all conversations.
 - `random_seed`: The seed to use for random sampling.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+Each tool should have a unique name.
 - `timeout`: The timeout for the Together AI API call.
 - `max_retries`: Maximum number of retries to contact Together AI after an internal error.
 If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.

@@ -382,8 +382,8 @@ Some of the supported parameters:
     Notes:
     - For structured outputs with streaming,
       the `response_format` must be a JSON schema and not a Pydantic model.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+Each tool should have a unique name.
 - `timeout`: The timeout for the Mistral API call. If not set, it defaults to either the `OPENAI_TIMEOUT`
 environment variable, or 30 seconds.
 - `max_retries`: Maximum number of retries to contact OpenAI after an internal error.

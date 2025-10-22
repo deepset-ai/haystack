@@ -165,7 +165,7 @@ def __init__(model: str = "qwen3:0.6b",
              keep_alive: Optional[Union[float, str]] = None,
              streaming_callback: Optional[Callable[[StreamingChunk],
                                                    None]] = None,
-             tools: Optional[Union[List[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              response_format: Optional[Union[None, Literal["json"],
                                              JsonSchemaValue]] = None,
              think: Union[bool, Literal["low", "medium", "high"]] = False)
@@ -200,9 +200,9 @@ The name of the model to use. The model must already be present (pulled) in the 
     A callback function that is called when a new token is received from the stream.
     The callback function accepts StreamingChunk as an argument.
 :param tools:
-    A list of `haystack.tools.Tool` or a `haystack.tools.Toolset`. Duplicate tool names raise a `ValueError`.
-    Not all models support tools. For a list of models compatible with tools, see the
-    [models page](https://ollama.com/search?c=tools).
+    A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+    Each tool should have a unique name. Not all models support tools. For a list of models compatible
+    with tools, see the [models page](https://ollama.com/search?c=tools).
 :param response_format:
     The format for structured model outputs. The value can be:
     - None: No specific structure or format is applied to the response. The response is returned as-is.
@@ -253,7 +253,7 @@ Deserialized component.
 def run(
     messages: List[ChatMessage],
     generation_kwargs: Optional[Dict[str, Any]] = None,
-    tools: Optional[Union[List[Tool], Toolset]] = None,
+    tools: Optional[ToolsType] = None,
     *,
     streaming_callback: Optional[StreamingCallbackT] = None
 ) -> Dict[str, List[ChatMessage]]
@@ -268,9 +268,8 @@ Runs an Ollama Model on a given chat history.
 These are merged on top of the instance-level `generation_kwargs`.
 Optional arguments to pass to the Ollama generation endpoint, such as temperature, top_p, etc. See the
 [Ollama docs](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values).
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance. If set, it will override the `tools` parameter set
-during component initialization.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter set during component initialization.
 - `streaming_callback`: A callable to receive `StreamingChunk` objects as they
 arrive.  Supplying a callback (here or in the constructor) switches
 the component into streaming mode.
@@ -289,7 +288,7 @@ A dictionary with the following keys:
 async def run_async(
     messages: List[ChatMessage],
     generation_kwargs: Optional[Dict[str, Any]] = None,
-    tools: Optional[Union[List[Tool], Toolset]] = None,
+    tools: Optional[ToolsType] = None,
     *,
     streaming_callback: Optional[StreamingCallbackT] = None
 ) -> Dict[str, List[ChatMessage]]
@@ -302,7 +301,7 @@ Async version of run. Runs an Ollama Model on a given chat history.
 - `messages`: A list of ChatMessage instances representing the input messages.
 - `generation_kwargs`: Per-call overrides for Ollama inference options.
 These are merged on top of the instance-level `generation_kwargs`.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 If set, it will override the `tools` parameter set during component initialization.
 - `streaming_callback`: A callable to receive `StreamingChunk` objects as they arrive.
 Supplying a callback switches the component into streaming mode.
