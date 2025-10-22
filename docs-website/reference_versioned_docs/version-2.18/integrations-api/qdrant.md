@@ -1038,3 +1038,4 @@ new_document_store = QdrantDocumentStore(url="http://localhost:6333",
 
 - `old_document_store`: The existing QdrantDocumentStore instance to migrate from.
 - `new_index`: The name of the new index/collection to create with sparse embeddings support.
+
