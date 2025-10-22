@@ -22,8 +22,6 @@ export default function DocNavbarItem({
   const {pathname} = useLocation();
   const activePluginAndVersion = useActivePluginAndVersion();
   const activePluginId = activePluginAndVersion?.activePlugin?.pluginId;
-  const activePluginMatches =
-    !activePluginId || activePluginId === resolvedPluginId;
   const activeDocContext = useActiveDocContext(resolvedPluginId);
   const doc = useLayoutDoc(docId, resolvedPluginId);
 
@@ -35,15 +33,27 @@ export default function DocNavbarItem({
   }, [activeBasePath, docsPluginId]);
 
   const shouldHighlight = useMemo(() => {
-    if (!doc || !expectedBasePath || !activePluginMatches) {
+    if (!doc || !expectedBasePath) {
       return false;
     }
+
+    // CRITICAL: Prevent cross-highlighting between docs and reference
+    // Block "Docs" item when viewing Reference pages
     if (
       resolvedPluginId === DEFAULT_PLUGIN_ID &&
       pathname.startsWith(REFERENCE_PATH_PREFIX)
     ) {
       return false;
     }
+
+    // CRITICAL: Block "API Reference" item when viewing Docs pages
+    if (
+      resolvedPluginId === 'reference' &&
+      pathname.startsWith(DOCS_PATH_PREFIX)
+    ) {
+      return false;
+    }
+
     const normalized = expectedBasePath.endsWith('/')
       ? expectedBasePath
       : `${expectedBasePath}/`;
@@ -52,6 +62,12 @@ export default function DocNavbarItem({
     if (!matchesBasePath) {
       return false;
     }
+
+    // Only check plugin match if activePluginId exists
+    if (activePluginId && activePluginId !== resolvedPluginId) {
+      return false;
+    }
+
     const pageActive = activeDocContext?.activeDoc?.path === doc.path;
     const sidebarMatches =
       !!activeDocContext?.activeDoc?.sidebar &&
@@ -59,7 +75,7 @@ export default function DocNavbarItem({
     return pageActive || sidebarMatches;
   }, [
     activeDocContext,
-    activePluginMatches,
+    activePluginId,
     doc,
     expectedBasePath,
     pathname,
