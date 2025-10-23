@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from dataclasses import replace
 from typing import Any, Optional, Union
 
 from haystack import Document, GeneratedAnswer, component, logging
@@ -32,7 +33,12 @@ class AnswerBuilder:
     """
 
     def __init__(
-        self, pattern: Optional[str] = None, reference_pattern: Optional[str] = None, last_message_only: bool = False
+        self,
+        pattern: Optional[str] = None,
+        reference_pattern: Optional[str] = None,
+        last_message_only: bool = False,
+        *,
+        return_only_referenced_documents: bool = True,
     ):
         """
         Creates an instance of the AnswerBuilder component.
@@ -63,6 +69,7 @@ class AnswerBuilder:
         self.pattern = pattern
         self.reference_pattern = reference_pattern
         self.last_message_only = last_message_only
+        self.return_only_referenced_documents = return_only_referenced_documents
 
     @component.output_types(answers=list[GeneratedAnswer])
     def run(  # pylint: disable=too-many-positional-arguments
@@ -139,18 +146,23 @@ class AnswerBuilder:
 
             referenced_docs = []
             if documents:
-                if reference_pattern:
+                if reference_pattern and self.return_only_referenced_documents:
                     reference_idxs = AnswerBuilder._extract_reference_idxs(extracted_reply, reference_pattern)
                 else:
                     reference_idxs = [doc_idx for doc_idx, _ in enumerate(documents)]
 
                 for idx in reference_idxs:
                     try:
-                        referenced_docs.append(documents[idx])
+                        doc = documents[idx]
                     except IndexError:
                         logger.warning(
                             "Document index '{index}' referenced in Generator output is out of range. ", index=idx + 1
                         )
+                        continue
+                    meta: dict[str, Any] = doc.meta or {}
+                    meta["reference_index"] = idx + 1
+                    doc_w_reference = replace(doc, meta=meta)
+                    referenced_docs.append(doc_w_reference)
 
             answer_string = AnswerBuilder._extract_answer_string(extracted_reply, pattern)
             answer = GeneratedAnswer(
