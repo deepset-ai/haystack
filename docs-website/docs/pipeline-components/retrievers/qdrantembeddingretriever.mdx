@@ -1,0 +1,99 @@
+---
+title: "QdrantEmbeddingRetriever"
+id: qdrantembeddingretriever
+slug: "/qdrantembeddingretriever"
+description: "An embedding-based Retriever compatible with the Qdrant Document Store."
+---
+
+# QdrantEmbeddingRetriever
+
+An embedding-based Retriever compatible with the Qdrant Document Store.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1\. After a Text Embedder and before a [`PromptBuilder`](../../../docs/pipeline-components/builders/promptbuilder.mdx)  in a RAG Pipeline  <br /> <br />2. The last component in the semantic search pipeline  <br />3. After a Text Embedder and before an [`ExtractiveReader`](../../../docs/pipeline-components/readers/extractivereader.mdx)  in an extractive QA pipeline |
+| **Mandatory init variables** | "document_store": An instance of a [QdrantDocumentStore](../../../docs/document-stores/qdrant-document-store.mdx) |
+| **Mandatory run variables** | “query_embedding”: A vector representing the query (a list of floats) |
+| **Output variables** | “documents”: A list of documents |
+| **API reference** | [Qdrant](/reference/integrations-qdrant) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/qdrant |
+
+## Overview
+
+The `QdrantEmbeddingRetriever` is an embedding-based Retriever compatible with the `QdrantDocumentStore`. It compares the query and Document embeddings and fetches the Documents most relevant to the query from the `QdrantDocumentStore` based on the outcome.
+
+When using the `QdrantEmbeddingRetriever` in your NLP system, make sure it has the query and Document embeddings available. You can add a Document Embedder to your indexing Pipeline and a Text Embedder to your query Pipeline.
+
+In addition to the `query_embedding`, the `QdrantEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
+
+Some relevant parameters that impact the embedding retrieval must be defined when the corresponding `QdrantDocumentStore` is initialized: these include the embedding dimension (`embedding_dim`), the `similarity` function to use when comparing embeddings and the HNWS configuration (`hnsw_config`).
+
+### Installation
+
+To start using Qdrant with Haystack, first install the package with:
+
+```shell
+pip install qdrant-haystack
+```
+
+### Usage
+
+#### On its own
+
+This Retriever needs the `QdrantDocumentStore` and indexed Documents to run.
+
+```python
+from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+document_store = QdrantDocumentStore(
+    ":memory:",
+    recreate_index=True,
+    return_embedding=True,
+    wait_result_from_api=True,
+)
+retriever = QdrantEmbeddingRetriever(document_store=document_store)
+
+## using a fake vector to keep the example simple
+retriever.run(query_embedding=[0.1]*768)
+```
+
+#### In a Pipeline
+
+```python
+from haystack.document_stores.types import DuplicatePolicy
+from haystack import Document
+from haystack import Pipeline
+from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+
+from haystack_integrations.components.retrievers.qdrant import QdrantEmbeddingRetriever
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+document_store = QdrantDocumentStore(
+    ":memory:",
+    recreate_index=True,
+    return_embedding=True,
+    wait_result_from_api=True,
+)
+
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+						Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+						Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+
+document_embedder = SentenceTransformersDocumentEmbedder()  
+document_embedder.warm_up()
+documents_with_embeddings = document_embedder.run(documents)
+
+document_store.write_documents(documents_with_embeddings.get("documents"), policy=DuplicatePolicy.OVERWRITE)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
+query_pipeline.add_component("retriever", QdrantEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result['retriever']['documents'][0])
+```

@@ -1,0 +1,113 @@
+---
+title: "SentenceTransformersTextEmbedder"
+id: sentencetransformerstextembedder
+slug: "/sentencetransformerstextembedder"
+description: "SentenceTransformersTextEmbedder transforms a string into a vector that captures its semantics using an embedding model compatible with the Sentence Transformers library."
+---
+
+# SentenceTransformersTextEmbedder
+
+SentenceTransformersTextEmbedder transforms a string into a vector that captures its semantics using an embedding model compatible with the Sentence Transformers library.
+
+When you perform embedding retrieval, use this component first to transform your query into a vector. Then, the embedding Retriever will use the vector to search for similar or relevant documents.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline                                              |
+| **Mandatory run variables**            | "text": A string                                                                                                        |
+| **Output variables**                   | "embedding": A list of float numbers                                                                                    |
+| **API reference**                      | [Embedders](/reference/embedders-api)                                                                                          |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_text_embedder.py |
+
+## Overview
+
+This component should be used to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [SentenceTransformersDocumentEmbedder](sentencetransformersdocumentembedder.mdx), which enriches the document with the computed embedding, known as vector.
+
+### Authentication
+
+Authentication with a Hugging Face API Token is only required to access private or gated models through Serverless Inference API or the Inference Endpoints.
+
+The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you can pass a Hugging Face API token at initialization. See our [Secret Management](../../concepts/secret-management.mdx) page for more information.
+
+```python
+text_embedder = SentenceTransformersTextEmbedder(token=Secret.from_token("<your-api-key>"))
+```
+
+### Compatible Models
+
+The default embedding model is [\`sentence-transformers/all-mpnet-base-v2](https://huggingface.co/sentence-transformers/all-mpnet-base-v2)\`. You can specify another model with the `model` parameter when initializing this component.
+
+See the original models in the Sentence Transformers [documentation](https://www.sbert.net/docs/pretrained_models.html).
+
+Nowadays, most of the models in the [Massive Text Embedding Benchmark (MTEB) Leaderboard](https://huggingface.co/spaces/mteb/leaderboard) are compatible with Sentence Transformers.  
+You can look for compatibility in the model card: [an example related to BGE models](https://huggingface.co/BAAI/bge-large-en-v1.5#using-sentence-transformers).
+
+### Instructions
+
+Some recent models that you can find in MTEB require prepending the text with an instruction to work better for retrieval.  
+For example, if you use [BAAI/bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5#model-list), you should prefix your query with the following instruction: “Represent this sentence for searching relevant passages:”
+
+This is how it works with `SentenceTransformersTextEmbedder`:
+
+```python
+instruction = "Represent this sentence for searching relevant passages:"
+embedder = SentenceTransformersTextEmbedder(
+	*model="*BAAI/bge-large-en-v1.5",
+	prefix=instruction)  
+```
+
+:::tip
+If you create a Text Embedder and a Document Embedder based on the same model, Haystack takes care of using the same resource behind the scenes in order to save resources.
+:::
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.embedders import SentenceTransformersTextEmbedder
+
+text_to_embed = "I love pizza!"
+
+text_embedder = SentenceTransformersTextEmbedder()
+text_embedder.warm_up()
+
+print(text_embedder.run(text_to_embed))
+
+## {'embedding': [-0.07804739475250244, 0.1498992145061493,, ...]}
+```
+
+### In a pipeline
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
+
+document_embedder = SentenceTransformersDocumentEmbedder()
+document_embedder.warm_up()
+documents_with_embeddings = document_embedder.run(documents)['documents']
+document_store.write_documents(documents_with_embeddings)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder":{"text": query}})
+
+print(result['retriever']['documents'][0])
+
+## Document(id=..., mimetype: 'text/plain',
+## text: 'My name is Wolfgang and I live in Berlin')
+```

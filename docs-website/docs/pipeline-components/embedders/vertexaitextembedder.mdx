@@ -1,0 +1,102 @@
+---
+title: "VertexAITextEmbedder"
+id: vertexaitextembedder
+slug: "/vertexaitextembedder"
+description: "This component computes embeddings for text (such as a query) using models through VertexAI Embeddings API."
+---
+
+# VertexAITextEmbedder
+
+This component computes embeddings for text (such as a query) using models through VertexAI Embeddings API.
+
+> 🚧 Deprecation Notice
+> 
+> This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
+> 
+> We recommend switching to the new [GoogleGenAITextEmbedder](googlegenaitextembedder.mdx) integration instead.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx) in a query/RAG pipeline                         |
+| **Mandatory init variables**           | "model": The model used through the VertexAI Embeddings API                                     |
+| **Mandatory run variables**            | “text”: A string                                                                                |
+| **Output variables**                   | “embedding”: A list of float numbers                                                            |
+| **API reference**                      | [Google Vertex](/reference/integrations-google-vertex)                                                 |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_vertex |
+
+## Overview
+
+`VertexAITextEmbedder` embeds a simple string (such as a query) into a vector. For embedding lists of documents, use the [`VertexAIDocumentEmbedder`](vertexaidocumentembedder.mdx) which enriches the document with the computed embedding, also known as vector.
+
+To start using the `VertexAITextEmbedder`, initialize it with:
+
+- `model`: The supported models are:
+  - "text-embedding-004"
+  - "text-embedding-005"
+  - "textembedding-gecko-multilingual@001"
+  - "text-multilingual-embedding-002"
+  - "text-embedding-large-exp-03-07"
+- `task_type`: "RETRIEVAL_QUERY” is the default. You can find all task types in the official [Google documentation](https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api#tasktype).
+
+### Authentication
+
+`VertexAITextEmbedder` uses Google Cloud Application Default Credentials (ADCs) for authentication. For more information on how to set up ADCs, see the [official documentation](https://cloud.google.com/docs/authentication/provide-credentials-adc).
+
+Keep in mind that it’s essential to use an account that has access to a project authorized to use Google Vertex AI endpoints.
+
+You can find your project ID in the [GCP resource manager](https://console.cloud.google.com/cloud-resource-manager) or locally by running `gcloud projects list` in your terminal. For more info on the gcloud CLI, see its [official documentation](https://cloud.google.com/cli).
+
+## Usage
+
+Install the `google-vertex-haystack` package to use this Embedder:
+
+```shell
+pip install google-vertex-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.embedders.google_vertex import VertexAITextEmbedder
+
+text_to_embed = "I love pizza!"
+
+text_embedder = VertexAITextEmbedder(model="text-embedding-005")
+
+print(text_embedder.run(text_to_embed))
+## {'embedding': [-0.08127457648515701, 0.03399784862995148, -0.05116401985287666, ...]
+```
+
+### In a pipeline
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.google_vertex import VertexAITextEmbedder
+from haystack_integrations.components.embedders.google_vertex import VertexAIDocumentEmbedder
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
+
+document_embedder = VertexAIDocumentEmbedder(model="text-embedding-005")
+documents_with_embeddings = document_embedder.run(documents)['documents']
+document_store.write_documents(documents_with_embeddings)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", VertexAITextEmbedder(model="text-embedding-005"))
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder":{"text": query}})
+
+print(result['retriever']['documents'][0])
+
+## Document(id=..., content: 'My name is Wolfgang and I live in Berlin')
+```

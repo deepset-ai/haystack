@@ -1,0 +1,122 @@
+---
+title: "OutputAdapter"
+id: outputadapter
+slug: "/outputadapter"
+description: "This component helps the output of one component fit smoothly into the input of another. It uses Jinja expressions to define how this adaptation occurs."
+---
+
+# OutputAdapter
+
+This component helps the output of one component fit smoothly into the input of another. It uses Jinja expressions to define how this adaptation occurs.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Flexible |
+| **Mandatory init variables** | "template": A Jinja template string that defines how to adapt the data  <br /> <br />"output_type": Type alias that this instance will return |
+| **Mandatory run variables** | “\*\*kwargs”: Input variables to be used in Jinja expression. See [Variables](#variables)  section for more details. |
+| **Output variables** | The output is specified under the “output” key dictionary |
+| **API reference** | [Converters](/reference/converters-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/output_adapter.py |
+
+## Overview
+
+To use `OutputAdapter`, you need to specify the adaptation rule that includes:
+
+- `template`: A Jinja template string that defines how to adapt the input data.
+- `output_type`: The type of the output data (such as `str`, `List[int]`..). This doesn't change the actual output type and is only needed to validate connection with other components.
+- `custom_filters`: An optional dictionary of custom Jinja filters to be used in the template.
+
+### Variables
+
+The `OutputAdapter` requires all template variables to be present before running and raises an error if any template variable is missing at pipeline connect time.
+
+```python
+from haystack.components.converters import OutputAdapter
+
+adapter = OutputAdapter(
+    template="Hello {{name}}!",
+    output_type=str
+)
+```
+
+### Unsafe behavior
+
+The `OutputAdapter` internally renders the `template` using Jinja, and by default, this is safe behavior. However, it limits the output types to strings, bytes, numbers, tuples, lists, dicts, sets, booleans, `None`, and `Ellipsis` (`...`), as well as any combination of these structures.
+
+If you want to use other types such as `ChatMessage`, `Document`, or `Answer`, you must enable unsafe template rendering by setting the `unsafe` init argument to `True`.
+
+Be cautious, as enabling this can be unsafe and may lead to remote code execution if the `template` is a string customizable by the end user.
+
+## Usage
+
+### On its own
+
+This component is primarily meant to be used in pipelines.
+
+In this example, `OutputAdapter` simply outputs the content field of the first document in the arrays of documents:
+
+```python
+from haystack import Document
+from haystack.components.converters import OutputAdapter
+
+adapter = OutputAdapter(template="{{ documents[0].content }}", output_type=str)
+input_data = {"documents": [Document(content="Test content")]}
+expected_output = {"output": "Test content"}
+assert adapter.run(**input_data) == expected_output
+```
+
+### In a pipeline
+
+The example below demonstrates a straightforward pipeline that uses the `OutputAdapter` to capitalize the first document in the list. If needed, you can also utilize the predefined Jinja [filters](https://jinja.palletsprojects.com/en/3.1.x/templates/#builtin-filters).
+
+```python
+from haystack import Pipeline, component, Document
+from haystack.components.converters import OutputAdapter
+
+@component
+class DocumentProducer:
+    @component.output_types(documents=dict)
+    def run(self):
+        return {"documents": [Document(content="haystack")]}
+
+pipe = Pipeline()
+pipe.add_component(
+    name="output_adapter",
+    instance=OutputAdapter(template="{{ documents[0].content | capitalize}}", output_type=str),
+)
+pipe.add_component(name="document_producer", instance=DocumentProducer())
+pipe.connect("document_producer", "output_adapter")
+result = pipe.run(data={})
+
+assert result["output_adapter"]["output"] == "Haystack"
+```
+
+You can also define your own custom filters, which can then be added to an `OutputAdapter` instance through its init method and used in templates. Here’s an example of this approach:
+
+```python
+
+from haystack import Pipeline, component, Document
+from haystack.components.converters import OutputAdapter
+
+def reverse_string(s):
+    return s[::-1]
+
+@component
+class DocumentProducer:
+    @component.output_types(documents=dict)
+    def run(self):
+        return {"documents": [Document(content="haystack")]}
+
+pipe = Pipeline()
+pipe.add_component(
+    name="output_adapter",
+    instance=OutputAdapter(template="{{ documents[0].content | reverse_string}}",
+                           output_type=str,
+                           custom_filters={"reverse_string": reverse_string}))
+
+pipe.add_component(name="document_producer", instance=DocumentProducer())
+pipe.connect("document_producer", "output_adapter")
+result = pipe.run(data={})
+
+assert result["output_adapter"]["output"] == "kcatsyah"
+```

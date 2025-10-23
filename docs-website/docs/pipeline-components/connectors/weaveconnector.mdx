@@ -1,0 +1,167 @@
+---
+title: "WeaveConnector"
+id: weaveconnector
+slug: "/weaveconnector"
+description: "Learn how to use Weights & Biases Weave framework for tracing and monitoring your pipeline components."
+---
+
+# WeaveConnector
+
+Learn how to use Weights & Biases Weave framework for tracing and monitoring your pipeline components.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Anywhere, as it’s not connected to other components                                                                                                                                                                     |
+| **Mandatory init variables**           | “pipeline_name”: The name of your pipeline, which will also show up in Weaver dashboard.                                                                                                                                |
+| **Output variables**                   | “pipeline_name”: The name of the pipeline that just run                                                                                                                                                                 |
+| **API reference**                      | [weights and bias](/reference/integrations-weights-bias)                                                                                                                                                                       |
+| **GitHub link**                        | [\https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weights_and_biases_weave](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weights_and_biases_weave) |
+
+## Overview
+
+This integration allows you to trace and visualize your pipeline execution in [Weights & Biases](https://wandb.ai/site/).
+
+Information captured by the Haystack tracing tool, such as API calls, context data, and prompts, is sent to Weights & Biases, where you can see the complete trace of your pipeline execution.
+
+### Prerequisites
+
+You need a Weave account to use this feature. You can sign up for free at [Weights & Biases website](https://wandb.ai/site).
+
+You will then need to set the `WANDB_API_KEY` environment variable with your Weights & Biases API key. Once logged in, you can find your API key on [your home page](https://wandb.ai/home).
+
+Then go to `https://wandb.ai/<user_name>/projects` and see the full trace for your pipeline under the pipeline name you specified when creating the `WeaveConnector`.
+
+You will also need to set the `HAYSTACK_CONTENT_TRACING_ENABLED` environment variable set to `true`.
+
+## Usage
+
+First, install the `weights_biases-haystack` package to use this connector:
+
+```shell
+pip install weights_biases-haystack
+```
+
+Then, add it to your pipeline without any connections, and it will automatically start sending traces to Weights & Biases:
+
+```python
+import os
+
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.components.connectors.weave import WeaveConnector
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo"))
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+connector = WeaveConnector(pipeline_name="test_pipeline")
+pipe.add_component("weave", connector)
+
+messages = [
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages."
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
+]
+
+response = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": "Berlin"},
+            "template": messages,
+        }
+    }
+)
+```
+
+You can then see the complete trace for your pipeline at `https://wandb.ai/<user_name>/projects` under the pipeline name you specified when creating the `WeaveConnector`.
+
+### With an Agent
+
+```python
+import os
+
+## Enable Haystack content tracing
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+from haystack import Pipeline
+
+from haystack_integrations.components.connectors.weave import WeaveConnector
+
+@tool
+def get_weather(city: Annotated[str, "The city to get weather for"]) -> str:
+    """Get current weather information for a city."""
+    weather_data = {
+        "Berlin": "18°C, partly cloudy",
+        "New York": "22°C, sunny",
+        "Tokyo": "25°C, clear skies"
+    }
+    return weather_data.get(city, f"Weather information for {city} not available")
+
+@tool
+def calculate(operation: Annotated[str, "Mathematical operation: add, subtract, multiply, divide"], 
+              a: Annotated[float, "First number"], 
+              b: Annotated[float, "Second number"]) -> str:
+    """Perform basic mathematical calculations."""
+    if operation == "add":
+        result = a + b
+    elif operation == "subtract":
+        result = a - b
+    elif operation == "multiply":
+        result = a * b
+    elif operation == "divide":
+        if b == 0:
+            return "Error: Division by zero"
+        result = a / b
+    else:
+        return f"Error: Unknown operation '{operation}'"
+
+    return f"The result of {a} {operation} {b} is {result}"
+
+## Create the chat generator
+chat_generator = OpenAIChatGenerator()
+
+## Create the agent with tools
+agent = Agent(
+    chat_generator=chat_generator,
+    tools=[get_weather, calculate],
+    system_prompt="You are a helpful assistant with access to weather and calculator tools. Use them when needed.",
+    exit_conditions=["text"]
+)
+
+## Create the WeaveConnector for tracing
+weave_connector = WeaveConnector(pipeline_name="Agent Example")
+
+## Build the pipeline
+pipe = Pipeline()
+pipe.add_component("tracer", weave_connector)
+pipe.add_component("agent", agent)
+
+## Run the pipeline
+response = pipe.run(
+    data={
+        "agent": {
+            "messages": [
+                ChatMessage.from_user("What's the weather in Berlin and calculate 15 + 27?")
+            ]
+        },
+        "tracer": {}
+    }
+)
+
+## Display results
+print("Agent Response:")
+print(response["agent"]["last_message"].text)
+print(f"\nPipeline Name: {response['tracer']['pipeline_name']}")
+print("\nCheck your Weights & Biases dashboard at https://wandb.ai/<user_name>/projects to see the traces!") 
+```

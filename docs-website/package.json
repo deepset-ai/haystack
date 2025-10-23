@@ -29,7 +29,8 @@
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.8.1",
-    "@docusaurus/types": "^3.8.1"
+    "@docusaurus/types": "^3.8.1",
+    "unist-util-visit": "^5.0.0"
   },
   "browserslist": {
     "production": [

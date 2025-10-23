@@ -1,0 +1,180 @@
+---
+title: "SuperComponents"
+id: supercomponents
+slug: "/supercomponents"
+description: "`SuperComponent` lets you wrap a complete pipeline and use it like a single component. This is helpful when you want to simplify the interface of a complex pipeline, reuse it in different contexts, or expose only the necessary inputs and outputs."
+---
+
+# SuperComponents
+
+`SuperComponent` lets you wrap a complete pipeline and use it like a single component. This is helpful when you want to simplify the interface of a complex pipeline, reuse it in different contexts, or expose only the necessary inputs and outputs.
+
+## `@super_component` decorator (recommended)
+
+Haystack now provides a simple `@super_component` decorator for wrapping a pipeline as a component. All you need is to create a class with the decorator, and to include an `pipeline` attribute.
+
+With this decorator, the `to_dict` and `from_dict` serialization is optional, as is the input and output mapping.
+
+### Example
+
+The custom HybridRetriever example SuperComponent below turns your query into embeddings, then runs both a BM25 search and an embedding-based search at the same time. It finally merges those two result sets and returns the combined documents.
+
+```python
+## pip install haystack-ai datasets "sentence-transformers>=3.0.0"
+
+from haystack import Document, Pipeline, super_component
+from haystack.components.joiners import DocumentJoiner
+from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+from datasets import load_dataset
+
+@super_component
+class HybridRetriever:
+    def __init__(self, document_store: InMemoryDocumentStore, embedder_model: str = "BAAI/bge-small-en-v1.5"):
+        embedding_retriever = InMemoryEmbeddingRetriever(document_store)
+        bm25_retriever = InMemoryBM25Retriever(document_store)
+        text_embedder = SentenceTransformersTextEmbedder(embedder_model)
+        document_joiner = DocumentJoiner()
+
+        self.pipeline = Pipeline()
+        self.pipeline.add_component("text_embedder", text_embedder)
+        self.pipeline.add_component("embedding_retriever", embedding_retriever)
+        self.pipeline.add_component("bm25_retriever", bm25_retriever)
+        self.pipeline.add_component("document_joiner", document_joiner)
+
+        self.pipeline.connect("text_embedder", "embedding_retriever")
+        self.pipeline.connect("bm25_retriever", "document_joiner")
+        self.pipeline.connect("embedding_retriever", "document_joiner")
+
+dataset = load_dataset("HaystackBot/medrag-pubmed-chunk-with-embeddings", split="train")
+docs = [Document(content=doc["contents"], embedding=doc["embedding"]) for doc in dataset]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+query = "What treatments are available for chronic bronchitis?"
+
+result = HybridRetriever(document_store).run(text=query, query=query)
+print(result)
+```
+
+### Input Mapping
+
+You can optionally map the input names of your SuperComponent to the actual sockets inside the pipeline.
+
+```python
+input_mapping = {
+    "query": ["retriever.query", "prompt.query"]
+}
+```
+
+### Output Mapping
+
+You can also map the pipeline's output sockets that you want to expose to the SuperComponent's output names.
+
+```python
+output_mapping = {
+    "llm.replies": "replies"
+}
+```
+
+If you don’t provide mappings, SuperComponent will try to auto-detect them. So, if multiple components have outputs with the same name, we recommend using `output_mapping` to avoid conflicts.
+
+## SuperComponent class
+
+Haystack also gives you an option to inherit from SuperComponent class. This option requires `to_dict` and `from_dict` serialization, as well as the input and output mapping described above.
+
+### Example
+
+Here is a simple example of initializing a `SuperComponent` with a pipeline:
+
+```python
+from haystack import Pipeline, SuperComponent
+
+with open("pipeline.yaml", "r") as file:
+  pipeline = Pipeline.load(file)
+
+super_component = SuperComponent(pipeline)
+```
+
+The example pipeline below retrieves relevant documents based on a user query, builds a custom prompt using those documents, then sends the prompt to an `OpenAIChatGenerator` to create an answer. The `SuperComponent` wraps the pipeline so it can be run with a simple input (`query`) and returns a clean output (`replies`).
+
+```python
+from haystack import Pipeline, SuperComponent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.retrievers import InMemoryBM25Retriever
+from haystack.dataclasses.chat_message import ChatMessage
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.dataclasses import Document
+
+document_store = InMemoryDocumentStore()
+documents = [
+    Document(content="Paris is the capital of France."),
+    Document(content="London is the capital of England."),
+]
+document_store.write_documents(documents)
+
+prompt_template = [
+    ChatMessage.from_user(
+    '''
+    According to the following documents:
+    {% for document in documents %}
+    {{document.content}}
+    {% endfor %}
+    Answer the given question: {{query}}
+    Answer:
+    '''
+    )
+]
+
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
+
+pipeline = Pipeline()
+pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+pipeline.add_component("prompt_builder", prompt_builder)
+pipeline.add_component("llm", OpenAIChatGenerator())
+pipeline.connect("retriever.documents", "prompt_builder.documents")
+pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+## Create a super component with simplified input/output mapping
+wrapper = SuperComponent(
+    pipeline=pipeline,
+    input_mapping={
+        "query": ["retriever.query", "prompt_builder.query"],
+    },
+    output_mapping={
+        "llm.replies": "replies",
+        "retriever.documents": "documents"
+    }
+)
+
+## Run the pipeline with simplified interface
+result = wrapper.run(query="What is the capital of France?")
+print(result)
+{'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+ _content=[TextContent(text='The capital of France is Paris.')],...)
+```
+
+## Type Checking and Static Code Analysis
+
+Creating SuperComponents using the @supercomponent decorator can induce type or linting errors. One way to avoid these issues is to add the exposed public methods to your SuperComponent. Here's an example:
+
+```python
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    def run(self, *, documents: List[Document]) -> dict[str, list[Document]]:
+        ...
+    def warm_up(self) -> None:  # noqa: D102
+        ...
+```
+
+## Ready-Made SuperComponents
+
+You can see two implementations of SuperComponents already integrated in Haystack:
+
+- [DocumentPreprocessor](../../pipeline-components/preprocessors/documentpreprocessor.mdx)
+- [MultiFileConverter](../../pipeline-components/converters/multifileconverter.mdx)
+- [OpenSearchHybridRetriever](../../pipeline-components/retrievers/opensearchhybridretriever.mdx)

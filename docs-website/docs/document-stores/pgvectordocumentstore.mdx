@@ -1,0 +1,75 @@
+---
+title: "PgvectorDocumentStore"
+id: pgvectordocumentstore
+slug: "/pgvectordocumentstore"
+---
+
+# PgvectorDocumentStore
+
+## PgvectorDocumentStore
+
+|  |  |
+| --- | --- |
+| API reference | [Pgvector](/reference/integrations-pgvector)                                                       |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/pgvector/ |
+
+Pgvector is an extension for PostgreSQL that enhances its capabilities with vector similarity search. It builds upon the classic features of PostgreSQL, such as ACID compliance and point-in-time recovery, and introduces the ability to perform exact and approximate nearest neighbor search using vectors.
+
+For more information, see the [pgvector repository](https://github.com/pgvector/pgvector).
+
+Pgvector Document Store supports embedding retrieval and metadata filtering.
+
+## Installation
+
+To quickly set up a PostgreSQL database with pgvector, you can use Docker:
+
+```shell
+docker run -d -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres ankane/pgvector
+```
+
+For more information on installing pgvector, visit the [pgvector GitHub repository](https://github.com/pgvector/pgvector).
+
+To use pgvector with Haystack, install the `pgvector-haystack` integration:
+
+```shell
+pip install pgvector-haystack
+```
+
+## Usage
+
+Define the connection string to your PostgreSQL database in the `PG_CONN_STR` environment variable. For example:
+
+```shell Shell
+export PG_CONN_STR="postgresql://postgres:postgres@localhost:5432/postgres"
+```
+
+## Initialization
+
+Initialize a `PgvectorDocumentStore` object that’s connected to the PostgreSQL database and writes documents to it:
+
+```python
+from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
+from haystack import Document
+
+document_store = PgvectorDocumentStore(
+    embedding_dimension=768,
+    vector_function="cosine_similarity",
+    recreate_table=True,
+    search_strategy="hnsw",
+)
+
+document_store.write_documents([
+    Document(content="This is first", embedding=[0.1]*768),
+    Document(content="This is second", embedding=[0.3]*768)
+    ])
+print(document_store.count_documents())
+```
+
+To learn more about the initialization parameters, see our [API docs](/reference/integrations-pgvector#pgvectordocumentstore).
+
+To properly compute embeddings for your documents, you can use a Document Embedder (for instance, the [`SentenceTransformersDocumentEmbedder`](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx)).
+
+### Supported Retrievers
+
+- [`PgvectorEmbeddingRetriever`](../pipeline-components/retrievers/pgvectorembeddingretriever.mdx): An embedding-based Retriever that fetches documents from the Document Store based on a query embedding provided to the Retriever.
+- [`PgvectorKeywordRetriever`](../pipeline-components/retrievers/pgvectorembeddingretriever.mdx): A keyword-based Retriever that fetches documents matching a query from the Pgvector Document Store.

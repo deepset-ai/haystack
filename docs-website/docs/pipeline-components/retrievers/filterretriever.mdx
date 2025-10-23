@@ -1,0 +1,120 @@
+---
+title: "FilterRetriever"
+id: filterretriever
+slug: "/filterretriever"
+description: "Use this Retriever with any Document Store to get the Documents that match specific filters."
+---
+
+# FilterRetriever
+
+Use this Retriever with any Document Store to get the Documents that match specific filters.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | At the beginning of a Pipeline                                                                        |
+| **Mandatory init variables**           | "document_store": An instance of a Document Store                                                     |
+| **Mandatory run variables**            | “filters”: A dictionary of filters in the same syntax supported by the Document Stores                |
+| **Output variables**                   | “documents”: All the documents that match these filters                                               |
+| **API reference**                      | [Retrievers](/reference/retrievers-api)                                                                      |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/filter_retriever.py |
+
+## Overview
+
+`FilterRetriever` retrieves Documents that match the provided filters.
+
+It’s a special kind of Retriever – it can work with all Document Stores instead of being specialized to work with only one. 
+
+However, as every other Retriever, it needs some Document Store at initialization time, and it will perform filtering on the content of that instance only.
+
+Therefore, it can be used as any other Retriever in a Pipeline.
+
+Pay attention when using `FilterRetriever` on a Document Store that contains many Documents, as `FilterRetriever` will return all documents that match the filters. The `run` command with no filters can easily overwhelm other components in the Pipeline (for example, Generators):
+
+```python
+filter_retriever.run({})
+```
+
+Another thing to note is that `FilterRetriever` does not score your Documents or rank them in any way. If you need to rank the Documents by similarity to a query, consider using Ranker components.
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.retrievers import FilterRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+docs = [
+	Document(content="Python is a popular programming language", meta={"lang": "en"}),
+	Document(content="python ist eine beliebte Programmiersprache", meta={"lang": "de"}),
+]
+
+doc_store = InMemoryDocumentStore()
+doc_store.write_documents(docs)
+retriever = FilterRetriever(doc_store)
+result = retriever.run(filters={"field": "lang", "operator": "==", "value": "en"})
+
+assert "documents" in result
+assert len(result["documents"]) == 1
+assert result["documents"][0].content == "Python is a popular programming language"
+```
+
+### In a RAG pipeline
+
+Set your `OPENAI_API_KEY` as an environment variable and then run the following code:
+
+```python
+from haystack.components.retrievers.filter_retriever import FilterRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+from haystack import Document, Pipeline
+from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.generators import OpenAIGenerator
+from haystack.document_stores.types import DuplicatePolicy
+
+import os
+api_key = os.environ['OPENAI_API_KEY']
+
+document_store = InMemoryDocumentStore()
+documents = [
+		Document(content="Mark lives in Berlin.", meta={"year": 2018}),
+		Document(content="Mark lives in Paris.", meta={"year": 2021}),
+		Document(content="Mark is Danish.", meta={"year": 2021}),
+		Document(content="Mark lives in New York.", meta={"year": 2023}),
+]
+document_store.write_documents(documents=documents)
+
+## Create a RAG query pipeline
+prompt_template = """
+    Given these documents, answer the question.\nDocuments:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    \nQuestion: {{question}}
+    \nAnswer:
+    """
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(name="retriever", instance=FilterRetriever(document_store=document_store))
+rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
+rag_pipeline.add_component(instance=OpenAIGenerator(api_key=api_key), name="llm")
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder", "llm")
+
+result = rag_pipeline.run(
+  {
+    "retriever": {"filters": {"field": "year", "operator": "==", "value": 2021}},
+    "prompt_builder": {"question": "Where does Mark live?"},
+  }
+)
+print(result['answer_builder']['answers'][0])`
+```
+
+Here’s an example output you might get:
+
+```
+According to the provided documents, Mark lives in Paris.
+```

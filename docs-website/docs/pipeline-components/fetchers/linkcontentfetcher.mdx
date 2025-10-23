@@ -1,0 +1,71 @@
+---
+title: "LinkContentFetcher"
+id: linkcontentfetcher
+slug: "/linkcontentfetcher"
+description: "With LinkContentFetcher, you can use the contents of several URLs as the data for your pipeline. You can use it in indexing and query  pipelines to fetch the contents of the URLs you give it."
+---
+
+# LinkContentFetcher
+
+With LinkContentFetcher, you can use the contents of several URLs as the data for your pipeline. You can use it in indexing and query  pipelines to fetch the contents of the URLs you give it.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing or query pipelines as the data fetching step                                        |
+| **Mandatory run variables**            | "urls": A list of URLs (strings)                                                                |
+| **Output variables**                   | "streams": A list of [`ByteStream`](../../concepts/data-classes.mdx#bytestresm)  objects                     |
+| **API reference**                      | [Fetchers](/reference/fetchers-api)                                                                    |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/fetchers/link_content.py |
+
+## Overview
+
+`LinkContentFetcher` fetches the contents of the `urls` you give it and returns a list of content streams. Each item in this list is the content of one link it successfully fetched in the form of a `ByteStream` object. Each of these objects in the returned list has metadata that contains its content type (in the `content_type` key) and its URL (in the `url` key).
+
+For example, if you pass ten URLs to `LinkContentFetcher` and it manages to fetch six of them, then the output will be a list of six `ByteStream` objects, each containing information about its content type and URL.
+
+It may happen that some sites block `LinkContentFetcher` from getting their content. In that case, it logs the error and returns the `ByteStream` objects that it successfully fetched.
+
+Often, to use this component in a pipeline, you must convert the returned list of `ByteStream` objects into a list of `Document` objects. To do so, you can use the `HTMLToDocument` component.
+
+You can use `LinkContentFetcher` at the beginning of an indexing pipeline to index the contents of URLs into a Document Store. You can also use it directly in a query pipeline, such as a retrieval-augmented generative (RAG) pipeline, to use the contents of a URL as the data source.
+
+## Usage
+
+### On its own
+
+Below is an example where `LinkContentFetcher` fetches the contents of a URL. It initializes the component using the default settings. To change the default component settings, such as `retry_attempts`, check out the API reference [docs](/reference/fetchers-api).
+
+```python
+from haystack.components.fetchers import LinkContentFetcher
+
+fetcher = LinkContentFetcher()
+
+fetcher.run(urls=["https://haystack.deepset.ai"])
+```
+
+### In a pipeline
+
+Below is an example of an indexing pipeline that uses the `LinkContentFetcher` to index the contents of the specified URLs into an `InMemoryDocumentStore`. Notice how it uses the `HTMLToDocument` component to convert the list of `ByteStream` objects to `Document` objects.
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.fetchers import LinkContentFetcher
+from haystack.components.converters import HTMLToDocument
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+fetcher = LinkContentFetcher()
+converter = HTMLToDocument()
+writer = DocumentWriter(document_store = document_store)
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(instance=fetcher, name="fetcher")
+indexing_pipeline.add_component(instance=converter, name="converter")
+indexing_pipeline.add_component(instance=writer, name="writer")
+
+indexing_pipeline.connect("fetcher.streams", "converter.sources")
+indexing_pipeline.connect("converter.documents", "writer.documents")
+
+indexing_pipeline.run(data={"fetcher": {"urls": ["https://haystack.deepset.ai/blog/guide-to-using-zephyr-with-haystack2"]}})
+```

@@ -1,0 +1,82 @@
+---
+title: "CSVDocumentCleaner"
+id: csvdocumentcleaner
+slug: "/csvdocumentcleaner"
+description: "Use `CSVDocumentCleaner` to clean CSV documents by removing empty rows and columns while preserving specific ignored rows and columns. It processes CSV content stored in documents and helps standardize data for further analysis."
+---
+
+# CSVDocumentCleaner
+
+Use `CSVDocumentCleaner` to clean CSV documents by removing empty rows and columns while preserving specific ignored rows and columns. It processes CSV content stored in documents and helps standardize data for further analysis.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx) , before [Embedders](../embedders.mdx) or [Writers](../writers.mdx) |
+| **Mandatory run variables**            | "documents": A list of documents containing CSV content                                                                  |
+| **Output variables**                   | "documents": A list of cleaned CSV documents                                                                             |
+| **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                                   |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/csv_document_cleaner.py             |
+
+## Overview
+
+`CSVDocumentCleaner` expects a list of `Document` objects as input, each containing CSV-formatted content as text. It cleans the data by removing fully empty rows and columns while allowing users to specify the number of rows and columns to be preserved before cleaning.
+
+### Parameters
+
+- `ignore_rows`: Number of rows to ignore from the top of the CSV table before processing. If any columns are removed, the same columns will be dropped from the ignored rows.
+- `ignore_columns`: Number of columns to ignore from the left of the CSV table before processing. If any rows are removed, the same rows will be dropped from the ignored columns.
+- `remove_empty_rows`: Whether to remove entirely empty rows.
+- `remove_empty_columns`: Whether to remove entirely empty columns.
+- `keep_id`: Whether to retain the original document ID in the output document.
+
+### Cleaning Process
+
+The `CSVDocumentCleaner` algorithm follows these steps:
+
+1. Reads each document's content as a CSV table using pandas.
+2. Retains the specified number of `ignore_rows` from the top and `ignore_columns` from the left.
+3. Drops any rows and columns that are entirely empty (contain only NaN values).
+4. If columns are dropped, they are also removed from ignored rows.
+5. If rows are dropped, they are also removed from ignored columns.
+6. Reattaches the remaining ignored rows and columns to maintain their original positions.
+7. Returns the cleaned CSV content as a new `Document` object.
+
+## Usage
+
+### On its own
+
+You can use `CSVDocumentCleaner` independently to clean up CSV documents:
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import CSVDocumentCleaner
+
+cleaner = CSVDocumentCleaner(ignore_rows=1, ignore_columns=0)
+
+documents = [Document(content="""col1,col2,col3\n,,\na,b,c\n,,""" )]
+cleaned_docs = cleaner.run(documents=documents)
+```
+
+### In a pipeline
+
+```python
+from pathlib import Path
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import XLSXToDocument
+from haystack.components.preprocessors import CSVDocumentCleaner
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+p = Pipeline()
+p.add_component(instance=XLSXToDocument(), name="xlsx_file_converter")
+p.add_component(instance=CSVDocumentCleaner(ignore_rows=1, ignore_columns=1), name="csv_cleaner")
+p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+
+p.connect("xlsx_file_converter.documents", "csv_cleaner.documents")
+p.connect("csv_cleaner.documents", "writer.documents")
+
+p.run({"xlsx_file_converter": {"sources": [Path("your_xlsx_file.xlsx")]}})
+```
+
+This ensures that CSV documents are properly cleaned before further processing or storage.
