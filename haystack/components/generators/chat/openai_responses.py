@@ -726,49 +726,34 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     tool_call_details = {}
 
     # Process tool calls if present in any chunk
-    tool_call_data: dict[int, dict[str, str]] = {}  # Track tool calls by index
     for chunk in chunks:
         if chunk.tool_calls:
-            for tool_call in chunk.tool_calls:
-                # We use the index of the tool_call to track the tool call across chunks since the ID is not always
-                # provided
-                if tool_call.index not in tool_call_data:
-                    tool_call_data[tool_call.index] = {"id": "", "name": "", "arguments": ""}
+            for tool_call_delta in chunk.tool_calls:
+                # Each tool_call_delta is already complete from Responses API
+                try:
+                    arguments = json.loads(tool_call_delta.arguments) if tool_call_delta.arguments else {}
+                    tool_calls.append(
+                        ToolCall(id=tool_call_delta.id, tool_name=tool_call_delta.tool_name, arguments=arguments)
+                    )
+                except json.JSONDecodeError:
+                    logger.warning(
+                        "The LLM provider returned a malformed JSON string for "
+                        "tool call arguments. This tool call "
+                        "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
+                        "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
+                        _id=tool_call_delta.id,
+                        _name=tool_call_delta.tool_name,
+                        _arguments=tool_call_delta.arguments,
+                    )
 
-                # Save the ID if present
-                if tool_call.id is not None:
-                    tool_call_data[tool_call.index]["id"] = tool_call.id
-
-                if tool_call.tool_name is not None:
-                    tool_call_data[tool_call.index]["name"] = tool_call.tool_name
-                if tool_call.arguments is not None:
-                    tool_call_data[tool_call.index]["arguments"] = tool_call.arguments
-            # this is the information we need to save to send back to API
-            call_id = chunk.meta["item"].get("call_id")
-            status = chunk.meta.get("status")
-            # no solid reasoning here but if there is no call_id, we dont store the status
-            if call_id:
-                tool_call_details.update({tool_call.id: {"call_id": call_id, "status": status}})
+                # Handle tool call details for API response tracking
+                call_id = chunk.meta.get("item", {}).get("call_id")
+                status = chunk.meta.get("status")
+                if call_id and tool_call_delta.id:
+                    tool_call_details[tool_call_delta.id] = {"call_id": call_id, "status": status}
 
         if chunk.reasoning:
             reasoning = chunk.reasoning
-
-    # Convert accumulated tool call data into ToolCall objects
-    sorted_keys = sorted(tool_call_data.keys())
-    for key in sorted_keys:
-        tool_call_dict = tool_call_data[key]
-        try:
-            arguments = json.loads(tool_call_dict.get("arguments", "{}")) if tool_call_dict.get("arguments") else {}
-            tool_calls.append(ToolCall(id=tool_call_dict["id"], tool_name=tool_call_dict["name"], arguments=arguments))
-        except json.JSONDecodeError:
-            logger.warning(
-                "The LLM provider returned a malformed JSON string for tool call arguments. This tool call "
-                "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
-                "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                _id=tool_call_dict["id"],
-                _name=tool_call_dict["name"],
-                _arguments=tool_call_dict["arguments"],
-            )
 
     meta = {
         "model": chunks[-1].meta.get("model"),
