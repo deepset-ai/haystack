@@ -6,11 +6,9 @@ slug: "/pipeline-templates"
 
 # Pipeline Templates
 
-## Pipeline Templates
-
 Haystack provides templates to create ready-made pipelines for common use cases.
 
-To create a pipeline, the method `from_template`of the `Pipeline` class can be called passing a template identifier in the form `PredefinedPipeline.TEMPLATE_IDENTIFIER`. 
+To create a pipeline, the method `from_template`of the `Pipeline` class can be called passing a template identifier in the form `PredefinedPipeline.TEMPLATE_IDENTIFIER`.
 
 For example, to create and run a pipeline using the `INDEXING` template you would use `Pipeline.from_template(PredefinedPipeline.INDEXING)`
 
@@ -76,7 +74,7 @@ result = pipeline.run({"converter": {"sources": ["some_file.txt"]}})
 
 ### RAG
 
-Generates a RAG pipeline using data that was previously indexed (you can use the Indexing template). 
+Generates a RAG pipeline using data that was previously indexed (you can use the Indexing template).
 
 |  |  |
 | --- | --- |

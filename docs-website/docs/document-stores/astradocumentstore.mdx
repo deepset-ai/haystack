@@ -6,8 +6,6 @@ slug: "/astradocumentstore"
 
 # AstraDocumentStore
 
-## AstraDocumentStore
-
 |  |  |
 | --- | --- |
 | API reference | [Astra](/reference/integrations-astra)                                                         |
@@ -27,7 +25,7 @@ From the configuration in AstraDB’s web UI, you need the database ID and a gen
 
 You will additionally need a collection name and a namespace. When you create the collection name, you also need to set the embedding dimensions and the similarity metric. The namespace organizes data in a database and is called a keyspace in Apache Cassandra.
 
-Then, in Haystack, initialize an `AstraDocumentStore` object that’s connected to the AstraDB instance, and write documents to it.  
+Then, in Haystack, initialize an `AstraDocumentStore` object that’s connected to the AstraDB instance, and write documents to it.
 
 We strongly encourage passing authentication data through environment variables: make sure to populate the environment variables `ASTRA_DB_API_ENDPOINT` and  `ASTRA_DB_APPLICATION_TOKEN`  before running the following example.
 
