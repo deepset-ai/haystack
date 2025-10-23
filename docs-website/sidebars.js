@@ -109,13 +109,33 @@ export default {
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
         'document-stores/chromadocumentstore',
-        'document-stores/couchbasedocumentstore',
+        {
+          type: 'link',
+          label: 'CouchbaseDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/couchbase-document-store',
+        },
         'document-stores/elasticsearch-document-store',
-        'document-stores/lancedbdocumentstore',
-        'document-stores/marqodocumentstore',
-        'document-stores/milvusdocumentstore',
+        {
+          type: 'link',
+          label: 'LanceDBDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/lancedb/',
+        },
+        {
+          type: 'link',
+          label: 'MarqoDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/marqo-document-store/',
+        },
+        {
+          type: 'link',
+          label: 'MilvusDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/milvus-document-store',
+        },
         'document-stores/mongodbatlasdocumentstore',
-        'document-stores/neo4jdocumentstore',
+        {
+          type: 'link',
+          label: 'Neo4jDocumentStore',
+          href: 'https://haystack.deepset.ai/integrations/neo4j-document-store',
+        },
         'document-stores/opensearch-document-store',
         'document-stores/pgvectordocumentstore',
         'document-stores/pinecone-document-store',
@@ -614,10 +634,6 @@ export default {
         {
           type: 'category',
           label: 'Ready-made Tools',
-          link: {
-            type: 'doc',
-            id: 'tools/ready-made-tools'
-          },
           items: [
             'tools/ready-made-tools/githubfileeditortool',
             'tools/ready-made-tools/githubissuecommentertool',
@@ -665,17 +681,7 @@ export default {
         'development/tracing',
         'development/external-integrations-development',
         'development/enabling-gpu-acceleration',
-        {
-          type: 'category',
-          label: 'Hayhooks',
-          link: {
-            type: 'doc',
-            id: 'development/hayhooks'
-          },
-          items: [
-            'development/hayhooks/installation-and-configuration',
-          ],
-        },
+        'development/hayhooks',
         {
           type: 'category',
           label: 'Deployment',
