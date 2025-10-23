@@ -146,12 +146,19 @@ class AnswerBuilder:
 
             referenced_docs = []
             if documents:
-                if reference_pattern and self.return_only_referenced_documents:
-                    reference_idxs = AnswerBuilder._extract_reference_idxs(extracted_reply, reference_pattern)
-                else:
-                    reference_idxs = [doc_idx for doc_idx, _ in enumerate(documents)]
+                # Extract referenced indices from text if pattern is provided
+                referenced_idxs = set()
+                if reference_pattern:
+                    referenced_idxs = set(AnswerBuilder._extract_reference_idxs(extracted_reply, reference_pattern))
 
-                for idx in reference_idxs:
+                if reference_pattern and self.return_only_referenced_documents:
+                    # Only return documents that were actually referenced
+                    doc_indices = referenced_idxs
+                else:
+                    # Return all documents
+                    doc_indices = set(range(len(documents)))
+
+                for idx in doc_indices:
                     try:
                         doc = documents[idx]
                     except IndexError:
@@ -159,9 +166,12 @@ class AnswerBuilder:
                             "Document index '{index}' referenced in Generator output is out of range. ", index=idx + 1
                         )
                         continue
-                    meta: dict[str, Any] = doc.meta or {}
-                    meta["reference_index"] = idx + 1
-                    doc_w_reference = replace(doc, meta=meta)
+                    doc_meta: dict[str, Any] = doc.meta or {}
+                    doc_meta["reference_index"] = idx + 1
+                    # Mark as referenced only if this specific document was referenced in the text
+                    if idx in referenced_idxs:
+                        doc_meta["referenced"] = True
+                    doc_w_reference = replace(doc, meta=doc_meta)
                     referenced_docs.append(doc_w_reference)
 
             answer_string = AnswerBuilder._extract_answer_string(extracted_reply, pattern)
