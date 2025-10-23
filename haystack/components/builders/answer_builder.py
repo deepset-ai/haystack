@@ -55,13 +55,20 @@ class AnswerBuilder:
 
         :param reference_pattern:
             The regular expression pattern used for parsing the document references.
-            If not specified, no parsing is done, and all documents are referenced.
+            If not specified, no parsing is done, and all documents are returned.
             References need to be specified as indices of the input documents and start at [1].
             Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
+            If this parameter is provided, documents metadata will contain a "referenced" key with a boolean value.
 
         :param last_message_only:
            If False (default value), all messages are used as the answer.
            If True, only the last message is used as the answer.
+
+        :param return_only_referenced_documents:
+            To be used in conjunction with `reference_pattern`.
+            If True (default value), only the documents that were actually referenced in `replies` are returned.
+            If False, all documents are returned.
+            If `reference_pattern` is not provided, this parameter has no effect, and all documents are returned.
         """
         if pattern:
             AnswerBuilder._check_num_groups_in_regex(pattern)
@@ -92,9 +99,11 @@ class AnswerBuilder:
             The metadata returned by the Generator. If not specified, the generated answer will contain no metadata.
         :param documents:
             The documents used as the Generator inputs. If specified, they are added to
-            the`GeneratedAnswer` objects.
-            If both `documents` and `reference_pattern` are specified, the documents referenced in the
-            Generator output are extracted from the input documents and added to the `GeneratedAnswer` objects.
+            the `GeneratedAnswer` objects.
+            Each Document.meta includes a "document_index" key, representing its position in the input list.
+            When `reference_pattern` is provided:
+            - "referenced" key is added to the Document.meta, indicating if the document was referenced in the output.
+            - `return_only_referenced_documents` controls if all or only referenced documents are included.
         :param pattern:
             The regular expression pattern to extract the answer text from the Generator.
             If not specified, the entire response is used as the answer.
@@ -107,7 +116,7 @@ class AnswerBuilder:
                     "this is an argument. Answer: this is an answer".
         :param reference_pattern:
             The regular expression pattern used for parsing the document references.
-            If not specified, no parsing is done, and all documents are referenced.
+            If not specified, no parsing is done, and all documents are returned.
             References need to be specified as indices of the input documents and start at [1].
             Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
 
@@ -124,21 +133,14 @@ class AnswerBuilder:
 
         pattern = pattern or self.pattern
         reference_pattern = reference_pattern or self.reference_pattern
+
+        replies_to_iterate = replies[-1:] if self.last_message_only and replies else replies
+        meta_to_iterate = meta[-1:] if self.last_message_only and meta else meta
+
         all_answers = []
-
-        replies_to_iterate = replies
-        meta_to_iterate = meta
-
-        if self.last_message_only and replies:
-            replies_to_iterate = replies[-1:]
-            meta_to_iterate = meta[-1:]
-
         for reply, given_metadata in zip(replies_to_iterate, meta_to_iterate):
             # Extract content from ChatMessage objects if reply is a ChatMessages, else use the string as is
-            if isinstance(reply, ChatMessage):
-                extracted_reply = reply.text or ""
-            else:
-                extracted_reply = str(reply)
+            extracted_reply = reply.text or "" if isinstance(reply, ChatMessage) else str(reply)
             extracted_metadata = reply.meta if isinstance(reply, ChatMessage) else {}
 
             extracted_metadata = {**extracted_metadata, **given_metadata}
@@ -146,19 +148,18 @@ class AnswerBuilder:
 
             referenced_docs = []
             if documents:
-                # Extract referenced indices from text if pattern is provided
-                referenced_idxs = set()
-                if reference_pattern:
-                    referenced_idxs = set(AnswerBuilder._extract_reference_idxs(extracted_reply, reference_pattern))
+                referenced_idxs = (
+                    AnswerBuilder._extract_reference_idxs(extracted_reply, reference_pattern)
+                    if reference_pattern
+                    else set()
+                )
+                doc_idxs = (
+                    referenced_idxs
+                    if reference_pattern and self.return_only_referenced_documents
+                    else set(range(len(documents)))
+                )
 
-                if reference_pattern and self.return_only_referenced_documents:
-                    # Only return documents that were actually referenced
-                    doc_indices = referenced_idxs
-                else:
-                    # Return all documents
-                    doc_indices = set(range(len(documents)))
-
-                for idx in doc_indices:
+                for idx in doc_idxs:
                     try:
                         doc = documents[idx]
                     except IndexError:
@@ -166,13 +167,12 @@ class AnswerBuilder:
                             "Document index '{index}' referenced in Generator output is out of range. ", index=idx + 1
                         )
                         continue
+
                     doc_meta: dict[str, Any] = doc.meta or {}
-                    doc_meta["reference_index"] = idx + 1
-                    # Mark as referenced only if this specific document was referenced in the text
-                    if idx in referenced_idxs:
-                        doc_meta["referenced"] = True
-                    doc_w_reference = replace(doc, meta=doc_meta)
-                    referenced_docs.append(doc_w_reference)
+                    doc_meta["document_index"] = idx + 1
+                    if reference_pattern:
+                        doc_meta["referenced"] = idx in referenced_idxs
+                    referenced_docs.append(replace(doc, meta=doc_meta))
 
             answer_string = AnswerBuilder._extract_answer_string(extracted_reply, pattern)
             answer = GeneratedAnswer(
@@ -206,9 +206,9 @@ class AnswerBuilder:
         return ""
 
     @staticmethod
-    def _extract_reference_idxs(reply: str, reference_pattern: str) -> list[int]:
+    def _extract_reference_idxs(reply: str, reference_pattern: str) -> set[int]:
         document_idxs = re.findall(reference_pattern, reply)
-        return [int(idx) - 1 for idx in document_idxs]
+        return {int(idx) - 1 for idx in document_idxs}
 
     @staticmethod
     def _check_num_groups_in_regex(pattern: str):
