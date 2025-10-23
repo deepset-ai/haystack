@@ -72,13 +72,8 @@ def tools():
         parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
         function=weather_function,
     )
-    # We add a tool that has a more complex parameter signature
-    message_extractor_tool = ComponentTool(
-        component=MessageExtractor(),
-        name="message_extractor",
-        description="Useful for returning the text content of ChatMessage objects",
-    )
-    return [weather_tool, message_extractor_tool]
+
+    return [weather_tool]
 
 
 class TestOpenAIResponsesChatGenerator:
@@ -444,8 +439,6 @@ class TestOpenAIResponsesChatGenerator:
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
-        assert message.meta["status"] == "completed"
-
     def test_run_with_wrong_model(self):
         mock_client = MagicMock()
         mock_client.responses.create.side_effect = OpenAIError("Invalid model name")
@@ -488,7 +481,6 @@ class TestOpenAIResponsesChatGenerator:
         # Metadata checks
         metadata = message.meta
         assert "gpt-5-mini" in metadata["model"]
-        assert metadata["status"] == "completed"
 
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
@@ -529,7 +521,6 @@ class TestOpenAIResponsesChatGenerator:
 
         arguments = [tool_call.arguments for tool_call in tool_calls]
         assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
-        assert message.meta["status"] == "completed"
 
     def test_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
         """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
@@ -661,4 +652,3 @@ class TestOpenAIResponsesChatGenerator:
 
         arguments = [tool_call.arguments for tool_call in tool_calls]
         assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
-        assert message.meta["status"] == "completed"

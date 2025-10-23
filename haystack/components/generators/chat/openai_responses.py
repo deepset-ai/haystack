@@ -213,6 +213,7 @@ class OpenAIResponsesChatGenerator:
             }
             generation_kwargs["text_format"] = json_schema
 
+        # OpenAI/MCP tools are passed as list of dictionaries
         if self.tools and isinstance(self.tools, list) and isinstance(self.tools[0], dict):
             serialized_tools = self.tools
         else:
@@ -468,8 +469,6 @@ class OpenAIResponsesChatGenerator:
                 chunks.append(chunk_delta)
                 callback(chunk_delta)
         chat_message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
-        chat_message.meta["status"] = "completed"
-        chat_message.meta.pop("finish_reason")
         return [chat_message]
 
     async def _handle_async_stream_response(
@@ -485,8 +484,6 @@ class OpenAIResponsesChatGenerator:
                 chunks.append(chunk_delta)
                 await callback(chunk_delta)
         chat_message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
-        chat_message.meta["status"] = "completed"
-        chat_message.meta.pop("finish_reason")
         return [chat_message]
 
 
@@ -495,8 +492,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
     Converts the non-streaming response from the OpenAI API to a ChatMessage.
 
     :param responses: The responses returned by the OpenAI API.
-    :param choice: The choice returned by the OpenAI API.
-    :return: The ChatMessage.
+    :returns: The ChatMessage.
     """
 
     tool_calls = []
@@ -563,21 +559,7 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
         A StreamingChunk object representing the content of the chunk from the OpenAI Responses API.
     """
 
-    print(f"Chunk: {chunk}")
-
-    if chunk.type == "response.output_text.delta":
-        # if item is a ResponseTextDeltaEvent
-        meta = chunk.to_dict()
-        meta["received_at"] = datetime.now().isoformat()
-        return StreamingChunk(
-            content=chunk.delta,
-            component_info=component_info,
-            index=chunk.content_index,
-            finish_reason=None,
-            start=len(previous_chunks) == 1,
-            meta=meta,
-        )
-    elif chunk.type == "response.completed":
+    if chunk.type == "response.completed":
         return StreamingChunk(
             content=chunk.response.output_text,
             component_info=component_info,
@@ -613,16 +595,11 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
             component_info=component_info,
             index=chunk.output_index,
             tool_calls=[tool_call],
-            finish_reason=None,
             start=len(previous_chunks) == 1,
             meta=meta,
         )
     chunk_message = StreamingChunk(
-        content="",
-        component_info=component_info,
-        index=getattr(chunk, "output_index", None),
-        finish_reason=None,
-        meta=chunk.to_dict(),
+        content="", component_info=component_info, index=getattr(chunk, "output_index", None), meta=chunk.to_dict()
     )
     return chunk_message
 
@@ -631,6 +608,7 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
     """
     Convert a ChatMessage to the dictionary format expected by OpenAI's Responses API.
 
+    :param message: The ChatMessage to convert to OpenAI's Responses API format.
     :param require_tool_call_ids:
         If True (default), enforces that each Tool Call includes a non-null `id` attribute.
         Set to False to allow Tool Calls without `id`, which may be suitable for shallow OpenAI-compatible APIs.
@@ -716,7 +694,6 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
 
     if tool_calls:
         tool_call_ids = message._meta.get("tool_call_ids", {})
-        print(f"Tool call ids: {tool_call_ids}")
 
         for tc in tool_calls:
             openai_tool_call = {
@@ -793,15 +770,10 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                 _arguments=tool_call_dict["arguments"],
             )
 
-    # finish_reason can appear in different places so we look for the last one
-    finish_reasons = [chunk.finish_reason for chunk in chunks if chunk.finish_reason]
-    finish_reason = finish_reasons[-1] if finish_reasons else None
-
     meta = {
         "model": chunks[-1].meta.get("model"),
         "index": 0,
-        "finish_reason": finish_reason,
-        "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
+        "response_start_time": chunks[0].meta.get("created_at"),  # first chunk created
         "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
     }
     if tool_call_details:
