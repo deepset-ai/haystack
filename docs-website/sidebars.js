@@ -210,10 +210,6 @@ export default {
             {
               type: 'category',
               label: 'Guides to Generators',
-              link: {
-                type: 'doc',
-                id: 'pipeline-components/generators/guides-to-generators'
-              },
               items: [
                 'pipeline-components/generators/guides-to-generators/choosing-the-right-generator',
                 'pipeline-components/generators/guides-to-generators/generators-vs-chat-generators',
@@ -534,10 +530,6 @@ export default {
         {
           type: 'category',
           label: 'Caching',
-          link: {
-            type: 'doc',
-            id: 'pipeline-components/caching'
-          },
           items: [
             'pipeline-components/caching/cachechecker',
           ],
@@ -545,10 +537,6 @@ export default {
         {
           type: 'category',
           label: 'Downloaders',
-          link: {
-            type: 'doc',
-            id: 'pipeline-components/downloaders'
-          },
           items: [
             'pipeline-components/downloaders/s3downloader',
           ],
@@ -567,10 +555,6 @@ export default {
         {
           type: 'category',
           label: 'Samplers',
-          link: {
-            type: 'doc',
-            id: 'pipeline-components/samplers'
-          },
           items: [
             'pipeline-components/samplers/toppsampler',
           ],
@@ -578,10 +562,6 @@ export default {
         {
           type: 'category',
           label: 'Validators',
-          link: {
-            type: 'doc',
-            id: 'pipeline-components/validators'
-          },
           items: [
             'pipeline-components/validators/jsonschemavalidator',
           ],
@@ -589,10 +569,6 @@ export default {
         {
           type: 'category',
           label: 'Writers',
-          link: {
-            type: 'doc',
-            id: 'pipeline-components/writers'
-          },
           items: [
             'pipeline-components/writers/documentwriter',
           ],
@@ -600,10 +576,6 @@ export default {
         {
           type: 'category',
           label: 'Agents',
-          link: {
-            type: 'doc',
-            id: 'pipeline-components/agents-1'
-          },
           items: [
             'pipeline-components/agents-1/agent',
           ],
@@ -611,10 +583,6 @@ export default {
         {
           type: 'category',
           label: 'Tools',
-          link: {
-            type: 'doc',
-            id: 'pipeline-components/tools'
-          },
           items: [
             'pipeline-components/tools/toolinvoker',
           ],
