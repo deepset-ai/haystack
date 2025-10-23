@@ -563,6 +563,8 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
         A StreamingChunk object representing the content of the chunk from the OpenAI Responses API.
     """
 
+    print(f"Chunk: {chunk}")
+
     if chunk.type == "response.output_text.delta":
         # if item is a ResponseTextDeltaEvent
         meta = chunk.to_dict()
@@ -587,12 +589,17 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
             },
         )
     # after returning reasoning in parts, api returns complete reasoning
-    elif chunk.type == "response.output_item.done" and chunk.item.type == "reasoning":
+    # Responses API always returns reasoning chunks even if there is no summary
+    elif chunk.type == "response.output_item.done" and chunk.item.type == "reasoning" and chunk.item.summary:
         # we remove the text from the extra because it is already in the reasoning_text
         # rest of the information needs to be saved for chat message
         extra = chunk.item.to_dict()
         extra.pop("summary")
-        reasoning = ReasoningContent(reasoning_text=chunk.item.summary[0].text, extra=extra)
+        reasoning_text = ""
+        for summary in chunk.item.summary:
+            reasoning_text += " " + summary.text
+
+        reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
         return StreamingChunk(content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning)
 
     # after returning function call in parts, api returns complete function call
