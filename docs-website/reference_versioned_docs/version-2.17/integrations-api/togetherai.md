@@ -1,15 +1,15 @@
 ---
 title: "Together AI"
-id: integrations-together-ai
+id: integrations-togetherai
 description: "Together AI integration for Haystack"
-slug: "/integrations-together-ai"
+slug: "/integrations-togetherai"
 ---
 
-<a id="haystack_integrations.components.generators.together_ai.generator"></a>
+<a id="haystack_integrations.components.generators.togetherai.generator"></a>
 
-## Module haystack\_integrations.components.generators.together\_ai.generator
+## Module haystack\_integrations.components.generators.togetherai.generator
 
-<a id="haystack_integrations.components.generators.together_ai.generator.TogetherAIGenerator"></a>
+<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator"></a>
 
 ### TogetherAIGenerator
 
@@ -17,7 +17,7 @@ Provides an interface to generate text using an LLM running on Together AI.
 
 Usage example:
 ```python
-from haystack_integrations.components.generators.together_ai import TogetherAIGenerator
+from haystack_integrations.components.generators.togetherai import TogetherAIGenerator
 
 generator = TogetherAIGenerator(model="deepseek-ai/DeepSeek-R1",
                             generation_kwargs={
@@ -27,7 +27,7 @@ generator = TogetherAIGenerator(model="deepseek-ai/DeepSeek-R1",
 print(generator.run("Who is the best Italian actor?"))
 ```
 
-<a id="haystack_integrations.components.generators.together_ai.generator.TogetherAIGenerator.__init__"></a>
+<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator.__init__"></a>
 
 #### TogetherAIGenerator.\_\_init\_\_
 
@@ -77,7 +77,7 @@ variable or set to 30.
 - `max_retries`: Maximum retries to establish contact with Together AI if it returns an internal error, if not set it is
 inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
 
-<a id="haystack_integrations.components.generators.together_ai.generator.TogetherAIGenerator.to_dict"></a>
+<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator.to_dict"></a>
 
 #### TogetherAIGenerator.to\_dict
 
@@ -91,7 +91,7 @@ Serialize this component to a dictionary.
 
 The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.together_ai.generator.TogetherAIGenerator.from_dict"></a>
+<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator.from_dict"></a>
 
 #### TogetherAIGenerator.from\_dict
 
@@ -110,7 +110,7 @@ Deserialize this component from a dictionary.
 
 The deserialized component instance.
 
-<a id="haystack_integrations.components.generators.together_ai.generator.TogetherAIGenerator.run"></a>
+<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator.run"></a>
 
 #### TogetherAIGenerator.run
 
@@ -142,7 +142,7 @@ A dictionary with the following keys:
 - `meta`: A list of metadata dictionaries containing information about each generation,
 including model name, finish reason, and token usage statistics.
 
-<a id="haystack_integrations.components.generators.together_ai.generator.TogetherAIGenerator.run_async"></a>
+<a id="haystack_integrations.components.generators.togetherai.generator.TogetherAIGenerator.run_async"></a>
 
 #### TogetherAIGenerator.run\_async
 
@@ -174,11 +174,11 @@ A dictionary with the following keys:
 - `meta`: A list of metadata dictionaries containing information about each generation,
 including model name, finish reason, and token usage statistics.
 
-<a id="haystack_integrations.components.generators.together_ai.chat.chat_generator"></a>
+<a id="haystack_integrations.components.generators.togetherai.chat.chat_generator"></a>
 
-## Module haystack\_integrations.components.generators.together\_ai.chat.chat\_generator
+## Module haystack\_integrations.components.generators.togetherai.chat.chat\_generator
 
-<a id="haystack_integrations.components.generators.together_ai.chat.chat_generator.TogetherAIChatGenerator"></a>
+<a id="haystack_integrations.components.generators.togetherai.chat.chat_generator.TogetherAIChatGenerator"></a>
 
 ### TogetherAIChatGenerator
 
@@ -204,7 +204,7 @@ For more details on the parameters supported by the Together AI API, refer to th
 
 Usage example:
 ```python
-from haystack_integrations.components.generators.together_ai import TogetherAIChatGenerator
+from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
 from haystack.dataclasses import ChatMessage
 
 messages = [ChatMessage.from_user("What's Natural Language Processing?")]
@@ -220,7 +220,7 @@ print(response)
 >>'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
 ```
 
-<a id="haystack_integrations.components.generators.together_ai.chat.chat_generator.TogetherAIChatGenerator.__init__"></a>
+<a id="haystack_integrations.components.generators.togetherai.chat.chat_generator.TogetherAIChatGenerator.__init__"></a>
 
 #### TogetherAIChatGenerator.\_\_init\_\_
 
@@ -271,7 +271,7 @@ If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable,
 - `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
 For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
 
-<a id="haystack_integrations.components.generators.together_ai.chat.chat_generator.TogetherAIChatGenerator.to_dict"></a>
+<a id="haystack_integrations.components.generators.togetherai.chat.chat_generator.TogetherAIChatGenerator.to_dict"></a>
 
 #### TogetherAIChatGenerator.to\_dict
 
@@ -285,93 +285,3 @@ Serialize this component to a dictionary.
 
 The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.together_ai.chat.chat_generator.TogetherAIChatGenerator.from_dict"></a>
-
-#### TogetherAIChatGenerator.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAIChatGenerator"
-```
-
-Deserialize this component from a dictionary.
-
-**Arguments**:
-
-- `data`: The dictionary representation of this component.
-
-**Returns**:
-
-The deserialized component instance.
-
-<a id="haystack_integrations.components.generators.together_ai.chat.chat_generator.TogetherAIChatGenerator.run"></a>
-
-#### TogetherAIChatGenerator.run
-
-```python
-@component.output_types(replies=list[ChatMessage])
-def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        *,
-        tools: Optional[ToolsType] = None,
-        tools_strict: Optional[bool] = None)
-```
-
-Invokes chat completion based on the provided messages and generation parameters.
-
-**Arguments**:
-
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
-override the parameters passed during component initialization.
-For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If set, it will override the `tools` parameter provided during initialization.
-- `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns**:
-
-A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
-
-<a id="haystack_integrations.components.generators.together_ai.chat.chat_generator.TogetherAIChatGenerator.run_async"></a>
-
-#### TogetherAIChatGenerator.run\_async
-
-```python
-@component.output_types(replies=list[ChatMessage])
-async def run_async(messages: list[ChatMessage],
-                    streaming_callback: Optional[StreamingCallbackT] = None,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    *,
-                    tools: Optional[ToolsType] = None,
-                    tools_strict: Optional[bool] = None)
-```
-
-Asynchronously invokes chat completion based on the provided messages and generation parameters.
-
-This is the asynchronous version of the `run` method. It has the same parameters and return values
-but can be used with `await` in async code.
-
-**Arguments**:
-
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-Must be a coroutine.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
-override the parameters passed during component initialization.
-For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If set, it will override the `tools` parameter provided during initialization.
-- `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns**:
-
-A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
