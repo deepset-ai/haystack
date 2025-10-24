@@ -7,11 +7,11 @@ slug: "/agents-api"
 
 <a id="agent"></a>
 
-# Module agent
+## Module agent
 
 <a id="agent.Agent"></a>
 
-## Agent
+### Agent
 
 A Haystack component that implements a tool-using agent with provider-agnostic chat model support.
 
@@ -221,11 +221,11 @@ A dictionary with the following keys:
 
 <a id="state/state"></a>
 
-# Module state/state
+## Module state/state
 
 <a id="state/state.State"></a>
 
-## State
+### State
 
 State is a container for storing shared information during the execution of an Agent and its tools.
 

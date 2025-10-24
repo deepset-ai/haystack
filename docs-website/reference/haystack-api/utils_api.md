@@ -7,7 +7,7 @@ slug: "/utils-api"
 
 <a id="azure"></a>
 
-# Module azure
+## Module azure
 
 <a id="azure.default_azure_ad_token_provider"></a>
 
@@ -21,7 +21,7 @@ Get a Azure AD token using the DefaultAzureCredential and the "https://cognitive
 
 <a id="jupyter"></a>
 
-# Module jupyter
+## Module jupyter
 
 <a id="jupyter.is_in_jupyter"></a>
 
@@ -35,7 +35,7 @@ Returns `True` if in Jupyter or Google Colab, `False` otherwise.
 
 <a id="url_validation"></a>
 
-# Module url\_validation
+## Module url\_validation
 
 <a id="url_validation.is_valid_http_url"></a>
 
@@ -49,11 +49,11 @@ Check if a URL is a valid HTTP/HTTPS URL.
 
 <a id="auth"></a>
 
-# Module auth
+## Module auth
 
 <a id="auth.SecretType"></a>
 
-## SecretType
+### SecretType
 
 <a id="auth.SecretType.from_str"></a>
 
@@ -72,7 +72,7 @@ Convert a string to a SecretType.
 
 <a id="auth.Secret"></a>
 
-## Secret
+### Secret
 
 Encapsulates a secret used for authentication.
 
@@ -204,7 +204,7 @@ Deserialize secrets in a dictionary inplace.
 
 <a id="callable_serialization"></a>
 
-# Module callable\_serialization
+## Module callable\_serialization
 
 <a id="callable_serialization.serialize_callable"></a>
 
@@ -248,7 +248,7 @@ The callable
 
 <a id="asynchronous"></a>
 
-# Module asynchronous
+## Module asynchronous
 
 <a id="asynchronous.is_callable_async_compatible"></a>
 
@@ -270,7 +270,7 @@ True if the callable is compatible, False otherwise.
 
 <a id="requests_utils"></a>
 
-# Module requests\_utils
+## Module requests\_utils
 
 <a id="requests_utils.request_with_retry"></a>
 
@@ -426,7 +426,7 @@ The `httpx.Response` object.
 
 <a id="filters"></a>
 
-# Module filters
+## Module filters
 
 <a id="filters.raise_on_invalid_filter_syntax"></a>
 
@@ -455,7 +455,7 @@ For a detailed specification of the filters, refer to the
 
 <a id="misc"></a>
 
-# Module misc
+## Module misc
 
 <a id="misc.expand_page_range"></a>
 
@@ -494,11 +494,11 @@ Compute logistic sigmoid function. Maps input values to a range between 0 and 1
 
 <a id="device"></a>
 
-# Module device
+## Module device
 
 <a id="device.DeviceType"></a>
 
-## DeviceType
+### DeviceType
 
 Represents device types supported by Haystack.
 
@@ -526,7 +526,7 @@ The device type.
 
 <a id="device.Device"></a>
 
-## Device
+### Device
 
 A generic representation of a device.
 
@@ -646,7 +646,7 @@ The device.
 
 <a id="device.DeviceMap"></a>
 
-## DeviceMap
+### DeviceMap
 
 A generic mapping from strings to devices.
 
@@ -728,7 +728,7 @@ The deserialized device map.
 
 <a id="device.ComponentDevice"></a>
 
-## ComponentDevice
+### ComponentDevice
 
 A representation of a device for a component.
 
@@ -960,7 +960,7 @@ The deserialized component device.
 
 <a id="http_client"></a>
 
-# Module http\_client
+## Module http\_client
 
 <a id="http_client.init_http_client"></a>
 
@@ -986,7 +986,7 @@ A httpx client or an async httpx client.
 
 <a id="type_serialization"></a>
 
-# Module type\_serialization
+## Module type\_serialization
 
 <a id="type_serialization.serialize_type"></a>
 
@@ -1055,11 +1055,11 @@ on the performance of the import for single-threaded environments.
 
 <a id="jinja2_chat_extension"></a>
 
-# Module jinja2\_chat\_extension
+## Module jinja2\_chat\_extension
 
 <a id="jinja2_chat_extension.ChatMessageExtension"></a>
 
-## ChatMessageExtension
+### ChatMessageExtension
 
 A Jinja2 extension for creating structured chat messages with mixed content types.
 
@@ -1141,11 +1141,11 @@ A JSON string wrapped in special XML content tags
 
 <a id="jinja2_extensions"></a>
 
-# Module jinja2\_extensions
+## Module jinja2\_extensions
 
 <a id="jinja2_extensions.Jinja2TimeExtension"></a>
 
-## Jinja2TimeExtension
+### Jinja2TimeExtension
 
 <a id="jinja2_extensions.Jinja2TimeExtension.__init__"></a>
 
@@ -1179,7 +1179,7 @@ It's used to interpret the template's structure.
 
 <a id="deserialization"></a>
 
-# Module deserialization
+## Module deserialization
 
 <a id="deserialization.deserialize_document_store_in_init_params_inplace"></a>
 
@@ -1249,7 +1249,7 @@ the type key is missing, the class cannot be imported, or the class lacks a 'fro
 
 <a id="base_serialization"></a>
 
-# Module base\_serialization
+## Module base\_serialization
 
 <a id="base_serialization.serialize_class_instance"></a>
 

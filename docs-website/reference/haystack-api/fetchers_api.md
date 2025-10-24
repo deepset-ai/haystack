@@ -7,11 +7,11 @@ slug: "/fetchers-api"
 
 <a id="link_content"></a>
 
-# Module link\_content
+## Module link\_content
 
 <a id="link_content.LinkContentFetcher"></a>
 
-## LinkContentFetcher
+### LinkContentFetcher
 
 Fetches and extracts content from URLs.
 

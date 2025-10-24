@@ -7,11 +7,11 @@ slug: "/tools-api"
 
 <a id="tool"></a>
 
-# Module tool
+## Module tool
 
 <a id="tool.Tool"></a>
 
-## Tool
+### Tool
 
 Data class representing a Tool that Language Models can prepare a call for.
 
@@ -126,7 +126,7 @@ Deserialized Tool.
 
 <a id="from_function"></a>
 
-# Module from\_function
+## Module from\_function
 
 <a id="from_function.create_tool_from_function"></a>
 
@@ -275,11 +275,11 @@ Either a Tool instance or a decorator function that will create one
 
 <a id="component_tool"></a>
 
-# Module component\_tool
+## Module component\_tool
 
 <a id="component_tool.ComponentTool"></a>
 
-## ComponentTool
+### ComponentTool
 
 A Tool that wraps Haystack components, allowing them to be used as tools by LLMs.
 
@@ -452,11 +452,11 @@ Invoke the Tool with the provided keyword arguments.
 
 <a id="toolset"></a>
 
-# Module toolset
+## Module toolset
 
 <a id="toolset.Toolset"></a>
 
-## Toolset
+### Toolset
 
 A collection of related Tools that can be used and managed as a cohesive unit.
 
@@ -772,7 +772,7 @@ The Tool at the specified index
 
 <a id="toolset._ToolsetWrapper"></a>
 
-## \_ToolsetWrapper
+### \_ToolsetWrapper
 
 A wrapper that holds multiple toolsets and provides a unified interface.
 
