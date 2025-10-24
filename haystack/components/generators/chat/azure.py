@@ -13,10 +13,10 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.tools import (
-    Tool,
-    Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
@@ -84,7 +84,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         max_retries: Optional[int] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         default_headers: Optional[dict[str, str]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: bool = False,
         *,
         azure_ad_token_provider: Optional[Union[AzureADTokenProvider, AsyncAzureADTokenProvider]] = None,
@@ -110,7 +110,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :param generation_kwargs: Other parameters to use for the model. These parameters are sent directly to
             the OpenAI endpoint. For details, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
             Some of the supported parameters:
-            - `max_tokens`: The maximum number of tokens the output text can have.
+            - `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+                including visible output tokens and reasoning tokens.
             - `temperature`: The sampling temperature to use. Higher values mean the model takes more risks.
                 Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
             - `top_p`: Nucleus sampling is an alternative to sampling with temperature, where the model considers
@@ -137,8 +138,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
                   the `response_format` must be a JSON schema and not a Pydantic model.
         :param default_headers: Default headers to use for the AzureOpenAI client.
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-            list of `Tool` objects or a `Toolset` instance.
+            A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -178,7 +178,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
-        _check_duplicate_tool_names(list(tools or []))
+        _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
         self.tools = tools
         self.tools_strict = tools_strict
 

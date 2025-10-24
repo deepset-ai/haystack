@@ -2,38 +2,47 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization import import_class_by_name
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
 
+if TYPE_CHECKING:
+    from haystack.tools import ToolsType
 
-def serialize_tools_or_toolset(
-    tools: Union[Toolset, list[Tool], None],
-) -> Union[dict[str, Any], list[dict[str, Any]], None]:
+
+def serialize_tools_or_toolset(tools: "Optional[ToolsType]") -> Union[dict[str, Any], list[dict[str, Any]], None]:
     """
-    Serialize a Toolset or a list of Tools to a dictionary or a list of tool dictionaries.
+    Serialize tools or toolsets to dictionaries.
 
-    :param tools: A Toolset, a list of Tools, or None
-    :returns: A dictionary, a list of tool dictionaries, or None if tools is None
+    :param tools: A Toolset, a list of Tools and/or Toolsets, or None
+    :returns: Serialized representation preserving Tool/Toolset boundaries when provided
     """
     if tools is None:
         return None
     if isinstance(tools, Toolset):
         return tools.to_dict()
-    return [tool.to_dict() for tool in tools]
+    if isinstance(tools, list):
+        serialized: list[dict[str, Any]] = []
+        for item in tools:
+            if isinstance(item, (Toolset, Tool)):
+                serialized.append(item.to_dict())
+            else:
+                raise TypeError("Items in the tools list must be Tool or Toolset instances.")
+        return serialized
+    raise TypeError("tools must be Toolset, list[Union[Tool, Toolset]], or None")
 
 
 def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools") -> None:
     """
-    Deserialize a list of Tools or a Toolset in a dictionary inplace.
+    Deserialize a list of Tools and/or Toolsets, or a single Toolset in a dictionary inplace.
 
     :param data:
         The dictionary with the serialized data.
     :param key:
-        The key in the dictionary where the list of Tools or Toolset is stored.
+        The key in the dictionary where the list of Tools and/or Toolsets, or single Toolset is stored.
     """
     if key in data:
         serialized_tools = data[key]
@@ -58,16 +67,16 @@ def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools
         if not isinstance(serialized_tools, list):
             raise TypeError(f"The value of '{key}' is not a list or a dictionary")
 
-        deserialized_tools = []
+        deserialized_tools: list[Union[Tool, Toolset]] = []
         for tool in serialized_tools:
             if not isinstance(tool, dict):
                 raise TypeError(f"Serialized tool '{tool}' is not a dictionary")
 
-            # different classes are allowed: Tool, ComponentTool, etc.
+            # different classes are allowed: Tool, ComponentTool, Toolset, etc.
             tool_class = import_class_by_name(tool["type"])
-            if not issubclass(tool_class, Tool):
-                raise TypeError(f"Class '{tool_class}' is not a subclass of Tool")
-
-            deserialized_tools.append(tool_class.from_dict(tool))
+            if issubclass(tool_class, (Tool, Toolset)):
+                deserialized_tools.append(tool_class.from_dict(tool))
+            else:
+                raise TypeError(f"Class '{tool_class}' is neither Tool nor Toolset")
 
         data[key] = deserialized_tools

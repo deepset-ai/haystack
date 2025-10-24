@@ -4,7 +4,7 @@
 
 import inspect
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
@@ -25,7 +25,14 @@ from haystack.core.serialization import component_to_dict, default_from_dict, de
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, PipelineSnapshot, ToolBreakpoint
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
-from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
+from haystack.tools import (
+    Tool,
+    Toolset,
+    ToolsType,
+    deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
+    serialize_tools_or_toolset,
+)
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
@@ -97,7 +104,7 @@ class Agent:
         self,
         *,
         chat_generator: ChatGenerator,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         system_prompt: Optional[str] = None,
         exit_conditions: Optional[list[str]] = None,
         state_schema: Optional[dict[str, Any]] = None,
@@ -110,7 +117,7 @@ class Agent:
         Initialize the agent component.
 
         :param chat_generator: An instance of the chat generator that your agent should use. It must support tools.
-        :param tools: List of Tool objects or a Toolset that the agent can use.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
         :param system_prompt: System prompt for the agent.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
@@ -134,7 +141,7 @@ class Agent:
                 "The Agent component requires a chat generator that supports tools."
             )
 
-        valid_exits = ["text"] + [tool.name for tool in tools or []]
+        valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
         if exit_conditions is None:
             exit_conditions = ["text"]
         if not all(condition in valid_exits for condition in exit_conditions):
@@ -196,6 +203,8 @@ class Agent:
         if not self._is_warmed_up:
             if hasattr(self.chat_generator, "warm_up"):
                 self.chat_generator.warm_up()
+            if hasattr(self._tool_invoker, "warm_up") and self._tool_invoker is not None:
+                self._tool_invoker.warm_up()
             self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
@@ -259,7 +268,7 @@ class Agent:
         requires_async: bool,
         *,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs,
     ) -> _ExecutionContext:
         """
@@ -301,9 +310,7 @@ class Agent:
             tool_invoker_inputs=tool_invoker_inputs,
         )
 
-    def _select_tools(
-        self, tools: Optional[Union[list[Tool], Toolset, list[str]]] = None
-    ) -> Union[list[Tool], Toolset]:
+    def _select_tools(self, tools: Optional[Union[ToolsType, list[str]]] = None) -> ToolsType:
         """
         Select tools for the current run based on the provided tools parameter.
 
@@ -314,24 +321,32 @@ class Agent:
             or if any provided tool name is not valid.
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
-        selected_tools: Union[list[Tool], Toolset] = self.tools
-        if isinstance(tools, Toolset) or isinstance(tools, list) and all(isinstance(t, Tool) for t in tools):
-            selected_tools = tools  # type: ignore[assignment] # mypy thinks this could still be list[str]
-        elif isinstance(tools, list) and all(isinstance(t, str) for t in tools):
+        if tools is None:
+            return self.tools
+
+        if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             if not self.tools:
                 raise ValueError("No tools were configured for the Agent at initialization.")
-            selected_tool_names: list[str] = tools  # type: ignore[assignment] # mypy thinks this could still be list[Tool] or Toolset
-            valid_tool_names = {tool.name for tool in self.tools}
+            available_tools = flatten_tools_or_toolsets(self.tools)
+            selected_tool_names = cast(list[str], tools)  # mypy thinks this could still be list[Tool] or Toolset
+            valid_tool_names = {tool.name for tool in available_tools}
             invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
             if invalid_tool_names:
                 raise ValueError(
                     f"The following tool names are not valid: {invalid_tool_names}. "
                     f"Valid tool names are: {valid_tool_names}."
                 )
-            selected_tools = [tool for tool in self.tools if tool.name in selected_tool_names]
-        elif tools is not None:
-            raise TypeError("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")
-        return selected_tools
+            return [tool for tool in available_tools if tool.name in selected_tool_names]
+
+        if isinstance(tools, Toolset):
+            return tools
+
+        if isinstance(tools, list):
+            return cast(list[Union[Tool, Toolset]], tools)  # mypy can't narrow the Union type from isinstance check
+
+        raise TypeError(
+            "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
+        )
 
     def _initialize_from_snapshot(
         self,
@@ -339,7 +354,7 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT],
         requires_async: bool,
         *,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
     ) -> _ExecutionContext:
         """
         Initialize execution context from an AgentSnapshot.
@@ -389,15 +404,10 @@ class Agent:
             for "tool_invoker".
         :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
         :raises RuntimeError: If the Agent component wasn't warmed up before calling `run()`.
-        :raises ValueError: If both break_point and snapshot are provided, or if the break_point is invalid.
+        :raises ValueError: If the break_point is invalid.
         """
         if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
             raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
-
-        if break_point and snapshot:
-            raise ValueError(
-                "break_point and snapshot cannot be provided at the same time. The agent run will be aborted."
-            )
 
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
             _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
@@ -464,7 +474,7 @@ class Agent:
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -621,7 +631,7 @@ class Agent:
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """

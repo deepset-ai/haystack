@@ -1,0 +1,15 @@
+extends: existence
+message: "Spell out numbers zero through nine unless part of time, measurement, or list."
+level: warning
+scope: text
+nonword: true
+tokens:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9

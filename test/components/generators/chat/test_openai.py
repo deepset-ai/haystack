@@ -213,7 +213,7 @@ class TestOpenAIChatGenerator:
             model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             timeout=40.0,
             max_retries=1,
             tools=[tool],
@@ -223,7 +223,7 @@ class TestOpenAIChatGenerator:
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 40.0
         assert component.client.max_retries == 1
         assert component.tools == [tool]
@@ -238,12 +238,12 @@ class TestOpenAIChatGenerator:
             model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 100.0
         assert component.client.max_retries == 10
 
@@ -278,7 +278,7 @@ class TestOpenAIChatGenerator:
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={
-                "max_tokens": 10,
+                "max_completion_tokens": 10,
                 "some_test_param": "test-params",
                 "response_format": calendar_event_model,
             },
@@ -301,7 +301,7 @@ class TestOpenAIChatGenerator:
                 "timeout": 100.0,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {
-                    "max_tokens": 10,
+                    "max_completion_tokens": 10,
                     "some_test_param": "test-params",
                     "response_format": {
                         "type": "json_schema",
@@ -341,6 +341,31 @@ class TestOpenAIChatGenerator:
             },
         }
 
+    def test_to_dict_with_response_format_json_object(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_env_var("OPENAI_API_KEY"),
+            model="gpt-4o-mini",
+            generation_kwargs={"response_format": {"type": "json_object"}},
+        )
+        data = component.to_dict()
+        assert data == {
+            "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+            "init_parameters": {
+                "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                "model": "gpt-4o-mini",
+                "api_base_url": None,
+                "organization": None,
+                "streaming_callback": None,
+                "generation_kwargs": {"response_format": {"type": "json_object"}},
+                "tools": None,
+                "tools_strict": False,
+                "max_retries": None,
+                "timeout": None,
+                "http_client_kwargs": None,
+            },
+        }
+
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
@@ -352,7 +377,7 @@ class TestOpenAIChatGenerator:
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "max_retries": 10,
                 "timeout": 100.0,
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
                 "tools": [
                     {
                         "type": "haystack.tools.tool.Tool",
@@ -374,7 +399,7 @@ class TestOpenAIChatGenerator:
         assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.api_base_url == "test-base-url"
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
         assert component.tools == [
             Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
@@ -394,7 +419,7 @@ class TestOpenAIChatGenerator:
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
-                "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
+                "generation_kwargs": {"max_completion_tokens": 10, "some_test_param": "test-params"},
                 "tools": None,
             },
         }
@@ -414,13 +439,14 @@ class TestOpenAIChatGenerator:
 
     def test_run_with_params(self, chat_messages, openai_mock_chat_completion):
         component = OpenAIChatGenerator(
-            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_tokens": 10, "temperature": 0.5}
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
         )
         response = component.run(chat_messages)
 
         # check that the component calls the OpenAI API with the correct parameters
         _, kwargs = openai_mock_chat_completion.call_args
-        assert kwargs["max_tokens"] == 10
+        assert kwargs["max_completion_tokens"] == 10
         assert kwargs["temperature"] == 0.5
 
         # check that the tools are not passed to the OpenAI API (the generator is initialized without tools)
@@ -548,7 +574,7 @@ class TestOpenAIChatGenerator:
         # check truncation warning
         message_template = (
             "The completion for index {index} has been truncated before reaching a natural stopping point. "
-            "Increase the max_tokens parameter to allow for longer completions."
+            "Increase the max_completion_tokens parameter to allow for longer completions."
         )
 
         for index in [1, 3]:
@@ -1088,6 +1114,44 @@ class TestOpenAIChatGenerator:
         assert message.is_from(ChatRole.ASSISTANT)
         assert not message.tool_calls
         assert not message.tool_call_results
+
+    def test_init_with_list_of_toolsets(self, monkeypatch, tools):
+        """Test initialization with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        toolset1 = Toolset([tools[0]])
+        toolset2 = Toolset([tools[1]])
+
+        component = OpenAIChatGenerator(tools=[toolset1, toolset2])
+
+        assert component.tools == [toolset1, toolset2]
+        assert isinstance(component.tools, list)
+        assert len(component.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in component.tools)
+
+    def test_serde_with_list_of_toolsets(self, monkeypatch, tools):
+        """Test serialization and deserialization with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        toolset1 = Toolset([tools[0]])
+        toolset2 = Toolset([tools[1]])
+
+        component = OpenAIChatGenerator(tools=[toolset1, toolset2])
+        data = component.to_dict()
+
+        # Verify serialization preserves list[Toolset] structure
+        tools_data = data["init_parameters"]["tools"]
+        assert isinstance(tools_data, list)
+        assert len(tools_data) == 2
+        assert all(isinstance(ts, dict) for ts in tools_data)
+        assert tools_data[0]["type"] == "haystack.tools.toolset.Toolset"
+        assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
+
+        # Deserialize and verify
+        deserialized = OpenAIChatGenerator.from_dict(data)
+        assert isinstance(deserialized.tools, list)
+        assert len(deserialized.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in deserialized.tools)
 
 
 @pytest.fixture

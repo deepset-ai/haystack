@@ -90,7 +90,7 @@ class LLMMetadataExtractor:
 
     chat_generator = OpenAIChatGenerator(
         generation_kwargs={
-            "max_tokens": 500,
+            "max_completion_tokens": 500,
             "temperature": 0.0,
             "seed": 0,
             "response_format": {"type": "json_object"},

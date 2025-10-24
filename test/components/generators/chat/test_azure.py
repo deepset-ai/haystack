@@ -94,7 +94,7 @@ class TestAzureOpenAIChatGenerator:
             api_key=Secret.from_token("test-api-key"),
             azure_endpoint="some-non-existing-endpoint",
             streaming_callback=print_streaming_chunk,
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             tools=tools,
             tools_strict=True,
             azure_ad_token_provider=default_azure_ad_token_provider,
@@ -102,7 +102,7 @@ class TestAzureOpenAIChatGenerator:
         assert component.client.api_key == "test-api-key"
         assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.tools == tools
         assert component.tools_strict
         assert component.azure_ad_token_provider is not None
@@ -114,7 +114,7 @@ class TestAzureOpenAIChatGenerator:
             api_key=Secret.from_token("test-api-key"),
             azure_endpoint="some-non-existing-endpoint",
             streaming_callback=print_streaming_chunk,
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             tools=tools,
             tools_strict=True,
             azure_ad_token_provider=default_azure_ad_token_provider,
@@ -123,7 +123,7 @@ class TestAzureOpenAIChatGenerator:
         assert component.client.api_key == "test-api-key"
         assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.tools == tools
         assert component.tools_strict
         assert component.azure_ad_token_provider is not None
@@ -164,7 +164,7 @@ class TestAzureOpenAIChatGenerator:
             timeout=2.5,
             max_retries=10,
             generation_kwargs={
-                "max_tokens": 10,
+                "max_completion_tokens": 10,
                 "some_test_param": "test-params",
                 "response_format": calendar_event_model,
             },
@@ -185,7 +185,7 @@ class TestAzureOpenAIChatGenerator:
                 "timeout": 2.5,
                 "max_retries": 10,
                 "generation_kwargs": {
-                    "max_tokens": 10,
+                    "max_completion_tokens": 10,
                     "some_test_param": "test-params",
                     "response_format": {
                         "type": "json_schema",
@@ -435,14 +435,14 @@ class TestAzureOpenAIChatGeneratorAsync:
             api_key=Secret.from_token("test-api-key"),
             azure_endpoint="some-non-existing-endpoint",
             streaming_callback=print_streaming_chunk,
-            generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
+            generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             tools=tools,
             tools_strict=True,
         )
         assert component.async_client.api_key == "test-api-key"
         assert component.azure_deployment == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
-        assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
+        assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.tools == tools
         assert component.tools_strict
 
