@@ -337,3 +337,25 @@ class TestPromptBuilder:
         with caplog.at_level(logging.WARNING):
             _ = PromptBuilder(template="This is a {{ variable }}")
             assert "but `required_variables` is not set." in caplog.text
+
+    def test_template_assigned_variables_from_required_inputs(self) -> None:
+        template = """{% if existing_documents is not none %}
+                   {% set existing_doc_len = existing_documents|length %}
+                   {% else %}
+                   {% set existing_doc_len = 0 %}
+                   {% endif %}
+                   {% for doc in docs %}
+                   <document reference="{{loop.index + existing_doc_len}}">
+                    {{ doc.content }}
+                    </document>
+                   {% endfor %}
+                   """
+
+        builder = PromptBuilder(template=template, required_variables="*")
+        docs = [Document(content="Doc 1"), Document(content="Doc 2")]
+
+        res = builder.run(docs=docs, existing_documents=None)
+
+        assert "<document reference=" in res["prompt"]
+        assert "Doc 1" in res["prompt"]
+        assert "Doc 2" in res["prompt"]
