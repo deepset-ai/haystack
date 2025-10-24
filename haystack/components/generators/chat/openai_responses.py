@@ -559,45 +559,52 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
         A StreamingChunk object representing the content of the chunk from the OpenAI Responses API.
     """
 
-    if chunk.type == "response.completed":
-        return StreamingChunk(
-            content=chunk.response.output_text,
-            component_info=component_info,
-            start=False,
-            meta={
-                "model": chunk.response.model,
-                "received_at": datetime.now().isoformat(),
-                "usage": _serialize_usage(chunk.response.usage),
-            },
-        )
-    # after returning reasoning in parts, api returns complete reasoning
-    # Responses API always returns reasoning chunks even if there is no summary
-    elif chunk.type == "response.output_item.done" and chunk.item.type == "reasoning" and chunk.item.summary:
-        # we remove the text from the extra because it is already in the reasoning_text
-        # rest of the information needs to be saved for chat message
-        extra = chunk.item.to_dict()
-        extra.pop("summary")
-        reasoning_text = ""
-        for summary in chunk.item.summary:
-            reasoning_text += " " + summary.text
+    if chunk.type == "response.output_text.delta":
+        # if item is a ResponseTextDeltaEvent
+        meta = chunk.to_dict()
+        meta["received_at"] = datetime.now().isoformat()
+        return StreamingChunk(content=chunk.delta, component_info=component_info, index=chunk.content_index, meta=meta)
 
-        reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
+    # Responses API always returns reasoning chunks even if there is no summary
+    elif chunk.type == "response.reasoning_summary_text.delta":
+        # we remove the delta from the extra because it is already in the reasoning_text
+        # rest of the information needs to be saved for chat message
+        extra = chunk.to_dict()
+        extra.pop("delta")
+        reasoning = ReasoningContent(reasoning_text=chunk.delta, extra=extra)
         return StreamingChunk(content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning)
 
-    # after returning function call in parts, api returns complete function call
-    elif chunk.type == "response.output_item.done" and chunk.item.type == "function_call":
+    # the function name is only streamed at the start and end of the function call
+    elif chunk.type == "response.output_item.added" and chunk.item.type == "function_call":
         function = chunk.item.name
-        arguments = chunk.item.arguments
-        meta = chunk.to_dict()
-        tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item.id, tool_name=function, arguments=arguments)
+        meta = chunk.item.to_dict()
+        tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item.id, tool_name=function)
         return StreamingChunk(
             content="",
             component_info=component_info,
             index=chunk.output_index,
             tool_calls=[tool_call],
-            start=len(previous_chunks) == 1,
+            start=True,
             meta=meta,
         )
+
+    # the function arguments are streamed in parts
+    # function name is not passed in these chunks
+    elif chunk.type == "response.function_call_arguments.delta":
+        arguments = chunk.delta
+        meta = chunk.to_dict()
+        meta.pop("delta")
+        tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item_id, arguments=arguments)
+        return StreamingChunk(
+            content="",
+            component_info=component_info,
+            index=chunk.output_index,
+            tool_calls=[tool_call],
+            start=True,
+            meta=meta,
+        )
+
+    # we return rest of the chunk as is
     chunk_message = StreamingChunk(
         content="", component_info=component_info, index=getattr(chunk, "output_index", None), meta=chunk.to_dict()
     )
@@ -726,42 +733,57 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     tool_call_details = {}
 
     # Process tool calls if present in any chunk
+    tool_call_data: dict[str, dict[str, str]] = {}  # Track tool calls by id
     for chunk in chunks:
         if chunk.tool_calls:
-            for tool_call_delta in chunk.tool_calls:
-                # primarily because mypy complains about the tool_name could be None
-                assert tool_call_delta.tool_name is not None
-                # Each tool_call_delta is already complete from Responses API
-                try:
-                    arguments = json.loads(tool_call_delta.arguments) if tool_call_delta.arguments else {}
-                    tool_calls.append(
-                        ToolCall(id=tool_call_delta.id, tool_name=tool_call_delta.tool_name, arguments=arguments)
-                    )
-                except json.JSONDecodeError:
-                    logger.warning(
-                        "The LLM provider returned a malformed JSON string for "
-                        "tool call arguments. This tool call "
-                        "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
-                        "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                        _id=tool_call_delta.id,
-                        _name=tool_call_delta.tool_name,
-                        _arguments=tool_call_delta.arguments,
-                    )
+            for tool_call in chunk.tool_calls:
+                assert tool_call.id is not None
+                # We use the tool call id to track the tool call across chunks
+                if tool_call.id not in tool_call_data:
+                    tool_call_data[tool_call.id] = {"name": "", "arguments": "", "call_id": ""}
 
-                # Handle tool call details for API response tracking
-                call_id = chunk.meta.get("item", {}).get("call_id")
-                status = chunk.meta.get("status")
-                if call_id and tool_call_delta.id:
-                    tool_call_details[tool_call_delta.id] = {"call_id": call_id, "status": status}
+                if tool_call.tool_name is not None:
+                    # we dont need to append the tool name as it is passed once in the start of the function call
+                    tool_call_data[tool_call.id]["name"] = tool_call.tool_name
+                if tool_call.arguments is not None:
+                    tool_call_data[tool_call.id]["arguments"] += tool_call.arguments
+
+            # this is the information we need to save to send back to API
+            if chunk.meta.get("type") == "function_call":
+                call_id = chunk.meta.get("call_id")
+                fc_id = chunk.meta.get("id")
+                if fc_id is not None and isinstance(fc_id, str):
+                    tool_call_data[fc_id]["call_id"] = str(call_id) if call_id is not None else ""
 
         if chunk.reasoning:
             reasoning = chunk.reasoning
 
-    meta = {
-        "model": chunks[-1].meta.get("model"),
+    # Convert accumulated tool call data into ToolCall objects
+    sorted_keys = sorted(tool_call_data.keys())
+    for key in sorted_keys:
+        tool_call_dict = tool_call_data[key]
+        try:
+            arguments = json.loads(tool_call_dict.get("arguments", "{}")) if tool_call_dict.get("arguments") else {}
+            tool_calls.append(ToolCall(id=key, tool_name=tool_call_dict["name"], arguments=arguments))
+            if tool_call_dict["call_id"]:
+                tool_call_details[key] = {"call_id": tool_call_dict["call_id"]}
+        except json.JSONDecodeError:
+            logger.warning(
+                "The LLM provider returned a malformed JSON string for tool call arguments. This tool call "
+                "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
+                "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
+                _id=key,
+                _name=tool_call_dict["name"],
+                _arguments=tool_call_dict["arguments"],
+            )
+
+    # the final response is the last chunk with the response metadata
+    final_response = chunks[-1].meta.get("response")
+    meta: dict[str, Any] = {
+        "model": final_response.get("model") if final_response else None,
         "index": 0,
-        "response_start_time": chunks[0].meta.get("created_at"),  # first chunk created
-        "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
+        "response_start_time": final_response.get("created_at") if final_response else None,
+        "usage": final_response.get("usage") if final_response else None,
     }
     if tool_call_details:
         meta["tool_call_details"] = tool_call_details

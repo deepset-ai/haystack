@@ -72,8 +72,13 @@ def tools():
         parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
         function=weather_function,
     )
-
-    return [weather_tool]
+    # We add a tool that has a more complex parameter signature
+    message_extractor_tool = ComponentTool(
+        component=MessageExtractor(),
+        name="message_extractor",
+        description="Useful for returning the text content of ChatMessage objects",
+    )
+    return [weather_tool, message_extractor_tool]
 
 
 class TestOpenAIResponsesChatGenerator:
