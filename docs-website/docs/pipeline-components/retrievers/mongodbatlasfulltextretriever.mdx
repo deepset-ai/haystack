@@ -1,0 +1,148 @@
+---
+title: "MongoDBAtlasFullTextRetriever"
+id: mongodbatlasfulltextretriever
+slug: "/mongodbatlasfulltextretriever"
+description: "This is a full-text search Retriever compatible with the MongoDB Atlas Document Store."
+---
+
+# MongoDBAtlasFullTextRetriever
+
+This is a full-text search Retriever compatible with the MongoDB Atlas Document Store.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. Before a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [ExtractiveReader](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Mandatory init variables**           | "document_store": An instance of a [MongoDBAtlasDocumentStore](../../document-stores/mongodbatlasdocumentstore.mdx)                                                                                                                   |
+| **Mandatory run variables**            | “query”: A query string to search for. If the query contains multiple terms, Atlas Search evaluates each term separately for matches.                                                                             |
+| **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                  |
+| **API reference**                      | [MongoDB Atlas](/reference/integrations-mongodb-atlas)                                                                                                                                                                   |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mongodb_atlas                                                                                                                   |
+
+The `MongoDBAtlasFullTextRetriever` is a full-text search Retriever compatible with the [`MongoDBAtlasDocumentStore`](../../document-stores/mongodbatlasdocumentstore.mdx). The full-text search is dependent on the `full_text_search_index` used in the [`MongoDBAtlasDocumentStore`](../../document-stores/mongodbatlasdocumentstore.mdx).
+
+### Parameters
+
+In addition to the `query`, the `MongoDBAtlasFullTextRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space. 
+
+When running the component, you can specify more optional parameters such as `fuzzy` or `synonyms`, `match_criteria`, `score`. Check out our [MongoDB Atlas](/reference/integrations-mongodb-atlas) API Reference for more details on all parameters.
+
+## Usage
+
+### Installation
+
+To start using MongoDB Atlas with Haystack, install the package with:
+
+```shell
+pip install mongodb-atlas-haystack
+```
+
+### On its own
+
+The Retriever needs an instance of `MongoDBAtlasDocumentStore` and indexed documents to run.
+
+```python
+from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
+from haystack_integrations.components.retrievers.mongodb_atlas import MongoDBAtlasFullTextRetriever
+
+store = MongoDBAtlasDocumentStore(database_name="your_existing_db",
+                                  collection_name="your_existing_collection",
+                                  vector_search_index="your_existing_index",
+                                  full_text_search_index="your_existing_index")
+retriever = MongoDBAtlasFullTextRetriever(document_store=store)
+
+results = retriever.run(query="Your search query")
+print(results["documents"])
+```
+
+### In a Pipeline
+
+Here's a Hybrid Retrieval pipeline example that makes use of both available MongoDB Atlas Retrievers:
+
+```python
+from haystack import Pipeline, Document
+from haystack.document_stores.types import DuplicatePolicy
+from haystack.components.writers import DocumentWriter
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack.components.joiners import DocumentJoiner
+
+from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
+from haystack_integrations.components.retrievers.mongodb_atlas import (
+    MongoDBAtlasEmbeddingRetriever,
+    MongoDBAtlasFullTextRetriever,
+)
+
+documents = [
+    Document(content="My name is Jean and I live in Paris."),
+    Document(content="My name is Mark and I live in Berlin."),
+    Document(content="My name is Giorgio and I live in Rome."),
+    Document(content="Python is a programming language popular for data science."),
+    Document(content="MongoDB Atlas offers full-text search and vector search capabilities."),
+]
+
+document_store = MongoDBAtlasDocumentStore(
+    database_name="haystack_test",
+    collection_name="test_collection",
+    vector_search_index="test_vector_search_index",
+    full_text_search_index="test_full_text_search_index",
+)
+
+## Clean out any old data so this example is repeatable
+print(f"Clearing collection {document_store.collection_name} …")
+document_store.collection.delete_many({})
+
+ingest_pipe = Pipeline()
+
+doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
+ingest_pipe.add_component(instance=doc_embedder, name="doc_embedder")
+
+doc_writer = DocumentWriter(
+    document_store=document_store,
+    policy=DuplicatePolicy.SKIP
+)
+ingest_pipe.add_component(instance=doc_writer, name="doc_writer")
+ingest_pipe.connect("doc_embedder.documents", "doc_writer.documents")
+
+print(f"Running ingestion on {len(documents)} in-memory docs …")
+ingest_pipe.run({"doc_embedder": {"documents": documents}})
+
+query_pipe = Pipeline()
+
+text_embedder = SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2")
+query_pipe.add_component(instance=text_embedder, name="text_embedder")
+
+embed_retriever = MongoDBAtlasEmbeddingRetriever(
+    document_store=document_store,
+    top_k=3
+)
+query_pipe.add_component(instance=embed_retriever, name="embedding_retriever")
+query_pipe.connect("text_embedder", "embedding_retriever")
+
+## (c) full-text retriever
+ft_retriever = MongoDBAtlasFullTextRetriever(
+    document_store=document_store,
+    top_k=3
+)
+query_pipe.add_component(instance=ft_retriever, name="full_text_retriever")
+
+joiner = DocumentJoiner(join_mode="reciprocal_rank_fusion", top_k=3)
+query_pipe.add_component(instance=joiner, name="joiner")
+
+query_pipe.connect("embedding_retriever", "joiner")
+query_pipe.connect("full_text_retriever", "joiner")
+
+question = "Where does Mark live?"
+print(f"Running hybrid retrieval for query: '{question}'")
+output = query_pipe.run(
+    {
+        "text_embedder": {"text": question},
+        "full_text_retriever": {"query": question},
+    }
+)
+
+print("\nFinal fused documents:")
+for doc in output["joiner"]["documents"]:
+    print(f"- {doc.content}")
+```

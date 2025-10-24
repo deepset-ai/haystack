@@ -44,6 +44,7 @@ const config = {
            exclude: ['**/_templates/**'],
           editUrl:
             'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
+          remarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
               label: '2.20-unstable',
@@ -79,6 +80,7 @@ const config = {
         routeBasePath: 'reference',
         sidebarPath: './reference-sidebars.js',
         editUrl: 'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
+        remarkPlugins: [require('./src/remark/versionedReferenceLinks')],
         showLastUpdateAuthor: false,
         showLastUpdateTime: false,
         exclude: ['**/_templates/**'],

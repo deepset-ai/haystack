@@ -1,0 +1,74 @@
+---
+title: "JsonSchemaValidator"
+id: jsonschemavalidator
+slug: "/jsonschemavalidator"
+description: "Use this component to ensure that an LLM-generated chat message JSON adheres to a specific schema."
+---
+
+# JsonSchemaValidator
+
+Use this component to ensure that an LLM-generated chat message JSON adheres to a specific schema.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [Generator](../../../docs/pipeline-components/generators.mdx) |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../../docs/concepts/data-classes.mdx#chatmessage)  instances to be validated – the last message in this list is the one that is validated |
+| **Output variables** | “validated”: A list of messages if the last message is valid  <br /> <br />”validation_error”: A list of messages if the last message is invalid |
+| **API reference** | [Validators](/reference/validators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/validators/json_schema.py |
+
+## Overview
+
+`JsonSchemaValidator` checks the JSON content of a `ChatMessage` against a given [JSON Schema](https://json-schema.org/). If a message's JSON content follows the provided schema, it's moved to the `validated` output. If not, it's moved to the `validation_error`output. When there's an error, the component uses either the provided custom `error_template` or a default template to create the error message. These error `ChatMessages` can be used in Haystack recovery loops.
+
+## Usage
+
+### In a pipeline
+
+In this simple pipeline, the `MessageProducer` sends a list of chat messages to a Generator through `BranchJoiner`. The resulting messages from the Generator are sent to `JsonSchemaValidator`, and the error `ChatMessages` are sent back to `BranchJoiner` for a recovery loop.
+
+```python
+from typing import List
+
+from haystack import Pipeline
+from haystack import component
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.joiners import BranchJoiner
+from haystack.components.validators import JsonSchemaValidator
+from haystack.dataclasses import ChatMessage
+
+@component
+class MessageProducer:
+
+    @component.output_types(messages=List[ChatMessage])
+    def run(self, messages: List[ChatMessage]) -> dict:
+        return {"messages": messages}
+
+p = Pipeline()
+p.add_component("llm", OpenAIChatGenerator(model="gpt-4-1106-preview",
+                                           generation_kwargs={"response_format": {"type": "json_object"}}))
+p.add_component("schema_validator", JsonSchemaValidator())
+p.add_component("branch_joiner", BranchJoiner(List[ChatMessage]))
+p.add_component("message_producer", MessageProducer())
+
+p.connect("message_producer.messages", "branch_joiner")
+p.connect("branch_joiner", "llm")
+p.connect("llm.replies", "schema_validator.messages")
+p.connect("schema_validator.validation_error", "branch_joiner")
+
+result = p.run(
+    data={"message_producer": {
+        "messages": [ChatMessage.from_user("Generate JSON for person with name 'John' and age 30")]},
+          "schema_validator": {"json_schema": {"type": "object",
+                                               "properties": {"name": {"type": "string"},
+                                                              "age": {"type": "integer"}}}}})
+print(result)
+
+>> {'schema_validator': {'validated': [ChatMessage(_role=<ChatRole.ASSISTANT: 
+>> 'assistant'>, _content=[TextContent(text='\n{\n  "name": "John",\n  "age": 30\n}')], 
+>> _name=None, _meta={'model': 'gpt-4-1106-preview', 'index': 0, 'finish_reason': 'stop', 
+>> 'usage': {'completion_tokens': 17, 'prompt_tokens': 20, 'total_tokens': 37, 
+>> 'completion_tokens_details': {'accepted_prediction_tokens': 0, 'audio_tokens': 0, 
+>> 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0}, 'prompt_tokens_details': 
+>> {'audio_tokens': 0, 'cached_tokens': 0}}})]}}
+```

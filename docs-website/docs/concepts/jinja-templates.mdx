@@ -1,0 +1,58 @@
+---
+title: "Jinja Templates"
+id: jinja-templates
+slug: "/jinja-templates"
+description: "Learn how Jinja templates work with Haystack components."
+---
+
+# Jinja Templates
+
+Learn how Jinja templates work with Haystack components.
+
+Jinja templates are text structures that contain placeholders for generating dynamic content. These placeholders are filled in when the template is rendered. You can check out the full list of Jinja2 features in the [original documentation](https://jinja.palletsprojects.com/en/3.0.x/templates/).
+
+You can use these templates in Haystack [Builders](../pipeline-components/builders.mdx), [OutputAdapter](../pipeline-components/converters/outputadapter.mdx), and [ConditionalRouter](../pipeline-components/routers/conditionalrouter.mdx) components.
+
+Here is an example of `OutputAdapter` using a short Jinja template to output only the content field of the first document in the arrays of documents:
+
+```python
+from haystack import Document
+from haystack.components.converters import OutputAdapter
+
+adapter = OutputAdapter(template="{{ documents[0].content }}", output_type=str)
+input_data = {"documents": [Document(content="Test content")]}
+expected_output = {"output": "Test content"}
+assert adapter.run(**input_data) == expected_output
+```
+
+### Using Python f‑strings with Jinja
+
+When you embed Jinja placeholders inside a Python f‑string, you must escape Jinja’s `{` and `}` by doubling them (so `{{ var }}` becomes `{{{{ var }}}}`). Otherwise, Python will consume the braces and the Jinja variable won’t be found.
+
+Preferred template:
+
+```python
+template = """
+Language: {{ language }}
+Question: {{ question }}
+"""
+## pass both variables when rendering
+```
+
+It you need to use an f‑string (escape braces):
+
+```python
+language = "en"
+template = f"""
+Language: {language}
+Question: {{{{ question }}}}
+"""
+```
+
+## Safety Features
+
+Due to how we use Jinja in some Components, there are some security considerations to take into account. Jinja works by executing embedded in templates, so it’s _imperative_ that they stem from a trusted source. If the template is allowed to be customized by the end user, it can potentially lead to remote code execution. 
+
+To mitigate this risk, Jinja templates are executed and rendered in a [sandbox environment](https://jinja.palletsprojects.com/en/3.1.x/sandbox/). While this approach is safer, it's also less flexible and limits the expressiveness of the template. If you need the more advanced functionality of Jinja templates, components that use them provide an `unsafe` init parameter - setting it to `False` will disable the sandbox environment and enable unsafe template rendering.
+
+With unsafe template rendering, the [OutputAdapter](https://docs.haystack.deepset.ai/docs/outputadapter) and [ConditionalRouter](https://docs.haystack.deepset.ai/docs/conditionalrouter) components allow their `output_type` to be set to one of the [Haystack data classes](data-classes.mdx) such as `ChatMessage`, `Document`, or `Answer`.

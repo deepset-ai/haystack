@@ -1,0 +1,139 @@
+---
+title: "PgvectorKeywordRetriever"
+id: pgvectorkeywordretriever
+slug: "/pgvectorkeywordretriever"
+description: "This is a keyword-based Retriever that fetches documents matching a query from the Pgvector Document Store."
+---
+
+# PgvectorKeywordRetriever
+
+This is a keyword-based Retriever that fetches documents matching a query from the Pgvector Document Store.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Mandatory init variables**           | "document_store": An instance of a [PgvectorDocumentStore](../../document-stores/pgvectordocumentstore.mdx)                                                                                                                                 |
+| **Mandatory run variables**            | “query”:  A string                                                                                                                                                                                                    |
+| **Output variables**                   | “document”: A list of documents  (matching the query)                                                                                                                                                                 |
+| **API reference**                      | [Pgvector](/reference/integrations-pgvector)                                                                                                                                                                                 |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/pgvector                                                                                                                            |
+
+## Overview
+
+The `PgvectorKeywordRetriever` is a keyword-based Retriever compatible with the `PgvectorDocumentStore`.
+
+The component uses the `ts_rank_cd` function of PostgreSQL to rank the documents.  
+It considers how often the query terms appear in the document, how close together the terms are in the document, and how important is the part of the document where they occur.  
+For more details, see [Postgres documentation](https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING).
+
+Keep in mind that, unlike similar components such as `ElasticsearchBM25Retriever`, this Retriever does not apply fuzzy search out of the box, so it’s necessary to carefully formulate the query in order to avoid getting zero results.
+
+In addition to the `query`, the `PgvectorKeywordRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow the search space.
+
+### Installation
+
+To quickly set up a PostgreSQL database with pgvector, you can use Docker:
+
+```shell
+docker run -d -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres ankane/pgvector
+```
+
+For more information on how to install pgvector, visit the [pgvector GitHub repository](https://github.com/pgvector/pgvector).
+
+Install the `pgvector-haystack` integration:
+
+```shell
+pip install pgvector-haystack
+```
+
+## Usage
+
+### On its own
+
+This Retriever needs the `PgvectorDocumentStore` and indexed documents to run.
+
+Set an environment variable `PG_CONN_STR` with the connection string to your PostgreSQL database.
+
+```python
+from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
+from haystack_integrations.components.retrievers.pgvector import PgvectorKeywordRetriever
+
+document_store = PgvectorDocumentStore()
+retriever = PgvectorKeywordRetriever(document_store=document_store)
+
+retriever.run(query="my nice query")
+```
+
+### In a RAG pipeline
+
+The prerequisites necessary for running this code are:
+
+- Set an environment variable `OPENAI_API_KEY` with your OpenAI API key.
+- Set an environment variable `PG_CONN_STR` with the connection string to your PostgreSQL database.
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.generators import OpenAIGenerator
+from haystack.document_stores.types import DuplicatePolicy
+
+from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
+from haystack_integrations.components.retrievers.pgvector import (
+    PgvectorKeywordRetriever,
+)
+
+## Create a RAG query pipeline
+prompt_template = """
+    Given these documents, answer the question.\nDocuments:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    \nQuestion: {{question}}
+    \nAnswer:
+    """
+
+document_store = PgvectorDocumentStore(
+    language="english",  # this parameter influences text parsing for keyword retrieval
+    recreate_table=True,
+)
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves."
+    ),
+]
+
+## DuplicatePolicy.SKIP param is optional, but useful to run the script multiple times without throwing errors
+document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
+
+retriever = PgvectorKeywordRetriever(document_store=document_store)
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(name="retriever", instance=retriever)
+rag_pipeline.add_component(
+    instance=PromptBuilder(template=prompt_template), name="prompt_builder"
+)
+rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
+rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder", "llm")
+rag_pipeline.connect("llm.replies", "answer_builder.replies")
+rag_pipeline.connect("llm.meta", "answer_builder.meta")
+rag_pipeline.connect("retriever", "answer_builder.documents")
+
+question = "languages spoken around the world today"
+result = rag_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+        "answer_builder": {"query": question},
+    }
+)
+print(result["answer_builder"])
+```
