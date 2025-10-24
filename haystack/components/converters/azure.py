@@ -109,7 +109,11 @@ class AzureOCRDocumentConverter:
             self.threshold_y = 0.05
 
     @component.output_types(documents=list[Document], raw_azure_response=list[dict])
-    def run(self, sources: list[Union[str, Path, ByteStream]], meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None):
+    def run(
+        self,
+        sources: list[Union[str, Path, ByteStream]],
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+    ):
         """
         Convert a list of files to Documents using Azure's Document Intelligence service.
 
