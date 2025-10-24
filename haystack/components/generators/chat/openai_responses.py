@@ -37,8 +37,6 @@ from haystack.tools import (
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.http_client import init_http_client
 
-from .openai import _serialize_usage
-
 logger = logging.getLogger(__name__)
 
 
@@ -141,8 +139,9 @@ class OpenAIResponsesChatGenerator:
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :param tools:
             The tools that the model can use to prepare calls. This parameter can accept either a
-            list of Haystack `Tool` objects, a Haystack `Toolset` instance or a dictionary of
+            mixed list of Haystack `Tool` objects and Haystack `Toolset`. Or you can pass a dictionary of
             OpenAI/MCP tool definitions.
+            Note: You cannot pass OpenAI/MCP tools and Haystack tools together.
             For details on tool support, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses/create#responses-create-tools).
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `False`, the model may not exactly
@@ -289,8 +288,9 @@ class OpenAIResponsesChatGenerator:
         :param tools:
             The tools that the model can use to prepare calls. If set, it will override the
             `tools` parameter set during component initialization. This parameter can accept either a
-            list of Haystack `Tool` objects, a Haystack `Toolset` instance or a dictionary of
+            mixed list of Haystack `Tool` objects and Haystack `Toolset`. Or you can pass a dictionary of
             OpenAI/MCP tool definitions.
+            Note: You cannot pass OpenAI/MCP tools and Haystack tools together.
             For details on tool support, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/responses/create#responses-create-tools).
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `False`, the model may not exactly
@@ -359,7 +359,9 @@ class OpenAIResponsesChatGenerator:
         :param tools:
             A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
             `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects, a `Toolset` instance or a dictionary of OpenAI tool definitions.
+            mixed list of Haystack `Tool` objects and Haystack `Toolset`. Or you can pass a dictionary of
+            OpenAI/MCP tool definitions.
+            Note: You cannot pass OpenAI/MCP tools and Haystack tools together.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -689,7 +691,7 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
     openai_msg["content"] = []
 
     if text_contents:
-        openai_msg["content"] = text_contents[0]
+        openai_msg["content"] = " ".join(text_contents)
 
     if reasonings:
         for reasoning in reasonings:
