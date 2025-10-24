@@ -44,6 +44,8 @@ class ExtractedAnswer:
         """
         Serialize the object to a dictionary.
 
+        TRIGGER!
+
         :returns:
             Serialized dictionary representation of the object.
         """
