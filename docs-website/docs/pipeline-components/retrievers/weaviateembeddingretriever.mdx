@@ -1,0 +1,112 @@
+---
+title: "WeaviateEmbeddingRetriever"
+id: weaviateembeddingretriever
+slug: "/weaviateembeddingretriever"
+description: "This is an embedding Retriever compatible with the Weaviate Document Store."
+---
+
+# WeaviateEmbeddingRetriever
+
+This is an embedding Retriever compatible with the Weaviate Document Store.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Mandatory init variables**           | "document_store": An instance of a [WeaviateDocumentStore](../../document-stores/weaviatedocumentstore.mdx)                                                                                                                                                                                     |
+| **Mandatory run variables**            | “query_embedding”: A list of floats                                                                                                                                                                                                                                       |
+| **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                          |
+| **API reference**                      | [Weaviate](/reference/integrations-weaviate)                                                                                                                                                                                                                                     |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weaviate                                                                                                                                                                                |
+
+## Overview
+
+The `WeaviateEmbeddingRetriever` is an embedding-based Retriever compatible with the [`WeaviateDocumentStore`](../../document-stores/weaviatedocumentstore.mdx). It compares the query and Document embeddings and fetches the Documents most relevant to the query from the `WeaviateDocumentStore` based on the outcome.
+
+### Parameters
+
+When using the `WeaviateEmbeddingRetriever` in your NLP system, ensure the query and Document [embeddings](../embedders.mdx) are available. You can do so by adding a Document Embedder to your indexing Pipeline and a Text Embedder to your query Pipeline.
+
+In addition to the `query_embedding`, the `WeaviateEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space. 
+
+You can also specify `distance`, the maximum allowed distance between embeddings, and `certainty`, the normalized distance between the result items and the search embedding. The behavior of `distance` depends on the Collection’s distance metric used. See the [official Weaviate documentation](https://weaviate.io/developers/weaviate/api/graphql/search-operators#variables) for more information.
+
+The embedding similarity function depends on the vectorizer used in the `WeaviateDocumentStore` collection. Check out the [official Weaviate documentation](https://weaviate.io/developers/weaviate/modules/retriever-vectorizer-modules) to see all the supported vectorizers.
+
+## Usage
+
+### Installation
+
+To start using Weaviate with Haystack, install the package with:
+
+```shell
+pip install weaviate-haystack
+```
+
+### On its own
+
+This Retriever needs an instance of `WeaviateDocumentStore` and indexed Documents to run.
+
+```python
+from haystack_integrations.document_stores.weaviate.document_store import WeaviateDocumentStore
+from haystack_integrations.components.retrievers.weaviate import WeaviateEmbeddingRetriever
+
+document_store = WeaviateDocumentStore(url="http://localhost:8080")
+
+retriever = WeaviateEmbeddingRetriever(document_store=document_store)
+
+## using a fake vector to keep the example simple
+retriever.run(query_embedding=[0.1]*768)
+```
+
+### In a Pipeline
+
+```python
+from haystack.document_stores.types import DuplicatePolicy
+from haystack import Document
+from haystack import Pipeline
+from haystack.components.embedders import (
+    SentenceTransformersTextEmbedder,
+    SentenceTransformersDocumentEmbedder,
+)
+
+from haystack_integrations.document_stores.weaviate.document_store import (
+    WeaviateDocumentStore,
+)
+from haystack_integrations.components.retrievers.weaviate import (
+    WeaviateEmbeddingRetriever,
+)
+
+document_store = WeaviateDocumentStore(url="http://localhost:8080")
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves."
+    ),
+]
+
+document_embedder = SentenceTransformersDocumentEmbedder()
+document_embedder.warm_up()
+documents_with_embeddings = document_embedder.run(documents)
+
+document_store.write_documents(
+    documents_with_embeddings.get("documents"), policy=DuplicatePolicy.OVERWRITE
+)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
+query_pipeline.add_component(
+    "retriever", WeaviateEmbeddingRetriever(document_store=document_store)
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result["retriever"]["documents"][0])
+
+```

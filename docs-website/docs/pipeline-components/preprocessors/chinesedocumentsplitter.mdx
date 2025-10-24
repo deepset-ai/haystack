@@ -1,0 +1,186 @@
+---
+title: "ChineseDocumentSplitter"
+id: chinesedocumentsplitter
+slug: "/chinesedocumentsplitter"
+description: "`ChineseDocumentSplitter` divides Chinese text documents into smaller chunks using advanced Chinese language processing capabilities. It leverages HanLP for accurate Chinese word segmentation and sentence tokenization, making it ideal for processing Chinese text that requires linguistic awareness."
+---
+
+# ChineseDocumentSplitter
+
+`ChineseDocumentSplitter` divides Chinese text documents into smaller chunks using advanced Chinese language processing capabilities. It leverages HanLP for accurate Chinese word segmentation and sentence tokenization, making it ideal for processing Chinese text that requires linguistic awareness.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](https://docs.haystack.deepset.ai../../../docs/pipeline-components/converters.mdx) and [DocumentCleaner](documentcleaner.mdx), before [Classifiers](https://docs.haystack.deepset.ai../../../docs/pipeline-components/classifiers.mdx) |
+| **Mandatory run variables**            | "documents": A list of documents with Chinese text content                                                                                                                                                     |
+| **Output variables**                   | "documents": A list of documents, each containing a chunk of the original Chinese text                                                                                                                         |
+| **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                                                                                                                         |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/hanlp                                                                                                                        |
+
+## Overview
+
+`ChineseDocumentSplitter` is a specialized document splitter designed specifically for Chinese text processing. Unlike English text where words are separated by spaces, Chinese text is written continuously without spaces between words.
+
+This component leverages HanLP (Han Language Processing) to provide accurate Chinese word segmentation and sentence tokenization. It supports two granularity levels:
+
+- **Coarse granularity**: Provides broader word segmentation suitable for most general use cases. Uses `COARSE_ELECTRA_SMALL_ZH` model for general-purpose segmentation.
+- **Fine granularity**: Offers more detailed word segmentation for specialized applications. Uses `FINE_ELECTRA_SMALL_ZH` model for detailed segmentation.
+
+The splitter can divide documents by various units:
+
+- `word`: Splits by Chinese words (multi-character tokens)
+- `sentence`: Splits by sentences using HanLP sentence tokenizer
+- `passage`: Splits by double line breaks ("\\n\\n")
+- `page`: Splits by form feed characters ("\\f")
+- `line`: Splits by single line breaks ("\\n")
+- `period`: Splits by periods (".")
+- `function`: Uses a custom splitting function
+
+Each extracted chunk retains metadata from the original document and includes additional fields:
+
+- `source_id`: The ID of the original document
+- `page_number`: The page number the chunk belongs to
+- `split_id`: The sequential ID of the split within the document
+- `split_idx_start`: The starting index of the chunk in the original document
+
+When `respect_sentence_boundary=True` is set, the component uses HanLP's sentence tokenizer (`UD_CTB_EOS_MUL`) to ensure that splits occur only between complete sentences, preserving the semantic integrity of the text.
+
+## Usage
+
+### On its own
+
+You can use `ChineseDocumentSplitter` outside of a pipeline to process Chinese documents directly:
+
+```python
+from haystack import Document
+from haystack_integrations.components.preprocessors.hanlp import ChineseDocumentSplitter
+
+## Initialize the splitter with word-based splitting
+splitter = ChineseDocumentSplitter(
+    split_by="word", 
+    split_length=10, 
+    split_overlap=3, 
+    granularity="coarse"
+)
+
+## Create a Chinese document
+doc = Document(content="这是第一句话，这是第二句话，这是第三句话。这是第四句话，这是第五句话，这是第六句话！")
+
+## Warm up the component (loads the necessary models)
+splitter.warm_up()
+
+## Split the document
+result = splitter.run(documents=[doc])
+print(result["documents"])  # List of split documents
+```
+
+### With sentence boundary respect
+
+When splitting by words, you can ensure that sentence boundaries are respected:
+
+```python
+from haystack import Document
+from haystack_integrations.components.preprocessors.hanlp import ChineseDocumentSplitter
+
+doc = Document(content=
+    "这是第一句话，这是第二句话，这是第三句话。"
+    "这是第四句话，这是第五句话，这是第六句话！"
+    "这是第七句话，这是第八句话，这是第九句话？"
+)
+
+splitter = ChineseDocumentSplitter(
+    split_by="word", 
+    split_length=10, 
+    split_overlap=3, 
+    respect_sentence_boundary=True,
+    granularity="coarse"
+)
+splitter.warm_up()
+result = splitter.run(documents=[doc])
+
+## Each chunk will end with a complete sentence
+for doc in result["documents"]:
+    print(f"Chunk: {doc.content}")
+    print(f"Ends with sentence: {doc.content.endswith(('。', '！', '？'))}")
+```
+
+### With fine granularity
+
+For more detailed word segmentation:
+
+```python
+from haystack import Document
+from haystack_integrations.components.preprocessors.hanlp import ChineseDocumentSplitter
+
+doc = Document(content="人工智能技术正在快速发展，改变着我们的生活方式。")
+
+splitter = ChineseDocumentSplitter(
+    split_by="word", 
+    split_length=5, 
+    split_overlap=0, 
+    granularity="fine"  # More detailed segmentation
+)
+splitter.warm_up()
+result = splitter.run(documents=[doc])
+print(result["documents"])
+```
+
+### With custom splitting function
+
+You can also use a custom function for splitting:
+
+```python
+from haystack import Document
+from haystack_integrations.components.preprocessors.hanlp import ChineseDocumentSplitter
+
+def custom_split(text: str) -> list[str]:
+    """Custom splitting function that splits by commas"""
+    return text.split("，")
+
+doc = Document(content="第一段，第二段，第三段，第四段")
+
+splitter = ChineseDocumentSplitter(
+    split_by="function", 
+    splitting_function=custom_split
+)
+splitter.warm_up()
+result = splitter.run(documents=[doc])
+print(result["documents"])
+```
+
+### In a pipeline
+
+Here's how you can integrate `ChineseDocumentSplitter` into a Haystack indexing pipeline:
+
+```python
+from haystack import Pipeline, Document
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters.txt import TextFileToDocument
+from haystack_integrations.components.preprocessors.hanlp import ChineseDocumentSplitter
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.writers import DocumentWriter
+
+## Initialize components
+document_store = InMemoryDocumentStore()
+p = Pipeline()
+p.add_component(instance=TextFileToDocument(), name="text_file_converter")
+p.add_component(instance=DocumentCleaner(), name="cleaner")
+p.add_component(instance=ChineseDocumentSplitter(
+    split_by="word", 
+    split_length=100, 
+    split_overlap=20, 
+    respect_sentence_boundary=True,
+    granularity="coarse"
+), name="chinese_splitter")
+p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+
+## Connect components
+p.connect("text_file_converter.documents", "cleaner.documents")
+p.connect("cleaner.documents", "chinese_splitter.documents")
+p.connect("chinese_splitter.documents", "writer.documents")
+
+## Run pipeline with Chinese text files
+p.run({"text_file_converter": {"sources": ["path/to/your/chinese/files.txt"]}})
+```
+
+This pipeline processes Chinese text files by converting them to documents, cleaning the text, splitting them into linguistically-aware chunks using Chinese word segmentation, and storing the results in the Document Store for further retrieval and processing.

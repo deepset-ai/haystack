@@ -1,0 +1,131 @@
+---
+title: "MCPToolset"
+id: mcptoolset
+slug: "/mcptoolset"
+description: "`MCPToolset` connects to an MCP-compliant server and automatically loads all available tools into a single manageable unit. These tools can be used directly with components like Chat Generator, `ToolInvoker`, or `Agent`."
+---
+
+# MCPToolset
+
+`MCPToolset` connects to an MCP-compliant server and automatically loads all available tools into a single manageable unit. These tools can be used directly with components like Chat Generator, `ToolInvoker`, or `Agent`.
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | "server_info": Information about the MCP server to connect to                         |
+| **API reference**            | [mcp](/reference/integrations-mcp)                                                           |
+| **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mcp |
+
+## Overview
+
+MCPToolset is a subclass of `Toolset` that dynamically discovers and loads tools from any MCP-compliant server.
+
+It supports:
+
+- **Streamable HTTP** for connecting to HTTP servers
+- **SSE (Server-Sent Events)** _(deprecated)_ for remote MCP servers through HTTP 
+- **StdIO** for local tool execution through subprocess
+
+The MCPToolset makes it easy to plug external tools into pipelines (with Chat Generators and `ToolInvoker`) or agents, with built-in support for filtering (with `tool_names`).
+
+### Parameters
+
+To initialize the MCPToolset, use the following parameters:
+
+- `server_info` (required): Connection information for the MCP server
+- `tool_names` (optional): A list of tool names to add to the Toolset
+
+:::info
+Note that if `tool_names` is not specified, all tools from the MCP server will be loaded. Be cautious if there are many tools (20–30+), as this can overwhelm the LLM’s tool resolution logic.
+:::
+
+### Installation
+
+```shell
+pip install mcp-haystack
+```
+
+## Usage
+
+### With StdIO Transport
+
+```python
+from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
+
+server_info = StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"])
+toolset = MCPToolset(server_info=server_info, tool_names=["get_current_time"])  # If tool_names is omitted, all tools on this MCP server will be loaded (can overwhelm LLM if too many)
+```
+
+### With Streamable HTTP Transport
+
+```python
+from haystack_integrations.tools.mcp import MCPToolset, StreamableHttpServerInfo
+
+server_info = SSEServerInfo(url="http://localhost:8000/mcp")  
+toolset = MCPToolset(server_info=server_info, tool_names=["get_current_time"])
+```
+
+### With SSE Transport (deprecated)
+
+```python
+from haystack_integrations.tools.mcp import MCPToolset, SSEServerInfo
+
+server_info = SSEServerInfo(url="http://localhost:8000/sse")
+toolset = MCPToolset(server_info=server_info, tool_names=["get_current_time"])  
+```
+
+### In a Pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.tools import ToolInvoker
+from haystack.components.converters import OutputAdapter
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
+
+server_info = StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"])
+toolset = MCPToolset(server_info=server_info)
+
+pipeline = Pipeline()
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=toolset))
+pipeline.add_component("tool_invoker", ToolInvoker(tools=toolset))
+pipeline.add_component("adapter", OutputAdapter(
+    template="{{ initial_msg + initial_tool_messages + tool_messages }}",
+    output_type=list[ChatMessage],
+    unsafe=True,
+))
+pipeline.add_component("response_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+
+pipeline.connect("llm.replies", "tool_invoker.messages")
+pipeline.connect("llm.replies", "adapter.initial_tool_messages")
+pipeline.connect("tool_invoker.tool_messages", "adapter.tool_messages")
+pipeline.connect("adapter.output", "response_llm.messages")
+
+user_input = ChatMessage.from_user(text="What is the time in New York?")
+result = pipeline.run({
+    "llm": {"messages": [user_input]},
+    "adapter": {"initial_msg": [user_input]}
+})
+
+print(result["response_llm"]["replies"][0].text)
+```
+
+### With the Agent
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.agents import Agent
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
+
+toolset = MCPToolset(
+    server_info=StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"]),
+    tool_names=["get_current_time"]  # Omit to load all tools, but may overwhelm LLM if many
+)
+
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, exit_conditions=["text"])
+agent.warm_up()
+
+response = agent.run(messages=[ChatMessage.from_user("What is the time in New York?")])
+print(response["messages"][-1].text)
+```
