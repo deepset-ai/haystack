@@ -729,6 +729,8 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     for chunk in chunks:
         if chunk.tool_calls:
             for tool_call_delta in chunk.tool_calls:
+                # primarily because mypy complains about the tool_name could be None
+                assert tool_call_delta.tool_name is not None
                 # Each tool_call_delta is already complete from Responses API
                 try:
                     arguments = json.loads(tool_call_delta.arguments) if tool_call_delta.arguments else {}
