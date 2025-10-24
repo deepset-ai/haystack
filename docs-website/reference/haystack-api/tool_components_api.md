@@ -7,29 +7,29 @@ slug: "/tool-components-api"
 
 <a id="tool_invoker"></a>
 
-# Module tool\_invoker
+## Module tool\_invoker
 
 <a id="tool_invoker.ToolInvokerError"></a>
 
-## ToolInvokerError
+### ToolInvokerError
 
 Base exception class for ToolInvoker errors.
 
 <a id="tool_invoker.ToolNotFoundException"></a>
 
-## ToolNotFoundException
+### ToolNotFoundException
 
 Exception raised when a tool is not found in the list of available tools.
 
 <a id="tool_invoker.StringConversionError"></a>
 
-## StringConversionError
+### StringConversionError
 
 Exception raised when the conversion of a tool result to a string fails.
 
 <a id="tool_invoker.ToolOutputMergeError"></a>
 
-## ToolOutputMergeError
+### ToolOutputMergeError
 
 Exception raised when merging tool outputs into state fails.
 
@@ -47,7 +47,7 @@ Create a ToolOutputMergeError from an exception.
 
 <a id="tool_invoker.ToolInvoker"></a>
 
-## ToolInvoker
+### ToolInvoker
 
 Invokes tools based on prepared tool calls and returns the results as a list of ChatMessage objects.
 

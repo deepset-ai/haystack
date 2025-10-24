@@ -7,11 +7,11 @@ slug: "/generators-api"
 
 <a id="azure"></a>
 
-# Module azure
+## Module azure
 
 <a id="azure.AzureOpenAIGenerator"></a>
 
-## AzureOpenAIGenerator
+### AzureOpenAIGenerator
 
 Generates text using OpenAI's large language models (LLMs).
 
@@ -183,11 +183,11 @@ for each response.
 
 <a id="hugging_face_local"></a>
 
-# Module hugging\_face\_local
+## Module hugging\_face\_local
 
 <a id="hugging_face_local.HuggingFaceLocalGenerator"></a>
 
-## HuggingFaceLocalGenerator
+### HuggingFaceLocalGenerator
 
 Generates text using models from Hugging Face that run locally.
 
@@ -327,11 +327,11 @@ A dictionary containing the generated replies.
 
 <a id="hugging_face_api"></a>
 
-# Module hugging\_face\_api
+## Module hugging\_face\_api
 
 <a id="hugging_face_api.HuggingFaceAPIGenerator"></a>
 
-## HuggingFaceAPIGenerator
+### HuggingFaceAPIGenerator
 
 Generates text using Hugging Face APIs.
 
@@ -478,11 +478,11 @@ A dictionary with the generated replies and metadata. Both are lists of length n
 
 <a id="openai"></a>
 
-# Module openai
+## Module openai
 
 <a id="openai.OpenAIGenerator"></a>
 
-## OpenAIGenerator
+### OpenAIGenerator
 
 Generates text using OpenAI's large language models (LLMs).
 
@@ -636,11 +636,11 @@ for each response.
 
 <a id="openai_dalle"></a>
 
-# Module openai\_dalle
+## Module openai\_dalle
 
 <a id="openai_dalle.DALLEImageGenerator"></a>
 
-## DALLEImageGenerator
+### DALLEImageGenerator
 
 Generates images using OpenAI's DALL-E model.
 
@@ -769,11 +769,11 @@ The deserialized component instance.
 
 <a id="chat/azure"></a>
 
-# Module chat/azure
+## Module chat/azure
 
 <a id="chat/azure.AzureOpenAIChatGenerator"></a>
 
-## AzureOpenAIChatGenerator
+### AzureOpenAIChatGenerator
 
 Generates text using OpenAI's models on Azure.
 
@@ -1006,7 +1006,7 @@ A dictionary with the following key:
 
 <a id="chat/hugging_face_local"></a>
 
-# Module chat/hugging\_face\_local
+## Module chat/hugging\_face\_local
 
 <a id="chat/hugging_face_local.default_tool_parser"></a>
 
@@ -1030,7 +1030,7 @@ A list containing a single ToolCall if a valid tool call is found, None otherwis
 
 <a id="chat/hugging_face_local.HuggingFaceLocalChatGenerator"></a>
 
-## HuggingFaceLocalChatGenerator
+### HuggingFaceLocalChatGenerator
 
 Generates chat responses using models from Hugging Face that run locally.
 
@@ -1284,11 +1284,11 @@ A dictionary with the following keys:
 
 <a id="chat/hugging_face_api"></a>
 
-# Module chat/hugging\_face\_api
+## Module chat/hugging\_face\_api
 
 <a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator"></a>
 
-## HuggingFaceAPIChatGenerator
+### HuggingFaceAPIChatGenerator
 
 Completes chats using Hugging Face APIs.
 
@@ -1514,11 +1514,11 @@ A dictionary with the following keys:
 
 <a id="chat/openai"></a>
 
-# Module chat/openai
+## Module chat/openai
 
 <a id="chat/openai.OpenAIChatGenerator"></a>
 
-## OpenAIChatGenerator
+### OpenAIChatGenerator
 
 Completes chats using OpenAI's large language models (LLMs).
 
@@ -1743,11 +1743,11 @@ A dictionary with the following key:
 
 <a id="chat/fallback"></a>
 
-# Module chat/fallback
+## Module chat/fallback
 
 <a id="chat/fallback.FallbackChatGenerator"></a>
 
-## FallbackChatGenerator
+### FallbackChatGenerator
 
 A chat generator wrapper that tries multiple chat generators sequentially.
 

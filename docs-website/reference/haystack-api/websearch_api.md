@@ -7,11 +7,11 @@ slug: "/websearch-api"
 
 <a id="serper_dev"></a>
 
-# Module serper\_dev
+## Module serper\_dev
 
 <a id="serper_dev.SerperDevWebSearch"></a>
 
-## SerperDevWebSearch
+### SerperDevWebSearch
 
 Uses [Serper](https://serper.dev/) to search the web for relevant documents.
 
@@ -122,11 +122,11 @@ A dictionary with the following keys:
 
 <a id="searchapi"></a>
 
-# Module searchapi
+## Module searchapi
 
 <a id="searchapi.SearchApiWebSearch"></a>
 
-## SearchApiWebSearch
+### SearchApiWebSearch
 
 Uses [SearchApi](https://www.searchapi.io/) to search the web for relevant documents.
 
