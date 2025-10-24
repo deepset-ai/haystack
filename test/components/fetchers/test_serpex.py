@@ -14,24 +14,24 @@ from haystack.dataclasses import Document
 
 @pytest.fixture
 def mock_serpex_response():
-    """Mock SERPEX API response with organic results"""
+    """Mock SERPEX API response with results"""
     return {
-        "organic_results": [
+        "results": [
             {
                 "title": "Haystack - Open Source LLM Framework",
-                "link": "https://haystack.deepset.ai/",
+                "url": "https://haystack.deepset.ai/",
                 "snippet": "Haystack is an open-source framework for building production-ready LLM applications.",
                 "position": 1,
             },
             {
                 "title": "Haystack Documentation",
-                "link": "https://docs.haystack.deepset.ai/",
+                "url": "https://docs.haystack.deepset.ai/",
                 "snippet": "Complete documentation for Haystack framework.",
                 "position": 2,
             },
             {
                 "title": "Haystack GitHub Repository",
-                "link": "https://github.com/deepset-ai/haystack",
+                "url": "https://github.com/deepset-ai/haystack",
                 "snippet": "Official Haystack GitHub repository with source code.",
                 "position": 3,
             },
@@ -42,7 +42,7 @@ def mock_serpex_response():
 @pytest.fixture
 def mock_empty_serpex_response():
     """Mock SERPEX API response with no results"""
-    return {"organic_results": []}
+    return {"results": []}
 
 
 class TestSerpexWebSearch:

@@ -153,12 +153,12 @@ class SerpexWebSearch:
             response = self._make_request("https://api.serpex.dev/api/search", headers, params)
             data = response.json()
 
-            # Parse search results
-            if "organic_results" in data and isinstance(data["organic_results"], list):
-                for result in data["organic_results"]:
+            # Parse search results (API returns 'results' not 'organic_results')
+            if "results" in data and isinstance(data["results"], list):
+                for result in data["results"]:
                     # Extract result data
                     title = result.get("title", "")
-                    url = result.get("link", "")
+                    url = result.get("url", "")  # API uses 'url' not 'link'
                     snippet = result.get("snippet", "")
                     position = result.get("position", 0)
 
@@ -182,7 +182,7 @@ class SerpexWebSearch:
                 )
             else:
                 logger.warning(
-                    "No organic results found in SERPEX API response for query: {query}",
+                    "No results found in SERPEX API response for query: {query}",
                     query=query,
                 )
 
