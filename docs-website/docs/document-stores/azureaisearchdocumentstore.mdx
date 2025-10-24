@@ -1,0 +1,63 @@
+---
+title: "AzureAISearchDocumentStore"
+id: azureaisearchdocumentstore
+slug: "/azureaisearchdocumentstore"
+description: "A Document Store for storing and retrieval from Azure AI Search Index."
+---
+
+# AzureAISearchDocumentStore
+
+A Document Store for storing and retrieval from Azure AI Search Index.
+
+|  |  |
+| --- | --- |
+| **API reference** | [Azure AI Search](/reference/integrations-azure_ai_search)                                               |
+| **GitHub link**   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_ai_search |
+
+[Azure AI Search](https://learn.microsoft.com/en-us/azure/search/search-what-is-azure-search) is an enterprise-ready search and retrieval system to build RAG-based applications on Azure, with native LLM integrations.
+
+`AzureAISearchDocumentStore` supports semantic reranking and metadata/content filtering. The Document Store is useful for various tasks such as generating knowledge base insights (catalog or document search), information discovery (data exploration), RAG, and automation. 
+
+### Initialization
+
+This integration requires you to have an active Azure subscription with a deployed [Azure AI Search](https://azure.microsoft.com/en-us/products/ai-services/ai-search) service.
+
+Once you have the subscription, install the `azure-ai-search-haystack` integration:
+
+```python
+pip install azure-ai-search-haystack
+```
+
+To use the `AzureAISearchDocumentStore`, you need to provide a search service endpoint as an `AZURE_AI_SEARCH_ENDPOINT` and an API key as `AZURE_AI_SEARCH_API_KEY` for authentication. If the API key is not provided, the `DefaultAzureCredential` will attempt to authenticate you through the browser.
+
+During initialization the Document Store will either retrieve the existing search index for the given `index_name` or create a new one if it doesn't already exist. Note that one of the limitations of `AzureAISearchDocumentStore` is that the fields of the Azure search index cannot be modified through the API after creation. Therefore, any additional fields beyond the default ones must be provided as `metadata_fields` during the Document Store's initialization. However, if needed, [Azure AI portal](https://azure.microsoft.com/) can be used to modify the fields without deleting the index.
+
+It is recommended to pass authentication data through `AZURE_AI_SEARCH_API_KEY` and `AZURE_AI_SEARCH_ENDPOINT` before running the following example.
+
+```python
+from haystack_integrations.document_stores.azure_ai_search import AzureAISearchDocumentStore
+from haystack import Document
+
+document_store = AzureAISearchDocumentStore(index_name="haystack-docs")
+document_store.write_documents([
+    Document(content="This is the first document."),
+    Document(content="This is the second document.")
+])
+print(document_store.count_documents())
+```
+
+:::info
+Latency Notice
+
+Due to Azure search index latency, the document count returned in the example might be zero if executed immediately. To ensure accurate results, be mindful of this latency when retrieving documents from the search index.
+:::
+
+You can enable semantic reranking in `AzureAISearchDocumentStore` by providing [SemanticSearch](https://learn.microsoft.com/en-us/python/api/azure-search-documents/azure.search.documents.indexes.models.semanticsearch?view=azure-python) configuration in `index_creation_kwargs` during initialization and calling it from one of the Retrievers. For more information, refer to the [Azure AI tutorial](https://learn.microsoft.com/en-us/azure/search/search-get-started-semantic) on this feature.
+
+### Supported Retrievers
+
+The Haystack Azure AI Search integration includes three Retriever components. Each Retriever leverages the Azure AI Search API  and you can select the one that best suits your pipeline:
+
+- [`AzureAISearchEmbeddingRetriever`](../pipeline-components/retrievers/azureaisearchembeddingretriever.mdx): This Retriever accepts the embeddings of a single query as input and returns a list of matching documents. The query must be embedded beforehand, which can be done using an [Embedder](../pipeline-components/embedders.mdx) component.
+- [`AzureAISearchBM25Retriever`](../pipeline-components/retrievers/azureaisearchbm25retriever.mdx): A keyword-based Retriever that retrieves documents matching a query from the Azure AI Search index.
+- [`AzureAISearchHybridRetriever`](../pipeline-components/retrievers/azureaisearchhybridretriever.mdx): This Retriever combines embedding-based retrieval and keyword search to find matching documents in the search index to get more relevant results.

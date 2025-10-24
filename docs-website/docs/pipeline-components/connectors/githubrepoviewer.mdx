@@ -1,0 +1,88 @@
+---
+title: "GitHubRepoViewer"
+id: githubrepoviewer
+slug: "/githubrepoviewer"
+description: "This component navigates and fetches content from GitHub repositories through the GitHub API."
+---
+
+# GitHubRepoViewer
+
+This component navigates and fetches content from GitHub repositories through the GitHub API.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Right at the beginning of a pipeline and before a [ChatPromptBuilder](../../../docs/pipeline-components/builders/chatpromptbuilder.mdx) that expects the content of GitHub files as input |
+| **Mandatory run variables** | "path": Repository path to view  <br /> <br />"repo": Repository in owner/repo format |
+| **Output variables** | "documents": A list of documents containing repository contents |
+| **API reference** | [GitHub](/reference/integrations-hanlp) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+## Overview
+
+`GitHubRepoViewer` provides different behavior based on the path type:
+
+- **For directories**: Returns a list of documents, one for each item (files and subdirectories),
+- **For files**: Returns a single document containing the file content.
+
+Each document includes rich metadata such as the path, type, size, and URL.
+
+### Authorization
+
+The component can work without authentication for public repositories, but for private repositories or to avoid rate limiting, you can provide a GitHub personal access token.
+
+You can set the token using the `GITHUB_TOKEN` environment variable, or pass it directly during initialization via the `github_token` parameter.
+
+To create a personal access token, visit [GitHub's token settings page](https://github.com/settings/tokens).
+
+### Installation
+
+Install the GitHub integration with pip:
+
+```shell
+pip install github-haystack
+```
+
+## Usage
+
+:::info
+Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+Viewing a directory listing:
+
+```python
+from haystack_integrations.components.connectors.github import GitHubRepoViewer
+
+viewer = GitHubRepoViewer()
+result = viewer.run(
+    repo="deepset-ai/haystack",
+    path="haystack/components",
+    branch="main"
+)
+
+print(result)
+```
+
+```bash
+{'documents': [Document(id=..., content: 'agents', meta: {'path': 'haystack/components/agents', 'type': 'dir', 'size': 0, 'url': 'https://github.com/deepset-ai/haystack/tree/main/haystack/components/agents'}), ...]}
+```
+
+Viewing a specific file:
+
+```python
+from haystack_integrations.components.connectors.github import GitHubRepoViewer
+
+viewer = GitHubRepoViewer(repo="deepset-ai/haystack", branch="main")
+result = viewer.run(path="README.md")
+
+print(result)
+```
+
+```bash
+{'documents': [Document(id=..., content: '<div align="center">
+  <a href="https://haystack.deepset.ai/"><img src="https://raw.githubuserconten...', meta: {'path': 'README.md', 'type': 'file_content', 'size': 11979, 'url': 'https://github.com/deepset-ai/haystack/blob/main/README.md'})]}
+```

@@ -1,0 +1,77 @@
+---
+title: "SentenceWindowRetriever"
+id: sentencewindowretrieval
+slug: "/sentencewindowretrieval"
+description: "Use this component to retrieve neighboring sentences around relevant sentences to get the full context."
+---
+
+# SentenceWindowRetriever
+
+Use this component to retrieve neighboring sentences around relevant sentences to get the full context.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Used after the main Retriever component, like the `InMemoryEmbeddingRetriever` or any other Retriever. |
+| **Mandatory init variables** | "document_store": An instance of a Document Store |
+| **Mandatory run variables** | "retrieved_documents": A list of already retrieved documents for which you want to get a context window |
+| **Output variables** | “context_windows”: A list of strings  <br /> <br />"context_documents": A list of documents ordered by `split_idx_start` |
+| **API reference** | [Retrievers](/reference/retrievers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/sentence_window_retriever.py |
+
+## Overview
+
+The "sentence window" is a retrieval technique that allows for the retrieval of the context around relevant sentences.
+
+During indexing, documents are broken into smaller chunks or sentences and indexed. During retrieval, the sentences most relevant to a given query, based on a certain similarity metric, are retrieved.
+
+Once we have the relevant sentences, we can retrieve neighboring sentences to provide full context. The number of neighboring sentences to retrieve is defined by a fixed number of sentences before and after the relevant sentence.
+
+This component is meant to be used with other Retrievers, such as the `InMemoryEmbeddingRetriever`. These Retrievers find relevant sentences by comparing a query against indexed sentences using a similarity metric. Then, the `SentenceWindowRetriever` component retrieves neighboring sentences around the relevant ones by leveraging metadata stored in the `Document` object.
+
+## Usage
+
+### On its own
+
+```python
+splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")  
+text = ("This is a text with some words. There is a second sentence. And there is also a third sentence. "  
+        "It also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence")
+doc = Document(content=text)
+
+docs = splitter.run([doc])
+doc_store = InMemoryDocumentStore()
+doc_store.write_documents(docs["documents"])
+
+retriever = SentenceWindowRetriever(document_store=doc_store, window_size=3)
+```
+
+### In a Pipeline
+
+```python
+from haystack import Document, Pipeline  
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever  
+from haystack.components.retrievers import SentenceWindowRetriever  
+from haystack.components.preprocessors import DocumentSplitter  
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+    
+splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
+text = (
+        "This is a text with some words. There is a second sentence. And there is also a third sentence. "
+        "It also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence"
+)
+doc = Document(content=text)
+docs = splitter.run([doc])
+doc_store = InMemoryDocumentStore()
+doc_store.write_documents(docs["documents"])
+
+rag = Pipeline()
+rag.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
+rag.add_component("sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=3))
+rag.connect("bm25_retriever", "sentence_window_retriever")
+
+rag.run({'bm25_retriever': {"query":"third"}})
+```
+
+## Additional References
+
+:notebook: Tutorial: [Retrieving a Context Window Around a Sentence](https://haystack.deepset.ai/tutorials/42_sentence_window_retriever)

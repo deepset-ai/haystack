@@ -1,0 +1,62 @@
+---
+title: "ElasticsearchDocumentStore"
+id: elasticsearch-document-store
+slug: "/elasticsearch-document-store"
+description: "Use an Elasticsearch database with Haystack."
+---
+
+# ElasticsearchDocumentStore
+
+Use an Elasticsearch database with Haystack.
+
+|  |  |
+| --- | --- |
+| API reference | [Elasticsearch](/reference/integrations-elasticsearch)                                                 |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch |
+
+ElasticsearchDocumentStore is excellent if you want to evaluate the performance of different retrieval options (dense vs. sparse) and aim for a smooth transition from PoC to production.
+
+It features the approximate nearest neighbours (ANN) search.
+
+### Initialization
+
+[Install](https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html) Elasticsearch and then [start](https://www.elastic.co/guide/en/elasticsearch/reference/current/starting-elasticsearch.html) an instance. Haystack supports Elasticsearch 8.
+
+If you have Docker set up, we recommend pulling the Docker image and running it.
+
+```shell
+docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+docker run -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" -e "xpack.security.enabled=false" elasticsearch:8.11.1
+```
+
+As an alternative, you can go to [Elasticsearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch) and start a Docker container running Elasticsearch using the provided `docker-compose.yml`:
+
+```shell
+docker compose up
+```
+
+Once you have a running Elasticsearch instance, install the `elasticsearch-haystack` integration:
+
+```shell
+pip install elasticsearch-haystack
+```
+
+Then, initialize an `ElasticsearchDocumentStore` object that’s connected to the Elasticsearch instance and writes documents to it:
+
+```python
+from haystack_integrations.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack import Document
+
+document_store = ElasticsearchDocumentStore(hosts = "http://localhost:9200")
+document_store.write_documents([
+    Document(content="This is first"),
+    Document(content="This is second")
+    ])
+print(document_store.count_documents())
+```
+
+### Supported Retrievers
+
+[`ElasticsearchBM25Retriever`](../pipeline-components/retrievers/elasticsearchbm25retriever.mdx): A keyword-based Retriever that fetches documents matching a query from the Document Store.
+
+[`ElasticsearchEmbeddingRetriever`](../pipeline-components/retrievers/elasticsearchembeddingretriever.mdx): Compares the query and document embeddings and fetches the documents most relevant to the query.
