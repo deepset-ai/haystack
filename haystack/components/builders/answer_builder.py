@@ -30,6 +30,41 @@ class AnswerBuilder:
     builder = AnswerBuilder(pattern="Answer: (.*)")
     builder.run(query="What's the answer?", replies=["This is an argument. Answer: This is the answer."])
     ```
+
+    ### Usage example with documents and reference pattern
+
+    ```python
+    from haystack import Document
+    from haystack.components.builders import AnswerBuilder
+
+    replies = ["The capital of France is Paris [2]."]
+
+    docs = [
+        Document(content="Berlin is the capital of Germany."),
+        Document(content="Paris is the capital of France."),
+        Document(content="Rome is the capital of Italy."),
+    ]
+
+    builder = AnswerBuilder(reference_pattern="\\[(\\d+)\\]", return_only_referenced_documents=False)
+    result = builder.run(query="What is the capital of France?", replies=replies, documents=docs)["answers"][0]
+
+    print(f"Answer: {result.data}")
+    print("References:")
+    for doc in result.documents:
+        if doc.meta["referenced"]:
+            print(f"[{doc.meta['source_index']}] {doc.content}")
+    print("Other sources:")
+    for doc in result.documents:
+        if not doc.meta["referenced"]:
+            print(f"[{doc.meta['source_index']}] {doc.content}")
+
+    # Answer: The capital of France is Paris
+    # References:
+    # [2] Paris is the capital of France.
+    # Other sources:
+    # [1] Berlin is the capital of Germany.
+    # [3] Rome is the capital of Italy.
+    ```
     """
 
     def __init__(
@@ -100,10 +135,11 @@ class AnswerBuilder:
         :param documents:
             The documents used as the Generator inputs. If specified, they are added to
             the `GeneratedAnswer` objects.
-            Each Document.meta includes a "document_index" key, representing its position in the input list.
+            Each Document.meta includes a "source_index" key, representing its position in the input list.
             When `reference_pattern` is provided:
             - "referenced" key is added to the Document.meta, indicating if the document was referenced in the output.
-            - `return_only_referenced_documents` controls if all or only referenced documents are included.
+            - `return_only_referenced_documents` init parameter controls if all or only referenced documents are
+            returned.
         :param pattern:
             The regular expression pattern to extract the answer text from the Generator.
             If not specified, the entire response is used as the answer.
@@ -169,7 +205,7 @@ class AnswerBuilder:
                         continue
 
                     doc_meta: dict[str, Any] = doc.meta or {}
-                    doc_meta["document_index"] = idx + 1
+                    doc_meta["source_index"] = idx + 1
                     if reference_pattern:
                         doc_meta["referenced"] = idx in referenced_idxs
                     referenced_docs.append(replace(doc, meta=doc_meta))

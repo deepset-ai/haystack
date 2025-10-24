@@ -144,7 +144,7 @@ class TestAnswerBuilder:
         assert len(answers[0].documents) == 1
         assert answers[0].documents[0].content == "test doc 2"
         assert answers[0].documents[0].meta["referenced"] is True
-        assert answers[0].documents[0].meta["document_index"] == 2
+        assert answers[0].documents[0].meta["source_index"] == 2
 
     def test_run_with_documents_with_reference_pattern_return_all_documents(self):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]", return_only_referenced_documents=False)
@@ -163,10 +163,10 @@ class TestAnswerBuilder:
         assert len(answers[0].documents) == 2
         assert answers[0].documents[0].content == "test doc 1"
         assert answers[0].documents[0].meta["referenced"] is False
-        assert answers[0].documents[0].meta["document_index"] == 1
+        assert answers[0].documents[0].meta["source_index"] == 1
         assert answers[0].documents[1].content == "test doc 2"
         assert answers[0].documents[1].meta["referenced"] is True
-        assert answers[0].documents[1].meta["document_index"] == 2
+        assert answers[0].documents[1].meta["source_index"] == 2
 
     def test_run_with_documents_with_reference_pattern_and_no_match(self, caplog):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")
