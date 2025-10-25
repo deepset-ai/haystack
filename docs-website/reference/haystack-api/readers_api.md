@@ -7,11 +7,11 @@ slug: "/readers-api"
 
 <a id="extractive"></a>
 
-# Module extractive
+## Module extractive
 
 <a id="extractive.ExtractiveReader"></a>
 
-## ExtractiveReader
+### ExtractiveReader
 
 Locates and extracts answers to a given query from Documents.
 

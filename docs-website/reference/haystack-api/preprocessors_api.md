@@ -7,11 +7,11 @@ slug: "/preprocessors-api"
 
 <a id="csv_document_cleaner"></a>
 
-# Module csv\_document\_cleaner
+## Module csv\_document\_cleaner
 
 <a id="csv_document_cleaner.CSVDocumentCleaner"></a>
 
-## CSVDocumentCleaner
+### CSVDocumentCleaner
 
 A component for cleaning CSV documents by removing empty rows and columns.
 
@@ -74,11 +74,11 @@ Processing steps:
 
 <a id="csv_document_splitter"></a>
 
-# Module csv\_document\_splitter
+## Module csv\_document\_splitter
 
 <a id="csv_document_splitter.CSVDocumentSplitter"></a>
 
-## CSVDocumentSplitter
+### CSVDocumentSplitter
 
 A component for splitting CSV documents into sub-tables based on split arguments.
 
@@ -153,11 +153,11 @@ each representing an extracted sub-table from the original CSV.
 
 <a id="document_cleaner"></a>
 
-# Module document\_cleaner
+## Module document\_cleaner
 
 <a id="document_cleaner.DocumentCleaner"></a>
 
-## DocumentCleaner
+### DocumentCleaner
 
 Cleans the text in the documents.
 
@@ -240,11 +240,11 @@ A dictionary with the following key:
 
 <a id="document_preprocessor"></a>
 
-# Module document\_preprocessor
+## Module document\_preprocessor
 
 <a id="document_preprocessor.DocumentPreprocessor"></a>
 
-## DocumentPreprocessor
+### DocumentPreprocessor
 
 A SuperComponent that first splits and then cleans documents.
 
@@ -353,11 +353,11 @@ Deserialized SuperComponent.
 
 <a id="document_splitter"></a>
 
-# Module document\_splitter
+## Module document\_splitter
 
 <a id="document_splitter.DocumentSplitter"></a>
 
-## DocumentSplitter
+### DocumentSplitter
 
 Splits long documents into smaller chunks.
 
@@ -499,11 +499,11 @@ Deserializes the component from a dictionary.
 
 <a id="hierarchical_document_splitter"></a>
 
-# Module hierarchical\_document\_splitter
+## Module hierarchical\_document\_splitter
 
 <a id="hierarchical_document_splitter.HierarchicalDocumentSplitter"></a>
 
-## HierarchicalDocumentSplitter
+### HierarchicalDocumentSplitter
 
 Splits a documents into different block sizes building a hierarchical tree structure of blocks of different sizes.
 
@@ -621,11 +621,11 @@ The deserialized component.
 
 <a id="recursive_splitter"></a>
 
-# Module recursive\_splitter
+## Module recursive\_splitter
 
 <a id="recursive_splitter.RecursiveDocumentSplitter"></a>
 
-## RecursiveDocumentSplitter
+### RecursiveDocumentSplitter
 
 Recursively chunk text into smaller chunks.
 
@@ -736,11 +736,11 @@ to the input documents.
 
 <a id="text_cleaner"></a>
 
-# Module text\_cleaner
+## Module text\_cleaner
 
 <a id="text_cleaner.TextCleaner"></a>
 
-## TextCleaner
+### TextCleaner
 
 Cleans text strings.
 

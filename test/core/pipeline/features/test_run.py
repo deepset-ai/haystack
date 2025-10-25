@@ -951,11 +951,13 @@ def pipeline_that_has_a_component_with_only_default_inputs(pipeline_class):
                                         id="413dccdf51a54cca75b7ed2eddac04e6e58560bd2f0caf4106a3efc023fe3651",
                                         content="Paris is the capital of France",
                                         score=1.600237583702734,
+                                        meta={"source_index": 1},
                                     ),
                                     Document(
                                         id="a4a874fc2ef75015da7924d709fbdd2430e46a8e94add6e0f26cd32c1c03435d",
                                         content="Rome is the capital of Italy",
                                         score=1.2536639934227616,
+                                        meta={"source_index": 2},
                                     ),
                                 ],
                                 meta={"all_messages": ["Paris"]},

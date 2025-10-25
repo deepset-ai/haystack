@@ -7,7 +7,7 @@ slug: "/validators-api"
 
 <a id="json_schema"></a>
 
-# Module json\_schema
+## Module json\_schema
 
 <a id="json_schema.is_valid_json"></a>
 
@@ -29,7 +29,7 @@ Check if the provided string is a valid JSON.
 
 <a id="json_schema.JsonSchemaValidator"></a>
 
-## JsonSchemaValidator
+### JsonSchemaValidator
 
 Validates JSON content of `ChatMessage` against a specified [JSON Schema](https://json-schema.org/).
 
