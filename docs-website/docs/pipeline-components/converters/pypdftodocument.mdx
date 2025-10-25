@@ -1,0 +1,71 @@
+---
+title: "PyPDFToDocument"
+id: pypdftodocument
+slug: "/pypdftodocument"
+description: "A component that converts PDF files to Documents."
+---
+
+# PyPDFToDocument
+
+A component that converts PDF files to Documents.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx) , or right at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | "sources": PDF file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestresm)  objects             |
+| **Output variables**                   | "documents": A list of documents                                                                |
+| **API reference**                      | [Converters](/reference/converters-api)                                                                |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/pypdf.py      |
+
+## Overview
+
+The `PyPDFToDocument` component converts PDF files into documents. You can use it in an indexing pipeline to index the contents of a PDF file into a Document Store. It takes a list of file paths or [ByteStream](../../concepts/data-classes.mdx#bytestresm) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter. 
+
+## Usage
+
+You need to install `pypdf` package to use the `PyPDFToDocument` converter:
+
+```shell
+pip install pypdf
+```
+
+### On its own
+
+```python
+from pathlib import Path
+from haystack.components.converters import PyPDFToDocument
+
+converter = PyPDFToDocument()
+
+docs = converter.run(sources=[Path("my_file.pdf")])
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import PyPDFToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", PyPDFToDocument())
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": file_names}})
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [PDF-Based Question Answering with Amazon Bedrock and Haystack](https://haystack.deepset.ai/cookbook/amazon_bedrock_for_documentation_qa)
+
+📓 Tutorial: [Preprocessing Different File Types](https://haystack.deepset.ai/tutorials/30_file_type_preprocessing_index_pipeline)

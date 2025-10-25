@@ -7,11 +7,11 @@ slug: "/image-converters-api"
 
 <a id="document_to_image"></a>
 
-# Module document\_to\_image
+## Module document\_to\_image
 
 <a id="document_to_image.DocumentToImageContent"></a>
 
-## DocumentToImageContent
+### DocumentToImageContent
 
 Converts documents sourced from PDF and image files into ImageContents.
 
@@ -110,11 +110,11 @@ data and metadata. The order corresponds to order of input documents.
 
 <a id="file_to_document"></a>
 
-# Module file\_to\_document
+## Module file\_to\_document
 
 <a id="file_to_document.ImageFileToDocument"></a>
 
-## ImageFileToDocument
+### ImageFileToDocument
 
 Converts image file references into empty Document objects with associated metadata.
 
@@ -191,11 +191,11 @@ A dictionary containing:
 
 <a id="file_to_image"></a>
 
-# Module file\_to\_image
+## Module file\_to\_image
 
 <a id="file_to_image.ImageFileToImageContent"></a>
 
-## ImageFileToImageContent
+### ImageFileToImageContent
 
 Converts image files to ImageContent objects.
 
@@ -276,11 +276,11 @@ A dictionary with the following keys:
 
 <a id="pdf_to_image"></a>
 
-# Module pdf\_to\_image
+## Module pdf\_to\_image
 
 <a id="pdf_to_image.PDFToImageContent"></a>
 
-## PDFToImageContent
+### PDFToImageContent
 
 Converts PDF files to ImageContent objects.
 

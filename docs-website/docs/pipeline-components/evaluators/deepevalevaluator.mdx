@@ -1,0 +1,84 @@
+---
+title: "DeepEvalEvaluator"
+id: deepevalevaluator
+slug: "/deepevalevaluator"
+description: "The DeepEvalEvaluator evaluates Haystack pipelines using LLM-based metrics. It supports metrics like answer relevancy, faithfulness, contextual relevance, and more."
+---
+
+# DeepEvalEvaluator
+
+The DeepEvalEvaluator evaluates Haystack pipelines using LLM-based metrics. It supports metrics like answer relevancy, faithfulness, contextual relevance, and more.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline has generated the inputs for the Evaluator. |
+| **Mandatory init variables** | "metric": One of the DeepEval metrics to use for evaluation |
+| **Mandatory run variables** | “\*\*inputs”: A keyword arguments dictionary containing the expected inputs. The expected inputs will change based on the metric you are evaluating. See below for more details. |
+| **Output variables** | “results”: A nested list of metric results. There can be one or more results, depending on the metric. Each result is a dictionary containing:  <br /> <br />- `name` - The name of the metric  <br />- `score` - The score of the metric  <br />- `explanation` - An optional explanation of the score |
+| **API reference** | [DeepEval](/reference/integrations-deepeval) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/deepeval |
+
+DeepEval is an evaluation framework that provides a number of LLM-based evaluation metrics. You can use the `DeepEvalEvaluator` component to evaluate a Haystack pipeline, such as a retrieval-augmented generated pipeline, against one of the metrics provided by DeepEval.
+
+## Supported Metrics
+
+DeepEval supports a number of metrics, which we expose through the [DeepEval metric enumeration.](/reference/integrations-deepeval#deepevalmetric) [`DeepEvalEvaluator`](/reference/integrations-deepeval#deepevalevaluator) in Haystack supports the metrics listed below with the expected `metric_params` while initializing the Evaluator. Many metrics use OpenAI models and require you to set an environment variable `OPENAI_API_KEY`. For a complete guide on these metrics, visit the [DeepEval documentation](https://docs.confident-ai.com/docs/getting-started).
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline has generated the inputs for the Evaluator. |
+| **Mandatory init variables** | "metric": One of the DeepEval metrics to use for evaluation |
+| **Mandatory run variables** | “\*\*inputs”: A keyword arguments dictionary containing the expected inputs. The expected inputs will change based on the metric you are evaluating. See below for more details. |
+| **Output variables** | “results”: A nested list of metric results. There can be one or more results, depending on the metric. Each result is a dictionary containing:  <br /> <br />- `name` - The name of the metric  <br />- `score` - The score of the metric  <br />- `explanation` - An optional explanation of the score |
+| **API reference** | [DeepEval](/reference/integrations-deepeval) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/deepeval |
+
+## Parameters Overview
+
+To initialize a `DeepEvalEvaluator`, you need to provide the following parameters : 
+
+- `metric`: A `DeepEvalMetric`.
+- `metric_params`: Optionally, if the metric calls for any additional parameters, you should provide them here.
+
+## Usage
+
+To use the `DeepEvalEvaluator`, you first need to install the integration:
+
+```bash
+pip install deepeval-haystack
+```
+
+To use the `DeepEvalEvaluator` you need to follow these steps:
+
+1. Initialize the `DeepEvalEvaluator` while providing the correct `metric_params` for the metric you are using.
+2. Run the `DeepEvalEvaluator` on its own or in a pipeline by providing the expected input for the metric you are using.
+
+### Examples
+
+**Evaluate Faithfulness**
+
+To create a faithfulness evaluation pipeline:
+
+```python
+from haystack import Pipeline
+from haystack_integrations.components.evaluators.deepeval import DeepEvalEvaluator, DeepEvalMetric
+
+pipeline = Pipeline()
+evaluator = DeepEvalEvaluator(
+    metric=DeepEvalMetric.FAITHFULNESS,
+    metric_params={"model": "gpt-4"},
+)
+pipeline.add_component("evaluator", evaluator)
+```
+
+To run the evaluation pipeline, you should have the _expected inputs_ for the metric ready at hand. This metric expects a list of `questions` and `contexts`. These should come from the results of the pipeline you want to evaluate.
+
+```python
+results = pipeline.run({"evaluator": {"questions": ["When was the Rhodes Statue built?", "Where is the Pyramid of Giza?"], 
+                                      "contexts": [["Context for question 1"], ["Context for question 2"]],
+                                      "responses": ["Response for queston 1", "Reponse for question 2"]}})
+```
+
+## Additional References
+
+:cook: Cookbook: [RAG Pipeline Evaluation Using DeepEval](https://haystack.deepset.ai/cookbook/rag_eval_deep_eval)

@@ -1,0 +1,72 @@
+---
+title: "PDFMinerToDocument"
+id: pdfminertodocument
+slug: "/pdfminertodocument"
+description: "A component that converts complex PDF files to documents using pdfminer arguments."
+---
+
+# PDFMinerToDocument
+
+A component that converts complex PDF files to documents using pdfminer arguments.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx)  or right at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | "sources": PDF file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestresm)  objects            |
+| **Output variables**                   | "documents": A list of documents                                                               |
+| **API reference**                      | [Converters](/reference/converters-api)                                                               |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/pdfminer.py  |
+
+## Overview
+
+The `PDFMinerToDocument` component converts PDF files into documents using [PDFMiner](https://pdfminersix.readthedocs.io/en/latest/) extraction tool arguments.
+
+You can use it in an indexing pipeline to index the contents of a PDF file in a Document Store. It takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestresm)objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+
+When initializing the component, you can adjust several parameters to fit your PDF. See the full parameter list and descriptions in our [API reference](/reference/converters-api#pdfminertodocument).
+
+## Usage
+
+First, install `pdfminer` package to start using this converter:
+
+```shell
+pip install pdfminer.six
+```
+
+### On its own
+
+```python
+from haystack.components.converters import PDFMinerToDocument
+
+converter = PDFMinerToDocument()
+results = converter.run(sources=["sample.pdf"], meta={"date_added": datetime.now().isoformat()})
+documents = results["documents"]
+
+print(documents[0].content)
+
+## 'This is a text from the PDF file.'
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import PDFMinerToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", PDFMinerToDocument())
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": file_names}})
+```

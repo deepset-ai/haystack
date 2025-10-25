@@ -7,11 +7,11 @@ slug: "/converters-api"
 
 <a id="azure"></a>
 
-# Module azure
+## Module azure
 
 <a id="azure.AzureOCRDocumentConverter"></a>
 
-## AzureOCRDocumentConverter
+### AzureOCRDocumentConverter
 
 Converts files to documents using Azure's Document Intelligence service.
 
@@ -137,11 +137,11 @@ The deserialized component.
 
 <a id="csv"></a>
 
-# Module csv
+## Module csv
 
 <a id="csv.CSVToDocument"></a>
 
-## CSVToDocument
+### CSVToDocument
 
 Converts CSV files to Documents.
 
@@ -221,11 +221,11 @@ A dictionary with the following keys:
 
 <a id="docx"></a>
 
-# Module docx
+## Module docx
 
 <a id="docx.DOCXMetadata"></a>
 
-## DOCXMetadata
+### DOCXMetadata
 
 Describes the metadata of Docx file.
 
@@ -249,7 +249,7 @@ Describes the metadata of Docx file.
 
 <a id="docx.DOCXTableFormat"></a>
 
-## DOCXTableFormat
+### DOCXTableFormat
 
 Supported formats for storing DOCX tabular data in a Document.
 
@@ -266,7 +266,7 @@ Convert a string to a DOCXTableFormat enum.
 
 <a id="docx.DOCXLinkFormat"></a>
 
-## DOCXLinkFormat
+### DOCXLinkFormat
 
 Supported formats for storing DOCX link information in a Document.
 
@@ -283,7 +283,7 @@ Convert a string to a DOCXLinkFormat enum.
 
 <a id="docx.DOCXToDocument"></a>
 
-## DOCXToDocument
+### DOCXToDocument
 
 Converts DOCX files to Documents.
 
@@ -386,11 +386,11 @@ A dictionary with the following keys:
 
 <a id="html"></a>
 
-# Module html
+## Module html
 
 <a id="html.HTMLToDocument"></a>
 
-## HTMLToDocument
+### HTMLToDocument
 
 Converts an HTML file to a Document.
 
@@ -488,11 +488,11 @@ A dictionary with the following keys:
 
 <a id="json"></a>
 
-# Module json
+## Module json
 
 <a id="json.JSONConverter"></a>
 
-## JSONConverter
+### JSONConverter
 
 Converts one or more JSON files into a text document.
 
@@ -668,11 +668,11 @@ A dictionary with the following keys:
 
 <a id="markdown"></a>
 
-# Module markdown
+## Module markdown
 
 <a id="markdown.MarkdownToDocument"></a>
 
-## MarkdownToDocument
+### MarkdownToDocument
 
 Converts a Markdown file into a text Document.
 
@@ -736,11 +736,11 @@ A dictionary with the following keys:
 
 <a id="msg"></a>
 
-# Module msg
+## Module msg
 
 <a id="msg.MSGToDocument"></a>
 
-## MSGToDocument
+### MSGToDocument
 
 Converts Microsoft Outlook .msg files into Haystack Documents.
 
@@ -808,11 +808,11 @@ A dictionary with the following keys:
 
 <a id="multi_file_converter"></a>
 
-# Module multi\_file\_converter
+## Module multi\_file\_converter
 
 <a id="multi_file_converter.MultiFileConverter"></a>
 
-## MultiFileConverter
+### MultiFileConverter
 
 A file converter that handles conversion of multiple file types.
 
@@ -853,11 +853,11 @@ Initialize the MultiFileConverter.
 
 <a id="openapi_functions"></a>
 
-# Module openapi\_functions
+## Module openapi\_functions
 
 <a id="openapi_functions.OpenAPIServiceToFunctions"></a>
 
-## OpenAPIServiceToFunctions
+### OpenAPIServiceToFunctions
 
 Converts OpenAPI service definitions to a format suitable for OpenAI function calling.
 
@@ -919,17 +919,17 @@ A dictionary with the following keys:
 
 <a id="output_adapter"></a>
 
-# Module output\_adapter
+## Module output\_adapter
 
 <a id="output_adapter.OutputAdaptationException"></a>
 
-## OutputAdaptationException
+### OutputAdaptationException
 
 Exception raised when there is an error during output adaptation.
 
 <a id="output_adapter.OutputAdapter"></a>
 
-## OutputAdapter
+### OutputAdapter
 
 Adapts output of a Component using Jinja templates.
 
@@ -1031,7 +1031,7 @@ The deserialized component.
 
 <a id="pdfminer"></a>
 
-# Module pdfminer
+## Module pdfminer
 
 <a id="pdfminer.CID_PATTERN"></a>
 
@@ -1041,7 +1041,7 @@ regex pattern to detect CID characters
 
 <a id="pdfminer.PDFMinerToDocument"></a>
 
-## PDFMinerToDocument
+### PDFMinerToDocument
 
 Converts PDF files to Documents.
 
@@ -1155,11 +1155,11 @@ A dictionary with the following keys:
 
 <a id="pptx"></a>
 
-# Module pptx
+## Module pptx
 
 <a id="pptx.PPTXToDocument"></a>
 
-## PPTXToDocument
+### PPTXToDocument
 
 Converts PPTX files to Documents.
 
@@ -1218,11 +1218,11 @@ A dictionary with the following keys:
 
 <a id="pypdf"></a>
 
-# Module pypdf
+## Module pypdf
 
 <a id="pypdf.PyPDFExtractionMode"></a>
 
-## PyPDFExtractionMode
+### PyPDFExtractionMode
 
 The mode to use for extracting text from a PDF.
 
@@ -1249,7 +1249,7 @@ Convert a string to a PyPDFExtractionMode enum.
 
 <a id="pypdf.PyPDFToDocument"></a>
 
-## PyPDFToDocument
+### PyPDFToDocument
 
 Converts PDF files to documents your pipeline can query.
 
@@ -1368,11 +1368,11 @@ A dictionary with the following keys:
 
 <a id="tika"></a>
 
-# Module tika
+## Module tika
 
 <a id="tika.XHTMLParser"></a>
 
-## XHTMLParser
+### XHTMLParser
 
 Custom parser to extract pages from Tika XHTML content.
 
@@ -1408,7 +1408,7 @@ Populate the page content.
 
 <a id="tika.TikaDocumentConverter"></a>
 
-## TikaDocumentConverter
+### TikaDocumentConverter
 
 Converts files of different types to Documents.
 
@@ -1477,11 +1477,11 @@ A dictionary with the following keys:
 
 <a id="txt"></a>
 
-# Module txt
+## Module txt
 
 <a id="txt.TextFileToDocument"></a>
 
-## TextFileToDocument
+### TextFileToDocument
 
 Converts text files to documents your pipeline can query.
 
@@ -1547,11 +1547,11 @@ A dictionary with the following keys:
 
 <a id="xlsx"></a>
 
-# Module xlsx
+## Module xlsx
 
 <a id="xlsx.XLSXToDocument"></a>
 
-## XLSXToDocument
+### XLSXToDocument
 
 Converts XLSX (Excel) files into Documents.
 

@@ -1,0 +1,107 @@
+---
+title: "OpenAPIServiceConnector"
+id: openapiserviceconnector
+slug: "/openapiserviceconnector"
+description: "`OpenAPIServiceConnector` is a component that acts as an interface between the Haystack ecosystem and OpenAPI services."
+---
+
+# OpenAPIServiceConnector
+
+`OpenAPIServiceConnector` is a component that acts as an interface between the Haystack ecosystem and OpenAPI services.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Flexible |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../../docs/concepts/data-classes.mdx#chatmessage)  objects where the last message is expected to carry parameter invocation payload.  <br /> <br />”service_openapi_spec”: OpenAPI specification of the service being invoked. It can be YAML/JSON, and all ref values must be resolved.  <br /> <br />”service_credentials”: Authentication credentials for the service. We currently support two OpenAPI spec v3 security schemes:  <br /> <br />1. http – for Basic, Bearer, and other HTTP authentication schemes;  <br />2. apiKey – for API keys and cookie authentication. |
+| **Output variables** | “service_response”: A dictionary that is a list of [`ChatMessage`](../../../docs/concepts/data-classes.mdx#chatmessage)  objects where each message corresponds to a function invocation.  <br />If a user specifies multiple function calling requests, there will be multiple responses. |
+| **API reference** | [Connectors](/reference/connectors-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/connectors/openapi_service.py |
+
+## Overview
+
+`OpenAPIServiceConnector` acts as a bridge between Haystack ecosystem and OpenAPI services. This component works by using information from a `ChatMessage` to dynamically invoke service methods. It handles parameter payload parsing from `ChatMessage`, service authentication, method invocation, and response formatting, making it easier to integrate OpenAPI services.
+
+To use `OpenAPIServiceConnector`, you need to install the optional `openapi3` dependency with:
+
+```shell
+pip install openapi3
+```
+
+`OpenAPIServiceConnector` component doesn’t have any init parameters.
+
+## Usage
+
+### On its own
+
+This component is primarily meant to be used in pipelines, as [`OpenAPIServiceToFunctions`](../converters/openapiservicetofunctions.mdx), in tandem with the function calling model, resolves the actual function calling parameters that are injected as invocation parameters for `OpenAPIServiceConnector`.
+
+### In a pipeline
+
+Let's say we're linking the Serper search engine to a pipeline. Here, `OpenAPIServiceConnector` uses the abilities of `OpenAPIServiceToFunctions`. `OpenAPIServiceToFunctions` first fetches and changes the [Serper's OpenAPI specification](https://bit.ly/serper_dev_spec) into a format that OpenAI's function calling mechanism can understand. Then, `OpenAPIServiceConnector` activates the Serper service using this specification.
+
+More precisely, `OpenAPIServiceConnector` dynamically calls methods defined in the Serper OpenAPI specification. This involves reading chat messages or other inputs to extract function call parameters, handling authentication with the Serper service, and making the right API calls. The connector makes sure that the method call follows the Serper API requirements, such as correct formatting requests and handling responses.
+
+Note that we used Serper just as an example here. This could be any OpenAPI-compliant service.
+
+:::info
+To run the following code snippet, note that you have to have your own Serper and OpenAI API keys.
+:::
+
+```python
+import json
+import requests
+
+from typing import Dict, Any, List
+from haystack import Pipeline
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.converters import OpenAPIServiceToFunctions, OutputAdapter
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.connectors import OpenAPIServiceConnector
+from haystack.components.fetchers import LinkContentFetcher
+from haystack.dataclasses import ChatMessage, ByteStream
+from haystack.utils import Secret
+
+def prepare_fc_params(openai_functions_schema: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "tools": [{
+            "type": "function",
+            "function": openai_functions_schema
+        }],
+        "tool_choice": {
+            "type": "function",
+            "function": {"name": openai_functions_schema["name"]}
+        }
+    }
+
+system_prompt = requests.get("https://bit.ly/serper_dev_system_prompt").text
+serper_spec = requests.get("https://bit.ly/serper_dev_spec").text
+
+pipe = Pipeline()
+pipe.add_component("spec_to_functions", OpenAPIServiceToFunctions())
+pipe.add_component("functions_llm", OpenAIChatGenerator(api_key=Secret.from_token(llm_api_key), model="gpt-3.5-turbo-0613"))
+pipe.add_component("openapi_container", OpenAPIServiceConnector())
+pipe.add_component("a1", OutputAdapter("{{functions[0] | prepare_fc}}", Dict[str, Any], {"prepare_fc": prepare_fc_params}))
+pipe.add_component("a2", OutputAdapter("{{specs[0]}}", Dict[str, Any]))
+pipe.add_component("a3", OutputAdapter("{{system_message + service_response}}", List[ChatMessage]))
+pipe.add_component("llm", OpenAIChatGenerator(api_key=Secret.from_token(llm_api_key), model="gpt-4-1106-preview", streaming_callback=print_streaming_chunk))
+
+pipe.connect("spec_to_functions.functions", "a1.functions")
+pipe.connect("spec_to_functions.openapi_specs", "a2.specs")
+pipe.connect("a1", "functions_llm.generation_kwargs")
+pipe.connect("functions_llm.replies", "openapi_container.messages")
+pipe.connect("a2", "openapi_container.service_openapi_spec")
+pipe.connect("openapi_container.service_response", "a3.service_response")
+pipe.connect("a3", "llm.messages")
+
+user_prompt = "Why was Sam Altman ousted from OpenAI?"
+
+result = pipe.run(data={"functions_llm": {"messages":[ChatMessage.from_system("Only do function calling"), ChatMessage.from_user(user_prompt)]}, 
+                        "openapi_container": {"service_credentials": serper_dev_key},
+                        "spec_to_functions": {"sources": [ByteStream.from_string(serper_spec)]},
+                        "a3": {"system_message": [ChatMessage.from_system(system_prompt)]}})
+
+>Sam Altman was ousted from OpenAI on November 17, 2023, following 
+>a "deliberative review process" by the board of directors. The board concluded 
+>that he was not "consistently candid in his communications". However, he 
+>returned as CEO just days after his ouster.
+```
