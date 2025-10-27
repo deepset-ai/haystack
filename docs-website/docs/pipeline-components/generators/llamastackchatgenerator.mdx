@@ -11,9 +11,9 @@ This component enables chat completions using any model made available by infere
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After a [ChatPromptBuilder](../../../docs/pipeline-components/builders/chatpromptbuilder.mdx) |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](/docs/pipeline-components/builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | "model": The name of the model to use for chat completion.  <br />This depends on the inference provider used for the Llama Stack Server. |
-| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../../docs/concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](/docs/concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables** | “replies”: A list of alternative replies of the model to the input chat |
 | **API reference** | [Llama Stack](/reference/integrations-llama-stack) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/llama_stack |
@@ -63,7 +63,7 @@ import os
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
 
-client = LlamaStackChatGenerator(model="ollama/llama3.2:3b") 
+client = LlamaStackChatGenerator(model="ollama/llama3.2:3b")
 response = client.run(
     [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
 )

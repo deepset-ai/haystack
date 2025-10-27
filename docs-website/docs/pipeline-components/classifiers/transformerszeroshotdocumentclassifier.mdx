@@ -11,7 +11,7 @@ Classifies the documents based on the provided labels and adds them to their met
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before a [MetadataRouter](../../../docs/pipeline-components/routers/metadatarouter.mdx) |
+| **Most common position in a pipeline** | Before a [MetadataRouter](/docs/pipeline-components/routers/metadatarouter.mdx) |
 | **Mandatory init variables** | “model”: The name or path of a Hugging Face model for zero shot document classification  <br /> <br />”labels”: The set of possible class labels to classify each document into, for example, ["positive", "negative"]. The labels depend on the selected model. |
 | **Mandatory run variables** | “documents”: A list of documents to classify |
 | **Output variables** | “documents”: A list of processed documents with an added “classification” metadata field |
@@ -22,17 +22,17 @@ Classifies the documents based on the provided labels and adds them to their met
 
 The `TransformersZeroShotDocumentClassifier` component performs zero-shot classification of documents based on the labels that you set and adds the predicted label to their metadata.
 
-The component uses a Hugging Face pipeline for zero-shot classification.  
-To initialize the component, provide the model and the set of labels to be used for categorization.  
+The component uses a Hugging Face pipeline for zero-shot classification.
+To initialize the component, provide the model and the set of labels to be used for categorization.
 You can additionally configure the component to allow multiple labels to be true with the `multi_label` boolean set to True.
 
 Classification is run on the document's content field by default. If you want it to run on another field, set the`classification_field` to one of the document's metadata fields.
 
 The classification results are stored in the `classification` dictionary within each document's metadata. If `multi_label` is set to `True`, you will find the scores for each label under the `details` key within the `classification` dictionary.
 
-Available models for the task of zero-shot-classification are:  
-    - `valhalla/distilbart-mnli-12-3`  
-    - `cross-encoder/nli-distilroberta-base`  
+Available models for the task of zero-shot-classification are:
+    - `valhalla/distilbart-mnli-12-3`
+    - `cross-encoder/nli-distilroberta-base`
     - `cross-encoder/nli-deberta-v3-xsmall`
 
 ## Usage
@@ -45,19 +45,19 @@ from haystack.components.classifiers import TransformersZeroShotDocumentClassifi
 
 documents = [Document(id="0", content="Cats don't get teeth cavities."),
              Document(id="1", content="Cucumbers can be grown in water.")]
-             
+
 document_classifier = TransformersZeroShotDocumentClassifier(
     model="cross-encoder/nli-deberta-v3-xsmall",
     labels=["animals", "food"],
 )
 
 document_classifier.warm_up()
-document_classifier.run(documents = documents)    
+document_classifier.run(documents = documents)
 ```
 
 ### In a pipeline
 
-The following is a pipeline that classifies documents based on predefined classification labels  
+The following is a pipeline that classifies documents based on predefined classification labels
 retrieved from a search pipeline:
 
 ```python

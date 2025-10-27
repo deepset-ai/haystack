@@ -11,7 +11,7 @@ Use this component to rank documents based on their similarity to the query usin
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../../../docs/pipeline-components/retrievers.mdx) |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](/docs/pipeline-components/retrievers.mdx) |
 | **Mandatory init variables** | "api_key": API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var. |
 | **Mandatory run variables** | ”query”: A query string  <br /> <br />“documents”: A list of document objects |
 | **Output variables** | “documents”: A list of document objects |
@@ -48,20 +48,20 @@ This example uses `NvidiaRanker` to rank two simple documents. To run the Ranker
     from haystack_integrations.components.rankers.nvidia import NvidiaRanker
     from haystack import Document
     from haystack.utils import Secret
-    
+
     ranker = NvidiaRanker(
         model="nvidia/nv-rerankqa-mistral-4b-v3",
         api_key=Secret.from_env_var("NVIDIA_API_KEY"),
     )
     ranker.warm_up()
-    
+
     query = "What is the capital of Germany?"
     documents = [
         Document(content="Berlin is the capital of Germany."),
         Document(content="The capital of Germany is Berlin."),
         Document(content="Germany's capital is Berlin."),
     ]
-    
+
     result = ranker.run(query, documents, top_k=2)
     print(result["documents"])
 ```

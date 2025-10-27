@@ -11,16 +11,16 @@ Use this component in extractive question answering pipelines based on a query a
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In query pipelines, after a component that returns a list of documents, such as a [Retriever](../../../docs/pipeline-components/retrievers.mdx) |
+| **Most common position in a pipeline** | In query pipelines, after a component that returns a list of documents, such as a [Retriever](/docs/pipeline-components/retrievers.mdx) |
 | **Mandatory init variables** | "token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | "documents": A list of documents  <br /> <br />"query": A query string |
-| **Output variables** | "answers": A list of [`ExtractedAnswer`](../../../docs/concepts/data-classes.mdx#extractedanswer)  objects |
+| **Output variables** | "answers": A list of [`ExtractedAnswer`](/docs/concepts/data-classes.mdx#extractedanswer)  objects |
 | **API reference** | [Readers](/reference/readers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/readers/extractive.py |
 
 ## Overview
 
-`ExtractiveReader` locates and extracts answers to a given query from the document text. It's used in extractive QA systems where you want to know exactly where the answer is located within the document. It's usually coupled with a Retriever that precedes it, but you can also use it with other components that fetch documents. 
+`ExtractiveReader` locates and extracts answers to a given query from the document text. It's used in extractive QA systems where you want to know exactly where the answer is located within the document. It's usually coupled with a Retriever that precedes it, but you can also use it with other components that fetch documents.
 
 Readers assign a _probability_ to answers. This score ranges from 0 to 1, indicating how well the results the Reader returned match the query. Probability closest to 1 means the model has high confidence in the answer's relevance. The Reader sorts the answers based on their probability scores, with higher probability listed first. You can limit the number of answers the Reader returns in the optional `top_k` parameter.
 
@@ -90,6 +90,6 @@ extractive_qa_pipeline.add_component(instance=reader, name="reader")
 extractive_qa_pipeline.connect("retriever.documents", "reader.documents")
 
 query = "What is the capital of France?"
-extractive_qa_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, 
+extractive_qa_pipeline.run(data={"retriever": {"query": query, "top_k": 3},
                                    "reader": {"query": query, "top_k": 2}})
 ```

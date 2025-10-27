@@ -10,13 +10,13 @@ description: "Use this component to rank documents based on their similarity to 
 Use this component to rank documents based on their similarity to the query. The `TransformersSimilarityRanker` is a powerful, model-based Ranker that uses a cross-encoder model to produce document and query embeddings.
 
 > 🚧 Legacy Component
-> 
-> This component is considered legacy and will no longer receive updates. It may be deprecated in a future release, followed by removal after a deprecation period.  
+>
+> This component is considered legacy and will no longer receive updates. It may be deprecated in a future release, followed by removal after a deprecation period.
 > Consider using SentenceTransformersSimilarityRanker instead, as it provides the same functionality and additional features.
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../../../docs/pipeline-components/retrievers.mdx) |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](/docs/pipeline-components/retrievers.mdx) |
 | **Mandatory init variables** | "token" (only for private models): The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | “documents”: A list of documents  <br /> <br />”query”: A query string |
 | **Output variables** | “documents”: A list of documents |
@@ -63,7 +63,7 @@ ranker.run(query="City in France", documents=docs, top_k=1)
 
 ### In a pipeline
 
-`TransformersSimilarityRanker` is most efficient in query pipelines when used after a Retriever. 
+`TransformersSimilarityRanker` is most efficient in query pipelines when used after a Retriever.
 
 Below is an example of a pipeline that retrieves documents from an `InMemoryDocumentStore` based on keyword search (using `InMemoryBM25Retriever`). It then uses the `TransformersSimilarityRanker` to rank the retrieved documents according to their similarity to the query. The pipeline uses the default settings of the Ranker.
 
@@ -73,7 +73,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.rankers import TransformersSimilarityRanker
 
-docs = [Document(content="Paris is in France"), 
+docs = [Document(content="Paris is in France"),
         Document(content="Berlin is in Germany"),
         Document(content="Lyon is in France")]
 document_store = InMemoryDocumentStore()
@@ -90,7 +90,7 @@ document_ranker_pipeline.add_component(instance=ranker, name="ranker")
 document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
 
 query = "Cities in France"
-document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, 
+document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3},
                                    "ranker": {"query": query, "top_k": 2}})
 ```
 
