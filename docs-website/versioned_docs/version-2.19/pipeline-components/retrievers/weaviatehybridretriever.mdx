@@ -1,0 +1,157 @@
+---
+title: "WeaviateHybridRetriever"
+id: weaviatehybridretriever
+slug: "/weaviatehybridretriever"
+description: "A Retriever that combines BM25 keyword search and vector similarity to fetch documents from the Weaviate Document Store."
+---
+
+# WeaviateHybridRetriever
+
+A Retriever that combines BM25 keyword search and vector similarity to fetch documents from the Weaviate Document Store.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](/docs/promptbuilder) in a RAG pipeline 2. The last component in a hybrid search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](/docs/extractivereader) in an extractive QA pipeline |
+| **Mandatory init variables** | "document_store": An instance of a [WeaviateDocumentStore](../../document-stores/weaviatedocumentstore.mdx) |
+| **Mandatory run variables** | "query": A string  <br /> <br />"query_embedding": A list of floats |
+| **Output variables** | "documents": A list of documents (matching the query) |
+| **API reference** | [Weaviate](/reference/integrations-weaviate) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weaviate |
+
+## Overview
+
+The `WeaviateHybridRetriever` combines keyword-based (BM25) and vector similarity search to fetch documents from the [`WeaviateDocumentStore`](../../document-stores/weaviatedocumentstore.mdx). Weaviate executes both searches in parallel and fuses the results into a single ranked list. The Retriever requires both a text query and its corresponding embedding.
+
+The `alpha` parameter controls how much each search method contributes to the final results:
+
+- `alpha = 0.0`: only keyword (BM25) scoring is used,
+- `alpha = 1.0`: only vector similarity scoring is used,
+- Values in between blend the two; higher values favor the vector score, lower values favor BM25.
+
+If you don't specify `alpha`, the Weaviate server default is used.
+
+You can also use the `max_vector_distance` parameter to set a threshold for the vector component. Candidates with a distance larger than this threshold are excluded from the vector portion before blending.
+
+See the [official Weaviate documentation](https://weaviate.io/developers/weaviate/search/hybrid#parameters) for more details on hybrid search parameters.
+
+### Parameters
+
+When using the `WeaviateHybridRetriever`, you need to provide both the query text and its embedding. You can do this by adding a Text Embedder to your query pipeline.
+
+In addition to `query` and `query_embedding`, the retriever accepts optional parameters including `top_k` (the maximum number of documents to return), `filters` to narrow down the search space, and `filter_policy` to determine how filters are applied.
+
+## Usage
+
+### Installation
+
+To start using Weaviate with Haystack, install the package with:
+
+```shell
+pip install weaviate-haystack
+```
+
+### On its own
+
+This Retriever needs an instance of `WeaviateDocumentStore` and indexed documents to run.
+
+```python
+from haystack_integrations.document_stores.weaviate.document_store import WeaviateDocumentStore
+from haystack_integrations.components.retrievers.weaviate import WeaviateHybridRetriever
+
+document_store = WeaviateDocumentStore(url="http://localhost:8080")
+
+retriever = WeaviateHybridRetriever(document_store=document_store)
+
+## using a fake vector to keep the example simple
+retriever.run(query="How many languages are there?", query_embedding=[0.1]*768)
+```
+
+### In a pipeline
+
+```python
+from haystack.document_stores.types import DuplicatePolicy
+from haystack import Document
+from haystack import Pipeline
+from haystack.components.embedders import (
+    SentenceTransformersTextEmbedder,
+    SentenceTransformersDocumentEmbedder,
+)
+
+from haystack_integrations.document_stores.weaviate.document_store import (
+    WeaviateDocumentStore,
+)
+from haystack_integrations.components.retrievers.weaviate import (
+    WeaviateHybridRetriever,
+)
+
+document_store = WeaviateDocumentStore(url="http://localhost:8080")
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves."
+    ),
+]
+
+document_embedder = SentenceTransformersDocumentEmbedder()
+document_embedder.warm_up()
+documents_with_embeddings = document_embedder.run(documents)
+
+document_store.write_documents(
+    documents_with_embeddings.get("documents"), policy=DuplicatePolicy.OVERWRITE
+)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
+query_pipeline.add_component(
+    "retriever", WeaviateHybridRetriever(document_store=document_store)
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+
+result = query_pipeline.run(
+    {
+        "text_embedder": {"text": query},
+        "retriever": {"query": query}
+    }
+)
+
+print(result["retriever"]["documents"][0])
+```
+
+### Adjusting the Alpha Parameter
+
+You can set the `alpha` parameter at initialization or override it at query time:
+
+```python
+from haystack_integrations.components.retrievers.weaviate import WeaviateHybridRetriever
+
+## Favor keyword search (good for exact matches)
+retriever_keyword_heavy = WeaviateHybridRetriever(
+    document_store=document_store,
+    alpha=0.25
+)
+
+## Balanced hybrid search
+retriever_balanced = WeaviateHybridRetriever(
+    document_store=document_store,
+    alpha=0.5
+)
+
+## Favor vector search (good for semantic similarity)
+retriever_vector_heavy = WeaviateHybridRetriever(
+    document_store=document_store,
+    alpha=0.75
+)
+
+## Override alpha at query time
+result = retriever_balanced.run(
+    query="artificial intelligence",
+    query_embedding=embedding,
+    alpha=0.8
+)
+```

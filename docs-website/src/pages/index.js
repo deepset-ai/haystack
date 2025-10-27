@@ -10,7 +10,7 @@ export default function Home() {
 
   useEffect(() => {
     // Redirect to the docs intro page immediately
-    history.replace('/docs/overview/intro');
+    history.replace('/docs/intro');
   }, [history]);
 
   // Return null since we're redirecting immediately

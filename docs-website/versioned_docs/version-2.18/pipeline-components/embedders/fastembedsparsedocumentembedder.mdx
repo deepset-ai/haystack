@@ -1,0 +1,171 @@
+---
+title: "FastembedSparseDocumentEmbedder"
+id: fastembedsparsedocumentembedder
+slug: "/fastembedsparsedocumentembedder"
+description: "Use this component to enrich a list of documents with their sparse embeddings."
+---
+
+# FastembedSparseDocumentEmbedder
+
+Use this component to enrich a list of documents with their sparse embeddings.
+
+|                                        |                                                                                             |
+| :------------------------------------- | :------------------------------------------------------------------------------------------ |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline                  |
+| **Mandatory run variables**            | “documents”: A list of documents                                                            |
+| **Output variables**                   | “documents”: A list of documents (enriched with sparse embeddings)                          |
+| **API reference**                      | [FastEmbed](/reference/fastembed-embedders)                                                        |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
+
+To compute a sparse embedding for a string, use the [`FastembedSparseTextEmbedder`](fastembedsparsetextembedder.mdx).
+
+## Overview
+
+`FastembedSparseDocumentEmbedder` computes the sparse embeddings of a list of documents and stores the obtained vectors in the `sparse_embedding` field of each document. It uses sparse embedding [models](https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-sparse-text-embedding-models) supported by FastEmbed.
+
+The vectors calculated by this component are necessary for performing sparse embedding retrieval on a set of documents. During retrieval, the sparse vector representing the query is compared to those of the documents to identify the most similar or relevant ones.
+
+### Compatible models
+
+You can find the supported models in the [FastEmbed documentation](https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-sparse-text-embedding-models).
+
+Currently, supported models are based on SPLADE, a technique for producing sparse representations for text, where each non-zero value in the embedding is the importance weight of a term in the BERT WordPiece vocabulary. For more information, see [our docs](../retrievers.mdx#sparse-embedding-based-retrievers) that explain sparse embedding-based Retrievers further.
+
+### Installation
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install fastembed-haystack
+```
+
+### Parameters
+
+You can set the path where the model will be stored in a cache directory. Also, you can set the number of threads a single `onnxruntime` session can use:
+
+```python
+cache_dir= "/your_cacheDirectory"
+embedder = FastembedSparseDocumentEmbedder(
+	model="prithivida/Splade_PP_en_v1",
+	cache_dir=cache_dir,
+	threads=2
+)
+```
+
+If you want to use the data parallel encoding, you can set the parameters `parallel` and  `batch_size`.
+
+- If `parallel` > 1, data-parallel encoding will be used. This is recommended for offline encoding of large datasets.
+- If `parallel` is 0, use all available cores.
+- If None, don't use data-parallel processing; use default `onnxruntime` threading instead.
+
+:::tip
+If you create both a Sparse Text Embedder and a Sparse Document Embedder based on the same model, Haystack utilizes a shared resource behind the scenes to conserve resources.
+
+:::
+
+### Embedding Metadata
+
+Text documents often include metadata. If the metadata is distinctive and semantically meaningful, you can embed it along with the document's text to improve retrieval.
+
+You can do this easily by using the sparse Document Embedder:
+
+```python
+from haystack.preview import Document
+from haystack_integrations.components.embedders.fastembed import FastembedSparseDocumentEmbedder
+
+doc = Document(text="some text",
+							 metadata={"title": "relevant title",
+												 "page number": 18})
+
+embedder = FastembedSparseDocumentEmbedder(
+	model="prithivida/Splade_PP_en_v1",
+	metadata_fields_to_embed=["title"]
+)
+
+docs_w_sparse_embeddings = embedder.run(documents=[doc])["documents"]
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack.dataclasses import Document
+from haystack_integrations.components.embedders.fastembed import FastembedSparseDocumentEmbedder
+document_list = [
+	Document(content="I love pizza!"),
+	Document(content="I like spaghetti")
+]
+
+doc_embedder = FastembedSparseDocumentEmbedder()
+doc_embedder.warm_up()
+
+result = doc_embedder.run(document_list)
+print(result['documents'][0])
+
+## Document(id=...,
+## 				 content: 'I love pizza!',
+#					 sparse_embedding: vector with 24 non-zero elements)
+```
+
+### In a pipeline
+
+Currently, sparse embedding retrieval is only supported by `QdrantDocumentStore`.
+First, install the package with:
+
+```shell
+pip install qdrant-haystack
+```
+
+Then, try out this pipeline:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.retrievers.qdrant import QdrantSparseEmbeddingRetriever
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.components.embedders.fastembed import FastembedDocumentEmbedder, FastembedTextEmbedder
+
+document_store = QdrantDocumentStore(
+    ":memory:",
+    recreate_index=True,
+    use_sparse_embeddings=True
+)
+
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+    Document(content="fastembed is supported by and maintained by Qdrant."),
+]
+
+sparse_document_embedder = FastembedSparseDocumentEmbedder()
+writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE)
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("sparse_document_embedder", sparse_document_embedder)
+indexing_pipeline.add_component("writer", writer)
+indexing_pipeline.connect("sparse_document_embedder", "writer")
+
+indexing_pipeline.run({"sparse_document_embedder": {"documents": documents}})
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("sparse_text_embedder", FastembedSparseTextEmbedder())
+query_pipeline.add_component("sparse_retriever", QdrantSparseEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("sparse_text_embedder.sparse_embedding", "sparse_retriever.query_sparse_embedding")
+
+query = "Who supports fastembed?"
+
+result = query_pipeline.run({"sparse_text_embedder": {"text": query}})
+
+print(result["sparse_retriever"]["documents"][0])  # noqa: T201
+
+## Document(id=...,
+##  content: 'fastembed is supported by and maintained by Qdrant.',
+##  score: 0.758..)
+```
+
+## Additional References
+
+:cook: Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)

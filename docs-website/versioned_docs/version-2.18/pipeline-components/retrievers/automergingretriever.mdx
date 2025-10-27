@@ -1,0 +1,138 @@
+---
+title: "AutoMergingRetriever"
+id: automergingretriever
+slug: "/automergingretriever"
+description: "Use AutoMergingRetriever to improve search results by returning complete parent documents instead of fragmented chunks when multiple related pieces match a query."
+---
+
+# AutoMergingRetriever
+
+Use AutoMergingRetriever to improve search results by returning complete parent documents instead of fragmented chunks when multiple related pieces match a query.
+
+|                                        |                                                                                                                                                                                                                                                                                                     |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | Used after the main Retriever component that returns hierarchical documents.                                                                                                                                                                                                                        |
+| **Mandatory init variables**           | “document_store”: Document Store from which to retrieve the parent documents                                                                                                                                                                                                                        |
+| **Mandatory run variables**            | “documents”: A list of leaf documents that were matched by a Retriever                                                                                                                                                                                                                              |
+| **Output variables**                   | “documents”: A list resulting documents                                                                                                                                                                                                                                                             |
+| **API reference**                      | [Retrievers](/reference/retrievers-api)                                                                                                                                                                                                                                                                    |
+| **GitHub link**                        | [https://github.com/deepset-ai/haystack/blob/dae8c7babaf28d2ffab4f2a8dedecd63e2394fb4/haystack/components/retrievers/auto_merging_retriever.py](https://github.com/deepset-ai/haystack/blob/dae8c7babaf28d2ffab4f2a8dedecd63e2394fb4/haystack/components/retrievers/auto_merging_retriever.py#L116) |
+
+## Overview
+
+The `AutoMergingRetriever` is a component that works with a hierarchical document structure. It returns the parent documents instead of individual leaf documents when a certain threshold is met.
+
+This can be particularly useful when working with paragraphs split into multiple chunks. When several chunks from the same paragraph match your query, the complete paragraph often provides more context and value than the individual pieces alone.
+
+Here is how this Retriever works:
+
+1. It requires documents to be organized in a tree structure, with leaf nodes stored in a document index - see [`HierarchicalDocumentSplitter`](../preprocessors/hierarchicaldocumentsplitter.mdx) documentation.
+2. When searching, it counts how many leaf documents under the same parent match your query.
+3. If this count exceeds your defined threshold, it returns the parent document instead of the individual leaves.
+
+The `AutoMergingRetriever` can currently be used by the following Document Stores:
+
+- [AstraDocumentStore](../../document-stores/astradocumentstore.mdx)
+- [ElasticsearchDocumentStore](../../document-stores/elasticsearch-document-store.mdx)
+- [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx)
+- [PgvectorDocumentStore](../../document-stores/pgvectordocumentstore.mdx)
+- [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx)
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import HierarchicalDocumentSplitter
+from haystack.components.retrievers.auto_merging_retriever import AutoMergingRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+## create a hierarchical document structure with 3 levels, where the parent document has 3 children
+text = "The sun rose early in the morning. It cast a warm glow over the trees. Birds began to sing."
+original_document = Document(content=text)
+builder = HierarchicalDocumentSplitter(block_sizes=[10, 3], split_overlap=0, split_by="word")
+docs = builder.run([original_document])["documents"]
+
+## store level-1 parent documents and initialize the retriever
+doc_store_parents = InMemoryDocumentStore()
+for doc in docs["documents"]:
+    if doc.meta["children_ids"] and doc.meta["level"] == 1:
+        doc_store_parents.write_documents([doc])
+retriever = AutoMergingRetriever(doc_store_parents, threshold=0.5)
+
+## assume we retrieved 2 leaf docs from the same parent, the parent document should be returned,
+## since it has 3 children and the threshold=0.5, and we retrieved 2 children (2/3 > 0.66(6))
+leaf_docs = [doc for doc in docs["documents"] if not doc.meta["children_ids"]]
+docs = retriever.run(leaf_docs[4:6])
+```
+
+### In a pipeline
+
+This is an example of a RAG Haystack pipeline. It first retrieves leaf-level document chunks using BM25, merges them into higher-level parent documents with `AutoMergingRetriever`, constructs a prompt, and generates an answer using OpenAI's chat model.
+
+```python
+from typing import List, Tuple
+from haystack import Document, Pipeline
+from haystack_experimental.components.splitters import HierarchicalDocumentSplitter
+from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.retrievers import AutoMergingRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+from haystack.dataclasses import ChatMessage
+
+def indexing(documents: List[Document]) -> Tuple[InMemoryDocumentStore, InMemoryDocumentStore]:
+    splitter = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
+    docs = splitter.run(documents)
+
+    leaf_documents = [doc for doc in docs["documents"] if doc.meta["__level"] == 1]
+    leaf_doc_store = InMemoryDocumentStore()
+    leaf_doc_store.write_documents(leaf_documents, policy=DuplicatePolicy.OVERWRITE)
+
+    parent_documents = [doc for doc in docs["documents"] if doc.meta["__level"] == 0]
+    parent_doc_store = InMemoryDocumentStore()
+    parent_doc_store.write_documents(parent_documents, policy=DuplicatePolicy.OVERWRITE)
+
+    return leaf_doc_store, parent_doc_store
+
+## Add documents
+docs = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+    Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")
+]
+
+leaf_docs, parent_docs = indexing(docs)
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given these documents, answer the question.\nDocuments:\n"
+        "{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
+        "Question: {{question}}\nAnswer:"
+    )
+]
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(instance=InMemoryBM25Retriever(document_store=leaf_docs), name="bm25_retriever")
+rag_pipeline.add_component(instance=AutoMergingRetriever(parent_docs, threshold=0.6), name="retriever")
+rag_pipeline.add_component(instance=ChatPromptBuilder(template=prompt_template, required_variables={"question", "documents"}), name="prompt_builder")
+rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
+rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
+
+rag_pipeline.connect("bm25_retriever.documents", "retriever.documents")
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder.messages", "llm.messages")
+rag_pipeline.connect("llm.replies", "answer_builder.replies")
+rag_pipeline.connect("retriever", "answer_builder.documents")
+
+question = "How many languages are there?"
+result = rag_pipeline.run({
+    "bm25_retriever": {"query": question},
+    "prompt_builder": {"question": question},
+    "answer_builder": {"query": question}
+})
+```

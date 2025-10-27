@@ -1,0 +1,92 @@
+---
+title: "ChromaDocumentStore"
+id: chromadocumentstore
+slug: "/chromadocumentstore"
+description: ""
+---
+
+# ChromaDocumentStore
+
+|               |                                                                                          |
+| :------------ | :--------------------------------------------------------------------------------------- |
+| API reference | [Chroma](/reference/integrations-chroma)                                                        |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/chroma |
+
+[Chroma](https://docs.trychroma.com/) is an open source vector database capable of storing collections of documents along with their metadata, creating embeddings for documents and queries, and searching the collections filtering by document metadata or content. Additionally, Chroma supports multi-modal embedding functions.
+
+Chroma can be used in-memory, as an embedded database, or in a client-server fashion. When running in-memory, Chroma can still keep its contents on disk across different sessions. This allows users to quickly put together prototypes using the in-memory version and later move to production, where the client-server version is deployed.
+
+## Initialization
+
+First, install the Chroma integration, which will install Haystack and Chroma if they are not already present. The following command is all you need to start:
+
+```shell
+pip install chroma-haystack
+```
+
+To store data in Chroma, create a `ChromaDocumentStore` instance and write documents with:
+
+```python
+from haystack_integrations.document_stores.chroma import ChromaDocumentStore
+from haystack import Document
+
+document_store = ChromaDocumentStore()
+document_store.write_documents([
+    Document(content="This is the first document."),
+    Document(content="This is the second document.")
+])
+print(document_store.count_documents())
+```
+
+In this case, since we didn’t pass any embeddings along with our documents, Chroma will create them for us using its [default embedding function](https://docs.trychroma.com/embeddings#default-all-minilm-l6-v2).
+
+### Connection Options
+
+1. **In-Memory Mode (Local)**: Chroma can be set up as a local Document Store for fast and lightweight usage. You can use this option during development or small-scale experiments. Set up a local in-memory instance of `ChromaDocumentStore` like this:
+
+   ```python
+   from haystack_integrations.document_stores.chroma import ChromaDocumentStore
+
+   document_store = ChromaDocumentStore()
+   ```
+2. **Persistent Storage**: If you need to retain the documents between sessions, Chroma supports persistent storage by specifying a path to store data on disk:
+
+   ```python
+   from haystack_integrations.document_stores.chroma import ChromaDocumentStore
+
+   document_store = ChromaDocumentStore(persist_path="your_directory_path")
+   ```
+3. **Remote Connection**: You can connect to a remote Chroma database through HTTP. This is suitable for distributed setups where multiple clients might interact with the same remote Chroma instance.
+
+   Note that this option is incompatible with in-memory or persistent storage modes.
+
+   First, start a Chroma server:
+
+   ```shell
+   chroma run --path /db_path
+   ```
+
+   Or using docker:
+
+   ```shell
+   docker run -p 8000:8000 chromadb/chroma
+   ```
+
+   Then, initialize the Document Store with `host` and `port` parameters:
+
+   ```python
+   from haystack_integrations.document_stores.chroma import ChromaDocumentStore
+
+   document_store = ChromaDocumentStore(host="localhost", port="8000")
+   ```
+
+## Supported Retrievers
+
+The Haystack Chroma integration comes with three Retriever components. They all rely on the Chroma [query API](https://docs.trychroma.com/reference/Collection#query), but they have different inputs and outputs so that you can pick the one that best fits your pipeline:
+
+- [`ChromaQueryTextRetriever`](/docs/chromaqueryretriever): This Retriever takes a plain-text query string in input and returns a list of matching documents. Chroma will create the embeddings for the query using its [default embedding function](https://docs.trychroma.com/embeddings#default-all-minilm-l6-v2).
+- [`ChromaEmbeddingRetriever`](/docs/chromaembeddingretriever): This Retriever takes the embeddings of a single query in input and returns a list of matching documents. The query needs to be embedded before being passed to this component. For example, you can use an [embedder](/docs/embedders) component.
+
+## Additional References
+
+:cook: Cookbook: [Use Chroma for RAG and Indexing](https://haystack.deepset.ai/cookbook/chroma-indexing-and-rag-examples)

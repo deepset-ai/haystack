@@ -1,0 +1,133 @@
+---
+title: "GoogleGenAITextEmbedder"
+id: googlegenaitextembedder
+slug: "/googlegenaitextembedder"
+description: "This component transforms a string into a vector that captures its semantics using a Google AI embedding models. When you perform embedding retrieval, you use this component to transform your query into a vector. Then, the embedding Retriever looks for similar or relevant documents."
+---
+
+# GoogleGenAITextEmbedder
+
+This component transforms a string into a vector that captures its semantics using a Google AI embedding models. When you perform embedding retrieval, you use this component to transform your query into a vector. Then, the embedding Retriever looks for similar or relevant documents.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx) in a query/RAG pipeline |
+| **Mandatory init variables** | "api_key": The Google API key. Can be set with `GOOGLE_API_KEY` or `GEMINI_API_KEY` env var. |
+| **Mandatory run variables** | "text": A string |
+| **Output variables** | "embedding": A list of float numbers  <br /> <br />"meta": A dictionary of metadata |
+| **API reference** | [Google AI](/reference/integrations-google-genai) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_genai |
+
+## Overview
+
+`GoogleGenAITextEmbedder` embeds a simple string (such as a query) into a vector. For embedding lists of documents, use the [`GoogleGenAIDocumentEmbedder`](googlegenaidocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
+
+The component supports the following Google AI models:
+
+- `text-embedding-004` (default)
+- `text-embedding-004-v2`
+
+To start using this integration with Haystack, install it with:
+
+```shell
+pip install google-genai-haystack
+```
+
+### Authentication
+
+Google Gen AI is compatible with both the Gemini Developer API and the Vertex AI API.
+
+To use this component with the Gemini Developer API and get an API key, visit [Google AI Studio](https://aistudio.google.com/).
+To use this component with the Vertex AI API, visit [Google Cloud > Vertex AI](https://cloud.google.com/vertex-ai).
+
+The component uses a `GOOGLE_API_KEY` or `GEMINI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](/docs/secret-management) and `Secret.from_token` static method:
+
+```python
+embedder = GoogleGenAITextEmbedder(api_key=Secret.from_token("<your-api-key>"))
+```
+
+The following examples show how to use the component with the Gemini Developer API and the Vertex AI API.
+
+#### Gemini Developer API (API Key Authentication)
+
+```python
+from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
+
+## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
+chat_generator = GoogleGenAITextEmbedder()
+```
+
+#### Vertex AI (Application Default Credentials)
+
+```python
+from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
+
+## Using Application Default Credentials (requires gcloud auth setup)
+chat_generator = GoogleGenAITextEmbedder(
+    api="vertex",
+    vertex_ai_project="my-project",
+    vertex_ai_location="us-central1",
+)
+```
+
+#### Vertex AI (API Key Authentication)
+
+```python
+from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
+
+## set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
+chat_generator = GoogleGenAITextEmbedder(api="vertex")
+```
+
+## Usage
+
+### On its own
+
+Here is how you can use the component on its own. You'll need to pass in your Google API key with a Secret or set it as an environment variable called `GOOGLE_API_KEY` or `GEMINI_API_KEY`. The examples below assume you've set the environment variable.
+
+```python
+from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
+
+text_to_embed = "I love pizza!"
+
+text_embedder = GoogleGenAITextEmbedder()
+
+print(text_embedder.run(text_to_embed))
+## {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
+##  'meta': {'model': 'text-embedding-004',
+##           'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
+```
+
+### In a pipeline
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.google_genai import GoogleGenAITextEmbedder
+from haystack_integrations.components.embedders.google_genai import GoogleGenAIDocumentEmbedder
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
+
+document_embedder = GoogleGenAIDocumentEmbedder()
+documents_with_embeddings = document_embedder.run(documents)['documents']
+document_store.write_documents(documents_with_embeddings)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", GoogleGenAITextEmbedder())
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder":{"text": query}})
+
+print(result['retriever']['documents'][0])
+
+## Document(id=..., content: 'My name is Wolfgang and I live in Berlin')
+```

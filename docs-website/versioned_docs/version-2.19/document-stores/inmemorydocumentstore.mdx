@@ -1,0 +1,28 @@
+---
+title: "InMemoryDocumentStore"
+id: inmemorydocumentstore
+slug: "/inmemorydocumentstore"
+description: ""
+---
+
+# InMemoryDocumentStore
+
+The `InMemoryDocumentStore` is a very simple document store with no extra services or dependencies.
+
+It is great for experimenting with Haystack, however we do not recommend using it for production.
+
+### Initialization
+
+`InMemoryDocumentStore` requires no external setup. Simply use this code:
+
+```python
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+document_store = InMemoryDocumentStore()
+```
+
+### Supported Retrievers
+
+[`InMemoryBM25Retriever`](/docs/inmemorybm25retriever): A keyword-based Retriever that fetches documents matching a query from a temporary in-memory database.
+
+[`InMemoryEmbeddingRetriever`](/docs/inmemoryembeddingretriever): Compares the query and document embeddings and fetches the documents most relevant to the query.

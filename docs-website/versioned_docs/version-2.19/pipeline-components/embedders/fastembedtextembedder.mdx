@@ -1,0 +1,135 @@
+---
+title: "FastembedTextEmbedder"
+id: fastembedtextembedder
+slug: "/fastembedtextembedder"
+description: "This component computes the embeddings of a string using embedding models supported by FastEmbed."
+---
+
+# FastembedTextEmbedder
+
+This component computes the embeddings of a string using embedding models supported by FastEmbed.
+
+|                                        |                                                                                             |
+| :------------------------------------- | :------------------------------------------------------------------------------------------ |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline                  |
+| **Mandatory run variables**            | “text”: A string                                                                            |
+| **Output variables**                   | “embedding”: A vector (list of float numbers)                                               |
+| **API reference**                      | [FastEmbed](/reference/fastembed-embedders)                                                        |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
+
+This component should be used to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`FastembedDocumentEmbedder`](/docs/fastembeddocumentembedder), which enriches the document with the computed embedding, known as vector.
+
+## Overview
+
+`FastembedTextEmbedder` transforms a string into a vector that captures its semantics using embedding [models supported by FastEmbed](https://qdrant.github.io/fastembed/examples/Supported_Models/).
+
+When you perform embedding retrieval, use this component first to transform your query into a vector. Then, the embedding Retriever will use the vector to search for similar or relevant documents.
+
+### Compatible models
+
+You can find the original models in the [FastEmbed documentation](https://qdrant.github.io/fastembed/).
+
+Currently, most of the models in the [Massive Text Embedding Benchmark (MTEB) Leaderboard](https://huggingface.co/spaces/mteb/leaderboard) are compatible with FastEmbed. You can look for compatibility in the [supported model list](https://qdrant.github.io/fastembed/examples/Supported_Models/).
+
+### Installation
+
+To start using this integration with Haystack, install the package with:
+
+```bash
+pip install fastembed-haystack
+```
+
+### Instructions
+
+Some recent models that you can find in MTEB require prepending the text with an instruction to work better for retrieval.
+For example, if you use `[BAAI/bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5#model-list)` model, you should prefix your query with the `instruction: “passage:”`.
+
+This is how it works with `FastembedTextEmbedder`:
+
+```python
+instruction = "passage:"
+embedder = FastembedTextEmbedder(
+	*model="*BAAI/bge-large-en-v1.5",
+	prefix=instruction)
+```
+
+### Parameters
+
+You can set the path where the model will be stored in a cache directory. Also, you can set the number of threads a single `onnxruntime` session can use.
+
+```python
+cache_dir= "/your_cacheDirectory"
+embedder = FastembedTextEmbedder(
+	*model="*BAAI/bge-large-en-v1.5",
+	cache_dir=cache_dir,
+	threads=2
+)
+```
+
+If you want to use the data parallel encoding, you can set the parameters `parallel` and `batch_size`.
+
+- If parallel > 1, data-parallel encoding will be used. This is recommended for offline encoding of large datasets.
+- If parallel is 0, use all available cores.
+- If None, don't use data-parallel processing; use default `onnxruntime` threading instead.
+
+:::tip
+If you create a Text Embedder and a Document Embedder based on the same model, Haystack uses the same resource behind the scenes to save resources.
+
+:::
+
+## Usage
+
+### On its own
+
+```python
+from haystack_integrations.components.embedders.fastembed import FastembedTextEmbedder
+
+text = """It clearly says online this will work on a Mac OS system.
+The disk comes and it does not, only Windows.
+Do Not order this if you have a Mac!!"""
+text_embedder = FastembedTextEmbedder(model="BAAI/bge-small-en-v1.5")
+text_embedder.warm_up()
+embedding = text_embedder.run(text)["embedding"]
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.fastembed import FastembedDocumentEmbedder, FastembedTextEmbedder
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+    Document(content="fastembed is supported by and maintained by Qdrant."),
+]
+
+document_embedder = FastembedDocumentEmbedder()
+document_embedder.warm_up()
+documents_with_embeddings = document_embedder.run(documents)["documents"]
+document_store.write_documents(documents_with_embeddings)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", FastembedTextEmbedder())
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who supports FastEmbed?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result["retriever"]["documents"][0])  # noqa: T201
+
+## Document(id=...,
+##  content: 'FastEmbed is supported by and maintained by Qdrant.',
+##  score: 0.758..)
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [RAG Pipeline Using FastEmbed for Embeddings Generation](https://haystack.deepset.ai/cookbook/rag_fastembed)
