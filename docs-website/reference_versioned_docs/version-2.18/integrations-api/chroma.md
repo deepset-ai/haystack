@@ -485,6 +485,38 @@ Asynchronous methods are only supported for HTTP connections.
 
 - `document_ids`: the document ids to delete
 
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_all_documents"></a>
+
+#### ChromaDocumentStore.delete\_all\_documents
+
+```python
+def delete_all_documents(*, recreate_index: bool = False) -> None
+```
+
+Deletes all documents in the document store.
+
+A fast way to clear all documents from the document store while preserving any collection settings and mappings.
+
+**Arguments**:
+
+- `recreate_index`: Whether to recreate the index after deleting all documents.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_all_documents_async"></a>
+
+#### ChromaDocumentStore.delete\_all\_documents\_async
+
+```python
+async def delete_all_documents_async(*, recreate_index: bool = False) -> None
+```
+
+Asynchronously deletes all documents in the document store.
+
+A fast way to clear all documents from the document store while preserving any collection settings and mappings.
+
+**Arguments**:
+
+- `recreate_index`: Whether to recreate the index after deleting all documents.
+
 <a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.search"></a>
 
 #### ChromaDocumentStore.search
@@ -664,3 +696,4 @@ Load an embedding function by name.
 **Returns**:
 
 the loaded embedding function.
+
