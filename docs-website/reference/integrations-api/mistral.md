@@ -432,6 +432,7 @@ Deserialized component.
 def run(
     sources: List[Union[str, Path, ByteStream, DocumentURLChunk, FileChunk,
                         ImageURLChunk]],
+    meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     bbox_annotation_schema: Optional[Type[BaseModel]] = None,
     document_annotation_schema: Optional[Type[BaseModel]] = None
 ) -> Dict[str, Any]
@@ -448,6 +449,10 @@ Extract text from documents using Mistral OCR.
 - DocumentURLChunk: Mistral chunk for document URLs (signed or public URLs to PDFs, etc.)
 - ImageURLChunk: Mistral chunk for image URLs (signed or public URLs to images)
 - FileChunk: Mistral chunk for file IDs (files previously uploaded to Mistral)
+- `meta`: Optional metadata to attach to the Documents.
+This value can be either a list of dictionaries or a single dictionary.
+If it's a single dictionary, its content is added to the metadata of all produced Documents.
+If it's a list, the length of the list must match the number of sources, because they will be zipped.
 - `bbox_annotation_schema`: Optional Pydantic model for structured annotations per bounding box.
 When provided, a Vision LLM analyzes each image region and returns structured data.
 - `document_annotation_schema`: Optional Pydantic model for structured annotations for the full document.

@@ -7,11 +7,11 @@ slug: "/samplers-api"
 
 <a id="top_p"></a>
 
-# Module top\_p
+## Module top\_p
 
 <a id="top_p.TopPSampler"></a>
 
-## TopPSampler
+### TopPSampler
 
 Implements top-p (nucleus) sampling for document filtering based on cumulative probability scores.
 

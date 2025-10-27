@@ -7,11 +7,11 @@ slug: "/builders-api"
 
 <a id="answer_builder"></a>
 
-# Module answer\_builder
+## Module answer\_builder
 
 <a id="answer_builder.AnswerBuilder"></a>
 
-## AnswerBuilder
+### AnswerBuilder
 
 Converts a query and Generator replies into a `GeneratedAnswer` object.
 
@@ -22,11 +22,46 @@ AnswerBuilder works with both non-chat and chat Generators.
 
 ### Usage example
 
+
+### Usage example with documents and reference pattern
+
 ```python
 from haystack.components.builders import AnswerBuilder
 
 builder = AnswerBuilder(pattern="Answer: (.*)")
 builder.run(query="What's the answer?", replies=["This is an argument. Answer: This is the answer."])
+```
+```python
+from haystack import Document
+from haystack.components.builders import AnswerBuilder
+
+replies = ["The capital of France is Paris [2]."]
+
+docs = [
+    Document(content="Berlin is the capital of Germany."),
+    Document(content="Paris is the capital of France."),
+    Document(content="Rome is the capital of Italy."),
+]
+
+builder = AnswerBuilder(reference_pattern="\[(\d+)\]", return_only_referenced_documents=False)
+result = builder.run(query="What is the capital of France?", replies=replies, documents=docs)["answers"][0]
+
+print(f"Answer: {result.data}")
+print("References:")
+for doc in result.documents:
+    if doc.meta["referenced"]:
+        print(f"[{doc.meta['source_index']}] {doc.content}")
+print("Other sources:")
+for doc in result.documents:
+    if not doc.meta["referenced"]:
+        print(f"[{doc.meta['source_index']}] {doc.content}")
+
+# Answer: The capital of France is Paris
+# References:
+# [2] Paris is the capital of France.
+# Other sources:
+# [1] Berlin is the capital of Germany.
+# [3] Rome is the capital of Italy.
 ```
 
 <a id="answer_builder.AnswerBuilder.__init__"></a>
@@ -36,7 +71,9 @@ builder.run(query="What's the answer?", replies=["This is an argument. Answer: T
 ```python
 def __init__(pattern: Optional[str] = None,
              reference_pattern: Optional[str] = None,
-             last_message_only: bool = False)
+             last_message_only: bool = False,
+             *,
+             return_only_referenced_documents: bool = True)
 ```
 
 Creates an instance of the AnswerBuilder component.
@@ -52,11 +89,16 @@ Examples:
     `[^\n]+$` finds "this is an answer" in a string "this is an argument.\nthis is an answer".
     `Answer: (.*)` finds "this is an answer" in a string "this is an argument. Answer: this is an answer".
 - `reference_pattern`: The regular expression pattern used for parsing the document references.
-If not specified, no parsing is done, and all documents are referenced.
+If not specified, no parsing is done, and all documents are returned.
 References need to be specified as indices of the input documents and start at [1].
 Example: `\[(\d+)\]` finds "1" in a string "this is an answer[1]".
+If this parameter is provided, documents metadata will contain a "referenced" key with a boolean value.
 - `last_message_only`: If False (default value), all messages are used as the answer.
 If True, only the last message is used as the answer.
+- `return_only_referenced_documents`: To be used in conjunction with `reference_pattern`.
+If True (default value), only the documents that were actually referenced in `replies` are returned.
+If False, all documents are returned.
+If `reference_pattern` is not provided, this parameter has no effect, and all documents are returned.
 
 <a id="answer_builder.AnswerBuilder.run"></a>
 
@@ -80,9 +122,12 @@ Turns the output of a Generator into `GeneratedAnswer` objects using regular exp
 - `replies`: The output of the Generator. Can be a list of strings or a list of `ChatMessage` objects.
 - `meta`: The metadata returned by the Generator. If not specified, the generated answer will contain no metadata.
 - `documents`: The documents used as the Generator inputs. If specified, they are added to
-the`GeneratedAnswer` objects.
-If both `documents` and `reference_pattern` are specified, the documents referenced in the
-Generator output are extracted from the input documents and added to the `GeneratedAnswer` objects.
+the `GeneratedAnswer` objects.
+Each Document.meta includes a "source_index" key, representing its 1-based position in the input list.
+When `reference_pattern` is provided:
+- "referenced" key is added to the Document.meta, indicating if the document was referenced in the output.
+- `return_only_referenced_documents` init parameter controls if all or only referenced documents are
+returned.
 - `pattern`: The regular expression pattern to extract the answer text from the Generator.
 If not specified, the entire response is used as the answer.
 The regular expression can have one capture group at most.
@@ -93,7 +138,7 @@ is used as the answer. If no capture group is present, the whole match is used a
         `Answer: (.*)` finds "this is an answer" in a string
         "this is an argument. Answer: this is an answer".
 - `reference_pattern`: The regular expression pattern used for parsing the document references.
-If not specified, no parsing is done, and all documents are referenced.
+If not specified, no parsing is done, and all documents are returned.
 References need to be specified as indices of the input documents and start at [1].
 Example: `\[(\d+)\]` finds "1" in a string "this is an answer[1]".
 
@@ -104,11 +149,11 @@ A dictionary with the following keys:
 
 <a id="prompt_builder"></a>
 
-# Module prompt\_builder
+## Module prompt\_builder
 
 <a id="prompt_builder.PromptBuilder"></a>
 
-## PromptBuilder
+### PromptBuilder
 
 Renders a prompt filling in any variables so that it can send it to a Generator.
 
@@ -306,11 +351,11 @@ A dictionary with the following keys:
 
 <a id="chat_prompt_builder"></a>
 
-# Module chat\_prompt\_builder
+## Module chat\_prompt\_builder
 
 <a id="chat_prompt_builder.ChatPromptBuilder"></a>
 
-## ChatPromptBuilder
+### ChatPromptBuilder
 
 Renders a chat prompt from a template using Jinja2 syntax.
 

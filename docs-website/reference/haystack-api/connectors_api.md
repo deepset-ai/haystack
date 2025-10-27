@@ -7,11 +7,11 @@ slug: "/connectors-api"
 
 <a id="openapi_service"></a>
 
-# Module openapi\_service
+## Module openapi\_service
 
 <a id="openapi_service.OpenAPIServiceConnector"></a>
 
-## OpenAPIServiceConnector
+### OpenAPIServiceConnector
 
 A component which connects the Haystack framework to OpenAPI services.
 
@@ -148,11 +148,11 @@ The deserialized component.
 
 <a id="openapi"></a>
 
-# Module openapi
+## Module openapi
 
 <a id="openapi.OpenAPIConnector"></a>
 
-## OpenAPIConnector
+### OpenAPIConnector
 
 OpenAPIConnector enables direct invocation of REST endpoints defined in an OpenAPI specification.
 
