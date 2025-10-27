@@ -409,6 +409,7 @@ export default {
             'pipeline-components/generators/openrouterchatgenerator',
             'pipeline-components/generators/sagemakergenerator',
             'pipeline-components/generators/stackitchatgenerator',
+            'pipeline-components/generators/togetheraichatgenerator',
             'pipeline-components/generators/vertexaicodegenerator',
             'pipeline-components/generators/vertexaigeminichatgenerator',
             'pipeline-components/generators/vertexaigeminigenerator',
