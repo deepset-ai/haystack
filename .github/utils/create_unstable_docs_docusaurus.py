@@ -30,6 +30,8 @@ if __name__ == "__main__":
     # These two are the version that we must have published in the end
     new_stable = f"{args.new_version}"
     new_unstable = calculate_new_unstable(args.new_version)
+    major, minor = args.new_version.split(".")
+    current_stable = f"{major}.{int(minor) - 1}"
 
     versions = [
         folder.replace("version-", "")
@@ -58,39 +60,42 @@ if __name__ == "__main__":
 
     # MANUAL DOCUSAURUS UPDATES
 
-    # copy docs to versioned_docs/version-new_unstable
-    shutil.copytree("docs-website/docs", f"docs-website/versioned_docs/version-{new_unstable}")
+    current_unstable = f"{new_stable}-unstable"
 
-    # copy reference to versioned_docs/version-new_unstable/reference
-    shutil.copytree("docs-website/reference", f"docs-website/versioned_docs/version-{new_unstable}/reference")
 
-    # copy sidebars.js to versioned_docs/version-new_unstable/sidebars.js
-    shutil.copy("docs-website/sidebars.js", f"docs-website/versioned_docs/version-{new_unstable}/sidebars.js")
+    # copy docs to versioned_docs/version-current_unstable
+    shutil.copytree("docs-website/docs", f"docs-website/versioned_docs/version-{current_unstable}")
 
-    # copy reference-sidebars.js to versioned_docs/version-new_unstable/reference-sidebars.js
+    # copy reference to reference_versioned_docs/version-current_unstable/reference
+    shutil.copytree("docs-website/reference", f"docs-website/reference_versioned_docs/version-{current_unstable}/reference")
+
+    # copy versioned_sidebars/version-current_stable-sidebars.json to versioned_sidebars/version-current_unstable-sidebars.json
+    shutil.copy(f"docs-website/versioned_sidebars/version-{current_stable}-sidebars.json",
+    f"docs-website/versioned_sidebars/version-{current_unstable}-sidebars.json")
+
+    # copy reference_versioned_sidebars/version-current_stable-sidebars.json to reference_versioned_sidebars/version-current_unstable-sidebars.json
     shutil.copy(
-        "docs-website/reference-sidebars.js",
-        f"docs-website/versioned_docs/version-{new_unstable}/reference-sidebars.js",
+        f"docs-website/reference_versioned_sidebars/version-{current_stable}-sidebars.json",
+        f"docs-website/reference_versioned_sidebars/version-{current_unstable}-sidebars.json",
     )
 
     # add unstable version to versions.json
     with open("docs-website/versions.json", "r") as f:
         versions = json.load(f)
-    versions.insert(0, new_unstable)
+    versions.insert(0, current_unstable)
     with open("docs-website/versions.json", "w") as f:
         json.dump(versions, f)
 
     # add unstable version to reference_versions.json
     with open("docs-website/reference_versions.json", "r") as f:
         reference_versions = json.load(f)
-    reference_versions.insert(0, new_unstable)
+    reference_versions.insert(0, current_unstable)
     with open("docs-website/reference_versions.json", "w") as f:
         json.dump(reference_versions, f)
 
     # in docusaurus.config.js, replace the current version with the new unstable version
-    current_version = f"{new_stable}-unstable"
     with open("docs-website/docusaurus.config.js", "r") as f:
         config = f.read()
-    config = config.replace(current_version, new_unstable)
+    config = config.replace(current_unstable, new_unstable)
     with open("docs-website/docusaurus.config.js", "w") as f:
         f.write(config)
