@@ -1,16 +1,17 @@
 ---
-title: Converters
+title: "Converters"
 id: converters-api
-description: Various converters to transform data from one format to another.
+description: "Various converters to transform data from one format to another."
+slug: "/converters-api"
 ---
 
 <a id="azure"></a>
 
-# Module azure
+## Module azure
 
 <a id="azure.AzureOCRDocumentConverter"></a>
 
-## AzureOCRDocumentConverter
+### AzureOCRDocumentConverter
 
 Converts files to documents using Azure's Document Intelligence service.
 
@@ -81,7 +82,7 @@ If False, only the file name is stored.
 @component.output_types(documents=list[Document],
                         raw_azure_response=list[dict])
 def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[list[dict[str, Any]]] = None)
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
 ```
 
 Convert a list of files to Documents using Azure's Document Intelligence service.
@@ -136,38 +137,40 @@ The deserialized component.
 
 <a id="csv"></a>
 
-# Module csv
+## Module csv
 
 <a id="csv.CSVToDocument"></a>
 
-## CSVToDocument
+### CSVToDocument
 
 Converts CSV files to Documents.
 
-    By default, it uses UTF-8 encoding when converting files but
-    you can also set a custom encoding.
-    It can attach metadata to the resulting documents.
+By default, it uses UTF-8 encoding when converting files but
+you can also set a custom encoding.
+It can attach metadata to the resulting documents.
 
-    ### Usage example
+### Usage example
 
-    ```python
-    from haystack.components.converters.csv import CSVToDocument
-    converter = CSVToDocument()
-    results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
-    documents = results["documents"]
-    print(documents[0].content)
-    # 'col1,col2
-ow1,row1
-row2row2
-'
-    ```
+```python
+from haystack.components.converters.csv import CSVToDocument
+converter = CSVToDocument()
+results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
+documents = results["documents"]
+print(documents[0].content)
+# 'col1,col2\nrow1,row1\nrow2,row2\n'
+```
 
 <a id="csv.CSVToDocument.__init__"></a>
 
 #### CSVToDocument.\_\_init\_\_
 
 ```python
-def __init__(encoding: str = "utf-8", store_full_path: bool = False)
+def __init__(encoding: str = "utf-8",
+             store_full_path: bool = False,
+             *,
+             conversion_mode: Literal["file", "row"] = "file",
+             delimiter: str = ",",
+             quotechar: str = '"')
 ```
 
 Creates a CSVToDocument component.
@@ -179,6 +182,10 @@ If the encoding is specified in the metadata of a source ByteStream,
 it overrides this value.
 - `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
 If False, only the file name is stored.
+- `conversion_mode`: - "file" (default): one Document per CSV file whose content is the raw CSV text.
+- "row": convert each CSV row to its own Document (requires `content_column` in `run()`).
+- `delimiter`: CSV delimiter used when parsing in row mode (passed to ``csv.DictReader``).
+- `quotechar`: CSV quote character used when parsing in row mode (passed to ``csv.DictReader``).
 
 <a id="csv.CSVToDocument.run"></a>
 
@@ -187,14 +194,19 @@ If False, only the file name is stored.
 ```python
 @component.output_types(documents=list[Document])
 def run(sources: list[Union[str, Path, ByteStream]],
+        *,
+        content_column: Optional[str] = None,
         meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
 ```
 
-Converts a CSV file to a Document.
+Converts CSV files to a Document (file mode) or to one Document per row (row mode).
 
 **Arguments**:
 
 - `sources`: List of file paths or ByteStream objects.
+- `content_column`: **Required when** ``conversion_mode="row"``.
+The column name whose values become ``Document.content`` for each row.
+The column must exist in the CSV header.
 - `meta`: Optional metadata to attach to the documents.
 This value can be either a list of dictionaries or a single dictionary.
 If it's a single dictionary, its content is added to the metadata of all produced documents.
@@ -209,11 +221,11 @@ A dictionary with the following keys:
 
 <a id="docx"></a>
 
-# Module docx
+## Module docx
 
 <a id="docx.DOCXMetadata"></a>
 
-## DOCXMetadata
+### DOCXMetadata
 
 Describes the metadata of Docx file.
 
@@ -237,7 +249,7 @@ Describes the metadata of Docx file.
 
 <a id="docx.DOCXTableFormat"></a>
 
-## DOCXTableFormat
+### DOCXTableFormat
 
 Supported formats for storing DOCX tabular data in a Document.
 
@@ -254,7 +266,7 @@ Convert a string to a DOCXTableFormat enum.
 
 <a id="docx.DOCXLinkFormat"></a>
 
-## DOCXLinkFormat
+### DOCXLinkFormat
 
 Supported formats for storing DOCX link information in a Document.
 
@@ -271,7 +283,7 @@ Convert a string to a DOCXLinkFormat enum.
 
 <a id="docx.DOCXToDocument"></a>
 
-## DOCXToDocument
+### DOCXToDocument
 
 Converts DOCX files to Documents.
 
@@ -374,11 +386,11 @@ A dictionary with the following keys:
 
 <a id="html"></a>
 
-# Module html
+## Module html
 
 <a id="html.HTMLToDocument"></a>
 
-## HTMLToDocument
+### HTMLToDocument
 
 Converts an HTML file to a Document.
 
@@ -476,11 +488,11 @@ A dictionary with the following keys:
 
 <a id="json"></a>
 
-# Module json
+## Module json
 
 <a id="json.JSONConverter"></a>
 
-## JSONConverter
+### JSONConverter
 
 Converts one or more JSON files into a text document.
 
@@ -656,11 +668,11 @@ A dictionary with the following keys:
 
 <a id="markdown"></a>
 
-# Module markdown
+## Module markdown
 
 <a id="markdown.MarkdownToDocument"></a>
 
-## MarkdownToDocument
+### MarkdownToDocument
 
 Converts a Markdown file into a text Document.
 
@@ -724,11 +736,11 @@ A dictionary with the following keys:
 
 <a id="msg"></a>
 
-# Module msg
+## Module msg
 
 <a id="msg.MSGToDocument"></a>
 
-## MSGToDocument
+### MSGToDocument
 
 Converts Microsoft Outlook .msg files into Haystack Documents.
 
@@ -796,11 +808,11 @@ A dictionary with the following keys:
 
 <a id="multi_file_converter"></a>
 
-# Module multi\_file\_converter
+## Module multi\_file\_converter
 
 <a id="multi_file_converter.MultiFileConverter"></a>
 
-## MultiFileConverter
+### MultiFileConverter
 
 A file converter that handles conversion of multiple file types.
 
@@ -841,11 +853,11 @@ Initialize the MultiFileConverter.
 
 <a id="openapi_functions"></a>
 
-# Module openapi\_functions
+## Module openapi\_functions
 
 <a id="openapi_functions.OpenAPIServiceToFunctions"></a>
 
-## OpenAPIServiceToFunctions
+### OpenAPIServiceToFunctions
 
 Converts OpenAPI service definitions to a format suitable for OpenAI function calling.
 
@@ -907,17 +919,17 @@ A dictionary with the following keys:
 
 <a id="output_adapter"></a>
 
-# Module output\_adapter
+## Module output\_adapter
 
 <a id="output_adapter.OutputAdaptationException"></a>
 
-## OutputAdaptationException
+### OutputAdaptationException
 
 Exception raised when there is an error during output adaptation.
 
 <a id="output_adapter.OutputAdapter"></a>
 
-## OutputAdapter
+### OutputAdapter
 
 Adapts output of a Component using Jinja templates.
 
@@ -1019,7 +1031,7 @@ The deserialized component.
 
 <a id="pdfminer"></a>
 
-# Module pdfminer
+## Module pdfminer
 
 <a id="pdfminer.CID_PATTERN"></a>
 
@@ -1029,7 +1041,7 @@ regex pattern to detect CID characters
 
 <a id="pdfminer.PDFMinerToDocument"></a>
 
-## PDFMinerToDocument
+### PDFMinerToDocument
 
 Converts PDF files to Documents.
 
@@ -1143,11 +1155,11 @@ A dictionary with the following keys:
 
 <a id="pptx"></a>
 
-# Module pptx
+## Module pptx
 
 <a id="pptx.PPTXToDocument"></a>
 
-## PPTXToDocument
+### PPTXToDocument
 
 Converts PPTX files to Documents.
 
@@ -1206,11 +1218,11 @@ A dictionary with the following keys:
 
 <a id="pypdf"></a>
 
-# Module pypdf
+## Module pypdf
 
 <a id="pypdf.PyPDFExtractionMode"></a>
 
-## PyPDFExtractionMode
+### PyPDFExtractionMode
 
 The mode to use for extracting text from a PDF.
 
@@ -1237,7 +1249,7 @@ Convert a string to a PyPDFExtractionMode enum.
 
 <a id="pypdf.PyPDFToDocument"></a>
 
-## PyPDFToDocument
+### PyPDFToDocument
 
 Converts PDF files to documents your pipeline can query.
 
@@ -1356,11 +1368,11 @@ A dictionary with the following keys:
 
 <a id="tika"></a>
 
-# Module tika
+## Module tika
 
 <a id="tika.XHTMLParser"></a>
 
-## XHTMLParser
+### XHTMLParser
 
 Custom parser to extract pages from Tika XHTML content.
 
@@ -1396,7 +1408,7 @@ Populate the page content.
 
 <a id="tika.TikaDocumentConverter"></a>
 
-## TikaDocumentConverter
+### TikaDocumentConverter
 
 Converts files of different types to Documents.
 
@@ -1465,11 +1477,11 @@ A dictionary with the following keys:
 
 <a id="txt"></a>
 
-# Module txt
+## Module txt
 
 <a id="txt.TextFileToDocument"></a>
 
-## TextFileToDocument
+### TextFileToDocument
 
 Converts text files to documents your pipeline can query.
 
@@ -1535,11 +1547,11 @@ A dictionary with the following keys:
 
 <a id="xlsx"></a>
 
-# Module xlsx
+## Module xlsx
 
 <a id="xlsx.XLSXToDocument"></a>
 
-## XLSXToDocument
+### XLSXToDocument
 
 Converts XLSX (Excel) files into Documents.
 
@@ -1618,3 +1630,4 @@ If `sources` contains ByteStream objects, their `meta` will be added to the outp
 
 A dictionary with the following keys:
 - `documents`: Created documents
+

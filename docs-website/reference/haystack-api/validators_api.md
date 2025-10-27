@@ -1,12 +1,13 @@
 ---
-title: Validators
+title: "Validators"
 id: validators-api
-description: Validators validate LLM outputs
+description: "Validators validate LLM outputs"
+slug: "/validators-api"
 ---
 
 <a id="json_schema"></a>
 
-# Module json\_schema
+## Module json\_schema
 
 <a id="json_schema.is_valid_json"></a>
 
@@ -28,7 +29,7 @@ Check if the provided string is a valid JSON.
 
 <a id="json_schema.JsonSchemaValidator"></a>
 
-## JsonSchemaValidator
+### JsonSchemaValidator
 
 Validates JSON content of `ChatMessage` against a specified [JSON Schema](https://json-schema.org/).
 
@@ -141,3 +142,4 @@ dictionaries.
 A dictionary with the following keys:
 - "validated": A list of messages if the last message is valid.
 - "validation_error": A list of messages if the last message is invalid.
+

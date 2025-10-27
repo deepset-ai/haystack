@@ -1,0 +1,162 @@
+---
+title: "QdrantHybridRetriever"
+id: qdranthybridretriever
+slug: "/qdranthybridretriever"
+description: "A Retriever based both on dense and sparse embeddings, compatible with the Qdrant Document Store."
+---
+
+# QdrantHybridRetriever
+
+A Retriever based both on dense and sparse embeddings, compatible with the Qdrant Document Store.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1\. After a Text Embedder and before a [`PromptBuilder`](/docs/promptbuilder)  in a RAG pipeline  <br /> <br />2. The last component in a hybrid search pipeline      3. After a Text Embedder and before an [`ExtractiveReader`](/docs/extractivereader)  in an extractive QA pipeline |
+| **Mandatory init variables** | "document_store": An instance of a [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx) |
+| **Mandatory run variables** | “query_embedding”: A dense vector representing the query (a list of floats)  <br /> <br />“query_sparse_embedding”: A [`SparseEmbedding`](/docs/data-classes#sparseembedding)  object containing a vectorial representation of the query |
+| **Output variables** | “document”: A list of documents |
+| **API reference** | [Qdrant](/reference/integrations-qdrant) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/qdrant |
+
+## Overview
+
+The `QdrantHybridRetriever` is a Retriever based both on dense and sparse embeddings, compatible with the [`QdrantDocumentStore`](../../document-stores/qdrant-document-store.mdx).
+
+It compares the query and document’s dense and sparse embeddings and fetches the documents most relevant to the query from the `QdrantDocumentStore`, fusing the scores with Reciprocal Rank Fusion.
+
+:::tip
+Hybrid Retrieval Pipeline
+
+If you want additional customization for merging or fusing results, consider creating a hybrid retrieval pipeline with [`DocumentJoiner`](/docs/documentjoiner).
+
+You can check out our hybrid retrieval pipeline [tutorial](https://haystack.deepset.ai/tutorials/33_hybrid_retrieval) for detailed steps.
+:::
+
+When using the `QdrantHybridRetriever`, make sure it has the query and document with dense and sparse embeddings available. You can do so by:
+
+- Adding a (dense) document Embedder and a sparse document Embedder to your indexing pipeline,
+- Adding a (dense) text Embedder and a sparse text Embedder to your query pipeline.
+
+In addition to `query_embedding` and `query_sparse_embedding`, the `QdrantHybridRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
+
+:::note
+Sparse Embedding Support
+
+To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
+
+If you want to use Document Store or collection previously created with this feature disabled, you must migrate the existing data. You can do this by taking advantage of the `migrate_to_sparse_embeddings_support` utility function.
+:::
+
+### Installation
+
+To start using Qdrant with Haystack, first install the package with:
+
+```shell
+pip install qdrant-haystack
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack_integrations.components.retrievers.qdrant import QdrantHybridRetriever
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+from haystack.dataclasses import Document, SparseEmbedding
+
+document_store = QdrantDocumentStore(
+    ":memory:",
+    use_sparse_embeddings=True,
+    recreate_index=True,
+    return_embedding=True,
+    wait_result_from_api=True,
+)
+
+doc = Document(content="test",
+               embedding=[0.5]*768,
+               sparse_embedding=SparseEmbedding(indices=[0, 3, 5], values=[0.1, 0.5, 0.12]))
+
+document_store.write_documents([doc])
+
+retriever = QdrantHybridRetriever(document_store=document_store)
+embedding = [0.1]*768
+sparse_embedding = SparseEmbedding(indices=[0, 1, 2, 3], values=[0.1, 0.8, 0.05, 0.33])
+retriever.run(query_embedding=embedding, query_sparse_embedding=sparse_embedding)
+```
+
+### In a pipeline
+
+Currently, you can compute sparse embeddings using Fastembed Sparse Embedders.
+First, install the package with:
+
+```shell
+pip install fastembed-haystack
+```
+
+In the example below, we are using Fastembed Embedders to compute dense embeddings as well.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.retrievers.qdrant import QdrantHybridRetriever
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.components.embedders.fastembed import (
+	FastembedTextEmbedder,
+	FastembedDocumentEmbedder,
+	FastembedSparseTextEmbedder,
+	FastembedSparseDocumentEmbedder
+)
+
+document_store = QdrantDocumentStore(
+    ":memory:",
+    recreate_index=True,
+    use_sparse_embeddings=True,
+    embedding_dim = 384
+)
+
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+    Document(content="fastembed is supported by and maintained by Qdrant."),
+]
+
+indexing = Pipeline()
+indexing.add_component("sparse_doc_embedder", FastembedSparseDocumentEmbedder(model="prithvida/Splade_PP_en_v1"))
+indexing.add_component("dense_doc_embedder", FastembedDocumentEmbedder(model="BAAI/bge-small-en-v1.5"))
+indexing.add_component("writer", DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE))
+indexing.connect("sparse_doc_embedder", "dense_doc_embedder")
+indexing.connect("dense_doc_embedder", "writer")
+
+indexing.run({"sparse_doc_embedder": {"documents": documents}})
+
+querying = Pipeline()
+querying.add_component("sparse_text_embedder", FastembedSparseTextEmbedder(model="prithvida/Splade_PP_en_v1"))
+querying.add_component("dense_text_embedder", FastembedTextEmbedder(
+	model="BAAI/bge-small-en-v1.5", prefix="Represent this sentence for searching relevant passages: ")
+	)
+querying.add_component("retriever", QdrantHybridRetriever(document_store=document_store))
+
+querying.connect("sparse_text_embedder.sparse_embedding", "retriever.query_sparse_embedding")
+querying.connect("dense_text_embedder.embedding", "retriever.query_embedding")
+
+question = "Who supports fastembed?"
+
+results = query_mix.run(
+    {"dense_text_embedder": {"text": question},
+     "sparse_text_embedder": {"text": question}}
+)
+
+print(result["retriever"]["documents"][0])
+
+## Document(id=...,
+##  content: 'fastembed is supported by and maintained by Qdrant.',
+##  score: 1.0)
+```
+
+## Additional References
+
+:notebook: Tutorial: [Creating a Hybrid Retrieval Pipeline](https://haystack.deepset.ai/tutorials/33_hybrid_retrieval)
+
+:cook: Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)

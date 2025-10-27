@@ -1,0 +1,91 @@
+---
+title: "NamedEntityExtractor"
+id: namedentityextractor
+slug: "/namedentityextractor"
+description: "This component extracts predefined entities out of a piece of text and writes them into documents’ meta field."
+---
+
+# NamedEntityExtractor
+
+This component extracts predefined entities out of a piece of text and writes them into documents’ meta field.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After the [PreProcessor](../../../docs/pipeline-components/preprocessors.mdx)  in an indexing pipeline or after a [Retriever](../../../docs/pipeline-components/retrievers.mdx)  in a query pipeline |
+| **Mandatory init variables** | "backend": The backend to use for NER  <br /> <br />"model": Name or path of the model to use |
+| **Mandatory run variables** | “documents”: A list of documents |
+| **Output variables** | “documents”: A list of documents |
+| **API reference** | [Extractors](ref:extractors-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/extractors/named_entity_extractor.py |
+
+## Overview
+
+`NamedEntityExtractor` looks for entities, which are spans in the text. The extractor automatically recognizes and groups them depending on their class, such as people's names, organizations, locations, and other types. The exact classes are determined by the model that you initialize the component with.
+
+`NamedEntityExtractor` takes a list of documents as input and returns a list of the same documents with their `meta` data enriched with `NamedEntityAnnotations`. A `NamedEntityAnnotation` consists of the type of the entity, the start and end of the span, and a score calculated by the model, for example: `NamedEntityAnnotation(entity='PER', start=11, end=16, score=0.9)`.
+
+When the `NamedEntityExtractor` is initialized, you need to set a `model` and a `backend`. The latter can be either `"hugging_face"` or `"spacy"`. Optionally, you can set `pipeline_kwargs`, which are then passed on to the Hugging Face pipeline or the spaCy pipeline. You can additionally set the `device` that is used to run the component.
+
+## Usage
+
+The current implementation supports two NER backends: Hugging Face and spaCy. These two backends work with any HF or spaCy model that supports token classification or NER.
+
+Here’s an example of how you could initialize different backends:
+
+```python
+## Initialize with HF backend
+extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
+
+## Initialize with spaCy backend
+extractor = NamedEntityExtractor(backend="spacy", model="en_core_web_sm")
+```
+
+`NamedEntityExtractor` accepts a list of `Documents` as its input. The extractor annotates the raw text in the documents and stores the annotations in the document's `meta` dictionary under the `named_entities` key.
+
+```python
+from haystack.dataclasses import Document
+from haystack.components.extractors import NamedEntityExtractor
+
+extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
+
+documents = [Document(content="My name is Clara and I live in Berkeley, California."),
+	     Document(content="I'm Merlin, the happy pig!"),
+	     Document(content="New York State is home to the Empire State Building.")]
+
+extractor.warm_up()
+extractor.run(documents)
+print(documents)
+```
+
+Here is the example result:
+
+```python
+[Document(id=aec840d1b6c85609f4f16c3e222a5a25fd8c4c53bd981a40c1268ab9c72cee10, content: 'My name is Clara and I live in Berkeley, California.', meta: {'named_entities': [NamedEntityAnnotation(entity='PER', start=11, end=16, score=0.99641764), NamedEntityAnnotation(entity='LOC', start=31, end=39, score=0.996198), NamedEntityAnnotation(entity='LOC', start=41, end=51, score=0.9990196)]}), 
+Document(id=98f1dc5d0ccd9d9950cd191d1076db0f7af40c401dd7608f11c90cb3fc38c0c2, content: 'I'm Merlin, the happy pig!', meta: {'named_entities': [NamedEntityAnnotation(entity='PER', start=4, end=10, score=0.99054915)]}), 
+Document(id=44948ea0eec018b33aceaaedde4616eb9e93ce075e0090ec1613fc145f84b4a9, content: 'New York State is home to the Empire State Building.', meta: {'named_entities': [NamedEntityAnnotation(entity='LOC', start=0, end=14, score=0.9989541), NamedEntityAnnotation(entity='LOC', start=30, end=51, score=0.95746297)]})]
+```
+
+### Get stored annotations
+
+This component includes the `get_stored_annotations` helper class method that allows you to retrieve the annotations stored in a `Document` transparently:
+
+```python
+from haystack.dataclasses import Document
+from haystack.components.extractors import NamedEntityExtractor
+
+extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
+
+documents = [Document(content="My name is Clara and I live in Berkeley, California."),
+	     Document(content="I'm Merlin, the happy pig!"),
+	     Document(content="New York State is home to the Empire State Building.")]
+
+extractor.warm_up()
+extractor.run(documents)
+
+annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in documents]
+print(annotations)
+
+## If a Document doesn't contain any annotations, this returns None.
+new_doc = Document(content="In one of many possible worlds...")
+assert NamedEntityExtractor.get_stored_annotations(new_doc) is None
+```

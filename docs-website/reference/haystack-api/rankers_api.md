@@ -1,16 +1,17 @@
 ---
-title: Rankers
+title: "Rankers"
 id: rankers-api
-description: Reorders a set of Documents based on their relevance to the query.
+description: "Reorders a set of Documents based on their relevance to the query."
+slug: "/rankers-api"
 ---
 
 <a id="hugging_face_tei"></a>
 
-# Module hugging\_face\_tei
+## Module hugging\_face\_tei
 
 <a id="hugging_face_tei.TruncationDirection"></a>
 
-## TruncationDirection
+### TruncationDirection
 
 Defines the direction to truncate text when input length exceeds the model's limit.
 
@@ -21,7 +22,7 @@ Defines the direction to truncate text when input length exceeds the model's lim
 
 <a id="hugging_face_tei.HuggingFaceTEIRanker"></a>
 
-## HuggingFaceTEIRanker
+### HuggingFaceTEIRanker
 
 Ranks documents based on their semantic similarity to the query.
 
@@ -186,11 +187,11 @@ A dictionary with the following keys:
 
 <a id="lost_in_the_middle"></a>
 
-# Module lost\_in\_the\_middle
+## Module lost\_in\_the\_middle
 
 <a id="lost_in_the_middle.LostInTheMiddleRanker"></a>
 
-## LostInTheMiddleRanker
+### LostInTheMiddleRanker
 
 A LostInTheMiddle Ranker.
 
@@ -270,11 +271,11 @@ A dictionary with the following keys:
 
 <a id="meta_field"></a>
 
-# Module meta\_field
+## Module meta\_field
 
 <a id="meta_field.MetaFieldRanker"></a>
 
-## MetaFieldRanker
+### MetaFieldRanker
 
 Ranks Documents based on the value of their specific meta field.
 
@@ -420,11 +421,11 @@ A dictionary with the following keys:
 
 <a id="meta_field_grouping_ranker"></a>
 
-# Module meta\_field\_grouping\_ranker
+## Module meta\_field\_grouping\_ranker
 
 <a id="meta_field_grouping_ranker.MetaFieldGroupingRanker"></a>
 
-## MetaFieldGroupingRanker
+### MetaFieldGroupingRanker
 
 Reorders the documents by grouping them based on metadata keys.
 
@@ -515,11 +516,11 @@ A dictionary with the following keys:
 
 <a id="sentence_transformers_diversity"></a>
 
-# Module sentence\_transformers\_diversity
+## Module sentence\_transformers\_diversity
 
 <a id="sentence_transformers_diversity.DiversityRankingStrategy"></a>
 
-## DiversityRankingStrategy
+### DiversityRankingStrategy
 
 The strategy to use for diversity ranking.
 
@@ -546,7 +547,7 @@ Convert a string to a Strategy enum.
 
 <a id="sentence_transformers_diversity.DiversityRankingSimilarity"></a>
 
-## DiversityRankingSimilarity
+### DiversityRankingSimilarity
 
 The similarity metric to use for comparing embeddings.
 
@@ -573,7 +574,7 @@ Convert a string to a Similarity enum.
 
 <a id="sentence_transformers_diversity.SentenceTransformersDiversityRanker"></a>
 
-## SentenceTransformersDiversityRanker
+### SentenceTransformersDiversityRanker
 
 A Diversity Ranker based on Sentence Transformers.
 
@@ -751,11 +752,11 @@ A dictionary with the following key:
 
 <a id="sentence_transformers_similarity"></a>
 
-# Module sentence\_transformers\_similarity
+## Module sentence\_transformers\_similarity
 
 <a id="sentence_transformers_similarity.SentenceTransformersSimilarityRanker"></a>
 
-## SentenceTransformersSimilarityRanker
+### SentenceTransformersSimilarityRanker
 
 Ranks documents based on their semantic similarity to the query.
 
@@ -918,11 +919,11 @@ A dictionary with the following keys:
 
 <a id="transformers_similarity"></a>
 
-# Module transformers\_similarity
+## Module transformers\_similarity
 
 <a id="transformers_similarity.TransformersSimilarityRanker"></a>
 
-## TransformersSimilarityRanker
+### TransformersSimilarityRanker
 
 Ranks documents based on their semantic similarity to the query.
 
@@ -934,9 +935,9 @@ It uses a pre-trained cross-encoder model from Hugging Face to embed the query a
   with removal following after a deprecation period.
   Consider using SentenceTransformersSimilarityRanker instead, which provides the same functionality along with
   additional features.
-
+  
   ### Usage example
-
+  
 ```python
 from haystack import Document
 from haystack.components.rankers import TransformersSimilarityRanker
@@ -1083,3 +1084,4 @@ If `scale_score` is True and `calibration_factor` is not provided.
 
 A dictionary with the following keys:
 - `documents`: A list of documents closest to the query, sorted from most similar to least similar.
+

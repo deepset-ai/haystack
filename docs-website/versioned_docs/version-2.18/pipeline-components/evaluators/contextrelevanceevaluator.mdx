@@ -1,0 +1,118 @@
+---
+title: "ContextRelevanceEvaluator"
+id: contextrelevanceevaluator
+slug: "/contextrelevanceevaluator"
+description: "The `ContextRelevanceEvaluator` uses an LLM to evaluate whether contexts are relevant to a question. It does not require ground truth labels."
+---
+
+# ContextRelevanceEvaluator
+
+The `ContextRelevanceEvaluator` uses an LLM to evaluate whether contexts are relevant to a question. It does not require ground truth labels.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
+| **Mandatory run variables** | "questions": A list of questions  <br /> <br />"contexts": A list of a list of contexts, which are the contents of documents. This accounts for one list of contexts per question. |
+| **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 that represents the mean average precision  <br /> <br />- `individual_scores`: A list of the individual average precision scores ranging from 0.0 to 1.0 for each input pair of a list of retrieved documents and a list of ground truth documents  <br /> <br />- `results`:  A list of dictionaries with keys `statements` and `statement_scores`. They contain the statements extracted by an LLM from each context and the corresponding context relevance scores per statement, which are either 0 or 1. |
+| **API reference** | [Evaluators](/reference/evaluators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/context_relevance.py |
+
+## Overview
+
+You can use the `ContextRelevanceEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, without ground truth labels. The component breaks up the context into multiple statements and checks whether each statement is relevant for answering a question. The final score for the context relevance is a number from 0.0 to 1.0 and represents the proportion of statements that are relevant to the provided question.
+
+### Parameters
+
+The default model for this Evaluator is `gpt-4o-mini`. You can override the model using the `chat_generator` parameter during initialization. This needs to be a Chat Generator instance configured to return a JSON object. For example, when using the [`OpenAIChatGenerator`](/docs/openaichatgenerator), you should pass `{"response_format": {"type": "json_object"}}` in its `generation_kwargs`.
+
+If you are not initializing the Evaluator with your own Chat Generator other than OpenAI, a valid OpenAI API key must be set as an `OPENAI_API_KEY` environment variable. For details, see our [documentation page on secret management](/docs/secret-management).
+
+Two optional initialization parameters are:
+
+- `raise_on_failure`: If True, raise an exception on an unsuccessful API call.
+- `progress_bar`: Whether to show a progress bar during the evaluation.
+
+`ContextRelevanceEvaluator` has an optional `examples` parameter that can be used to pass few-shot examples conforming to the expected input and output format of `ContextRelevanceEvaluator`. These examples are included in the prompt that is sent to the LLM. Examples, therefore, increase the number of tokens of the prompt and make each request more costly. Adding examples is helpful if you want to improve the quality of the evaluation at the cost of more tokens.
+
+Each example must be a dictionary with keys `inputs` and `outputs`.
+`inputs` must be a dictionary with keys `questions` and `contexts`.
+`outputs` must be a dictionary with `statements` and `statement_scores`.
+Here is the expected format:
+
+```python
+[{
+	"inputs": {
+		"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
+	},
+	"outputs": {
+		"statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+		"statement_scores": [1, 0],
+	},
+}]
+```
+
+## Usage
+
+### On its own
+
+Below is an example where we use a `ContextRelevanceEvaluator` component to evaluate a response generated based on a provided question and context. The `ContextRelevanceEvaluator` returns a score of 1.0 because it detects one statement in the context, which is relevant to the question.
+
+```python
+from haystack.components.evaluators import ContextRelevanceEvaluator
+
+questions = ["Who created the Python language?"]
+contexts = [
+    [
+        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
+    ],
+]
+
+evaluator = ContextRelevanceEvaluator()
+result = evaluator.run(questions=questions, contexts=contexts)
+print(result["score"])
+## 1.0
+print(result["individual_scores"])
+## [1.0]
+print(result["results"])
+## [{'statements': ['Python, created by Guido van Rossum in the late 1980s.'], 'statement_scores': [1], 'score': 1.0}]
+
+```
+
+### In a pipeline
+
+Below is an example where we use a `FaithfulnessEvaluator` and a `ContextRelevanceEvaluator` in a pipeline to evaluate responses and contexts (the content of documents) received by a RAG pipeline based on provided questions. Running a pipeline instead of the individual components simplifies calculating more than one metric.
+
+```python
+from haystack import Pipeline
+from haystack.components.evaluators import ContextRelevanceEvaluator, FaithfulnessEvaluator
+
+pipeline = Pipeline()
+context_relevance_evaluator = ContextRelevanceEvaluator()
+faithfulness_evaluator = FaithfulnessEvaluator()
+pipeline.add_component("context_relevance_evaluator", context_relevance_evaluator)
+pipeline.add_component("faithfulness_evaluator", faithfulness_evaluator)
+
+questions = ["Who created the Python language?"]
+contexts = [
+    [
+        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
+    ],
+]
+responses = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
+
+result = pipeline.run(
+		{
+			"context_relevance_evaluator": {"questions": questions, "contexts": contexts},
+	    "faithfulness_evaluator": {"questions": questions, "contexts": contexts, "responses": responses}
+    }
+)
+
+for evaluator in result:
+    print(result[evaluator]["individual_scores"])
+## [1.0]
+## [0.5]
+for evaluator in result:
+    print(result[evaluator]["score"])
+## 1.0
+## 0.5
+```

@@ -27,8 +27,7 @@ from haystack.utils.misc import _get_output_dir
 
 if TYPE_CHECKING:
     from haystack.components.agents.agent import _ExecutionContext
-    from haystack.tools.tool import Tool
-    from haystack.tools.toolset import Toolset
+    from haystack.tools import Tool, Toolset, ToolsType
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +143,7 @@ def load_pipeline_snapshot(file_path: Union[str, Path]) -> PipelineSnapshot:
     return pipeline_snapshot
 
 
-def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failure: bool = True) -> None:
+def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failure: bool = True) -> Optional[str]:
     """
     Save the pipeline snapshot dictionary to a JSON file.
 
@@ -158,6 +157,8 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failur
     :param pipeline_snapshot: The pipeline snapshot to save.
     :param raise_on_failure: If True, raises an exception if saving fails. If False, logs the error and returns.
 
+    :returns:
+        The full path to the saved JSON file, or None if `snapshot_file_path` is None.
     :raises:
         Exception: If saving the JSON snapshot fails.
     """
@@ -169,7 +170,7 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failur
     )
 
     if snapshot_file_path is None:
-        return
+        return None
 
     dt = pipeline_snapshot.timestamp or datetime.now()
     snapshot_dir = Path(snapshot_file_path)
@@ -200,6 +201,8 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failur
         logger.error("Failed to save pipeline snapshot to '{full_path}'. Error: {e}", full_path=full_path, e=error)
         if raise_on_failure:
             raise
+
+    return str(full_path)
 
 
 def _create_pipeline_snapshot(
@@ -304,9 +307,9 @@ def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot) -> None:
     Trigger a breakpoint by saving a snapshot and raising exception.
 
     :param pipeline_snapshot: The current pipeline snapshot containing the state and break point
-    :raises PipelineBreakpointException: When breakpoint is triggered
+    :raises BreakpointException: When breakpoint is triggered
     """
-    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
+    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
 
     if isinstance(pipeline_snapshot.break_point, Breakpoint):
         component_name = pipeline_snapshot.break_point.component_name
@@ -318,8 +321,8 @@ def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot) -> None:
     raise BreakpointException(
         message=msg,
         component=component_name,
-        inputs=pipeline_snapshot.pipeline_state.inputs,
-        results=pipeline_snapshot.pipeline_state.pipeline_outputs,
+        pipeline_snapshot=pipeline_snapshot,
+        pipeline_snapshot_file_path=full_file_path,
     )
 
 
@@ -344,20 +347,19 @@ def _create_agent_snapshot(
     )
 
 
-def _validate_tool_breakpoint_is_valid(
-    agent_breakpoint: AgentBreakpoint, tools: Union[list["Tool"], "Toolset"]
-) -> None:
+def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools: "ToolsType") -> None:
     """
     Validates the AgentBreakpoint passed to the agent.
 
     Validates that the tool name in ToolBreakpoints correspond to a tool available in the agent.
 
     :param agent_breakpoint: AgentBreakpoint object containing breakpoints for the agent components.
-    :param tools: List of Tool objects or a Toolset that the agent can use.
+    :param tools: A list of Tool and/or Toolset objects, or a Toolset that the agent can use.
     :raises ValueError: If any tool name in ToolBreakpoints is not available in the agent's tools.
     """
+    from haystack.tools.utils import flatten_tools_or_toolsets  # avoid circular import
 
-    available_tool_names = {tool.name for tool in tools}
+    available_tool_names = {tool.name for tool in flatten_tools_or_toolsets(tools)}
     tool_breakpoint = agent_breakpoint.break_point
     # Assert added for mypy to pass, but this is already checked before this function is called
     assert isinstance(tool_breakpoint, ToolBreakpoint)
@@ -502,17 +504,16 @@ def _trigger_chat_generator_breakpoint(*, pipeline_snapshot: PipelineSnapshot) -
         raise ValueError("PipelineSnapshot must contain an AgentSnapshot to trigger a chat generator breakpoint.")
 
     break_point = pipeline_snapshot.break_point.break_point
-    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
+    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
     msg = (
         f"Breaking at {break_point.component_name} visit count "
         f"{pipeline_snapshot.agent_snapshot.component_visits[break_point.component_name]}"
     )
-    logger.info(msg)
     raise BreakpointException(
         message=msg,
         component=break_point.component_name,
-        inputs=pipeline_snapshot.agent_snapshot.component_inputs,
-        results=pipeline_snapshot.agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"],
+        pipeline_snapshot=pipeline_snapshot,
+        pipeline_snapshot_file_path=full_file_path,
     )
 
 
@@ -546,7 +547,7 @@ def _trigger_tool_invoker_breakpoint(*, llm_messages: list[ChatMessage], pipelin
     if not should_break:
         return  # No breakpoint triggered
 
-    _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
+    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
 
     msg = (
         f"Breaking at {tool_breakpoint.component_name} visit count "
@@ -559,6 +560,6 @@ def _trigger_tool_invoker_breakpoint(*, llm_messages: list[ChatMessage], pipelin
     raise BreakpointException(
         message=msg,
         component=tool_breakpoint.component_name,
-        inputs=pipeline_snapshot.agent_snapshot.component_inputs,
-        results=pipeline_snapshot.agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]["state"],
+        pipeline_snapshot=pipeline_snapshot,
+        pipeline_snapshot_file_path=full_file_path,
     )

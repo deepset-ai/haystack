@@ -1,16 +1,17 @@
 ---
-title: Retrievers
+title: "Retrievers"
 id: retrievers-api
-description: Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query.
+description: "Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query."
+slug: "/retrievers-api"
 ---
 
 <a id="auto_merging_retriever"></a>
 
-# Module auto\_merging\_retriever
+## Module auto\_merging\_retriever
 
 <a id="auto_merging_retriever.AutoMergingRetriever"></a>
 
-## AutoMergingRetriever
+### AutoMergingRetriever
 
 A retriever which returns parent documents of the matched leaf nodes documents, based on a threshold setting.
 
@@ -132,11 +133,11 @@ List of documents (could be a mix of different hierarchy levels)
 
 <a id="in_memory/bm25_retriever"></a>
 
-# Module in\_memory/bm25\_retriever
+## Module in\_memory/bm25\_retriever
 
 <a id="in_memory/bm25_retriever.InMemoryBM25Retriever"></a>
 
-## InMemoryBM25Retriever
+### InMemoryBM25Retriever
 
 Retrieves documents that are most similar to the query using keyword-based algorithm.
 
@@ -289,11 +290,11 @@ The retrieved documents.
 
 <a id="in_memory/embedding_retriever"></a>
 
-# Module in\_memory/embedding\_retriever
+## Module in\_memory/embedding\_retriever
 
 <a id="in_memory/embedding_retriever.InMemoryEmbeddingRetriever"></a>
 
-## InMemoryEmbeddingRetriever
+### InMemoryEmbeddingRetriever
 
 Retrieves documents that are most semantically similar to the query.
 
@@ -467,11 +468,11 @@ The retrieved documents.
 
 <a id="filter_retriever"></a>
 
-# Module filter\_retriever
+## Module filter\_retriever
 
 <a id="filter_retriever.FilterRetriever"></a>
 
-## FilterRetriever
+### FilterRetriever
 
 Retrieves documents that match the provided filters.
 
@@ -568,11 +569,11 @@ A list of retrieved documents.
 
 <a id="sentence_window_retriever"></a>
 
-# Module sentence\_window\_retriever
+## Module sentence\_window\_retriever
 
 <a id="sentence_window_retriever.SentenceWindowRetriever"></a>
 
-## SentenceWindowRetriever
+### SentenceWindowRetriever
 
 Retrieves neighboring documents from a DocumentStore to provide context for query results.
 
@@ -746,3 +747,35 @@ A dictionary with the following keys:
 - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
                       document surrounding them. The documents are sorted by the `split_idx_start`
                       meta field.
+
+<a id="sentence_window_retriever.SentenceWindowRetriever.run_async"></a>
+
+#### SentenceWindowRetriever.run\_async
+
+```python
+@component.output_types(context_windows=list[str],
+                        context_documents=list[Document])
+async def run_async(retrieved_documents: list[Document],
+                    window_size: Optional[int] = None)
+```
+
+Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
+
+Implements the logic behind the sentence-window technique, retrieving the surrounding documents of a given
+document from the document store.
+
+**Arguments**:
+
+- `retrieved_documents`: List of retrieved documents from the previous retriever.
+- `window_size`: The number of documents to retrieve before and after the relevant one. This will overwrite
+the `window_size` parameter set in the constructor.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `context_windows`: A list of strings, where each string represents the concatenated text from the
+                     context window of the corresponding document in `retrieved_documents`.
+- `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
+                      document surrounding them. The documents are sorted by the `split_idx_start`
+                      meta field.
+

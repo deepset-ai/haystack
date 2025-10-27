@@ -1,16 +1,17 @@
 ---
-title: Classifiers
+title: "Classifiers"
 id: classifiers-api
-description: Classify documents based on the provided labels.
+description: "Classify documents based on the provided labels."
+slug: "/classifiers-api"
 ---
 
 <a id="document_language_classifier"></a>
 
-# Module document\_language\_classifier
+## Module document\_language\_classifier
 
 <a id="document_language_classifier.DocumentLanguageClassifier"></a>
 
-## DocumentLanguageClassifier
+### DocumentLanguageClassifier
 
 Classifies the language of each document and adds it to its metadata.
 
@@ -92,11 +93,11 @@ A dictionary with the following key:
 
 <a id="zero_shot_document_classifier"></a>
 
-# Module zero\_shot\_document\_classifier
+## Module zero\_shot\_document\_classifier
 
 <a id="zero_shot_document_classifier.TransformersZeroShotDocumentClassifier"></a>
 
-## TransformersZeroShotDocumentClassifier
+### TransformersZeroShotDocumentClassifier
 
 Performs zero-shot classification of documents based on given labels and adds the predicted label to their metadata.
 
@@ -258,3 +259,4 @@ the `details` key within the `classification` dictionary.
 
 A dictionary with the following key:
 - `documents`: A list of documents with an added metadata field called `classification`.
+

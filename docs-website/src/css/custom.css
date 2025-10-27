@@ -110,12 +110,6 @@ button, .button {
   font-weight: 600;
 }
 
-/* Highlight Docs section when on docs pages */
-.navbar__item[href="/docs/overview/intro"] {
-  color: var(--ifm-color-primary);
-  font-weight: 600;
-}
-
 /* Footer section titles - make them bold and prominent */
 .footer .footer__title,
 .footer .footer__col .footer__title,

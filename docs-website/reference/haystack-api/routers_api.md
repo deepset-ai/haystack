@@ -1,28 +1,29 @@
 ---
-title: Routers
+title: "Routers"
 id: routers-api
-description: Routers is a group of components that route queries or Documents to other components that can handle them best.
+description: "Routers is a group of components that route queries or Documents to other components that can handle them best."
+slug: "/routers-api"
 ---
 
 <a id="conditional_router"></a>
 
-# Module conditional\_router
+## Module conditional\_router
 
 <a id="conditional_router.NoRouteSelectedException"></a>
 
-## NoRouteSelectedException
+### NoRouteSelectedException
 
 Exception raised when no route is selected in ConditionalRouter.
 
 <a id="conditional_router.RouteConditionException"></a>
 
-## RouteConditionException
+### RouteConditionException
 
 Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter.
 
 <a id="conditional_router.ConditionalRouter"></a>
 
-## ConditionalRouter
+### ConditionalRouter
 
 Routes data based on specific conditions.
 
@@ -240,11 +241,11 @@ of the selected route.
 
 <a id="document_length_router"></a>
 
-# Module document\_length\_router
+## Module document\_length\_router
 
 <a id="document_length_router.DocumentLengthRouter"></a>
 
-## DocumentLengthRouter
+### DocumentLengthRouter
 
 Categorizes documents based on the length of the `content` field and routes them to the appropriate output.
 
@@ -316,11 +317,11 @@ A dictionary with the following keys:
 
 <a id="document_type_router"></a>
 
-# Module document\_type\_router
+## Module document\_type\_router
 
 <a id="document_type_router.DocumentTypeRouter"></a>
 
-## DocumentTypeRouter
+### DocumentTypeRouter
 
 Routes documents by their MIME types.
 
@@ -414,11 +415,11 @@ A dictionary where the keys are MIME types (or `"unclassified"`) and the values 
 
 <a id="file_type_router"></a>
 
-# Module file\_type\_router
+## Module file\_type\_router
 
 <a id="file_type_router.FileTypeRouter"></a>
 
-## FileTypeRouter
+### FileTypeRouter
 
 Categorizes files or byte streams by their MIME types, helping in context-based routing.
 
@@ -539,11 +540,11 @@ and `"failed"` when a source cannot be processed (for example, a file path that 
 
 <a id="llm_messages_router"></a>
 
-# Module llm\_messages\_router
+## Module llm\_messages\_router
 
 <a id="llm_messages_router.LLMMessagesRouter"></a>
 
-## LLMMessagesRouter
+### LLMMessagesRouter
 
 Routes Chat Messages to different connections using a generative Language Model to perform classification.
 
@@ -682,11 +683,11 @@ The deserialized component instance.
 
 <a id="metadata_router"></a>
 
-# Module metadata\_router
+## Module metadata\_router
 
 <a id="metadata_router.MetadataRouter"></a>
 
-## MetadataRouter
+### MetadataRouter
 
 Routes documents or byte streams to different connections based on their metadata fields.
 
@@ -837,11 +838,11 @@ The deserialized component instance.
 
 <a id="text_language_router"></a>
 
-# Module text\_language\_router
+## Module text\_language\_router
 
 <a id="text_language_router.TextLanguageRouter"></a>
 
-## TextLanguageRouter
+### TextLanguageRouter
 
 Routes text strings to different output connections based on their language.
 
@@ -916,11 +917,11 @@ and the value is the text.
 
 <a id="transformers_text_router"></a>
 
-# Module transformers\_text\_router
+## Module transformers\_text\_router
 
 <a id="transformers_text_router.TransformersTextRouter"></a>
 
-## TransformersTextRouter
+### TransformersTextRouter
 
 Routes the text strings to different connections based on a category label.
 
@@ -1066,11 +1067,11 @@ A dictionary with the label as key and the text as value.
 
 <a id="zero_shot_text_router"></a>
 
-# Module zero\_shot\_text\_router
+## Module zero\_shot\_text\_router
 
 <a id="zero_shot_text_router.TransformersZeroShotTextRouter"></a>
 
-## TransformersZeroShotTextRouter
+### TransformersZeroShotTextRouter
 
 Routes the text strings to different connections based on a category label.
 
@@ -1238,3 +1239,4 @@ Routes the text strings to different connections based on a category label.
 **Returns**:
 
 A dictionary with the label as key and the text as value.
+

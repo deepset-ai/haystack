@@ -1,16 +1,17 @@
 ---
-title: Samplers
+title: "Samplers"
 id: samplers-api
-description: Filters documents based on their similarity scores using top-p sampling.
+description: "Filters documents based on their similarity scores using top-p sampling."
+slug: "/samplers-api"
 ---
 
 <a id="top_p"></a>
 
-# Module top\_p
+## Module top\_p
 
 <a id="top_p.TopPSampler"></a>
 
-## TopPSampler
+### TopPSampler
 
 Implements top-p (nucleus) sampling for document filtering based on cumulative probability scores.
 
@@ -84,3 +85,4 @@ method returns the document with the highest score.
 
 A dictionary with the following key:
 - `documents`: List of Document objects that have been selected based on the top-p sampling.
+

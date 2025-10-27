@@ -1,0 +1,6 @@
+---
+highlights: >
+  Introduced `FallbackChatGenerator` that tries multiple chat providers one by one, improving reliability in production and making sure you get answers even when some provider fails.
+features:
+  - |
+    Added `FallbackChatGenerator` that automatically retries different chat generators and returns first successful response with detailed information about which providers were tried.

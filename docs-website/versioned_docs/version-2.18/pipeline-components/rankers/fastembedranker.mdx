@@ -1,0 +1,107 @@
+---
+title: "FastembedRanker"
+id: fastembedranker
+slug: "/fastembedranker"
+description: "Use this component to rank documents based on their similarity to the query using cross-encoder models supported by FastEmbed."
+---
+
+# FastembedRanker
+
+Use this component to rank documents based on their similarity to the query using cross-encoder models supported by FastEmbed.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx)  |
+| **Mandatory run variables** | “documents”: A list of documents  <br /> <br />”query”: A query string |
+| **Output variables** | “documents”: A list of documents |
+| **API reference** | [FastEmbed](/reference/fastembed-embedders) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
+
+## Overview
+
+`FastembedRanker` ranks the documents based on how similar they are to the query.  It uses [cross-encoder models supported by FastEmbed](https://qdrant.github.io/fastembed/examples/Supported_Models/).
+Based on ONXX Runtime, FastEmbed provides a fast experience on standard CPU machines.
+
+`FastembedRanker` is most useful in query pipelines such as a retrieval-augmented generation (RAG) pipeline or a document search pipeline to ensure the retrieved documents are ordered by relevance. You can use it after a Retriever (such as the [`InMemoryEmbeddingRetriever`](../retrievers/inmemoryembeddingretriever.mdx)) to improve the search results. When using `FastembedRanker` with a Retriever, consider setting the Retriever's `top_k` to a small number. This way, the Ranker will have fewer documents to process, which can help make your pipeline faster.
+
+By default, this component uses the `Xenova/ms-marco-MiniLM-L-6-v2` model, but you can switch to a different model by adjusting the `model` parameter when initializing the Ranker. For details on different initialization settings, check out the [API reference](/reference/fastembed-embedders) page.
+
+### Compatible Models
+
+You can find the compatible models in the [FastEmbed documentation](https://qdrant.github.io/fastembed/examples/Supported_Models/).
+
+### Installation
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install fastembed-haystack
+```
+
+### Parameters
+
+You can set the path where the model is stored in a cache directory. You can also set the number of threads a single `onnxruntime` session can use.
+
+```python
+cache_dir= "/your_cacheDirectory"
+ranker = FastembedRanker(
+	model="Xenova/ms-marco-MiniLM-L-6-v2",
+	cache_dir=cache_dir,
+	threads=2
+)
+```
+
+If you want to use the data parallel encoding, you can set the parameters `parallel` and `batch_size`.
+
+- If `parallel` > 1, data-parallel encoding will be used. This is recommended for offline encoding of large datasets.
+- If `parallel` is 0, use all available cores.
+- If None, don't use data-parallel processing; use default `onnxruntime` threading instead.
+
+## Usage
+
+### On its own
+
+This example uses `FastembedRanker` to rank two simple documents. To run the Ranker, pass a `query`, provide the `documents`, and set the number of documents to return in the `top_k` parameter.
+
+```python
+from haystack import Document
+from haystack_integrations.components.rankers.fastembed import FastembedRanker
+
+docs = [Document(content="Paris"), Document(content="Berlin")]
+
+ranker = FastembedRanker()
+ranker.warm_up()
+
+ranker.run(query="City in France", documents=docs, top_k=1)
+```
+
+### In a pipeline
+
+Below is an example of a pipeline that retrieves documents from an `InMemoryDocumentStore` based on keyword search using `InMemoryBM25Retriever`. It then uses the `FastembedRanker` to rank the retrieved documents according to their similarity to the query. The pipeline uses the default settings of the Ranker.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.rankers.fastembed import FastembedRanker
+
+docs = [
+    Document(content="Paris is in France"),
+    Document(content="Berlin is in Germany"),
+    Document(content="Lyon is in France"),
+]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+ranker = FastembedRanker()
+
+document_ranker_pipeline = Pipeline()
+document_ranker_pipeline.add_component(instance=retriever, name="retriever")
+document_ranker_pipeline.add_component(instance=ranker, name="ranker")
+
+document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "Cities in France"
+res = document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
+```

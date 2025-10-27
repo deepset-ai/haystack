@@ -1,0 +1,123 @@
+---
+title: "GitHubIssueViewer"
+id: githubissueviewer
+slug: "/githubissueviewer"
+description: "This component fetches and parses GitHub issues into Haystack documents."
+---
+
+# GitHubIssueViewer
+
+This component fetches and parses GitHub issues into Haystack documents.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Right at the beginning of a pipeline and before a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) that expects the content of a GitHub issue as input |
+| **Mandatory run variables**            | "url": A GitHub issue URL                                                                                                                        |
+| **Output variables**                   | "documents": A list of documents containing the main issue and its comments                                                                      |
+| **API reference**                      | [GitHub](/reference/integrations-hanlp)                                                                                                                |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github                                                         |
+
+## Overview
+
+`GitHubIssueViewer` takes a GitHub issue URL and returns a list of documents where:
+
+- The first document contains the main issue content
+- Subsequent documents contain the issue comments (if any)
+
+Each document includes rich metadata such as the issue title, number, state, creation date, author, and more.
+
+### Authorization
+
+The component can work without authentication for public repositories, but for private repositories or to avoid rate limiting, you can provide a GitHub personal access token.
+
+You can set the token using the `GITHUB_API_KEY` environment variable, or pass it directly during initialization via the `github_token` parameter.
+
+To create a personal access token, visit [GitHub's token settings page](https://github.com/settings/tokens).
+
+### Installation
+
+Install the GitHub integration with pip:
+
+```shell
+pip install github-haystack
+```
+
+## Usage
+
+:::info
+Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+Basic usage without authentication:
+
+```python
+from haystack_integrations.components.connectors.github import GitHubIssueViewer
+
+viewer = GitHubIssueViewer()
+result = viewer.run(url="https://github.com/deepset-ai/haystack/issues/123")
+
+print(result)
+```
+
+```bash
+{'documents': [Document(id=3989459bbd8c2a8420a9ba7f3cd3cf79bb41d78bd0738882e57d509e1293c67a, content: 'sentence-transformers = 0.2.6.1
+haystack = latest
+farm = 0.4.3 latest branch
+
+In the call to Emb...', meta: {'type': 'issue', 'title': 'SentenceTransformer no longer accepts \'gpu" as argument', 'number': 123, 'state': 'closed', 'created_at': '2020-05-28T04:49:31Z', 'updated_at': '2020-05-28T07:11:43Z', 'author': 'predoctech', 'url': 'https://github.com/deepset-ai/haystack/issues/123'}), Document(id=a8a56b9ad119244678804d5873b13da0784587773d8f839e07f644c4d02c167a, content: 'Thanks for reporting!
+Fixed with #124 ', meta: {'type': 'comment', 'issue_number': 123, 'created_at': '2020-05-28T07:11:42Z', 'updated_at': '2020-05-28T07:11:42Z', 'author': 'tholor', 'url': 'https://github.com/deepset-ai/haystack/issues/123#issuecomment-635153940'})]}
+```
+
+### In a pipeline
+
+The following pipeline fetches a GitHub issue, extracts relevant information, and generates a summary:
+
+```python
+from haystack import Pipeline
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.connectors.github import GitHubIssueViewer
+
+## Initialize components
+issue_viewer = GitHubIssueViewer()
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant that analyzes GitHub issues."),
+    ChatMessage.from_user(
+        "Based on the following GitHub issue and comments:\n"
+        "{% for document in documents %}"
+        "{% if document.meta.type == 'issue' %}"
+        "**Issue Title:** {{ document.meta.title }}\n"
+        "**Issue Description:** {{ document.content }}\n"
+        "{% else %}"
+        "**Comment by {{ document.meta.author }}:** {{ document.content }}\n"
+        "{% endif %}"
+        "{% endfor %}\n"
+        "Please provide a summary of the issue and suggest potential solutions."
+    )
+]
+
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
+llm = OpenAIChatGenerator(model="gpt-4o-mini")
+
+## Create pipeline
+pipeline = Pipeline()
+pipeline.add_component("issue_viewer", issue_viewer)
+pipeline.add_component("prompt_builder", prompt_builder)
+pipeline.add_component("llm", llm)
+
+## Connect components
+pipeline.connect("issue_viewer.documents", "prompt_builder.documents")
+pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+## Run pipeline
+issue_url = "https://github.com/deepset-ai/haystack/issues/123"
+result = pipeline.run(data={"issue_viewer": {"url": issue_url}})
+
+print(result["llm"]["replies"][0])
+```

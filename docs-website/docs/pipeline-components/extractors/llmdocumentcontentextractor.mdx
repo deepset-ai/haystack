@@ -1,0 +1,177 @@
+---
+title: "LLMDocumentContentExtractor"
+id: llmdocumentcontentextractor
+slug: "/llmdocumentcontentextractor"
+description: "Extracts textual content from image-based documents using a vision-enabled Large Language Model (LLM)."
+---
+
+# LLMDocumentContentExtractor
+
+Extracts textual content from image-based documents using a vision-enabled Large Language Model (LLM).
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After [Converters](../../../docs/pipeline-components/converters.mdx) in an indexing pipeline to extract text from image-based documents |
+| **Mandatory init variables** | "chat_generator": A ChatGenerator instance that supports vision-based input  <br /> <br />"prompt": Instructional text for the LLM on how to extract content (no Jinja variables allowed) |
+| **Mandatory run variables** | "documents": A list of documents with file paths in metadata |
+| **Output variables** | "documents": Successfully processed documents with extracted content  <br /> <br />"failed_documents": Documents that failed processing with error metadata |
+| **API reference** | [Extractors](ref:extractors-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/extractors/image/llm_document_content_extractor.py |
+
+## Overview
+
+`LLMDocumentContentExtractor` extracts textual content from image-based documents using a vision-enabled Large Language Model (LLM). This component is particularly useful for processing scanned documents, images containing text, or PDF pages that need to be converted to searchable text.
+
+The component works by:
+
+1. Converting each input document into an image using the `DocumentToImageContent` component,
+2. Using a predefined prompt to instruct the LLM on how to extract content,
+3. Processing the image through a vision-capable ChatGenerator to extract structured textual content.
+
+The prompt must not contain Jinja variables; it should only include instructions for the LLM. Image data and the prompt are passed together to the LLM as a Chat Message.
+
+Documents for which the LLM fails to extract content are returned in a separate `failed_documents` list with a `content_extraction_error` entry in their metadata for debugging or reprocessing.
+
+## Usage
+
+### On its own
+
+Below is an example that uses the `LLMDocumentContentExtractor` to extract text from image-based documents:
+
+```python
+from haystack import Document
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.extractors.image import LLMDocumentContentExtractor
+
+## Initialize the chat generator with vision capabilities
+chat_generator = OpenAIChatGenerator(
+    model="gpt-4o-mini",
+    generation_kwargs={"temperature": 0.0}
+)
+
+## Create the extractor
+extractor = LLMDocumentContentExtractor(
+    chat_generator=chat_generator,
+    file_path_meta_field="file_path",
+    raise_on_failure=False
+)
+
+## Create documents with image file paths
+documents = [
+    Document(content="", meta={"file_path": "image.jpg"}),
+    Document(content="", meta={"file_path": "document.pdf", "page_number": 1}),
+]
+
+## Run the extractor
+result = extractor.run(documents=documents)
+
+## Check results
+print(f"Successfully processed: {len(result['documents'])}")
+print(f"Failed documents: {len(result['failed_documents'])}")
+
+## Access extracted content
+for doc in result["documents"]:
+    print(f"File: {doc.meta['file_path']}")
+    print(f"Extracted content: {doc.content[:100]}...")
+```
+
+### Using custom prompts
+
+You can provide a custom prompt to instruct the LLM on how to extract content:
+
+```python
+from haystack.components.extractors.image import LLMDocumentContentExtractor
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+custom_prompt = """
+Extract all text content from this image-based document.
+
+Instructions:
+- Extract text exactly as it appears
+- Preserve the reading order
+- Format tables as markdown
+- Describe any images or diagrams briefly
+- Maintain document structure
+
+Document:"""
+
+chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
+extractor = LLMDocumentContentExtractor(
+    chat_generator=chat_generator,
+    prompt=custom_prompt,
+    file_path_meta_field="file_path"
+)
+
+documents = [Document(content="", meta={"file_path": "scanned_document.pdf"})]
+result = extractor.run(documents=documents)
+```
+
+### Handling failed documents
+
+The component provides detailed error information for failed documents:
+
+```python
+from haystack.components.extractors.image import LLMDocumentContentExtractor
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
+extractor = LLMDocumentContentExtractor(
+    chat_generator=chat_generator,
+    raise_on_failure=False  # Don't raise exceptions, return failed documents
+)
+
+documents = [Document(content="", meta={"file_path": "problematic_image.jpg"})]
+result = extractor.run(documents=documents)
+
+## Check for failed documents
+for failed_doc in result["failed_documents"]:
+    print(f"Failed to process: {failed_doc.meta['file_path']}")
+    print(f"Error: {failed_doc.meta['content_extraction_error']}")
+```
+
+### In a pipeline
+
+Below is an example of a pipeline that uses `LLMDocumentContentExtractor` to process image-based documents and store the extracted text:
+
+```python
+from haystack import Pipeline
+from haystack.components.extractors.image import LLMDocumentContentExtractor
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.dataclasses import Document
+
+## Create document store
+document_store = InMemoryDocumentStore()
+
+## Create pipeline
+p = Pipeline()
+p.add_component(instance=LLMDocumentContentExtractor(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    file_path_meta_field="file_path"
+), name="content_extractor")
+p.add_component(instance=DocumentSplitter(), name="splitter")
+p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+
+## Connect components
+p.connect("content_extractor.documents", "splitter.documents")
+p.connect("splitter.documents", "writer.documents")
+
+## Create test documents
+docs = [
+    Document(content="", meta={"file_path": "scanned_document.pdf"}),
+    Document(content="", meta={"file_path": "image_with_text.jpg"}),
+]
+
+## Run pipeline
+result = p.run({"content_extractor": {"documents": docs}})
+
+## Check results
+print(f"Successfully processed: {len(result['content_extractor']['documents'])}")
+print(f"Failed documents: {len(result['content_extractor']['failed_documents'])}")
+
+## Access documents in the store
+stored_docs = document_store.filter_documents()
+print(f"Documents in store: {len(stored_docs)}")
+```

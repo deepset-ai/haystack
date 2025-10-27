@@ -1,16 +1,17 @@
 ---
-title: Generators
+title: "Generators"
 id: generators-api
-description: Enables text generation using LLMs.
+description: "Enables text generation using LLMs."
+slug: "/generators-api"
 ---
 
 <a id="azure"></a>
 
-# Module azure
+## Module azure
 
 <a id="azure.AzureOpenAIGenerator"></a>
 
-## AzureOpenAIGenerator
+### AzureOpenAIGenerator
 
 Generates text using OpenAI's large language models (LLMs).
 
@@ -98,7 +99,8 @@ For more information, see the [HTTPX documentation](https://www.python-httpx.org
 the OpenAI endpoint. See [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat) for
 more details.
 Some of the supported parameters:
-- `max_tokens`: The maximum number of tokens the output text can have.
+- `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+    including visible output tokens and reasoning tokens.
 - `temperature`: The sampling temperature to use. Higher values mean the model takes more risks.
     Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -181,11 +183,11 @@ for each response.
 
 <a id="hugging_face_local"></a>
 
-# Module hugging\_face\_local
+## Module hugging\_face\_local
 
 <a id="hugging_face_local.HuggingFaceLocalGenerator"></a>
 
-## HuggingFaceLocalGenerator
+### HuggingFaceLocalGenerator
 
 Generates text using models from Hugging Face that run locally.
 
@@ -325,11 +327,11 @@ A dictionary containing the generated replies.
 
 <a id="hugging_face_api"></a>
 
-# Module hugging\_face\_api
+## Module hugging\_face\_api
 
 <a id="hugging_face_api.HuggingFaceAPIGenerator"></a>
 
-## HuggingFaceAPIGenerator
+### HuggingFaceAPIGenerator
 
 Generates text using Hugging Face APIs.
 
@@ -476,11 +478,11 @@ A dictionary with the generated replies and metadata. Both are lists of length n
 
 <a id="openai"></a>
 
-# Module openai
+## Module openai
 
 <a id="openai.OpenAIGenerator"></a>
 
-## OpenAIGenerator
+### OpenAIGenerator
 
 Generates text using OpenAI's large language models (LLMs).
 
@@ -547,7 +549,8 @@ omitted, and the default system prompt of the model is used.
 the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
 more details.
 Some of the supported parameters:
-- `max_tokens`: The maximum number of tokens the output text can have.
+- `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+    including visible output tokens and reasoning tokens.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
     Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -633,11 +636,11 @@ for each response.
 
 <a id="openai_dalle"></a>
 
-# Module openai\_dalle
+## Module openai\_dalle
 
 <a id="openai_dalle.DALLEImageGenerator"></a>
 
-## DALLEImageGenerator
+### DALLEImageGenerator
 
 Generates images using OpenAI's DALL-E model.
 
@@ -766,11 +769,11 @@ The deserialized component instance.
 
 <a id="chat/azure"></a>
 
-# Module chat/azure
+## Module chat/azure
 
 <a id="chat/azure.AzureOpenAIChatGenerator"></a>
 
-## AzureOpenAIChatGenerator
+### AzureOpenAIChatGenerator
 
 Generates text using OpenAI's models on Azure.
 
@@ -832,7 +835,7 @@ def __init__(azure_endpoint: Optional[str] = None,
              max_retries: Optional[int] = None,
              generation_kwargs: Optional[dict[str, Any]] = None,
              default_headers: Optional[dict[str, str]] = None,
-             tools: Optional[Union[list[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              tools_strict: bool = False,
              *,
              azure_ad_token_provider: Optional[Union[
@@ -861,7 +864,8 @@ If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable,
 - `generation_kwargs`: Other parameters to use for the model. These parameters are sent directly to
 the OpenAI endpoint. For details, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 Some of the supported parameters:
-- `max_tokens`: The maximum number of tokens the output text can have.
+- `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+    including visible output tokens and reasoning tokens.
 - `temperature`: The sampling temperature to use. Higher values mean the model takes more risks.
     Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: Nucleus sampling is an alternative to sampling with temperature, where the model considers
@@ -887,8 +891,7 @@ Some of the supported parameters:
     - For structured outputs with streaming,
       the `response_format` must be a JSON schema and not a Pydantic model.
 - `default_headers`: Default headers to use for the AzureOpenAI client.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 - `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
 the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - `azure_ad_token_provider`: A function that returns an Azure Active Directory token, will be invoked on
@@ -939,7 +942,7 @@ def run(messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None)
 ```
 
@@ -952,9 +955,8 @@ Invokes chat completion based on the provided messages and generation parameters
 - `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
 override the parameters passed during component initialization.
 For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-`tools` parameter set during component initialization. This parameter can accept either a list of
-`Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter provided during initialization.
 - `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
 the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 If set, it will override the `tools_strict` parameter set during component initialization.
@@ -974,7 +976,7 @@ async def run_async(messages: list[ChatMessage],
                     streaming_callback: Optional[StreamingCallbackT] = None,
                     generation_kwargs: Optional[dict[str, Any]] = None,
                     *,
-                    tools: Optional[Union[list[Tool], Toolset]] = None,
+                    tools: Optional[ToolsType] = None,
                     tools_strict: Optional[bool] = None)
 ```
 
@@ -991,9 +993,8 @@ Must be a coroutine.
 - `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
 override the parameters passed during component initialization.
 For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-`tools` parameter set during component initialization. This parameter can accept either a list of
-`Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter provided during initialization.
 - `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
 the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 If set, it will override the `tools_strict` parameter set during component initialization.
@@ -1005,7 +1006,7 @@ A dictionary with the following key:
 
 <a id="chat/hugging_face_local"></a>
 
-# Module chat/hugging\_face\_local
+## Module chat/hugging\_face\_local
 
 <a id="chat/hugging_face_local.default_tool_parser"></a>
 
@@ -1029,7 +1030,7 @@ A list containing a single ToolCall if a valid tool call is found, None otherwis
 
 <a id="chat/hugging_face_local.HuggingFaceLocalChatGenerator"></a>
 
-## HuggingFaceLocalChatGenerator
+### HuggingFaceLocalChatGenerator
 
 Generates chat responses using models from Hugging Face that run locally.
 
@@ -1081,7 +1082,7 @@ def __init__(model: str = "HuggingFaceH4/zephyr-7b-beta",
              huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
              stop_words: Optional[list[str]] = None,
              streaming_callback: Optional[StreamingCallbackT] = None,
-             tools: Optional[Union[list[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              tool_parsing_function: Optional[Callable[
                  [str], Optional[list[ToolCall]]]] = None,
              async_executor: Optional[ThreadPoolExecutor] = None) -> None
@@ -1125,8 +1126,7 @@ If you provide this parameter, don't specify the `stopping_criteria` in `generat
 For some chat models, the output includes both the new text and the original prompt.
 In these cases, make sure your prompt has no stop words.
 - `streaming_callback`: An optional callable for handling streaming responses.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls.
-This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 - `tool_parsing_function`: A callable that takes a string and returns a list of ToolCall objects or None.
 If None, the default_tool_parser will be used which extracts tool calls using a predefined pattern.
 - `async_executor`: Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded executor will be
@@ -1201,12 +1201,10 @@ The deserialized component.
 
 ```python
 @component.output_types(replies=list[ChatMessage])
-def run(
-    messages: list[ChatMessage],
-    generation_kwargs: Optional[dict[str, Any]] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    tools: Optional[Union[list[Tool], Toolset]] = None
-) -> dict[str, list[ChatMessage]]
+def run(messages: list[ChatMessage],
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        tools: Optional[ToolsType] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invoke text generation inference based on the provided messages and generation parameters.
@@ -1216,9 +1214,8 @@ Invoke text generation inference based on the provided messages and generation p
 - `messages`: A list of ChatMessage objects representing the input messages.
 - `generation_kwargs`: Additional keyword arguments for text generation.
 - `streaming_callback`: An optional callable for handling streaming responses.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. If set, it will override
-the `tools` parameter provided during initialization. This parameter can accept either a list
-of `Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter provided during initialization.
 
 **Returns**:
 
@@ -1261,11 +1258,10 @@ A ChatMessage instance.
 ```python
 @component.output_types(replies=list[ChatMessage])
 async def run_async(
-    messages: list[ChatMessage],
-    generation_kwargs: Optional[dict[str, Any]] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    tools: Optional[Union[list[Tool], Toolset]] = None
-) -> dict[str, list[ChatMessage]]
+        messages: list[ChatMessage],
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        tools: Optional[ToolsType] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes text generation inference based on the provided messages and generation parameters.
@@ -1278,8 +1274,8 @@ and return values but can be used with `await` in an async code.
 - `messages`: A list of ChatMessage objects representing the input messages.
 - `generation_kwargs`: Additional keyword arguments for text generation.
 - `streaming_callback`: An optional callable for handling streaming responses.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls.
-This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter provided during initialization.
 
 **Returns**:
 
@@ -1288,11 +1284,11 @@ A dictionary with the following keys:
 
 <a id="chat/hugging_face_api"></a>
 
-# Module chat/hugging\_face\_api
+## Module chat/hugging\_face\_api
 
 <a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator"></a>
 
-## HuggingFaceAPIChatGenerator
+### HuggingFaceAPIChatGenerator
 
 Completes chats using Hugging Face APIs.
 
@@ -1400,7 +1396,7 @@ def __init__(api_type: Union[HFGenerationAPIType, str],
              generation_kwargs: Optional[dict[str, Any]] = None,
              stop_words: Optional[list[str]] = None,
              streaming_callback: Optional[StreamingCallbackT] = None,
-             tools: Optional[Union[list[Tool], Toolset]] = None)
+             tools: Optional[ToolsType] = None)
 ```
 
 Initialize the HuggingFaceAPIChatGenerator instance.
@@ -1425,10 +1421,10 @@ Some examples: `max_tokens`, `temperature`, `top_p`.
 For details, see [Hugging Face chat_completion documentation](https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion).
 - `stop_words`: An optional list of strings representing the stop words.
 - `streaming_callback`: An optional callable for handling streaming responses.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 The chosen model should support tool/function calling, according to the model card.
 Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
-unexpected behavior. This parameter can accept either a list of `Tool` objects or a `Toolset` instance.
+unexpected behavior.
 
 <a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.to_dict"></a>
 
@@ -1463,7 +1459,7 @@ Deserialize this component from a dictionary.
 @component.output_types(replies=list[ChatMessage])
 def run(messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None)
 ```
 
@@ -1492,7 +1488,7 @@ A dictionary with the following keys:
 @component.output_types(replies=list[ChatMessage])
 async def run_async(messages: list[ChatMessage],
                     generation_kwargs: Optional[dict[str, Any]] = None,
-                    tools: Optional[Union[list[Tool], Toolset]] = None,
+                    tools: Optional[ToolsType] = None,
                     streaming_callback: Optional[StreamingCallbackT] = None)
 ```
 
@@ -1518,11 +1514,11 @@ A dictionary with the following keys:
 
 <a id="chat/openai"></a>
 
-# Module chat/openai
+## Module chat/openai
 
 <a id="chat/openai.OpenAIChatGenerator"></a>
 
-## OpenAIChatGenerator
+### OpenAIChatGenerator
 
 Completes chats using OpenAI's large language models (LLMs).
 
@@ -1577,7 +1573,7 @@ def __init__(api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
              generation_kwargs: Optional[dict[str, Any]] = None,
              timeout: Optional[float] = None,
              max_retries: Optional[int] = None,
-             tools: Optional[Union[list[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              tools_strict: bool = False,
              http_client_kwargs: Optional[dict[str, Any]] = None)
 ```
@@ -1604,7 +1600,8 @@ as an argument.
 the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
 more details.
 Some of the supported parameters:
-- `max_tokens`: The maximum number of tokens the output text can have.
+- `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+    including visible output tokens and reasoning tokens.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
     Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
 - `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
@@ -1633,8 +1630,7 @@ Some of the supported parameters:
 `OPENAI_TIMEOUT` environment variable, or 30 seconds.
 - `max_retries`: Maximum number of retries to contact OpenAI after an internal error.
 If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 - `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
 the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
@@ -1683,7 +1679,7 @@ def run(messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None)
 ```
 
@@ -1696,9 +1692,8 @@ Invokes chat completion based on the provided messages and generation parameters
 - `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
 override the parameters passed during component initialization.
 For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-`tools` parameter set during component initialization. This parameter can accept either a list of
-`Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter provided during initialization.
 - `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
 the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 If set, it will override the `tools_strict` parameter set during component initialization.
@@ -1718,7 +1713,7 @@ async def run_async(messages: list[ChatMessage],
                     streaming_callback: Optional[StreamingCallbackT] = None,
                     generation_kwargs: Optional[dict[str, Any]] = None,
                     *,
-                    tools: Optional[Union[list[Tool], Toolset]] = None,
+                    tools: Optional[ToolsType] = None,
                     tools_strict: Optional[bool] = None)
 ```
 
@@ -1735,9 +1730,8 @@ Must be a coroutine.
 - `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
 override the parameters passed during component initialization.
 For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-`tools` parameter set during component initialization. This parameter can accept either a list of
-`Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If set, it will override the `tools` parameter provided during initialization.
 - `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
 the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 If set, it will override the `tools_strict` parameter set during component initialization.
@@ -1746,3 +1740,142 @@ If set, it will override the `tools_strict` parameter set during component initi
 
 A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
+
+<a id="chat/fallback"></a>
+
+## Module chat/fallback
+
+<a id="chat/fallback.FallbackChatGenerator"></a>
+
+### FallbackChatGenerator
+
+A chat generator wrapper that tries multiple chat generators sequentially.
+
+It forwards all parameters transparently to the underlying chat generators and returns the first successful result.
+Calls chat generators sequentially until one succeeds. Falls back on any exception raised by a generator.
+If all chat generators fail, it raises a RuntimeError with details.
+
+Timeout enforcement is fully delegated to the underlying chat generators. The fallback mechanism will only
+work correctly if the underlying chat generators implement proper timeout handling and raise exceptions
+when timeouts occur. For predictable latency guarantees, ensure your chat generators:
+- Support a `timeout` parameter in their initialization
+- Implement timeout as total wall-clock time (shared deadline for both streaming and non-streaming)
+- Raise timeout exceptions (e.g., TimeoutError, asyncio.TimeoutError, httpx.TimeoutException) when exceeded
+
+Note: Most well-implemented chat generators (OpenAI, Anthropic, Cohere, etc.) support timeout parameters
+with consistent semantics. For HTTP-based LLM providers, a single timeout value (e.g., `timeout=30`)
+typically applies to all connection phases: connection setup, read, write, and pool. For streaming
+responses, read timeout is the maximum gap between chunks. For non-streaming, it's the time limit for
+receiving the complete response.
+
+Failover is automatically triggered when a generator raises any exception, including:
+- Timeout errors (if the generator implements and raises them)
+- Rate limit errors (429)
+- Authentication errors (401)
+- Context length errors (400)
+- Server errors (500+)
+- Any other exception
+
+<a id="chat/fallback.FallbackChatGenerator.__init__"></a>
+
+#### FallbackChatGenerator.\_\_init\_\_
+
+```python
+def __init__(chat_generators: list[ChatGenerator])
+```
+
+Creates an instance of FallbackChatGenerator.
+
+**Arguments**:
+
+- `chat_generators`: A non-empty list of chat generator components to try in order.
+
+<a id="chat/fallback.FallbackChatGenerator.to_dict"></a>
+
+#### FallbackChatGenerator.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize the component, including nested chat generators when they support serialization.
+
+<a id="chat/fallback.FallbackChatGenerator.from_dict"></a>
+
+#### FallbackChatGenerator.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator
+```
+
+Rebuild the component from a serialized representation, restoring nested chat generators.
+
+<a id="chat/fallback.FallbackChatGenerator.run"></a>
+
+#### FallbackChatGenerator.run
+
+```python
+@component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
+def run(
+    messages: list[ChatMessage],
+    generation_kwargs: Union[dict[str, Any], None] = None,
+    tools: Optional[ToolsType] = None,
+    streaming_callback: Union[StreamingCallbackT,
+                              None] = None) -> dict[str, Any]
+```
+
+Execute chat generators sequentially until one succeeds.
+
+**Arguments**:
+
+- `messages`: The conversation history as a list of ChatMessage instances.
+- `generation_kwargs`: Optional parameters for the chat generator (e.g., temperature, max_tokens).
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
+- `streaming_callback`: Optional callable for handling streaming responses.
+
+**Raises**:
+
+- `RuntimeError`: If all chat generators fail.
+
+**Returns**:
+
+A dictionary with:
+- "replies": Generated ChatMessage instances from the first successful generator.
+- "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
+  total_attempts, failed_chat_generators, plus any metadata from the successful generator.
+
+<a id="chat/fallback.FallbackChatGenerator.run_async"></a>
+
+#### FallbackChatGenerator.run\_async
+
+```python
+@component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
+async def run_async(
+    messages: list[ChatMessage],
+    generation_kwargs: Union[dict[str, Any], None] = None,
+    tools: Optional[ToolsType] = None,
+    streaming_callback: Union[StreamingCallbackT,
+                              None] = None) -> dict[str, Any]
+```
+
+Asynchronously execute chat generators sequentially until one succeeds.
+
+**Arguments**:
+
+- `messages`: The conversation history as a list of ChatMessage instances.
+- `generation_kwargs`: Optional parameters for the chat generator (e.g., temperature, max_tokens).
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
+- `streaming_callback`: Optional callable for handling streaming responses.
+
+**Raises**:
+
+- `RuntimeError`: If all chat generators fail.
+
+**Returns**:
+
+A dictionary with:
+- "replies": Generated ChatMessage instances from the first successful generator.
+- "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
+  total_attempts, failed_chat_generators, plus any metadata from the successful generator.
+

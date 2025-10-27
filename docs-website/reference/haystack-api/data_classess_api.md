@@ -1,16 +1,17 @@
 ---
-title: Data Classes
+title: "Data Classes"
 id: data-classess-api
-description: Core classes that carry data through the system.
+description: "Core classes that carry data through the system."
+slug: "/data-classess-api"
 ---
 
 <a id="answer"></a>
 
-# Module answer
+## Module answer
 
 <a id="answer.ExtractedAnswer"></a>
 
-## ExtractedAnswer
+### ExtractedAnswer
 
 <a id="answer.ExtractedAnswer.to_dict"></a>
 
@@ -47,7 +48,7 @@ Deserialized object.
 
 <a id="answer.GeneratedAnswer"></a>
 
-## GeneratedAnswer
+### GeneratedAnswer
 
 <a id="answer.GeneratedAnswer.to_dict"></a>
 
@@ -84,11 +85,11 @@ Deserialized object.
 
 <a id="byte_stream"></a>
 
-# Module byte\_stream
+## Module byte\_stream
 
 <a id="byte_stream.ByteStream"></a>
 
-## ByteStream
+### ByteStream
 
 Base data class representing a binary object in the Haystack API.
 
@@ -223,11 +224,11 @@ A ByteStream instance.
 
 <a id="chat_message"></a>
 
-# Module chat\_message
+## Module chat\_message
 
 <a id="chat_message.ChatRole"></a>
 
-## ChatRole
+### ChatRole
 
 Enumeration representing the roles within a chat.
 
@@ -268,7 +269,7 @@ Convert a string to a ChatRole enum.
 
 <a id="chat_message.ToolCall"></a>
 
-## ToolCall
+### ToolCall
 
 Represents a Tool call prepared by the model, usually contained in an assistant message.
 
@@ -319,7 +320,7 @@ The created object.
 
 <a id="chat_message.ToolCallResult"></a>
 
-## ToolCallResult
+### ToolCallResult
 
 Represents the result of a Tool invocation.
 
@@ -364,7 +365,7 @@ The created object.
 
 <a id="chat_message.TextContent"></a>
 
-## TextContent
+### TextContent
 
 The textual content of a chat message.
 
@@ -395,7 +396,7 @@ Create a TextContent from a dictionary.
 
 <a id="chat_message.ReasoningContent"></a>
 
-## ReasoningContent
+### ReasoningContent
 
 Represents the optional reasoning content prepared by the model, usually contained in an assistant message.
 
@@ -440,7 +441,7 @@ The created object.
 
 <a id="chat_message.ChatMessage"></a>
 
-## ChatMessage
+### ChatMessage
 
 Represents a message in a LLM chat conversation.
 
@@ -826,11 +827,11 @@ The created ChatMessage object.
 
 <a id="document"></a>
 
-# Module document
+## Module document
 
 <a id="document._BackwardCompatible"></a>
 
-## \_BackwardCompatible
+### \_BackwardCompatible
 
 Metaclass that handles Document backward compatibility.
 
@@ -849,7 +850,7 @@ Other legacy fields are removed.
 
 <a id="document.Document"></a>
 
-## Document
+### Document
 
 Base data class containing some data to be queried.
 
@@ -932,11 +933,11 @@ This is necessary to keep backward compatibility with 1.x.
 
 <a id="image_content"></a>
 
-# Module image\_content
+## Module image\_content
 
 <a id="image_content.ImageContent"></a>
 
-## ImageContent
+### ImageContent
 
 The image content of a chat message.
 
@@ -1070,11 +1071,11 @@ An ImageContent object.
 
 <a id="sparse_embedding"></a>
 
-# Module sparse\_embedding
+## Module sparse\_embedding
 
 <a id="sparse_embedding.SparseEmbedding"></a>
 
-## SparseEmbedding
+### SparseEmbedding
 
 Class representing a sparse embedding.
 
@@ -1130,11 +1131,11 @@ Deserialized sparse embedding.
 
 <a id="streaming_chunk"></a>
 
-# Module streaming\_chunk
+## Module streaming\_chunk
 
 <a id="streaming_chunk.ToolCallDelta"></a>
 
-## ToolCallDelta
+### ToolCallDelta
 
 Represents a Tool call prepared by the model, usually contained in an assistant message.
 
@@ -1186,7 +1187,7 @@ A ToolCallDelta instance.
 
 <a id="streaming_chunk.ComponentInfo"></a>
 
-## ComponentInfo
+### ComponentInfo
 
 The `ComponentInfo` class encapsulates information about a component.
 
@@ -1249,7 +1250,7 @@ A ComponentInfo instance.
 
 <a id="streaming_chunk.StreamingChunk"></a>
 
-## StreamingChunk
+### StreamingChunk
 
 The `StreamingChunk` class encapsulates a segment of streamed content along with associated metadata.
 
@@ -1329,3 +1330,4 @@ The runtime callback takes precedence over the initial callback.
 **Returns**:
 
 The selected callback.
+

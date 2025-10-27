@@ -1,16 +1,17 @@
 ---
-title: Embedders
+title: "Embedders"
 id: embedders-api
-description: Transforms queries into vectors to look for similar or relevant Documents.
+description: "Transforms queries into vectors to look for similar or relevant Documents."
+slug: "/embedders-api"
 ---
 
 <a id="azure_document_embedder"></a>
 
-# Module azure\_document\_embedder
+## Module azure\_document\_embedder
 
 <a id="azure_document_embedder.AzureOpenAIDocumentEmbedder"></a>
 
-## AzureOpenAIDocumentEmbedder
+### AzureOpenAIDocumentEmbedder
 
 Calculates document embeddings using OpenAI models deployed on Azure.
 
@@ -175,11 +176,11 @@ A dictionary with the following keys:
 
 <a id="azure_text_embedder"></a>
 
-# Module azure\_text\_embedder
+## Module azure\_text\_embedder
 
 <a id="azure_text_embedder.AzureOpenAITextEmbedder"></a>
 
-## AzureOpenAITextEmbedder
+### AzureOpenAITextEmbedder
 
 Embeds strings using OpenAI models deployed on Azure.
 
@@ -336,11 +337,11 @@ A dictionary with the following keys:
 
 <a id="hugging_face_api_document_embedder"></a>
 
-# Module hugging\_face\_api\_document\_embedder
+## Module hugging\_face\_api\_document\_embedder
 
 <a id="hugging_face_api_document_embedder.HuggingFaceAPIDocumentEmbedder"></a>
 
-## HuggingFaceAPIDocumentEmbedder
+### HuggingFaceAPIDocumentEmbedder
 
 Embeds documents using Hugging Face APIs.
 
@@ -527,11 +528,11 @@ A dictionary with the following keys:
 
 <a id="hugging_face_api_text_embedder"></a>
 
-# Module hugging\_face\_api\_text\_embedder
+## Module hugging\_face\_api\_text\_embedder
 
 <a id="hugging_face_api_text_embedder.HuggingFaceAPITextEmbedder"></a>
 
-## HuggingFaceAPITextEmbedder
+### HuggingFaceAPITextEmbedder
 
 Embeds strings using Hugging Face APIs.
 
@@ -697,11 +698,11 @@ A dictionary with the following keys:
 
 <a id="openai_document_embedder"></a>
 
-# Module openai\_document\_embedder
+## Module openai\_document\_embedder
 
 <a id="openai_document_embedder.OpenAIDocumentEmbedder"></a>
 
-## OpenAIDocumentEmbedder
+### OpenAIDocumentEmbedder
 
 Computes document embeddings using OpenAI models.
 
@@ -855,11 +856,11 @@ A dictionary with the following keys:
 
 <a id="openai_text_embedder"></a>
 
-# Module openai\_text\_embedder
+## Module openai\_text\_embedder
 
 <a id="openai_text_embedder.OpenAITextEmbedder"></a>
 
-## OpenAITextEmbedder
+### OpenAITextEmbedder
 
 Embeds strings using OpenAI models.
 
@@ -1006,11 +1007,11 @@ A dictionary with the following keys:
 
 <a id="sentence_transformers_document_embedder"></a>
 
-# Module sentence\_transformers\_document\_embedder
+## Module sentence\_transformers\_document\_embedder
 
 <a id="sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder"></a>
 
-## SentenceTransformersDocumentEmbedder
+### SentenceTransformersDocumentEmbedder
 
 Calculates document embeddings using Sentence Transformers models.
 
@@ -1168,11 +1169,11 @@ A dictionary with the following keys:
 
 <a id="sentence_transformers_text_embedder"></a>
 
-# Module sentence\_transformers\_text\_embedder
+## Module sentence\_transformers\_text\_embedder
 
 <a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder"></a>
 
-## SentenceTransformersTextEmbedder
+### SentenceTransformersTextEmbedder
 
 Embeds strings using Sentence Transformers models.
 
@@ -1321,11 +1322,11 @@ A dictionary with the following keys:
 
 <a id="sentence_transformers_sparse_document_embedder"></a>
 
-# Module sentence\_transformers\_sparse\_document\_embedder
+## Module sentence\_transformers\_sparse\_document\_embedder
 
 <a id="sentence_transformers_sparse_document_embedder.SentenceTransformersSparseDocumentEmbedder"></a>
 
-## SentenceTransformersSparseDocumentEmbedder
+### SentenceTransformersSparseDocumentEmbedder
 
 Calculates document sparse embeddings using sparse embedding models from Sentence Transformers.
 
@@ -1468,11 +1469,11 @@ A dictionary with the following keys:
 
 <a id="sentence_transformers_sparse_text_embedder"></a>
 
-# Module sentence\_transformers\_sparse\_text\_embedder
+## Module sentence\_transformers\_sparse\_text\_embedder
 
 <a id="sentence_transformers_sparse_text_embedder.SentenceTransformersSparseTextEmbedder"></a>
 
-## SentenceTransformersSparseTextEmbedder
+### SentenceTransformersSparseTextEmbedder
 
 Embeds strings using sparse embedding models from Sentence Transformers.
 
@@ -1601,11 +1602,11 @@ A dictionary with the following keys:
 
 <a id="image/sentence_transformers_doc_image_embedder"></a>
 
-# Module image/sentence\_transformers\_doc\_image\_embedder
+## Module image/sentence\_transformers\_doc\_image\_embedder
 
 <a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder"></a>
 
-## SentenceTransformersDocumentImageEmbedder
+### SentenceTransformersDocumentImageEmbedder
 
 A component for computing Document embeddings based on images using Sentence Transformers models.
 
@@ -1768,3 +1769,4 @@ Embed a list of documents.
 
 A dictionary with the following keys:
 - `documents`: Documents with embeddings.
+

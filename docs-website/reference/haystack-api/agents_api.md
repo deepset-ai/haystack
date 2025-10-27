@@ -1,16 +1,17 @@
 ---
-title: Agents
+title: "Agents"
 id: agents-api
-description: Tool-using agents with provider-agnostic chat model support.
+description: "Tool-using agents with provider-agnostic chat model support."
+slug: "/agents-api"
 ---
 
 <a id="agent"></a>
 
-# Module agent
+## Module agent
 
 <a id="agent.Agent"></a>
 
-## Agent
+### Agent
 
 A Haystack component that implements a tool-using agent with provider-agnostic chat model support.
 
@@ -50,7 +51,7 @@ assert "messages" in result  # Contains conversation history
 ```python
 def __init__(*,
              chat_generator: ChatGenerator,
-             tools: Optional[Union[list[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              system_prompt: Optional[str] = None,
              exit_conditions: Optional[list[str]] = None,
              state_schema: Optional[dict[str, Any]] = None,
@@ -65,7 +66,7 @@ Initialize the agent component.
 **Arguments**:
 
 - `chat_generator`: An instance of the chat generator that your agent should use. It must support tools.
-- `tools`: List of Tool objects or a Toolset that the agent can use.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
 - `system_prompt`: System prompt for the agent.
 - `exit_conditions`: List of conditions that will cause the agent to return.
 Can include "text" if the agent should return when it generates a message without tool calls,
@@ -138,7 +139,7 @@ def run(messages: list[ChatMessage],
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -182,8 +183,7 @@ async def run_async(messages: list[ChatMessage],
                     break_point: Optional[AgentBreakpoint] = None,
                     snapshot: Optional[AgentSnapshot] = None,
                     system_prompt: Optional[str] = None,
-                    tools: Optional[Union[list[Tool], Toolset,
-                                          list[str]]] = None,
+                    tools: Optional[Union[ToolsType, list[str]]] = None,
                     **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -221,11 +221,11 @@ A dictionary with the following keys:
 
 <a id="state/state"></a>
 
-# Module state/state
+## Module state/state
 
 <a id="state/state.State"></a>
 
-## State
+### State
 
 State is a container for storing shared information during the execution of an Agent and its tools.
 
@@ -366,3 +366,4 @@ def from_dict(cls, data: dict[str, Any])
 ```
 
 Convert a dictionary back to a State object.
+

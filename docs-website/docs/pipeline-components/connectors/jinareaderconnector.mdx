@@ -1,0 +1,156 @@
+---
+title: "JinaReaderConnector"
+id: jinareaderconnector
+slug: "/jinareaderconnector"
+description: "Use Jina AI’s Reader API with Haystack."
+---
+
+# JinaReaderConnector
+
+Use Jina AI’s Reader API with Haystack.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | As the first component in a pipeline that passes the resulting document downstream |
+| **Mandatory init variables** | “mode”: The operation mode for the reader (`read`, `search`, or `ground`)  <br /> <br />”api_key”: The Jina API key. Can be set with `JINA_API_KEY` env var. |
+| **Mandatory run variables** | “query”: A query string |
+| **Output variables** | “document”: A list of documents |
+| **API reference** | [Jina](/reference/integrations-jina) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina |
+
+## Overview
+
+`JinaReaderConnector` interacts with Jina AI’s Reader API to process queries and output documents.
+
+You need to select one of the following modes of operations when initializing the component:
+
+- `read`: Processes a URL and extracts the textual content.
+- `search`: Searches the web and returns textual content from the most relevant pages.
+- `ground`: Performs fact-checking using a grounding engine.
+
+You can find more information on these modes in the [Jina Reader documentation](https://jina.ai/reader/).
+
+You can additionally control the response format from the Jina Reader API using the component’s `json_response` parameter:
+
+- `True` (default) requests a JSON response for documents enriched with structured metadata.
+- `False` requests a raw response, resulting in one document with minimal metadata.
+
+### Authorization
+
+The component uses a `JINA_API_KEY` environment variable by default. Otherwise, you can pass a Jina API key at initialization with `api_key` like this:
+
+```python
+ranker = JinaRanker(api_key=Secret.from_token("<your-api-key>"))
+```
+
+To get your API key, head to Jina AI’s [website](https://jina.ai/reranker/).
+
+### Installation
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install jina-haystack
+```
+
+## Usage
+
+### On its own
+
+Read mode:
+
+```python
+from haystack_integrations.components.connectors.jina import JinaReaderConnector
+
+reader = JinaReaderConnector(mode="read")
+query = "https://example.com"
+result = reader.run(query=query)
+
+print(result)
+## {'documents': [Document(id=fa3e51e4ca91828086dca4f359b6e1ea2881e358f83b41b53c84616cb0b2f7cf,
+## content: 'This domain is for use in illustrative examples in documents. You may use this domain in literature ...',
+## meta: {'title': 'Example Domain', 'description': '', 'url': 'https://example.com/', 'usage': {'tokens': 42}})]}
+```
+
+Search mode:
+
+```python
+from haystack_integrations.components.connectors.jina import JinaReaderConnector
+
+reader = JinaReaderConnector(mode="search")
+query = "UEFA Champions League 2024"
+result = reader.run(query=query)
+
+print(result)
+## {'documents': Document(id=6a71abf9955594232037321a476d39a835c0cb7bc575d886ee0087c973c95940,
+## content: '2024/25 UEFA Champions League: Matches, draw, final, key dates | UEFA Champions League | UEFA.com...',
+## meta: {'title': '2024/25 UEFA Champions League: Matches, draw, final, key dates',
+## 'description': 'What are the match dates? Where is the 2025 final? How will the competition work?',
+## 'url': 'https://www.uefa.com/uefachampionsleague/news/...',
+## 'usage': {'tokens': 5581}}), ...]}
+```
+
+Ground mode:
+
+```python
+from haystack_integrations.components.connectors.jina import JinaReaderConnector
+
+reader = JinaReaderConnector(mode="ground")
+query = "ChatGPT was launched in 2017"
+result = reader.run(query=query)
+
+print(result)
+## {'documents': [Document(id=f0c964dbc1ebb2d6584c8032b657150b9aa6e421f714cc1b9f8093a159127f0c,
+## content: 'The statement that ChatGPT was launched in 2017 is incorrect. Multiple references confirm that ChatG...',
+## meta: {'factuality': 0, 'result': False, 'references': [
+## {'url': 'https://en.wikipedia.org/wiki/ChatGPT',
+## 'keyQuote': 'ChatGPT is a generative artificial intelligence (AI) chatbot developed by OpenAI and launched in 2022.',
+## 'isSupportive': False}, ...],
+## 'usage': {'tokens': 10188}})]}
+```
+
+### In a pipeline
+
+**Query pipeline with search mode**
+
+The following pipeline example, the `JinaReaderConnector` first searches for relevant documents, then feeds them along with a user query into a prompt template, and finally generates a response based on the retrieved context.
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack_integrations.components.connectors.jina import JinaReaderConnector
+from haystack.dataclasses import ChatMessage
+
+reader_connector = JinaReaderConnector(mode="search")
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given the information below:\n"
+        "{% for document in documents %}{{ document.content }}{% endfor %}\n"
+        "Answer question: {{ query }}.\nAnswer:"
+    )
+]
+
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"})
+llm = OpenAIChatGenerator(model="gpt-4o-mini", api_key=Secret.from_token("<your-api-key>"))
+
+pipe = Pipeline()
+pipe.add_component("reader_connector", reader_connector)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+pipe.connect("reader_connector.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.messages", "llm.messages")
+
+query = "What is the most famous landmark in Berlin?"
+
+result = pipe.run(data={"reader_connector": {"query": query}, "prompt_builder": {"query": query}})
+print(result)
+
+## {'llm': {'replies': ['The most famous landmark in Berlin is the **Brandenburg Gate**. It is considered the symbol of the city and represents reunification.'], 'meta': [{'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 27, 'prompt_tokens': 4479, 'total_tokens': 4506, 'completion_tokens_details': CompletionTokensDetails(accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0), 'prompt_tokens_details': PromptTokensDetails(audio_tokens=0, cached_tokens=0)}}]}}
+```
+
+The same component in search mode could also be used in an indexing pipeline.

@@ -1,16 +1,17 @@
 ---
-title: Readers
+title: "Readers"
 id: readers-api
-description: Takes a query and a set of Documents as input and returns ExtractedAnswers by selecting a text span within the Documents.
+description: "Takes a query and a set of Documents as input and returns ExtractedAnswers by selecting a text span within the Documents."
+slug: "/readers-api"
 ---
 
 <a id="extractive"></a>
 
-# Module extractive
+## Module extractive
 
 <a id="extractive.ExtractiveReader"></a>
 
-## ExtractiveReader
+### ExtractiveReader
 
 Locates and extracts answers to a given query from Documents.
 
@@ -206,3 +207,4 @@ If None is provided then all answers are kept.
 **Returns**:
 
 List of answers sorted by (desc.) answer score.
+

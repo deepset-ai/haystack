@@ -1,0 +1,107 @@
+---
+title: "Choosing a Document Store"
+id: choosing-a-document-store
+slug: "/choosing-a-document-store"
+description: "This article goes through different types of Document Stores and explains their advantages and disadvantages."
+---
+
+import ClickableImage from "@site/src/components/ClickableImage";
+
+# Choosing a Document Store
+
+This article goes through different types of Document Stores and explains their advantages and disadvantages.
+
+### Introduction
+
+Whether you are developing a chatbot, a RAG system, or an image captioner, at some point, it’ll be likely for your AI application to compare the input it gets with the information it already knows. Most of the time, this comparison is performed through vector similarity search.
+
+If you’re unfamiliar with vectors, think about them as a way to represent text, images, or audio/video in a numerical form called vector embeddings. Vector databases are specifically designed to store such vectors efficiently, providing all the functionalities an AI application needs to implement data retrieval and similarity search.
+
+Document Stores are special objects in Haystack that abstract all the different vector databases into a common interface that can be easily integrated into a pipeline, most commonly through a Retriever component. Normally, you will find specialized Document Store and Retriever objects for each vector database Haystack supports.
+
+### Types of vector databases
+
+But why are vector databases so different, and which one should you use in your Haystack pipeline?
+
+We can group vector databases into five categories, from more specialized to general purpose:
+
+- Vector libraries
+- Pure vector databases
+- Vector-capable SQL databases
+- Vector-capable NoSQL databases
+- Full-text search databases
+
+We are working on supporting all these types in Haystack.
+
+In the meantime, here’s the most recent overview of available integrations:
+
+<ClickableImage src="/img/2c188e9-2.0_Document_Stores_6.png" alt="" />
+
+#### Summary
+
+Here is a quick summary of different Document Stores available in Haystack.
+
+Continue further down the article for a more complex explanation of the strengths and disadvantages of each type.
+
+| Type                     | Best for                                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------- |
+| Vector libraries         | Managing hardware resources effectively.                                                            |
+| Pure vector DBs          | Managing lots of high-dimensional data.                                                             |
+| Vector-capable SQL DBs   | Lower maintenance costs with focus on structured data and less on vectors.                          |
+| Vector-capable NoSQL DBs | Combining vectors with structured data without the limitations of the traditional relational model. |
+| Full-text search DBs     | Superior full-text search, reliable for production.                                                 |
+| In-memory                | Fast, minimal prototypes on small datasets.                                                         |
+
+#### Vector libraries
+
+Vector libraries are often included in the “vector database” category improperly, as they are limited to handling only vectors, are designed to work in-memory, and normally don’t have a clean way to store data on disk. Still, they are the way to go every time performance and speed are the top requirements for your AI application, as these libraries can use hardware resources very effectively.
+
+:::warning
+In progress
+
+We are currently developing the support for vector libraries in Haystack.
+:::
+
+#### Pure vector databases
+
+Pure vector databases, also known as just “vector databases”, offer efficient similarity search capabilities through advanced indexing techniques. Most of them support metadata, and despite a recent trend to add more text-search features on top of it, you should consider pure vector databases closer to vector libraries than a regular database. Pick a pure vector database when your application needs to manage huge amounts of high-dimensional data effectively: they are designed to be highly scalable and highly available. Most are open source, but companies usually provide them “as a service” through paid subscriptions.
+
+- [Chroma](../../document-stores/chromadocumentstore.mdx)
+- [Pinecone](../../document-stores/pinecone-document-store.mdx)
+- [Qdrant](https://docs.haystack.deepset.ai/v2.0/docs/qdrant-document-store)
+- [Weaviate](../../document-stores/weaviatedocumentstore.mdx)
+- [Marqo](https://haystack.deepset.ai/integrations/marqo-document-store) (external integration)
+- [Milvus](https://haystack.deepset.ai/integrations/milvus-document-store) (external integration)
+
+#### Vector-capable SQL databases
+
+This category is relatively small but growing fast and includes well-known relational databases where vector capabilities were added through plugins or extensions. They are not as performant as the previous categories, but the main advantage of these databases is the opportunity to easily combine vectors with structured data, having a one-stop data shop for your application. You should pick a vector-capable SQL database when the performance trade-off is paid off by the lower cost of maintaining a single database instance for your application or when the structured data plays a more fundamental role in your business logic, with vectors being more of a nice-to-have.
+
+- [Pgvector](../../document-stores/pgvectordocumentstore.mdx)
+
+#### Vector-capable NoSQL databases
+
+Historically, the killer features of NoSQL databases were the ability to scale horizontally and the adoption of a flexible data model to overcome certain limitations of the traditional relational model. This stays true for databases in this category, where the vector capabilities are added on top of the existing features. Similarly to the previous category, vector support might not be as good as pure vector databases, but once again, there is a tradeoff that might be convenient to bear depending on the use case. For example, if a certain NoSQL database is already part of the stack of your application and a lower performance is not a show-stopper, you might give it a shot.
+
+- [Astra](../../document-stores/astradocumentstore.mdx)
+- [MongoDB](../../document-stores/mongodbatlasdocumentstore.mdx)
+- [Neo4j](https://haystack.deepset.ai/integrations/neo4j-document-store) (external)
+
+#### Full-text search databases
+
+The main advantage of full-text search databases is they are already designed to work with text, so you can expect a high level of support for text data along with good performance and the opportunity to scale both horizontally and vertically. Initially, vector capabilities were subpar and provided through plugins or extensions, but this is rapidly changing. You can see how the market leaders in this category have recently added first-class support for vectors. Pick a full-text search database if text data plays a central role in your business logic so that you can easily and effectively implement techniques like hybrid search with a good level of support for similarity search and state-of-the-art support for full-text search.
+
+- [Elasticsearch](../../document-stores/elasticsearch-document-store.mdx)
+- [OpenSearch](../../document-stores/opensearch-document-store.mdx)
+
+#### The in-memory Document Store
+
+Haystack ships with an ephemeral document store that relies on pure Python data structures stored in memory, so it doesn’t fall into any of the vector database categories above. This special Document Store is ideal for creating quick prototypes with small datasets. It doesn’t require any special setup, and it can be used right away without installing additional dependencies.
+
+- [InMemory](../../document-stores/inmemorydocumentstore.mdx)
+
+### Final considerations
+
+It can be very challenging to pick one vector database over another by only looking at pure performance, as even the slightest difference in the benchmark can produce a different leaderboard (for example, some benchmarks test the cloud services while others work on a reference machine). Thinking about including features like filtering or not can bring in a whole new set of complexities that make the comparison even harder.
+
+What’s important for you to know is that the Document Store interface doesn’t add much to the costs, and the relative performance of one vector database over another should stay the same when used within Haystack pipelines.

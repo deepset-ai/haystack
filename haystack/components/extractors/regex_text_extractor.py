@@ -44,7 +44,7 @@ class RegexTextExtractor:
         :param regex_pattern:
             The regular expression pattern used to extract text.
             The pattern should include a capture group to extract the desired text.
-            Example: '<issue url=\"(.+)\">' captures 'github.com/hahahaha' from '<issue url="github.com/hahahaha">'.
+            Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue url="github.com/hahahaha">'`.
         """
         self.regex_pattern = regex_pattern
 
@@ -66,8 +66,8 @@ class RegexTextExtractor:
             Either a string or a list of ChatMessage objects to search through.
 
         :returns:
-          - If match found: {"captured_text": "matched text"}
-          - If no match and return_empty_on_no_match=True: {}
+          - If match found: `{"captured_text": "matched text"}`
+          - If no match and `return_empty_on_no_match=True`: `{}`
 
         :raises:
             - ValueError: if receiving a list the last element is not a ChatMessage instance.

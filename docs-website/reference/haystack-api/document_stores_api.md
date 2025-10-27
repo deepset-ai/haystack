@@ -1,16 +1,17 @@
 ---
-title: Document Stores
+title: "Document Stores"
 id: document-stores-api
-description: Stores your texts and meta data and provides them to the Retriever at query time.
+description: "Stores your texts and meta data and provides them to the Retriever at query time."
+slug: "/document-stores-api"
 ---
 
 <a id="document_store"></a>
 
-# Module document\_store
+## Module document\_store
 
 <a id="document_store.BM25DocumentStats"></a>
 
-## BM25DocumentStats
+### BM25DocumentStats
 
 A dataclass for managing document statistics for BM25 retrieval.
 
@@ -21,7 +22,7 @@ A dataclass for managing document statistics for BM25 retrieval.
 
 <a id="document_store.InMemoryDocumentStore"></a>
 
-## InMemoryDocumentStore
+### InMemoryDocumentStore
 
 Stores data in-memory. It's ephemeral and cannot be saved to disk.
 
@@ -378,3 +379,4 @@ Retrieves documents that are most similar to the query embedding using a vector 
 **Returns**:
 
 A list of the top_k documents most relevant to the query.
+

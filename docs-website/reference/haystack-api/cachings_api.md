@@ -1,16 +1,17 @@
 ---
-title: Caching
+title: "Caching"
 id: caching-api
-description: Checks if any document coming from the given URL is already present in the store.
+description: "Checks if any document coming from the given URL is already present in the store."
+slug: "/caching-api"
 ---
 
 <a id="cache_checker"></a>
 
-# Module cache\_checker
+## Module cache\_checker
 
 <a id="cache_checker.CacheChecker"></a>
 
-## CacheChecker
+### CacheChecker
 
 Checks for the presence of documents in a Document Store based on a specified field in each document's metadata.
 
@@ -106,3 +107,4 @@ Checks if any document associated with the specified cache field is already pres
 A dictionary with two keys:
 - `hits` - Documents that matched with at least one of the items.
 - `misses` - Items that were not present in any documents.
+

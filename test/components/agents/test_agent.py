@@ -1220,6 +1220,55 @@ class TestAgentToolSelection:
         )
         with pytest.raises(
             TypeError,
-            match=(re.escape("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")),
+            match=(
+                re.escape(
+                    "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
+                )
+            ),
         ):
             agent._select_tools("invalid_tool_name")
+
+    def test_tool_selection_with_list_of_toolsets(self, weather_tool: Tool, component_tool: Tool):
+        """Test that list of Toolsets and Tools can be passed to agent."""
+        chat_generator = MockChatGenerator()
+        toolset1 = Toolset([weather_tool])
+        standalone_tool = Tool(
+            name="standalone",
+            description="A standalone tool",
+            parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
+            function=lambda x: f"Result: {x}",
+        )
+        toolset2 = Toolset([component_tool])
+
+        agent = Agent(chat_generator=chat_generator, tools=[toolset1, standalone_tool, toolset2])
+        result = agent._select_tools(None)
+
+        assert result == [toolset1, standalone_tool, toolset2]
+        assert isinstance(result, list)
+        assert len(result) == 3
+
+    def test_agent_serde_with_list_of_toolsets(self, weather_tool: Tool, component_tool: Tool, monkeypatch):
+        """Test Agent serialization and deserialization with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        toolset1 = Toolset([weather_tool])
+        toolset2 = Toolset([component_tool])
+
+        generator = OpenAIChatGenerator()
+        agent = Agent(chat_generator=generator, tools=[toolset1, toolset2])
+
+        serialized_agent = agent.to_dict()
+
+        # Verify serialization preserves list[Toolset] structure
+        tools_data = serialized_agent["init_parameters"]["tools"]
+        assert isinstance(tools_data, list)
+        assert len(tools_data) == 2
+        assert all(isinstance(ts, dict) for ts in tools_data)
+        assert tools_data[0]["type"] == "haystack.tools.toolset.Toolset"
+        assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
+
+        # Deserialize and verify
+        deserialized_agent = Agent.from_dict(serialized_agent)
+        assert isinstance(deserialized_agent.tools, list)
+        assert len(deserialized_agent.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)

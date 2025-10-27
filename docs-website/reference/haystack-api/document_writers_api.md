@@ -1,16 +1,17 @@
 ---
-title: Document Writers
+title: "Document Writers"
 id: document-writers-api
-description: Writes Documents to a DocumentStore.
+description: "Writes Documents to a DocumentStore."
+slug: "/document-writers-api"
 ---
 
 <a id="document_writer"></a>
 
-# Module document\_writer
+## Module document\_writer
 
 <a id="document_writer.DocumentWriter"></a>
 
-## DocumentWriter
+### DocumentWriter
 
 Writes documents to a DocumentStore.
 
@@ -136,3 +137,4 @@ but can be used with `await` in async code.
 **Returns**:
 
 Number of documents written to the document store.
+
