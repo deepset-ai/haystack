@@ -105,8 +105,33 @@
         "document-stores/astradocumentstore",
         "document-stores/azureaisearchdocumentstore",
         "document-stores/chromadocumentstore",
+        {
+          "type": "link",
+          "label": "CouchbaseDocumentStore",
+          "href": "https://haystack.deepset.ai/integrations/couchbase-document-store"
+        },
         "document-stores/elasticsearch-document-store",
+        {
+          "type": "link",
+          "label": "LanceDBDocumentStore",
+          "href": "https://haystack.deepset.ai/integrations/lancedb/"
+        },
+        {
+          "type": "link",
+          "label": "MarqoDocumentStore",
+          "href": "https://haystack.deepset.ai/integrations/marqo-document-store/"
+        },
+        {
+          "type": "link",
+          "label": "MilvusDocumentStore",
+          "href": "https://haystack.deepset.ai/integrations/milvus-document-store"
+        },
         "document-stores/mongodbatlasdocumentstore",
+        {
+          "type": "link",
+          "label": "Neo4jDocumentStore",
+          "href": "https://haystack.deepset.ai/integrations/neo4j-document-store"
+        },
         "document-stores/opensearch-document-store",
         "document-stores/pgvectordocumentstore",
         "document-stores/pinecone-document-store",
