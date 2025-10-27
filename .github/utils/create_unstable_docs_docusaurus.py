@@ -66,8 +66,8 @@ if __name__ == "__main__":
     # copy docs to versioned_docs/version-current_unstable
     shutil.copytree("docs-website/docs", f"docs-website/versioned_docs/version-{current_unstable}")
 
-    # copy reference to reference_versioned_docs/version-current_unstable/reference
-    shutil.copytree("docs-website/reference", f"docs-website/reference_versioned_docs/version-{current_unstable}/reference")
+    # copy reference to reference_versioned_docs/version-current_unstable
+    shutil.copytree("docs-website/reference", f"docs-website/reference_versioned_docs/version-{current_unstable}")
 
     # copy versioned_sidebars/version-current_stable-sidebars.json to versioned_sidebars/version-current_unstable-sidebars.json
     shutil.copy(f"docs-website/versioned_sidebars/version-{current_stable}-sidebars.json",
