@@ -1,0 +1,70 @@
+---
+title: "MSGToDocument"
+id: msgtodocument
+slug: "/msgtodocument"
+description: "Converts Microsoft Outlook .msg files to documents."
+---
+
+# MSGToDocument
+
+Converts Microsoft Outlook .msg files to documents.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx) , or right at the beginning of an indexing pipeline |
+| **Mandatory run variables** | "sources": A list of .msg file paths or [ByteStream](/docs/data-classes#bytestresm) objects |
+| **Output variables** | "documents": A list of documents  <br /> <br />"attachments": A list of ByteStream objects representing file attachments |
+| **API reference** | [Converters](/reference/converters-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/msg.py |
+
+## Overview
+
+The `MSGToDocument` component converts Microsoft Outlook `.msg` files into documents. This component extracts the email metadata (such as sender, recipients, CC, BCC, subject) and body content. Additionally, any file attachments within the `.msg` file are extracted as `ByteStream` objects.
+
+## Usage
+
+First, install the `python-oxmsg` package to start using this converter:
+
+```
+pip install python-oxmsg
+```
+
+### On its own
+
+```python
+from haystack.components.converters.msg import MSGToDocument
+from datetime import datetime
+
+converter = MSGToDocument()
+results = converter.run(sources=["sample.msg"], meta={"date_added": datetime.now().isoformat()})
+documents = results["documents"]
+attachments = results["attachments"]
+
+print(documents[0].content)
+```
+
+### In a pipeline
+
+The following setup enables efficient extraction, preprocessing, and indexing of `.msg` email files within a Haystack pipeline:
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.routers import FileTypeRouter
+from haystack.components.converters import MSGToDocument
+from haystack.components.writers import DocumentWriter
+
+router = FileTypeRouter(mime_types=["application/vnd.ms-outlook"])
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("router", router)
+pipeline.add_component("converter", MSGToDocument())
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+
+pipeline.connect("router.application/vnd.ms-outlook", "converter.sources")
+pipeline.connect("converter.documents", "writer.documents")
+
+file_names = ["email1.msg", "email2.msg"]
+pipeline.run({"converter": {"sources": file_names}})
+```

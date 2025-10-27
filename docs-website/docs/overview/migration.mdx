@@ -9,7 +9,7 @@ description: "Learn how to make the move to Haystack 2.x from Haystack 1.x."
 
 Learn how to make the move to Haystack 2.x from Haystack 1.x.
 
-This guide is designed for those with previous experience with Haystack and who are interested in understanding the differences between Haystack 1.x and Haystack 2.x. If you're new to Haystack, skip this page and proceed directly to Haystack 2.x [documentation](get_started.mdx).
+This guide is designed for those with previous experience with Haystack and who are interested in understanding the differences between Haystack 1.x and Haystack 2.x. If you're new to Haystack, skip this page and proceed directly to Haystack 2.x [documentation](get-started.mdx).
 
 ## Major Changes
 
@@ -38,11 +38,11 @@ While Haystack 2.x continues to rely on the `Pipeline` abstraction, the elements
 
 Pipelines continue to serve as the fundamental structure of all Haystack applications. While the concept of `Pipeline` abstraction remains consistent, Haystack 2.x introduces significant enhancements that address various limitations of its predecessor. For instance, the pipelines now support loops. Pipelines also offer greater flexibility in their input, which is no longer restricted to queries. The pipeline now allows to route the output of a component to multiple recipients. This increases flexibility, however, comes with notable differences in the pipeline definition process in Haystack 2.x compared to the previous version.
 
-In Haystack 1.x, a pipeline was built by adding one node after the other. In the resulting pipeline graph, edges are automatically added to connect those nodes in the order they were added. 
+In Haystack 1.x, a pipeline was built by adding one node after the other. In the resulting pipeline graph, edges are automatically added to connect those nodes in the order they were added.
 
 Building a pipeline in Haystack 2.x is a two-step process:
 
-1. Initially, components are added to the pipeline without any specific order by calling the `add_component` method. 
+1. Initially, components are added to the pipeline without any specific order by calling the `add_component` method.
 2. Subsequently, the components must be explicitly connected by calling the `connect` method to define the final graph.
 
 To migrate an existing pipeline, the first step is to go through the nodes and identify their counterparts in Haystack 2.x (see the following section,  [_Migrating Components_](#migrating-components), for guidance). If all the nodes can be replaced by corresponding components, they have to be added to the pipeline with `add_component` and explicitly connected with the appropriate calls to `connect`. Here is an example:
@@ -121,7 +121,7 @@ The [_Migration examples_](#migration-examples) section below shows how to port 
 
 The agentic approach facilitates the answering of questions that are significantly more complex than those typically addressed by extractive or generative question answering techniques.
 
-Haystack 1.x provided Agents, enabling the use of LLMs in a loop. 
+Haystack 1.x provided Agents, enabling the use of LLMs in a loop.
 
 Currently in Haystack 2.x, you can build Agents using three main elements in a pipeline: Chat Generators, ToolInvoker component, and Tools. A standalone Agent abstraction in Haystack 2.x is in an experimental phase.
 
@@ -297,11 +297,11 @@ cleaner = DocumentCleaner(
     remove_extra_whitespaces=True,
 )
 indexing_pipeline.add_component("cleaner", cleaner)
- 
+
 ## Pre-processes the text by performing splits and adding metadata to the text (DocumentSplitter component)
 preprocessor = DocumentSplitter(
-    split_by="passage", 
-    split_length=100, 
+    split_by="passage",
+    split_length=100,
     split_overlap=50
 )
 indexing_pipeline.add_component("preprocessor", preprocessor)
@@ -348,9 +348,9 @@ extractive_qa_pipeline = ExtractiveQAPipeline(reader, retriever)
 
 query = "What is the capital of France?"
 result = extractive_qa_pipeline.run(
-	query=query, 
+	query=query,
 	params={
-		"Retriever": {"top_k": 10}, 
+		"Retriever": {"top_k": 10},
 		"Reader": {"top_k": 5}
 	}
 )
@@ -385,7 +385,7 @@ extractive_qa_pipeline.connect("retriever", "reader")
 
 query = "What is the capital of France?"
 result = extractive_qa_pipeline.run(data={
-	"retriever": {"query": query, "top_k": 3}, 
+	"retriever": {"query": query, "top_k": 3},
 	"reader": {"query": query, "top_k": 2}
 })
 ```

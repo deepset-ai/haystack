@@ -1,0 +1,166 @@
+---
+title: "JinaDocumentImageEmbedder"
+id: jinadocumentimageembedder
+slug: "/jinadocumentimageembedder"
+description: "`JinaDocumentImageEmbedder` computes the image embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Jina embedding models with the ability to embed text and images into the same vector space."
+---
+
+# JinaDocumentImageEmbedder
+
+`JinaDocumentImageEmbedder` computes the image embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Jina embedding models with the ability to embed text and images into the same vector space.
+
+|                                        |                                                                                                                                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                                                                                                      |
+| **Mandatory init variables**           | "api_key": The Jina API key. Can be set with `JINA_API_KEY` env var.                                                                                                           |
+| **Mandatory run variables**            | "documents": A list of documents, with a meta field containing an image file path                                                                                              |
+| **Output variables**                   | "documents": A list of documents (enriched with embeddings)                                                                                                                    |
+| **API reference**                      | [Jina](/reference/integrations-jina)                                                                                                                                                  |
+| **GitHub link**                        | [https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cohere) |
+
+## Overview
+
+`JinaDocumentImageEmbedder` expects a list of documents containing an image or a PDF file path in a meta field. The meta field can be specified with the `file_path_meta_field` init parameter of this component.
+
+The embedder efficiently loads the images, computes the embeddings using a Jina model, and stores each of them in the `embedding` field of the document.
+
+`JinaDocumentImageEmbedder` is commonly used in indexing pipelines. At retrieval time, you need to use the same model with a `JinaTextEmbedder` to embed the query, before using an Embedding Retriever.
+
+This component is compatible with Jina multimodal embedding models:
+
+- `jina-clip-v1`
+- `jina-clip-v2` (default)
+- `jina-embeddings-v4` (non-commercial research only)
+
+### Installation
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install jina-haystack
+```
+
+### Authentication
+
+The component uses a `JINA_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](/docs/secret-management) and `Secret.from_token`  method:
+
+```python
+embedder = JinaDocumentImageEmbedder(api_key=Secret.from_token("<your-api-key>"))
+```
+
+To get a Cohere API key, head over to https://jina.ai/embeddings/.
+
+## Usage
+
+### On its own
+
+Remember to set `JINA_API_KEY` as an environment variable first.
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.jina import JinaDocumentImageEmbedder
+
+embedder = JinaDocumentImageEmbedder(model="jina-clip-v2")
+embedder.warm_up()
+
+documents = [
+    Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
+    Document(content="A photo of a dog", meta={"file_path": "dog.jpg"}),
+]
+
+result = embedder.run(documents=documents)
+documents_with_embeddings = result["documents"]
+print(documents_with_embeddings)
+
+## [Document(id=...,
+##           content='A photo of a cat',
+##           meta={'file_path': 'cat.jpg',
+##                 'embedding_source': {'type': 'image', 'file_path_meta_field': 'file_path'}},
+##           embedding=vector of size 1024),
+##  ...]
+```
+
+### In a pipeline
+
+In this example, we can see an indexing pipeline with 3 components:
+
+- `ImageFileToDocument` Converter that creates empty documents with a reference to an image in the `meta.file_path` field.
+- `JinaDocumentImageEmbedder` that loads the images, computes embeddings and store them in documents. Here, we set the `image_size` parameter to resize the image to fit within the specified dimensions while maintaining aspect ratio. This reduces API usage.
+- `DocumentWriter` that writes the documents in the `InMemoryDocumentStore`.
+
+There is also a multimodal retrieval pipeline, composed of a `JinaTextEmbedder` (using the same model as before) and an `InMemoryEmbeddingRetriever`.
+
+```python
+from haystack import Pipeline
+from haystack.components.converters.image import ImageFileToDocument
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+from haystack_integrations.components.embedders.jina import JinaDocumentImageEmbedder, JinaTextEmbedder
+
+document_store = InMemoryDocumentStore()
+
+## Indexing pipeline
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("image_converter", ImageFileToDocument())
+indexing_pipeline.add_component(
+    "embedder",
+    JinaDocumentImageEmbedder(model="jina-clip-v2", image_size=(200, 200))
+)
+indexing_pipeline.add_component(
+    "writer", DocumentWriter(document_store=document_store)
+)
+indexing_pipeline.connect("image_converter", "embedder")
+indexing_pipeline.connect("embedder", "writer")
+
+indexing_pipeline.run(data={"image_converter": {"sources": ["dog.jpg", "cat.jpg"]}})
+
+## Multimodal retrieval pipeline
+retrieval_pipeline = Pipeline()
+retrieval_pipeline.add_component(
+    "embedder",
+    JinaTextEmbedder(model="jina-clip-v2")
+)
+retrieval_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store, top_k=2)
+)
+retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
+
+result = retrieval_pipeline.run(data={"text": "man's best friend"})
+print(result)
+
+## {
+##     'retriever': {
+##         'documents': [
+##             Document(
+##                 id=0c96...,
+##                 meta={
+##                     'file_path': 'dog.jpg',
+##                     'embedding_source': {
+##                         'type': 'image',
+##                         'file_path_meta_field': 'file_path'
+##                     }
+##                 },
+##                 score=0.246
+##             ),
+##             Document(
+##                 id=5e76...,
+##                 meta={
+##                     'file_path': 'cat.jpg',
+##                     'embedding_source': {
+##                         'type': 'image',
+##                         'file_path_meta_field': 'file_path'
+##                     }
+##                 },
+##                 score=0.199
+##             )
+##         ]
+##     }
+## }
+```
+
+## Additional References
+
+:notebook: Tutorial: [Creating Vision+Text RAG Pipelines](https://haystack.deepset.ai/tutorials/46_multimodal_rag)
