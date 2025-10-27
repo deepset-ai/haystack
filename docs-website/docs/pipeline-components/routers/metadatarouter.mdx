@@ -11,7 +11,7 @@ Use this component to route documents or byte streams to different output connec
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After components that classify documents, such as [`DocumentLanguageClassifier`](../../../docs/pipeline-components/classifiers/documentlanguageclassifier.mdx) |
+| **Most common position in a pipeline** | After components that classify documents, such as [`DocumentLanguageClassifier`](/docs/pipeline-components/classifiers/documentlanguageclassifier.mdx) |
 | **Mandatory init variables** | "rules": A dictionary with metadata routing rules (see our API Reference for examples) |
 | **Mandatory run variables** | “documents”: A list of documents or byte streams |
 | **Output variables** | “unmatched”: A list of documents or byte streams not matching any rule  <br /> <br />“_name_of_the_rule_”: A list of documents or byte streams matching custom rules. There's one output per one rule you define. Each of these outputs is a list of documents or byte streams. |

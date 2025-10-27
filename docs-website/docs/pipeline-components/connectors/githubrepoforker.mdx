@@ -11,7 +11,7 @@ This component forks a GitHub repository from an issue URL through the GitHub AP
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Right at the beginning of a pipeline and before an [Agent](../../../docs/pipeline-components/agents-1/agent.mdx) component that expects the name of a GitHub branch as input |
+| **Most common position in a pipeline** | Right at the beginning of a pipeline and before an [Agent](/docs/pipeline-components/agents-1/agent.mdx) component that expects the name of a GitHub branch as input |
 | **Mandatory init variables** | "github_token": GitHub personal access token. Can be set with `GITHUB_TOKEN` env var. |
 | **Mandatory run variables** | "url": The URL of a GitHub issue in the repository that should be forked |
 | **Output variables** | "repo": Fork repository path  <br /> <br />"issue_branch": Issue-specific branch name (if created) |

@@ -11,7 +11,7 @@ description: "`MetaFieldRanker` ranks Documents based on the value of their meta
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents, such as a [Retriever](../../../docs/pipeline-components/retrievers.mdx) |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents, such as a [Retriever](/docs/pipeline-components/retrievers.mdx) |
 | **Mandatory init variables** | "meta_field": The name of the meta field to rank by |
 | **Mandatory run variables** | “documents”: A list of documents  <br /> <br />”top_k”: The maximum number of documents to return. If not provided, returns all documents it received. |
 | **Output variables** | “documents”: A list of documents |
@@ -32,7 +32,7 @@ By default, `MetaFieldRanker` sorts documents only based on the meta field. You 
 
 ### On its own
 
-You can use this Ranker outside of a pipeline to sort documents. 
+You can use this Ranker outside of a pipeline to sort documents.
 
 This example uses the `MetaFieldRanker` to rank two simple documents. When running the Ranker, you pass the  `query`, provide the `documents` and set the number of documents to rank using the `top_k` parameter.
 
@@ -73,6 +73,6 @@ document_ranker_pipeline.add_component(instance=ranker, name="ranker")
 document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
 
 query = "Cities in France"
-document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, 
+document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3},
                                    "ranker": {"query": query, "top_k": 2}})
 ```
