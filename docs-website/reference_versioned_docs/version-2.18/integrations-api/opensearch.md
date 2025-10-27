@@ -984,6 +984,85 @@ Asynchronously deletes all documents in the document store.
 - `recreate_index`: If True, the index will be deleted and recreated with the original mappings and
 settings. If False, all documents will be deleted using the `delete_by_query` API.
 
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_by_filter"></a>
+
+#### OpenSearchDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: Dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_by_filter_async"></a>
+
+#### OpenSearchDocumentStore.delete\_by\_filter\_async
+
+```python
+async def delete_by_filter_async(filters: Dict[str, Any]) -> int
+```
+
+Asynchronously deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.update_by_filter"></a>
+
+#### OpenSearchDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: Dict[str, Any], meta: Dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update.
+
+**Returns**:
+
+The number of documents updated.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.update_by_filter_async"></a>
+
+#### OpenSearchDocumentStore.update\_by\_filter\_async
+
+```python
+async def update_by_filter_async(filters: Dict[str, Any],
+                                 meta: Dict[str, Any]) -> int
+```
+
+Asynchronously updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update.
+
+**Returns**:
+
+The number of documents updated.
+
 <a id="haystack_integrations.document_stores.opensearch.filters"></a>
 
 ## Module haystack\_integrations.document\_stores.opensearch.filters
@@ -997,3 +1076,4 @@ def normalize_filters(filters: Dict[str, Any]) -> Dict[str, Any]
 ```
 
 Converts Haystack filters in OpenSearch compatible filters.
+
