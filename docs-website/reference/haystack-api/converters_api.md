@@ -82,7 +82,7 @@ If False, only the file name is stored.
 @component.output_types(documents=list[Document],
                         raw_azure_response=list[dict])
 def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[list[dict[str, Any]]] = None)
+        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
 ```
 
 Convert a list of files to Documents using Azure's Document Intelligence service.
