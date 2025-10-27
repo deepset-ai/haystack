@@ -11,9 +11,9 @@ This generator enables chat completion using various Hugging Face APIs.
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../../../docs/pipeline-components/builders/chatpromptbuilder.mdx) |
+| **Most common position in a pipeline** | After a [`ChatPromptBuilder`](/docs/pipeline-components/builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | "api_type": The type of Hugging Face API to use  <br /> <br />"api_params": A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`."token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
-| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../../docs/concepts/data-classes.mdx#chatmessage)  objects representing the chat |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](/docs/concepts/data-classes.mdx#chatmessage)  objects representing the chat |
 | **Output variables** | “replies”: A list of replies of the LLM to the input chat |
 | **API reference** | [Generators](/reference/generators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/hugging_face_api.py |
@@ -32,7 +32,7 @@ This component's main input is a list of `ChatMessage` objects. `ChatMessage` is
 This component is designed for chat completion, so it expects a list of messages, not a single string. If you want to use Hugging Face APIs for simple text generation (such as translation or summarization tasks) or don't want to use the `ChatMessage` object, use [`HuggingFaceAPIGenerator`](huggingfaceapigenerator.mdx) instead.
 :::
 
-The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.  
+The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
 The token is needed:
 
 - If you use the Serverless Inference API, or
@@ -50,7 +50,7 @@ This Generator supports [streaming](guides-to-generators/choosing-the-right-gene
 
 This API allows you to quickly experiment with many models hosted on the Hugging Face Hub, offloading the inference to Hugging Face servers. It's rate-limited and not meant for production.
 
-To use this API, you need a [free Hugging Face token](https://huggingface.co/settings/tokens).  
+To use this API, you need a [free Hugging Face token](https://huggingface.co/settings/tokens).
 The Generator expects the `model` in `api_params`. It's also recommended to specify a `provider` for better performance and reliability.
 
 ```python
@@ -81,8 +81,8 @@ In this case, a private instance of the model is deployed by Hugging Face, and y
 
 To understand how to spin up an Inference Endpoint, visit [Hugging Face documentation](https://huggingface.co/inference-endpoints/dedicated).
 
-Additionally, in this case, you need to provide your Hugging Face token.  
-The Generator expects the `url` of your endpoint in `api_params`. 
+Additionally, in this case, you need to provide your Hugging Face token.
+The Generator expects the `url` of your endpoint in `api_params`.
 
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -146,7 +146,7 @@ docker run --gpus all --shm-size 1g -p 8080:80 -v $volume:/data ghcr.io/huggingf
 
 For more information, refer to the [official TGI repository](https://github.com/huggingface/text-generation-inference).
 
-The Generator expects the `url` of your TGI instance in `api_params`. 
+The Generator expects the `url` of your TGI instance in `api_params`.
 
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
@@ -178,7 +178,7 @@ llm = HuggingFaceAPIChatGenerator(api_type=HFGenerationAPIType.SERVERLESS_INFERE
                                   api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
                                              "provider": "together"},
                                   token=Secret.from_env_var("HF_API_TOKEN"))
-                                        
+
 pipe = Pipeline()
 pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", llm)

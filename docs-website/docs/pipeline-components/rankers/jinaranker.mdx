@@ -11,7 +11,7 @@ Use this component to rank documents based on their similarity to the query usin
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents (such as a [Retriever](../../../docs/pipeline-components/retrievers.mdx) ) |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents (such as a [Retriever](/docs/pipeline-components/retrievers.mdx) ) |
 | **Mandatory init variables** | "api_key": The Jina API key. Can be set with `JINA_API_KEY` env var. |
 | **Mandatory run variables** | “query”: A query string  <br /> <br />”documents”: A list of documents |
 | **Output variables** | “documents”: A list of documents |
@@ -74,7 +74,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack_integrations.components.rankers.jina import JinaRanker
 
-docs = [Document(content="Paris is in France"), 
+docs = [Document(content="Paris is in France"),
         Document(content="Berlin is in Germany"),
         Document(content="Lyon is in France")]
 document_store = InMemoryDocumentStore()
@@ -90,6 +90,6 @@ ranker_pipeline.add_component(instance=ranker, name="ranker")
 ranker_pipeline.connect("retriever.documents", "ranker.documents")
 
 query = "Cities in France"
-ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, 
+ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3},
                                    "ranker": {"query": query, "top_k": 2}})
 ```

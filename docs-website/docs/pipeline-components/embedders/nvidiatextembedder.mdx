@@ -11,7 +11,7 @@ This component transforms a string into a vector that captures its semantics usi
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before an embedding [Retriever](../../../docs/pipeline-components/retrievers.mdx)  in a query/RAG pipeline |
+| **Most common position in a pipeline** | Before an embedding [Retriever](/docs/pipeline-components/retrievers.mdx)  in a query/RAG pipeline |
 | **Mandatory init variables** | "api_key": API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var. |
 | **Mandatory run variables** | “text”: A string |
 | **Output variables** | “embedding”: A list of float numbers (vectors)  <br /> <br />“meta”: A dictionary of metadata strings |
@@ -24,7 +24,7 @@ This component transforms a string into a vector that captures its semantics usi
 
 It can be used with self-hosted models with NVIDIA NIM or models hosted on the [NVIDIA API catalog](https://build.nvidia.com/explore/discover).
 
-To embed a list of documents, use the [`NvidiaDocumentEmbedder`](nvidiadocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector. 
+To embed a list of documents, use the [`NvidiaDocumentEmbedder`](nvidiadocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
 
 ## Usage
 
