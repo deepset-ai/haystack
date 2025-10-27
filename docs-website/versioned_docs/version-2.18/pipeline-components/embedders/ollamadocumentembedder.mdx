@@ -1,0 +1,116 @@
+---
+title: "OllamaDocumentEmbedder"
+id: ollamadocumentembedder
+slug: "/ollamadocumentembedder"
+description: "This component computes the embeddings of a list of documents using embedding models compatible with the Ollama Library."
+---
+
+# OllamaDocumentEmbedder
+
+This component computes the embeddings of a list of documents using embedding models compatible with the Ollama Library.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
+| **Mandatory run variables** | “documents”: A list of documents to be embedded |
+| **Output variables** | “documents”: A list of documents (enriched with embeddings)  <br /> <br />“meta”: A dictionary of metadata strings |
+| **API reference** | [Ollama](/reference/integrations-ollama) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/ollama |
+
+`OllamaDocumentEmbedder` computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses embedding models compatible with the Ollama Library.
+
+The vectors computed by this component are necessary to perform embedding retrieval on a collection of documents. At retrieval time, the vector that represents the query is compared with those of the documents to find the most similar or relevant documents.
+
+## Overview
+
+`OllamaDocumentEmbedder` should be used to embed a list of documents. For embedding a string only, use the [`OllamaTextEmbedder`](ollamatextembedder.mdx).
+
+The component uses `http://localhost:11434` as the default URL as most available setups (Mac, Linux, Docker) default to port 11434.
+
+### Compatible Models
+
+Unless specified otherwise while initializing this component, the default embedding model is "nomic-embed-text". See other possible pre-built models in Ollama's [library](https://ollama.ai/library). To load your own custom model, follow the [instructions](https://github.com/ollama/ollama/blob/main/docs/modelfile.md) from Ollama.
+
+### Installation
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install ollama-haystack
+```
+
+Make sure that you have a running Ollama model (either through a docker container, or locally hosted). No other configuration is necessary as Ollama has the embedding API built in.
+
+### Embedding Metadata
+
+Most embedded metadata contains information about the model name and type. You can pass [optional arguments](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values), such as temperature, top_p, and others, to the Ollama generation endpoint.
+
+The name of the model used will be automatically appended as part of the document metadata. An example payload using the nomic-embed-text model will look like this:
+
+```python
+{'meta': {'model': 'nomic-embed-text'}}
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.ollama import OllamaDocumentEmbedder
+
+doc = Document(content="What do llamas say once you have thanked them? No probllama!")
+document_embedder = OllamaDocumentEmbedder()
+
+result = document_embedder.run([doc])
+print(result['documents'][0].embedding)
+
+#Calculating embeddings: 100%|██████████| 1/1 [00:02<00:00, 2.82s/it]
+
+#[-0.16412407159805298, -3.8359334468841553, ... ]
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+
+from haystack_integrations.components.embedders.ollama import OllamaDocumentEmbedder
+
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
+
+from haystack.components.converters import PyPDFToDocument
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.types import DuplicatePolicy
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+embedder = OllamaDocumentEmbedder(model="nomic-embed-text", url="http://localhost:11434") # This is the default model and URL
+
+cleaner = DocumentCleaner()
+splitter = DocumentSplitter()
+file_converter = PyPDFToDocument()
+writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.OVERWRITE)
+
+indexing_pipeline = Pipeline()
+
+## Add components to pipeline
+indexing_pipeline.add_component("embedder", embedder)
+indexing_pipeline.add_component("converter", file_converter)
+indexing_pipeline.add_component("cleaner", cleaner)
+indexing_pipeline.add_component("splitter", splitter)
+indexing_pipeline.add_component("writer", writer)
+
+## Connect components in pipeline
+indexing_pipeline.connect("converter", "cleaner")
+indexing_pipeline.connect("cleaner", "splitter")
+indexing_pipeline.connect("splitter", "embedder")
+indexing_pipeline.connect("embedder", "writer")
+
+## Run Pipeline
+indexing_pipeline.run({"converter": {"sources": ["files/test_pdf_data.pdf"]}})
+
+## Calculating embeddings: 100%|██████████| 115/115
+## {'embedder': {'meta': {'model': 'nomic-embed-text'}},  'writer': {'documents_written': 115}}
+```

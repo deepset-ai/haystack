@@ -1,0 +1,118 @@
+---
+title: "FaithfulnessEvaluator"
+id: faithfulnessevaluator
+slug: "/faithfulnessevaluator"
+description: "The `FaithfulnessEvaluator` uses an LLM to evaluate whether a generated answer can be inferred from the provided contexts. It does not require ground truth labels. This metric is called faithfulness, sometimes also referred to as groundedness or hallucination."
+---
+
+# FaithfulnessEvaluator
+
+The `FaithfulnessEvaluator` uses an LLM to evaluate whether a generated answer can be inferred from the provided contexts. It does not require ground truth labels. This metric is called faithfulness, sometimes also referred to as groundedness or hallucination.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
+| **Mandatory run variables** | "questions": A list of questions  <br /> <br />"contexts": A list of a list of contexts, which are the contents of documents. This accounts for one list of contexts per question.  <br /> <br />"predicted_answers": A list of predicted answers, for example, the outputs of a Generator in a RAG pipeline |
+| **Output variables** | A dictionary containing:  <br /> <br />- `score`: A number from 0.0 to 1.0 that represents the average faithfulness score across all questions  <br /> <br />- `individual_scores`: A list of the individual faithfulness scores ranging from 0.0 to 1.0 for each input triple of a question, a list of contexts, and a predicted answer.  <br /> <br />- `results`:  A list of dictionaries with `statements` and `statement_scores` keys. They contain the statements extracted by an LLM from each predicted answer and the corresponding faithfulness scores per statement, which are either 0 or 1. |
+| **API reference** | [Evaluators](/reference/evaluators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/faithfulness.py |
+
+You can use the `FaithfulnessEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, without ground truth labels. The component splits the generated answer into statements and checks each of them against the provided contexts with an LLM. A higher faithfulness score is better, and it indicates that a larger number of statements in the generated answers can be inferred from the contexts. The faithfulness score can be used to better understand how often and when the Generator in a RAG pipeline hallucinates.
+
+### Parameters
+
+The default model for this Evaluator is `gpt-4o-mini`. You can override the model using the `chat_generator` parameter during initialization. This needs to be a Chat Generator instance configured to return a JSON object. For example, when using the [`OpenAIChatGenerator`](/docs/openaichatgenerator), you should pass `{"response_format": {"type": "json_object"}}` in its `generation_kwargs`.
+
+If you are not initializing the Evaluator with your own Chat Generator other than OpenAI, a valid OpenAI API key must be set as an `OPENAI_API_KEY` environment variable. For details, see our [documentation page on secret management](/docs/secret-management).
+
+Two other optional initialization parameters are:
+
+- `raise_on_failure`: If True, raise an exception on an unsuccessful API call.
+- `progress_bar`:  Whether to show a progress bar during the evaluation.
+
+`FaithfulnessEvaluator` has an optional `examples` parameter that can be used to pass few-shot examples conforming to the expected input and output format of `FaithfulnessEvaluator`. These examples are included in the prompt that is sent to the LLM. Examples, therefore, increase the number of tokens of the prompt and make each request more costly. Adding examples is helpful if you want to improve the quality of the evaluation at the cost of more tokens.
+
+Each example must be a dictionary with keys `inputs` and `outputs`.
+`inputs` must be a dictionary with keys `questions`, `contexts`, and `predicted_answers`.
+`outputs` must be a dictionary with `statements` and `statement_scores`.
+Here is the expected format:
+
+```python
+[{
+	"inputs": {
+		"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
+		"predicted_answers": "Rome is the capital of Italy with more than 4 million inhabitants.",
+	},
+	"outputs": {
+		"statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+		"statement_scores": [1, 0],
+	},
+}]
+```
+
+## Usage
+
+### On its own
+
+Below is an example of using a `FaithfulnessEvaluator` component to evaluate a predicted answer generated based on a provided question and context. The `FaithfulnessEvaluator` returns a score of 0.5 because it detects two statements in the answer, of which only one is correct.
+
+```python
+from haystack.components.evaluators import FaithfulnessEvaluator
+
+questions = ["Who created the Python language?"]
+contexts = [
+    [
+        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
+    ],
+]
+predicted_answers = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
+evaluator = FaithfulnessEvaluator()
+result = evaluator.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+
+print(result["individual_scores"])
+## [0.5]
+print(result["score"])
+## 0.5
+print(result["results"])
+## [{'statements': ['Python is a high-level general-purpose programming language.',
+## 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
+```
+
+### In a pipeline
+
+Below is an example where we use a `FaithfulnessEvaluator` and a `ContextRelevanceEvaluator` in a pipeline to evaluate predicted answers and contexts (the content of documents) received by a RAG pipeline based on provided questions. Running a pipeline instead of the individual components simplifies calculating more than one metric.
+
+```python
+from haystack import Pipeline
+from haystack.components.evaluators import ContextRelevanceEvaluator, FaithfulnessEvaluator
+
+pipeline = Pipeline()
+context_relevance_evaluator = ContextRelevanceEvaluator()
+faithfulness_evaluator = FaithfulnessEvaluator()
+pipeline.add_component("context_relevance_evaluator", context_relevance_evaluator)
+pipeline.add_component("faithfulness_evaluator", faithfulness_evaluator)
+
+questions = ["Who created the Python language?"]
+contexts = [
+    [
+        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."
+    ],
+]
+predicted_answers = ["Python is a high-level general-purpose programming language that was created by George Lucas."]
+
+result = pipeline.run(
+		{
+			"context_relevance_evaluator": {"questions": questions, "contexts": contexts},
+	    "faithfulness_evaluator": {"questions": questions, "contexts": contexts, "predicted_answers": predicted_answers}
+    }
+)
+
+for evaluator in result:
+    print(result[evaluator]["individual_scores"])
+#...
+## [0.5]
+for evaluator in result:
+    print(result[evaluator]["score"])
+##
+## 0.5
+```

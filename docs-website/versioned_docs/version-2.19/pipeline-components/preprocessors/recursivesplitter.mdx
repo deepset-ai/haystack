@@ -1,0 +1,88 @@
+---
+title: "RecursiveDocumentSplitter"
+id: recursivesplitter
+slug: "/recursivesplitter"
+description: "This component recursively breaks down text into smaller chunks by applying a given list of separators to the text."
+---
+
+# RecursiveDocumentSplitter
+
+This component recursively breaks down text into smaller chunks by applying a given list of separators to the text.
+
+|                                    |                                                                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Most common position in a pipeline | In indexing pipelines after [Converters](../converters.mdx)   and [`DocumentCleaner`](/docs/documentcleaner)  , before [Classifiers](../classifiers.mdx) |
+| Mandatory run variables            | “documents”: A list of documents                                                                                                                       |
+| Output variables                   | “documents”: A list of documents                                                                                                                       |
+| API reference                      | [PreProcessors](/reference/preprocessors-api)                                                                                                                 |
+| Github link                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/recursive_splitter.py                                             |
+
+## Overview
+
+The `RecursiveDocumentSplitter` expects a list of documents as input and returns a list of documents with split texts. You can set the following parameters when initializing the component:
+
+- `split_length`: The maximum length of each chunk, in words, by default. See the `split_units` parameter to change the the unit.
+- `split_overlap`: The number of characters or words that overlap between consecutive chunks.
+- `split_unit`: The unit of the `split_length` parameter. Can be either `"word"`, `"char"`, or `"token"`.
+- `separators`: An optional list of separator strings to use for splitting the text. If you don’t provide any separators, the default ones are `["\n\n", "sentence", "\n", " "]`. The string separators will be treated as regular expressions. If the separator is `"sentence"`, the text will be split into sentences using a custom sentence tokenizer based on NLTK. See [SentenceSplitter](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/sentence_tokenizer.py#L116) code for more information.
+- `sentence_splitter_params`: Optional parameters to pass to the [SentenceSplitter](https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/sentence_tokenizer.py#L116).
+
+The separators are applied in the same order as they are defined in the list. The first separator is used on the text; any resulting chunk that is within the specified `chunk_size` is retained. For chunks that exceed the defined `chunk_size`, the next separator in the list is applied. If all separators are used and the chunk still exceeds the `chunk_size`, a hard split occurs based on the `chunk_size`, taking into account whether words or characters are used as counting units. This process is repeated until all chunks are within the limits of the specified `chunk_size`.
+
+## Usage
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import RecursiveDocumentSplitter
+
+chunker = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\n\n", "\n", ".", " "])
+text = ('''Artificial intelligence (AI) - Introduction
+
+AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
+AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines; recommendation systems; interacting via human speech; autonomous vehicles; generative and creative tools; and superhuman play and analysis in strategy games.''')
+chunker.warm_up()
+doc = Document(content=text)
+doc_chunks = chunker.run([doc])
+print(doc_chunks["documents"])
+```
+
+### In a pipeline
+
+Here's how you can use `RecursiveSplitter` in an indexing pipeline:
+
+```python
+from pathlib import Path
+
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters.txt import TextFileToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import RecursiveDocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+p = Pipeline()
+p.add_component(instance=TextFileToDocument(), name="text_file_converter")
+p.add_component(instance=DocumentCleaner(), name="cleaner")
+p.add_component(instance=RecursiveDocumentSplitter(
+        split_length=400,
+        split_overlap=0,
+        split_unit="char",
+        separators=["\n\n", "\n", "sentence", " "],
+        sentence_splitter_params={
+	        "language": "en",
+	        "use_split_rules": True,
+	        "keep_white_spaces": False
+        }
+    ),
+	name="recursive_splitter")
+p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+p.connect("text_file_converter.documents", "cleaner.documents")
+p.connect("cleaner.documents", "splitter.documents")
+p.connect("splitter.documents", "writer.documents")
+
+path = "path/to/your/files"
+files = list(Path(path).glob("*.md"))
+p.run({"text_file_converter": {"sources": files}})
+```

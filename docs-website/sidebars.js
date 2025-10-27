@@ -6,7 +6,7 @@ export default {
   docs: [
     {
       type: 'doc',
-      id: 'overview/intro',
+      id: 'intro',
       label: 'Introduction',
     },
     {

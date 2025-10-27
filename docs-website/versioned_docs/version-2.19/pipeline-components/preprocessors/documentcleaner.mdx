@@ -1,0 +1,82 @@
+---
+title: "DocumentCleaner"
+id: documentcleaner
+slug: "/documentcleaner"
+description: "Use `DocumentCleaner` to make text documents more readable. It removes extra whitespaces, empty lines, specified substrings, regexes, page headers, and footers in this particular order.  This is useful for preparing the documents for further processing by LLMs."
+---
+
+# DocumentCleaner
+
+Use `DocumentCleaner` to make text documents more readable. It removes extra whitespaces, empty lines, specified substrings, regexes, page headers, and footers in this particular order.  This is useful for preparing the documents for further processing by LLMs.
+
+|                                        |                                                                                                                 |
+| :------------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx) , after [`DocumentSplitter`](/docs/documentsplitter) |
+| **Mandatory run variables**            | "documents": A list of documents                                                                                |
+| **Output variables**                   | "documents": A list of documents                                                                                |
+| **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                          |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/document_cleaner.py        |
+
+## Overview
+
+`DocumentCleaner` expects a list of documents as input and returns a list of documents with cleaned texts. Selectable cleaning steps for each input document are to `remove_empty_lines`, `remove_extra_whitespaces` and to `remove_repeated_substrings`. These three parameters are booleans that can be set when the component is initialized.
+
+- `unicode_normalization` normalizes Unicode characters to a standard form. The parameter can be set to NFC, NFKC, NFD, or NFKD.
+- `ascii_only` removes accents from characters and replaces them with their closest ASCII equivalents.
+- `remove_empty_lines` removes empty lines from the document.
+- `remove_extra_whitespaces` removes extra whitespaces from the document.
+- `remove_repeated_substrings` removes repeated substrings (headers/footers) from pages in the document. Pages in the text need to be separated by form feed character "\\f", which is supported by [`TextFileToDocument`](https://docs.haystack.deepset.ai/v2.0/docs/textfiletodocument) and [`AzureOCRDocumentConverter`](https://docs.haystack.deepset.ai/v2.0/docs/azureocrdocumentconverter).
+
+In addition, you can specify a list of strings that should be removed from all documents as part of the cleaning with the parameter `remove_substring`. You can also specify a regular expression with the parameter `remove_regex` and any matches will be removed.
+
+The cleaning steps are executed in the following order:
+
+1. unicode_normalization
+2. ascii_only
+3. remove_extra_whitespaces
+4. remove_empty_lines
+5. remove_substrings
+6. remove_regex
+7. remove_repeated_substrings
+
+## Usage
+
+### On its own
+
+You can use it outside of a pipeline to clean up your documents:
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import DocumentCleaner
+
+doc = Document(content="This   is  a  document  to  clean\n\n\nsubstring to remove")
+
+cleaner = DocumentCleaner(remove_substrings = ["substring to remove"])
+result = cleaner.run(documents=[doc])
+
+assert result["documents"][0].content == "This is a document to clean "
+```
+
+### In a pipeline
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import TextFileToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+p = Pipeline()
+p.add_component(instance=TextFileToDocument(), name="text_file_converter")
+p.add_component(instance=DocumentCleaner(), name="cleaner")
+p.add_component(instance=DocumentSplitter(split_by="sentence", split_length=1), name="splitter")
+p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+p.connect("text_file_converter.documents", "cleaner.documents")
+p.connect("cleaner.documents", "splitter.documents")
+p.connect("splitter.documents", "writer.documents")
+
+p.run({"text_file_converter": {"sources": your_files}})
+```

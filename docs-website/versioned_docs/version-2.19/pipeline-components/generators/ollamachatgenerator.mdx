@@ -1,0 +1,182 @@
+---
+title: "OllamaChatGenerator"
+id: ollamachatgenerator
+slug: "/ollamachatgenerator"
+description: "This component enables chat completion using an LLM running on Ollama."
+---
+
+# OllamaChatGenerator
+
+This component enables chat completion using an LLM running on Ollama.
+
+|                                        |                                                                                                      |
+| :------------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects representing the chat |
+| **Output variables**                   | “replies”: A list of LLM’s alternative replies                                                       |
+| **API reference**                      | [Ollama](/reference/integrations-ollama)                                                                    |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/ollama             |
+
+## Overview
+
+[Ollama](https://github.com/jmorganca/ollama) is a project focused on running LLMs locally. Internally, it uses the quantized GGUF format by default. This means it is possible to run LLMs on standard machines (even without GPUs) without having to handle complex installation procedures.
+
+`OllamaChatGenerator` supports models running on Ollama, such as `llama2` and `mixtral`. Find the full list of supported models [here](https://ollama.ai/library).
+
+`OllamaChatGenerator`  needs a `model`  name and a `url` to work. By default, it uses `"orca-mini"` model and `"http://localhost:11434"` url.
+
+The way to operate with `OllamaChatGenerator` is by using  `ChatMessage` objects. [ChatMessage](/docs/data-classes#chatmessage)  is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. See the [usage](#usage) section for an example.
+
+### Streaming
+
+You can stream output as it’s generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+
+## Configure any `Generator` or `ChatGenerator` with a streaming callback
+component = SomeGeneratorOrChatGenerator(streaming_callback=print_streaming_chunk)
+
+## If this is a `ChatGenerator`, pass a list of messages:
+## from haystack.dataclasses import ChatMessage
+## component.run([ChatMessage.from_user("Your question here")])
+
+## If this is a (non-chat) `Generator`, pass a prompt:
+## component.run({"prompt": "Your prompt here"})
+```
+
+:::note
+Streaming works only with a single response. If a provider supports multiple candidates, set `n=1`.
+
+:::
+
+See our [Streaming Support](/docs/choosing-the-right-generator#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+
+Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+
+## Usage
+
+1. You need a running instance of Ollama. The installation instructions are [in the Ollama GitHub repository](https://github.com/jmorganca/ollama).
+   A fast way to run Ollama is using Docker:
+
+```bash
+docker run -d -p 11434:11434 --name ollama ollama/ollama:latest
+```
+
+2. You need to download or pull the desired LLM. The model library is available on the [Ollama website](https://ollama.ai/library).
+   If you are using Docker, you can, for example, pull the Zephyr model:
+
+```bash
+docker exec ollama ollama pull zephyr
+```
+
+If you already installed Ollama in your system, you can execute:
+
+```bash
+ollama pull zephyr
+```
+
+:::tip
+Choose a specific version of a model
+
+You can also specify a tag to choose a specific (quantized) version of your model. The available tags are shown in the model card of the Ollama models library. This is an [example](https://ollama.ai/library/zephyr/tags) for Zephyr.
+In this case, simply run
+
+```shell
+## ollama pull model:tag
+ollama pull zephyr:7b-alpha-q3_K_S
+```
+:::
+
+3. You also need to install the `ollama-haystack` package:
+
+```bash
+pip install ollama-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.generators.ollama import OllamaChatGenerator
+from haystack.dataclasses import ChatMessage
+
+generator = OllamaChatGenerator(model="zephyr",
+                            url = "http://localhost:11434",
+                            generation_kwargs={
+                              "num_predict": 100,
+                              "temperature": 0.9,
+                              })
+
+messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
+ChatMessage.from_user("What's Natural Language Processing?")]
+
+print(generator.run(messages=messages))
+    "replies": [
+        ChatMessage(
+            _role=<ChatRole.ASSISTANT: 'assistant'>,
+            _content=[
+                TextContent(
+                    text=(
+                        "Natural Language Processing (NLP) is a subfield of "
+                        "Artificial Intelligence that deals with understanding, "
+                        "interpreting, and generating human language in a meaningful "
+                        "way. It enables tasks such as language translation, sentiment "
+                        "analysis, and text summarization."
+                    )
+                )
+            ],
+            _name=None,
+            _meta={
+                "model": "zephyr",...
+            }
+        )
+    ]
+}
+```
+
+### In a Pipeline
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack_integrations.components.generators.ollama import OllamaChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+
+## no parameter init, we don't use any runtime template variables
+prompt_builder = ChatPromptBuilder()
+generator = OllamaChatGenerator(model="zephyr",
+                            url = "http://localhost:11434",
+                            generation_kwargs={
+                              "temperature": 0.9,
+                              })
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", generator)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+location = "Berlin"
+messages = [ChatMessage.from_system("Always respond in Spanish even if some input data is in other languages."),
+            ChatMessage.from_user("Tell me about {{location}}")]
+print(pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}}))
+
+    "llm": {
+        "replies": [
+            ChatMessage(
+                _role=<ChatRole.ASSISTANT: 'assistant'>,
+                _content=[
+                    TextContent(
+                        text=(
+                            "Berlín es la capital y la mayor ciudad de Alemania. "
+                            "Está ubicada en el estado federado de Berlín, y tiene más..."
+                        )
+                    )
+                ],
+                _name=None,
+                _meta={
+                    "model": "zephyr",...
+                }
+            )
+        ]
+    }
+}
+```
