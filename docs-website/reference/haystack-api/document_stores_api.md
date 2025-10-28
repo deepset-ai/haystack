@@ -7,11 +7,11 @@ slug: "/document-stores-api"
 
 <a id="document_store"></a>
 
-# Module document\_store
+## Module document\_store
 
 <a id="document_store.BM25DocumentStats"></a>
 
-## BM25DocumentStats
+### BM25DocumentStats
 
 A dataclass for managing document statistics for BM25 retrieval.
 
@@ -22,7 +22,7 @@ A dataclass for managing document statistics for BM25 retrieval.
 
 <a id="document_store.InMemoryDocumentStore"></a>
 
-## InMemoryDocumentStore
+### InMemoryDocumentStore
 
 Stores data in-memory. It's ephemeral and cannot be saved to disk.
 

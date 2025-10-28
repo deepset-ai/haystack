@@ -1,0 +1,141 @@
+---
+title: "AmazonBedrockDocumentImageEmbedder"
+id: amazonbedrockdocumentimageembedder
+slug: "/amazonbedrockdocumentimageembedder"
+description: "`AmazonBedrockDocumentImageEmbedder` computes image embeddings for documents using models exposed through the Amazon Bedrock API. It  stores the obtained vectors in the embedding field of each document."
+---
+
+# AmazonBedrockDocumentImageEmbedder
+
+`AmazonBedrockDocumentImageEmbedder` computes image embeddings for documents using models exposed through the Amazon Bedrock API. It  stores the obtained vectors in the embedding field of each document.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](https://docs.haystack.deepset.ai/docs/documentwriter) in an indexing pipeline |
+| **Mandatory init variables** | "model": The multimodal embedding model to use.  <br /> <br />"aws_access_key_id": AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />"aws_secret_access_key": AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />"aws_region_name": AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
+| **Mandatory run variables** | "documents": A list of documents, with a meta field containing an image file path |
+| **Output variables** | "documents": A list of documents (enriched with embeddings) |
+| **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_bedrock |
+
+## Overview
+
+Amazon Bedrock is a fully managed service that provides access to foundation models through a unified API.
+
+`AmazonBedrockDocumentImageEmbedder` expects a list of documents containing an image or a PDF file path in a meta field. The meta field can be specified with the `file_path_meta_field` init parameter of this component.
+
+The embedder efficiently loads the images, computes the embeddings using selected Bedrock model, and stores each of them in the `embedding` field of the document.
+
+Supported models are `amazon.titan-embed-image-v1`, `cohere.embed-english-v3` , and `cohere.embed-multilingual-v3`.
+
+`AmazonBedrockDocumentImageEmbedder` is commonly used in indexing pipelines. At retrieval time, you need to use the same model with `AmazonBedrockTextEmbedder` to embed the query, before using an Embedding Retriever.
+
+### Installation
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install amazon-bedrock-haystack
+```
+
+### Authentication
+
+`AmazonBedrockDocumentImageEmbedder` uses AWS for authentication. You can either provide credentials as parameters directly to the component or use the AWS CLI and authenticate through your IAM. For more information on how to set up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
+
+To initialize `AmazonBedrockDocumentImageEmbedder` and authenticate by providing credentials, provide the `model` name, as well as `aws_access_key_id`, `aws_secret_access_key`, and `aws_region_name`. Other parameters are optional, you can check them out in our [API reference](/reference/integrations-amazon-bedrock#amazonbedrocktextembedder).
+
+### Model-specific parameters
+
+Even if Haystack provides a unified interface, each model offered by Bedrock can accept specific parameters. You can pass these parameters at initialization.
+
+- **Amazon Titan**: Use `embeddingConfig` to control embedding behavior.
+- **Cohere v3**: Use `embedding_types` to select a single embedding type for images.
+
+```python
+from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockDocumentImageEmbedder
+
+embedder = AmazonBedrockDocumentImageEmbedder(
+    model="cohere.embed-english-v3",
+    embedding_types=["float"]  # single value only
+)
+```
+
+Note that only _one_ value in `embedding_types` is supported by this component. Passing multiple values raises an error.
+
+## Usage
+
+### On its own
+
+```python
+import os
+from haystack import Document
+from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockDocumentImageEmbedder
+
+os.environ["AWS_ACCESS_KEY_ID"] = "..."
+os.environ["AWS_SECRET_ACCESS_KEY"] = "..."
+os.environ["AWS_DEFAULT_REGION"] = "us-east-1"  # example
+
+## Point Documents to image/PDF files via metadata (default key: "file_path")
+documents = [
+    Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
+    Document(content="Invoice page", meta={"file_path": "invoice.pdf", "mime_type": "application/pdf", "page_number": 1}),
+]
+
+embedder = AmazonBedrockDocumentImageEmbedder(
+    model="amazon.titan-embed-image-v1",
+    image_size=(1024, 1024),   # optional downscaling
+)
+
+result = embedder.run(documents=documents)
+embedded_docs = result["documents"]
+
+```
+
+### In a pipeline
+
+In this example, we can see an indexing pipeline with 3 components:
+
+- `ImageFileToDocument` Converter that creates empty documents with a reference to an image in the `meta.file_path` field;
+- `AmazonBedrockDocumentImageEmbedder` that loads the images, computes embeddings and stores them in documents;
+- `DocumentWriter` that write the documents in the `InMemoryDocumentStore`.
+
+There is also a multimodal retrieval pipeline, composed of an `AmazonBedrockTextEmbedder` (using the same model as before) and an `InMemoryEmbeddingRetriever`.
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.writers import DocumentWriter
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack_integrations.components.embedders.amazon_bedrock import (
+    AmazonBedrockDocumentImageEmbedder,
+    AmazonBedrockTextEmbedder,
+)
+
+## Document store using vector similarity for retrieval
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+## Sample corpus with file paths in metadata
+documents = [
+    Document(content="A sketch of a horse", meta={"file_path": "horse.png"}),
+    Document(content="A city map", meta={"file_path": "map.jpg"}),
+]
+
+## Indexing pipeline: image embeddings -> write to store
+indexing = Pipeline()
+indexing.add_component("image_embedder", AmazonBedrockDocumentImageEmbedder(model="cohere.embed-english-v3"))
+indexing.add_component("writer", DocumentWriter(document_store=document_store))
+indexing.connect("image_embedder", "writer")
+indexing.run({"image_embedder": {"documents": documents}})
+
+## Query pipeline: text -> embedding -> vector retriever
+query = Pipeline()
+query.add_component("text_embedder", AmazonBedrockTextEmbedder(model="cohere.embed-english-v3"))
+query.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query.connect("text_embedder.embedding", "retriever.query_embedding")
+
+res = query.run({"text_embedder": {"text": "Which document shows a horse?"}})
+```
+
+## Additional References
+
+:notebook: Tutorial: [Creating Vision+Text RAG Pipelines](https://haystack.deepset.ai/tutorials/46_multimodal_rag)

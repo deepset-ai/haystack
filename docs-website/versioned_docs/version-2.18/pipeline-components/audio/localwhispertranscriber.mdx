@@ -1,0 +1,77 @@
+---
+title: "LocalWhisperTranscriber"
+id: localwhispertranscriber
+slug: "/localwhispertranscriber"
+description: "Use `LocalWhisperTranscriber` to transcribe audio files using OpenAI's Whisper model using your local installation of Whisper."
+---
+
+# LocalWhisperTranscriber
+
+Use `LocalWhisperTranscriber` to transcribe audio files using OpenAI's Whisper model using your local installation of Whisper.
+
+|                                        |                                                                                               |
+| :------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | As the first component in an indexing pipeline                                                |
+| **Mandatory run variables**            | “sources”: A list of paths or binary streams that you want to transcribe                      |
+| **Output variables**                   | “documents”: A list of documents                                                              |
+| **API reference**                      | [Audio](/reference/audio-api)                                                                        |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/audio/whisper_local.py |
+
+## Overview
+
+The component also needs to know which Whisper model to work with. Specify this in the `model` parameter when initializing the component. All transcription is completed on the executing machine, and the audio is never sent to a third-party provider.
+
+See other optional parameters you can specify in our [API documentation](/reference/audio-api).
+
+See the [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper [GitHub repo](https://github.com/openai/whisper) for the supported audio formats and languages.
+
+To work with the `LocalWhisperTranscriber`, install torch and [Whisper](https://github.com/openai/whisper) first with the following commands:
+
+```python
+pip install 'transformers[torch]'
+pip install -U openai-whisper
+```
+
+## Usage
+
+### On its own
+
+Here’s an example of how to use `LocalWhisperTranscriber` on its own:
+
+```python
+import requests
+from haystack.components.audio import LocalWhisperTranscriber
+
+response = requests.get("https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3")
+with open("kennedy_speech.mp3", "wb") as file:
+    file.write(response.content)
+
+transcriber = LocalWhisperTranscriber(model="tiny")
+transcriber.warm_up()
+
+transcription = transcriber.run(sources=["./kennedy_speech.mp3"])
+print(transcription["documents"][0].content)
+```
+
+### In a pipeline
+
+The pipeline below fetches an audio file from a specified URL and transcribes it. It first retrieves the audio file using `LinkContentFetcher`, then transcribes the audio into text with `LocalWhisperTranscriber`, and finally outputs the transcription text.
+
+```python
+from haystack.components.audio import LocalWhisperTranscriber
+from haystack.components.fetchers import LinkContentFetcher
+from haystack import Pipeline
+
+pipe = Pipeline()
+pipe.add_component("fetcher", LinkContentFetcher())
+pipe.add_component("transcriber", LocalWhisperTranscriber(model="tiny"))
+
+pipe.connect("fetcher", "transcriber")
+result = pipe.run(
+    data={"fetcher": {"urls": ["https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3"]}})
+print(result["transcriber"]["documents"][0].content)
+```
+
+## Additional References
+
+:cook: Cookbook: [Multilingual RAG from a podcast with Whisper, Qdrant and Mistral](https://haystack.deepset.ai/cookbook/multilingual_rag_podcast)

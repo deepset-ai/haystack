@@ -1,0 +1,170 @@
+---
+title: "SentenceTransformersSparseTextEmbedder"
+id: sentencetransformerssparsetextembedder
+slug: "/sentencetransformerssparsetextembedder"
+description: "Use this component to embed a simple string (such as a query) into a sparse vector using Sentence Transformers models."
+---
+
+# SentenceTransformersSparseTextEmbedder
+
+Use this component to embed a simple string (such as a query) into a sparse vector using Sentence Transformers models.
+
+|                                        |                                                                                                                                |
+| :------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | Before a sparse embedding [Retriever](../retrievers.mdx) in a query/RAG pipeline                                                |
+| **Mandatory run variables**            | "text": A string                                                                                                               |
+| **Output variables**                   | "sparse_embedding": A [`SparseEmbedding`](/docs/data-classes#sparseembedding) object                                           |
+| **API reference**                      | [Embedders](/reference/embedders-api)                                                                                                 |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_sparse_text_embedder.py |
+
+For embedding lists of documents, use the [`SentenceTransformersSparseDocumentEmbedder`](/docs/sentencetransformerssparsedocumentembedder), which enriches the document with the computed sparse embedding.
+
+## Overview
+
+`SentenceTransformersSparseTextEmbedder` transforms a string into a sparse vector using sparse embedding models supported by the Sentence Transformers library.
+
+When you perform sparse embedding retrieval, use this component first to transform your query into a sparse vector. Then, the Retriever will use the sparse vector to search for similar or relevant documents.
+
+### Compatible Models
+
+The default embedding model is [`prithivida/Splade_PP_en_v2`](https://huggingface.co/prithivida/Splade_PP_en_v2). You can specify another model with the `model` parameter when initializing this component.
+
+Compatible models are based on SPLADE (SParse Lexical AnD Expansion), a technique for producing sparse representations for text, where each non-zero value in the embedding is the importance weight of a term in the vocabulary. This approach combines the benefits of learned sparse representations with the efficiency of traditional sparse retrieval methods. For more information, see [our docs](../retrievers.mdx#sparse-embedding-based-retrievers) that explain sparse embedding-based Retrievers further.
+
+You can find compatible SPLADE models on the [Hugging Face Model Hub](https://huggingface.co/models?search=splade).
+
+### Authentication
+
+Authentication with a Hugging Face API Token is only required to access private or gated models.
+
+The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you can pass a Hugging Face API token at initialization. See our [Secret Management](doc:secret-management) page for more information.
+
+```python
+from haystack.utils import Secret
+from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
+
+text_embedder = SentenceTransformersSparseTextEmbedder(
+    token=Secret.from_token("<your-api-key>")
+)
+```
+
+### Backend Options
+
+This component supports multiple backends for model execution:
+
+- **torch** (default): Standard PyTorch backend
+- **onnx**: Optimized ONNX Runtime backend for faster inference
+- **openvino**: Intel OpenVINO backend for additional optimizations on Intel hardware
+
+You can specify the backend during initialization:
+
+```python
+embedder = SentenceTransformersSparseTextEmbedder(
+    model="prithivida/Splade_PP_en_v2",
+    backend="onnx"
+)
+```
+
+For more information on acceleration and quantization options, refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html).
+
+### Prefix and Suffix
+
+Some models may benefit from adding a prefix or suffix to the text before embedding. You can specify these during initialization:
+
+```python
+embedder = SentenceTransformersSparseTextEmbedder(
+    model="prithivida/Splade_PP_en_v2",
+    prefix="query: ",
+    suffix=""
+)
+```
+
+:::tip
+If you create a Sparse Text Embedder and a Sparse Document Embedder based on the same model, Haystack takes care of using the same resource behind the scenes in order to save resources.
+
+:::
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
+
+text_to_embed = "I love pizza!"
+
+text_embedder = SentenceTransformersSparseTextEmbedder()
+text_embedder.warm_up()
+
+print(text_embedder.run(text_to_embed))
+
+## {'sparse_embedding': SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])}
+```
+
+### In a pipeline
+
+Currently, sparse embedding retrieval is only supported by `QdrantDocumentStore`.
+
+First, install the required package:
+
+```shell
+pip install qdrant-haystack
+```
+
+Then, try out this pipeline:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.embedders import (
+    SentenceTransformersSparseDocumentEmbedder,
+    SentenceTransformersSparseTextEmbedder
+)
+from haystack_integrations.components.retrievers.qdrant import QdrantSparseEmbeddingRetriever
+from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
+
+document_store = QdrantDocumentStore(
+    ":memory:",
+    recreate_index=True,
+    use_sparse_embeddings=True
+)
+
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+    Document(content="Sentence Transformers provides sparse embedding models."),
+]
+
+## Embed and write documents
+sparse_document_embedder = SentenceTransformersSparseDocumentEmbedder(
+    model="prithivida/Splade_PP_en_v2"
+)
+sparse_document_embedder.warm_up()
+documents_with_sparse_embeddings = sparse_document_embedder.run(documents)["documents"]
+document_store.write_documents(documents_with_sparse_embeddings)
+
+## Query pipeline
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    "sparse_text_embedder",
+    SentenceTransformersSparseTextEmbedder()
+)
+query_pipeline.add_component(
+    "sparse_retriever",
+    QdrantSparseEmbeddingRetriever(document_store=document_store)
+)
+query_pipeline.connect(
+    "sparse_text_embedder.sparse_embedding",
+    "sparse_retriever.query_sparse_embedding"
+)
+
+query = "Who provides sparse embedding models?"
+
+result = query_pipeline.run({"sparse_text_embedder": {"text": query}})
+
+print(result["sparse_retriever"]["documents"][0])
+
+## Document(id=...,
+##  content: 'Sentence Transformers provides sparse embedding models.',
+##  score: 0.56...)
+```

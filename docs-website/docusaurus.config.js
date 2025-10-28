@@ -15,7 +15,7 @@ const config = {
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
+  url: 'https://docs.haystack.deepset.ai',
   baseUrl: '/',
 
   onBrokenLinks: 'warn',
@@ -109,15 +109,11 @@ const config = {
           {
             type: 'docsVersionDropdown',
             position: 'left',
-            dropdownItemsAfter: [
-              {to: '/versions', label: 'Docs versions'},
-              {to: '/reference/versions', label: 'API versions'},
-            ],
             dropdownActiveClassDisabled: true,
           },
           {
             type: 'doc',
-            docId: 'overview/intro',
+            docId: 'intro',
             label: 'Docs',
             position: 'left',
           },

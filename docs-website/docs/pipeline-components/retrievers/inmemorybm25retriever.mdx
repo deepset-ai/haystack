@@ -11,8 +11,8 @@ A keyword-based Retriever compatible with InMemoryDocumentStore.
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In query pipelines:  <br />In a RAG pipeline, before a [`PromptBuilder`](../../../docs/pipeline-components/builders/promptbuilder.mdx)  <br />In a semantic search pipeline, as the last component  <br />In an extractive QA pipeline, before an [`ExtractiveReader`](../../../docs/pipeline-components/readers/extractivereader.mdx) |
-| **Mandatory init variables** | "document_store": An instance of [InMemoryDocumentStore](../../../docs/document-stores/inmemorydocumentstore.mdx) |
+| **Most common position in a pipeline** | In query pipelines:  <br />In a RAG pipeline, before a [`PromptBuilder`](/docs/pipeline-components/builders/promptbuilder.mdx)  <br />In a semantic search pipeline, as the last component  <br />In an extractive QA pipeline, before an [`ExtractiveReader`](/docs/pipeline-components/readers/extractivereader.mdx) |
+| **Mandatory init variables** | "document_store": An instance of [InMemoryDocumentStore](/docs/document-stores/inmemorydocumentstore.mdx) |
 | **Mandatory run variables** | "query": A query string |
 | **Output variables** | "documents": A list of documents (matching the query) |
 | **API reference** | [Retrievers](/reference/retrievers-api) |
@@ -20,11 +20,11 @@ A keyword-based Retriever compatible with InMemoryDocumentStore.
 
 ## Overview
 
-`InMemoryBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from a temporary in-memory database. It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the two strings. 
+`InMemoryBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from a temporary in-memory database. It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the two strings.
 
 Since the `InMemoryBM25Retriever` matches strings based on word overlap, it’s often used to find exact matches to names of persons or products, IDs, or well-defined error messages. The BM25 algorithm is very lightweight and simple. Nevertheless, it can be hard to beat with more complex embedding-based approaches on out-of-domain data.
 
-In addition to the `query`, the `InMemoryBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.  
+In addition to the `query`, the `InMemoryBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
 Some relevant parameters that impact the BM25 retrieval must be defined when the corresponding `InMemoryDocumentStore` is initialized: these include the specific BM25 algorithm and its parameters.
 
 ## Usage

@@ -1,0 +1,54 @@
+---
+title: "MongoDBAtlasDocumentStore"
+id: mongodbatlasdocumentstore
+slug: "/mongodbatlasdocumentstore"
+description: ""
+---
+
+# MongoDBAtlasDocumentStore
+
+|               |                                                                                                 |
+| :------------ | :---------------------------------------------------------------------------------------------- |
+| API reference | [MongoDB Atlas](/reference/integrations-mongodb-atlas)                                                 |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mongodb_atlas |
+
+`MongoDBAtlasDocumentStore` can be used to manage documents using [MongoDB Atlas](https://www.mongodb.com/atlas),  a multi-cloud database service by the same people who build MongoDB. Atlas simplifies deploying and managing your databases while offering the versatility you need to build resilient and performant global applications on the cloud providers of your choice. You can use MongoDB Atlas on cloud providers such as AWS, Azure, or Google Cloud, all without leaving Atlas' web UI.
+
+MongoDB Atlas supports embeddings and can therefore be used for embedding retrieval.
+
+## Installation
+
+To use MongoDB Atlas with Haystack, install the integration first:
+
+```shell
+pip install mongodb-atlas-haystack
+```
+
+## Initialization
+
+To use MongoDB Atlas with Haystack, you will need to create your MongoDB Atlas account: check the [MongoDB Atlas documentation](https://www.mongodb.com/docs/atlas/getting-started/) for help. You also need to [create a vector search index](https://www.mongodb.com/docs/atlas/atlas-vector-search/create-index/#std-label-avs-create-index)  and [a full-text search index](https://www.mongodb.com/docs/atlas/atlas-search/manage-indexes/#create-an-atlas-search-index) for the collection you plan to use.
+
+Once you have your connection string, you should export it in an environment variable called `MONGO_CONNECTION_STRING`. It should look something like this:
+
+```python
+export MONGO_CONNECTION_STRING="mongodb+srv://<username>:<password>@<cluster_name>.gwkckbk.mongodb.net/?retryWrites=true&w=majority"
+```
+
+At this point, you’re ready to initialize the store:
+
+```python
+from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
+
+## Initialize the document store
+document_store = MongoDBAtlasDocumentStore(
+    database_name="haystack_test",
+    collection_name="test_collection",
+    vector_search_index="embedding_index",
+  	full_text_search_index="search_index",
+)
+```
+
+## Supported Retrievers
+
+- [`MongoDBAtlasEmbeddingRetriever`](/docs/mongodbatlasembeddingretriever): Compares the query and document embeddings and fetches the documents most relevant to the query.
+- [`MongoDBAtlasFullTextRetriever`](doc:mongodbatlasfulltextretriever): A full-text search Retriever.

@@ -1,0 +1,128 @@
+---
+title: "WeaviateBM25Retriever"
+id: weaviatebm25retriever
+slug: "/weaviatebm25retriever"
+description: "This is a keyword-based Retriever that fetches Documents matching a query from the Weaviate Document Store."
+---
+
+# WeaviateBM25Retriever
+
+This is a keyword-based Retriever that fetches Documents matching a query from the Weaviate Document Store.
+
+|                                        |                                                                                                                                                                                                                       |
+| :------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](/docs/promptbuilder)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](/docs/extractivereader)   in an extractive QA pipeline |
+| **Mandatory init variables**           | "document_store": An instance of a [WeaviateDocumentStore](../../document-stores/weaviatedocumentstore.mdx)                                                                                                                                 |
+| **Mandatory run variables**            | “query”: A string                                                                                                                                                                                                     |
+| **Output variables**                   | "documents": A list of documents (matching the query)                                                                                                                                                                 |
+| **API reference**                      | [Weaviate](/reference/integrations-weaviate)                                                                                                                                                                                 |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weaviate                                                                                                                            |
+
+## Overview
+
+`WeaviateBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from [`WeaviateDocumentStore`](../../document-stores/weaviatedocumentstore.mdx). It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the
+two strings.
+
+Since the `WeaviateBM25Retriever` matches strings based on word overlap, it’s often used to find exact matches to names of persons or products, IDs, or well-defined error messages. The BM25 algorithm is very lightweight and simple. Beating it with more complex embedding-based approaches on out-of-domain data can be hard.
+
+If you want a semantic match between a query and documents, use the [`WeaviateEmbeddingRetriever`](weaviateembeddingretriever.mdx), which uses vectors created by embedding models to retrieve relevant information.
+
+### Parameters
+
+In addition to the `query`, the `WeaviateBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
+
+### Usage
+
+### Installation
+
+To start using Weaviate with Haystack, install the package with:
+
+```shell
+pip install weaviate-haystack
+```
+
+#### On its own
+
+This Retriever needs an instance of `WeaviateDocumentStore` and indexed Documents to run.
+
+```python
+from haystack_integrations.document_stores.weaviate.document_store import WeaviateDocumentStore
+from haystack_integrations.components.retrievers.weaviate import WeaviateBM25Retriever
+
+document_store = WeaviateDocumentStore(url="http://localhost:8080")
+
+retriever = WeaviateBM25Retriever(document_store=document_store)
+
+retriever.run(query="How to make a pizza", top_k=3)
+```
+
+#### In a Pipeline
+
+```python
+from haystack_integrations.document_stores.weaviate.document_store import (
+    WeaviateDocumentStore,
+)
+from haystack_integrations.components.retrievers.weaviate import (
+    WeaviateBM25Retriever,
+)
+
+from haystack import Document
+from haystack import Pipeline
+from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.generators import OpenAIGenerator
+from haystack.document_stores.types import DuplicatePolicy
+
+## Create a RAG query pipeline
+prompt_template = """
+    Given these documents, answer the question.\nDocuments:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    \nQuestion: {{question}}
+    \nAnswer:
+    """
+
+document_store = WeaviateDocumentStore(url="http://localhost:8080")
+
+## Add Documents
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves."
+    ),
+]
+
+## DuplicatePolicy.SKIP param is optional, but useful to run the script multiple times without throwing errors
+document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(
+    name="retriever", instance=WeaviateBM25Retriever(document_store=document_store)
+)
+rag_pipeline.add_component(
+    instance=PromptBuilder(template=prompt_template), name="prompt_builder"
+)
+rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
+rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder", "llm")
+rag_pipeline.connect("llm.replies", "answer_builder.replies")
+rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
+rag_pipeline.connect("retriever", "answer_builder.documents")
+
+question = "How many languages are spoken around the world today?"
+result = rag_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+        "answer_builder": {"query": question},
+    }
+)
+print(result["answer_builder"]["answers"][0])
+
+```

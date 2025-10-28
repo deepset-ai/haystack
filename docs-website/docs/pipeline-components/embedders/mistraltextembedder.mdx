@@ -11,7 +11,7 @@ This component transforms a string into a vector using the Mistral API and model
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before an embedding [Retriever](../../../docs/pipeline-components/retrievers.mdx)  in a query/RAG pipeline |
+| **Most common position in a pipeline** | Before an embedding [Retriever](/docs/pipeline-components/retrievers.mdx)  in a query/RAG pipeline |
 | **Mandatory init variables** | "api_key": The Mistral API key. Can be set with `MISTRAL_API_KEY` env var. |
 | **Mandatory run variables** | “text”: A string |
 | **Output variables** | “embedding”: A list of float numbers (vectors)  <br /> <br />“meta”: A dictionary of metadata strings |
@@ -95,7 +95,7 @@ indexing.connect("fetcher", "converter")
 indexing.connect("converter", "embedder")
 indexing.connect("embedder", "writer")
 
-indexing.run(data={"fetcher": {"urls": ["https://docs.mistral.ai/self-deployment/cloudflare/", 
+indexing.run(data={"fetcher": {"urls": ["https://docs.mistral.ai/self-deployment/cloudflare/",
                                         "https://docs.mistral.ai/platform/endpoints/"]}})
 
 ## Retrieval components
