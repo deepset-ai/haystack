@@ -17,7 +17,7 @@ def serialize_tools_or_toolset(tools: "Optional[ToolsType]") -> Union[dict[str, 
     """
     Serialize tools or toolsets to dictionaries.
 
-    :param tools: A Toolset, a sequence of Tools and/or Toolsets, or None
+    :param tools: A Toolset, a list of Tools and/or Toolsets, or None
     :returns: Serialized representation preserving Tool/Toolset boundaries when provided
     """
     if tools is None:

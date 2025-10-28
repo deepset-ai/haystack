@@ -185,7 +185,7 @@ class ToolInvoker:
         Initialize the ToolInvoker component.
 
         :param tools:
-            A sequence of Tool and/or Toolset objects, or a Toolset instance that can resolve tools.
+            A list of Tool and/or Toolset objects, or a Toolset instance that can resolve tools.
         :param raise_on_failure:
             If True, the component will raise an exception in case of errors
             (tool not found, tool invocation errors, tool result conversion errors).

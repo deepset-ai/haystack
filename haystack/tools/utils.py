@@ -13,9 +13,9 @@ if TYPE_CHECKING:
 
 def warm_up_tools(tools: "Optional[ToolsType]" = None) -> None:
     """
-    Warm up tools from various formats (Tools, Toolsets, or mixed sequences).
+    Warm up tools from various formats (Tools, Toolsets, or mixed lists).
 
-    :param tools: A sequence of Tool and/or Toolset objects, a single Toolset, or None.
+    :param tools: A list of Tool and/or Toolset objects, a single Toolset, or None.
     """
     if tools is None:
         return
@@ -37,7 +37,7 @@ def flatten_tools_or_toolsets(tools: "Optional[ToolsType]") -> list[Tool]:
     """
     Flatten tools from various formats into a list of Tool instances.
 
-    :param tools: Tools in Sequence[Union[Tool, Toolset]], Toolset, or None format.
+    :param tools: Tools in list[Union[Tool, Toolset]], Toolset, or None format.
     :returns: A flat list of Tool instances.
     """
     if tools is None:
