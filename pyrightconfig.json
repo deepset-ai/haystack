@@ -1,0 +1,8 @@
+{
+  "include": [
+    "test/tools/test_tools_variance.py"
+  ],
+  "typeCheckingMode": "strict",
+  "pythonVersion": "3.9",
+  "pythonPlatform": "All"
+}

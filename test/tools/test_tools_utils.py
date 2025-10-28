@@ -139,24 +139,24 @@ class TestFlattenToolsOrToolsets:
 
     def test_flatten_invalid_type_in_list(self):
         """Test that invalid types in the list raise TypeError."""
-        with pytest.raises(TypeError, match="Items in the tools list must be Tool or Toolset instances"):
+        with pytest.raises(TypeError, match="Items in the tools sequence must be Tool or Toolset instances"):
             flatten_tools_or_toolsets(["not_a_tool"])
 
-        with pytest.raises(TypeError, match="Items in the tools list must be Tool or Toolset instances"):
+        with pytest.raises(TypeError, match="Items in the tools sequence must be Tool or Toolset instances"):
             flatten_tools_or_toolsets([123])
 
-        with pytest.raises(TypeError, match="Items in the tools list must be Tool or Toolset instances"):
+        with pytest.raises(TypeError, match="Items in the tools sequence must be Tool or Toolset instances"):
             flatten_tools_or_toolsets([{"key": "value"}])
 
     def test_flatten_invalid_type(self):
         """Test that invalid root types raise TypeError."""
-        with pytest.raises(TypeError, match="tools must be list\\[Union\\[Tool, Toolset\\]\\], Toolset, or None"):
+        with pytest.raises(TypeError, match="Items in the tools sequence must be Tool or Toolset instances"):
             flatten_tools_or_toolsets("not_valid")
 
-        with pytest.raises(TypeError, match="tools must be list\\[Union\\[Tool, Toolset\\]\\], Toolset, or None"):
+        with pytest.raises(TypeError):  # Will fail when trying to iterate over integer
             flatten_tools_or_toolsets(123)
 
-        with pytest.raises(TypeError, match="tools must be list\\[Union\\[Tool, Toolset\\]\\], Toolset, or None"):
+        with pytest.raises(TypeError, match="Items in the tools sequence must be Tool or Toolset instances"):
             flatten_tools_or_toolsets({"key": "value"})
 
     def test_flatten_multiple_toolsets(self, add_tool, multiply_tool, subtract_tool):

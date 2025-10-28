@@ -146,6 +146,7 @@ dependencies = [
   "mypy",
   "pip",                     # mypy needs pip to install missing stub packages
   "pylint",
+  "pyright",                 # Type checking for variance issues
   "ipython",
   "colorama==0.4.6",         # Pipeline checkpoints test - ToDo: rewrite the test without this lib
 ]

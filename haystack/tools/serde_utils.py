@@ -17,22 +17,21 @@ def serialize_tools_or_toolset(tools: "Optional[ToolsType]") -> Union[dict[str, 
     """
     Serialize tools or toolsets to dictionaries.
 
-    :param tools: A Toolset, a list of Tools and/or Toolsets, or None
+    :param tools: A Toolset, a sequence of Tools and/or Toolsets, or None
     :returns: Serialized representation preserving Tool/Toolset boundaries when provided
     """
     if tools is None:
         return None
     if isinstance(tools, Toolset):
         return tools.to_dict()
-    if isinstance(tools, list):
-        serialized: list[dict[str, Any]] = []
-        for item in tools:
-            if isinstance(item, (Toolset, Tool)):
-                serialized.append(item.to_dict())
-            else:
-                raise TypeError("Items in the tools list must be Tool or Toolset instances.")
-        return serialized
-    raise TypeError("tools must be Toolset, list[Union[Tool, Toolset]], or None")
+    # Handle any sequence type (list, tuple, etc.) but not Toolset (already handled above)
+    serialized: list[dict[str, Any]] = []
+    for item in tools:
+        if isinstance(item, (Toolset, Tool)):
+            serialized.append(item.to_dict())
+        else:
+            raise TypeError("Items in the tools sequence must be Tool or Toolset instances.")
+    return serialized
 
 
 def deserialize_tools_or_toolset_inplace(data: dict[str, Any], key: str = "tools") -> None:
