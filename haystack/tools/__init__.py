@@ -6,6 +6,7 @@
 
 # ruff: noqa: I001 (ignore import order as we need to import Tool before ComponentTool and PipelineTool)
 from typing import Union
+from typing_extensions import TypeAlias
 
 from haystack.tools.from_function import create_tool_from_function, tool
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
@@ -16,7 +17,12 @@ from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, ser
 from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
 
 # Type alias for tools parameter - allows mixing Tools and Toolsets in a list
-ToolsType = Union[list[Union[Tool, Toolset]], Toolset]
+# Explicitly list all valid combinations due to list invariance:
+# - List[Tool]: Most common pattern - list of Tool objects
+# - List[Toolset]: Less common pattern - list of Toolset objects
+# - List[Union[Tool, Toolset]]: Mixing Tools and Toolsets in one list
+# - Toolset: Single Toolset (not in a list)
+ToolsType: TypeAlias = Union[list[Tool], list[Toolset], list[Union[Tool, Toolset]], Toolset]
 
 __all__ = [
     "_check_duplicate_tool_names",
