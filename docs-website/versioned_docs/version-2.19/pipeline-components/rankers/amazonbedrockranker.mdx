@@ -42,7 +42,7 @@ Using AWS CLI
 Consider using AWS CLI as a more straightforward tool to manage your AWS services. With AWS CLI, you can quickly configure your [boto3 credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html). This way, you won't need to provide detailed authentication parameters when initializing Amazon Bedrock in Haystack.
 :::
 
-To use this component, initialize it with the model name. The AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`) should be set as environment variables, configured as described above, or passed as [Secret](/docs/secret-management) arguments. Make sure the region you set supports Amazon Bedrock.
+To use this component, initialize it with the model name. The AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`) should be set as environment variables, configured as described above, or passed as [Secret](../../concepts/secret-management.mdx) arguments. Make sure the region you set supports Amazon Bedrock.
 
 ## Usage
 

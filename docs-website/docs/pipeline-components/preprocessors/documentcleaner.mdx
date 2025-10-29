@@ -19,13 +19,13 @@ Use `DocumentCleaner` to make text documents more readable. It removes extra whi
 
 ## Overview
 
-`DocumentCleaner` expects a list of documents as input and returns a list of documents with cleaned texts. Selectable cleaning steps for each input document are to `remove_empty_lines`, `remove_extra_whitespaces` and to `remove_repeated_substrings`. These three parameters are booleans that can be set when the component is initialized. 
+`DocumentCleaner` expects a list of documents as input and returns a list of documents with cleaned texts. Selectable cleaning steps for each input document are to `remove_empty_lines`, `remove_extra_whitespaces` and to `remove_repeated_substrings`. These three parameters are booleans that can be set when the component is initialized.
 
 - `unicode_normalization` normalizes Unicode characters to a standard form. The parameter can be set to NFC, NFKC, NFD, or NFKD.
 - `ascii_only` removes accents from characters and replaces them with their closest ASCII equivalents.
 - `remove_empty_lines` removes empty lines from the document.
 - `remove_extra_whitespaces` removes extra whitespaces from the document.
-- `remove_repeated_substrings` removes repeated substrings (headers/footers) from pages in the document. Pages in the text need to be separated by form feed character "\\f", which is supported by [`TextFileToDocument`](https://docs.haystack.deepset.ai/v2.0/docs/textfiletodocument) and [`AzureOCRDocumentConverter`](https://docs.haystack.deepset.ai/v2.0/docs/azureocrdocumentconverter).
+- `remove_repeated_substrings` removes repeated substrings (headers/footers) from pages in the document. Pages in the text need to be separated by form feed character "\\f", which is supported by [`TextFileToDocument`](../converters/textfiletodocument.mdx) and [`AzureOCRDocumentConverter`](../converters/azureocrdocumentconverter.mdx).
 
 In addition, you can specify a list of strings that should be removed from all documents as part of the cleaning with the parameter `remove_substring`. You can also specify a regular expression with the parameter `remove_regex` and any matches will be removed.
 

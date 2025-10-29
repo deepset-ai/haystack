@@ -11,8 +11,8 @@ An embedding-based Retriever compatible with the Qdrant Document Store.
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1\. After a Text Embedder and before a [`PromptBuilder`](/docs/pipeline-components/builders/promptbuilder.mdx)  in a RAG Pipeline  <br /> <br />2. The last component in the semantic search pipeline  <br />3. After a Text Embedder and before an [`ExtractiveReader`](/docs/pipeline-components/readers/extractivereader.mdx)  in an extractive QA pipeline |
-| **Mandatory init variables** | "document_store": An instance of a [QdrantDocumentStore](/docs/document-stores/qdrant-document-store.mdx) |
+| **Most common position in a pipeline** | 1\. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)  in a RAG Pipeline  <br /> <br />2. The last component in the semantic search pipeline  <br />3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)  in an extractive QA pipeline |
+| **Mandatory init variables** | "document_store": An instance of a [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx) |
 | **Mandatory run variables** | “query_embedding”: A vector representing the query (a list of floats) |
 | **Output variables** | “documents”: A list of documents |
 | **API reference** | [Qdrant](/reference/integrations-qdrant) |

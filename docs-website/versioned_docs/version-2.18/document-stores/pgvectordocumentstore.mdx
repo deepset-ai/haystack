@@ -66,9 +66,9 @@ print(document_store.count_documents())
 
 To learn more about the initialization parameters, see our [API docs](/reference/integrations-pgvector#pgvectordocumentstore).
 
-To properly compute embeddings for your documents, you can use a Document Embedder (for instance, the [`SentenceTransformersDocumentEmbedder`](/docs/sentencetransformersdocumentembedder)).
+To properly compute embeddings for your documents, you can use a Document Embedder (for instance, the [`SentenceTransformersDocumentEmbedder`](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx)).
 
 ### Supported Retrievers
 
-- [`PgvectorEmbeddingRetriever`](/docs/pgvectorembeddingretriever): An embedding-based Retriever that fetches documents from the Document Store based on a query embedding provided to the Retriever.
-- [`PgvectorKeywordRetriever`](/docs/pgvectorembeddingretriever): A keyword-based Retriever that fetches documents matching a query from the Pgvector Document Store.
+- [`PgvectorEmbeddingRetriever`](../pipeline-components/retrievers/pgvectorembeddingretriever.mdx): An embedding-based Retriever that fetches documents from the Document Store based on a query embedding provided to the Retriever.
+- [`PgvectorKeywordRetriever`](../pipeline-components/retrievers/pgvectorembeddingretriever.mdx): A keyword-based Retriever that fetches documents matching a query from the Pgvector Document Store.

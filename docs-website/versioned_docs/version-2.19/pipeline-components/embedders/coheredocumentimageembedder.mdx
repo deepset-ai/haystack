@@ -38,7 +38,7 @@ pip install cohere-haystack
 
 ### Authentication
 
-The component uses a `COHERE_API_KEY` or `CO_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](/docs/secret-management) and `Secret.from_token`  method:
+The component uses a `COHERE_API_KEY` or `CO_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token`  method:
 
 ```python
 embedder = CohereTextEmbedder(api_key=Secret.from_token("<your-api-key>"))

@@ -12,14 +12,14 @@ A component that converts PDF files to Documents.
 |                                        |                                                                                                 |
 | :------------------------------------- | :---------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx) , or right at the beginning of an indexing pipeline |
-| **Mandatory run variables**            | "sources": PDF file paths or [`ByteStream`](/docs/data-classes#bytestresm)  objects             |
+| **Mandatory run variables**            | "sources": PDF file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects             |
 | **Output variables**                   | "documents": A list of documents                                                                |
 | **API reference**                      | [Converters](/reference/converters-api)                                                                |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/pypdf.py      |
 
 ## Overview
 
-The `PyPDFToDocument` component converts PDF files into documents. You can use it in an indexing pipeline to index the contents of a PDF file into a Document Store. It takes a list of file paths or [ByteStream](/docs/data-classes#bytestresm) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+The `PyPDFToDocument` component converts PDF files into documents. You can use it in an indexing pipeline to index the contents of a PDF file into a Document Store. It takes a list of file paths or [ByteStream](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
 
 ## Usage
 

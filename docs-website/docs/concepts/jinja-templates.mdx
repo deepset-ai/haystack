@@ -51,8 +51,8 @@ Question: {{{{ question }}}}
 
 ## Safety Features
 
-Due to how we use Jinja in some Components, there are some security considerations to take into account. Jinja works by executing embedded in templates, so it’s _imperative_ that they stem from a trusted source. If the template is allowed to be customized by the end user, it can potentially lead to remote code execution. 
+Due to how we use Jinja in some Components, there are some security considerations to take into account. Jinja works by executing embedded in templates, so it’s _imperative_ that they stem from a trusted source. If the template is allowed to be customized by the end user, it can potentially lead to remote code execution.
 
 To mitigate this risk, Jinja templates are executed and rendered in a [sandbox environment](https://jinja.palletsprojects.com/en/3.1.x/sandbox/). While this approach is safer, it's also less flexible and limits the expressiveness of the template. If you need the more advanced functionality of Jinja templates, components that use them provide an `unsafe` init parameter - setting it to `False` will disable the sandbox environment and enable unsafe template rendering.
 
-With unsafe template rendering, the [OutputAdapter](https://docs.haystack.deepset.ai/docs/outputadapter) and [ConditionalRouter](https://docs.haystack.deepset.ai/docs/conditionalrouter) components allow their `output_type` to be set to one of the [Haystack data classes](data-classes.mdx) such as `ChatMessage`, `Document`, or `Answer`.
+With unsafe template rendering, the [OutputAdapter](../pipeline-components/converters/outputadapter.mdx) and [ConditionalRouter](../pipeline-components/routers/conditionalrouter.mdx) components allow their `output_type` to be set to one of the [Haystack data classes](data-classes.mdx) such as `ChatMessage`, `Document`, or `Answer`.

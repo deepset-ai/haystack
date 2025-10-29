@@ -11,9 +11,9 @@ This component enables chat completions using any model made available by infere
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After a [ChatPromptBuilder](/docs/pipeline-components/builders/chatpromptbuilder.mdx) |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | "model": The name of the model to use for chat completion.  <br />This depends on the inference provider used for the Llama Stack Server. |
-| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](/docs/concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables** | “replies”: A list of alternative replies of the model to the input chat |
 | **API reference** | [Llama Stack](/reference/integrations-llama-stack) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/llama_stack |
@@ -24,7 +24,7 @@ This component enables chat completions using any model made available by infere
 
 The `LlamaStackChatGenerator` enables you to access any LLMs exposed by inference providers hosted on a Llama Stack server. It abstracts away the underlying provider details, allowing you to reuse the same client-side code regardless of the inference backend. For a list of supported providers and configuration options, refer to the [Llama Stack documentation](https://llama-stack.readthedocs.io/en/latest/providers/inference/index.html).
 
-This component uses the same `ChatMessage` format as other Haystack Chat Generators for structured input and output. For more information, see the [ChatMessage documentation](https://docs.haystack.deepset.ai/docs/chatmessage).
+This component uses the same `ChatMessage` format as other Haystack Chat Generators for structured input and output. For more information, see the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
 
 It is also fully compatible with Haystack **Tools / Toolsets**, enabling function-calling capabilities with supported models.
 

@@ -29,7 +29,7 @@ The model doesn't actually call the function. Function calling returns JSON with
 In the most simple form, Haystack users can invoke function calling by interacting directly with ChatGenerators. In this example, the human prompt “What's the weather like in Berlin?” is converted into a method parameter invocation descriptor that can, in turn, be passed off to some hypothetical weather service:
 
 ```python
-import json 
+import json
 
 from typing import Dict, Any, List
 from haystack.components.generators.chat import OpenAIChatGenerator
@@ -67,12 +67,12 @@ response_msg = response["replies"][0]
 messages.append(response_msg)
 print(response_msg)
 
->> ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[ToolCall(tool_name='get_current_weather', 
->> arguments={'location': 'Berlin', 'format': 'celsius'}, id='call_9kJ0Vql2w2oXkTZJ5SVt1KGh')], 
->> _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 
->> 'finish_reason': 'tool_calls', 'usage': {'completion_tokens': 21, 'prompt_tokens': 88, 
->> 'total_tokens': 109, 'completion_tokens_details': {'accepted_prediction_tokens': 0, 
->> 'audio_tokens': 0, 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0}, 
+>> ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[ToolCall(tool_name='get_current_weather',
+>> arguments={'location': 'Berlin', 'format': 'celsius'}, id='call_9kJ0Vql2w2oXkTZJ5SVt1KGh')],
+>> _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0,
+>> 'finish_reason': 'tool_calls', 'usage': {'completion_tokens': 21, 'prompt_tokens': 88,
+>> 'total_tokens': 109, 'completion_tokens_details': {'accepted_prediction_tokens': 0,
+>> 'audio_tokens': 0, 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0},
 >> 'prompt_tokens_details': {'audio_tokens': 0, 'cached_tokens': 0}}})
 ```
 
@@ -100,7 +100,7 @@ weather_response = [{
 }]
 ```
 
-We would normally pack the response back into [`ChatMessage`](../../../concepts/data-classes.mdx#chatmessage) and add it to a list of messages:
+We would normally pack the response back into [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) and add it to a list of messages:
 
 ```python
 fcm = ChatMessage.from_function(content=json.dumps(weather_response), name="get_current_weather")

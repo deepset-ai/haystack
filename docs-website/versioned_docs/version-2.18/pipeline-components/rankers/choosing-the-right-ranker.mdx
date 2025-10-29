@@ -27,9 +27,9 @@ These Rankers use external APIs to reorder documents using powerful models hoste
 
 The pricing model varies by provider, some charge per token processed , while others bill by usage time or number of API calls. Refer to the respective provider documentation for precise cost structures.
 
-Most API-based Rankers in Haystack currently rely on cross-encoder models (currently, but might change in the future), which evaluate the query and document together to produce highly accurate relevance scores. Examples include [AmazonBedrockRanker](doc:amazonbedrockranker), [CohereRanker](doc:cohereranker) and [JinaRanker](jinaranker.mdx).
+Most API-based Rankers in Haystack currently rely on cross-encoder models (currently, but might change in the future), which evaluate the query and document together to produce highly accurate relevance scores. Examples include [AmazonBedrockRanker](amazonbedrockranker.mdx), [CohereRanker](cohereranker.mdx) and [JinaRanker](jinaranker.mdx).
 
-In contrast, the [NvidiaRanker](doc:nvidiaranker) uses large language models (LLMs) for ranking. These models treat relevance as a semantic reasoning task, which can yield better results for complex or multi-step queries, though often at higher computational cost.
+In contrast, the [NvidiaRanker](nvidiaranker.mdx) uses large language models (LLMs) for ranking. These models treat relevance as a semantic reasoning task, which can yield better results for complex or multi-step queries, though often at higher computational cost.
 
 ## On-Premise Rankers
 
@@ -37,11 +37,11 @@ These Rankers run entirely on your local infrastructure. They are ideal for team
 
 All on-premise Rankers in Haystack use cross-encoder architectures. These models jointly process the query and each document to assess relevance with deep contextual awareness. For example:
 
-- [SentenceTransformersSimilarityRanker](doc:sentencetransformerssimilarityranker) ranks documents based on semantic similarity to the query. In addition to the default PyTorch backend (optimal for GPU), it also offers other memory-efficient options which are suitable for CPU-only cases: ONNX and OpenVINO.
-- [TransformersSimilarityRanker](doc:transformerssimilarityranker) is its legacy predecessor and should generally be avoided in favor of the newer, more flexible SentenceTransformersSimilarityRanker.
-- [HuggingFaceTEIRanker](doc:huggingfaceteiranker) is based on the Text Embeddings Inference project: whether you have GPU resources or not, it offers high-performance for serving the models locally. In addition, you can also use this component to perform inference with reranking models hosted on Hugging Face Inference Endpoints.
+- [SentenceTransformersSimilarityRanker](sentencetransformerssimilarityranker.mdx) ranks documents based on semantic similarity to the query. In addition to the default PyTorch backend (optimal for GPU), it also offers other memory-efficient options which are suitable for CPU-only cases: ONNX and OpenVINO.
+- [TransformersSimilarityRanker](transformerssimilarityranker.mdx) is its legacy predecessor and should generally be avoided in favor of the newer, more flexible SentenceTransformersSimilarityRanker.
+- [HuggingFaceTEIRanker](huggingfaceteiranker.mdx) is based on the Text Embeddings Inference project: whether you have GPU resources or not, it offers high-performance for serving the models locally. In addition, you can also use this component to perform inference with reranking models hosted on Hugging Face Inference Endpoints.
 - [FastembedRanker](fastembedranker.mdx) supports a variety of cross-encoder models and is optimal for CPU-only environments.
-- [SentenceTransformersDiversityRanker](doc:sentencetransformersdiversityranker) reorders documents to maximize diversity, helping reduce redundancy and cover a broader range of relevant topics.
+- [SentenceTransformersDiversityRanker](sentencetransformersdiversityranker.mdx) reorders documents to maximize diversity, helping reduce redundancy and cover a broader range of relevant topics.
 
 These Rankers give you full control over model selection, optimization, and deployment, making them well-suited for production environments with strict SLAs or compliance requirements.
 
@@ -53,7 +53,7 @@ For example:
 
 - [MetaFieldRanker](metafieldranker.mdx) scores and orders documents based on metadata values such as recency, source reliability, or custom-defined priorities.
 - [MetaFieldGroupingRanker](metafieldgroupingranker.mdx) groups documents by a specified metadata field and returns every document in each group together, ensuring that related documents (for example, from the same file) are processed as a single block, which has been shown to improve LLM performance.
-- [LostInTheMiddleRanker](doc:lostinthemiddleranker) reorders documents after ranking to mitigate position bias in models with limited context windows, ensuring that highly relevant items are not overlooked.
+- [LostInTheMiddleRanker](lostinthemiddleranker.mdx) reorders documents after ranking to mitigate position bias in models with limited context windows, ensuring that highly relevant items are not overlooked.
 
 The **MetaFieldRanker** Ranker is typically used _before_ semantic ranking to filter or restructure documents according to business logic.
 
