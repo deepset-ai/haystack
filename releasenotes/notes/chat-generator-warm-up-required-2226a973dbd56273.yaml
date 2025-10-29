@@ -1,8 +1,8 @@
 ---
 fixes:
   - |
-    Agent and LLMMessagesRouter components now require calling warm_up() before run() when using tools with
-    ChatGenerators. This ensures tools requiring initialization are properly warmed up before execution.
+    Agent and LLMMessagesRouter components, when used in standalone mode (i.e. outside of Pipeline), now require calling warm_up() before run()
+    when using tools with ChatGenerators. This ensures tools requiring initialization are properly warmed up before execution.
 
     .. code-block:: python
 
