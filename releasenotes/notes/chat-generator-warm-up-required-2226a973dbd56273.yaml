@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Agent and LLMMessagesRouter components now require calling warm_up() before run() when using tools with
+    ChatGenerators. This ensures tools requiring initialization are properly warmed up before execution.
+
+    .. code-block:: python
+
+        agent = Agent(llm=OpenAIChatGenerator(model="gpt-4"), tools=[my_tool])
+        agent.warm_up()  # Add this line
+        result = agent.run(messages=[ChatMessage.from_user("Hello")])
+
+    Related PR: https://github.com/deepset-ai/haystack/pull/9942
