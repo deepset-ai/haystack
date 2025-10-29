@@ -206,6 +206,7 @@ class TestLLMMessagesRouter:
         )
 
         messages = [ChatMessage.from_user("Hello")]
+        router.warm_up()
         result = router.run(messages)
         print(result)
 

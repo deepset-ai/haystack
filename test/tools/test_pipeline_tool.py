@@ -297,6 +297,7 @@ class TestPipelineTool:
         )
 
         # Let the Agent handle a query
+        agent.warm_up()
         result = agent.run([ChatMessage.from_user("Who was Nikola Tesla?")])
 
         assert len(result["messages"]) == 5  # System msg, User msg, Agent msg, Tool call result, Agent mgs
@@ -343,6 +344,7 @@ class TestPipelineTool:
         )
 
         # Let the Agent handle a query
+        agent.warm_up()
         result = await agent.run_async([ChatMessage.from_user("Who was Nikola Tesla?")])
 
         assert len(result["messages"]) == 5  # System msg, User msg, Agent msg, Tool call result, Agent mgs
