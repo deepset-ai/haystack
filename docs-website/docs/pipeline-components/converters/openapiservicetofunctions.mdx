@@ -12,7 +12,7 @@ description: "`OpenAPIServiceToFunctions` is a component that transforms OpenAPI
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory run variables** | “sources”: A list of OpenAPI specification sources, which can be file paths or [`ByteStream`](../../../docs/concepts/data-classes.mdx#bytestream)  objects |
+| **Mandatory run variables** | “sources”: A list of OpenAPI specification sources, which can be file paths or [`ByteStream`](/docs/concepts/data-classes.mdx#bytestream)  objects |
 | **Output variables** | “functions”: A list of JSON OpenAI function calling definitions objects. For each path definition in OpenAPI specification, a corresponding OpenAI function calling definitions is generated.  <br /> <br />“openapi_specs”: A list of JSON/YAML objects with references resolved. Such OpenAPI spec (with references resolved) can, in turn, be used as input to OpenAPIServiceConnector. |
 | **API reference** | [Converters](/reference/converters-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/openapi_functions.py |
@@ -93,13 +93,13 @@ pipe.connect("a3", "llm.messages")
 
 user_prompt = "Why was Sam Altman ousted from OpenAI?"
 
-result = pipe.run(data={"functions_llm": {"messages":[ChatMessage.from_system("Only do function calling"), ChatMessage.from_user(user_prompt)]}, 
+result = pipe.run(data={"functions_llm": {"messages":[ChatMessage.from_system("Only do function calling"), ChatMessage.from_user(user_prompt)]},
                         "openapi_container": {"service_credentials": serper_dev_key},
                         "spec_to_functions": {"sources": [ByteStream.from_string(serper_spec)]},
                         "a3": {"system_message": [ChatMessage.from_system(system_prompt)]}})
 
->Sam Altman was ousted from OpenAI on November 17, 2023, following 
->a "deliberative review process" by the board of directors. The board concluded 
->that he was not "consistently candid in his communications". However, he 
+>Sam Altman was ousted from OpenAI on November 17, 2023, following
+>a "deliberative review process" by the board of directors. The board concluded
+>that he was not "consistently candid in his communications". However, he
 >returned as CEO just days after his ouster.
 ```

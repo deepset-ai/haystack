@@ -86,6 +86,12 @@ Some of the supported parameters:
     events as they become available, with the stream terminated by a data: [DONE] message.
 - `safe_prompt`: Whether to inject a safety prompt before all conversations.
 - `random_seed`: The seed to use for random sampling.
+- `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+    If provided, the output will always be validated against this
+    format (unless the model returns a tool call).
+    For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+    For structured outputs with streaming, the `response_format` must be a JSON
+    schema and not a Pydantic model.
 - `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 Each tool should have a unique name.
 

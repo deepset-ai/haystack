@@ -11,7 +11,7 @@ This component extracts predefined entities out of a piece of text and writes th
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After the [PreProcessor](../../../docs/pipeline-components/preprocessors.mdx)  in an indexing pipeline or after a [Retriever](../../../docs/pipeline-components/retrievers.mdx)  in a query pipeline |
+| **Most common position in a pipeline** | After the [PreProcessor](/docs/pipeline-components/preprocessors.mdx)  in an indexing pipeline or after a [Retriever](/docs/pipeline-components/retrievers.mdx)  in a query pipeline |
 | **Mandatory init variables** | "backend": The backend to use for NER  <br /> <br />"model": Name or path of the model to use |
 | **Mandatory run variables** | “documents”: A list of documents |
 | **Output variables** | “documents”: A list of documents |
@@ -60,8 +60,8 @@ print(documents)
 Here is the example result:
 
 ```python
-[Document(id=aec840d1b6c85609f4f16c3e222a5a25fd8c4c53bd981a40c1268ab9c72cee10, content: 'My name is Clara and I live in Berkeley, California.', meta: {'named_entities': [NamedEntityAnnotation(entity='PER', start=11, end=16, score=0.99641764), NamedEntityAnnotation(entity='LOC', start=31, end=39, score=0.996198), NamedEntityAnnotation(entity='LOC', start=41, end=51, score=0.9990196)]}), 
-Document(id=98f1dc5d0ccd9d9950cd191d1076db0f7af40c401dd7608f11c90cb3fc38c0c2, content: 'I'm Merlin, the happy pig!', meta: {'named_entities': [NamedEntityAnnotation(entity='PER', start=4, end=10, score=0.99054915)]}), 
+[Document(id=aec840d1b6c85609f4f16c3e222a5a25fd8c4c53bd981a40c1268ab9c72cee10, content: 'My name is Clara and I live in Berkeley, California.', meta: {'named_entities': [NamedEntityAnnotation(entity='PER', start=11, end=16, score=0.99641764), NamedEntityAnnotation(entity='LOC', start=31, end=39, score=0.996198), NamedEntityAnnotation(entity='LOC', start=41, end=51, score=0.9990196)]}),
+Document(id=98f1dc5d0ccd9d9950cd191d1076db0f7af40c401dd7608f11c90cb3fc38c0c2, content: 'I'm Merlin, the happy pig!', meta: {'named_entities': [NamedEntityAnnotation(entity='PER', start=4, end=10, score=0.99054915)]}),
 Document(id=44948ea0eec018b33aceaaedde4616eb9e93ce075e0090ec1613fc145f84b4a9, content: 'New York State is home to the Empire State Building.', meta: {'named_entities': [NamedEntityAnnotation(entity='LOC', start=0, end=14, score=0.9989541), NamedEntityAnnotation(entity='LOC', start=30, end=51, score=0.95746297)]})]
 ```
 

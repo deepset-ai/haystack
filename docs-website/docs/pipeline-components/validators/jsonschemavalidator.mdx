@@ -11,8 +11,8 @@ Use this component to ensure that an LLM-generated chat message JSON adheres to 
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After a [Generator](../../../docs/pipeline-components/generators.mdx) |
-| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../../docs/concepts/data-classes.mdx#chatmessage)  instances to be validated – the last message in this list is the one that is validated |
+| **Most common position in a pipeline** | After a [Generator](/docs/pipeline-components/generators.mdx) |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](/docs/concepts/data-classes.mdx#chatmessage)  instances to be validated – the last message in this list is the one that is validated |
 | **Output variables** | “validated”: A list of messages if the last message is valid  <br /> <br />”validation_error”: A list of messages if the last message is invalid |
 | **API reference** | [Validators](/reference/validators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/validators/json_schema.py |
@@ -64,11 +64,11 @@ result = p.run(
                                                               "age": {"type": "integer"}}}}})
 print(result)
 
->> {'schema_validator': {'validated': [ChatMessage(_role=<ChatRole.ASSISTANT: 
->> 'assistant'>, _content=[TextContent(text='\n{\n  "name": "John",\n  "age": 30\n}')], 
->> _name=None, _meta={'model': 'gpt-4-1106-preview', 'index': 0, 'finish_reason': 'stop', 
->> 'usage': {'completion_tokens': 17, 'prompt_tokens': 20, 'total_tokens': 37, 
->> 'completion_tokens_details': {'accepted_prediction_tokens': 0, 'audio_tokens': 0, 
->> 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0}, 'prompt_tokens_details': 
+>> {'schema_validator': {'validated': [ChatMessage(_role=<ChatRole.ASSISTANT:
+>> 'assistant'>, _content=[TextContent(text='\n{\n  "name": "John",\n  "age": 30\n}')],
+>> _name=None, _meta={'model': 'gpt-4-1106-preview', 'index': 0, 'finish_reason': 'stop',
+>> 'usage': {'completion_tokens': 17, 'prompt_tokens': 20, 'total_tokens': 37,
+>> 'completion_tokens_details': {'accepted_prediction_tokens': 0, 'audio_tokens': 0,
+>> 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0}, 'prompt_tokens_details':
 >> {'audio_tokens': 0, 'cached_tokens': 0}}})]}}
 ```

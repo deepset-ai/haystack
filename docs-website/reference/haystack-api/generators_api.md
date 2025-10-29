@@ -899,6 +899,19 @@ every request.
 - `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
 For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
 
+<a id="chat/azure.AzureOpenAIChatGenerator.warm_up"></a>
+
+#### AzureOpenAIChatGenerator.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the Azure OpenAI chat generator.
+
+This will warm up the tools registered in the chat generator.
+This method is idempotent and will only warm up the tools once.
+
 <a id="chat/azure.AzureOpenAIChatGenerator.to_dict"></a>
 
 #### AzureOpenAIChatGenerator.to\_dict
@@ -1160,7 +1173,7 @@ Explicitly shutdown the executor if we own it.
 def warm_up() -> None
 ```
 
-Initializes the component.
+Initializes the component and warms up tools if provided.
 
 <a id="chat/hugging_face_local.HuggingFaceLocalChatGenerator.to_dict"></a>
 
@@ -1426,6 +1439,19 @@ The chosen model should support tool/function calling, according to the model ca
 Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
 unexpected behavior.
 
+<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.warm_up"></a>
+
+#### HuggingFaceAPIChatGenerator.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the Hugging Face API chat generator.
+
+This will warm up the tools registered in the chat generator.
+This method is idempotent and will only warm up the tools once.
+
 <a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.to_dict"></a>
 
 #### HuggingFaceAPIChatGenerator.to\_dict
@@ -1636,6 +1662,19 @@ the schema provided in the `parameters` field of the tool definition, but this m
 - `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
 For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
 
+<a id="chat/openai.OpenAIChatGenerator.warm_up"></a>
+
+#### OpenAIChatGenerator.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the OpenAI chat generator.
+
+This will warm up the tools registered in the chat generator.
+This method is idempotent and will only warm up the tools once.
+
 <a id="chat/openai.OpenAIChatGenerator.to_dict"></a>
 
 #### OpenAIChatGenerator.to\_dict
@@ -1810,6 +1849,18 @@ def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator
 ```
 
 Rebuild the component from a serialized representation, restoring nested chat generators.
+
+<a id="chat/fallback.FallbackChatGenerator.warm_up"></a>
+
+#### FallbackChatGenerator.warm\_up
+
+```python
+def warm_up() -> None
+```
+
+Warm up all underlying chat generators.
+
+This method calls warm_up() on each underlying generator that supports it.
 
 <a id="chat/fallback.FallbackChatGenerator.run"></a>
 

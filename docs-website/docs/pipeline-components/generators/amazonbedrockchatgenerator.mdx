@@ -11,10 +11,10 @@ This component enables chat completion using models through Amazon Bedrock servi
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After a [ChatPromptBuilder](../../../docs/pipeline-components/builders/chatpromptbuilder.mdx) |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](/docs/pipeline-components/builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | "model": The model to use  <br /> <br />"aws_access_key_id": AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />"aws_secret_access_key": AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />"aws_region_name": AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
-| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../../docs/concepts/data-classes.mdx#chatmessage)  instances |
-| **Output variables** | "replies": A list of [`ChatMessage`](../../../docs/concepts/data-classes.mdx#chatmessage)  objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](/docs/concepts/data-classes.mdx#chatmessage)  instances |
+| **Output variables** | "replies": A list of [`ChatMessage`](/docs/concepts/data-classes.mdx#chatmessage)  objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
 | **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_bedrock |
 
@@ -58,7 +58,7 @@ from haystack.dataclasses import ChatMessage
 
 generator = AmazonBedrockChatGenerator(model="meta.llama2-70b-chat-v1")
 messages = [ChatMessage.from_system("You are a helpful assistant that answers question in Spanish only"), ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
-    
+
 response = generator.run(messages)
 print(response)
 ```

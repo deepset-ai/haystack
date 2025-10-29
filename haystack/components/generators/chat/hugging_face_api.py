@@ -26,6 +26,7 @@ from haystack.tools import (
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model, convert_message_to_hf_format
@@ -384,6 +385,18 @@ class HuggingFaceAPIChatGenerator:
             model_or_url, token=token.resolve_value() if token else None, **resolved_api_params
         )
         self.tools = tools
+        self._is_warmed_up = False
+
+    def warm_up(self):
+        """
+        Warm up the Hugging Face API chat generator.
+
+        This will warm up the tools registered in the chat generator.
+        This method is idempotent and will only warm up the tools once.
+        """
+        if not self._is_warmed_up:
+            warm_up_tools(self.tools)
+            self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
         """
