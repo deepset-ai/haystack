@@ -63,6 +63,7 @@ import tempfile
 import textwrap
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Iterable, Optional
 
 FENCE_START_RE = re.compile(r"^\s*```(?P<lang>[^\n\r]*)\s*$")
@@ -420,7 +421,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--verbose", action="store_true", help="Print verbose logs")
 
     args = parser.parse_args(argv)
-    repo_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    # Find haystack root
+    repo_root = str(Path(__file__).parent.parent.parent)
     raw_paths = args.targets if args.targets else args.paths
     scan_paths = [os.path.join(repo_root, p) if not os.path.isabs(p) else p for p in raw_paths]
 

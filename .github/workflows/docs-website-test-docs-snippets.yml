@@ -66,4 +66,4 @@ jobs:
         run: |
           # TEMPORARY: Testing with single file to make CI green
           # TODO: Expand to run all docs: --paths docs versioned_docs
-          python docs-website/scripts/test_python_snippets.py --paths docs-website/docs/api/haystack-api/agents_api.md
+          python docs-website/scripts/test_python_snippets.py docs-website/reference/haystack-api/agents_api.md
