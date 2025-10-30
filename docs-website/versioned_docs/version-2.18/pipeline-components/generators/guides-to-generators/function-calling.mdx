@@ -93,7 +93,7 @@ weather_response = [{
 }]
 ```
 
-We would normally pack the response back into [`ChatMessage`](/docs/data-classes#chatmessage) and add it to a list of messages:
+We would normally pack the response back into [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) and add it to a list of messages:
 
 ```python
 fcm = ChatMessage.from_function(content=json.dumps(weather_response), name="get_current_weather")

@@ -11,8 +11,8 @@ Use this Retriever with the InMemoryDocumentStore if you're looking for embeddin
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In query pipelines:  <br />In a RAG pipeline, before a [`PromptBuilder`](/docs/pipeline-components/builders/promptbuilder.mdx)  <br />In a semantic search pipeline, as the last component  <br />In an extractive QA pipeline, after a Tex tEmbedder and before an [`ExtractiveReader`](/docs/pipeline-components/readers/extractivereader.mdx) |
-| **Mandatory init variables** | "document_store": An instance of [InMemoryDocumentStore](/docs/document-stores/inmemorydocumentstore.mdx) |
+| **Most common position in a pipeline** | In query pipelines:  <br />In a RAG pipeline, before a [`PromptBuilder`](../builders/promptbuilder.mdx)  <br />In a semantic search pipeline, as the last component  <br />In an extractive QA pipeline, after a Tex tEmbedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) |
+| **Mandatory init variables** | "document_store": An instance of [InMemoryDocumentStore](../../document-stores/inmemorydocumentstore.mdx) |
 | **Mandatory run variables** | "query_embedding": A list of floating point numbers |
 | **Output variables** | "documents": A list of documents |
 | **API reference** | [Retrievers](/reference/retrievers-api) |

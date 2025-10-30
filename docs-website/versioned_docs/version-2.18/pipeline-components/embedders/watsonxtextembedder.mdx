@@ -22,7 +22,7 @@ When you perform embedding retrieval, you use this component to transform your q
 
 To see the list of compatible IBM watsonx.ai embedding models, head over to IBM [documentation](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx). The default model for `WatsonxTextEmbedder` is `ibm/slate-30m-english-rtrvr`. You can specify another model with the `model` parameter when initializing this component.
 
-Use `WatsonxTextEmbedder` to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`WatsonxDocumentEmbedder`](/docs/watsonxdocumentembedder), which enriches the document with the computed embedding, also known as vector.
+Use `WatsonxTextEmbedder` to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`WatsonxDocumentEmbedder`](watsonxdocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
 
 The component uses `WATSONX_API_KEY` and `WATSONX_PROJECT_ID` environment variables by default. Otherwise, you can pass API credentials at initialization with `api_key` and `project_id`:
 

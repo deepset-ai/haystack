@@ -9,7 +9,7 @@ description: "This page provides information on choosing the right Generator for
 
 This page provides information on choosing the right Generator for interacting with Generative Language Models in Haystack. It explains the distinction between Generators and ChatGenerators, discusses using proprietary and open models from various providers, and explores options for using open models on-premise.
 
-In Haystack, Generators are the main interface for interacting with Generative Language Models.  
+In Haystack, Generators are the main interface for interacting with Generative Language Models.
 This guide aims to simplify the process of choosing the right Generator based on your preferences and computing resources. This guide does not focus on selecting a specific model itself but rather a model type and a Haystack Generator: as you will see, in several cases, you have different options to use the same model.
 
 ## Generators vs ChatGenerators
@@ -17,7 +17,7 @@ This guide aims to simplify the process of choosing the right Generator based on
 The first distinction we are talking about is between Generators and ChatGenerators, for example, OpenAIGenerator and OpenAIChatGenerator, HuggingFaceAPIGenerator and HuggingFaceAPIChatGenerator, and so on.
 
 - **Generators** are components that expect a prompt (a string) and return the generated text in “replies”.
-- **ChatGenerators** support the [ChatMessage data class](../../../concepts/data-classes.mdx#chatmessage) out of the box. They expect a list of Chat Messages and return a Chat Message in “replies”.
+- **ChatGenerators** support the [ChatMessage data class](../../../concepts/data-classes/chatmessage.mdx) out of the box. They expect a list of Chat Messages and return a Chat Message in “replies”.
 
 The choice between Generators and ChatGenerators depends on your use case and the underlying model. If you anticipate a multi-turn interaction with the Language Model in a chat scenario, opting for a ChatGenerator is generally better.
 
@@ -92,7 +92,7 @@ Agents and `ToolInvoker` forward your `streaming_callback`. They also emit a fin
 
 ## Proprietary Models
 
-Using proprietary models is a quick way to start with Generative Language Models. The typical approach involves calling these hosted models using an API Key. You are paying based on the number of tokens, both sent and generated.  
+Using proprietary models is a quick way to start with Generative Language Models. The typical approach involves calling these hosted models using an API Key. You are paying based on the number of tokens, both sent and generated.
 You don’t need significant resources on your local machine, as the computation is executed on the provider’s infrastructure. When using these models, your data exits your machine and is transmitted to the model provider.
 
 Haystack supports the models offered by a variety of providers: OpenAI, Azure, Google VertexAI and Makersuite, Cohere, and Mistral, with more being added constantly.
@@ -104,7 +104,7 @@ We also support [Amazon Bedrock](../amazonbedrockgenerator.mdx): it provides acc
 When discussing open (weights) models, we're referring to models with public weights that anyone can deploy on their infrastructure. The datasets used for training are shared less frequently. One could choose to use an open model for several reasons, including more transparency and control of the model.
 
 :::info
-Commerical Use
+Commercial Use
 
 Not all open models are suitable for commercial use. We advise thoroughly reviewing the license, typically available on Hugging Face, before considering their adoption.
 :::
@@ -122,7 +122,7 @@ With this type, you leverage an instance of the model shared with other users, w
 Here are the components that support shared hosted models in Haystack:
 
 - Hugging Face API Generators, when querying the [free Hugging Face Inference API](https://huggingface.co/inference-api). The free Inference API provides access to some popular models for quick experimentation, although it comes with rate limitations and is not intended for production use.
-- Various cloud providers offer interfaces compatible with OpenAI Generators. These include Anyscale, Deep Infra, Fireworks, Lemonfox.ai, OctoAI, Together AI, and many others.  
+- Various cloud providers offer interfaces compatible with OpenAI Generators. These include Anyscale, Deep Infra, Fireworks, Lemonfox.ai, OctoAI, Together AI, and many others.
   Here is an example using OctoAI and [`OpenAIChatGenerator`](../openaichatgenerator.mdx):
 
 ```python
@@ -164,7 +164,7 @@ Here are the components that support privately hosted models in Haystack:
 
 On-premise models mean that you host open models on your machine/infrastructure.
 
-This choice is ideal for local experimentation. 
+This choice is ideal for local experimentation.
 
 It is suitable in production scenarios where data privacy concerns drive the decision not to transmit data to external providers and you have ample computational resources.
 

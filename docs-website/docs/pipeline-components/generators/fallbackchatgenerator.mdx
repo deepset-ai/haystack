@@ -11,9 +11,9 @@ A ChatGenerator wrapper that tries multiple Chat Generators sequentially until o
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After a [ChatPromptBuilder](/docs/pipeline-components/builders/chatpromptbuilder.mdx) |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | "chat_generators": A non-empty list of Chat Generator components to try in order |
-| **Mandatory run variables** | "messages": A list of [`ChatMessage`](/docs/concepts/data-classes/chatmessage.mdx) objects representing the chat |
+| **Mandatory run variables** | "messages": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects representing the chat |
 | **Output variables** | "replies": Generated ChatMessage instances from the first successful generator  <br /> <br />"meta": Execution metadata including successful generator details |
 | **API reference** | [Generators](/reference/generators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/fallback.py |

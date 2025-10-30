@@ -32,7 +32,7 @@ Additionally, you can select the backend to use for the Sentence Transformers mo
 
 ### Authorization
 
-The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with [Secret](/docs/secret-management) `token`:
+The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with [Secret](../../concepts/secret-management.mdx) `token`:
 
 ```python
 ranker = SentenceTransformersSimilarityRanker(token=Secret.from_token("<your-api-key>"))

@@ -13,8 +13,8 @@ This component enables chat completions using the STACKIT API.
 | --- | --- |
 | **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | "model": The model used through the STACKIT API |
-| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](/docs/chatmessage)  objects |
-| **Output variables** | "replies": A list of [`ChatMessage`](/docs/chatmessage) objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply (such as token count, finish reason, and so on) |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
+| **Output variables** | "replies": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply (such as token count, finish reason, and so on) |
 | **API reference** | [STACKIT](/reference/integrations-stackit) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/stackit |
 
@@ -25,7 +25,7 @@ This component enables chat completions using the STACKIT API.
 ### Parameters
 
 To use the `STACKITChatGenerator`, ensure you have set a `STACKIT_API_KEY` as an environment variable. Alternatively, provide the API key as another environment variable or a token by setting
-`api_key` and using Haystack’s [secret management](/docs/secret-management).
+`api_key` and using Haystack’s [secret management](../../concepts/secret-management.mdx).
 
 Set your preferred supported model with the `model` parameter when initializing the component. See the full list of all supported models on the [STACKIT website](https://docs.stackit.cloud/stackit/en/models-licenses-319914532.html).
 
@@ -33,11 +33,11 @@ Optionally, you can change the default `api_base_url`, which is `"https://api.op
 
 You can pass any text generation parameters valid for the STACKIT Chat Completion API directly to this component with the `generation_kwargs` parameter in the init or run methods.
 
-The component needs a list of `ChatMessage` objects to run. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. Find out more about it [ChatMessage documentation](/docs/chatmessage).
+The component needs a list of `ChatMessage` objects to run. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. Find out more about it [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
 
 ### Streaming
 
-This ChatGenerator supports [streaming](/docs/choosing-the-right-generator#streaming-support) the tokens from the LLM directly into the output. To do so, pass a function to the `streaming_callback` init parameter.
+This ChatGenerator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly into the output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ## Usage
 

@@ -32,6 +32,9 @@ function getLatestVersion() {
 }
 
 function versionedReferenceLinks() {
+  // Get the latest version once when the plugin is initialized
+  const latestVersion = getLatestVersion();
+
   return (tree, file) => {
     // Read the latest version inside the processor function
     const currentLatestVersion = getLatestVersion();

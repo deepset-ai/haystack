@@ -22,7 +22,7 @@ description: "`MistralOCRDocumentConverter` extracts text from documents using M
 
 The `MistralOCRDocumentConverter` takes a list of document sources and uses Mistral's OCR API to extract text from images and PDFs. It supports multiple input formats:
 
-- **Local files**: File paths (str or Path) or [`ByteStream`](../../concepts/data-classes.mdx#bytestresm) objects
+- **Local files**: File paths (str or Path) or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects
 - **Remote resources**: Document URLs, image URLs using Mistral's `DocumentURLChunk` and `ImageURLChunk`
 - **Mistral storage**: File IDs using Mistral's `FileChunk` for files previously uploaded to Mistral
 

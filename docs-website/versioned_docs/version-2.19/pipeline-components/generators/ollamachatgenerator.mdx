@@ -12,7 +12,7 @@ This component enables chat completion using an LLM running on Ollama.
 |                                        |                                                                                                      |
 | :------------------------------------- | :--------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
-| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects representing the chat |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables**                   | “replies”: A list of LLM’s alternative replies                                                       |
 | **API reference**                      | [Ollama](/reference/integrations-ollama)                                                                    |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/ollama             |
@@ -25,7 +25,7 @@ This component enables chat completion using an LLM running on Ollama.
 
 `OllamaChatGenerator`  needs a `model`  name and a `url` to work. By default, it uses `"orca-mini"` model and `"http://localhost:11434"` url.
 
-The way to operate with `OllamaChatGenerator` is by using  `ChatMessage` objects. [ChatMessage](/docs/data-classes#chatmessage)  is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. See the [usage](#usage) section for an example.
+The way to operate with `OllamaChatGenerator` is by using  `ChatMessage` objects. [ChatMessage](../../concepts/data-classes/chatmessage.mdx)  is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. See the [usage](#usage) section for an example.
 
 ### Streaming
 
@@ -50,7 +50,7 @@ Streaming works only with a single response. If a provider supports multiple can
 
 :::
 
-See our [Streaming Support](/docs/choosing-the-right-generator#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
 
 Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
 
