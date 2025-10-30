@@ -1,7 +1,7 @@
 ---
 title: "Haystack Concepts Overview"
-id: components-overview
-slug: "/components-overview"
+id: concepts-overview
+slug: "/concepts-overview"
 description: "Haystack provides all the tools you need to build custom agents and RAG pipelines with LLMs that work for you. This includes everything from prototyping to deployment. This page discusses the most important concepts Haystack operates on."
 ---
 
@@ -13,9 +13,9 @@ Haystack provides all the tools you need to build custom agents and RAG pipeline
 
 ### Components
 
-Haystack offers various components, each performing different kinds of tasks. You can see the whole variety in the **PIPELINE COMPONENTS** section in the left-side navigation. These are often powered by the latest Large Language Models (LLMs) and transformer models. Code-wise, they are Python classes with methods you can directly call. Most commonly, all you need to do is initialize the component with the required parameters and then run it with a `run()` method.
+Haystack offers various components, each performing different kinds of tasks. You can see the whole variety in the **PIPELINE COMPONENTS** section in the left-side navigation. These are often powered by the latest Large Language Models (LLMs) and transformer models. Code-wise, they are Python classes with methods you can directly call. Most commonly, all you need to do is initialize the component with the required parameters and then run it with a `run()` method.
 
-Working on this level with Haystack components is a hands-on approach. Components define the name and the type of all of their inputs and outputs. The Component API reduces complexity and makes it easier to [create custom components](components/custom-components.mdx), for example, for third-party APIs and databases. Haystack validates the connections between components before running the pipeline and, if needed, generates error messages with instructions on fixing the errors.
+Working on this level with Haystack components is a hands-on approach. Components define the name and the type of all of their inputs and outputs. The Component API reduces complexity and makes it easier to [create custom components](components/custom-components.mdx), for example, for third-party APIs and databases. Haystack validates the connections between components before running the pipeline and, if needed, generates error messages with instructions on fixing the errors.
 
 #### Generators
 
