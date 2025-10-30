@@ -320,6 +320,7 @@ class OpenAIResponsesChatGenerator:
         openai_endpoint = api_args.pop("openai_endpoint")
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
+        print("Checking the responses", responses)
 
         if streaming_callback is not None:
             response_output = self._handle_stream_response(
@@ -418,7 +419,9 @@ class OpenAIResponsesChatGenerator:
         text_format = generation_kwargs.pop("text_format", None)
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
-        openai_formatted_messages = [convert_message_to_responses_api_format(message) for message in messages]
+        openai_formatted_messages: list[dict[str, Any]] = []
+        for message in messages:
+            openai_formatted_messages.extend(convert_message_to_responses_api_format(message))
 
         tools = tools or self.tools
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
@@ -512,8 +515,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
             # we dont need the summary in the extra
             extra.pop("summary")
             reasoning_text = "\n".join([summary.text for summary in summaries if summaries])
-            if reasoning_text:
-                reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
+            reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
 
         elif output.type == "function_call":
             try:
@@ -523,14 +525,14 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
                     "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
                     "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                    _id=output.id,
+                    _id=output.call_id,
                     _name=output.name,
                     _arguments=output.arguments,
                 )
-            # We need to store both id and call_id for tool calls
-            tool_call_details[output.id] = {"call_id": output.call_id, "status": output.status}
+            # We need to store both function call id and call_id for tool calls
+            tool_call_details[output.call_id] = {"id": output.id, "status": output.status}
 
-            tool_calls.append(ToolCall(id=output.id, tool_name=output.name, arguments=arguments))
+            tool_calls.append(ToolCall(id=output.call_id, tool_name=output.name, arguments=arguments))
 
     # we save the response as dict because it contains resp_id etc.
     meta = responses.to_dict()
@@ -613,26 +615,24 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
     return chunk_message
 
 
-def convert_message_to_responses_api_format(message: ChatMessage, require_tool_call_ids: bool = True) -> dict[str, Any]:
+def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[str, Any]]:
     """
     Convert a ChatMessage to the dictionary format expected by OpenAI's Responses API.
 
     :param message: The ChatMessage to convert to OpenAI's Responses API format.
-    :param require_tool_call_ids:
-        If True (default), enforces that each Tool Call includes a non-null `id` attribute.
-        Set to False to allow Tool Calls without `id`, which may be suitable for shallow OpenAI-compatible APIs.
     :returns:
         The ChatMessage in the format expected by OpenAI's Responses API.
 
     :raises ValueError:
-        If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
-        `id` attribute.
+        If the message format is invalid.
     """
     text_contents = message.texts
     tool_calls = message.tool_calls
     tool_call_results = message.tool_call_results
     images = message.images
     reasonings = message.reasonings
+
+    print("Chat Message", message)
 
     if not text_contents and not tool_calls and not tool_call_results and not images and not reasonings:
         raise ValueError(
@@ -644,17 +644,16 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
             "For OpenAI compatibility, a `ChatMessage` with a `ToolCallResult` cannot contain any other content."
         )
 
+    formatted_messages: list[dict[str, Any]] = []
     openai_msg: dict[str, Any] = {"role": message._role.value}
-
-    # Add name field if present
     if message._name is not None:
         openai_msg["name"] = message._name
 
     # user message
-    if openai_msg["role"] == "user":
+    if message._role.value == "user":
         if len(message._content) == 1 and isinstance(message._content[0], TextContent):
             openai_msg["content"] = message.text
-            return openai_msg
+            return [openai_msg]
 
         # if the user message contains a list of text and images, OpenAI expects a list of dictionaries
         content = []
@@ -674,36 +673,30 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
                 content.append(image_item)
 
         openai_msg["content"] = content
-        return openai_msg
+        return [openai_msg]
 
     # tool message
     if tool_call_results:
-        result = tool_call_results[0]
-        openai_msg["content"] = result.result
-        if result.origin.id is not None:
-            openai_msg["tool_call_id"] = result.origin.id
-        elif require_tool_call_ids:
-            raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
-        # OpenAI does not provide a way to communicate errors in tool invocations, so we ignore the error field
-        return openai_msg
-
-    # system and assistant messages
-    openai_msg["content"] = []
-
-    if text_contents:
-        openai_msg["content"] = " ".join(text_contents)
+        formatted_tool_results = []
+        for result in tool_call_results:
+            if result.origin.id is not None:
+                tool_result = {"type": "function_call_output", "call_id": result.origin.id, "output": result.result}
+                formatted_tool_results.append(tool_result)
+        formatted_messages.extend(formatted_tool_results)
 
     if reasonings:
+        formatted_reasonings = []
         for reasoning in reasonings:
             reasoning_item = {
                 **(reasoning.extra),
                 "summary": [{"text": reasoning.reasoning_text, "type": "summary_text"}],
             }
-            openai_msg["content"].append(reasoning_item)
+            formatted_reasonings.append(reasoning_item)
+        formatted_messages.extend(formatted_reasonings)
 
     if tool_calls:
-        tool_call_ids = message._meta.get("tool_call_ids", {})
-
+        tool_call_details = message._meta.get("tool_call_details", {})
+        formatted_tool_calls = []
         for tc in tool_calls:
             openai_tool_call = {
                 "type": "function_call",
@@ -712,13 +705,22 @@ def convert_message_to_responses_api_format(message: ChatMessage, require_tool_c
                 "arguments": json.dumps(tc.arguments, ensure_ascii=False),
             }
             if tc.id is not None:
-                openai_tool_call["id"] = tc.id
-                openai_tool_call.update(tool_call_ids[tc.id])
-            elif require_tool_call_ids:
-                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
-            openai_msg["content"].append(openai_tool_call)
+                openai_tool_call["call_id"] = tc.id
+                # details contain the function_id that's needed by the API
+                openai_tool_call.update(tool_call_details[tc.id])
+            else:
+                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI Responses API.")
+            formatted_tool_calls.append(openai_tool_call)
+        formatted_messages.extend(formatted_tool_calls)
 
-    return openai_msg
+    # system and assistant messages
+
+    if text_contents:
+        openai_msg["content"] = " ".join(text_contents)
+        formatted_messages.append(openai_msg)
+
+    print("OpenAI message", openai_msg)
+    return formatted_messages
 
 
 def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> ChatMessage:
@@ -742,7 +744,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                 assert tool_call.id is not None
                 # We use the tool call id to track the tool call across chunks
                 if tool_call.id not in tool_call_data:
-                    tool_call_data[tool_call.id] = {"name": "", "arguments": "", "call_id": ""}
+                    tool_call_data[tool_call.id] = {"name": "", "arguments": "", "id": ""}
 
                 if tool_call.tool_name is not None:
                     # we dont need to append the tool name as it is passed once in the start of the function call
@@ -752,10 +754,10 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
             # this is the information we need to save to send back to API
             if chunk.meta.get("type") == "function_call":
-                call_id = chunk.meta.get("call_id")
                 fc_id = chunk.meta.get("id")
-                if fc_id is not None and isinstance(fc_id, str):
-                    tool_call_data[fc_id]["call_id"] = str(call_id) if call_id is not None else ""
+                call_id = chunk.meta.get("call_id")
+                if call_id is not None and isinstance(call_id, str):
+                    tool_call_data[call_id]["id"] = str(fc_id) if fc_id is not None else ""
 
         if chunk.reasoning:
             reasoning = chunk.reasoning
@@ -767,8 +769,8 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         try:
             arguments = json.loads(tool_call_dict.get("arguments", "{}")) if tool_call_dict.get("arguments") else {}
             tool_calls.append(ToolCall(id=key, tool_name=tool_call_dict["name"], arguments=arguments))
-            if tool_call_dict["call_id"]:
-                tool_call_details[key] = {"call_id": tool_call_dict["call_id"]}
+            if tool_call_dict["id"]:
+                tool_call_details[key] = {"id": tool_call_dict["id"]}
         except json.JSONDecodeError:
             logger.warning(
                 "The LLM provider returned a malformed JSON string for tool call arguments. This tool call "
