@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix deserialization of state schema when it is None in Agent.from_dict.
