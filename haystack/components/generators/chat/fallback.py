@@ -48,7 +48,7 @@ class FallbackChatGenerator:
     - Any other exception
     """
 
-    def __init__(self, chat_generators: list[ChatGenerator], streaming_callback: Optional[StreamingCallbackT] = None):
+    def __init__(self, chat_generators: list[ChatGenerator], *, streaming_callback: Optional[StreamingCallbackT] = None):
         """
         Creates an instance of FallbackChatGenerator.
 
