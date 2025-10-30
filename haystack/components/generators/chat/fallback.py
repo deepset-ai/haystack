@@ -11,6 +11,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
+from haystack.utils import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
@@ -63,10 +64,11 @@ class FallbackChatGenerator:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component, including nested chat generators when they support serialization."""
+        callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         return default_to_dict(
             self,
             chat_generators=[gen.to_dict() for gen in self.chat_generators if hasattr(gen, "to_dict")],
-            streaming_callback=None,
+            streaming_callback=callback_name,
         )
 
     @classmethod
@@ -82,6 +84,12 @@ class FallbackChatGenerator:
             deserialize_component_inplace(holder, key="component")
             deserialized.append(holder["component"])
         init_params["chat_generators"] = deserialized
+
+        # Deserialize streaming callback if present
+        serialized_callback_handler = init_params.get("streaming_callback")
+        if serialized_callback_handler:
+            init_params["streaming_callback"] = deserialize_callable(serialized_callback_handler)
+
         data["init_parameters"] = init_params
         return default_from_dict(cls, data)
 
