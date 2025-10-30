@@ -2,6 +2,7 @@
 title: Image Converters
 id: image-converters-api
 description: Various converters to transform image data from one format to another.
+slug: "/image-converters-api"
 ---
 
 <a id="document_to_image"></a>

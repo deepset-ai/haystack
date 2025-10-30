@@ -2,6 +2,7 @@
 title: Fetchers
 id: fetchers-api
 description: Fetches content from a list of URLs and returns a list of extracted content streams.
+slug: "/fetchers-api"
 ---
 
 <a id="link_content"></a>
