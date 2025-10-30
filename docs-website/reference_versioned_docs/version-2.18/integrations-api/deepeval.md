@@ -44,8 +44,8 @@ print(output["results"])
 #### DeepEvalEvaluator.\_\_init\_\_
 
 ```python
-def __init__(metric: Union[str, DeepEvalMetric],
-             metric_params: Optional[Dict[str, Any]] = None)
+def __init__(metric: str | DeepEvalMetric,
+             metric_params: dict[str, Any] | None = None)
 ```
 
 Construct a new DeepEval evaluator.
@@ -62,8 +62,8 @@ on required parameters.
 #### DeepEvalEvaluator.run
 
 ```python
-@component.output_types(results=List[List[Dict[str, Any]]])
-def run(**inputs: Any) -> Dict[str, Any]
+@component.output_types(results=list[list[dict[str, Any]]])
+def run(**inputs: Any) -> dict[str, Any]
 ```
 
 Run the DeepEval evaluator on the provided inputs.
@@ -89,7 +89,7 @@ containing the following keys and values:
 #### DeepEvalEvaluator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -108,7 +108,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "DeepEvalEvaluator"
+def from_dict(cls, data: dict[str, Any]) -> "DeepEvalEvaluator"
 ```
 
 Deserializes the component from a dictionary.
@@ -190,3 +190,4 @@ Create a metric type from a string.
 **Returns**:
 
 The metric.
+
