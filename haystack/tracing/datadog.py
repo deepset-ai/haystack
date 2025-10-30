@@ -43,9 +43,6 @@ class DatadogSpan(Span):
 
     def get_correlation_data_for_logs(self) -> dict[str, Any]:
         """Return a dictionary with correlation data for logs."""
-        raw_span = self.raw_span()
-        if not raw_span:
-            return {}
 
         # https://docs.datadoghq.com/tracing/other_telemetry/connect_logs_and_traces/python/#no-standard-library-logging
         return ddtrace.tracer.get_log_correlation_context()
