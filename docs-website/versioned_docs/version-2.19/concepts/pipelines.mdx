@@ -32,13 +32,13 @@ Haystack loops and branches enable the creation of complex applications like age
 
 A pipeline can have multiple branches that process data concurrently. For example, to process different file types, you can have a pipeline with a bunch of converters, each handling a specific file type. You then feed all your files to the pipeline and it smartly divides and routes them to appropriate converters all at once, saving you the effort of sending your files one by one for processing.
 
-<ClickableImage src="/img/83f686b-Pipeline_Illustrations_1_1.png" alt="" />
+<ClickableImage src="/img/83f686b-Pipeline_Illustrations_1_1.png" alt="Pipeline architecture diagram showing components arranged in parallel branches that converge into a single pipeline flow" size="large" />
 
 ### Loops
 
 Components in a pipeline can work in iterative loops, which you can cap at a desired number. This can be handy for scenarios like self-correcting loops, where you have a generator producing some output and then a validator component to check if the output is correct. If the generator's output has errors, the validator component can loop back to the generator for a corrected output. The loop goes on until the output passes the validation and can be sent further down the pipeline.
 
-<ClickableImage src="/img/2390eea-Pipeline_Illustrations_1_2.png" alt="" />
+<ClickableImage src="/img/2390eea-Pipeline_Illustrations_1_2.png" alt="Pipeline architecture diagram illustrating a feedback loop where output from later components loops back to earlier components" size="large" />
 
 ### Async Pipelines
 

@@ -124,7 +124,7 @@ Simply install the component with `pip install langfuse-haystack`, then add it t
 :::info
 Check out the component's [documentation page](../pipeline-components/connectors/langfuseconnector.mdx) for more details and example usage, or our [blog post](https://haystack.deepset.ai/blog/langfuse-integration) for the complete walkthrough.
 :::
-<ClickableImage src="/img/11cec4f-langfuse-generation-span.png" alt="" />
+<ClickableImage src="/img/11cec4f-langfuse-generation-span.png" alt="Langfuse trace detail view showing generation span with input prompt, output, metadata, latency, and cost information for a language model call" />
 
 ### Weights & Biases Weave
 
@@ -238,7 +238,7 @@ To enable content tracing, there are two options:
 ## Visualizing Traces During Development
 
 Use [Jaeger](https://www.jaegertracing.io/docs/1.6/getting-started/) as a lightweight tracing backend for local pipeline development. This allows you to experiment with tracing without the need for a complex tracing backend.
-<ClickableImage src="/img/dd906d7-Screenshot_2024-02-22_at_16.51.01.png" alt="" />
+<ClickableImage src="/img/dd906d7-Screenshot_2024-02-22_at_16.51.01.png" alt="Jaeger UI trace timeline displaying haystack pipeline execution with component spans showing duration and nesting of operations" />
 
 1. Run the Jaeger container. This creates a tracing backend as well as a UI to visualize the traces:
 
@@ -321,4 +321,4 @@ tracing.enable_tracing(LoggingTracer(tags_color_strings={"haystack.component.inp
 ```
 
 Here’s what the resulting log would look like when a pipeline is run:
-<ClickableImage src="/img/55c3d5c84282d726c95fb3350ec36be49a354edca8a6164f5dffdab7121cec58-image_2.png" alt="" />
+<ClickableImage src="/img/55c3d5c84282d726c95fb3350ec36be49a354edca8a6164f5dffdab7121cec58-image_2.png" alt="Console output showing Haystack pipeline execution with DEBUG level tracing logs including component names, types, and input/output specifications" />
