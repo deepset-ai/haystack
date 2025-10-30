@@ -10,13 +10,21 @@
 const path = require('path');
 const fs = require('fs');
 
+// Cache the latest version at module level, but allow it to be read lazily
+let latestVersion = null;
+
 // Dynamically read the latest version from versions.json
 function getLatestVersion() {
+  if (latestVersion !== null) {
+    return latestVersion;
+  }
+
   try {
     const versionsPath = path.join(__dirname, '../../versions.json');
     const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf8'));
     // The first version in versions.json is the latest version
-    return versions[0];
+    latestVersion = versions[0];
+    return latestVersion;
   } catch (error) {
     console.warn('Could not read versions.json, defaulting latest version detection', error);
     return null;
@@ -24,10 +32,10 @@ function getLatestVersion() {
 }
 
 function versionedReferenceLinks() {
-  // Get the latest version once when the plugin is initialized
-  const latestVersion = getLatestVersion();
-
   return (tree, file) => {
+    // Read the latest version inside the processor function
+    const currentLatestVersion = getLatestVersion();
+
     // Try to get version from file metadata (set by Docusaurus)
     let version = file.data?.version;
 
@@ -66,7 +74,7 @@ function versionedReferenceLinks() {
             // Latest version: no version prefix needed (served at /reference/)
             // Current/next version: add /next/
             // Other versions: add version number
-            if (version === latestVersion) {
+            if (version === currentLatestVersion) {
               // Latest version - no changes needed, keep as /reference/...
               return;
             } else if (version === 'current') {
