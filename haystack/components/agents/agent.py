@@ -239,7 +239,7 @@ class Agent:
 
         deserialize_chatgenerator_inplace(init_params, key="chat_generator")
 
-        if "state_schema" in init_params:
+        if init_params.get("state_schema") is not None:
             init_params["state_schema"] = _schema_from_dict(init_params["state_schema"])
 
         if init_params.get("streaming_callback") is not None:
