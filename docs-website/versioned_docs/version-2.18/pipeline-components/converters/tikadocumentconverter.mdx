@@ -19,7 +19,7 @@ An integration for converting files of different types (PDF, DOCX, HTML, and mor
 
 ## Overview
 
-The `TikaDocumentConverter` component converts files of different types (pdf, docx, html, and others) into documents. You can use it in an indexing pipeline to index the contents of files into a Document Store. It takes a list of file paths or [`ByteStream`](/docs/data-classes#bytestresm) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+The `TikaDocumentConverter` component converts files of different types (pdf, docx, html, and others) into documents. You can use it in an indexing pipeline to index the contents of files into a Document Store. It takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
 
 This integration uses [Apache Tika](https://tika.apache.org/) to parse the files and requires a running Tika server.
 

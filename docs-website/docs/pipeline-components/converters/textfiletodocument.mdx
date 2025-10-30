@@ -19,7 +19,7 @@ Converts text files to documents.
 
 ## Overview
 
-The `TextFileToDocument` component converts text files into documents. You can use it in an indexing pipeline to index the contents of text files into a Document Store. It takes a list of file paths or [ByteStream](../../concepts/data-classes.mdx#bytestresm) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+The `TextFileToDocument` component converts text files into documents. You can use it in an indexing pipeline to index the contents of text files into a Document Store. It takes a list of file paths or [ByteStream](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
 
 When you initialize the component, you can optionally set the default encoding of the text files through the `encoding` parameter. If you don't provide any value, the component uses `"utf-8"` by default. Note that if the encoding is specified in the metadata of an input ByteStream, it will override this parameter's setting.
 

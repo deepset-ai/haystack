@@ -12,14 +12,14 @@ A component that converts HTML files to documents.
 |                                        |                                                                                                 |
 | :------------------------------------- | :---------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx) , or right at the beginning of an indexing pipeline |
-| **Mandatory run variables**            | "sources": A list of HTML file paths or [`ByteStream`](/docs/data-classes#bytestresm)  objects  |
+| **Mandatory run variables**            | "sources": A list of HTML file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects  |
 | **Output variables**                   | "documents": A list of documents                                                                |
 | **API reference**                      | [Converters](/reference/converters-api)                                                                |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/html.py       |
 
 ## Overview
 
-The `HTMLToDocument` component converts HTML files into documents. It can be used in an indexing pipeline to index the contents of an HTML file into a Document Store or even in a querying pipeline after the [`LinkContentFetcher`](../fetchers/linkcontentfetcher.mdx).  The `HTMLToDocument` component takes a list of HTML file paths or [`ByteStream`](/docs/data-classes#bytestresm) objects as input and converts the files to a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+The `HTMLToDocument` component converts HTML files into documents. It can be used in an indexing pipeline to index the contents of an HTML file into a Document Store or even in a querying pipeline after the [`LinkContentFetcher`](../fetchers/linkcontentfetcher.mdx).  The `HTMLToDocument` component takes a list of HTML file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and converts the files to a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
 
 When you initialize the component, you can optionally set  `extraction_kwargs`,  a dictionary containing keyword arguments to customize the extraction process. These are passed to the underlying Trafilatura `extract` function. For the full list of available arguments, see the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
 

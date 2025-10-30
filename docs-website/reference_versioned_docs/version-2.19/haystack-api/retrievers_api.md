@@ -2,6 +2,7 @@
 title: Retrievers
 id: retrievers-api
 description: Sweeps through a Document Store and returns a set of candidate Documents that are relevant to the query.
+slug: "/retrievers-api"
 ---
 
 <a id="auto_merging_retriever"></a>

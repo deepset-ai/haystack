@@ -2,6 +2,7 @@
 title: Evaluators
 id: evaluators-api
 description: Evaluate your pipelines or individual components.
+slug: "/evaluators-api"
 ---
 
 <a id="answer_exact_match"></a>

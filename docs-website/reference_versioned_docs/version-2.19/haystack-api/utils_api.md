@@ -2,6 +2,7 @@
 title: Utils
 id: utils-api
 description: Utility functions and classes used across the library.
+slug: "/utils-api"
 ---
 
 <a id="azure"></a>

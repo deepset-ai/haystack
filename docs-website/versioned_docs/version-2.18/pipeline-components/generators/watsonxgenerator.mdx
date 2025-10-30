@@ -28,7 +28,7 @@ This integration supports IBM watsonx.ai foundation models such as `ibm/granite-
 
 - The `WATSONX_API_KEY` environment variable (recommended)
 - The `WATSONX_PROJECT_ID` environment variable (recommended)
-- The `api_key` and `project_id` init parameters using Haystack [Secret](/docs/secret-management) API: `Secret.from_token("your-api-key-here")`
+- The `api_key` and `project_id` init parameters using Haystack [Secret](../../concepts/secret-management.mdx) API: `Secret.from_token("your-api-key-here")`
 
 Set your preferred IBM watsonx.ai model in the `model` parameter when initializing the component. The default model is `ibm/granite-3-2b-instruct`.
 
@@ -40,7 +40,7 @@ Finally, the component run method requires a single string prompt to generate te
 
 ### Streaming
 
-This Generator supports [streaming](/docs/choosing-the-right-generator#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ## Usage
 

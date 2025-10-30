@@ -11,7 +11,7 @@ Connects to a Snowflake database to execute an SQL query.
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before a [`PromptBuilder`](/docs/pipeline-components/builders/promptbuilder.mdx) |
+| **Most common position in a pipeline** | Before a [`PromptBuilder`](../builders/promptbuilder.mdx) |
 | **Mandatory init variables** | “user”: User's login  <br /> <br />”account”: Snowflake account identifier  <br /> <br />”api_key”: Snowflake account password. Can be set with `SNOWFLAKE_API_KEY` env var |
 | **Mandatory run variables** | “query”: An SQL query to execute |
 | **Output variables** | “dataframe”: The resulting Pandas dataframe version of the table |

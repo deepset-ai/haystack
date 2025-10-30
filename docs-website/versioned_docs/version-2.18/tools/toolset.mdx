@@ -12,18 +12,18 @@ Group multiple Tools into a single unit.
 |                              |                                                                              |
 | ---------------------------- | ---------------------------------------------------------------------------- |
 | **Mandatory init variables** | "tools": A list of tools                                                     |
-| **API reference**            | [Toolset](https://docs.haystack.deepset.ai/reference/tools-api#toolset)      |
+| **API reference**            | [Toolset](/reference/tools-api#toolset)      |
 | **GitHub link**              | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/toolset.py |
 
 ## Overview
 
-A `Toolset` groups multiple Tool instances into a single manageable unit. It simplifies passing tools to components like Chat Generators, [`ToolInvoker`](/docs/toolinvoker), or [`Agent`](/docs/agent), and supports filtering, serialization, and reuse.
+A `Toolset` groups multiple Tool instances into a single manageable unit. It simplifies passing tools to components like Chat Generators, [`ToolInvoker`](../pipeline-components/tools/toolinvoker.mdx), or [`Agent`](../pipeline-components/agents-1/agent.mdx), and supports filtering, serialization, and reuse.
 
 Additionally, by subclassing `Toolset`, you can create implementations that dynamically load tools from external sources like OpenAPI URLs, MCP servers, or other resources.
 
 ### Initializing Toolset
 
-Here’s how to initialize `Toolset` with [Tool](tool.mdx). Alternatively, you can use [ComponentTool](/docs/componenttool) or [MCPTool](mcptool.mdx) in `Toolset` as Tool instances.
+Here’s how to initialize `Toolset` with [Tool](tool.mdx). Alternatively, you can use [ComponentTool](componenttool.mdx) or [MCPTool](mcptool.mdx) in `Toolset` as Tool instances.
 
 ```python
 from haystack.tools import Tool, Toolset

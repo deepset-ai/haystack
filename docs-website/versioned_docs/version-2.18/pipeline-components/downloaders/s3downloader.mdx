@@ -22,7 +22,7 @@ description: "`S3Downloader` downloads files from AWS S3 buckets to the local fi
 
 `S3Downloader` downloads files from AWS S3 buckets to your local filesystem and enriches Document objects with the local file path. This component is useful for pipelines that need to process files stored in S3, such as PDFs, images, or text files.
 
-The component supports AWS authentication through environment variables by default. You can set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_DEFAULT_REGION` environment variables. Alternatively, you can pass credentials directly at initialization using the [Secret API](/docs/secret-management):
+The component supports AWS authentication through environment variables by default. You can set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_DEFAULT_REGION` environment variables. Alternatively, you can pass credentials directly at initialization using the [Secret API](../../concepts/secret-management.mdx):
 
 ```python
 from haystack.utils import Secret

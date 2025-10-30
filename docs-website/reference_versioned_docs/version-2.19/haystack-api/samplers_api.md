@@ -2,6 +2,7 @@
 title: Samplers
 id: samplers-api
 description: Filters documents based on their similarity scores using top-p sampling.
+slug: "/samplers-api"
 ---
 
 <a id="top_p"></a>
