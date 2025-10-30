@@ -44,16 +44,27 @@ function versionedReferenceLinks() {
       // file.history[0] contains the file path
       const filePath = file.history?.[0] || '';
 
+      // Debug logging (will appear in build logs)
+      console.log('[versionedReferenceLinks] Processing file:', filePath);
+      console.log('[versionedReferenceLinks] file.data:', file.data);
+
       // Match patterns like: versioned_docs/version-2.19/ or reference_versioned_docs/version-2.19/
-      const versionMatch = filePath.match(/versioned_docs\/version-([^/]+)\//);
+      // Handle both relative and absolute paths
+      const versionMatch = filePath.match(/versioned_docs[/\\]version-([^/\\]+)[/\\]/);
 
       if (versionMatch) {
         version = versionMatch[1]; // e.g., "2.19"
+        console.log('[versionedReferenceLinks] Detected version from path:', version);
       } else {
         // Check if it's in the current/next docs (no version folder)
         version = 'current';
+        console.log('[versionedReferenceLinks] No version in path, using current');
       }
+    } else {
+      console.log('[versionedReferenceLinks] Version from metadata:', version);
     }
+
+    console.log('[versionedReferenceLinks] Final version:', version, 'Latest version:', currentLatestVersion);
 
     // Manually visit all nodes in the tree
     const visit = (node, callback) => {
