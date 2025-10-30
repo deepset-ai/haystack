@@ -48,15 +48,7 @@ class DatadogSpan(Span):
             return {}
 
         # https://docs.datadoghq.com/tracing/other_telemetry/connect_logs_and_traces/python/#no-standard-library-logging
-        trace_id, span_id = (str((1 << 64) - 1 & raw_span.trace_id), raw_span.span_id)
-
-        return {
-            "dd.trace_id": trace_id,
-            "dd.span_id": span_id,
-            "dd.service": ddtrace.config.service or "",
-            "dd.env": ddtrace.config.env or "",
-            "dd.version": ddtrace.config.version or "",
-        }
+        return ddtrace.tracer.get_log_correlation_context()
 
 
 class DatadogTracer(Tracer):
