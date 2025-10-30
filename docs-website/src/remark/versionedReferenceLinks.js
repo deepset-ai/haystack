@@ -26,7 +26,7 @@ function getLatestVersion() {
     latestVersion = versions[0];
     return latestVersion;
   } catch (error) {
-    console.warn('Could not read versions.json, defaulting latest version detection', error);
+    console.warn('[versionedReferenceLinks] Could not read versions.json:', error.message);
     return null;
   }
 }
@@ -36,35 +36,38 @@ function versionedReferenceLinks() {
     // Read the latest version inside the processor function
     const currentLatestVersion = getLatestVersion();
 
-    // Try to get version from file metadata (set by Docusaurus)
-    let version = file.data?.version;
+    // Try multiple ways to get the version, in order of reliability:
+    // 1. versionMetadata.versionName (Docusaurus 3.x)
+    // 2. version from file.data (older Docusaurus)
+    // 3. Extract from file path
+    let version =
+      file.data?.versionMetadata?.versionName ||
+      file.data?.version ||
+      null;
 
     // If not in metadata, extract from file path
     if (!version) {
-      // file.history[0] contains the file path
-      const filePath = file.history?.[0] || '';
-
-      // Debug logging (will appear in build logs)
-      console.log('[versionedReferenceLinks] Processing file:', filePath);
-      console.log('[versionedReferenceLinks] file.data:', file.data);
+      // file.history[0] or file.path contains the file path
+      const filePath = file.history?.[0] || file.path || '';
 
       // Match patterns like: versioned_docs/version-2.19/ or reference_versioned_docs/version-2.19/
-      // Handle both relative and absolute paths
+      // Handle both relative and absolute paths, and both / and \ separators
       const versionMatch = filePath.match(/versioned_docs[/\\]version-([^/\\]+)[/\\]/);
 
       if (versionMatch) {
         version = versionMatch[1]; // e.g., "2.19"
-        console.log('[versionedReferenceLinks] Detected version from path:', version);
-      } else {
-        // Check if it's in the current/next docs (no version folder)
+      } else if (
+        // Check if file is in the base docs/ or reference/ folder (not versioned)
+        /[/\\]docs[/\\]/.test(filePath) && !/versioned_docs/.test(filePath) ||
+        /[/\\]reference[/\\]/.test(filePath) && !/reference_versioned_docs/.test(filePath)
+      ) {
+        // Current/unreleased version (in the main docs/reference folder, not versioned)
         version = 'current';
-        console.log('[versionedReferenceLinks] No version in path, using current');
+      } else {
+        // Fallback: assume current version
+        version = 'current';
       }
-    } else {
-      console.log('[versionedReferenceLinks] Version from metadata:', version);
     }
-
-    console.log('[versionedReferenceLinks] Final version:', version, 'Latest version:', currentLatestVersion);
 
     // Manually visit all nodes in the tree
     const visit = (node, callback) => {
