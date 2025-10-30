@@ -52,8 +52,7 @@ class _DummySuccessGen:
         if self.delay:
             await asyncio.sleep(self.delay)
         if streaming_callback:
-            await asyncio.sleep(0)
-            streaming_callback({"dummy": True})  # type: ignore[arg-type]
+            await streaming_callback({"dummy": True})  # type: ignore[arg-type]
         return {"replies": [ChatMessage.from_assistant(self.text)], "meta": {"dummy_meta": True}}
 
 
@@ -159,7 +158,7 @@ def test_streaming_callback_forwarding_sync():
 async def test_streaming_callback_forwarding_async():
     calls: list[Any] = []
 
-    def cb(x: Any) -> None:
+    async def cb(x: Any) -> None:
         calls.append(x)
 
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
@@ -208,7 +207,7 @@ def test_automatic_ttft_mode_with_streaming():
 async def test_automatic_ttft_mode_with_streaming_async():
     calls: list[Any] = []
 
-    def cb(x: Any) -> None:
+    async def cb(x: Any) -> None:
         calls.append(x)
 
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="streaming_async")])
@@ -441,7 +440,7 @@ async def test_streaming_callback_at_init_async():
     """Test that streaming_callback can be passed at init time and is used in run_async."""
     calls: list[Any] = []
 
-    def cb(x: Any) -> None:
+    async def cb(x: Any) -> None:
         calls.append(x)
 
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")], streaming_callback=cb)

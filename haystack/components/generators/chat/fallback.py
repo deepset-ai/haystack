@@ -9,7 +9,7 @@ from typing import Any, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.dataclasses import ChatMessage, StreamingCallbackT
+from haystack.dataclasses import ChatMessage, StreamingCallbackT, select_streaming_callback
 from haystack.tools import ToolsType
 from haystack.utils import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -163,12 +163,14 @@ class FallbackChatGenerator:
         """
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
-        callback = streaming_callback or self.streaming_callback
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
+        )
 
         for idx, gen in enumerate(self.chat_generators):
             gen_name = gen.__class__.__name__
             try:
-                result = self._run_single_sync(gen, messages, generation_kwargs, tools, callback)
+                result = self._run_single_sync(gen, messages, generation_kwargs, tools, streaming_callback)
                 replies = result.get("replies", [])
                 meta = dict(result.get("meta", {}))
                 meta.update(
@@ -217,12 +219,14 @@ class FallbackChatGenerator:
         """
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
-        callback = streaming_callback or self.streaming_callback
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
+        )
 
         for idx, gen in enumerate(self.chat_generators):
             gen_name = gen.__class__.__name__
             try:
-                result = await self._run_single_async(gen, messages, generation_kwargs, tools, callback)
+                result = await self._run_single_async(gen, messages, generation_kwargs, tools, streaming_callback)
                 replies = result.get("replies", [])
                 meta = dict(result.get("meta", {}))
                 meta.update(
