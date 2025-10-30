@@ -17,7 +17,7 @@ A Tool that allows Agents and ToolInvokers to post comments to GitHub issues.
 
 ## Overview
 
-`GitHubIssueCommenterTool` wraps the [`GitHubIssueCommenter`](doc:githubissuecommenter) component, providing a tool interface for use in agent workflows and tool-based pipelines.
+`GitHubIssueCommenterTool` wraps the [`GitHubIssueCommenter`](../../pipeline-components/connectors/githubissuecommenter.mdx) component, providing a tool interface for use in agent workflows and tool-based pipelines.
 
 The tool takes a GitHub issue URL and comment text, then posts the comment to the specified issue using the GitHub API. This requires authentication since posting comments is an authenticated operation.
 
@@ -65,7 +65,7 @@ print(result)
 
 ### With an Agent
 
-You can use `GitHubIssueCommenterTool` with the [Agent](/docs/agent) component. The Agent will automatically invoke the tool when needed to post comments on GitHub issues.
+You can use `GitHubIssueCommenterTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically invoke the tool when needed to post comments on GitHub issues.
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator

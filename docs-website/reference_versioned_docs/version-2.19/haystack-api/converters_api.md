@@ -2,6 +2,7 @@
 title: Converters
 id: converters-api
 description: Various converters to transform data from one format to another.
+slug: "/converters-api"
 ---
 
 <a id="azure"></a>

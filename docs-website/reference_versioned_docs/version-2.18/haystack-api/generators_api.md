@@ -2,6 +2,7 @@
 title: Generators
 id: generators-api
 description: Enables text generation using LLMs.
+slug: "/generators-api"
 ---
 
 <a id="azure"></a>

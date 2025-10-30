@@ -15,7 +15,7 @@ This article goes through different types of Document Stores and explains their 
 
 Whether you are developing a chatbot, a RAG system, or an image captioner, at some point, it’ll be likely for your AI application to compare the input it gets with the information it already knows. Most of the time, this comparison is performed through vector similarity search.
 
-If you’re unfamiliar with vectors, think about them as a way to represent text, images, or audio/video in a numerical form called vector embeddings. Vector databases are specifically designed to store such vectors efficiently, providing all the functionalities an AI application needs to implement data retrieval and similarity search. 
+If you’re unfamiliar with vectors, think about them as a way to represent text, images, or audio/video in a numerical form called vector embeddings. Vector databases are specifically designed to store such vectors efficiently, providing all the functionalities an AI application needs to implement data retrieval and similarity search.
 
 Document Stores are special objects in Haystack that abstract all the different vector databases into a common interface that can be easily integrated into a pipeline, most commonly through a Retriever component. Normally, you will find specialized Document Store and Retriever objects for each vector database Haystack supports.
 
@@ -54,10 +54,10 @@ Continue further down the article for a more complex explanation of the strength
 
 #### Vector libraries
 
-Vector libraries are often included in the “vector database” category improperly, as they are limited to handling only vectors, are designed to work in-memory, and normally don’t have a clean way to store data on disk. Still, they are the way to go every time performance and speed are the top requirements for your AI application, as these libraries can use hardware resources very effectively. 
+Vector libraries are often included in the “vector database” category improperly, as they are limited to handling only vectors, are designed to work in-memory, and normally don’t have a clean way to store data on disk. Still, they are the way to go every time performance and speed are the top requirements for your AI application, as these libraries can use hardware resources very effectively.
 
 > 🚧 In progress
-> 
+>
 > We are currently developing the support for vector libraries in Haystack.
 
 #### Pure vector databases
@@ -66,7 +66,7 @@ Pure vector databases, also known as just “vector databases”, offer efficien
 
 - [Chroma](../../document-stores/chromadocumentstore.mdx)
 - [Pinecone](../../document-stores/pinecone-document-store.mdx)
-- [Qdrant](https://docs.haystack.deepset.ai/v2.0/docs/qdrant-document-store)
+- [Qdrant](../../document-stores/qdrant-document-store.mdx)
 - [Weaviate](../../document-stores/weaviatedocumentstore.mdx)
 - [Marqo](https://haystack.deepset.ai/integrations/marqo-document-store) (external integration)
 - [Milvus](https://haystack.deepset.ai/integrations/milvus-document-store) (external integration)
@@ -100,6 +100,6 @@ Haystack ships with an ephemeral document store that relies on pure Python data 
 
 ### Final considerations
 
-It can be very challenging to pick one vector database over another by only looking at pure performance, as even the slightest difference in the benchmark can produce a different leaderboard (for example, some benchmarks test the cloud services while others work on a reference machine). Thinking about including features like filtering or not can bring in a whole new set of complexities that make the comparison even harder. 
+It can be very challenging to pick one vector database over another by only looking at pure performance, as even the slightest difference in the benchmark can produce a different leaderboard (for example, some benchmarks test the cloud services while others work on a reference machine). Thinking about including features like filtering or not can bring in a whole new set of complexities that make the comparison even harder.
 
 What’s important for you to know is that the Document Store interface doesn’t add much to the costs, and the relative performance of one vector database over another should stay the same when used within Haystack pipelines.

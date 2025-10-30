@@ -12,7 +12,7 @@ This wrapper allows using Haystack components to be used as tools by LLMs.
 |                              |                                                                                     |
 | ---------------------------- | ----------------------------------------------------------------------------------- |
 | **Mandatory init variables** | "component": The Haystack component to wrap                                         |
-| **API reference**            | [Tools](https://docs.haystack.deepset.ai/reference/tools-api)                       |
+| **API reference**            | [Tools](/reference/tools-api)                       |
 | **GitHub link**              | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/component_tool.py |
 
 ## Overview
@@ -82,7 +82,7 @@ print(result)
 
 ### With the Agent Component
 
-You can  use `ComponentTool` with the [Agent](/docs/agent) component. Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
+You can  use `ComponentTool` with the [Agent](../pipeline-components/agents-1/agent.mdx) component. Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator

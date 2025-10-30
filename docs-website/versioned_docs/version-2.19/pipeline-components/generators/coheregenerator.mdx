@@ -24,14 +24,14 @@ description: "`CohereGenerator` enables text generation using Cohere's large lan
 
 `CohereGenerator` needs a Cohere API key to work. You can write this key in:
 
-- The `api_key` init parameter using [Secret API](/docs/secret-management)
+- The `api_key` init parameter using [Secret API](../../concepts/secret-management.mdx)
 - The `COHERE_API_KEY` environment variable (recommended)
 
 Then, the component needs a prompt to operate, but you can pass any text generation parameters directly to this component using the `generation_kwargs` parameter at initialization. For more details on the parameters supported by the Cohere API, refer to the [Cohere documentation](https://docs.cohere.com/reference/chat).
 
 ### Streaming
 
-This Generator supports [streaming](/docs/choosing-the-right-generator#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ## Usage
 

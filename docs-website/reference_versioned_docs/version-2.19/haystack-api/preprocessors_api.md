@@ -2,6 +2,7 @@
 title: PreProcessors
 id: preprocessors-api
 description: Preprocess your Documents and texts. Clean, split, and more.
+slug: "/preprocessors-api"
 ---
 
 <a id="csv_document_cleaner"></a>

@@ -15,7 +15,7 @@ Custom Document Stores are resources that you can build and leverage in situatio
 - You need a very specific retrieval strategy to search for your documents.
 - You want to customize the way Haystack reads and writes documents.
 
-Similar to [custom components](/docs/custom-components), you can use a custom Document Store in a Haystack pipeline as long as you can import its code into your Python program. The best practice is distributing a custom Document Store as a standalone integration package.
+Similar to [custom components](../components/custom-components.mdx), you can use a custom Document Store in a Haystack pipeline as long as you can import its code into your Python program. The best practice is distributing a custom Document Store as a standalone integration package.
 
 ## Recommendations
 
@@ -112,7 +112,7 @@ For example, Haystack wouldn’t get in the way when your Document Store defines
 
 To get the most out of your custom Document Store, in most cases, you would need to create one or more accompanying Retrievers that use the additional search methods mentioned above. Before proceeding and implementing your custom Retriever, it might be helpful to learn more about  [Retrievers](../../pipeline-components/retrievers.mdx) in general through the Haystack documentation.
 
-From the implementation perspective, Retrievers in Haystack are like any other custom component. For more details, refer to the [creating custom components](/docs/custom-components) documentation page.
+From the implementation perspective, Retrievers in Haystack are like any other custom component. For more details, refer to the [creating custom components](../components/custom-components.mdx) documentation page.
 
 Although not mandatory, we encourage you to follow more specific [naming conventions](../../pipeline-components/retrievers.mdx#naming-conventions) for your custom Retriever.
 

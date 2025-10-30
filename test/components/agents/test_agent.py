@@ -885,6 +885,24 @@ class TestAgent:
         assert result["messages"][-1] == result["last_message"]
 
     @pytest.mark.asyncio
+    async def test_generation_kwargs(self):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+
+        agent = Agent(chat_generator=chat_generator)
+        agent.warm_up()
+
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
+
+        await agent.run_async([ChatMessage.from_user("Hello")], generation_kwargs={"temperature": 0.0})
+
+        expected_messages = [
+            ChatMessage(_role=ChatRole.USER, _content=[TextContent(text="Hello")], _name=None, _meta={})
+        ]
+        chat_generator.run.assert_called_once_with(
+            messages=expected_messages, generation_kwargs={"temperature": 0.0}, tools=[]
+        )
+
+    @pytest.mark.asyncio
     async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool])

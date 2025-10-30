@@ -2,6 +2,7 @@
 title: Rankers
 id: rankers-api
 description: Reorders a set of Documents based on their relevance to the query.
+slug: "/rankers-api"
 ---
 
 <a id="hugging_face_tei"></a>

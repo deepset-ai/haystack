@@ -14,7 +14,7 @@ Use this Router in indexing pipelines to route file paths or byte streams based 
 | **Most common position in a pipeline** | As the first component preprocessing data followed by [Converters](../converters.mdx)  |
 | **Mandatory init variables** | "mime_types": A list of MIME types or regex patterns for classification |
 | **Mandatory run variables** | "sources": A list of file paths or byte streams to categorize |
-| **Output variables** | "unclassified": A list of uncategorized file paths or [byte streams](/docs/data-classes#bytestream)  <br /> <br />”mime_types”: For example “"text/plain", "text/html", "application/pdf", "text/markdown", "audio/x-wav", "image/jpeg”: List of categorized file paths or byte streams |
+| **Output variables** | "unclassified": A list of uncategorized file paths or [byte streams](../../concepts/data-classes.mdx#bytestream)  <br /> <br />”mime_types”: For example “"text/plain", "text/html", "application/pdf", "text/markdown", "audio/x-wav", "image/jpeg”: List of categorized file paths or byte streams |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/file_type_router.py |
 

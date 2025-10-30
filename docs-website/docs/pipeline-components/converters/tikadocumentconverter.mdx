@@ -19,11 +19,11 @@ An integration for converting files of different types (PDF, DOCX, HTML, and mor
 
 ## Overview
 
-The `TikaDocumentConverter` component converts files of different types (pdf, docx, html, and others) into documents. You can use it in an indexing pipeline to index the contents of files into a Document Store. It takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestresm) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+The `TikaDocumentConverter` component converts files of different types (pdf, docx, html, and others) into documents. You can use it in an indexing pipeline to index the contents of files into a Document Store. It takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
 
 This integration uses [Apache Tika](https://tika.apache.org/) to parse the files and requires a running Tika server.
 
-The easiest way to run Tika is by using Docker: `docker run -d -p 127.0.0.1:9998:9998 apache/tika:latest`.  
+The easiest way to run Tika is by using Docker: `docker run -d -p 127.0.0.1:9998:9998 apache/tika:latest`.
 For more options on running Tika on Docker, see the [Tika documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
 
 When you initialize the `TikaDocumentConverter` component, you can specify a custom URL of the Tika server you are using through the parameter `tika_url`. The default URL is `"http://localhost:9998/tika"`.

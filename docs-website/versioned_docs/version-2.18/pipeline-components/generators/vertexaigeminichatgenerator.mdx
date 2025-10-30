@@ -14,13 +14,13 @@ Deprecation Notice
 
 This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
 
-We recommend switching to the new [GoogleGenAIChatGenerator](doc:googlegenaichatgenerator) integration instead.
+We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
 :::
 
 |                                        |                                                                                                      |
 | :------------------------------------- | :--------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
-| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects representing the chat |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables**                   | “replies”: A list of alternative replies of the model to the input chat                              |
 | **API reference**                      | [Google Vertex](/reference/integrations-google-vertex)                                                      |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_vertex      |
@@ -44,7 +44,7 @@ You can find your project ID in the [GCP resource manager](https://console.cloud
 
 ### Streaming
 
-This Generator supports [streaming](/docs/choosing-the-right-generator#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ## Usage
 

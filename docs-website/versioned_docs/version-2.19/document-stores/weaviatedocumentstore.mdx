@@ -112,7 +112,7 @@ document_store = WeaviateDocumentStore(url="YOUR-WEAVIATE-URL",
 
 ## Authorization
 
-We provide some utility classes in the `auth` package to handle authorization using different credentials. Every class stores distinct [secrets](/docs/secret-management) and retrieves them from the environment variables when required.
+We provide some utility classes in the `auth` package to handle authorization using different credentials. Every class stores distinct [secrets](../concepts/secret-management.mdx) and retrieves them from the environment variables when required.
 
 The default environment variables for the classes are:
 
@@ -140,6 +140,6 @@ AuthApiKey(api_key=Secret.from_env_var("MY_ENV_VAR"))
 
 ## Supported Retrievers
 
-[`WeaviateBM25Retriever`](/docs/weaviatebm25retriever): A keyword-based Retriever that fetches documents matching a query from the Document Store.
+[`WeaviateBM25Retriever`](../pipeline-components/retrievers/weaviatebm25retriever.mdx): A keyword-based Retriever that fetches documents matching a query from the Document Store.
 
-[`WeaviateEmbeddingRetriever`](/docs/weaviateembeddingretriever): Compares the query and document embeddings and fetches the documents most relevant to the query.
+[`WeaviateEmbeddingRetriever`](../pipeline-components/retrievers/weaviateembeddingretriever.mdx): Compares the query and document embeddings and fetches the documents most relevant to the query.
