@@ -25,7 +25,7 @@ export default {
       type: 'category',
       label: 'Haystack Concepts',
       items: [
-        'concepts/components-overview',
+        'concepts/concepts-overview',
         {
           type: 'category',
           label: 'Agents',
