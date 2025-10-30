@@ -1,0 +1,117 @@
+---
+title: "MetaFieldGroupingRanker"
+id: metafieldgroupingranker
+slug: "/metafieldgroupingranker"
+description: "Reorder the documents by grouping them based on metadata keys."
+---
+
+# MetaFieldGroupingRanker
+
+Reorder the documents by grouping them based on metadata keys.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents, such as a [Retriever](../retrievers.mdx) |
+| **Mandatory init variables**           | "group_by": The name of the meta field to group by                                                               |
+| **Mandatory run variables**            | “documents”: A list of documents to group                                                                        |
+| **Output variables**                   | “documents”: A grouped list of documents                                                                         |
+| **API reference**                      | [Rankers](/reference/rankers-api)                                                                                       |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/meta_field_grouping_ranker.py     |
+
+## Overview
+
+The `MetaFieldGroupingRanker` component groups documents by a primary metadata key `group_by`, and subgroups them with an optional secondary key, `subgroup_by`.
+Within each group or subgroup, the component can also sort documents by a metadata key `sort_docs_by`.
+
+The output is a flat list of documents ordered by `group_by` and `subgroup_by` values. Any documents without a group are placed at the end of the list.
+
+The component helps improve the efficiency and performance of subsequent processing by an LLM.
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.rankers import MetaFieldGroupingRanker
+from haystack import Document
+
+docs = [
+    Document(content="JavaScript is popular", meta={"group": "42", "split_id": 7, "subgroup": "subB"}),
+    Document(content="Python is popular", meta={"group": "42", "split_id": 4, "subgroup": "subB"}),
+    Document(content="A chromosome is DNA", meta={"group": "314", "split_id": 2, "subgroup": "subC"}),
+    Document(content="An octopus has three hearts", meta={"group": "11", "split_id": 2, "subgroup": "subD"}),
+    Document(content="Java is popular", meta={"group": "42", "split_id": 3, "subgroup": "subB"}),
+]
+
+ranker = MetaFieldGroupingRanker(group_by="group", subgroup_by="subgroup", sort_docs_by="split_id")
+result = ranker.run(documents=docs)
+print(result["documents"])
+
+```
+
+### In a pipeline
+
+The following pipeline uses the `MetaFieldGroupingRanker` to organize documents by certain meta fields while sorting by page number, then formats these organized documents into a chat message which is passed to the `OpenAIChatGenerator` to create a structured explanation of the content.
+
+```python
+from haystack import Pipeline
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.rankers import MetaFieldGroupingRanker
+from haystack.dataclasses import Document, ChatMessage
+
+docs = [
+    Document(
+        content="Chapter 1: Introduction to Python",
+        meta={"chapter": "1", "section": "intro", "page": 1}
+    ),
+    Document(
+        content="Chapter 2: Basic Data Types",
+        meta={"chapter": "2", "section": "basics", "page": 15}
+    ),
+    Document(
+        content="Chapter 1: Python Installation",
+        meta={"chapter": "1", "section": "setup", "page": 5}
+    ),
+]
+
+ranker = MetaFieldGroupingRanker(
+    group_by="chapter",
+    subgroup_by="section",
+    sort_docs_by="page"
+)
+
+chat_generator = OpenAIChatGenerator(
+    generation_kwargs={
+        "temperature": 0.7,
+        "max_tokens": 500
+    }
+)
+
+## First run the ranker
+ranked_result = ranker.run(documents=docs)
+ranked_docs = ranked_result["documents"]
+
+## Create chat messages with the ranked documents
+messages = [
+    ChatMessage.from_system("You are a helpful programming tutor."),
+    ChatMessage.from_user(
+        f"Here are the course documents in order:\n" +
+        "\n".join([f"- {doc.content}" for doc in ranked_docs]) +
+        "\n\nBased on these documents, explain the structure of this Python course."
+    )
+]
+
+## Create and run pipeline for just the chat generator
+pipeline = Pipeline()
+pipeline.add_component("chat_generator", chat_generator)
+
+result = pipeline.run(
+    data={
+        "chat_generator": {
+            "messages": messages
+        }
+    }
+)
+
+print(result["chat_generator"]["replies"][0])
+```

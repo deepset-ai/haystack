@@ -1,0 +1,511 @@
+---
+title: "State"
+id: state
+slug: "/state"
+description: "`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to maintain conversation history, share data between tools, and store intermediate results throughout an agent's workflow."
+---
+
+# State
+
+`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to maintain conversation history, share data between tools, and store intermediate results throughout an agent's workflow.
+
+## Overview
+
+When building agents that use multiple tools, you often need tools to share information with each other. State solves this problem by providing centralized storage that all tools can read from and write to. For example, one tool might retrieve documents while another tool uses those documents to generate an answer.
+
+State uses a schema-based approach where you define:
+
+- What data can be stored,
+- The type of each piece of data,
+- How values are merged when updated.
+
+### Supported Types
+
+State supports standard Python types:
+
+- Basic types: `str`, `int`, `float`, `bool`, `dict`,
+- List types: `list`, `list[str]`, `list[int]`, `list[Document]`,
+- Union types: `Union[str, int]`, `Optional[str]`,
+- Custom classes and data classes.
+
+### Automatic Message Handling
+
+State automatically includes a `messages` field to store conversation history. You don't need to define this in your schema.
+
+```python
+## State automatically adds messages field
+state = State(schema={"user_id": {"type": str}})
+
+## The messages field is available
+print("messages" in state.schema)  # True
+print(state.schema["messages"]["type"])  # list[ChatMessage]
+
+## Access conversation history
+messages = state.get("messages", [])
+```
+
+The `messages` field uses `list[ChatMessage]` type and `merge_lists` handler by default, which means new messages are appended to the conversation history.
+
+## Usage
+
+### Creating State
+
+Create State by defining a schema that specifies what data can be stored and their types:
+
+```python
+from haystack.components.agents.state import State
+
+## Define the schema
+schema = {
+    "user_name": {"type": str},
+    "documents": {"type": list},
+    "count": {"type": int}
+}
+
+## Create State with initial data
+state = State(
+    schema=schema,
+    data={"user_name": "Alice", "documents": [], "count": 0}
+)
+```
+
+### Reading from State
+
+Use the `get()` method to retrieve values:
+
+```python
+## Get a value
+user_name = state.get("user_name")
+
+## Get a value with a default if key doesn't exist
+documents = state.get("documents", [])
+
+## Check if a key exists
+if state.has("user_name"):
+    print(f"User: {state.get('user_name')}")
+```
+
+### Writing to State
+
+Use the `set()` method to store or merge values:
+
+```python
+## Set a value
+state.set("user_name", "Bob")
+
+## Set list values (these are merged by default)
+state.set("documents", [{"title": "Doc 1", "content": "Content 1"}])
+```
+
+## Schema Definition
+
+The schema defines what data can be stored and how values are updated. Each schema entry consists of:
+
+- `type` (required): The Python type that defines what kind of data can be stored (for example, `str`, `int`, `list`)
+- `handler` (optional): A function that determines how new values are merged with existing values when you call `set()`
+
+```python
+{
+    "parameter_name": {
+        "type": SomeType,  # Required: Expected Python type for this field
+        "handler": Optional[Callable[[Any, Any], Any]]  # Optional: Function to merge values
+    }
+}
+```
+
+If you don't specify a handler, State automatically assigns a default handler based on the type.
+
+### Default Handlers
+
+Handlers control how values are merged when you call `set()` on an existing key. State provides two default handlers:
+
+- `merge_lists`: Combines the lists together (default for list types)
+- `replace_values`: Overwrites the existing value (default for non-list types)
+
+```python
+from haystack.components.agents.state.state_utils import merge_lists, replace_values
+
+schema = {
+    "documents": {"type": list},  # Uses merge_lists by default
+    "user_name": {"type": str},   # Uses replace_values by default
+    "count": {"type": int}         # Uses replace_values by default
+}
+
+state = State(schema=schema)
+
+## Lists are merged by default
+state.set("documents", [1, 2])
+state.set("documents", [3, 4])
+print(state.get("documents"))  # Output: [1, 2, 3, 4]
+
+## Other values are replaced
+state.set("user_name", "Alice")
+state.set("user_name", "Bob")
+print(state.get("user_name"))  # Output: "Bob"
+
+```
+
+### Custom Handlers
+
+You can define custom handlers for specific merge behavior:
+
+```python
+def custom_merge(current_value, new_value):
+    """Custom handler that merges and sorts lists."""
+    current_list = current_value or []
+    new_list = new_value if isinstance(new_value, list) else [new_value]
+    return sorted(current_list + new_list)
+
+schema = {
+    "numbers": {"type": list, "handler": custom_merge}
+}
+
+state = State(schema=schema)
+state.set("numbers", [3, 1])
+state.set("numbers", [2, 4])
+print(state.get("numbers"))  # Output: [1, 2, 3, 4]
+```
+
+You can also override handlers for individual operations:
+
+```python
+def concatenate_strings(current, new):
+    return f"{current}-{new}" if current else new
+
+schema = {"user_name": {"type": str}}
+state = State(schema=schema)
+
+state.set("user_name", "Alice")
+state.set("user_name", "Bob", handler_override=concatenate_strings)
+print(state.get("user_name"))  # Output: "Alice-Bob"
+```
+
+## Using State with Agents
+
+To use State with an Agent, define a state schema when creating the Agent. The Agent automatically manages State throughout its execution.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool
+
+## Define a simple calculation tool
+def calculate(expression: str) -> dict:
+    """Evaluate a mathematical expression."""
+    result = eval(expression, {"__builtins__": {}})
+    return {"result": result}
+
+## Create a tool that writes to state
+calculator_tool = Tool(
+    name="calculator",
+    description="Evaluate basic math expressions",
+    parameters={
+        "type": "object",
+        "properties": {"expression": {"type": "string"}},
+        "required": ["expression"]
+    },
+    function=calculate,
+    outputs_to_state={"calc_result": {"source": "result"}}
+)
+
+## Create agent with state schema
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[calculator_tool],
+    state_schema={"calc_result": {"type": int}}
+)
+
+## Run the agent
+result = agent.run(
+    messages=[ChatMessage.from_user("Calculate 15 + 27")]
+)
+
+## Access the state from results
+calc_result = result["calc_result"]
+print(calc_result)  # Output: 42
+```
+
+## Tools and State
+
+Tools interact with State through two mechanisms: `inputs_from_state` and `outputs_to_state`.
+
+### Reading from State: `inputs_from_state`
+
+Tools can automatically read values from State and use them as parameters. The `inputs_from_state` parameter maps state keys to tool parameter names.
+
+```python
+def search_documents(query: str, user_context: str) -> dict:
+    """Search documents using query and user context."""
+    return {
+        "results": [f"Found results for '{query}' (user: {user_context})"]
+    }
+
+## Create tool that reads from state
+search_tool = Tool(
+    name="search",
+    description="Search documents",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "user_context": {"type": "string"}
+        },
+        "required": ["query"]
+    },
+    function=search_documents,
+    inputs_from_state={"user_name": "user_context"}  # Maps state's "user_name" to the tool’s input parameter “user_context”
+)
+
+## Define agent with state schema including user_name
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[search_tool],
+    state_schema={
+        "user_name": {"type": str},
+        "search_results": {"type": list}
+    }
+)
+
+## Initialize agent with user context
+result = agent.run(
+    messages=[ChatMessage.from_user("Search for Python tutorials")],
+    user_name="Alice"  # All additional kwargs passed to Agent at runtime are put into State
+)
+```
+
+When the tool is invoked, the Agent automatically retrieves the value from State and passes it to the tool function.
+
+### Writing to State: `outputs_to_state`
+
+Tools can write their results back to State. The `outputs_to_state` parameter defines mappings from tool outputs to state keys.
+
+The structure of the output is: `{”state_key”: {”source”: “tool_result_key”}}`.
+
+```python
+def retrieve_documents(query: str) -> dict:
+    """Retrieve documents based on query."""
+    return {
+        "documents": [
+            {"title": "Doc 1", "content": "Content about Python"},
+            {"title": "Doc 2", "content": "More about Python"}
+        ],
+        "count": 2,
+        "query": query
+    }
+
+## Create tool that writes to state
+retrieval_tool = Tool(
+    name="retrieve",
+    description="Retrieve relevant documents",
+    parameters={
+        "type": "object",
+        "properties": {"query": {"type": "string"}},
+        "required": ["query"]
+    },
+    function=retrieve_documents,
+    outputs_to_state={
+        "documents": {"source": "documents"},      # Maps tool's "documents" output to state's "documents"
+        "result_count": {"source": "count"},       # Maps tool's "count" output to state's "result_count"
+        "last_query": {"source": "query"}          # Maps tool's "query" output to state's "last_query"
+    }
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[retrieval_tool],
+    state_schema={
+        "documents": {"type": list},
+        "result_count": {"type": int},
+        "last_query": {"type": str}
+    }
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("Find information about Python")]
+)
+
+## Access state values from result
+documents = result["documents"]
+result_count = result["result_count"]
+last_query = result["last_query"]
+print(documents)      # List of retrieved documents
+print(result_count)   # 2
+print(last_query)     # "Find information about Python"
+```
+
+Each mapping can specify:
+
+- `source`: Which field from the tool's output to use
+- `handler`: Optional custom function for merging values
+
+If you omit the `source`, the entire tool result is stored:
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool
+
+def get_user_info() -> dict:
+    """Get user information."""
+    return {"name": "Alice", "email": "alice@example.com", "role": "admin"}
+
+## Tool that stores entire result
+info_tool = Tool(
+    name="get_info",
+    description="Get user information",
+    parameters={"type": "object", "properties": {}},
+    function=get_user_info,
+    outputs_to_state={
+        "user_info": {}  # Stores entire result dict in state's "user_info"
+    }
+)
+
+## Create agent with matching state schema
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[info_tool],
+    state_schema={
+        "user_info": {"type": dict}  # Schema must match the tool's output type
+    }
+)
+
+## Run the agent
+result = agent.run(
+    messages=[ChatMessage.from_user("Get the user information")]
+)
+
+## Access the complete result from state
+user_info = result["user_info"]
+print(user_info)  # Output: {"name": "Alice", "email": "alice@example.com", "role": "admin"}
+print(user_info["name"])   # Output: "Alice"
+print(user_info["email"])  # Output: "alice@example.com"
+```
+
+### Combining Inputs and Outputs
+
+Tools can both read from and write to State, enabling tool chaining:
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool
+
+def process_documents(documents: list, max_results: int) -> dict:
+    """Process documents and return filtered results."""
+    processed = documents[:max_results]
+    return {
+        "processed_docs": processed,
+        "processed_count": len(processed)
+    }
+
+processing_tool = Tool(
+    name="process",
+    description="Process retrieved documents",
+    parameters={
+        "type": "object",
+        "properties": {"max_results": {"type": "integer"}},
+        "required": ["max_results"]
+    },
+    function=process_documents,
+    inputs_from_state={"documents": "documents"},  # Reads documents from state
+    outputs_to_state={
+        "final_docs": {"source": "processed_docs"},
+        "final_count": {"source": "processed_count"}
+    }
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[retrieval_tool, processing_tool],  # Chain tools using state
+    state_schema={
+        "documents": {"type": list},
+        "final_docs": {"type": list},
+        "final_count": {"type": int}
+    }
+)
+
+## Run the agent - tools will chain through state
+result = agent.run(
+    messages=[ChatMessage.from_user("Find and process 3 documents about Python")]
+)
+
+## Access the final processed results
+final_docs = result["final_docs"]
+final_count = result["final_count"]
+print(f"Processed {final_count} documents")
+print(final_docs)
+```
+
+## Complete Example
+
+This example shows a multi-tool agent workflow where tools share data through State:
+
+```python
+import math
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool
+
+## Tool 1: Calculate factorial
+def factorial(n: int) -> dict:
+    """Calculate the factorial of a number."""
+    result = math.factorial(n)
+    return {"result": result}
+
+factorial_tool = Tool(
+    name="factorial",
+    description="Calculate the factorial of a number",
+    parameters={
+        "type": "object",
+        "properties": {"n": {"type": "integer"}},
+        "required": ["n"]
+    },
+    function=factorial,
+    outputs_to_state={"factorial_result": {"source": "result"}}
+)
+
+## Tool 2: Perform calculation
+def calculate(expression: str) -> dict:
+    """Evaluate a mathematical expression."""
+    result = eval(expression, {"__builtins__": {}})
+    return {"result": result}
+
+calculator_tool = Tool(
+    name="calculator",
+    description="Evaluate basic math expressions",
+    parameters={
+        "type": "object",
+        "properties": {"expression": {"type": "string"}},
+        "required": ["expression"]
+    },
+    function=calculate,
+    outputs_to_state={"calc_result": {"source": "result"}}
+)
+
+## Create agent with both tools
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[calculator_tool, factorial_tool],
+    state_schema={
+        "calc_result": {"type": int},
+        "factorial_result": {"type": int}
+    }
+)
+
+## Run the agent
+result = agent.run(
+    messages=[ChatMessage.from_user("Calculate the factorial of 5, then multiply it by 2")]
+)
+
+## Access state values from result
+factorial_result = result["factorial_result"]
+calc_result = result["calc_result"]
+
+## Access conversation messages
+for message in result["messages"]:
+    print(f"{message.role}: {message.text}")
+```

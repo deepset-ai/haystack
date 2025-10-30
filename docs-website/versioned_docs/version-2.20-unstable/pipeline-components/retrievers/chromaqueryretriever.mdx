@@ -1,0 +1,88 @@
+---
+title: "ChromaQueryTextRetriever"
+id: chromaqueryretriever
+slug: "/chromaqueryretriever"
+description: "This is a a Retriever compatible with the Chroma Document Store."
+---
+
+# ChromaQueryTextRetriever
+
+This is a a Retriever compatible with the Chroma Document Store.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline  2. The last component in the semantic search pipeline  3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Mandatory init variables**           | "document_store": An instance of a [ChromaDocumentStore](../../document-stores/chromadocumentstore.mdx)                                                                                                                                                                                         |
+| **Mandatory run variables**            | “query”: A single query in plain-text format to be processed by the [Retriever](../retrievers.mdx)                                                                                                                                                                           |
+| **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                            |
+| **API reference**                      | [Chroma](/reference/integrations-chroma)                                                                                                                                                                                                                                           |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/chroma                                                                                                                                                                                    |
+
+## Overview
+
+The `ChromaQueryTextRetriever` is an embedding-based Retriever compatible with the `ChromaDocumentStore` that uses the Chroma [query API](https://docs.trychroma.com/reference/Collection#query).
+This component takes a plain-text query string in input and returns the matching documents.
+Chroma will create the embedding for the query using its [embedding function](https://docs.trychroma.com/embeddings#default-all-minilm-l6-v2); in case you do not want to use the default embedding function, this must be specified at `ChromaDocumentStore` initialization.
+
+### Usage
+
+#### On its own
+
+This Retriever needs the `ChromaDocumentStore` and indexed documents to run.
+
+```python
+from haystack_integrations.document_stores.chroma import ChromaDocumentStore
+from haystack_integrations.components.retrievers.chroma import ChromaQueryTextRetriever
+
+document_store = ChromaDocumentStore()
+
+retriever = ChromaQueryTextRetriever(document_store=document_store)
+
+## example run query
+retriever.run(query = "How does Chroma Retriever work?")
+```
+
+#### In a pipeline
+
+Here is how you could use the `ChromaQueryTextRetriever` in a Pipeline. In this example, you would create two pipelines: an indexing one and a querying one.
+
+In the indexing pipeline, the documents are written in the Document Store.
+
+Then, in the querying pipeline, `ChromaQueryTextRetriever` gets the answer from the Document Store based on the provided query.
+
+```python
+import os
+from pathlib import Path
+
+from haystack import Pipeline
+from haystack.dataclasses import Document
+from haystack.components.writers import DocumentWriter
+
+from haystack_integrations.document_stores.chroma import ChromaDocumentStore
+from haystack_integrations.components.retrievers.chroma import ChromaQueryTextRetriever
+
+## Chroma is used in-memory so we use the same instances in the two pipelines below
+document_store = ChromaDocumentStore()
+
+documents = [
+    Document(content="This contains variable declarations", meta={"title": "one"}),
+    Document(content="This contains another sort of variable declarations", meta={"title": "two"}),
+    Document(content="This has nothing to do with variable declarations", meta={"title": "three"}),
+    Document(content="A random doc", meta={"title": "four"}),
+]
+
+indexing = Pipeline()
+indexing.add_component("writer", DocumentWriter(document_store))
+indexing.run({"writer": {"documents": documents}})
+
+querying = Pipeline()
+querying.add_component("retriever", ChromaQueryTextRetriever(document_store))
+results = querying.run({"retriever": {"query": "Variable declarations", "top_k": 3}})
+
+for d in results["retriever"]["documents"]:
+    print(d.meta, d.score)
+```
+
+## Additional References
+
+:cook: Cookbook: [Use Chroma for RAG and Indexing](https://haystack.deepset.ai/cookbook/chroma-indexing-and-rag-examples)

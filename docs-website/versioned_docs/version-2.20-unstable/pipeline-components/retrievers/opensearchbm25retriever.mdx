@@ -1,0 +1,139 @@
+---
+title: "OpenSearchBM25Retriever"
+id: opensearchbm25retriever
+slug: "/opensearchbm25retriever"
+description: "This is a keyword-based Retriever that fetches Documents matching a query from an OpenSearch Document Store."
+---
+
+# OpenSearchBM25Retriever
+
+This is a keyword-based Retriever that fetches Documents matching a query from an OpenSearch Document Store.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Mandatory init variables**           | "document_store": An instance of an [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx)                                                                                                                          |
+| **Mandatory run variables**            | "query": A query string                                                                                                                                                                                               |
+| **Output variables**                   | "documents": A list of documents matching the query                                                                                                                                                                   |
+| **API reference**                      | [OpenSearch](/reference/integrations-opensearch)                                                                                                                                                                             |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch                                                                                                                          |
+
+## Overview
+
+`OpenSearchBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from an `OpenSearchDocumentStore`. It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the two strings.
+
+Since the `OpenSearchBM25Retriever` matches strings based on word overlap, it’s often used to find exact matches to names of persons or products, IDs, or well-defined error messages. The BM25 algorithm is very lightweight and simple. Nevertheless, it can be hard to beat with more complex embedding-based approaches on out-of-domain data.
+
+In addition to the `query`, the `OpenSearchBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
+You can adjust how [inexact fuzzy matching](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#fuzziness) is performed, using the `fuzziness` parameter.
+It is also possible to specify if all terms in the query must match using the `all_terms_must_match` parameter, which defaults to `False`.
+
+If you want more flexible matching of a query to Documents, you can use the `OpenSearchEmbeddingRetriever`, which uses vectors created by LLMs to retrieve relevant information.
+
+### Setup and installation
+
+[Install](https://opensearch.org/docs/latest/install-and-configure/install-opensearch/index/) and run an OpenSearch instance.
+
+If you have Docker set up, we recommend pulling the Docker image and running it.
+
+```shell
+docker pull opensearchproject/opensearch:2.11.0
+docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" opensearchproject/opensearch:2.11.0
+```
+
+As an alternative, you can go to [OpenSearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch) and start a Docker container running OpenSearch using the provided `docker-compose.yml`:
+
+```shell
+docker compose up
+```
+
+Once you have a running OpenSearch instance, install the `opensearch-haystack` integration:
+
+```shell
+pip install opensearch-haystack
+```
+
+## Usage
+
+### On its own
+
+This Retriever needs the `OpensearchDocumentStore` and indexed Documents to run. You can’t use it on its own.
+
+### In a RAG pipeline
+
+Set your `OPENAI_API_KEY` as an environment variable and then run the following code:
+
+```python
+from haystack_integrations.components.retrievers.opensearch  import OpenSearchBM25Retriever
+from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
+
+from haystack import Document
+from haystack import Pipeline
+from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.generators import OpenAIGenerator
+from haystack.document_stores.types import DuplicatePolicy
+
+import os
+api_key = os.environ['OPENAI_API_KEY']
+
+## Create a RAG query pipeline
+prompt_template = """
+    Given these documents, answer the question.\nDocuments:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    \nQuestion: {{question}}
+    \nAnswer:
+    """
+
+document_store = OpenSearchDocumentStore(hosts="http://localhost:9200", use_ssl=True,
+verify_certs=False, http_auth=("admin", "admin"))
+
+## Add Documents
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+			       Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+			       Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+
+## DuplicatePolicy.SKIP param is optional, but useful to run the script multiple times without throwing errors
+document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
+
+retriever = OpenSearchBM25Retriever(document_store=document_store)
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(name="retriever", instance=retriever)
+rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
+rag_pipeline.add_component(instance=OpenAIGenerator(api_key=api_key), name="llm")
+rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder", "llm")
+rag_pipeline.connect("llm.replies", "answer_builder.replies")
+rag_pipeline.connect("llm.metadata", "answer_builder.metadata")
+rag_pipeline.connect("retriever", "answer_builder.documents")
+
+question = "How many languages are spoken around the world today?"
+result = rag_pipeline.run(
+            {
+                "retriever": {"query": question},
+                "prompt_builder": {"question": question},
+                "answer_builder": {"query": question},
+            }
+        )
+print(result['answer_builder']['answers'][0])
+```
+
+Here’s an example output:
+
+```python
+GeneratedAnswer(
+  data='Over 7,000 languages are spoken around the world today.',
+  query='How many languages are spoken around the world today?',
+  documents=[
+    Document(id=cfe93bc1c274908801e6670440bf2bbba54fad792770d57421f85ffa2a4fcc94, content: 'There are over 7,000 languages spoken around the world today.', score: 7.179112),
+    Document(id=7f225626ad1019b273326fbaf11308edfca6d663308a4a3533ec7787367d59a2, content: 'In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the ph...', score: 1.1426818)],
+  meta={'model': 'gpt-3.5-turbo-0613', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 86, 'completion_tokens': 13, 'total_tokens': 99}})
+```
+
+## Additional References
+
+:cook: Cookbook: [PDF-Based Question Answering with Amazon Bedrock and Haystack](https://haystack.deepset.ai/cookbook/amazon_bedrock_for_documentation_qa)

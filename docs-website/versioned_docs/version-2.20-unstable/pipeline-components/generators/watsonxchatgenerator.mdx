@@ -1,0 +1,89 @@
+---
+title: "WatsonxChatGenerator"
+id: watsonxchatgenerator
+slug: "/watsonxchatgenerator"
+description: "Use this component with IBM watsonx models like `granite-3-2b-instruct` for chat generation."
+---
+
+# WatsonxChatGenerator
+
+Use this component with IBM watsonx models like `granite-3-2b-instruct` for chat generation.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | "api_key": The IBM Cloud API key. Can be set with `WATSONX_API_KEY` env var.  <br /> <br />"project_id": The IBM Cloud project ID. Can be set with `WATSONX_PROJECT_ID` env var. |
+| **Mandatory run variables** | "messages" A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
+| **Output variables** | "replies": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
+| **API reference** | [Watsonx](/reference/integrations-watsonx) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/watsonx |
+
+This integration supports IBM watsonx.ai foundation models such as `ibm/granite-13b-chat-v2`, `ibm/llama-2-70b-chat`, `ibm/llama-3-70b-instruct`, and similar. These models provide high-quality chat completion capabilities through IBM's cloud platform. Check out the most recent full list in the [IBM watsonx.ai documentation](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-ibm.html?context=wx).
+
+## Overview
+
+`WatsonxChatGenerator` needs IBM Cloud credentials to work. You can set these in:
+
+- The `api_key` and `project_id` init parameters using [Secret API](../../concepts/secret-management.mdx)
+- The `WATSONX_API_KEY` and `WATSONX_PROJECT_ID` environment variables (recommended)
+
+Then, the component needs a prompt to operate, but you can pass any text generation parameters valid for the IBM watsonx.ai API directly to this component using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the parameters supported by the IBM watsonx.ai API, refer to the [IBM watsonx.ai documentation](https://cloud.ibm.com/apidocs/watsonx-ai).
+
+Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+
+### Streaming
+
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+
+## Usage
+
+You need to install `watsonx-haystack` package to use the `WatsonxChatGenerator`:
+
+```shell
+pip install watsonx-haystack
+```
+
+#### On its own
+
+```python
+from haystack_integrations.components.generators.watsonx.chat.chat_generator import WatsonxChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+generator = WatsonxChatGenerator(
+    api_key=Secret.from_env_var("WATSONX_API_KEY"),
+    project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
+    model="ibm/granite-13b-instruct-v2"
+)
+
+message = ChatMessage.from_user("What's Natural Language Processing? Be brief.")
+print(generator.run([message]))
+```
+
+#### In a Pipeline
+
+You can also use `WatsonxChatGenerator` to use IBM watsonx.ai chat models in your pipeline.
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.watsonx.chat.chat_generator import WatsonxChatGenerator
+from haystack.utils import Secret
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", WatsonxChatGenerator(
+    api_key=Secret.from_env_var("WATSONX_API_KEY"),
+    project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
+    model="ibm/granite-13b-instruct-v2"
+))
+pipe.connect("prompt_builder", "llm")
+
+country = "Germany"
+system_message = ChatMessage.from_system("You are an assistant giving out valuable information to language learners.")
+messages = [system_message, ChatMessage.from_user("What's the official language of {{ country }}?")]
+
+res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
+print(res)
+```

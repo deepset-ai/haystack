@@ -1,0 +1,102 @@
+---
+title: "OptimumTextEmbedder"
+id: optimumtextembedder
+slug: "/optimumtextembedder"
+description: "A component to embed text using models loaded with the Hugging Face Optimum library."
+---
+
+# OptimumTextEmbedder
+
+A component to embed text using models loaded with the Hugging Face Optimum library.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline                |
+| **Mandatory run variables**            | “text”: A string                                                                          |
+| **Output variables**                   | “embedding”: A list of float numbers (vectors)                                            |
+| **API reference**                      | [Optimum](/reference/integrations-optimum)                                                       |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/optimum |
+
+## Overview
+
+`OptimumTextEmbedder` embeds text strings using models loaded with the [HuggingFace Optimum](https://huggingface.co/docs/optimum/index) library. It uses the [ONNX runtime](https://onnxruntime.ai/) for high-speed inference.
+
+The default model is `sentence-transformers/all-mpnet-base-v2`.
+
+Similarly to other Embedders, this component allows adding prefixes (and suffixes) to include instructions. For more details, refer to the component’s API reference.
+
+There are three useful parameters specific to the Optimum Embedder that you can control with various modes:
+
+- [Pooling](/reference/integrations-optimum#optimumembedderpooling): generate a fixed-sized sentence embedding from a variable-sized sentence embedding
+- [Optimization](https://huggingface.co/docs/optimum/onnxruntime/usage_guides/optimization): apply graph optimization to the model and improve inference speed
+- [Quantization](https://huggingface.co/docs/optimum/onnxruntime/usage_guides/quantization): reduce the computational and memory costs
+
+Find all the available mode details in our Optimum [API Reference](/reference/integrations-optimum).
+
+### Authentication
+
+Authentication with a Hugging Face API Token is only required to access private or gated models through Serverless Inference API or the Inference Endpoints.
+
+The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you can pass a Hugging Face API token at initialization. See our [Secret Management](../../concepts/secret-management.mdx) page for more information.
+
+## Usage
+
+To start using this integration with Haystack, install it with:
+
+```shell
+pip install optimum-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.embedders.optimum import OptimumTextEmbedder
+
+text_to_embed = "I love pizza!"
+
+text_embedder = OptimumTextEmbedder(model="sentence-transformers/all-mpnet-base-v2")
+text_embedder.warm_up()
+
+print(text_embedder.run(text_to_embed))
+
+## {'embedding': [-0.07804739475250244, 0.1498992145061493,, ...]}
+```
+
+### In a pipeline
+
+Note that this example requires GPU support to execute.
+
+```python
+from haystack import Pipeline
+
+from haystack_integrations.components.embedders.optimum import (
+    OptimumTextEmbedder,
+    OptimumEmbedderPooling,
+    OptimumEmbedderOptimizationConfig,
+    OptimumEmbedderOptimizationMode,
+)
+
+pipeline = Pipeline()
+embedder = OptimumTextEmbedder(
+    model="intfloat/e5-base-v2",
+    normalize_embeddings=True,
+    onnx_execution_provider="CUDAExecutionProvider",
+    optimizer_settings=OptimumEmbedderOptimizationConfig(
+        mode=OptimumEmbedderOptimizationMode.O4,
+        for_gpu=True,
+    ),
+    working_dir="/tmp/optimum",
+    pooling_mode=OptimumEmbedderPooling.MEAN,
+)
+pipeline.add_component("embedder", embedder)
+
+results = pipeline.run(
+    {
+        "embedder": {
+            "text": "Ex profunditate antiquae doctrinae, Ad caelos supra semper, Hoc incantamentum evoco, draco apparet, Incantamentum iam transactum est"
+        },
+    }
+)
+
+print(results["embedder"]["embedding"])
+```

@@ -1,0 +1,142 @@
+---
+title: "DocumentToImageContent"
+id: documenttoimagecontent
+slug: "/documenttoimagecontent"
+description: "`DocumentToImageContent` extracts visual data from image or PDF file-based documents and converts them into `ImageContent` objects. These are ready for multimodal AI pipelines, including tasks like image question-answering and captioning."
+---
+
+# DocumentToImageContent
+
+`DocumentToImageContent` extracts visual data from image or PDF file-based documents and converts them into `ImageContent` objects. These are ready for multimodal AI pipelines, including tasks like image question-answering and captioning.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a `ChatPromptBuilder` in a query pipeline                                                                                                                                                                             |
+| **Mandatory run variables**            | "documents": A list of documents to process. Each document should have metadata containing at minimum a 'file_path_meta_field' key. PDF documents additionally require a 'page_number' key to specify which page to convert. |
+| **Output variables**                   | "image_contents": A list of `ImageContent` objects                                                                                                                                                                           |
+| **API reference**                      | [Image Converters](/reference/image-converters-api)                                                                                                                                                                                 |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/image/document_to_image.py                                                                                                                 |
+
+## Overview
+
+`DocumentToImageContent` processes a list of documents containing image or PDF file paths and converts them into `ImageContent` objects.
+
+- For images, it reads and encodes the file directly.
+- For PDFs, it extracts the specified page (through `page_number` in metadata) and converts it to an image.
+
+By default, it looks for the file path in the `file_path` metadata field. You can customize this with the `file_path_meta_field` parameter. The `root_path` lets you specify a common base directory for file resolution.
+
+This component is typically used in query pipelines right before a `ChatPromptBuilder` when you would like to add Images to your user prompt.
+
+If `size` is provided, the images will be resized while maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial when working with models that have resolution constraints or when transmitting images to remote services.
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.converters.image.document_to_image import DocumentToImageContent
+
+converter = DocumentToImageContent(
+    file_path_meta_field="file_path",
+    root_path="/data/documents",
+    detail="high",
+    size=(800, 600)
+)
+
+documents = [
+    Document(content="Photo of a mountain", meta={"file_path": "mountain.jpg"}),
+    Document(content="First page of a report", meta={"file_path": "report.pdf", "page_number": 1})
+]
+
+result = converter.run(documents)
+image_contents = result["image_contents"]
+print(image_contents)
+
+## [
+## ImageContent(
+## base64_image="/9j/4A...", mime_type="image/jpeg", detail="high",
+## meta={"file_path": "mountain.jpg"}
+## ),
+## ImageContent(
+## base64_image="/9j/4A...", mime_type="image/jpeg", detail="high",
+## meta={"file_path": "report.pdf", "page_number": 1}
+## )
+## ]
+```
+
+### In a pipeline
+
+You can use `DocumentToImageContent` in multimodal indexing pipelines before passing to an Embedder or captioning model.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.converters.image.document_to_image import DocumentToImageContent
+
+## Query pipeline
+pipeline = Pipeline()
+pipeline.add_component("image_converter", DocumentToImageContent(detail="auto"))
+pipeline.add_component(
+    "chat_prompt_builder",
+    ChatPromptBuilder(
+        required_variables=["question"],
+		    template="""{% message role="system" %}
+You are a friendly assistant that answers questions based on provided images.
+{% endmessage %}
+
+{%- message role="user" -%}
+Only provide an answer to the question using the images provided.
+
+Question: {{ question }}
+Answer:
+
+{%- for img in image_contents -%}
+  {{ img | templatize_part }}
+{%- endfor -%}
+{%- endmessage -%}
+""",
+    )
+)
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+
+pipeline.connect("image_converter", "chat_prompt_builder.image_contents")
+pipeline.connect("chat_prompt_builder", "llm")
+
+documents = [
+    Document(content="Cat image", meta={"file_path": "cat.jpg"}),
+    Document(content="Doc intro", meta={"file_path": "paper.pdf", "page_number": 1}),
+]
+
+result = pipeline.run(
+    data={
+        "image_converter": {"documents": documents},
+        "chat_prompt_builder": {"question": "What color is the cat?"}
+    }
+)
+print(result)
+
+## {
+## "llm": {
+## "replies": [
+## ChatMessage(
+## _role=<ChatRole.ASSISTANT: 'assistant'>,
+## _content=[TextContent(text="The cat is orange with some black.")],
+## _name=None,
+## _meta={
+## "model": "gpt-4o-mini-2024-07-18",
+## "index": 0,
+## "finish_reason": "stop",
+## "usage": {...},
+## },
+## )
+## ]
+## }
+## }
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Introduction to Multimodality](https://haystack.deepset.ai/cookbook/multimodal_intro)

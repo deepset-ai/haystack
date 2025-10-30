@@ -1,0 +1,64 @@
+---
+title: "Evaluation"
+id: evaluation
+slug: "/evaluation"
+description: "Learn all about pipeline or component evaluation in Haystack."
+---
+
+# Evaluation
+
+Learn all about pipeline or component evaluation in Haystack.
+
+Haystack has all the tools needed to evaluate entire pipelines or individual components like Retrievers, Readers, or Generators. This guide explains how to evaluate your pipeline in different scenarios and how to understand the metrics.
+
+Use evaluation and its results to:
+
+- Judge how well your system is performing on a given domain,
+- Compare the performance of different models,
+- Identify underperforming components in your pipeline.
+
+## Evaluation Options
+
+**Evaluating individual components or end-to-end pipelines.**
+
+Evaluating individual components can help understand performance bottlenecks and optimize one component at a time, for example, a Retriever or a prompt used with a Generator.
+
+End-to-end evaluation checks how the full pipeline is used and evaluates only the final outputs. The pipeline is approached as a black box.
+
+**Using ground-truth labels or no labels at all.**
+
+Most statistical evaluators require ground truth labels, such as the documents relevant to the query or the expected answer. In contrast, most model-based evaluators work without any labels just by following the prompt instructions. However, few-shot labels included in the prompt can improve the evaluator.
+
+**Model-based evaluation using a language model or statistical evaluation.**
+
+Model-based evaluation uses LLMs with prompt instructions or smaller fine-tuned models to score aspects of a pipeline’s outputs. Statistical evaluation requires no models and is thus a more lightweight way to score pipeline outputs. For more information, see our docs on [model-based](evaluation/model-based-evaluation.mdx) evaluation and [statistical](evaluation/statistical-evaluation.mdx) evaluation.
+
+## Evaluator Components
+
+|  |  |  |  |
+| --- | --- | --- | --- |
+| Evaluator                                                    | Evaluates Answers or Documents | Model-based or Statistical | Requires Labels |
+| [AnswerExactMatchEvaluator](../pipeline-components/evaluators/answerexactmatchevaluator.mdx) | Answers                        | Statistical                | Yes             |
+| [ContextRelevanceEvaluator](../pipeline-components/evaluators/contextrelevanceevaluator.mdx) | Documents                      | Model-based                | No              |
+| [DocumentMRREvaluator](../pipeline-components/evaluators/documentmrrevaluator.mdx)           | Documents                      | Statistical                | Yes             |
+| [DocumentMAPEvaluator](../pipeline-components/evaluators/documentmapevaluator.mdx)           | Documents                      | Statistical                | Yes             |
+| [DocumentRecallEvaluator](../pipeline-components/evaluators/documentrecallevaluator.mdx)     | Documents                      | Statistical                | Yes             |
+| [FaithfulnessEvaluator](../pipeline-components/evaluators/faithfulnessevaluator.mdx)         | Answers                        | Model-based                | No              |
+| [LLMEvaluator](../pipeline-components/evaluators/llmevaluator.mdx)                           | User-defined                   | Model-based                | No              |
+| [SASEvaluator](../pipeline-components/evaluators/sasevaluator.mdx)                           | Answers                        | Model-based                | Yes             |
+
+## Evaluator Integrations
+
+To learn more about our integration with the Ragas and DeepEval evaluation frameworks, head over to the [RagasEvaluator](../pipeline-components/evaluators/ragasevaluator.mdx) and [DeepEvalEvaluator](../pipeline-components/evaluators/deepevalevaluator.mdx) component docs.
+
+To get started using practical examples, check out our evaluation tutorial or the respective cookbooks below.
+
+## Additional References
+
+:notebook: Tutorial: [Evaluating RAG Pipelines](https://haystack.deepset.ai/tutorials/35_evaluating_rag_pipelines)
+
+:cook: Cookbooks:
+
+- [RAG Evaluation with Prometheus 2](https://haystack.deepset.ai/cookbook/prometheus2_evaluation)
+- [RAG Pipeline Evaluation Using Ragas](https://haystack.deepset.ai/cookbook/rag_eval_ragas)
+- [RAG Pipeline Evaluation Using DeepEval](https://haystack.deepset.ai/cookbook/rag_eval_deep_eval)

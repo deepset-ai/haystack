@@ -1,0 +1,95 @@
+---
+title: "HuggingFaceTEIRanker"
+id: huggingfaceteiranker
+slug: "/huggingfaceteiranker"
+description: "Use this component to rank documents based on their similarity to the query using a Text Embeddings Inference (TEI) API endpoint."
+---
+
+# HuggingFaceTEIRanker
+
+Use this component to rank documents based on their similarity to the query using a Text Embeddings Inference (TEI) API endpoint.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents, such as a [Retriever](../retrievers.mdx) |
+| **Mandatory init variables** | “url”: Base URL of the TEI reranking service (for example, "https://api.example.com"). |
+| **Mandatory run variables** | “query”: A query string  <br /> <br />“documents”: A list of document objects |
+| **Output variables** | “documents”: A grouped list of documents |
+| **API reference** | [Rankers](/reference/rankers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/hugging_face_tei.py |
+
+## Overview
+
+HuggingFaceTEIRanker ranks documents based on semantic relevance to a specified query.
+
+You can use it with one of the Text Embeddings Inference (TEI) API endpoints:
+
+- [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
+- [Hugging Face Inference Endpoints](https://huggingface.co/inference-endpoints)
+
+You can also specify the `top_k` parameter to set the maximum number of documents to return.
+
+Depending on your TEI server configuration, you may also require a Hugging Face [token](https://huggingface.co/settings/tokens) to use for authorization. You can set it with `HF_API_TOKEN` or `HF_TOKEN` environment variables, or by using Haystack's [Secret management](../../concepts/secret-management.mdx).
+
+## Usage
+
+### On its own
+
+You can use `HuggingFaceTEIRanker` outside of a pipeline to order documents based on your query.
+
+This example uses the `HuggingFaceTEIRanker` to rank two simple documents. To run the Ranker, pass a query, provide the documents, and set the number of documents to return in the `top_k` parameter.
+
+```python
+from haystack import Document
+from haystack.components.rankers import HuggingFaceTEIRanker
+from haystack.utils import Secret
+
+reranker = HuggingFaceTEIRanker(
+    url="http://localhost:8080",
+    top_k=5,
+    timeout=30,
+    token=Secret.from_token("my_api_token")
+)
+
+docs = [Document(content="The capital of France is Paris"), Document(content="The capital of Germany is Berlin")]
+
+result = reranker.run(query="What is the capital of France?", documents=docs)
+
+ranked_docs = result["documents"]
+print(ranked_docs)
+>> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
+>>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
+```
+
+### In a pipeline
+
+`HuggingFaceTEIRanker` is most efficient in query pipelines when used after a Retriever.
+
+Below is an example of a pipeline that retrieves documents from an `InMemoryDocumentStore` based on keyword search (using `InMemoryBM25Retriever`). It then uses the `HuggingFaceTEIRanker` to rank the retrieved documents according to their similarity to the query. The pipeline uses the default settings of the Ranker.
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.rankers import HuggingFaceTEIRanker
+
+docs = [Document(content="Paris is in France"),
+        Document(content="Berlin is in Germany"),
+        Document(content="Lyon is in France")]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store = document_store)
+ranker = HuggingFaceTEIRanker(url="http://localhost:8080")
+ranker.warm_up()
+
+document_ranker_pipeline = Pipeline()
+document_ranker_pipeline.add_component(instance=retriever, name="retriever")
+document_ranker_pipeline.add_component(instance=ranker, name="ranker")
+
+document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "Cities in France"
+document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3},
+                                   "ranker": {"query": query, "top_k": 2}})
+```

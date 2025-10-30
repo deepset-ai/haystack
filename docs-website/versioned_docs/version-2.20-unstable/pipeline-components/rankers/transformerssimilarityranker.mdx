@@ -1,0 +1,105 @@
+---
+title: "TransformersSimilarityRanker"
+id: transformerssimilarityranker
+slug: "/transformerssimilarityranker"
+description: "Use this component to rank documents based on their similarity to the query. The `TransformersSimilarityRanker` is a powerful, model-based Ranker that uses a cross-encoder model to produce document and query embeddings."
+---
+
+# TransformersSimilarityRanker
+
+Use this component to rank documents based on their similarity to the query. The `TransformersSimilarityRanker` is a powerful, model-based Ranker that uses a cross-encoder model to produce document and query embeddings.
+
+> 🚧 Legacy Component
+>
+> This component is considered legacy and will no longer receive updates. It may be deprecated in a future release, followed by removal after a deprecation period.
+> Consider using SentenceTransformersSimilarityRanker instead, as it provides the same functionality and additional features.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
+| **Mandatory init variables** | "token" (only for private models): The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory run variables** | “documents”: A list of documents  <br /> <br />”query”: A query string |
+| **Output variables** | “documents”: A list of documents |
+| **API reference** | [Rankers](/reference/rankers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/transformers_similarity.py |
+
+## Overview
+
+`TransformersSimilarityRanker` ranks documents based on how similar they are to the query. It uses a pre-trained cross-encoder model from the Hugging Face Hub to embed both the query and the documents. It then compares the embeddings to determine how similar they are. The result is a list of `Document `objects in ranked order, with the Documents most similar to the query appearing first.
+
+`TransformersSimilarityRanker` is most useful in query pipelines, such as a retrieval-augmented generation (RAG) pipeline or a document search pipeline, to ensure the retrieved documents are ordered by relevance. You can use it after a Retriever (such as the `InMemoryEmbeddingRetriever`) to improve the search results. When using `TransformersSimilarityRanker` with a Retriever, consider setting the Retriever's `top_k` to a small number. This way, the Ranker will have fewer documents to process, which can help make your pipeline faster.
+
+By default, this component uses the `cross-encoder/ms-marco-MiniLM-L-6-v2` model, but it's flexible. You can switch to a different model by adjusting the `model` parameter when initializing the Ranker. For details on different initialization settings, check out the API reference for this component.
+
+You can also set the `device` parameter to use HF models on your CPU or GPU.
+
+### Authorization
+
+The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
+
+```python
+ranker = TransformersSimilarityRanker(token=Secret.from_token("<your-api-key>"))
+```
+
+## Usage
+
+### On its own
+
+You can use `TransformersSimilarityRanker` outside of a pipeline to order documents based on your query.
+
+This example uses the `TransformersSimilarityRanker` to rank two simple documents. To run the Ranker, pass a query, provide the documents, and set the number of documents to return in the `top_k` parameter.
+
+```python
+from haystack import Document
+from haystack.components.rankers import TransformersSimilarityRanker
+
+docs = [Document(content="Paris"), Document(content="Berlin")]
+
+ranker = TransformersSimilarityRanker()
+ranker.warm_up()
+
+ranker.run(query="City in France", documents=docs, top_k=1)
+```
+
+### In a pipeline
+
+`TransformersSimilarityRanker` is most efficient in query pipelines when used after a Retriever.
+
+Below is an example of a pipeline that retrieves documents from an `InMemoryDocumentStore` based on keyword search (using `InMemoryBM25Retriever`). It then uses the `TransformersSimilarityRanker` to rank the retrieved documents according to their similarity to the query. The pipeline uses the default settings of the Ranker.
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.rankers import TransformersSimilarityRanker
+
+docs = [Document(content="Paris is in France"),
+        Document(content="Berlin is in Germany"),
+        Document(content="Lyon is in France")]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store = document_store)
+ranker = TransformersSimilarityRanker()
+ranker.warm_up()
+
+document_ranker_pipeline = Pipeline()
+document_ranker_pipeline.add_component(instance=retriever, name="retriever")
+document_ranker_pipeline.add_component(instance=ranker, name="ranker")
+
+document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "Cities in France"
+document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3},
+                                   "ranker": {"query": query, "top_k": 2}})
+```
+
+:::info
+Ranker `top_k`
+
+In the example above, the `top_k` values for the Retriever and the Ranker are different. The Retriever's `top_k` specifies how many documents it returns. The Ranker then orders these documents.
+
+You can set the same or a smaller `top_k` value for the Ranker. The Ranker's `top_k` is the number of documents it returns (if it's the last component in the pipeline) or forwards to the next component. In the pipeline example above, the Ranker is the last component, so the output you get when you run the pipeline are the top two documents, as per the Ranker's `top_k`.
+
+Adjusting the `top_k` values can help you optimize performance. In this case, a smaller `top_k` value of the Retriever means fewer documents to process for the Ranker, which can speed up the pipeline.
+:::

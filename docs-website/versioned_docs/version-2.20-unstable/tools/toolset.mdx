@@ -1,0 +1,198 @@
+---
+title: "Toolset"
+id: toolset
+slug: "/toolset"
+description: "Group multiple Tools into a single unit."
+---
+
+# Toolset
+
+Group multiple Tools into a single unit.
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | "tools": A list of tools                                                     |
+| **API reference**            | [Toolset](/reference/tools-api#toolset)      |
+| **GitHub link**              | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/toolset.py |
+
+## Overview
+
+A `Toolset` groups multiple Tool instances into a single manageable unit. It simplifies passing tools to components like Chat Generators, [`ToolInvoker`](../pipeline-components/tools/toolinvoker.mdx), or [`Agent`](../pipeline-components/agents-1/agent.mdx), and supports filtering, serialization, and reuse.
+
+Additionally, by subclassing `Toolset`, you can create implementations that dynamically load tools from external sources like OpenAPI URLs, MCP servers, or other resources.
+
+### Initializing Toolset
+
+Here’s how to initialize `Toolset` with [Tool](tool.mdx). Alternatively, you can use [ComponentTool](componenttool.mdx) or [MCPTool](mcptool.mdx) in `Toolset` as Tool instances.
+
+```python
+from haystack.tools import Tool, Toolset
+
+## Define math functions
+def add_numbers(a: int, b: int) -> int:
+    return a + b
+
+def subtract_numbers(a: int, b: int) -> int:
+    return a - b
+
+## Create tools with proper schemas
+add_tool = Tool(
+    name="add",
+    description="Add two numbers",
+    parameters={
+        "type": "object",
+        "properties": {
+            "a": {"type": "integer"},
+            "b": {"type": "integer"}
+        },
+        "required": ["a", "b"]
+    },
+    function=add_numbers
+)
+
+subtract_tool = Tool(
+    name="subtract",
+    description="Subtract b from a",
+    parameters={
+        "type": "object",
+        "properties": {
+            "a": {"type": "integer"},
+            "b": {"type": "integer"}
+        },
+        "required": ["a", "b"]
+    },
+    function=subtract_numbers
+)
+
+## Create a toolset with the math tools
+math_toolset = Toolset([add_tool, subtract_tool])
+```
+
+### Adding New Tools to Toolset
+
+```python
+def multiply_numbers(a: int, b: int) -> int:
+    return a * b
+
+multiply_tool = Tool(
+    name="multiply",
+    description="Multiply two numbers",
+    parameters={
+        "type": "object",
+        "properties": {
+            "a": {"type": "integer"},
+            "b": {"type": "integer"}
+        },
+        "required": ["a", "b"]
+    },
+    function=multiply_numbers
+)
+
+math_toolset.add(multiply_tool)
+
+## or, you can merge toolsets together
+math_toolset.add(another_toolset)
+```
+
+## Usage
+
+You can use `Toolset` wherever you can use Tools in Haystack.
+
+### With ChatGenerator and ToolInvoker
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.tools import ToolInvoker
+from haystack.dataclasses import ChatMessage
+
+## Create a toolset with the math tools
+math_toolset = Toolset([add_tool, subtract_tool])
+
+chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", tools=math_toolset)
+
+## Initialize the Tool Invoker with the weather tool
+tool_invoker = ToolInvoker(tools=math_toolset)
+
+user_message = ChatMessage.from_user("What is 10 minus 5?")
+
+replies = chat_generator.run(messages=[user_message])["replies"]
+print(f"assistant message: {replies}")
+
+## If the assistant message contains a tool call, run the tool invoker
+if replies[0].tool_calls:
+    tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
+    print(f"tool result: {tool_messages[0].tool_call_result.result}")
+```
+
+Output:
+
+```
+assistant message: [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[ToolCall(tool_name='subtract', arguments={'a': 10, 'b': 5}, id='call_awGa5q7KtQ9BrMGPTj6IgEH1')], _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'tool_calls', 'usage': {'completion_tokens': 18, 'prompt_tokens': 75, 'total_tokens': 93, 'completion_tokens_details': CompletionTokensDetails(accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0), 'prompt_tokens_details': PromptTokensDetails(audio_tokens=0, cached_tokens=0)}})]
+tool result: 5
+```
+
+### In a Pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.converters import OutputAdapter
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.tools import ToolInvoker
+from haystack.dataclasses import ChatMessage
+
+math_toolset = Toolset([add_tool, subtract_tool])
+
+pipeline = Pipeline()
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=math_toolset))
+pipeline.add_component("tool_invoker", ToolInvoker(tools=math_toolset))
+pipeline.add_component(
+    "adapter",
+    OutputAdapter(
+        template="{{ initial_msg + initial_tool_messages + tool_messages }}",
+        output_type=list[ChatMessage],
+        unsafe=True,
+    ),
+)
+pipeline.add_component("response_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+pipeline.connect("llm.replies", "tool_invoker.messages")
+pipeline.connect("llm.replies", "adapter.initial_tool_messages")
+pipeline.connect("tool_invoker.tool_messages", "adapter.tool_messages")
+pipeline.connect("adapter.output", "response_llm.messages")
+
+user_input = "What is 2+2?"
+user_input_msg = ChatMessage.from_user(text=user_input)
+
+result = pipeline.run({"llm": {"messages": [user_input_msg]}, "adapter": {"initial_msg": [user_input_msg]}})
+
+print(result["response_llm"]["replies"][0].text)
+```
+
+Output:
+
+```
+2 + 2 equals 4.
+```
+
+### With the Agent
+
+```python
+from haystack.components.agents import Agent
+from haystack.dataclasses import ChatMessage
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=math_toolset
+)
+
+agent.warm_up()
+response = agent.run(messages=[ChatMessage.from_user("What is 4 + 2?")])
+
+print(response["messages"][-1].text)
+```
+
+Output:
+
+```
+4 + 2 equals 6.
+```

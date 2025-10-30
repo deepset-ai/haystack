@@ -1,0 +1,123 @@
+---
+title: "Device Management"
+id: device-management
+slug: "/device-management"
+description: "This page discusses the concept of device management in the context of Haystack."
+---
+
+# Device Management
+
+This page discusses the concept of device management in the context of Haystack.
+
+Many Haystack components, such as `HuggingFaceLocalGenerator` , `AzureOpenAIGenerator`, and others, allow users the ability to pick and choose which language model is to be queried and executed. For components that interface with cloud-based services, the service provider automatically takes care of the details of provisioning the requisite hardware (like GPUs). However, if you wish to use models on your local machine, you’ll need to figure out how to deploy them on your hardware. Further complicating things, different ML libraries have different APIs to launch models on specific devices.
+
+To make the process of running inference on local models as straightforward as possible, Haystack uses a framework-agnostic device management implementation. Exposing devices through this interface means you no longer need to worry about library-specific invocations and device representations.
+
+## Concepts
+
+Haystack’s device management is built on the following abstractions:
+
+- `DeviceType`  - An enumeration that lists all the different types of supported devices.
+- `Device`  - A generic representation of a device composed of a `DeviceType` and a unique identifier. Together, it represents a single device in the group of all available devices.
+- `DeviceMap` - A mapping of strings to `Device` instances. The strings represent model-specific identifiers, usually model parameters. This allows us to map specific parts of a model to specific devices.
+- `ComponentDevice` - A tagged union of a single `Device` or a `DeviceMap` instance. Components that support local inference will expose an optional `device` parameter of this type in their constructor.
+
+With the above abstractions, Haystack can fully address any supported device that’s part of your local machine and can support the usage of multiple devices at the same time. Every component that supports local inference will internally handle the conversion of these generic representations to their backend-specific representations.
+
+:::info
+Source Code
+
+Find the full code for the abstractions above in the Haystack GitHub [repo](https://github.com/deepset-ai/haystack/blob/6a776e672fb69cc4ee42df9039066200f1baf24e/haystack/utils/device.py).
+:::
+
+## Usage
+
+To use a single device for inference, use either the `ComponentDevice.from_single` or `ComponentDevice.from_str` class method:
+
+```python
+from haystack.utils import ComponentDevice, Device
+
+device = ComponentDevice.from_single(Device.gpu(id=1))
+## Alternatively, use a PyTorch device string
+device = ComponentDevice.from_str("cuda:1")
+generator = HuggingFaceLocalGenerator(model="llama2", device=device)
+```
+
+To use multiple devices, use the `ComponentDevice.from_multiple` class method:
+
+```python
+from haystack.utils import ComponentDevice, Device, DeviceMap
+
+device_map = DeviceMap({
+	"encoder.layer1": Device.gpu(id=0),
+	"decoder.layer2": Device.gpu(id=1),
+	"self_attention": Device.disk(),
+	"lm_head": Device.cpu()
+})
+device = ComponentDevice.from_multiple(device_map)
+generator = HuggingFaceLocalGenerator(model="llama2", device=device)
+```
+
+### Integrating Devices in Custom Components
+
+Components should expose an optional `device` parameter of type `ComponentDevice`.  Once exposed, they can determine what to do with it:
+
+- If `device=None`, the component can pass that to the backend. In this case, the backend decides which device the model will be placed on.
+- Alternatively, the component can attempt to automatically pick an available device before passing it to the backend using the `ComponentDevice.resolve_device` class method.
+
+Once the device has been resolved, the component can use the `ComponentDevice.to_*` methods to get the backend-specific representation of the underlying device, which is then passed to the backend.
+
+The `ComponentDevice` instance should be serialized in the component’s `to_dict` and `from_dict` methods.
+
+```python
+from haystack.utils import ComponentDevice, Device, DeviceMap
+
+class MyComponent(Component):
+    def __init__(self, device: Optional[ComponentDevice] = None):
+        # If device is None, automatically select a device.
+        self.device = ComponentDevice.resolve_device(device)
+
+    def warm_up(self):
+        # Call the framework-specific conversion method.
+        self.model = AutoModel.from_pretrained("deepset/bert-base-cased-squad2", device=self.device.to_hf())
+
+	  def to_dict(self):
+	    # Serialize the policy like any other (custom) data.
+	    return default_to_dict(self,
+							 device=self.device.to_dict() if self.device else None,
+							 ...)
+
+	  @classmethod
+	  def from_dict(cls, data):
+	    # Deserialize the device data inplace before passing
+			# it to the generic from_dict function.
+	    init_params = data["init_parameters"]
+      init_params["device"] = ComponentDevice.from_dict(init_params["device"])
+			return default_from_dict(cls, data)
+
+## Automatically selects a device.
+c = MyComponent(device=None)
+
+## Uses the first GPU available.
+c = MyComponent(device=ComponentDevice.from_str("cuda:0"))
+
+## Uses the CPU.
+c = MyComponent(device=ComponentDevice.from_single(Device.cpu()))
+
+## Allow the component to use multiple devices using a device map.
+c = MyComponent(device=ComponentDevice.from_multiple(DeviceMap({
+      "layer1": Device.cpu(),
+      "layer2": Device.gpu(1),
+      "layer3": Device.disk()
+})))
+```
+
+If the component’s backend provides a more specialized API to manage devices, it could add an additional init parameter that acts as a conduit. For instance, `HuggingFaceLocalGenerator` exposes a `huggingface_pipeline_kwargs` parameter through which Hugging Face-specific `device_map`  arguments can be passed:
+
+```python
+generator = HuggingFaceLocalGenerator(model="llama2", huggingface_pipeline_kwargs={
+	"device_map": "balanced"
+})
+```
+
+In such cases, ensure that the parameter precedence and selection behavior is clearly documented. In the case of `HuggingFaceLocalGenerator`, the device map passed through the `huggingface_pipeline_kwargs` parameter overrides the explicit `device` parameter and is documented as such.

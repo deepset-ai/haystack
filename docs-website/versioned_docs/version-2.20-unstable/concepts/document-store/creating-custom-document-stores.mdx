@@ -1,0 +1,153 @@
+---
+title: "Creating Custom Document Stores"
+id: creating-custom-document-stores
+slug: "/creating-custom-document-stores"
+description: "Create your own Document Stores to manage your documents."
+---
+
+# Creating Custom Document Stores
+
+Create your own Document Stores to manage your documents.
+
+Custom Document Stores are resources that you can build and leverage in situations where a ready-made solution is not available in Haystack. For example:
+
+- You’re working with a vector store that’s not yet supported in Haystack.
+- You need a very specific retrieval strategy to search for your documents.
+- You want to customize the way Haystack reads and writes documents.
+
+Similar to [custom components](../components/custom-components.mdx), you can use a custom Document Store in a Haystack pipeline as long as you can import its code into your Python program. The best practice is distributing a custom Document Store as a standalone integration package.
+
+## Recommendations
+
+Before you start, there are a few recommendations we provide to ensure a custom Document Store behaves consistently with the rest of the Haystack ecosystem. At the end of the day, a Document Store is just Python code written in a way that Haystack can understand, but the way you name it, organize it, and distribute it can make a difference. None of these recommendations are mandatory, but we encourage you to follow as many as you can.
+
+### Naming Convention
+
+We recommend naming your Document Store following the format `<TECHNOLOGY>-haystack`, for example, `chroma-haystack`. This will make it consistent with the others, lowering the cognitive load for your users and easing discoverability.
+
+This naming convention applies to the name of the git repository (`https://github.com/your-org/example-haystack`) and the name of the Python package (`example-haystack`).
+
+### Structure
+
+More often than not, a Document Store can be fairly complex, and setting up a dedicated Git repository can be handy and future-proof. To ease this step, we prepared a [GitHub template](https://github.com/deepset-ai/document-store) that provides the structure you need to host a custom Document Store in a dedicated repository.
+
+See the instructions about [how to use the template](https://github.com/deepset-ai/document-store?tab=readme-ov-file#how-to-use-this-repo) to get you started.
+
+### Packaging
+
+As with any other [Haystack integration](../integrations.mdx), a Document Store can be added to your Haystack applications by installing an additional Python package, for example, with `pip`. Once you have a Git repository hosting your Document Store and a `pyproject.toml` file to create an `example-haystack` package (using our [GitHub template](https://github.com/deepset-ai/document-store)), it will be possible to `pip install` it directly from sources, for example:
+
+```shell
+pip install git+https://github.com/your-org/example-haystack.git
+```
+
+Though very practical to quickly deliver prototypes, if you want others to use your custom Document Store, we recommend you publish a package on PyPI so that it will be versioned and installable with simply:
+
+```shell
+pip install example-haystack
+```
+
+:::tip
+👍
+
+Our [GitHub template](https://github.com/deepset-ai/document-store) ships a GitHub workflow that will automatically publish the Document Store package on PyPI.
+:::
+
+### Documentation
+
+We recommend thoroughly documenting your custom Document Store with a detailed README file and possibly generating API documentation using a static generator.
+
+For inspiration, see the [neo4j-haystack](https://github.com/prosto/neo4j-haystack) repository and its [documentation](https://prosto.github.io/neo4j-haystack/) pages.
+
+## Implementation
+
+### DocumentStore Protocol
+
+You can use any Python class as a Document Store, provided that it implements all the methods of the `DocumentStore` Python protocol defined in Haystack:
+
+```python
+class DocumentStore(Protocol):
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes this store to a dictionary.
+        """
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DocumentStore":
+        """
+        Deserializes the store from a dictionary.
+        """
+
+    def count_documents(self) -> int:
+        """
+        Returns the number of documents stored.
+        """
+
+    def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> List[Document]:
+        """
+        Returns the documents that match the filters provided.
+        """
+
+    def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int:
+        """
+        Writes (or overwrites) documents into the DocumentStore, return the number of documents that was written.
+        """
+
+    def delete_documents(self, document_ids: List[str]) -> None:
+        """
+        Deletes all documents with a matching document_ids from the DocumentStore.
+        """
+```
+
+The `DocumentStore` interface supports the basic CRUD operations you would normally perform on a database or a storage system, and mostly generic components like [`DocumentWriter`](../../pipeline-components/writers/documentwriter.mdx) use it.
+
+### Additional Methods
+
+Usually, a Document Store comes with additional methods that can provide advanced search functionalities. These methods are not part of the `DocumentStore` protocol and don’t follow any particular convention. We designed it like this to provide maximum flexibility to the Document Store when using any specific features of the underlying database.
+
+For example, Haystack wouldn’t get in the way when your Document Store defines a specific `search` method that takes a long list of parameters that only make sense in the context of a particular vector database. Normally, a [Retriever](../../pipeline-components/retrievers.mdx) component would then use this additional search method.
+
+### Retrievers
+
+To get the most out of your custom Document Store, in most cases, you would need to create one or more accompanying Retrievers that use the additional search methods mentioned above. Before proceeding and implementing your custom Retriever, it might be helpful to learn more about  [Retrievers](../../pipeline-components/retrievers.mdx) in general through the Haystack documentation.
+
+From the implementation perspective, Retrievers in Haystack are like any other custom component. For more details, refer to the [creating custom components](../components/custom-components.mdx) documentation page.
+
+Although not mandatory, we encourage you to follow more specific [naming conventions](../../pipeline-components/retrievers.mdx#naming-conventions) for your custom Retriever.
+
+### Serialization
+
+Haystack requires every component to be representable by a Python dictionary for correct serialization implementation. Some components, such as Retrievers and Writers, maintain a reference to a Document Store instance. Therefore, `DocumentStore` classes should implement the `from_dict` and `to_dict` methods. This allows to rebuild an instance after reading a pipeline from a file.
+
+For a practical example of what to serialize in a custom Document Store, consider a database client you created using an IP address and a database name. When constructing the dictionary to return in `to_dict`, you would store the IP address and the database name, not the database client instance.
+
+### Secrets Management
+
+There's a likelihood that users will need to provide sensitive data, such as passwords, API keys, or private URLs, to create a Document Store instance. This sensitive data could potentially be leaked if it's passed around in plain text.
+
+Haystack has a specific way to wrap sensitive data into special objects called Secrets. This prevents the data from being leaked during serialization roundtrips. We strongly recommend using this feature extensively for data security (better safe than sorry!).
+
+You can read more about Secret Management in Haystack [documentation](../secret-management.mdx).
+
+### Testing
+
+Haystack comes with some testing functionalities you can use in a custom Document Store. In particular, an empty class inheriting from `DocumentStoreBaseTests` would already run the standard tests that any Document Store is expected to pass in order to work properly.
+
+### Implementation Tips
+
+- The best way to learn how to write a custom Document Store is to look at the existing ones: the `InMemoryDocumentStore`, which is part of Haystack, or the [`ElasticsearchDocumentStore`](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch), which is a Core Integration, are good places to start.
+- When starting from scratch, it might be easier to create the four CRUD methods of the `DocumentStore` protocol one at a time and test them one at a time as well. For example:
+  1. Implement the logic for `count_documents`.
+  2. In your `test_document_store.py` module, define the test class `TestDocumentStore(CountDocumentsTest)`. Note how we only inherit from the specific testing mix-in `CountDocumentsTest`.
+  3. Make the tests pass.
+  4. Implement the logic for `write_documents`.
+  5. Change `test_document_store.py` so that your class now also derives from the `WriteDocumentsTest` mix-in: `TestDocumentStore(CountDocumentsTest, WriteDocumentsTest)`.
+  6. Keep iterating with the remaining methods.
+- Having a notebook where users can try out your Document Store in a full pipeline can really help adoption, and it’s a great source of documentation. Our [haystack-cookbook](https://github.com/deepset-ai/haystack-cookbook) repository has good visibility, and we encourage contributors to create a PR and add their own.
+
+## Get Featured on the Integrations Page
+
+The [Integrations web page](https://haystack.deepset.ai/integrations) makes Haystack integrations visible to the community, and it’s a great opportunity to showcase your work. Once your Document Store is usable and properly packaged, you can open a pull request in the [haystack-integrations](https://github.com/deepset-ai/haystack-integrations) GitHub repository to add an integration tile.
+
+See the [integrations documentation page](../integrations.mdx#how-do-i-showcase-my-integration) for more details.

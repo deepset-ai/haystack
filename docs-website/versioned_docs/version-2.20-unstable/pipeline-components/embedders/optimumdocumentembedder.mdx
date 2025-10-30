@@ -1,0 +1,103 @@
+---
+title: "OptimumDocumentEmbedder"
+id: optimumdocumentembedder
+slug: "/optimumdocumentembedder"
+description: "A component to compute documents’ embeddings using models loaded with the Hugging Face Optimum library."
+---
+
+# OptimumDocumentEmbedder
+
+A component to compute documents’ embeddings using models loaded with the Hugging Face Optimum library.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline                |
+| **Mandatory run variables**            | “documents”: A list of documents                                                          |
+| **Output variables**                   | “documents”: A list of documents enriched with embeddings                                 |
+| **API reference**                      | [Optimum](/reference/integrations-optimum)                                                       |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/optimum |
+
+## Overview
+
+`OptimumDocumentEmbedder` embeds text strings using models loaded with the [HuggingFace Optimum](https://huggingface.co/docs/optimum/index) library. It uses the [ONNX runtime](https://onnxruntime.ai/) for high-speed inference.
+
+The default model is `sentence-transformers/all-mpnet-base-v2`.
+
+Similarly to other Embedders, this component allows adding prefixes (and suffixes) to include instructions. For more details, refer to the component’s API reference.
+
+There are three useful parameters specific to the Optimum Embedder that you can control with various modes:
+
+- [Pooling](/reference/integrations-optimum#optimumembedderpooling): generate a fixed-sized sentence embedding from a variable-sized sentence embedding
+- [Optimization](https://huggingface.co/docs/optimum/onnxruntime/usage_guides/optimization): apply graph optimization to the model and improve inference speed
+- [Quantization](https://huggingface.co/docs/optimum/onnxruntime/usage_guides/quantization): reduce the computational and memory costs
+
+Find all the available mode details in our Optimum [API Reference](/reference/integrations-optimum).
+
+### Authentication
+
+Authentication with a Hugging Face API Token is only required to access private or gated models through Serverless Inference API or the Inference Endpoints.
+
+The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you can pass a Hugging Face API token at initialization. See our [Secret Management](../../concepts/secret-management.mdx) page for more information.
+
+## Usage
+
+To start using this integration with Haystack, install it with:
+
+```shell
+pip install optimum-haystack
+```
+
+### On its own
+
+```python
+from haystack.dataclasses import Document
+from haystack_integrations.components.embedders.optimum import OptimumDocumentEmbedder
+
+doc = Document(content="I love pizza!")
+
+document_embedder = OptimumDocumentEmbedder(model="sentence-transformers/all-mpnet-base-v2")
+document_embedder.warm_up()
+
+result = document_embedder.run([doc])
+print(result["documents"][0].embedding)
+
+## [0.017020374536514282, -0.023255806416273117, ...]
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack import Document
+from haystack_integrations.components.embedders.optimum import (
+    OptimumDocumentEmbedder,
+    OptimumEmbedderPooling,
+    OptimumEmbedderOptimizationConfig,
+    OptimumEmbedderOptimizationMode,
+)
+
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
+
+embedder = OptimumDocumentEmbedder(
+    model="intfloat/e5-base-v2",
+    normalize_embeddings=True,
+    onnx_execution_provider="CUDAExecutionProvider",
+    optimizer_settings=OptimumEmbedderOptimizationConfig(
+        mode=OptimumEmbedderOptimizationMode.O4,
+        for_gpu=True,
+    ),
+    working_dir="/tmp/optimum",
+    pooling_mode=OptimumEmbedderPooling.MEAN,
+)
+
+pipeline = Pipeline()
+pipeline.add_component("embedder", embedder)
+
+pipeline.run({"embedder": {"documents": documents}})
+
+print(results["embedder"]["embedding"])
+```

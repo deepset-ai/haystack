@@ -1,0 +1,151 @@
+---
+title: "DocumentLengthRouter"
+id: documentlengthrouter
+slug: "/documentlengthrouter"
+description: "Routes documents to different output connections based on the length of their `content` field."
+---
+
+# DocumentLengthRouter
+
+Routes documents to different output connections based on the length of their `content` field.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Flexible |
+| **Mandatory run variables** | "documents": A list of documents |
+| **Output variables** | "short_documents": A list of documents where `content` is None or the length of `content` is less than or equal to the threshold.  <br /> <br />”long_documents”: A list of documents where the length of `content` is greater than the threshold. |
+| **API reference** | [Routers](/reference/routers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/document_length_router.py |
+
+## Overview
+
+`DocumentLengthRouter` routes documents to different output connections based on the length of their `content` field.
+
+It allows to set a `threshold` init parameter. Documents where `content` is None, or the length of `content` is less than or equal to the threshold are routed to "short_documents". Others are routed to "long_documents".
+
+A common use case for `DocumentLengthRouter` is handling documents obtained from PDFs that contain non-text content, such as scanned pages or images. This component can detect empty or low-content documents and route them to components that perform OCR, generate captions, or compute image embeddings.
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.routers import DocumentLengthRouter
+from haystack.dataclasses import Document
+
+docs = [
+    Document(content="Short"),
+    Document(content="Long document "*20),
+]
+
+router = DocumentLengthRouter(threshold=10)
+
+result = router.run(documents=docs)
+print(result)
+
+## {
+## "short_documents": [Document(content="Short", ...)],
+## "long_documents": [Document(content="Long document ...", ...)],
+## }
+```
+
+### In a pipeline
+
+In the following indexing pipeline, the `PyPDFToDocument` Converter extracts text from PDF files. Documents are then split by pages using a `DocumentSplitter`. Next, the `DocumentLengthRouter` routes short documents to `LLMDocumentContentExtractor` to extract text, which is particularly useful for non-textual, image-based pages. Finally, all documents are collected using `DocumentJoiner` and written to the Document Store.
+
+```python
+from haystack import Pipeline
+from haystack.components.converters import PyPDFToDocument
+from haystack.components.extractors.image import LLMDocumentContentExtractor
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.joiners import DocumentJoiner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.routers import DocumentLengthRouter
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+document_store = InMemoryDocumentStore()
+
+indexing_pipe = Pipeline()
+indexing_pipe.add_component(
+    "pdf_converter",
+    PyPDFToDocument(store_full_path=True)
+)
+## setting skip_empty_documents=False is important here because the
+## LLMDocumentContentExtractor can extract text from non-textual documents
+## that otherwise would be skipped
+indexing_pipe.add_component(
+    "pdf_splitter",
+    DocumentSplitter(
+        split_by="page",
+        split_length=1,
+        skip_empty_documents=False
+    )
+)
+indexing_pipe.add_component(
+    "doc_length_router",
+    DocumentLengthRouter(threshold=10)
+)
+indexing_pipe.add_component(
+    "content_extractor",
+    LLMDocumentContentExtractor(
+        chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini")
+    )
+)
+indexing_pipe.add_component(
+    "doc_joiner",
+    DocumentJoiner(sort_by_score=False)
+)
+indexing_pipe.add_component(
+    "document_writer",
+    DocumentWriter(document_store=document_store)
+)
+
+indexing_pipe.connect("pdf_converter.documents", "pdf_splitter.documents")
+indexing_pipe.connect("pdf_splitter.documents", "doc_length_router.documents")
+## The short PDF pages will be enriched/captioned
+indexing_pipe.connect(
+    "doc_length_router.short_documents",
+    "content_extractor.documents"
+)
+indexing_pipe.connect(
+    "doc_length_router.long_documents",
+    "doc_joiner.documents"
+)
+indexing_pipe.connect(
+    "content_extractor.documents",
+    "doc_joiner.documents"
+)
+indexing_pipe.connect("doc_joiner.documents", "document_writer.documents")
+
+## Run the indexing pipeline with sources
+indexing_result = indexing_pipe.run(
+    data={"sources": ["textual_pdf.pdf", "non_textual_pdf.pdf"]}
+)
+
+## Inspect the documents
+indexed_documents = document_store.filter_documents()
+print(f"Indexed {len(indexed_documents)} documents:\n")
+for doc in indexed_documents:
+    print("file_path: ", doc.meta["file_path"])
+    print("page_number: ", doc.meta["page_number"])
+    print("content: ", doc.content)
+    print("-" * 100 + "\n")
+
+## Indexed 3 documents:
+##
+## file_path:  textual_pdf.pdf
+## page_number:  1
+## content:  A sample PDF ﬁle...
+## ----------------------------------------------------------------------------------------------------
+##
+## file_path:  textual_pdf.pdf
+## page_number:  2
+## content:  Page 2 of Sample PDF...
+## ----------------------------------------------------------------------------------------------------
+##
+## file_path:  non_textual_pdf.pdf
+## page_number:  1
+## content:  Content extracted from non-textual PDF using a LLM...
+## ----------------------------------------------------------------------------------------------------
+```
