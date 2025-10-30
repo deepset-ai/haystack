@@ -24,11 +24,19 @@ export default {
     {
       type: 'category',
       label: 'Haystack Concepts',
-      link: {
-        type: 'doc',
-        id: 'concepts/concepts-overview'
-      },
       items: [
+        'concepts/components-overview',
+        {
+          type: 'category',
+          label: 'Agents',
+          link: {
+            type: 'doc',
+            id: 'concepts/agents'
+          },
+          items: [
+            'concepts/agents/state',
+          ],
+        },
         {
           type: 'category',
           label: 'Components',
@@ -41,7 +49,23 @@ export default {
             'concepts/components/supercomponents',
           ],
         },
-        'concepts/components-overview',
+        {
+          type: 'category',
+          label: 'Pipelines',
+          link: {
+            type: 'doc',
+            id: 'concepts/pipelines'
+          },
+          items: [
+            'concepts/pipelines/creating-pipelines',
+            'concepts/pipelines/serialization',
+            'concepts/pipelines/visualizing-pipelines',
+            'concepts/pipelines/debugging-pipelines',
+            'concepts/pipelines/pipeline-breakpoints',
+            'concepts/pipelines/pipeline-templates',
+            'concepts/pipelines/asyncpipeline',
+          ],
+        },
         {
           type: 'category',
           label: 'Data Classes',
@@ -65,39 +89,11 @@ export default {
             'concepts/document-store/creating-custom-document-stores',
           ],
         },
-        {
-          type: 'category',
-          label: 'Pipelines',
-          link: {
-            type: 'doc',
-            id: 'concepts/pipelines'
-          },
-          items: [
-            'concepts/pipelines/creating-pipelines',
-            'concepts/pipelines/serialization',
-            'concepts/pipelines/visualizing-pipelines',
-            'concepts/pipelines/debugging-pipelines',
-            'concepts/pipelines/pipeline-breakpoints',
-            'concepts/pipelines/pipeline-templates',
-            'concepts/pipelines/asyncpipeline',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Agents',
-          link: {
-            type: 'doc',
-            id: 'concepts/agents'
-          },
-          items: [
-            'concepts/agents/state',
-          ],
-        },
-        'concepts/integrations',
-        'concepts/jinja-templates',
         'concepts/metadata-filtering',
         'concepts/device-management',
         'concepts/secret-management',
+        'concepts/jinja-templates',
+        'concepts/integrations',
         'concepts/experimental-package',
       ],
     },
