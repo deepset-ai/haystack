@@ -1,7 +1,9 @@
 /**
- * Remark plugin to automatically add version context to reference links
+ * Remark plugin to automatically add version context to cross-doc-instance links
  *
- * Transforms: /reference/slug -> /reference/{version}/slug
+ * Transforms:
+ *   - /reference/slug -> /reference/{version}/slug (from docs to reference)
+ *   - /docs/slug -> /docs/{version}/slug (from reference to docs)
  * Where {version} is automatically determined from the current doc's version context
  *
  * Note: The latest version does NOT get a version prefix in the URL
@@ -55,7 +57,7 @@ function versionedReferenceLinks() {
 
       // Match patterns like: versioned_docs/version-2.19/ or reference_versioned_docs/version-2.19/
       // Handle both relative and absolute paths, and both / and \ separators
-      const versionMatch = filePath.match(/versioned_docs[/\\]version-([^/\\]+)[/\\]/);
+      const versionMatch = filePath.match(/(?:reference_)?versioned_docs[/\\]version-([^/\\]+)[/\\]/);
 
       if (versionMatch) {
         version = versionMatch[1]; // e.g., "2.19"
@@ -100,6 +102,26 @@ function versionedReferenceLinks() {
             } else {
               // Older version - add version number
               node.url = node.url.replace('/reference/', `/reference/${version}/`);
+            }
+          }
+        } else if (node.url && node.url.startsWith('/docs/')) {
+          // Handle links from reference pages to docs pages
+          // Check if it already has a version
+          const hasVersion = /^\/docs\/(next|v?\d+\.\d+)\//.test(node.url);
+
+          if (!hasVersion) {
+            // Latest version: no version prefix needed (served at /docs/)
+            // Current/next version: add /next/
+            // Other versions: add version number
+            if (version === currentLatestVersion) {
+              // Latest version - no changes needed, keep as /docs/...
+              return;
+            } else if (version === 'current') {
+              // Current version - add /next/
+              node.url = node.url.replace('/docs/', '/docs/next/');
+            } else {
+              // Older version - add version number
+              node.url = node.url.replace('/docs/', `/docs/${version}/`);
             }
           }
         }
