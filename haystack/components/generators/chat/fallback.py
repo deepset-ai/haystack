@@ -47,22 +47,26 @@ class FallbackChatGenerator:
     - Any other exception
     """
 
-    def __init__(self, chat_generators: list[ChatGenerator]):
+    def __init__(self, chat_generators: list[ChatGenerator], streaming_callback: Optional[StreamingCallbackT] = None):
         """
         Creates an instance of FallbackChatGenerator.
 
         :param chat_generators: A non-empty list of chat generator components to try in order.
+        :param streaming_callback: Optional callable for handling streaming responses.
         """
         if not chat_generators:
             msg = "'chat_generators' must be a non-empty list"
             raise ValueError(msg)
 
         self.chat_generators = list(chat_generators)
+        self.streaming_callback = streaming_callback
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component, including nested chat generators when they support serialization."""
         return default_to_dict(
-            self, chat_generators=[gen.to_dict() for gen in self.chat_generators if hasattr(gen, "to_dict")]
+            self,
+            chat_generators=[gen.to_dict() for gen in self.chat_generators if hasattr(gen, "to_dict")],
+            streaming_callback=None,
         )
 
     @classmethod
@@ -149,11 +153,12 @@ class FallbackChatGenerator:
         """
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
+        callback = streaming_callback or self.streaming_callback
 
         for idx, gen in enumerate(self.chat_generators):
             gen_name = gen.__class__.__name__
             try:
-                result = self._run_single_sync(gen, messages, generation_kwargs, tools, streaming_callback)
+                result = self._run_single_sync(gen, messages, generation_kwargs, tools, callback)
                 replies = result.get("replies", [])
                 meta = dict(result.get("meta", {}))
                 meta.update(
@@ -202,11 +207,12 @@ class FallbackChatGenerator:
         """
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
+        callback = streaming_callback or self.streaming_callback
 
         for idx, gen in enumerate(self.chat_generators):
             gen_name = gen.__class__.__name__
             try:
-                result = await self._run_single_async(gen, messages, generation_kwargs, tools, streaming_callback)
+                result = await self._run_single_async(gen, messages, generation_kwargs, tools, callback)
                 replies = result.get("replies", [])
                 meta = dict(result.get("meta", {}))
                 meta.update(

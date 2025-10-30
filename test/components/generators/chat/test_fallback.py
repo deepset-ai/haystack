@@ -422,3 +422,28 @@ def test_warm_up_mixed_generators():
     # Verify the fallback still works correctly
     result = fallback.run([ChatMessage.from_user("test")])
     assert result["replies"][0].text == "A"
+
+
+def test_streaming_callback_at_init():
+    """Test that streaming_callback can be passed at init time and is used in run."""
+    calls: list[Any] = []
+
+    def cb(x: Any) -> None:
+        calls.append(x)
+
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")], streaming_callback=cb)
+    _ = gen.run([ChatMessage.from_user("hi")])
+    assert calls
+
+
+@pytest.mark.asyncio
+async def test_streaming_callback_at_init_async():
+    """Test that streaming_callback can be passed at init time and is used in run_async."""
+    calls: list[Any] = []
+
+    def cb(x: Any) -> None:
+        calls.append(x)
+
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")], streaming_callback=cb)
+    _ = await gen.run_async([ChatMessage.from_user("hi")])
+    assert calls
