@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added `streaming_callback` parameter to `FallbackChatGenerator.__init__()` for consistency with other chat generators. The callback can now be configured at initialization time and will be used as the default for all run calls unless overridden at runtime.
