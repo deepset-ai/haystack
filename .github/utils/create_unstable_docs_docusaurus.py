@@ -1,4 +1,13 @@
-# TODO: simplify, add examples
+"""
+This script creates an unstable documentation version at the time of branch-off for a new Haystack release.
+
+Between branch-off and the actual release, two unstable doc versions coexist.
+If we branch off for 2.20, we have:
+1. the target unstable version, 2.20-unstable (lives in docs-website/versioned_docs/version-2.20-unstable)
+2. the next unstable version, 2.21-unstable (lives in docs-website/docs)
+
+This script takes care of all the necessary updates to the documentation website.
+"""
 
 import argparse
 import json
@@ -10,30 +19,22 @@ import sys
 VERSION_VALIDATOR = re.compile(r"^[0-9]+\.[0-9]+$")
 
 
-def calculate_new_unstable(version: str):
-    """
-    Calculate the new unstable version based on the given version.
-    """
-    # version must be formatted like so <major>.<minor>
-    major, minor = version.split(".")
-    return f"{major}.{int(minor) + 1}-unstable"
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-v", "--new-version", help="The new unstable version that is being created (e.g. 1.9).", required=True
+        "-v", "--new-version", help="The new unstable version that is being created (e.g. 2.20).", required=True
     )
     args = parser.parse_args()
 
     if VERSION_VALIDATOR.match(args.new_version) is None:
         sys.exit("Version must be formatted like so <major>.<minor>")
 
-    # These two are the version that we must have published in the end
-    new_stable = f"{args.new_version}"
-    new_unstable = calculate_new_unstable(args.new_version)
+    target_version = f"{args.new_version}"  # e.g., "2.20" - the target release version
     major, minor = args.new_version.split(".")
-    current_stable = f"{major}.{int(minor) - 1}"
+
+    target_unstable = f"{target_version}-unstable"  # e.g., "2.20-unstable"
+    next_unstable = f"{major}.{int(minor) + 1}-unstable"  # e.g., "2.21-unstable" - next cycle
+    previous_stable = f"{major}.{int(minor) - 1}"  # e.g., "2.19" - previous stable release
 
     versions = [
         folder.replace("version-", "")
@@ -41,65 +42,56 @@ if __name__ == "__main__":
         if os.path.isdir(os.path.join("docs-website/versioned_docs", folder))
     ]
 
-    print(f"Versions: {versions}")
-
-    # TODO: review if these checks make sense and if the version numbers are what we should expect
-
-    new_stable_is_published = new_stable in versions
-    new_unstable_is_published = new_unstable in versions
-
-    if new_stable_is_published and new_unstable_is_published:
-        # If both versions are published there's nothing to do.
-        # We fail gracefully.
-        print(f"Both new version {new_stable} and {new_unstable} are already published.")
+    # Check if the versions we're about to create already exist in versioned_docs
+    if target_version in versions:
+        sys.exit(f"{target_version} already exists (already released). Aborting.")
+    if target_unstable in versions:
+        print(f"{target_unstable} already exists. Nothing to do.")
         sys.exit(0)
-    elif new_stable_is_published or new_unstable_is_published:
-        # Either new stable or unstable is already published, it's to risky to
-        # proceed so we abort the publishing process.
-        sys.exit(f"Either version {new_stable} or {new_unstable} are already published. Too risky to proceed.")
 
-    # Create create new unstable from the currently existing one.
+    # Create new unstable from the currently existing one.
     # The new unstable will be made stable at a later time by another workflow
-    print(f"Creating new unstable version {new_unstable} from main")
+    print(f"Creating new unstable version {target_unstable} from main")
 
-    # MANUAL DOCUSAURUS UPDATES
+    ### Docusaurus updates
 
-    current_unstable = f"{new_stable}-unstable"
+    # copy docs to versioned_docs/version-target_unstable
+    shutil.copytree("docs-website/docs", f"docs-website/versioned_docs/version-{target_unstable}")
 
+    # copy reference to reference_versioned_docs/version-target_unstable
+    shutil.copytree("docs-website/reference", f"docs-website/reference_versioned_docs/version-{target_unstable}")
 
-    # copy docs to versioned_docs/version-current_unstable
-    shutil.copytree("docs-website/docs", f"docs-website/versioned_docs/version-{current_unstable}")
-
-    # copy reference to reference_versioned_docs/version-current_unstable
-    shutil.copytree("docs-website/reference", f"docs-website/reference_versioned_docs/version-{current_unstable}")
-
-    # copy versioned_sidebars/version-current_stable-sidebars.json to versioned_sidebars/version-current_unstable-sidebars.json
-    shutil.copy(f"docs-website/versioned_sidebars/version-{current_stable}-sidebars.json",
-    f"docs-website/versioned_sidebars/version-{current_unstable}-sidebars.json")
-
-    # copy reference_versioned_sidebars/version-current_stable-sidebars.json to reference_versioned_sidebars/version-current_unstable-sidebars.json
+    # copy versioned_sidebars/version-previous_stable-sidebars.json
+    # to versioned_sidebars/version-target_unstable-sidebars.json
     shutil.copy(
-        f"docs-website/reference_versioned_sidebars/version-{current_stable}-sidebars.json",
-        f"docs-website/reference_versioned_sidebars/version-{current_unstable}-sidebars.json",
+        f"docs-website/versioned_sidebars/version-{previous_stable}-sidebars.json",
+        f"docs-website/versioned_sidebars/version-{target_unstable}-sidebars.json",
+    )
+
+    # copy reference_versioned_sidebars/version-previous_stable-sidebars.json
+    # to reference_versioned_sidebars/version-target_unstable-sidebars.json
+    shutil.copy(
+        f"docs-website/reference_versioned_sidebars/version-{previous_stable}-sidebars.json",
+        f"docs-website/reference_versioned_sidebars/version-{target_unstable}-sidebars.json",
     )
 
     # add unstable version to versions.json
     with open("docs-website/versions.json", "r") as f:
-        versions = json.load(f)
-    versions.insert(0, current_unstable)
+        versions_list = json.load(f)
+    versions_list.insert(0, target_unstable)
     with open("docs-website/versions.json", "w") as f:
-        json.dump(versions, f)
+        json.dump(versions_list, f)
 
     # add unstable version to reference_versions.json
     with open("docs-website/reference_versions.json", "r") as f:
-        reference_versions = json.load(f)
-    reference_versions.insert(0, current_unstable)
+        reference_versions_list = json.load(f)
+    reference_versions_list.insert(0, target_unstable)
     with open("docs-website/reference_versions.json", "w") as f:
-        json.dump(reference_versions, f)
+        json.dump(reference_versions_list, f)
 
-    # in docusaurus.config.js, replace the current version with the new unstable version
+    # in docusaurus.config.js, replace the target unstable version with the next unstable version
     with open("docs-website/docusaurus.config.js", "r") as f:
         config = f.read()
-    config = config.replace(current_unstable, new_unstable)
+    config = config.replace(f"label: '{target_unstable}'", f"label: '{next_unstable}'")
     with open("docs-website/docusaurus.config.js", "w") as f:
         f.write(config)
