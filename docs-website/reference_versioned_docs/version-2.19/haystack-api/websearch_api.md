@@ -2,6 +2,7 @@
 title: Websearch
 id: websearch-api
 description: Web search engine for Haystack.
+slug: "/websearch-api"
 ---
 
 <a id="serper_dev"></a>

@@ -2,6 +2,7 @@
 title: Builders
 id: builders-api
 description: Extract the output of a Generator to an Answer format, and build prompts.
+slug: "/builders-api"
 ---
 
 <a id="answer_builder"></a>

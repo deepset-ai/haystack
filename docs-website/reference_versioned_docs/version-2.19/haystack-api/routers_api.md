@@ -2,6 +2,7 @@
 title: Routers
 id: routers-api
 description: Routers is a group of components that route queries or Documents to other components that can handle them best.
+slug: "/routers-api"
 ---
 
 <a id="conditional_router"></a>
