@@ -320,7 +320,6 @@ class OpenAIResponsesChatGenerator:
         openai_endpoint = api_args.pop("openai_endpoint")
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
-        print("Checking the responses", responses)
 
         if streaming_callback is not None:
             response_output = self._handle_stream_response(
@@ -525,14 +524,16 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
                     "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
                     "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
-                    _id=output.call_id,
+                    _id=output.id,
                     _name=output.name,
                     _arguments=output.arguments,
                 )
             # We need to store both function call id and call_id for tool calls
-            tool_call_details[output.call_id] = {"id": output.id, "status": output.status}
+            tool_call_details[output.id] = {"call_id": output.call_id, "status": output.status}
 
-            tool_calls.append(ToolCall(id=output.call_id, tool_name=output.name, arguments=arguments))
+            tool_calls.append(
+                ToolCall(id=output.id, call_id=output.call_id, tool_name=output.name, arguments=arguments)
+            )
 
     # we save the response as dict because it contains resp_id etc.
     meta = responses.to_dict()
@@ -570,6 +571,10 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
         return StreamingChunk(content=chunk.delta, component_info=component_info, index=chunk.content_index, meta=meta)
 
     # Responses API always returns reasoning chunks even if there is no summary
+    elif chunk.type == "response.output_item.added" and chunk.item.type == "reasoning":
+        reasoning = ReasoningContent(reasoning_text="", extra=chunk.item.to_dict())
+        return StreamingChunk(content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning)
+
     elif chunk.type == "response.reasoning_summary_text.delta":
         # we remove the delta from the extra because it is already in the reasoning_text
         # rest of the information needs to be saved for chat message
@@ -582,7 +587,9 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
     elif chunk.type == "response.output_item.added" and chunk.item.type == "function_call":
         function = chunk.item.name
         meta = chunk.item.to_dict()
-        tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item.id, tool_name=function)
+        tool_call = ToolCallDelta(
+            index=chunk.output_index, id=chunk.item.id, call_id=chunk.item.call_id, tool_name=function
+        )
         return StreamingChunk(
             content="",
             component_info=component_info,
@@ -598,6 +605,8 @@ def _convert_streaming_response_chunk_to_streaming_chunk(
         arguments = chunk.delta
         meta = chunk.to_dict()
         meta.pop("delta")
+        # in delta of tool calls there is no call_id
+        # so we use the item_id which is the function call id
         tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item_id, arguments=arguments)
         return StreamingChunk(
             content="",
@@ -631,8 +640,6 @@ def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[s
     tool_call_results = message.tool_call_results
     images = message.images
     reasonings = message.reasonings
-
-    print("Chat Message", message)
 
     if not text_contents and not tool_calls and not tool_call_results and not images and not reasonings:
         raise ValueError(
@@ -680,7 +687,11 @@ def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[s
         formatted_tool_results = []
         for result in tool_call_results:
             if result.origin.id is not None:
-                tool_result = {"type": "function_call_output", "call_id": result.origin.id, "output": result.result}
+                tool_result = {
+                    "type": "function_call_output",
+                    "call_id": result.origin.call_id,
+                    "output": result.result,
+                }
                 formatted_tool_results.append(tool_result)
         formatted_messages.extend(formatted_tool_results)
 
@@ -695,7 +706,6 @@ def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[s
         formatted_messages.extend(formatted_reasonings)
 
     if tool_calls:
-        tool_call_details = message._meta.get("tool_call_details", {})
         formatted_tool_calls = []
         for tc in tool_calls:
             openai_tool_call = {
@@ -703,13 +713,12 @@ def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[s
                 # We disable ensure_ascii so special chars like emojis are not converted
                 "name": tc.tool_name,
                 "arguments": json.dumps(tc.arguments, ensure_ascii=False),
+                "id": tc.id,
+                "call_id": tc.call_id,
             }
-            if tc.id is not None:
-                openai_tool_call["call_id"] = tc.id
-                # details contain the function_id that's needed by the API
-                openai_tool_call.update(tool_call_details[tc.id])
-            else:
-                raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI Responses API.")
+            # call_id = tool_call_details.get(tc.id, {}).get("call_id")
+            # if call_id is not None:
+            #    openai_tool_call["call_id"] = call_id
             formatted_tool_calls.append(openai_tool_call)
         formatted_messages.extend(formatted_tool_calls)
 
@@ -719,7 +728,6 @@ def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[s
         openai_msg["content"] = " ".join(text_contents)
         formatted_messages.append(openai_msg)
 
-    print("OpenAI message", openai_msg)
     return formatted_messages
 
 
@@ -741,23 +749,26 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     for chunk in chunks:
         if chunk.tool_calls:
             for tool_call in chunk.tool_calls:
+                # here the tool_call.id is fc_id not call_id
                 assert tool_call.id is not None
                 # We use the tool call id to track the tool call across chunks
                 if tool_call.id not in tool_call_data:
-                    tool_call_data[tool_call.id] = {"name": "", "arguments": "", "id": ""}
+                    tool_call_data[tool_call.id] = {"name": "", "arguments": "", "call_id": ""}
 
                 if tool_call.tool_name is not None:
                     # we dont need to append the tool name as it is passed once in the start of the function call
                     tool_call_data[tool_call.id]["name"] = tool_call.tool_name
                 if tool_call.arguments is not None:
                     tool_call_data[tool_call.id]["arguments"] += tool_call.arguments
+                if tool_call.call_id is not None:
+                    tool_call_data[tool_call.id]["call_id"] = tool_call.call_id
 
             # this is the information we need to save to send back to API
-            if chunk.meta.get("type") == "function_call":
-                fc_id = chunk.meta.get("id")
-                call_id = chunk.meta.get("call_id")
-                if call_id is not None and isinstance(call_id, str):
-                    tool_call_data[call_id]["id"] = str(fc_id) if fc_id is not None else ""
+            # if chunk.meta.get("type") == "function_call":
+            #    fc_id = chunk.meta.get("id")
+            #    call_id = chunk.meta.get("call_id")
+            #    if fc_id is not None and isinstance(fc_id, str):
+            #        tool_call_data[fc_id]["call_id"] = call_id
 
         if chunk.reasoning:
             reasoning = chunk.reasoning
@@ -768,9 +779,13 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         tool_call_dict = tool_call_data[key]
         try:
             arguments = json.loads(tool_call_dict.get("arguments", "{}")) if tool_call_dict.get("arguments") else {}
-            tool_calls.append(ToolCall(id=key, tool_name=tool_call_dict["name"], arguments=arguments))
-            if tool_call_dict["id"]:
-                tool_call_details[key] = {"id": tool_call_dict["id"]}
+            tool_calls.append(
+                ToolCall(
+                    id=key, tool_name=tool_call_dict["name"], arguments=arguments, call_id=tool_call_dict["call_id"]
+                )
+            )
+            # if tool_call_dict["call_id"]:
+            #    tool_call_details[key] = {"id": tool_call_dict["id"]}
         except json.JSONDecodeError:
             logger.warning(
                 "The LLM provider returned a malformed JSON string for tool call arguments. This tool call "

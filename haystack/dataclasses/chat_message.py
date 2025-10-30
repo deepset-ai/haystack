@@ -59,12 +59,13 @@ class ToolCall:
     tool_name: str
     arguments: dict[str, Any]
     id: Optional[str] = None  # noqa: A003
+    call_id: Optional[str] = None  # noqa: A003
 
     def to_dict(self) -> dict[str, Any]:
         """
         Convert ToolCall into a dictionary.
 
-        :returns: A dictionary with keys 'tool_name', 'arguments', and 'id'.
+        :returns: A dictionary with keys 'tool_name', 'arguments', 'id', and 'call_id'.
         """
         return asdict(self)
 
