@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Fixed type compatibility issue where passing `list[Tool]` to components with a `tools` parameter (such as `ToolInvoker`)
+    caused static type checker errors. In version 2.19, the `ToolsType` was changed to `Union[list[Union[Tool, Toolset]], Toolset]`
+    to support mixing Tools and Toolsets. However, due to Python's list invariance, `list[Tool]` was no longer considered compatible
+    with `list[Union[Tool, Toolset]]`, breaking type checking for the common pattern of passing a list of Tool objects.
+
+    The fix explicitly lists all valid type combinations in `ToolsType`: `Union[list[Tool], list[Toolset], list[Union[Tool, Toolset]], Toolset]`.
+    This preserves backward compatibility for existing code while still supporting the new functionality of mixing Tools and Toolsets.
+
+    Users who encountered type errors like "Argument of type 'list[Tool]' cannot be assigned to parameter 'tools'" should no longer
+    see these errors after upgrading. No code changes are required on the user side.
