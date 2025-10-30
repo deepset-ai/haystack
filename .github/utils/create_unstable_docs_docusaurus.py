@@ -1,3 +1,5 @@
+# TODO: simplify, add examples
+
 import argparse
 import json
 import os
@@ -40,6 +42,8 @@ if __name__ == "__main__":
     ]
 
     print(f"Versions: {versions}")
+
+    # TODO: review if these checks make sense and if the version numbers are what we should expect
 
     new_stable_is_published = new_stable in versions
     new_unstable_is_published = new_unstable in versions
