@@ -107,7 +107,7 @@ class TestDatadogTracer:
             assert span.get_correlation_data_for_logs() == {
                 "dd.trace_id": str((1 << 64) - 1 & span.raw_span().trace_id),
                 "dd.span_id": span.raw_span().span_id,
-                "dd.service": "",
+                "dd.service": "test",
                 "dd.env": "",
                 "dd.version": "",
             }
