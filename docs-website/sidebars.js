@@ -265,12 +265,12 @@ export default {
             id: 'pipeline-components/embedders'
           },
           items: [
+            'pipeline-components/embedders/choosing-the-right-embedder',
             'pipeline-components/embedders/amazonbedrockdocumentembedder',
             'pipeline-components/embedders/amazonbedrockdocumentimageembedder',
             'pipeline-components/embedders/amazonbedrocktextembedder',
             'pipeline-components/embedders/azureopenaidocumentembedder',
             'pipeline-components/embedders/azureopenaitextembedder',
-            'pipeline-components/embedders/choosing-the-right-embedder',
             'pipeline-components/embedders/coheredocumentembedder',
             'pipeline-components/embedders/coheredocumentimageembedder',
             'pipeline-components/embedders/coheretextembedder',
@@ -364,6 +364,15 @@ export default {
             id: 'pipeline-components/generators'
           },
           items: [
+            {
+              type: 'category',
+              label: 'Guides to Generators',
+              items: [
+                'pipeline-components/generators/guides-to-generators/choosing-the-right-generator',
+                'pipeline-components/generators/guides-to-generators/function-calling',
+                'pipeline-components/generators/guides-to-generators/generators-vs-chat-generators',
+              ],
+            },
             'pipeline-components/generators/amazonbedrockchatgenerator',
             'pipeline-components/generators/amazonbedrockgenerator',
             'pipeline-components/generators/anthropicchatgenerator',
@@ -379,15 +388,6 @@ export default {
             'pipeline-components/generators/googleaigeminichatgenerator',
             'pipeline-components/generators/googleaigeminigenerator',
             'pipeline-components/generators/googlegenaichatgenerator',
-            {
-              type: 'category',
-              label: 'Guides to Generators',
-              items: [
-                'pipeline-components/generators/guides-to-generators/choosing-the-right-generator',
-                'pipeline-components/generators/guides-to-generators/function-calling',
-                'pipeline-components/generators/guides-to-generators/generators-vs-chat-generators',
-              ],
-            },
             'pipeline-components/generators/huggingfaceapichatgenerator',
             'pipeline-components/generators/huggingfaceapigenerator',
             'pipeline-components/generators/huggingfacelocalchatgenerator',
@@ -461,8 +461,8 @@ export default {
             id: 'pipeline-components/rankers'
           },
           items: [
-            'pipeline-components/rankers/amazonbedrockranker',
             'pipeline-components/rankers/choosing-the-right-ranker',
+            'pipeline-components/rankers/amazonbedrockranker',
             'pipeline-components/rankers/cohereranker',
             'pipeline-components/rankers/external-integrations-rankers',
             'pipeline-components/rankers/fastembedranker',
