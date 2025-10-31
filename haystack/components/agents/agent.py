@@ -142,7 +142,7 @@ class Agent:
     # 1. Search for tipping customs in France
     # 2. Use calculator to compute tip based on findings
     # 3. Return the final answer with context
-    print(result["messages"][-1])
+    print(result["messages"][-1].text)
     ```
 
     """
