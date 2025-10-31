@@ -22,6 +22,35 @@ This component enables chat completion using Google Gemini models through Google
 
 `GoogleGenAIChatGenerator` supports `gemini-2.0-flash` (default), `gemini-2.5-pro-exp-03-25`, `gemini-1.5-pro`, and `gemini-1.5-flash` models.
 
+### Tool Support
+
+`GoogleGenAIChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = GoogleGenAIChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
 ### Streaming
 
 This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.

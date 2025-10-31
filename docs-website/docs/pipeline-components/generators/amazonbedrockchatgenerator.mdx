@@ -36,17 +36,47 @@ Consider using AWS CLI as a more straightforward tool to manage your AWS service
 
 To use this component for text generation, initialize an AmazonBedrockGenerator with the model name, the AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`) should be set as environment variables, be configured as described above or passed as [Secret](../../concepts/secret-management.mdx) arguments. Note, make sure the region you set supports Amazon Bedrock.
 
-To start using Amazon Bedrock with Haystack, install the `amazon-bedrock-haystack` package:
+### Tool Support
 
-```shell
-pip install amazon-bedrock-haystack
+`AmazonBedrockChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = AmazonBedrockChatGenerator(
+    model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
 ```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
 
 ### Streaming
 
 This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ## Usage
+
+To start using Amazon Bedrock with Haystack, install the `amazon-bedrock-haystack` package:
+
+```shell
+pip install amazon-bedrock-haystack
+```
 
 ### On its own
 

@@ -37,6 +37,35 @@ Finally, the component needs a list of `ChatMessage` objects to operate. `Cha
 
 Only text input modality is supported at this time.
 
+### Tool Support
+
+`AnthropicChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = AnthropicChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
 ### Streaming
 
 You can stream output as it’s generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
