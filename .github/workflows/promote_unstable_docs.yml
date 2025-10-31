@@ -54,7 +54,7 @@ jobs:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Promote unstable docs for Haystack ${{ steps.version.outputs.version }}"
           branch: promote-unstable-docs-${{ steps.version.outputs.version }}
-          base: main
+          base: create-unstable-docs-2.20 # temp test. should be main
           title: "docs: promote unstable docs for Haystack ${{ steps.version.outputs.version }}"
           add-paths: |
             docs-website
