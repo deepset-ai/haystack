@@ -38,8 +38,7 @@ downloader = S3Downloader(
 
 The component downloads multiple files in parallel using the `max_workers` parameter (default is 32 workers) to speed up processing of large document sets. Downloaded files are cached locally, and when the cache exceeds `max_cache_size` (default is 100 files), least recently accessed files are automatically removed. Already downloaded files are touched to update their access time without re-downloading.
 
-:::note
-Required Configuration
+:::note Required Configuration
 
 The component requires two critical configurations:
 

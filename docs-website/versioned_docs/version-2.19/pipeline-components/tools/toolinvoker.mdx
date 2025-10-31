@@ -29,8 +29,7 @@ The `ToolInvoker` has two additionally helpful parameters:
 - `convert_result_to_json_string`: Use `json.dumps` (when True) or `str` (when False) to convert the result into a string.
 - `raise_on_failure`: If True, it will raise an exception in case of errors. If False, it will return a `ChatMessage` object with `error=True` and a description of the error in `result`. Use this, for example, when you want to keep the Language Model running in a loop and fixing its errors.
 
-:::note
-ChatMessage and Tool Data Classes
+:::note ChatMessage and Tool Data Classes
 
 Follow the links to learn more about [ChatMessage](../../concepts/data-classes/chatmessage.mdx) and [Tool](../../tools/tool.mdx) data classes.
 :::

@@ -9,8 +9,7 @@ description: "Use this component to rank documents based on their similarity to 
 
 Use this component to rank documents based on their similarity to the query. The `TransformersSimilarityRanker` is a powerful, model-based Ranker that uses a cross-encoder model to produce document and query embeddings.
 
-:::warning
-Legacy Component
+:::warning Legacy Component
 
 This component is considered legacy and will no longer receive updates. It may be deprecated in a future release, followed by removal after a deprecation period.
 Consider using SentenceTransformersSimilarityRanker instead, as it provides the same functionality and additional features.
@@ -96,8 +95,7 @@ document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3},
                                    "ranker": {"query": query, "top_k": 2}})
 ```
 
-:::note
-Ranker `top_k`
+:::note Ranker `top_k`
 
 In the example above, the `top_k` values for the Retriever and the Ranker are different. The Retriever's `top_k` specifies how many documents it returns. The Ranker then orders these documents.
 

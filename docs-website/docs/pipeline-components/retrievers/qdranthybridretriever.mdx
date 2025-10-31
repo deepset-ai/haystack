@@ -24,8 +24,7 @@ The `QdrantHybridRetriever` is a Retriever based both on dense and sparse embedd
 
 It compares the query and document’s dense and sparse embeddings and fetches the documents most relevant to the query from the `QdrantDocumentStore`, fusing the scores with Reciprocal Rank Fusion.
 
-:::tip
-Hybrid Retrieval Pipeline
+:::tip Hybrid Retrieval Pipeline
 
 If you want additional customization for merging or fusing results, consider creating a hybrid retrieval pipeline with [`DocumentJoiner`](../joiners/documentjoiner.mdx).
 
@@ -37,10 +36,9 @@ When using the `QdrantHybridRetriever`, make sure it has the query and document 
 - Adding a (dense) document Embedder and a sparse document Embedder to your indexing pipeline,
 - Adding a (dense) text Embedder and a sparse text Embedder to your query pipeline.
 
-In addition to `query_embedding` and `query_sparse_embedding`, the `QdrantHybridRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
+In addition to `query_embedding` and `query_sparse_embedding`, the `QdrantHybridRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
 
-:::info
-Sparse Embedding Support
+:::info Sparse Embedding Support
 
 To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
 

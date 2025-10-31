@@ -71,7 +71,10 @@ volumes:
 ...
 ```
 
-> 🚧 With this example, we explicitly enable access without authentication, so you don't need to set any username, password, or API key to connect to our local instance. That is strongly discouraged for production use. See the [authorization](#authorization) section for detailed information.
+:::warning
+With this example, we explicitly enable access without authentication, so you don't need to set any username, password, or API key to connect to our local instance. That is strongly discouraged for production use. See the [authorization](#authorization) section for detailed information.
+
+:::
 
 Start your container with `docker compose up -d` and then initialize the Document Store with:
 

@@ -9,10 +9,9 @@ description: "Save your pipelines into a custom format and explore the serializa
 
 Save your pipelines into a custom format and explore the serialization options.
 
-Serialization means converting a pipeline to a format that you can save on your disk and load later. 
+Serialization means converting a pipeline to a format that you can save on your disk and load later.
 
-:::info
-Serialization formats
+:::info Serialization formats
 
 Haystack 2.0 only supports YAML format at this time. We will be rolling out more formats gradually.
 :::
@@ -28,7 +27,7 @@ pipe = Pipeline()
 print(pipe.dumps())
 
 ## Prints:
-## 
+##
 ## components: {}
 ## connections: []
 ## max_loops_allowed: 100
@@ -131,7 +130,7 @@ from haystack import component, default_from_dict, default_to_dict
 class SetIntersector:
 		def __init__(self, intersect_with: set):
 	      self.intersect_with = intersect_with
-		
+
     @component.output_types(result=set)
 	  def run(self, data: set):
         return data.intersect(self.intersect_with)
@@ -151,7 +150,7 @@ class SetIntersector:
 
 Once a pipeline is available in its dictionary format, the last step of serialization is to convert that dictionary into a format you can store or send over the wire. Haystack supports YAML out of the box, but if you need a different format, you can write a custom Marshaller.
 
-A `Marshaller` is a Python class responsible for converting text to a dictionary and a dictionary to text according to a certain format. Marshallers must respect the `Marshaller` [protocol](https://github.com/deepset-ai/haystack/blob/main/haystack/marshal/protocol.py), providing the methods `marshal` and `unmarshal`. 
+A `Marshaller` is a Python class responsible for converting text to a dictionary and a dictionary to text according to a certain format. Marshallers must respect the `Marshaller` [protocol](https://github.com/deepset-ai/haystack/blob/main/haystack/marshal/protocol.py), providing the methods `marshal` and `unmarshal`.
 
 This is the code for a custom TOML marshaller that relies on the `rtoml` library:
 

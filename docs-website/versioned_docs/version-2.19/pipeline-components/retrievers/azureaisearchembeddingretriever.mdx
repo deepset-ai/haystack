@@ -30,8 +30,7 @@ By default, the `AzureAISearchDocumentStore` uses the [HNSW algorithm](https://l
 
 In addition to the `query_embedding`, the `AzureAISearchEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
 
-:::note
-Semantic Ranking
+:::note Semantic Ranking
 
 The semantic ranking capability of Azure AI Search is not available for vector retrieval. To include semantic ranking in your retrieval process, use the [`AzureAISearchBM25Retriever`](azureaisearchbm25retriever.mdx) or [`AzureAISearchHybridRetriever`](azureaisearchhybridretriever.mdx). For more details, see [Azure AI documentation](https://learn.microsoft.com/en-us/azure/search/semantic-how-to-query-request?tabs=portal-query#set-up-the-query).
 :::
