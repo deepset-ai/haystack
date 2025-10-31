@@ -15,7 +15,7 @@ const fs = require('fs');
 // Cache the latest version at module level, but allow it to be read lazily
 let latestVersion = null;
 
-// Dynamically read the latest version from versions.json
+// Dynamically read the latest stable version from versions.json
 function getLatestVersion() {
   if (latestVersion !== null) {
     return latestVersion;
@@ -24,8 +24,9 @@ function getLatestVersion() {
   try {
     const versionsPath = path.join(__dirname, '../../versions.json');
     const versions = JSON.parse(fs.readFileSync(versionsPath, 'utf8'));
-    // The first version in versions.json is the latest version
-    latestVersion = versions[0];
+    // Filter out unstable versions and get the latest stable version
+    const stableVersions = versions.filter(version => !version.includes('-unstable'));
+    latestVersion = stableVersions[0]
     return latestVersion;
   } catch (error) {
     console.warn('[versionedReferenceLinks] Could not read versions.json:', error.message);
