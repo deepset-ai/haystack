@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Add SerpexWebSearch component to the fetchers module. This new component enables fetching organic web search results
+    from multiple search engines (Google, Bing, DuckDuckGo, Brave, Yahoo, Yandex) via the SERPEX API. The component
+    supports configurable search engines, result counts, time range filtering, and automatic retry logic. Search results
+    are returned as Haystack Document objects with rich metadata including titles, URLs, positions, and snippets.
