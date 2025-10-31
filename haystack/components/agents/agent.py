@@ -81,9 +81,46 @@ class Agent:
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
-    from haystack.tools.tool import Tool
+    from haystack.tools import Tool
+    from haystack.components.tools import ToolInvoker
 
-    tools = [Tool(name="calculator", description="..."), Tool(name="search", description="...")]
+    # These would need to be your proper functions, here we use simple examples
+    def calculator(a: int, b: int) -> int:
+        '''Add two numbers.'''
+        return a + b
+
+    def search(query: str) -> str:
+        '''Search for information.'''
+        return f"Results for: {query}"
+
+    # Create tools with proper JSON Schema
+    tools = [
+        Tool(
+            name="calculator",
+            description="Adds two numbers",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "a": {"type": "integer", "description": "First number"},
+                    "b": {"type": "integer", "description": "Second number"}
+                },
+                "required": ["a", "b"]
+            },
+            function=calculator
+        ),
+        Tool(
+            name="search",
+            description="Searches for information",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"}
+                },
+                "required": ["query"]
+            },
+            function=search
+        )
+    ]
 
     agent = Agent(
         chat_generator=OpenAIChatGenerator(),
@@ -92,6 +129,7 @@ class Agent:
     )
 
     # Run the agent
+    agent.warm_up()
     result = agent.run(
         messages=[ChatMessage.from_user("Find information about Haystack")]
     )
