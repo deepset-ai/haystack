@@ -29,12 +29,13 @@ class ToolCallDelta:
     tool_name: Optional[str] = field(default=None)
     arguments: Optional[str] = field(default=None)
     id: Optional[str] = field(default=None)  # noqa: A003
+    call_id: Optional[str] = field(default=None)  # noqa: A003
 
     def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of the ToolCallDelta.
 
-        :returns: A dictionary with keys 'index', 'tool_name', 'arguments', and 'id'.
+        :returns: A dictionary with keys 'index', 'tool_name', 'arguments', 'id', and 'call_id'.
         """
         return asdict(self)
 
