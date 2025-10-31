@@ -355,7 +355,7 @@ def print_failure_annotation(result: ExecutionResult) -> None:
     sys.stdout.write(f"::error file={rel},line={line}::{message} — see details below%0A{details}\n")
 
 
-def process_file_snippets(
+def process_file_snippets(  # pylint: disable=too-many-positional-arguments
     file_rel: str, snippets: list[Snippet], repo_root: str, timeout_seconds: int, allow_unsafe: bool, verbose: bool
 ) -> tuple[list[ExecutionResult], dict[str, int]]:
     """Process all snippets in a single markdown file and return results and statistics."""
