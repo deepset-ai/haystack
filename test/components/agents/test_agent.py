@@ -875,11 +875,13 @@ class TestAgent:
         assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
 
     def test_run_not_warmed_up(self, weather_tool):
+        """Warmup is run automatically on first run"""
         chat_generator = MockChatGeneratorWithoutRunAsync()
         chat_generator.warm_up = MagicMock()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
-        with pytest.raises(RuntimeError, match="The component Agent wasn't warmed up."):
-            agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+        agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+        assert agent._is_warmed_up is True
+        assert chat_generator.warm_up.call_count == 1
 
     def test_run_no_messages(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")

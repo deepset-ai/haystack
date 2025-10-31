@@ -86,13 +86,9 @@ class TestLLMMetadataExtractor:
 
     def test_warm_up_with_chat_generator(self, monkeypatch):
         mock_chat_generator = Mock()
-
         extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
-
         mock_chat_generator.warm_up.assert_not_called()
-
         extractor.warm_up()
-
         mock_chat_generator.warm_up.assert_called_once()
 
     def test_extract_metadata(self, monkeypatch):

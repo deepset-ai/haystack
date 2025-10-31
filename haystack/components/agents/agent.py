@@ -406,18 +406,16 @@ class Agent:
             skip_chat_generator=skip_chat_generator,
         )
 
-    def _runtime_checks(self, break_point: Optional[AgentBreakpoint], snapshot: Optional[AgentSnapshot]) -> None:
+    def _runtime_checks(self, break_point: Optional[AgentBreakpoint]) -> None:
         """
         Perform runtime checks before running the agent.
 
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
-        :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
-        :raises RuntimeError: If the Agent component wasn't warmed up before calling `run()`.
         :raises ValueError: If the break_point is invalid.
         """
-        if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
-            raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
+        if not self._is_warmed_up:
+            self.warm_up()
 
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
             _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
@@ -522,7 +520,7 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point, snapshot=snapshot)
+        self._runtime_checks(break_point=break_point)
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
@@ -690,7 +688,7 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point, snapshot=snapshot)
+        self._runtime_checks(break_point=break_point)
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(

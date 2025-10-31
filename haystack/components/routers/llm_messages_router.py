@@ -109,7 +109,6 @@ class LLMMessagesRouter:
             - "unmatched": The messages that did not match any of the output patterns.
 
         :raises ValueError: If messages is an empty list or contains messages with unsupported roles.
-        :raises RuntimeError: If the component is not warmed up and the ChatGenerator has a warm_up method.
         """
         if not messages:
             raise ValueError("`messages` must be a non-empty list.")
@@ -120,8 +119,8 @@ class LLMMessagesRouter:
             )
             raise ValueError(msg)
 
-        if not self._is_warmed_up and hasattr(self._chat_generator, "warm_up"):
-            raise RuntimeError("The component is not warmed up. Please call the `warm_up` method first.")
+        if not self._is_warmed_up:
+            self.warm_up()
 
         messages_for_inference = []
         if self._system_prompt:
