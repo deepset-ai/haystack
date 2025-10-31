@@ -466,9 +466,7 @@ class OpenAIResponsesChatGenerator:
         chunks: list[StreamingChunk] = []
 
         for chunk in responses:  # pylint: disable=not-an-iterable
-            chunk_delta = _convert_streaming_response_chunk_to_streaming_chunk(
-                chunk=chunk, previous_chunks=chunks, component_info=component_info
-            )
+            chunk_delta = _convert_response_chunk_to_streaming_chunk(chunk=chunk, component_info=component_info)
             if chunk_delta:
                 chunks.append(chunk_delta)
                 callback(chunk_delta)
@@ -481,9 +479,7 @@ class OpenAIResponsesChatGenerator:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
         async for chunk in responses:  # pylint: disable=not-an-iterable
-            chunk_delta = _convert_streaming_response_chunk_to_streaming_chunk(
-                chunk=chunk, previous_chunks=chunks, component_info=component_info
-            )
+            chunk_delta = _convert_response_chunk_to_streaming_chunk(chunk=chunk, component_info=component_info)
             if chunk_delta:
                 chunks.append(chunk_delta)
                 await callback(chunk_delta)
@@ -539,7 +535,6 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
     meta = responses.to_dict()
     # remove output from meta because it contains toolcalls, reasoning, text etc.
     meta.pop("output")
-    meta["tool_call_details"] = tool_call_details
     chat_message = ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
         reasoning=reasoning,
@@ -550,20 +545,18 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
     return chat_message
 
 
-def _convert_streaming_response_chunk_to_streaming_chunk(
-    chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: Optional[ComponentInfo] = None
+def _convert_response_chunk_to_streaming_chunk(
+    chunk: ResponseStreamEvent, component_info: Optional[ComponentInfo] = None
 ) -> StreamingChunk:
     """
     Converts the streaming response chunk from the OpenAI Responses API to a StreamingChunk.
 
     :param chunk: The chunk returned by the OpenAI Responses API.
-    :param previous_chunks: A list of previously received StreamingChunks.
     :param component_info: An optional `ComponentInfo` object containing information about the component that
         generated the chunk, such as the component name and type.
     :returns:
         A StreamingChunk object representing the content of the chunk from the OpenAI Responses API.
     """
-
     if chunk.type == "response.output_text.delta":
         # if item is a ResponseTextDeltaEvent
         meta = chunk.to_dict()
@@ -742,7 +735,6 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     text = "".join([chunk.content for chunk in chunks])
     reasoning = None
     tool_calls = []
-    tool_call_details = {}
 
     # Process tool calls if present in any chunk
     tool_call_data: dict[str, dict[str, str]] = {}  # Track tool calls by id
@@ -763,13 +755,6 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                 if tool_call.call_id is not None:
                     tool_call_data[tool_call.id]["call_id"] = tool_call.call_id
 
-            # this is the information we need to save to send back to API
-            # if chunk.meta.get("type") == "function_call":
-            #    fc_id = chunk.meta.get("id")
-            #    call_id = chunk.meta.get("call_id")
-            #    if fc_id is not None and isinstance(fc_id, str):
-            #        tool_call_data[fc_id]["call_id"] = call_id
-
         if chunk.reasoning:
             reasoning = chunk.reasoning
 
@@ -784,8 +769,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                     id=key, tool_name=tool_call_dict["name"], arguments=arguments, call_id=tool_call_dict["call_id"]
                 )
             )
-            # if tool_call_dict["call_id"]:
-            #    tool_call_details[key] = {"id": tool_call_dict["id"]}
+
         except json.JSONDecodeError:
             logger.warning(
                 "The LLM provider returned a malformed JSON string for tool call arguments. This tool call "
@@ -804,7 +788,5 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         "response_start_time": final_response.get("created_at") if final_response else None,
         "usage": final_response.get("usage") if final_response else None,
     }
-    if tool_call_details:
-        meta["tool_call_details"] = tool_call_details
 
     return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta, reasoning=reasoning)

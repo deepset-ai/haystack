@@ -10,14 +10,39 @@ from unittest.mock import MagicMock
 
 import pytest
 from openai import OpenAIError
+from openai.types.responses import (
+    FunctionTool,
+    Response,
+    ResponseCompletedEvent,
+    ResponseCreatedEvent,
+    ResponseFunctionCallArgumentsDeltaEvent,
+    ResponseFunctionCallArgumentsDoneEvent,
+    ResponseFunctionToolCall,
+    ResponseOutputItemAddedEvent,
+    ResponseOutputItemDoneEvent,
+    ResponseReasoningItem,
+    ResponseUsage,
+)
+from openai.types.responses.response import Reasoning
+from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 from pydantic import BaseModel
 
 from haystack import component
+from haystack.components.agents import Agent
 from haystack.components.generators.chat.openai_responses import (
     OpenAIResponsesChatGenerator,
+    _convert_response_chunk_to_streaming_chunk,
     convert_message_to_responses_api_format,
 )
-from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, ReasoningContent, StreamingChunk, ToolCall
+from haystack.dataclasses import (
+    ChatMessage,
+    ChatRole,
+    ImageContent,
+    ReasoningContent,
+    StreamingChunk,
+    ToolCall,
+    ToolCallDelta,
+)
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.utils import Secret
 
@@ -311,7 +336,12 @@ class TestOpenAIResponsesChatGenerator:
                     reasoning_text="I need to use the functions.weather tool.",
                     extra={"id": "rs_0d13efdd", "type": "reasoning"},
                 ),
-                ToolCall(tool_name="weather", arguments={"location": "Berlin"}, id="fc_0d13efdd"),
+                ToolCall(
+                    tool_name="weather",
+                    arguments={"location": "Berlin"},
+                    id="fc_0d13efdd",
+                    call_id="call_a82vwFAIzku9SmBuQuecQSRq",
+                ),
             ],
             _name=None,
             # some keys are removed to keep the test concise
@@ -341,28 +371,24 @@ class TestOpenAIResponsesChatGenerator:
                 "reasoning": {"effort": "low", "summary": "detailed"},
                 "usage": {"input_tokens": 59, "output_tokens": 19, "total_tokens": 78},
                 "store": True,
-                "tool_call_ids": {"fc_0d13efdd": {"call_id": "call_a82vwFAIzku9SmBuQuecQSRq", "status": "completed"}},
             },
         )
         responses_api_format = convert_message_to_responses_api_format(chat_message)
-        assert responses_api_format == {
-            "role": "assistant",
-            "content": [
-                {
-                    "id": "rs_0d13efdd",
-                    "type": "reasoning",
-                    "summary": [{"text": "I need to use the functions.weather tool.", "type": "summary_text"}],
-                },
-                {
-                    "type": "function_call",
-                    "name": "weather",
-                    "arguments": '{"location": "Berlin"}',
-                    "id": "fc_0d13efdd",
-                    "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
-                    "status": "completed",
-                },
-            ],
-        }
+        print("Responses API format", responses_api_format)
+        assert responses_api_format == [
+            {
+                "id": "rs_0d13efdd",
+                "type": "reasoning",
+                "summary": [{"text": "I need to use the functions.weather tool.", "type": "summary_text"}],
+            },
+            {
+                "type": "function_call",
+                "name": "weather",
+                "arguments": '{"location": "Berlin"}',
+                "id": "fc_0d13efdd",
+                "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
+            },
+        ]
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -658,3 +684,468 @@ class TestOpenAIResponsesChatGenerator:
 
         arguments = [tool_call.arguments for tool_call in tool_calls]
         assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_agent_streaming(self):
+        def callback(chunk: StreamingChunk) -> None: ...
+        # Tool Function
+        def calculate(expression: str) -> dict:
+            try:
+                result = eval(expression, {"__builtins__": {}})
+                return {"result": result}
+            except Exception as e:
+                return {"error": str(e)}
+
+        # Tool Definition
+        calculator_tool = Tool(
+            name="calculator",
+            description="Evaluate basic math expressions.",
+            parameters={
+                "type": "object",
+                "properties": {"expression": {"type": "string", "description": "Math expression to evaluate"}},
+                "required": ["expression"],
+            },
+            function=calculate,
+            outputs_to_state={"calc_result": {"source": "result"}},
+        )
+
+        # Agent Setup
+        agent = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(tools_strict=True),
+            streaming_callback=callback,
+            tools=[calculator_tool],
+            exit_conditions=["text"],
+            state_schema={"calc_result": {"type": int}},
+        )
+
+        # Run the Agent
+        agent.warm_up()
+        response = agent.run(
+            messages=[
+                ChatMessage.from_user(
+                    "What is 7 * (4 + 2)? Call the calculator tool first and then,"
+                    "when you get the answer, calculate the factorial of the answer."
+                )
+            ]
+        )
+
+        assert "42" and "factorial" in response["messages"][-1].text
+
+    def test_convert_response_chunk_to_streaming_chunk(self):
+        chunks = [
+            ResponseCreatedEvent(
+                response=Response(
+                    id="resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
+                    created_at=1761907188.0,
+                    error=None,
+                    incomplete_details=None,
+                    instructions=None,
+                    metadata={},
+                    model="gpt-5-mini-2025-08-07",
+                    object="response",
+                    output=[],
+                    parallel_tool_calls=True,
+                    temperature=1.0,
+                    tool_choice="auto",
+                    tools=[
+                        FunctionTool(
+                            name="weather",
+                            parameters={
+                                "type": "object",
+                                "properties": {"city": {"type": "string"}},
+                                "required": ["city"],
+                                "additionalProperties": False,
+                            },
+                            strict=False,
+                            type="function",
+                            description="useful to determine the weather in a given location",
+                        )
+                    ],
+                    reasoning=Reasoning(effort="medium", generate_summary=None, summary=None),
+                    usage=None,
+                ),
+                sequence_number=0,
+                type="response.created",
+            ),
+            ResponseOutputItemAddedEvent(
+                item=ResponseReasoningItem(
+                    id="rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                    summary=[],
+                    type="reasoning",
+                    content=None,
+                    encrypted_content=None,
+                    status=None,
+                ),
+                output_index=0,
+                sequence_number=2,
+                type="response.output_item.added",
+            ),
+            ResponseOutputItemDoneEvent(
+                item=ResponseReasoningItem(
+                    id="rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                    summary=[],
+                    type="reasoning",
+                    content=None,
+                    encrypted_content=None,
+                    status=None,
+                ),
+                output_index=0,
+                sequence_number=3,
+                type="response.output_item.done",
+            ),
+            ResponseOutputItemAddedEvent(
+                item=ResponseFunctionToolCall(
+                    arguments="",
+                    call_id="call_OZZXFm7SLb4F3Xg8a9XVVCvv",
+                    name="weather",
+                    type="function_call",
+                    id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                    status="in_progress",
+                ),
+                output_index=1,
+                sequence_number=4,
+                type="response.output_item.added",
+            ),
+            ResponseFunctionCallArgumentsDeltaEvent(
+                delta='{"city":',
+                item_id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                output_index=1,
+                sequence_number=5,
+                type="response.function_call_arguments.delta",
+                obfuscation="PySUcQ59ZZRkOm",
+            ),
+            ResponseFunctionCallArgumentsDeltaEvent(
+                delta='"Paris"}',
+                item_id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                output_index=1,
+                sequence_number=8,
+                type="response.function_call_arguments.delta",
+                obfuscation="INeMDAi1uAj",
+            ),
+            ResponseFunctionCallArgumentsDoneEvent(
+                arguments='{"city":"Paris"}',
+                item_id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                name="weather",  # added name here because pydantic complains otherwise API returns a none here
+                output_index=1,
+                sequence_number=10,
+                type="response.function_call_arguments.done",
+            ),
+            ResponseCompletedEvent(
+                response=Response(
+                    id="resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
+                    created_at=1761907188.0,
+                    error=None,
+                    incomplete_details=None,
+                    instructions=None,
+                    metadata={},
+                    model="gpt-5-mini-2025-08-07",
+                    object="response",
+                    output=[
+                        ResponseReasoningItem(
+                            id="rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                            summary=[],
+                            type="reasoning",
+                            content=None,
+                            encrypted_content=None,
+                            status=None,
+                        ),
+                        ResponseFunctionToolCall(
+                            arguments='{"city":"Paris"}',
+                            call_id="call_OZZXFm7SLb4F3Xg8a9XVVCvv",
+                            name="weather",
+                            type="function_call",
+                            id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                            status="completed",
+                        ),
+                    ],
+                    parallel_tool_calls=True,
+                    temperature=1.0,
+                    tool_choice="auto",
+                    tools=[
+                        FunctionTool(
+                            name="weather",
+                            parameters={
+                                "type": "object",
+                                "properties": {"city": {"type": "string"}},
+                                "required": ["city"],
+                                "additionalProperties": False,
+                            },
+                            strict=False,
+                            type="function",
+                            description="useful to determine the weather in a given location",
+                        )
+                    ],
+                    top_p=1.0,
+                    reasoning=Reasoning(effort="medium", generate_summary=None, summary=None),
+                    usage=ResponseUsage(
+                        input_tokens=62,
+                        input_tokens_details=InputTokensDetails(cached_tokens=0),
+                        output_tokens=83,
+                        output_tokens_details=OutputTokensDetails(reasoning_tokens=64),
+                        total_tokens=145,
+                    ),
+                    store=True,
+                ),
+                sequence_number=12,
+                type="response.completed",
+            ),
+        ]
+
+        streaming_chunks = [_convert_response_chunk_to_streaming_chunk(chunk) for chunk in chunks]
+        assert streaming_chunks == [
+            StreamingChunk(
+                content="",
+                meta={
+                    "response": {
+                        "id": "resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
+                        "created_at": 1761907188.0,
+                        "error": None,
+                        "incomplete_details": None,
+                        "instructions": None,
+                        "metadata": {},
+                        "model": "gpt-5-mini-2025-08-07",
+                        "object": "response",
+                        "output": [],
+                        "parallel_tool_calls": True,
+                        "temperature": 1.0,
+                        "tool_choice": "auto",
+                        "tools": [
+                            {
+                                "name": "weather",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {"city": {"type": "string"}},
+                                    "required": ["city"],
+                                    "additionalProperties": False,
+                                },
+                                "strict": False,
+                                "type": "function",
+                                "description": "useful to determine the weather in a given location",
+                            }
+                        ],
+                        "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
+                        "usage": None,
+                    },
+                    "sequence_number": 0,
+                    "type": "response.created",
+                },
+                component_info=None,
+                index=None,
+                tool_calls=None,
+                tool_call_result=None,
+                start=False,
+                finish_reason=None,
+                reasoning=None,
+            ),
+            StreamingChunk(
+                content="",
+                meta={},
+                component_info=None,
+                index=0,
+                tool_calls=None,
+                tool_call_result=None,
+                start=False,
+                finish_reason=None,
+                reasoning=ReasoningContent(
+                    reasoning_text="",
+                    extra={
+                        "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                        "summary": [],
+                        "type": "reasoning",
+                        "content": None,
+                        "encrypted_content": None,
+                        "status": None,
+                    },
+                ),
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "item": {
+                        "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                        "summary": [],
+                        "type": "reasoning",
+                        "content": None,
+                        "encrypted_content": None,
+                        "status": None,
+                    },
+                    "output_index": 0,
+                    "sequence_number": 3,
+                    "type": "response.output_item.done",
+                },
+                component_info=None,
+                index=0,
+                tool_calls=None,
+                tool_call_result=None,
+                start=False,
+                finish_reason=None,
+                reasoning=None,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "arguments": "",
+                    "call_id": "call_OZZXFm7SLb4F3Xg8a9XVVCvv",
+                    "name": "weather",
+                    "type": "function_call",
+                    "id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                    "status": "in_progress",
+                },
+                component_info=None,
+                index=1,
+                tool_calls=[
+                    ToolCallDelta(
+                        index=1,
+                        tool_name="weather",
+                        arguments=None,
+                        id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                        call_id="call_OZZXFm7SLb4F3Xg8a9XVVCvv",
+                    )
+                ],
+                tool_call_result=None,
+                start=True,
+                finish_reason=None,
+                reasoning=None,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "item_id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                    "output_index": 1,
+                    "sequence_number": 5,
+                    "type": "response.function_call_arguments.delta",
+                    "obfuscation": "PySUcQ59ZZRkOm",
+                },
+                component_info=None,
+                index=1,
+                tool_calls=[
+                    ToolCallDelta(
+                        index=1,
+                        tool_name=None,
+                        arguments='{"city":',
+                        id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                        call_id=None,
+                    )
+                ],
+                tool_call_result=None,
+                start=True,
+                finish_reason=None,
+                reasoning=None,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "item_id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                    "output_index": 1,
+                    "sequence_number": 8,
+                    "type": "response.function_call_arguments.delta",
+                    "obfuscation": "INeMDAi1uAj",
+                },
+                component_info=None,
+                index=1,
+                tool_calls=[
+                    ToolCallDelta(
+                        index=1,
+                        tool_name=None,
+                        arguments='"Paris"}',
+                        id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                        call_id=None,
+                    )
+                ],
+                tool_call_result=None,
+                start=True,
+                finish_reason=None,
+                reasoning=None,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "arguments": '{"city":"Paris"}',
+                    "item_id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                    "name": "weather",
+                    "output_index": 1,
+                    "sequence_number": 10,
+                    "type": "response.function_call_arguments.done",
+                },
+                component_info=None,
+                index=1,
+                tool_calls=None,
+                tool_call_result=None,
+                start=False,
+                finish_reason=None,
+                reasoning=None,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "response": {
+                        "id": "resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
+                        "created_at": 1761907188.0,
+                        "error": None,
+                        "incomplete_details": None,
+                        "instructions": None,
+                        "metadata": {},
+                        "model": "gpt-5-mini-2025-08-07",
+                        "object": "response",
+                        "output": [
+                            {
+                                "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                                "summary": [],
+                                "type": "reasoning",
+                                "content": None,
+                                "encrypted_content": None,
+                                "status": None,
+                            },
+                            {
+                                "arguments": '{"city":"Paris"}',
+                                "call_id": "call_OZZXFm7SLb4F3Xg8a9XVVCvv",
+                                "name": "weather",
+                                "type": "function_call",
+                                "id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                                "status": "completed",
+                            },
+                        ],
+                        "parallel_tool_calls": True,
+                        "temperature": 1.0,
+                        "tool_choice": "auto",
+                        "tools": [
+                            {
+                                "name": "weather",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {"city": {"type": "string"}},
+                                    "required": ["city"],
+                                    "additionalProperties": False,
+                                },
+                                "strict": False,
+                                "type": "function",
+                                "description": "useful to determine the weather in a given location",
+                            }
+                        ],
+                        "top_p": 1.0,
+                        "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
+                        "usage": {
+                            "input_tokens": 62,
+                            "input_tokens_details": {"cached_tokens": 0},
+                            "output_tokens": 83,
+                            "output_tokens_details": {"reasoning_tokens": 64},
+                            "total_tokens": 145,
+                        },
+                        "store": True,
+                    },
+                    "sequence_number": 12,
+                    "type": "response.completed",
+                },
+                component_info=None,
+                index=None,
+                tool_calls=None,
+                tool_call_result=None,
+                start=False,
+                finish_reason=None,
+                reasoning=None,
+            ),
+        ]
