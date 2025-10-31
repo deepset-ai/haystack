@@ -11,14 +11,12 @@ You can think of the Document Store as a database that stores your data and prov
 
 Document Store is an object that stores your documents. In Haystack, a Document Store is different from a component, as it doesn’t have the `run()` method. You can think of it as an interface to your database – you put the information there, or you can look through it. This means that a Document Store is not a piece of a pipeline but rather a tool that the components of a pipeline have access to and can interact with.
 
-:::tip
-Work with Retrievers
+:::tip Work with Retrievers
 
 The most common way to use a Document Store in Haystack is to fetch documents using a Retriever. A Document Store will often have a corresponding Retriever to get the most out of specific technologies. See more information in our [Retriever](../pipeline-components/retrievers.mdx) documentation.
 :::
 
-:::note
-How to choose a Document Store?
+:::note How to choose a Document Store?
 
 To learn about different types of Document Stores and their strengths and disadvantages, head to the [Choosing a Document Store](document-store/choosing-a-document-store.mdx) page.
 :::
@@ -67,8 +65,7 @@ document_store.write_documents([
 ])
 ```
 
-:::note
-`DocumentWriter`
+:::note `DocumentWriter`
 
 See `DocumentWriter` component [docs](../pipeline-components/writers/documentwriter.mdx) to write your documents into a Document Store in a pipeline.
 :::

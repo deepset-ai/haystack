@@ -77,14 +77,12 @@ You can use different Retriever types, sparse and dense, in one pipeline to take
 
 See an example of this approach in our [`DocumentJoiner` docs](joiners/documentjoiner.mdx#in-a-pipeline).
 
-:::tip
-Metadata Filtering
+:::tip Metadata Filtering
 
 When talking about hybrid retrieval, some database providers mean _metadata filtering_ on dense embedding retrieval. While this is different from combining different Retrievers, it is usually supported by Haystack Retrievers. For more information, check the [Metadata Filtering page](../concepts/metadata-filtering.mdx).
 :::
 
-:::note
-Hybrid Retrievers
+:::note Hybrid Retrievers
 
 Some Document Stores offer hybrid retrieval on the database side.
 In general, these solutions can be performant, but they offer fewer customization options (for instance, on how to merge results from different retrieval techniques).

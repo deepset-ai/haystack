@@ -65,7 +65,7 @@ result = evaluator.run(questions=questions, contexts=contexts, predicted_answers
 
 ### Using Small Cross-Encoder Models for Evaluation
 
-Alongside LLMs for evaluation, we can also use small cross-encoder models. These models can calculate, for example, semantic answer similarity. In contrast to metrics based on LLMs, the metrics based on smaller models don’t require an API key of a model provider. 
+Alongside LLMs for evaluation, we can also use small cross-encoder models. These models can calculate, for example, semantic answer similarity. In contrast to metrics based on LLMs, the metrics based on smaller models don’t require an API key of a model provider.
 
 This method of using small cross-encoder models as evaluators is faster and cheaper to run but is less flexible in terms of what aspect you can evaluate. You can only evaluate what the small model was trained to evaluate.
 
@@ -108,8 +108,7 @@ Currently, Haystack has integrations with [DeepEval](https://docs.confident-ai.c
 | Explanations of scores | ❌ | ✅ |
 | Monitoring dashboard | ❌ | ❌ |
 
-:::info
-Framework Documentation
+:::info Framework Documentation
 
 You can find more information about the metrics in the documentation of the respective evaluation frameworks:
 
