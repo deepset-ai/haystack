@@ -673,7 +673,8 @@ def __init__(name: str,
              server_info: MCPServerInfo,
              description: str | None = None,
              connection_timeout: int = 30,
-             invocation_timeout: int = 30)
+             invocation_timeout: int = 30,
+             eager_connect: bool = False)
 ```
 
 Initialize the MCP tool.
@@ -685,6 +686,9 @@ Initialize the MCP tool.
 - `description`: Custom description (if None, server description will be used)
 - `connection_timeout`: Timeout in seconds for server connection
 - `invocation_timeout`: Default timeout in seconds for tool invocations
+- `eager_connect`: If True, connect to server during initialization.
+If False (default), defer connection until warm_up or first tool use,
+whichever comes first.
 
 **Raises**:
 
@@ -714,6 +718,16 @@ Asynchronous tool invocation.
 **Returns**:
 
 JSON string representation of the tool invocation result
+
+<a id="haystack_integrations.tools.mcp.mcp_tool.MCPTool.warm_up"></a>
+
+#### MCPTool.warm\_up
+
+```python
+def warm_up() -> None
+```
+
+Connect and fetch the tool schema if eager_connect is turned off.
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.MCPTool.to_dict"></a>
 
@@ -791,20 +805,6 @@ def tool_spec() -> dict[str, Any]
 ```
 
 Return the Tool specification to be used by the Language Model.
-
-<a id="haystack_integrations.tools.mcp.mcp_tool.MCPTool.warm_up"></a>
-
-#### MCPTool.warm\_up
-
-```python
-def warm_up() -> None
-```
-
-Prepare the Tool for use.
-
-Override this method to establish connections to remote services, load models,
-or perform other resource-intensive initialization. This method should be idempotent,
-as it may be called multiple times.
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.MCPTool.invoke"></a>
 
@@ -953,7 +953,8 @@ sse_toolset = MCPToolset(
 def __init__(server_info: MCPServerInfo,
              tool_names: list[str] | None = None,
              connection_timeout: float = 30.0,
-             invocation_timeout: float = 30.0)
+             invocation_timeout: float = 30.0,
+             eager_connect: bool = False)
 ```
 
 Initialize the MCP toolset.
@@ -965,10 +966,26 @@ Initialize the MCP toolset.
 matching names will be added to the toolset.
 - `connection_timeout`: Timeout in seconds for server connection
 - `invocation_timeout`: Default timeout in seconds for tool invocations
+- `eager_connect`: If True, connect to server and load tools during initialization.
+If False (default), defer connection to warm_up.
 
 **Raises**:
 
 - `MCPToolNotFoundError`: If any of the specified tool names are not found on the server
+
+<a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.warm_up"></a>
+
+#### MCPToolset.warm\_up
+
+```python
+def warm_up() -> None
+```
+
+Connect and load tools when eager_connect is turned off.
+
+This method is automatically called by ``ToolInvoker.warm_up()`` and ``Pipeline.warm_up()``.
+You can also call it directly before using the toolset to ensure all tool schemas
+are available without performing a real invocation.
 
 <a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.to_dict"></a>
 
@@ -1062,19 +1079,6 @@ Supports checking by:
 **Returns**:
 
 True if contained, False otherwise
-
-<a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.warm_up"></a>
-
-#### MCPToolset.warm\_up
-
-```python
-def warm_up() -> None
-```
-
-Prepare the Toolset for use.
-
-Override this method to set up shared resources like database connections or HTTP sessions.
-This method should be idempotent, as it may be called multiple times.
 
 <a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.add"></a>
 

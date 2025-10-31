@@ -464,6 +464,76 @@ class TestAgent:
         assert agent.tools[0].function is weather_function
         assert agent.exit_conditions == ["text"]
 
+    def test_from_dict_state_schema_none(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        data = {
+            "type": "haystack.components.agents.agent.Agent",
+            "init_parameters": {
+                "chat_generator": {
+                    "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
+                    "init_parameters": {
+                        "model": "gpt-4o-mini",
+                        "streaming_callback": None,
+                        "api_base_url": None,
+                        "organization": None,
+                        "generation_kwargs": {},
+                        "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
+                        "timeout": None,
+                        "max_retries": None,
+                        "tools": None,
+                        "tools_strict": False,
+                        "http_client_kwargs": None,
+                    },
+                },
+                "tools": [
+                    {
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "name": "weather_tool",
+                            "description": "Provides weather information for a given location.",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"location": {"type": "string"}},
+                                "required": ["location"],
+                            },
+                            "function": "test_agent.weather_function",
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    },
+                    {
+                        "type": "haystack.tools.component_tool.ComponentTool",
+                        "data": {
+                            "component": {
+                                "type": "haystack.components.builders.prompt_builder.PromptBuilder",
+                                "init_parameters": {
+                                    "template": "{{parrot}}",
+                                    "variables": None,
+                                    "required_variables": None,
+                                },
+                            },
+                            "name": "parrot",
+                            "description": "This is a parrot.",
+                            "parameters": None,
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    },
+                ],
+                "system_prompt": None,
+                "exit_conditions": ["text", "weather_tool"],
+                "state_schema": None,
+                "max_agent_steps": 100,
+                "raise_on_tool_invocation_failure": False,
+                "streaming_callback": None,
+                "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
+            },
+        }
+        agent = Agent.from_dict(data)
+        assert agent.state_schema == {"messages": {"type": list[ChatMessage], "handler": merge_lists}}
+
     def test_serde(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
@@ -805,11 +875,13 @@ class TestAgent:
         assert tool_invoker_run_mock.call_args[1]["tools"] == [weather_tool]
 
     def test_run_not_warmed_up(self, weather_tool):
+        """Warmup is run automatically on first run"""
         chat_generator = MockChatGeneratorWithoutRunAsync()
         chat_generator.warm_up = MagicMock()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
-        with pytest.raises(RuntimeError, match="The component Agent wasn't warmed up."):
-            agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+        agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+        assert agent._is_warmed_up is True
+        assert chat_generator.warm_up.call_count == 1
 
     def test_run_no_messages(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -883,6 +955,24 @@ class TestAgent:
         assert "last_message" in result
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
+
+    @pytest.mark.asyncio
+    async def test_generation_kwargs(self):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+
+        agent = Agent(chat_generator=chat_generator)
+        agent.warm_up()
+
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Hello")]})
+
+        await agent.run_async([ChatMessage.from_user("Hello")], generation_kwargs={"temperature": 0.0})
+
+        expected_messages = [
+            ChatMessage(_role=ChatRole.USER, _content=[TextContent(text="Hello")], _name=None, _meta={})
+        ]
+        chat_generator.run.assert_called_once_with(
+            messages=expected_messages, generation_kwargs={"temperature": 0.0}, tools=[]
+        )
 
     @pytest.mark.asyncio
     async def test_run_async_uses_chat_generator_run_async_when_available(self, weather_tool):

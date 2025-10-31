@@ -32,6 +32,7 @@ executor = SnowflakeTableRetriever(
     db_schema="<SCHEMA-NAME>",
     warehouse="<WAREHOUSE-NAME>",
 )
+executor.warm_up()
 ```
 
 #### Key-pair Authentication (MFA):
@@ -46,6 +47,7 @@ executor = SnowflakeTableRetriever(
     db_schema="<SCHEMA-NAME>",
     warehouse="<WAREHOUSE-NAME>",
 )
+executor.warm_up()
 ```
 
 #### OAuth Authentication (MFA):
@@ -61,6 +63,7 @@ executor = SnowflakeTableRetriever(
     db_schema="<SCHEMA-NAME>",
     warehouse="<WAREHOUSE-NAME>",
 )
+executor.warm_up()
 ```
 
 #### Running queries:
@@ -93,17 +96,23 @@ shape: (3, 3)
 ```python
 def __init__(user: str,
              account: str,
-             authenticator: Literal["SNOWFLAKE", "SNOWFLAKE_JWT", "OAUTH"],
-             api_key: Optional[Secret] = None,
+             authenticator: Literal["SNOWFLAKE", "SNOWFLAKE_JWT",
+                                    "OAUTH"] = "SNOWFLAKE",
+             api_key: Optional[Secret] = Secret.from_env_var(
+                 "SNOWFLAKE_API_KEY", strict=False),
              database: Optional[str] = None,
              db_schema: Optional[str] = None,
              warehouse: Optional[str] = None,
              login_timeout: Optional[int] = 60,
              return_markdown: bool = True,
-             private_key_file: Optional[Secret] = None,
-             private_key_file_pwd: Optional[Secret] = None,
-             oauth_client_id: Optional[Secret] = None,
-             oauth_client_secret: Optional[Secret] = None,
+             private_key_file: Optional[Secret] = Secret.from_env_var(
+                 "SNOWFLAKE_PRIVATE_KEY_FILE", strict=False),
+             private_key_file_pwd: Optional[Secret] = Secret.from_env_var(
+                 "SNOWFLAKE_PRIVATE_KEY_PWD", strict=False),
+             oauth_client_id: Optional[Secret] = Secret.from_env_var(
+                 "SNOWFLAKE_OAUTH_CLIENT_ID", strict=False),
+             oauth_client_secret: Optional[Secret] = Secret.from_env_var(
+                 "SNOWFLAKE_OAUTH_CLIENT_SECRET", strict=False),
              oauth_token_request_url: Optional[str] = None,
              oauth_authorization_url: Optional[str] = None) -> None
 ```
@@ -131,19 +140,15 @@ Required for OAUTH authentication.
 - `oauth_token_request_url`: OAuth token request URL for Client Credentials flow.
 - `oauth_authorization_url`: OAuth authorization URL for Authorization Code flow.
 
-<a id="haystack_integrations.components.retrievers.snowflake.snowflake_table_retriever.SnowflakeTableRetriever.test_connection"></a>
+<a id="haystack_integrations.components.retrievers.snowflake.snowflake_table_retriever.SnowflakeTableRetriever.warm_up"></a>
 
-#### SnowflakeTableRetriever.test\_connection
+#### SnowflakeTableRetriever.warm\_up
 
 ```python
-def test_connection() -> bool
+def warm_up() -> None
 ```
 
-Tests the connection with the current authentication settings.
-
-**Returns**:
-
-True if connection is successful, False otherwise.
+Warm up the component by initializing the authenticator handler and testing the database connection.
 
 <a id="haystack_integrations.components.retrievers.snowflake.snowflake_table_retriever.SnowflakeTableRetriever.to_dict"></a>
 

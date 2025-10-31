@@ -1,0 +1,202 @@
+---
+title: "LangfuseConnector"
+id: langfuseconnector
+slug: "/langfuseconnector"
+description: "Learn how to work with Langfuse in Haystack."
+---
+
+# LangfuseConnector
+
+Learn how to work with Langfuse in Haystack.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Anywhere, as it’s not connected to other components |
+| **Mandatory init variables** | "name": The name of the pipeline or component to identify the tracing run |
+| **Output variables** | “name”: The name of the tracing component  <br /> <br />”trace_url”: A link to the tracing data |
+| **API reference** | [langfuse](/reference/integrations-langfuse) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/langfuse |
+
+## Overview
+
+`LangfuseConnector` integrates tracing capabilities into Haystack pipelines using [Langfuse](https://langfuse.com/). It captures detailed information about pipeline runs, like API calls, context data, prompts, and more. Use this component to:
+
+- Monitor model performance, such as token usage and cost.
+- Find areas for pipeline improvement by identifying low-quality outputs and collecting user feedback.
+- Create datasets for fine-tuning and testing from your pipeline executions.
+
+To work with the integration, add the `LangfuseConnector` to your pipeline, run the pipeline, and then view the tracing data on the Langfuse website. Don’t connect this component to any other – `LangfuseConnector` will simply run in your pipeline’s background.
+
+You can optionally define two more parameters when working with this component:
+
+- `httpx_client`: An optional custom `httpx.Client` instance for Langfuse API calls. Note that custom clients are discarded when deserializing a pipeline from YAML, as HTTPX clients cannot be serialized. In such cases, Langfuse creates a default client.
+- `span_handler`: An optional custom handler for processing spans. If not provided, the `DefaultSpanHandler` is used. The span handler defines how spans are created and processed, enabling customization of span types based on component types and post-processing of spans. See more details in the [Advanced Usage section](#advanced-usage) below.
+
+### Prerequisites
+
+These are the things that you need before working with LangfuseConnector:
+
+1. Make sure you have an active Langfuse [account](https://cloud.langfuse.com/).
+2. Set the `HAYSTACK_CONTENT_TRACING_ENABLED` environment variable to `true` – this will enable tracing in your pipelines.
+3. Set the `LANGFUSE_SECRET_KEY` and `LANGFUSE_PUBLIC_KEY` environment variables with your Langfuse secret and public keys found in your account profile.
+
+### Installation
+
+First, install `langfuse-haystack` package to use the `LangfuseConnector`:
+
+```shell
+pip install langfuse-haystack
+```
+
+<br />
+
+:::note
+Usage Notice
+
+To ensure proper tracing, always set environment variables before importing any Haystack components. This is crucial because Haystack initializes its internal tracing components during import. In the example below, we first set the environmental variables and then import the relevant Haystack components.
+
+Alternatively, an even better practice is to set these environment variables in your shell before running the script. This approach keeps configuration separate from code and allows for easier management of different environments.
+:::
+
+## Usage
+
+In the example below, we are adding `LangfuseConnector` to the pipeline as a _tracer_. Each pipeline run will produce one trace that includes the entire execution context, including prompts, completions, and metadata.
+
+You can then view the trace by following a URL link printed in the output.
+
+```python
+import os
+
+os.environ["LANGFUSE_HOST"] = "https://cloud.langfuse.com"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
+from haystack.components.builders import DynamicChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+
+from haystack_integrations.components.connectors.langfuse import LangfuseConnector
+
+if __name__ == "__main__":
+    pipe = Pipeline()
+    pipe.add_component("tracer", LangfuseConnector("Chat example"))
+    pipe.add_component("prompt_builder", DynamicChatPromptBuilder())
+    pipe.add_component("llm", OpenAIChatGenerator(model="gpt-3.5-turbo"))
+
+    pipe.connect("prompt_builder.prompt", "llm.messages")
+
+    messages = [
+        ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+        ChatMessage.from_user("Tell me about {{location}}"),
+    ]
+
+    response = pipe.run(
+        data={"prompt_builder": {"template_variables": {"location": "Berlin"}, "prompt_source": messages}}
+    )
+    print(response["llm"]["replies"][0])
+    print(response["tracer"]["trace_url"])
+```
+
+### With an Agent
+
+```python
+import os
+
+os.environ["LANGFUSE_HOST"] = "https://cloud.langfuse.com"
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+from haystack import Pipeline
+
+from haystack_integrations.components.connectors.langfuse import LangfuseConnector
+
+@tool
+def get_weather(city: Annotated[str, "The city to get weather for"]) -> str:
+"""Get current weather information for a city."""
+weather_data = {
+  "Berlin": "18°C, partly cloudy",
+  "New York": "22°C, sunny",
+  "Tokyo": "25°C, clear skies"
+}
+return weather_data.get(city, f"Weather information for {city} not available")
+
+@tool
+def calculate(operation: Annotated[str, "Mathematical operation: add, subtract, multiply, divide"],
+          a: Annotated[float, "First number"],
+          b: Annotated[float, "Second number"]) -> str:
+"""Perform basic mathematical calculations."""
+if operation == "add":
+  result = a + b
+  elif operation == "subtract":
+  result = a - b
+  elif operation == "multiply":
+  result = a * b
+  elif operation == "divide":
+  if b == 0:
+      return "Error: Division by zero"
+      result = a / b
+  else:
+  return f"Error: Unknown operation '{operation}'"
+
+return f"The result of {a} {operation} {b} is {result}"
+
+if __name__ == "__main__":
+## Create components
+chat_generator = OpenAIChatGenerator()
+
+agent = Agent(
+  chat_generator=chat_generator,
+  tools=[get_weather, calculate],
+  system_prompt="You are a helpful assistant with access to weather and calculator tools. Use them when needed.",
+  exit_conditions=["text"]
+)
+
+langfuse_connector = LangfuseConnector("Agent Example")
+
+## Create and run pipeline
+pipe = Pipeline()
+pipe.add_component("tracer", langfuse_connector)
+pipe.add_component("agent", agent)
+
+response = pipe.run(
+  data={
+      "agent": {"messages": [ChatMessage.from_user("What's the weather in Berlin and calculate 15 + 27?")]},
+      "tracer": {"invocation_context": {"test": "agent_with_tools"}}
+    }
+)
+
+print(response["agent"]["last_message"].text)
+print(response["tracer"]["trace_url"])
+```
+
+## Advanced Usage
+
+### Customizing Langfuse Traces with SpanHandler
+
+The `SpanHandler` interface in Haystack allows you to customize how spans are created and processed for Langfuse trace creation. This enables you to log custom metrics, add tags, or integrate metadata.
+
+By extending `SpanHandler` or its default implementation, `DefaultSpanHandler`, you can define custom logic for span processing, providing precise control over what data is logged to Langfuse for tracking and analyzing pipeline executions.
+
+Here's an example:
+
+```python
+from haystack_integrations.tracing.langfuse import LangfuseConnector, DefaultSpanHandler, LangfuseSpan
+from typing import Optional
+
+class CustomSpanHandler(DefaultSpanHandler):
+    def handle(self, span: LangfuseSpan, component_type: Optional[str]) -> None:
+        # Custom logic to add metadata or modify span
+        if component_type == "OpenAIChatGenerator":
+            output = span._data.get("haystack.component.output", {})
+            if len(output.get("text", "")) < 10:
+                span._span.update(level="WARNING", status_message="Response too short")
+
+## Add the custom handler to the LangfuseConnector
+connector = LangfuseConnector(span_handler=CustomSpanHandler())
+```

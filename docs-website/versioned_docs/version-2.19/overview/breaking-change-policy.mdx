@@ -1,0 +1,89 @@
+---
+title: "Breaking Change Policy"
+id: breaking-change-policy
+slug: "/breaking-change-policy"
+description: "This document outlines the breaking change policy for Haystack, including the definition of breaking changes, versioning conventions, and the deprecation process for existing features."
+---
+
+# Breaking Change Policy
+
+This document outlines the breaking change policy for Haystack, including the definition of breaking changes, versioning conventions, and the deprecation process for existing features.
+
+Haystack is under active development, which means that functionalities are being added, deprecated, or removed rather frequently. This policy aims to minimize the impact of these changes on current users and deployments. It provides a clear schedule and outlines the necessary steps before upgrading to a new Haystack version.
+
+## Breaking Change Definition
+
+A breaking change occurs when:
+
+- A Component is removed, renamed, or the Python import path is changed.
+- A parameter is renamed, removed, or changed from optional to mandatory.
+- A new mandatory parameter is added.
+
+Existing deployments might break, and the change is deemed a _breaking change_. The decision to declare a change as breaking has nothing to do with its potential impact: while the change might only impact a tiny subset of applications using a specific Haystack feature, it would still be treated as a breaking change.
+
+The following cases are **not** considered a breaking change:
+
+- A new functionality is added (for example, a new Component).
+- A component, class, or utility function gets a new optional parameter.
+- An existing parameter gets changed from mandatory to optional.
+
+Existing deployments are not impacted, and the change is deemed non-breaking. Release notes will mention the change and possibly provide an upgrade path, but upgrading Haystack won’t break existing applications.
+
+## Versioning
+
+Haystack releases are labeled with a series of three numbers separated by dots, for example, `2.0.1`. Each number has a specific meaning:
+
+- `2` is the Major version
+- `0` is the Minor version
+- `1` is the Patch version
+
+:::note
+Albeit similar, Haystack DOES NOT follow the principles of [Semantic Versioning](https://semver.org). Read on to see the differences.
+
+:::
+
+Given a Haystack release with a version number of type `MAJOR.MINOR.PATCH`, you should expect:
+
+1. **For Major version change:** fundamental, incompatible API changes. In this case, you would most likely need a migration process before being able to update Haystack. Major releases happen no more than once a year, changes are extensively documented, and a migration path is provided.
+2. **For Minor version change:** addition or removal of functionalities that might not be backward compatible. Most of the time, you will be able to upgrade your Haystack installation seamlessly, but always refer to the [release notes](https://github.com/deepset-ai/haystack/releases) for guidance. Deprecated components are the most common breaking change shipped in a Minor version release.
+3. **For Patch version change:** bugfixes. You can safely upgrade Haystack to the new version without concerns that your program will break.
+
+## Deprecation of Existing Features
+
+Haystack strives for robustness. To achieve this, we clean up our code by removing old features that are no longer used. This helps us maintain the codebase, improve security, and make it easier to keep everything running smoothly. Before we remove a feature, component, class, or utility function, we go through a process called deprecation.
+
+A Major or Minor (but not Patch) version may deprecate certain features from previous releases, and this is what you should expect:
+
+- If a feature is deprecated in Haystack version `X.Y`, it will continue to work but the Python code will raise warnings detailing the steps to take in order to upgrade.
+- Features deprecated in Haystack version `X.Y` will be removed in Haystack `X.Y+1`, giving affected users a timeframe of roughly a month to prepare the upgrade.
+
+### Example
+
+To clarify the process, here’s an example:
+
+At some point, we decide to remove a `FooComponent` and declare it deprecated in Haystack version `2.99.0`. This is what will happen:
+
+1. `FooComponent` keeps working as usual In Haystack `2.99.0`, but using the component raises a `FutureWarning` message in the code.
+2. In Haystack version `2.100.0`, we remove the `FooComponent` from the codebase. Trying to use it produces an error.
+
+## Discontinuing an Integration
+
+When existing features are changed or removed, integrations go through the same deprecation process as detailed on this page for Haystack. It’s important to note that integrations are independent and distributed with their own packages. In certain cases, a special form of deprecation may occur where the integration is discontinued and subsequently removed from the Core Integrations repository.
+
+To give our community the opportunity to take over the integration and keep it maintained before being discontinued Core Integrations gradually go through different states, as detailed below:
+
+- **Staged**
+  - The source code of the integration is moved from `main` to a special `staging` branch of the Core Integrations repository.
+  - The documentation pages are removed from the Haystack documentation website.
+  - The main README of the Core Integrations repository shows a disclaimer explaining how the integration can be adopted from the community.
+  - The integration tile is removed (it can be re-added later by the maintainer who adopted the integration).
+  - The integration package on PyPI remains available.
+  - A grace period of 3 months starts.
+- **Adopted**
+  - An organization or an individual from the community accepts to take over the ownership of the Staged integration.
+  - The adopter creates their own repository, and the source code of the discontinued integration is removed from the `staging` branch.
+  - Ownership of the PyPI package is transferred to the new maintainer.
+  - The adopter will create a new integration tile in [haystack-integrations](https://github.com/deepset-ai/haystack-integrations).
+- **Discontinued**
+  - If the grace period expires and nobody adopts the Staged Integration, its source code is removed from the `staging` branch.
+  - The PyPI package of the integration won’t be removed but won’t be further updated.

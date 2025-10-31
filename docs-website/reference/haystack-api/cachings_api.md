@@ -7,11 +7,11 @@ slug: "/caching-api"
 
 <a id="cache_checker"></a>
 
-# Module cache\_checker
+## Module cache\_checker
 
 <a id="cache_checker.CacheChecker"></a>
 
-## CacheChecker
+### CacheChecker
 
 Checks for the presence of documents in a Document Store based on a specified field in each document's metadata.
 

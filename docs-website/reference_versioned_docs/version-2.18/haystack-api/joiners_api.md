@@ -2,6 +2,7 @@
 title: Joiners
 id: joiners-api
 description: Components that join list of different objects
+slug: "/joiners-api"
 ---
 
 <a id="answer_joiner"></a>

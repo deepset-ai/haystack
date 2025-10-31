@@ -1,0 +1,96 @@
+---
+title: "GitHubPRCreatorTool"
+id: githubprcreatortool
+slug: "/githubprcreatortool"
+description: "A Tool that allows Agents and ToolInvokers to create pull requests from a fork back to the original repository."
+---
+
+# GitHubPRCreatorTool
+
+A Tool that allows Agents and ToolInvokers to create pull requests from a fork back to the original repository.
+
+|                              |                                                                                          |
+| ---------------------------- | ---------------------------------------------------------------------------------------- |
+| **Mandatory init variables** | "github_token": GitHub personal access token. Can be set with `GITHUB_TOKEN` env var.    |
+| **API reference**            | [Tools](/reference/tools-api)                                                            |
+| **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+## Overview
+
+`GitHubPRCreatorTool` wraps the [`GitHubPRCreator`](../../pipeline-components/connectors/githubprcreator.mdx) component, providing a tool interface for use in agent workflows and tool-based pipelines.
+
+The tool takes a GitHub issue URL and creates a pull request from your fork to the original repository, automatically linking it to the specified issue. It's designed to work with existing forks and assumes you have already made changes in a branch.
+
+### Parameters
+
+- `name` is _optional_ and defaults to "pr_creator". Specifies the name of the tool.
+- `description` is _optional_ and provides context to the LLM about what the tool does.
+- `github_token` is _mandatory_ and must be a GitHub personal access token from the fork owner. The default setting uses the environment variable `GITHUB_TOKEN`.
+- `raise_on_failure` is _optional_ and defaults to `True`. If False, errors are returned instead of raising exceptions.
+
+## Usage
+
+Install the GitHub integration to use the `GitHubPRCreatorTool`:
+
+```shell
+pip install github-haystack
+```
+
+:::note
+Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+Basic usage to create a pull request:
+
+```python
+from haystack_integrations.tools.github import GitHubPRCreatorTool
+
+tool = GitHubPRCreatorTool()
+result = tool.invoke(
+    issue_url="https://github.com/owner/repo/issues/123",
+    title="Fix issue #123",
+    body="This PR addresses issue #123 by implementing the requested changes.",
+    branch="fix-123",  # Branch in your fork with the changes
+    base="main"        # Branch in original repo to merge into
+)
+
+print(result)
+```
+
+```bash
+{'result': 'Pull request #16 created successfully and linked to issue #4'}
+```
+
+### With an Agent
+
+You can use `GitHubPRCreatorTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically invoke the tool when needed to create pull requests.
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.components.agents import Agent
+from haystack_integrations.tools.github import GitHubPRCreatorTool
+
+pr_tool = GitHubPRCreatorTool(name="github_pr_creator")
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[pr_tool],
+    exit_conditions=["text"]
+)
+
+agent.warm_up()
+response = agent.run(messages=[
+    ChatMessage.from_user("Create a pull request for issue https://github.com/owner/repo/issues/4 with title 'Fix authentication bug' and empty body using my fix-4 branch and main as target branch")
+])
+
+print(response["last_message"].text)
+```
+
+```bash
+The pull request titled "Fix authentication bug" has been created successfully and linked to issue [#123](https://github.com/owner/repo/issues/4).
+```

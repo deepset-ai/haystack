@@ -223,6 +223,9 @@ class LLMDocumentContentExtractor:
         if not documents:
             return {"documents": [], "failed_documents": []}
 
+        if not self._is_warmed_up:
+            self.warm_up()
+
         # Create ChatMessage prompts for each document
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
         all_messages: list[Union[ChatMessage, None]] = []

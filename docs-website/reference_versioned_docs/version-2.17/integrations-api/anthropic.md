@@ -196,7 +196,7 @@ def __init__(api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
              streaming_callback: Optional[StreamingCallbackT] = None,
              generation_kwargs: Optional[Dict[str, Any]] = None,
              ignore_tools_thinking_messages: bool = True,
-             tools: Optional[Union[List[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              *,
              timeout: Optional[float] = None,
              max_retries: Optional[int] = None)
@@ -231,7 +231,8 @@ Supported generation_kwargs parameters are:
 `ignore_tools_thinking_messages` is `True`, the generator will drop so-called thinking messages when tool
 use is detected. See the Anthropic [tools](https://docs.anthropic.com/en/docs/tool-use#chain-of-thought-tool-use)
 for more details.
-- `tools`: A list of Tool objects or a Toolset that the model can use. Each tool should have a unique name.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+Each tool should have a unique name.
 - `timeout`: Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
 - `max_retries`: Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
 the Anthropic client.
@@ -275,12 +276,10 @@ The deserialized component instance.
 
 ```python
 @component.output_types(replies=List[ChatMessage])
-def run(
-    messages: List[ChatMessage],
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    generation_kwargs: Optional[Dict[str, Any]] = None,
-    tools: Optional[Union[List[Tool], Toolset]] = None
-) -> Dict[str, List[ChatMessage]]
+def run(messages: List[ChatMessage],
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        tools: Optional[ToolsType] = None) -> Dict[str, List[ChatMessage]]
 ```
 
 Invokes the Anthropic API with the given messages and generation kwargs.
@@ -290,8 +289,9 @@ Invokes the Anthropic API with the given messages and generation kwargs.
 - `messages`: A list of ChatMessage instances representing the input messages.
 - `streaming_callback`: A callback function that is called when a new token is received from the stream.
 - `generation_kwargs`: Optional arguments to pass to the Anthropic generation endpoint.
-- `tools`: A list of Tool objects or a Toolset that the model can use. Each tool should
-have a unique name. If set, it will override the `tools` parameter set during component initialization.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+Each tool should have a unique name. If set, it will override the `tools` parameter set during component
+initialization.
 
 **Returns**:
 
@@ -305,11 +305,10 @@ A dictionary with the following keys:
 ```python
 @component.output_types(replies=List[ChatMessage])
 async def run_async(
-    messages: List[ChatMessage],
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    generation_kwargs: Optional[Dict[str, Any]] = None,
-    tools: Optional[Union[List[Tool], Toolset]] = None
-) -> Dict[str, List[ChatMessage]]
+        messages: List[ChatMessage],
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[Dict[str, Any]] = None,
+        tools: Optional[ToolsType] = None) -> Dict[str, List[ChatMessage]]
 ```
 
 Async version of the run method. Invokes the Anthropic API with the given messages and generation kwargs.
@@ -319,8 +318,9 @@ Async version of the run method. Invokes the Anthropic API with the given messag
 - `messages`: A list of ChatMessage instances representing the input messages.
 - `streaming_callback`: A callback function that is called when a new token is received from the stream.
 - `generation_kwargs`: Optional arguments to pass to the Anthropic generation endpoint.
-- `tools`: A list of Tool objects or a Toolset that the model can use. Each tool should
-have a unique name. If set, it will override the `tools` parameter set during component initialization.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+Each tool should have a unique name. If set, it will override the `tools` parameter set during component
+initialization.
 
 **Returns**:
 
@@ -392,7 +392,7 @@ def __init__(region: str,
                                                    None]] = None,
              generation_kwargs: Optional[Dict[str, Any]] = None,
              ignore_tools_thinking_messages: bool = True,
-             tools: Optional[List[Tool]] = None,
+             tools: Optional[ToolsType] = None,
              *,
              timeout: Optional[float] = None,
              max_retries: Optional[int] = None)
@@ -425,7 +425,8 @@ Supported generation_kwargs parameters are:
 `ignore_tools_thinking_messages` is `True`, the generator will drop so-called thinking messages when tool
 use is detected. See the Anthropic [tools](https://docs.anthropic.com/en/docs/tool-use#chain-of-thought-tool-use)
 for more details.
-- `tools`: A list of Tool objects that the model can use. Each tool should have a unique name.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
+Each tool should have a unique name.
 - `timeout`: Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
 - `max_retries`: Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
 the Anthropic client.

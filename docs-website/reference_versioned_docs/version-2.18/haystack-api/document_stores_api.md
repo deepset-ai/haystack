@@ -2,6 +2,7 @@
 title: Document Stores
 id: document-stores-api
 description: Stores your texts and meta data and provides them to the Retriever at query time.
+slug: "/document-stores-api"
 ---
 
 <a id="document_store"></a>

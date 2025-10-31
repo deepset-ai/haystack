@@ -37,7 +37,7 @@ from haystack.dataclasses import ChatMessage
 
 messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 
-client = LlamaStackChatGenerator(model="llama3.2:3b")
+client = LlamaStackChatGenerator(model="ollama/llama3.2:3b")
 response = client.run(messages)
 print(response)
 
@@ -45,7 +45,7 @@ print(response)
 is a branch of artificial intelligence
 >>that focuses on enabling computers to understand, interpret, and generate human language in a way that is
 >>meaningful and useful.')], _role=<ChatRole.ASSISTANT: 'assistant'>, _name=None,
->>_meta={'model': 'llama3.2:3b', 'index': 0, 'finish_reason': 'stop',
+>>_meta={'model': 'ollama/llama3.2:3b', 'index': 0, 'finish_reason': 'stop',
 >>'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
 
 <a id="haystack_integrations.components.generators.llama_stack.chat.chat_generator.LlamaStackChatGenerator.__init__"></a>
@@ -60,7 +60,7 @@ def __init__(*,
              streaming_callback: Optional[StreamingCallbackT] = None,
              generation_kwargs: Optional[Dict[str, Any]] = None,
              timeout: Optional[int] = None,
-             tools: Optional[Union[List[Tool], Toolset]] = None,
+             tools: Optional[ToolsType] = None,
              tools_strict: bool = False,
              max_retries: Optional[int] = None,
              http_client_kwargs: Optional[Dict[str, Any]] = None)
@@ -93,8 +93,8 @@ Some of the supported parameters:
 - `random_seed`: The seed to use for random sampling.
 - `timeout`: Timeout for client calls using OpenAI API. If not set, it defaults to either the
 `OPENAI_TIMEOUT` environment variable, or 30 seconds.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+Each tool should have a unique name.
 - `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
 the schema provided in the `parameters` field of the tool definition, but this may increase latency.
 - `max_retries`: Maximum number of retries to contact OpenAI after an internal error.
@@ -135,74 +135,3 @@ Deserialize this component from a dictionary.
 
 The deserialized component instance.
 
-<a id="haystack_integrations.components.generators.llama_stack.chat.chat_generator.LlamaStackChatGenerator.run"></a>
-
-#### LlamaStackChatGenerator.run
-
-```python
-@component.output_types(replies=list[ChatMessage])
-def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        *,
-        tools: Optional[ToolsType] = None,
-        tools_strict: Optional[bool] = None)
-```
-
-Invokes chat completion based on the provided messages and generation parameters.
-
-**Arguments**:
-
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
-override the parameters passed during component initialization.
-For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If set, it will override the `tools` parameter provided during initialization.
-- `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns**:
-
-A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
-
-<a id="haystack_integrations.components.generators.llama_stack.chat.chat_generator.LlamaStackChatGenerator.run_async"></a>
-
-#### LlamaStackChatGenerator.run\_async
-
-```python
-@component.output_types(replies=list[ChatMessage])
-async def run_async(messages: list[ChatMessage],
-                    streaming_callback: Optional[StreamingCallbackT] = None,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    *,
-                    tools: Optional[ToolsType] = None,
-                    tools_strict: Optional[bool] = None)
-```
-
-Asynchronously invokes chat completion based on the provided messages and generation parameters.
-
-This is the asynchronous version of the `run` method. It has the same parameters and return values
-but can be used with `await` in async code.
-
-**Arguments**:
-
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-Must be a coroutine.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
-override the parameters passed during component initialization.
-For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If set, it will override the `tools` parameter provided during initialization.
-- `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns**:
-
-A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.

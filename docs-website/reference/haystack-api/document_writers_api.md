@@ -7,11 +7,11 @@ slug: "/document-writers-api"
 
 <a id="document_writer"></a>
 
-# Module document\_writer
+## Module document\_writer
 
 <a id="document_writer.DocumentWriter"></a>
 
-## DocumentWriter
+### DocumentWriter
 
 Writes documents to a DocumentStore.
 

@@ -1,0 +1,102 @@
+---
+title: "GitHubIssueViewerTool"
+id: githubissueviewertool
+slug: "/githubissueviewertool"
+description: "A Tool that allows Agents and ToolInvokers to fetch and parse GitHub issues into documents."
+---
+
+# GitHubIssueViewerTool
+
+A Tool that allows Agents and ToolInvokers to fetch and parse GitHub issues into documents.
+
+|                   |                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| **API reference** | [Tools](/reference/tools-api)                                                            |
+| **GitHub link**   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+## Overview
+
+`GitHubIssueViewerTool` wraps the [`GitHubIssueViewer`](../../pipeline-components/connectors/githubissueviewer.mdx) component, providing a tool interface for use in agent workflows and tool-based pipelines.
+
+The tool takes a GitHub issue URL and returns a list of documents where:
+
+- The first document contains the main issue content,
+- Subsequent documents contain the issue comments (if any).
+
+Each document includes rich metadata such as the issue title, number, state, creation date, author, and more.
+
+### Parameters
+
+- `name` is _optional_ and defaults to "issue_viewer". Specifies the name of the tool.
+- `description` is _optional_ and provides context to the LLM about what the tool does.
+- `github_token` is _optional_ but recommended for private repositories or to avoid rate limiting.
+- `raise_on_failure` is _optional_ and defaults to `True`. If False, errors are returned as documents instead of raising exceptions.
+- `retry_attempts` is _optional_ and defaults to `2`. Number of retry attempts for failed requests.
+
+## Usage
+
+Install the GitHub integration to use the `GitHubIssueViewerTool`:
+
+```shell
+pip install github-haystack
+```
+
+:::note
+Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+```python
+from haystack_integrations.tools.github import GitHubIssueViewerTool
+
+tool = GitHubIssueViewerTool()
+result = tool.invoke(url="https://github.com/deepset-ai/haystack/issues/123")
+
+print(result)
+```
+
+```bash
+{'documents': [Document(id=3989459bbd8c2a8420a9ba7f3cd3cf79bb41d78bd0738882e57d509e1293c67a, content: 'sentence-transformers = 0.2.6.1
+haystack = latest
+farm = 0.4.3 latest branch
+
+In the call to Emb...', meta: {'type': 'issue', 'title': 'SentenceTransformer no longer accepts \'gpu" as argument', 'number': 123, 'state': 'closed', 'created_at': '2020-05-28T04:49:31Z', 'updated_at': '2020-05-28T07:11:43Z', 'author': 'predoctech', 'url': 'https://github.com/deepset-ai/haystack/issues/123'}), Document(id=a8a56b9ad119244678804d5873b13da0784587773d8f839e07f644c4d02c167a, content: 'Thanks for reporting!
+Fixed with #124 ', meta: {'type': 'comment', 'issue_number': 123, 'created_at': '2020-05-28T07:11:42Z', 'updated_at': '2020-05-28T07:11:42Z', 'author': 'tholor', 'url': 'https://github.com/deepset-ai/haystack/issues/123#issuecomment-635153940'})]}
+```
+
+### With an Agent
+
+You can use `GitHubIssueViewerTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically invoke the tool when needed to fetch GitHub issue information.
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.components.agents import Agent
+from haystack_integrations.tools.github import GitHubIssueViewerTool
+
+issue_tool = GitHubIssueViewerTool(name="github_issue_viewer")
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[issue_tool],
+    exit_conditions=["text"]
+)
+
+agent.warm_up()
+response = agent.run(messages=[
+    ChatMessage.from_user("Please analyze this GitHub issue and summarize the main problem: https://github.com/deepset-ai/haystack/issues/123")
+])
+
+print(response["last_message"].text)
+```
+
+```bash
+The GitHub issue titled "SentenceTransformer no longer accepts 'gpu' as argument" (issue \#123) discusses a problem encountered when using the `EmbeddingRetriever()` function. The user reports that passing the argument `gpu=True` now causes an error because the method that processes this argument does not accept "gpu" anymore; instead, it previously accepted "cuda" without issues.
+
+The user indicates that this change is problematic since it prevents users from instantiating the embedding model with GPU support, forcing them to default to using only the CPU for model execution.
+
+The issue was later closed with a comment indicating it was fixed in another pull request (#124).
+```

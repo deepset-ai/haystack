@@ -2,6 +2,7 @@
 title: Validators
 id: validators-api
 description: Validators validate LLM outputs
+slug: "/validators-api"
 ---
 
 <a id="json_schema"></a>

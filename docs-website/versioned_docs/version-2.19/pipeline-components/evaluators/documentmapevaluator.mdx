@@ -1,0 +1,93 @@
+---
+title: "DocumentMAPEvaluator"
+id: documentmapevaluator
+slug: "/documentmapevaluator"
+description: "The `DocumentMAPEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks to what extent the list of retrieved documents contains only relevant documents as specified in the ground truth labels or also non-relevant documents. This metric is called mean average precision (MAP)."
+---
+
+# DocumentMAPEvaluator
+
+The `DocumentMAPEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks to what extent the list of retrieved documents contains only relevant documents as specified in the ground truth labels or also non-relevant documents. This metric is called mean average precision (MAP).
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
+| **Mandatory run variables** | "ground_truth_documents": A list of a list of ground truth documents. This accounts for one list of ground truth documents per question.  <br /> <br />"retrieved_documents": A list of a list of retrieved documents. This accounts for one list of retrieved documents per question. |
+| **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 that represents the mean average precision  <br /> <br />- `individual_scores`: A list of the individual average precision scores ranging from 0.0 to 1.0 for each input pair of a list of retrieved documents and a list of ground truth documents |
+| **API reference** | [Evaluators](/reference/evaluators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/document_map.py |
+
+## Overview
+
+You can use the `DocumentMAPEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, against ground truth labels. A higher mean average precision is better, indicating that the list of retrieved documents contains many relevant documents and only a few non-relevant documents or none at all.
+
+To initialize a `DocumentMAPEvaluator`, there are no parameters required.
+
+## Usage
+
+### On its own
+
+Below is an example where we use a `DocumentMAPEvaluator` component to evaluate documents retrieved for two queries. For the first query, there is one ground truth document and one retrieved document. For the second query, there are two ground truth documents and three retrieved documents.
+
+```python
+from haystack import Document
+from haystack.components.evaluators import DocumentMAPEvaluator
+
+evaluator = DocumentMAPEvaluator()
+result = evaluator.run(
+    ground_truth_documents=[
+        [Document(content="France")],
+        [Document(content="9th century"), Document(content="9th")],
+    ],
+    retrieved_documents=[
+        [Document(content="France")],
+        [Document(content="9th century"), Document(content="10th century"), Document(content="9th")],
+    ],
+)
+print(result["individual_scores"])
+## [1.0, 0.8333333333333333]
+print(result["score"])
+## 0.9166666666666666
+```
+
+### In a pipeline
+
+Below is an example where we use a `DocumentMAPEvaluator` and a `DocumentMRREvaluator` in a pipeline to evaluate two answers and compare them to ground truth answers. Running a pipeline instead of the individual components simplifies calculating more than one metric.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.evaluators import DocumentMRREvaluator, DocumentMAPEvaluator
+
+pipeline = Pipeline()
+mrr_evaluator = DocumentMRREvaluator()
+map_evaluator = DocumentMAPEvaluator()
+pipeline.add_component("mrr_evaluator", mrr_evaluator)
+pipeline.add_component("map_evaluator", map_evaluator)
+
+ground_truth_documents=[
+    [Document(content="France")],
+    [Document(content="9th century"), Document(content="9th")],
+]
+retrieved_documents=[
+    [Document(content="France")],
+    [Document(content="9th century"), Document(content="10th century"), Document(content="9th")],
+]
+
+result = pipeline.run(
+		{
+			"mrr_evaluator": {"ground_truth_documents": ground_truth_documents,
+	    "retrieved_documents": retrieved_documents},
+	    "map_evaluator": {"ground_truth_documents": ground_truth_documents,
+	    "retrieved_documents": retrieved_documents}
+    }
+)
+
+for evaluator in result:
+    print(result[evaluator]["individual_scores"])
+#[1.0, 1.0]
+#[1.0, 0.8333333333333333]
+for evaluator in result:
+    print(result[evaluator]["score"])
+## 1.0
+## 0.9166666666666666
+```

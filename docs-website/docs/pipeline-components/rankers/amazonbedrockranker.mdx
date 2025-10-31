@@ -1,0 +1,93 @@
+---
+title: "AmazonBedrockRanker"
+id: amazonbedrockranker
+slug: "/amazonbedrockranker"
+description: "Use this component to rank documents based on their similarity to the query using Amazon Bedrock models."
+---
+
+# AmazonBedrockRanker
+
+Use this component to rank documents based on their similarity to the query using Amazon Bedrock models.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
+| **Mandatory init variables** | "aws_access_key_id": AWS access key ID. Can be set with AWS_ACCESS_KEY_ID env var.  <br /> <br />"aws_secret_access_key": AWS secret access key. Can be set with AWS_SECRET_ACCESS_KEY env var.  <br /> <br />"aws_region_name": AWS region name. Can be set with AWS_DEFAULT_REGION env var. |
+| **Mandatory run variables** | “documents”: A list of document objects  <br /> <br />”query”: A query string |
+| **Output variables** | “documents”: A list of document objects |
+| **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_bedrock/ |
+
+## Overview
+
+`AmazonBedrockRanker` ranks documents based on semantic relevance to a specified query. It uses Amazon Bedrock Rerank API. This list of all supported models can be found in Amazon’s [documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/rerank-supported.html). The default model for this Ranker is `cohere.rerank-v3-5:0`.
+
+You can also specify the `top_k` parameter to set the maximum number of documents to return.
+
+### Installation
+
+To start using Amazon Bedrock with Haystack, install the `amazon-bedrock-haystack` package:
+
+```shell
+pip install amazon-bedrock-haystack
+```
+
+### Authentication
+
+This component uses AWS for authentication. You can use the AWS CLI to authenticate through your IAM. For more information on setting up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
+
+:::info
+Using AWS CLI
+
+Consider using AWS CLI as a more straightforward tool to manage your AWS services. With AWS CLI, you can quickly configure your [boto3 credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html). This way, you won't need to provide detailed authentication parameters when initializing Amazon Bedrock in Haystack.
+:::
+
+To use this component, initialize it with the model name. The AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`) should be set as environment variables, configured as described above, or passed as [Secret](../../concepts/secret-management.mdx) arguments. Make sure the region you set supports Amazon Bedrock.
+
+## Usage
+
+### On its own
+
+This example uses `AmazonBedrockRanker` to rank two simple documents. To run the Ranker, pass a `query` and provide the `documents`.
+
+```python
+from haystack import Document
+from haystack_integrations.components.rankers.amazon_bedrock import AmazonBedrockRanker
+
+docs = [Document(content="Paris"), Document(content="Berlin")]
+
+ranker = AmazonBedrockRanker()
+
+ranker.run(query="City in France", documents=docs, top_k=1)
+```
+
+### In a pipeline
+
+Below is an example of a pipeline that retrieves documents from an `InMemoryDocumentStore` based on keyword search (using `InMemoryBM25Retriever`). It then uses the `AmazonBedrockRanker` to rank the retrieved documents according to their similarity to the query. The pipeline uses the default settings of the Ranker.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.rankers.amazon_bedrock import AmazonBedrockRanker
+
+docs = [
+    Document(content="Paris is in France"),
+    Document(content="Berlin is in Germany"),
+    Document(content="Lyon is in France"),
+]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+ranker = AmazonBedrockRanker()
+
+document_ranker_pipeline = Pipeline()
+document_ranker_pipeline.add_component(instance=retriever, name="retriever")
+document_ranker_pipeline.add_component(instance=ranker, name="ranker")
+
+document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "Cities in France"
+res = document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
+```

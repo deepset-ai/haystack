@@ -1,0 +1,162 @@
+---
+title: "Retrievers"
+id: retrievers
+slug: "/retrievers"
+description: "Retrievers go through all the documents in a Document Store and select the ones that match the user query."
+---
+
+# Retrievers
+
+Retrievers go through all the documents in a Document Store and select the ones that match the user query.
+
+## How Do Retrievers Work?
+
+Retrievers are the basic components of the majority of search systems. They’re used in the retrieval part of the retrieval-augmented generation (RAG) pipelines, they’re at the core of document retrieval pipelines, and they’re paired up with a Reader in extractive question answering pipelines.
+
+When given a query, the Retriever sifts through the documents in the Document Store, assigns a score to each document to indicate how relevant it is to the query, and returns top candidates. It then passes the selected documents on to the next component in the pipeline or returns them as answers to the query.
+
+Nevertheless, it's important to note that most Retrievers based on dense embedding do not compare each document with the query but use approximate techniques to achieve almost the same result with better performance.
+
+## Retriever Types
+
+Depending on how they calculate the similarity between the query and the document, you can divide Retrievers into sparse keyword-based, dense embedding-based, and sparse embedding-based. Several Document Stores can be coupled with different types of Retrievers.
+
+### Sparse Keyword-Based Retrievers
+
+The sparse keyword-based Retrievers look for keywords shared between the documents and the query using the BM25 algorithm or similar ones. This algorithm computes a weighted world overlap between the documents and the query.
+
+Main features:
+
+- Simple but effective, don’t need training, work quite well out of the box
+- Can work on any language
+- Don’t take word order or syntax into account
+- Can’t handle out-of-vocabulary words
+- Are good for use cases where precise wording matters
+- Can’t handle synonyms or words with similar meaning
+
+### Dense Embedding-Based Retrievers
+
+Dense embedding-based Retrievers work with embeddings, which are vector representations of words that capture their semantics. Dense Retrievers need an [Embedder](embedders.mdx) first to turn the documents and the query into vectors. Then, they calculate the vector similarity of the query and each document in the Document Store to fetch the most relevant documents.
+
+Main features:
+
+- They’re powerful but also more expensive computationally than sparse Retrievers
+- They’re trained on labeled datasets
+- They’re language-specific, which means they can only work in the language of the dataset they were trained on. Nevertheless, multilingual embedding models are available.
+- Because they work with embeddings, they take word order and syntax into account
+- Can handle out-of-vocabulary words to a certain extent
+
+### Sparse Embedding-Based Retrievers
+
+This category includes approaches such as [SPLADE](https://www.pinecone.io/learn/splade/). These techniques combine the positive aspects of keyword-based and dense embedding Retrievers using specific embedding models.
+
+In particular, SPLADE uses Language Models like BERT to weigh the relevance of different terms in the query and perform automatic term expansions, reducing the vocabulary mismatch problem (queries and relevant documents often lack term overlap).
+
+Main features:
+
+- Better than dense embedding Retrievers on precise keyword matching
+- Better than BM25 on semantic matching
+- Slower than BM25
+- Still experimental compared to both BM25 and dense embeddings: few models supported by few Document Stores
+
+### Filter Retriever
+
+`FilterRetriever` is a special kind of Retriever that can work with all Document Stores and retrieves all documents that match the provided filters.
+
+For more information, read this Retriever's [documentation page](retrievers/filterretriever.mdx).
+
+### Advanced Retriever Techniques
+
+#### Combining Retrievers
+
+You can use different types of Retrievers in one pipeline to take advantage of the strengths and mitigate the weaknesses of each of them. There are two most common strategies to do this: combining a sparse and dense Retriever (hybrid retrieval) and using two dense Retrievers, each with a different model (multi-embedding retrieval).
+
+##### Hybrid Retrieval
+
+You can use different Retriever types, sparse and dense, in one pipeline to take advantage of their strengths and make your pipeline more robust to different kinds of queries and documents. When both Retrievers fetch their candidate documents, you can combine them to produce the final ranking and get the top documents as a result.
+
+See an example of this approach in our [`DocumentJoiner` docs](joiners/documentjoiner.mdx#in-a-pipeline).
+
+:::tip
+Metadata Filtering
+
+When talking about hybrid retrieval, some database providers mean _metadata filtering_ on dense embedding retrieval. While this is different from combining different Retrievers, it is usually supported by Haystack Retrievers. For more information, check the [Metadata Filtering page](../concepts/metadata-filtering.mdx).
+:::
+
+:::note
+Hybrid Retrievers
+
+Some Document Stores offer hybrid retrieval on the database side.
+In general, these solutions can be performant, but they offer fewer customization options (for instance, on how to merge results from different retrieval techniques).
+Some hybrid Retrievers are available in Haystack, such as [`QdrantHybridRetriever`](retrievers/qdranthybridretriever.mdx).
+If your preferred Document Store does not have a hybrid Retriever available or if you want to customize the behavior even further, check out the hybrid retrieval pipelines [tutorial](https://haystack.deepset.ai/tutorials/33_hybrid_retrieval).
+:::
+
+##### Multi-Embedding Retrieval
+
+In this strategy, you use two embedding-based Retrievers, each with a different model, to embed the same documents. You then end up having multiple embeddings of one document. It can also be handy if you need multimodal retrieval.
+
+## Retrievers and Document Stores
+
+Retrievers are tightly coupled with [Document Stores](../concepts/document-store.mdx). Most Document Stores can work both with a sparse or a dense Retriever or both Retriever types combined. See the documentation of a specific Document Store to check which Retrievers it supports.
+
+### Naming Conventions
+
+The Retriever names in Haystack consist of:
+
+- Document Store name +
+- Retrieval method +
+- _Retriever_.
+
+Practical examples:
+
+- `ElasticsearchBM25Retriever`: BM25 is a sparse keyword-based retrieval technique, and this Retriever works with `ElasticsearchDocumentStore`.
+- `ElasticsearchEmbeddingRetriever`: When not mentioned, Embedding stays for Dense Embedding, and this Retriever works with `ElasticsearchDocumentStore`.
+- `QdrantSparseEmbeddingRetriever` (in construction): Sparse Embedding is the technique, and this Retriever works with `QdrantDocumentStore`.
+
+While we try to stick to this convention, there is sometimes a need to be flexible and accommodate features that are specific to a Document Store. For example:
+
+- `ChromaQueryTextRetriever`: This Retriever uses the query API of Chroma and expects text inputs. It works with `ChromaDocumentStore`.
+
+## FilterPolicy
+
+`FilterPolicy` determines how filters are applied during the document retrieval process. It controls the interaction between static filters set during Retriever initialization and dynamic filters provided at runtime. The possible values are:
+
+- **REPLACE** (default): Any runtime filters completely override the initialization filters. This allows specific queries to dynamically change the filtering scope.
+- **MERGE**: Combines runtime filters with initialization filters, narrowing down the search results.
+
+The `FilterPolicy` is set in a selected Retriever's init method, while `filters` can be set in both init and run methods.
+
+## Using a Retriever
+
+For details on how to initialize and use a Retriever in a pipeline, see the documentation for a specific Retriever. The following Retrievers are available in Haystack:
+
+|                                                                          |                                                                                                                                 |
+| :----------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| [AstraEmbeddingRetriever](retrievers/astraretriever.mdx)                          | An embedding-based Retriever compatible with the AstraDocumentStore.                                                            |
+| [AutoMergingRetriever](retrievers/automergingretriever.mdx)                         | Retrieves complete parent documents instead of fragmented chunks when multiple related pieces match a query.                    |
+| [AzureAISearchEmbeddingRetriever](retrievers/azureaisearchembeddingretriever.mdx)   | An embedding Retriever compatible with the Azure AI Search Document Store.                                                      |
+| [AzureAISearchBM25Retriever](retrievers/azureaisearchbm25retriever.mdx)             | A keyword-based Retriever that fetches Documents matching a query from the Azure AI Search Document Store.                      |
+| [AzureAISearchHybridRetriever](retrievers/azureaisearchhybridretriever.mdx)         | A Retriever based both on dense and sparse embeddings, compatible with the Azure AI Search Document Store.                      |
+| [ChromaEmbeddingRetriever](retrievers/chromaembeddingretriever.mdx)               | An embedding-based Retriever compatible with the Chroma Document Store.                                                         |
+| [ChromaQueryTextRetriever](retrievers/chromaqueryretriever.mdx)                   | A Retriever compatible with the Chroma Document Store that uses the Chroma query API.                                           |
+| [ElasticsearchEmbeddingRetriever](retrievers/elasticsearchembeddingretriever.mdx) | An embedding-based Retriever compatible with the Elasticsearch Document Store.                                                  |
+| [ElasticsearchBM25Retriever](retrievers/elasticsearchbm25retriever.mdx)           | A keyword-based Retriever that fetches Documents matching a query from the Elasticsearch Document Store.                        |
+| [InMemoryBM25Retriever](retrievers/inmemorybm25retriever.mdx)                       | A keyword-based Retriever compatible with the InMemoryDocumentStore.                                                            |
+| [InMemoryEmbeddingRetriever](retrievers/inmemoryembeddingretriever.mdx)             | An embedding-based Retriever compatible with the InMemoryDocumentStore.                                                         |
+| [FilterRetriever](retrievers/filterretriever.mdx)                                 | A special Retriever to be used with any Document Store to get the Documents that match specific filters.                        |
+| [MongoDBAtlasEmbeddingRetriever](retrievers/mongodbatlasembeddingretriever.mdx)   | An embedding Retriever compatible with the MongoDB Atlas Document Store.                                                        |
+| [OpenSearchBM25Retriever](retrievers/opensearchbm25retriever.mdx)                 | A keyword-based Retriever that fetches Documents matching a query from an OpenSearch Document Store.                            |
+| [OpenSearchEmbeddingRetriever](retrievers/opensearchembeddingretriever.mdx)       | An embedding-based Retriever compatible with the OpenSearch Document Store.                                                     |
+| [OpenSearchHybridRetriever](retrievers/opensearchhybridretriever.mdx)               | A SuperComponent that implements a Hybrid Retriever in a single component, relying on OpenSearch as the backend Document Store. |
+| [PgvectorEmbeddingRetriever](retrievers/pgvectorembeddingretriever.mdx)           | An embedding-based Retriever compatible with the Pgvector Document Store.                                                       |
+| [PgvectorKeywordRetriever](retrievers/pgvectorkeywordretriever.mdx)               | A keyword-based Retriever that fetches documents matching a query from the Pgvector Document Store.                             |
+| [PineconeEmbeddingRetriever](retrievers/pineconedenseretriever.mdx)               | An embedding-based Retriever compatible with the Pinecone Document Store.                                                       |
+| [QdrantEmbeddingRetriever](retrievers/qdrantembeddingretriever.mdx)                        | An embedding-based Retriever compatible with the Qdrant Document Store.                                                         |
+| [QdrantSparseEmbeddingRetriever](retrievers/qdrantsparseembeddingretriever.mdx)   | A sparse embedding-based Retriever compatible with the Qdrant Document Store.                                                   |
+| [QdrantHybridRetriever](retrievers/qdranthybridretriever.mdx)                     | A Retriever based both on dense and sparse embeddings, compatible with the Qdrant Document Store.                               |
+| [SentenceWindowRetriever](retrievers/sentencewindowretrieval.mdx)                   | Retrieves neighboring sentences around relevant sentences to get the full context.                                              |
+| [SnowflakeTableRetriever](retrievers/snowflaketableretriever.mdx)                   | Connects to a Snowflake database to execute an SQL query.                                                                       |
+| [WeaviateBM25Retriever](retrievers/weaviatebm25retriever.mdx)                     | A keyword-based Retriever that fetches Documents matching a query from the Weaviate Document Store.                             |
+| [WeaviateEmbeddingRetriever](retrievers/weaviateembeddingretriever.mdx)           | An embedding Retriever compatible with the Weaviate Document Store.                                                             |
+| [WeaviateHybridRetriever](retrievers/weaviatehybridretriever.mdx)                   | Combines BM25 keyword search and vector similarity to fetch documents from the Weaviate Document Store.                         |

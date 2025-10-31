@@ -143,6 +143,30 @@ class TestAnswerBuilder:
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 1
         assert answers[0].documents[0].content == "test doc 2"
+        assert answers[0].documents[0].meta["referenced"] is True
+        assert answers[0].documents[0].meta["source_index"] == 2
+
+    def test_run_with_documents_with_reference_pattern_return_all_documents(self):
+        component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]", return_only_referenced_documents=False)
+        output = component.run(
+            query="test query",
+            replies=["Answer: AnswerString[2]"],
+            meta=[{}],
+            documents=[Document(content="test doc 1"), Document(content="test doc 2")],
+        )
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert answers[0].data == "Answer: AnswerString[2]"
+        _check_metadata_excluding_all_messages(answers[0].meta, {})
+        assert "all_messages" in answers[0].meta
+        assert answers[0].query == "test query"
+        assert len(answers[0].documents) == 2
+        assert answers[0].documents[0].content == "test doc 1"
+        assert answers[0].documents[0].meta["referenced"] is False
+        assert answers[0].documents[0].meta["source_index"] == 1
+        assert answers[0].documents[1].content == "test doc 2"
+        assert answers[0].documents[1].meta["referenced"] is True
+        assert answers[0].documents[1].meta["source_index"] == 2
 
     def test_run_with_documents_with_reference_pattern_and_no_match(self, caplog):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")

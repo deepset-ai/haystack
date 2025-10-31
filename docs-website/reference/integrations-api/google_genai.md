@@ -131,7 +131,7 @@ def __init__(*,
              generation_kwargs: Optional[Dict[str, Any]] = None,
              safety_settings: Optional[List[Dict[str, Any]]] = None,
              streaming_callback: Optional[StreamingCallbackT] = None,
-             tools: Optional[Union[List[Tool], Toolset]] = None)
+             tools: Optional[ToolsType] = None)
 ```
 
 Initialize a GoogleGenAIChatGenerator instance.
@@ -156,7 +156,8 @@ For Gemini 2.5 series, supports `thinking_budget` to configure thinking behavior
   - Positive integer: Set explicit budget
 - `safety_settings`: Safety settings for content filtering
 - `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `tools`: A list of Tool objects or a Toolset that the model can use. Each tool should have a unique name.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+Each tool should have a unique name.
 
 <a id="haystack_integrations.components.generators.google_genai.chat.chat_generator.GoogleGenAIChatGenerator.to_dict"></a>
 
@@ -201,7 +202,7 @@ def run(messages: List[ChatMessage],
         generation_kwargs: Optional[Dict[str, Any]] = None,
         safety_settings: Optional[List[Dict[str, Any]]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None) -> Dict[str, Any]
+        tools: Optional[ToolsType] = None) -> Dict[str, Any]
 ```
 
 Run the Google Gen AI chat generator on the given input data.
@@ -215,8 +216,8 @@ the default config. Supports `thinking_budget` for Gemini 2.5 series thinking co
 default settings.
 - `streaming_callback`: A callback function that is called when a new token is
 received from the stream.
-- `tools`: A list of Tool objects or a Toolset that the model can use. If provided, it will
-override the tools set during initialization.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If provided, it will override the tools set during initialization.
 
 **Raises**:
 
@@ -235,12 +236,11 @@ A dictionary with the following keys:
 
 ```python
 @component.output_types(replies=List[ChatMessage])
-async def run_async(
-        messages: List[ChatMessage],
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        safety_settings: Optional[List[Dict[str, Any]]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[Union[List[Tool], Toolset]] = None) -> Dict[str, Any]
+async def run_async(messages: List[ChatMessage],
+                    generation_kwargs: Optional[Dict[str, Any]] = None,
+                    safety_settings: Optional[List[Dict[str, Any]]] = None,
+                    streaming_callback: Optional[StreamingCallbackT] = None,
+                    tools: Optional[ToolsType] = None) -> Dict[str, Any]
 ```
 
 Async version of the run method. Run the Google Gen AI chat generator on the given input data.
@@ -255,8 +255,8 @@ See https://ai.google.dev/gemini-api/docs/thinking for possible values.
 default settings.
 - `streaming_callback`: A callback function that is called when a new token is
 received from the stream.
-- `tools`: A list of Tool objects or a Toolset that the model can use. If provided, it will
-override the tools set during initialization.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+If provided, it will override the tools set during initialization.
 
 **Raises**:
 
