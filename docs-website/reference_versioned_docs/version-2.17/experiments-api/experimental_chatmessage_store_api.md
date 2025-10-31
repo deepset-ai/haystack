@@ -117,3 +117,4 @@ Retrieves all stored chat messages.
 **Returns**:
 
 A list of chat messages.
+
