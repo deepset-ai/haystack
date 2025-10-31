@@ -55,4 +55,4 @@ jobs:
           body: |
             This PR promotes the unstable docs for Haystack ${{ steps.version.outputs.version }} to stable.
             It is expected to run at the time of the release.
-            You can inspect the docs preview and merge it.
+            You can inspect the docs preview and merge it. There should now be only one unstable version representing the next (main) branch.
