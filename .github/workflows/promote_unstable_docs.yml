@@ -1,8 +1,6 @@
 name: Release new minor version docs
 
 on:
-  # temp test
-  pull_request:
   push:
     tags:
       # Trigger this only for the first patch release of the new minor
@@ -19,10 +17,6 @@ jobs:
       - name: Checkout this repo
         uses: actions/checkout@v5
 
-        # temp test
-        with:
-          ref: create-unstable-docs-2.20
-
       - name: Get version to release
         id: version
         shell: bash
@@ -37,15 +31,15 @@ jobs:
       - name: Install promote_unstable_docs.py dependencies
         run: pip install requests
 
-      # - name: Release Readme version
-      #   env:
-      #     RDME_API_KEY: ${{ secrets.README_API_KEY }}
-      #   run: |
-      #     python ./.github/utils/promote_unstable_docs.py --version ${{ steps.version.outputs.version }}
+      - name: Release Readme version
+        env:
+          RDME_API_KEY: ${{ secrets.README_API_KEY }}
+        run: |
+          python ./.github/utils/promote_unstable_docs.py --version ${{ steps.version.outputs.version }}
 
       - name: Promote unstable docs for Docusaurus
         run: |
-          # git checkout main
+          git checkout main
           python ./.github/utils/promote_unstable_docs_docusaurus.py --version ${{ steps.version.outputs.version }}
 
       - name: Create Pull Request with Docusaurus docs updates
@@ -54,7 +48,7 @@ jobs:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Promote unstable docs for Haystack ${{ steps.version.outputs.version }}"
           branch: promote-unstable-docs-${{ steps.version.outputs.version }}
-          base: create-unstable-docs-2.20 # temp test. should be main
+          base: main
           title: "docs: promote unstable docs for Haystack ${{ steps.version.outputs.version }}"
           add-paths: |
             docs-website
@@ -62,4 +56,3 @@ jobs:
             This PR promotes the unstable docs for Haystack ${{ steps.version.outputs.version }} to stable.
             It is expected to run at the time of the release.
             You can inspect the docs preview and merge it.
-          draft: true
