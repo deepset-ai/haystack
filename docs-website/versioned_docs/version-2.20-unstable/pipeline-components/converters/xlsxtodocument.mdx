@@ -1,0 +1,69 @@
+---
+title: "XLSXToDocument"
+id: xlsxtodocument
+slug: "/xlsxtodocument"
+description: "Converts Excel files into documents."
+---
+
+# XLSXToDocument
+
+Converts Excel files into documents.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx)  or right at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | "sources":  File paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects               |
+| **Output variables**                   | "documents": A list of documents                                                               |
+| **API reference**                      | [Converters](/reference/converters-api)                                                               |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/xlsx.py      |
+
+## Overview
+
+The `XLSXToDocument` component converts XLSX files into Haystack Documents with a CSV (default) or Markdown format. It takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents.  Optionally, you can attach metadata to the documents through the `meta` input parameter.
+
+To see the additional parameters that you can specify with the component initialization, check out the [API Reference](/reference/converters-api#xlsxtodocument).
+
+## Usage
+
+First, install the openpyxl and tabulate packages to start using this converter:
+
+```shell
+pip install pandas openpyxl
+pip install tabulate
+```
+
+### On its own
+
+```python
+from haystack.components.converters import XLSXToDocument
+
+converter = XLSXToDocument()
+results = converter.run(sources=["sample.xlsx"], meta={"date_added": datetime.now().isoformat()})
+documents = results["documents"]
+print(documents[0].content)
+## ",A,B\n1,col_a,col_b\n2,1.5,test\n"
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import XLSXToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", XLSXToDocument())
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": file_names}})
+```

@@ -1,0 +1,165 @@
+---
+title: "VertexAIGeminiChatGenerator"
+id: vertexaigeminichatgenerator
+slug: "/vertexaigeminichatgenerator"
+description: "`VertexAIGeminiChatGenerator` enables chat completion using Google Gemini models."
+---
+
+# VertexAIGeminiChatGenerator
+
+`VertexAIGeminiChatGenerator` enables chat completion using Google Gemini models.
+
+> 🚧 Deprecation Notice
+>
+> This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
+>
+> We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Output variables**                   | “replies”: A list of alternative replies of the model to the input chat                              |
+| **API reference**                      | [Google Vertex](/reference/integrations-google-vertex)                                                      |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_vertex      |
+
+`VertexAIGeminiGenerator` supports `gemini-1.5-pro` and `gemini-1.5-flash`/  `gemini-2.0-flash` models. Note that [Google recommends upgrading](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions) from `gemini-1.5-pro` to `gemini-2.0-flash`.
+
+For available models, see https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models.
+
+:::info
+To explore the full capabilities of Gemini check out this [article](https://haystack.deepset.ai/blog/gemini-models-with-google-vertex-for-haystack) and the related [🧑‍🍳 Cookbook](https://colab.research.google.com/github/deepset-ai/haystack-cookbook/blob/main/notebooks/vertexai-gemini-examples.ipynb).
+:::
+
+### Parameters Overview
+
+`VertexAIGeminiChatGenerator` uses Google Cloud Application Default Credentials (ADCs) for authentication. For more information on how to set up ADCs, see the [official documentation](https://cloud.google.com/docs/authentication/provide-credentials-adc).
+
+Keep in mind that it’s essential to use an account that has access to a project authorized to use Google Vertex AI endpoints.
+
+You can find your project ID in the [GCP resource manager](https://console.cloud.google.com/cloud-resource-manager) or locally by running `gcloud projects list` in your terminal. For more info on the gcloud CLI, see its [official documentation](https://cloud.google.com/cli).
+
+### Streaming
+
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+
+## Usage
+
+You need to install the `google-vertex-haystack` package to use the  `VertexAIGeminiChatGenerator`:
+
+```shell
+pip install google-vertex-haystack
+```
+
+### On its own
+
+Basic usage:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.google_vertex import VertexAIGeminiChatGenerator
+
+gemini_chat = VertexAIGeminiChatGenerator()
+
+messages = [ChatMessage.from_user("Tell me the name of a movie")]
+res = gemini_chat.run(messages)
+
+print(res["replies"][0].text)
+>>> The Shawshank Redemption
+
+messages += [res["replies"][0], ChatMessage.from_user("Who's the main actor?")]
+res = gemini_chat.run(messages)
+
+print(res["replies"][0].text)
+>>> Tim Robbins
+```
+
+When chatting with Gemini Pro, you can also easily use function calls. First, define the function locally and convert into a [Tool](../../tools/tool.mdx):
+
+```python
+from typing import Annotated
+from haystack.tools import create_tool_from_function
+
+## example function to get the current weather
+def get_current_weather(
+    location: Annotated[str, "The city for which to get the weather, e.g. 'San Francisco'"] = "Munich",
+    unit: Annotated[str, "The unit for the temperature, e.g. 'celsius'"] = "celsius",
+) -> str:
+    return f"The weather in {location} is sunny. The temperature is 20 {unit}."
+
+tool = create_tool_from_function(get_current_weather)
+```
+
+Create a new instance of `VertexAIGeminiChatGenerator` to set the tools and a [ToolInvoker](../tools/toolinvoker.mdx) to invoke the tools.:
+
+```python
+from haystack_integrations.components.generators.google_vertex import VertexAIGeminiChatGenerator
+from haystack.components.tools import ToolInvoker
+
+gemini_chat = VertexAIGeminiChatGenerator(model="gemini-2.0-flash-exp", tools=[tool])
+
+tool_invoker = ToolInvoker(tools=[tool])
+```
+
+And then ask our question:
+
+```python
+from haystack.dataclasses import ChatMessage
+
+messages = [ChatMessage.from_user("What is the temperature in celsius in Berlin?")]
+res = gemini_chat.run(messages=messages)
+
+print(res["replies"][0].tool_calls)
+>>> [ToolCall(tool_name='get_current_weather',
+>>>           arguments={'unit': 'celsius', 'location': 'Berlin'}, id=None)]
+
+tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
+messages = user_message + replies + tool_messages
+
+messages += res["replies"][0] + [ChatMessage.from_function(content=weather, name="get_current_weather")]
+
+final_replies = gemini_chat.run(messages=messages)["replies"]
+print(final_replies[0].text)
+>>> The temperature in Berlin is 20 degrees Celsius.
+```
+
+### In a pipeline
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+from haystack_integrations.components.generators.google_vertex import VertexAIGeminiChatGenerator
+
+## no parameter init, we don't use any runtime template variables
+prompt_builder = ChatPromptBuilder()
+gemini_chat = VertexAIGeminiChatGenerator()
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("gemini", gemini)
+pipe.connect("prompt_builder.prompt", "gemini.messages")
+
+location = "Rome"
+messages = [ChatMessage.from_user("Tell me briefly about {{location}} history")]
+res = pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
+
+print(res)
+
+>>> - **753 B.C.:** Traditional date of the founding of Rome by Romulus and Remus.
+>>> - **509 B.C.:** Establishment of the Roman Republic, replacing the Etruscan monarchy.
+>>> - **492-264 B.C.:** Series of wars against neighboring tribes, resulting in the expansion of the Roman Republic's territory.
+>>> - **264-146 B.C.:** Three Punic Wars against Carthage, resulting in the destruction of Carthage and the Roman Republic becoming the dominant power in the Mediterranean.
+>>> - **133-73 B.C.:** Series of civil wars and slave revolts, leading to the rise of Julius Caesar.
+>>> - **49 B.C.:** Julius Caesar crosses the Rubicon River, starting the Roman Civil War.
+>>> - **44 B.C.:** Julius Caesar is assassinated, leading to the Second Triumvirate of Octavian, Mark Antony, and Lepidus.
+>>> - **31 B.C.:** Battle of Actium, where Octavian defeats Mark Antony and Cleopatra, becoming the sole ruler of Rome.
+>>> - **27 B.C.:** The Roman Republic is transformed into the Roman Empire, with Octavian becoming the first Roman emperor, known as Augustus.
+>>> - **1st century A.D.:** The Roman Empire reaches its greatest extent, stretching from Britain to Egypt.
+>>> - **3rd century A.D.:** The Roman Empire begins to decline, facing internal instability, invasions by Germanic tribes, and the rise of Christianity.
+>>> - **476 A.D.:** The last Western Roman emperor, Romulus Augustulus, is overthrown by the Germanic leader Odoacer, marking the end of the Roman Empire in the West.
+```
+
+## Additional References
+
+:cook: Cookbook: [Function Calling and Multimodal QA with Gemini](https://haystack.deepset.ai/cookbook/vertexai-gemini-examples)

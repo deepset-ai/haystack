@@ -1,0 +1,52 @@
+---
+title: "TopPSampler"
+id: toppsampler
+slug: "/toppsampler"
+description: "Uses nucleus sampling to filter documents."
+---
+
+# TopPSampler
+
+Uses nucleus sampling to filter documents.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [Ranker](../rankers.mdx)                                                                           |
+| **Mandatory init variables**           | "top_p": A float between 0 and 1 representing the cumulative probability threshold for document selection |
+| **Mandatory run variables**            | “documents”: A list of documents                                                                          |
+| **Output variables**                   | “documents”: A list of documents                                                                          |
+| **API reference**                      | [Samplers](/reference/samplers-api)                                                                              |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/samplers/top_p.py                  |
+
+## Overview
+
+Top-P (nucleus) sampling is a method that helps identify and select a subset of documents based on their cumulative probabilities. Instead of choosing a fixed number of documents, this method focuses on a specified percentage of the highest cumulative probabilities within a list of documents. To put it simply, `TopPSampler` provides a way to efficiently select the most relevant documents based on their similarity to a given query.
+
+The practical goal of the `TopPSampler` is to return a list of documents that, in sum, have a score larger than the `top_p` value. So, for example, when `top_p` is set to a high value, more documents will be returned, which can result in more varied outputs. The value is typically set between 0 and 1. By default, the component uses documents' `score` fields to look at the similarity scores.
+
+The component’s `run()` method takes in a set of documents, calculates the similarity scores between the query and the documents, and then filters the documents based on the cumulative probability of these scores. 
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.samplers import TopPSampler
+
+sampler = TopPSampler(top_p=0.99, score_field="similarity_score")
+docs = [
+    Document(content="Berlin", meta={"similarity_score": -10.6}),
+    Document(content="Belgrade", meta={"similarity_score": -8.9}),
+    Document(content="Sarajevo", meta={"similarity_score": -4.6}),
+]
+output = sampler.run(documents=docs)
+docs = output["documents"]
+print(docs)
+```
+
+### In a pipeline
+
+To best understand how can you use a `TopPSampler` and which components to pair it with, have a look at this recipe:
+
+RECIPE MISSING

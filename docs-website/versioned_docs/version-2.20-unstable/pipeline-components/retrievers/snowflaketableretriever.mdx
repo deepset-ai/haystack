@@ -1,0 +1,76 @@
+---
+title: "SnowflakeTableRetriever"
+id: snowflaketableretriever
+slug: "/snowflaketableretriever"
+description: "Connects to a Snowflake database to execute an SQL query."
+---
+
+# SnowflakeTableRetriever
+
+Connects to a Snowflake database to execute an SQL query.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`PromptBuilder`](../builders/promptbuilder.mdx) |
+| **Mandatory init variables** | “user”: User's login  <br /> <br />”account”: Snowflake account identifier  <br /> <br />”api_key”: Snowflake account password. Can be set with `SNOWFLAKE_API_KEY` env var |
+| **Mandatory run variables** | “query”: An SQL query to execute |
+| **Output variables** | “dataframe”: The resulting Pandas dataframe version of the table |
+| **API reference** | [Snowflake](/reference/integrations-snowflake) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/snowflake |
+
+## Overview
+
+The `SnowflakeTableRetriever` connects to a Snowflake database and retrieves data using an SQL query. It then returns a Pandas dataframe and a Markdown version of the table:
+
+To start using the integration, install it with:
+
+```bash
+pip install snowflake-haystack
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack_integrations.components.retrievers.snowflake import SnowflakeTableRetriever
+
+snowflake = SnowflakeRetriever(
+    user="<ACCOUNT-USER>",
+    account="<ACCOUNT-IDENTIFIER>",
+    api_key=Secret.from_env_var("SNOWFLAKE_API_KEY"),
+    warehouse="<WAREHOUSE-NAME>",
+)
+
+snowflake.run(query="""select * from table limit 10;"""")
+```
+
+### In a pipeline
+
+In the following pipeline example, the `PromptBuilder` is using the table received from the `SnowflakeTableRetriever` to create a prompt template and pass it on to an LLM:
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.builders import PromptBuilder
+from haystack.components.generators import OpenAIGenerator
+from haystack_integrations.components.retrievers.snowflake import SnowflakeTableRetriever
+
+executor = SnowflakeTableRetriever(
+    user="<ACCOUNT-USER>",
+    account="<ACCOUNT-IDENTIFIER>",
+    api_key=Secret.from_env_var("SNOWFLAKE_API_KEY"),
+    warehouse="<WAREHOUSE-NAME>",
+)
+
+pipeline = Pipeline()
+pipeline.add_component("builder", PromptBuilder(template="Describe this table: {{ table }}"))
+pipeline.add_component("snowflake", executor)
+pipeline.add_component("llm", OpenAIGenerator(model="gpt-4o"))
+
+pipeline.connect("snowflake.table", "builder.table")
+pipeline.connect("builder", "llm")
+
+pipeline.run(data={"query": "select employee, salary from table limit 10;"})
+
+```
