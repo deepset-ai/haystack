@@ -1,6 +1,6 @@
 ---
 title: Data Classes
-id: data-classess-api
+id: data-classes-api
 description: Core classes that carry data through the system.
 ---
 

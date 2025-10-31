@@ -13,7 +13,7 @@ To create a `ChatMessage` instance, use `from_user`, `from_system`, `from_assi
 
 The [content](#types-of-content) of the `ChatMessage` can then be inspected using the `text`, `texts`, `image`, `images`, `tool_call`, `tool_calls`, `tool_call_result`, and `tool_call_results` properties.
 
-If you are looking for the details of this data class methods and parameters, head over to our [API documentation](/reference/data-classess-api#module-chat_message).
+If you are looking for the details of this data class methods and parameters, head over to our [API documentation](/reference/data-classes-api#module-chat_message).
 
 ## Types of Content
 
@@ -80,11 +80,11 @@ class ImageContent:
     mime_type: Optional[str] = None
     detail: Optional[Literal["auto", "high", "low"]] = None
     meta: Dict[str, Any] = field(default_factory=dict)
-    validation: bool = True   
+    validation: bool = True
 
 ```
 
-The `ImageContent` dataclass also provides two convenience class methods: `from_file_path` and `from_url`. For more details, refer to our [API documentation](/reference/data-classess-api#module-image_content).
+The `ImageContent` dataclass also provides two convenience class methods: `from_file_path` and `from_url`. For more details, refer to our [API documentation](/reference/data-classes-api#module-image_content).
 
 ## Working with a ChatMessage
 
