@@ -1,0 +1,107 @@
+---
+title: "GitHubFileEditorTool"
+id: githubfileeditortool
+slug: "/githubfileeditortool"
+description: "A Tool that allows Agents and ToolInvokers to edit files in GitHub repositories."
+---
+
+# GitHubFileEditorTool
+
+A Tool that allows Agents and ToolInvokers to edit files in GitHub repositories.
+
+|                              |                                                                                          |
+| ---------------------------- | ---------------------------------------------------------------------------------------- |
+| **Mandatory init variables** | "github_token": GitHub personal access token. Can be set with `GITHUB_TOKEN` env var.    |
+| **API reference**            | [Tools](/reference/tools-api)                                                            |
+| **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+## Overview
+
+`GitHubFileEditorTool` wraps the [`GitHubFileEditor`](../../pipeline-components/connectors/githubfileeditor.mdx) component, providing a tool interface for use in agent workflows and tool-based pipelines.
+
+The tool supports multiple file operations including editing existing files, creating new files, deleting files, and undoing recent changes. It supports four main commands:
+
+- **EDIT**: Edit an existing file by replacing specific content
+- **CREATE**: Create a new file with specified content
+- **DELETE**: Delete an existing file
+- **UNDO**: Revert the last commit if made by the same user
+
+### Parameters
+
+- `name` is _optional_ and defaults to "file_editor". Specifies the name of the tool.
+- `description` is _optional_ and provides context to the LLM about what the tool does.
+- `github_token` is _mandatory_ and must be a GitHub personal access token for API authentication. The default setting uses the environment variable `GITHUB_TOKEN`.
+- `repo` is _optional_ and sets a default repository in owner/repo format.
+- `branch` is _optional_ and defaults to "main". Sets the default branch to work with.
+- `raise_on_failure` is _optional_ and defaults to `True`. If False, errors are returned instead of raising exceptions.
+
+## Usage
+
+Install the GitHub integration to use the `GitHubFileEditorTool`:
+
+```shell
+pip install github-haystack
+```
+
+:::note
+Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+Basic usage to edit a file:
+
+```python
+from haystack_integrations.tools.github import GitHubFileEditorTool
+
+tool = GitHubFileEditorTool()
+result = tool.invoke(
+    command="edit",
+    payload={
+        "path": "src/example.py",
+        "original": "def old_function():",
+        "replacement": "def new_function():",
+        "message": "Renamed function for clarity"
+    },
+    repo="owner/repo",
+    branch="main"
+)
+
+print(result)
+```
+
+```bash
+{'result': 'Edit successful'}
+```
+
+### With an Agent
+
+You can use `GitHubFileEditorTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically invoke the tool when needed to edit files in GitHub repositories.
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.components.agents import Agent
+from haystack_integrations.tools.github import GitHubFileEditorTool
+
+editor_tool = GitHubFileEditorTool(repo="owner/repo")
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[editor_tool],
+    exit_conditions=["text"]
+)
+
+agent.warm_up()
+response = agent.run(messages=[
+    ChatMessage.from_user("Edit the file README.md in the repository \"owner/repo\" and replace the original string 'tpyo' with the replacement 'typo'. This is all context you need.")
+])
+
+print(response["last_message"].text)
+```
+
+```bash
+The file `README.md` has been successfully edited to correct the spelling of 'tpyo' to 'typo'.
+```

@@ -287,6 +287,40 @@ Asynchronously deletes all documents with a matching document_ids from the docum
 
 - `document_ids`: the document ids to delete
 
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.delete_all_documents"></a>
+
+#### MongoDBAtlasDocumentStore.delete\_all\_documents
+
+```python
+def delete_all_documents(*, recreate_collection: bool = False) -> None
+```
+
+Deletes all documents in the document store.
+
+**Arguments**:
+
+- `recreate_collection`: If True, the collection will be dropped and recreated with the original
+configuration and indexes. If False, all documents will be deleted while preserving the collection.
+Recreating the collection is faster for very large collections.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.delete_all_documents_async"></a>
+
+#### MongoDBAtlasDocumentStore.delete\_all\_documents\_async
+
+```python
+async def delete_all_documents_async(*,
+                                     recreate_collection: bool = False
+                                     ) -> None
+```
+
+Asynchronously deletes all documents in the document store.
+
+**Arguments**:
+
+- `recreate_collection`: If True, the collection will be dropped and recreated with the original
+configuration and indexes. If False, all documents will be deleted while preserving the collection.
+Recreating the collection is faster for very large collections.
+
 <a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever"></a>
 
 ## Module haystack\_integrations.components.retrievers.mongodb\_atlas.embedding\_retriever
@@ -609,3 +643,4 @@ details.
 
 A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given `query`
+

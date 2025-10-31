@@ -7,11 +7,11 @@ slug: "/agents-api"
 
 <a id="agent"></a>
 
-# Module agent
+## Module agent
 
 <a id="agent.Agent"></a>
 
-## Agent
+### Agent
 
 A Haystack component that implements a tool-using agent with provider-agnostic chat model support.
 
@@ -136,6 +136,7 @@ Deserialized agent
 def run(messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
@@ -150,6 +151,8 @@ Process messages and execute tools until an exit condition is met.
 - `messages`: List of Haystack ChatMessage objects to process.
 - `streaming_callback`: A callback that will be invoked when a response is streamed from the LLM.
 The same callback can be configured to emit tool results when a tool is called.
+- `generation_kwargs`: Additional keyword arguments for LLM. These parameters will
+override the parameters passed during component initialization.
 - `break_point`: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
 for "tool_invoker".
 - `snapshot`: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
@@ -180,6 +183,7 @@ A dictionary with the following keys:
 async def run_async(messages: list[ChatMessage],
                     streaming_callback: Optional[StreamingCallbackT] = None,
                     *,
+                    generation_kwargs: Optional[dict[str, Any]] = None,
                     break_point: Optional[AgentBreakpoint] = None,
                     snapshot: Optional[AgentSnapshot] = None,
                     system_prompt: Optional[str] = None,
@@ -198,6 +202,8 @@ if available.
 - `messages`: List of Haystack ChatMessage objects to process.
 - `streaming_callback`: An asynchronous callback that will be invoked when a response is streamed from the
 LLM. The same callback can be configured to emit tool results when a tool is called.
+- `generation_kwargs`: Additional keyword arguments for LLM. These parameters will
+override the parameters passed during component initialization.
 - `break_point`: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
 for "tool_invoker".
 - `snapshot`: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
@@ -221,11 +227,11 @@ A dictionary with the following keys:
 
 <a id="state/state"></a>
 
-# Module state/state
+## Module state/state
 
 <a id="state/state.State"></a>
 
-## State
+### State
 
 State is a container for storing shared information during the execution of an Agent and its tools.
 

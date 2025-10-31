@@ -7,11 +7,11 @@ slug: "/pipeline-api"
 
 <a id="async_pipeline"></a>
 
-# Module async\_pipeline
+## Module async\_pipeline
 
 <a id="async_pipeline.AsyncPipeline"></a>
 
-## AsyncPipeline
+### AsyncPipeline
 
 Asynchronous version of the Pipeline orchestration engine.
 
@@ -884,11 +884,11 @@ Validate the pipeline to check if it is blocked or has no valid entry point.
 
 <a id="pipeline"></a>
 
-# Module pipeline
+## Module pipeline
 
 <a id="pipeline.Pipeline"></a>
 
-## Pipeline
+### Pipeline
 
 Synchronous version of the orchestration engine.
 

@@ -15,7 +15,7 @@ const config = {
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
+  url: 'https://docs.haystack.deepset.ai',
   baseUrl: '/',
 
   onBrokenLinks: 'warn',
@@ -44,6 +44,8 @@ const config = {
            exclude: ['**/_templates/**'],
           editUrl:
             'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
+          // Use beforeDefaultRemarkPlugins to ensure our plugin runs before Webpack processes links
+          beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
               label: '2.20-unstable',
@@ -79,6 +81,8 @@ const config = {
         routeBasePath: 'reference',
         sidebarPath: './reference-sidebars.js',
         editUrl: 'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
+        // Use beforeDefaultRemarkPlugins to ensure our plugin runs before Webpack processes links
+        beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
         showLastUpdateAuthor: false,
         showLastUpdateTime: false,
         exclude: ['**/_templates/**'],
@@ -97,6 +101,11 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      docs: {
+        sidebar: {
+          autoCollapseCategories: true,
+        },
+      },
       navbar: {
         title: 'Haystack Documentation',
         logo: {
@@ -107,15 +116,11 @@ const config = {
           {
             type: 'docsVersionDropdown',
             position: 'left',
-            dropdownItemsAfter: [
-              {to: '/versions', label: 'Docs versions'},
-              {to: '/reference/versions', label: 'API versions'},
-            ],
             dropdownActiveClassDisabled: true,
           },
           {
             type: 'doc',
-            docId: 'overview/intro',
+            docId: 'intro',
             label: 'Docs',
             position: 'left',
           },

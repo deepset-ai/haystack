@@ -1,0 +1,164 @@
+---
+title: "SentenceTransformersDocumentImageEmbedder"
+id: sentencetransformersdocumentimageembedder
+slug: "/sentencetransformersdocumentimageembedder"
+description: "`SentenceTransformersDocumentImageEmbedder` computes the image embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Sentence Transformers embedding models with the ability to embed text and images into the same vector space."
+---
+
+# SentenceTransformersDocumentImageEmbedder
+
+`SentenceTransformersDocumentImageEmbedder` computes the image embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Sentence Transformers embedding models with the ability to embed text and images into the same vector space.
+
+|                                        |                                                                                                                                    |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                                                          |
+| **Mandatory init variables**           | "token" (only for private models): The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var.               |
+| **Mandatory run variables**            | "documents": A list of documents, with a meta field containing an image file path                                                  |
+| **Output variables**                   | "documents": A list of documents (enriched with embeddings)                                                                        |
+| **API reference**                      | [Embedders](/reference/embedders-api)                                                                                                     |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/image/sentence_transformers_doc_image_embedder.py |
+
+## Overview
+
+`SentenceTransformersDocumentImageEmbedder` expects a list of documents containing an image or a PDF file path in a meta field. The meta field can be specified with the `file_path_meta_field` init parameter of this component.
+
+The embedder efficiently loads the images, computes the embeddings using a Sentence Transformers models, and stores each of them in the `embedding` field of the document.
+
+`SentenceTransformersDocumentImageEmbedder` is commonly used in indexing pipelines. At retrieval time, you need to use the same model with a `SentenceTransformersTextEmbedder` to embed the query before using an Embedding Retriever.
+
+You can set the `device` parameter to use HF models on your CPU or GPU.
+
+Additionally, you can select the backend to use for the Sentence Transformers mode with the `backend` parameterl: `torch` (default), `onnx`, or `openvino`. ONNX and OpenVINO allow specific speed optimizations; for more information, read the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html).
+
+### Authentication
+
+Authentication with a Hugging Face API Token is only required to access private or gated models.
+
+The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you can pass a Hugging Face API token at initialization. See our [Secret Management](../../concepts/secret-management.mdx) page for more information.
+
+### Compatible Models
+
+To be used with this component, the model must be compatible with Sentence Transformers and
+
+able to embed images and text into the same vector space. Compatible models include:
+
+- `sentence-transformers/clip-ViT-B-32` (default)
+- `sentence-transformers/clip-ViT-L-14`
+- `sentence-transformers/clip-ViT-B-16`
+- `sentence-transformers/clip-ViT-B-32-multilingual-v1`
+- `jinaai/jina-embeddings-v4`
+- `jinaai/jina-clip-v1`
+- `jinaai/jina-clip-v2`
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
+
+embedder = SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
+embedder.warm_up()
+
+documents = [
+    Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
+    Document(content="A photo of a dog", meta={"file_path": "dog.jpg"}),
+]
+
+result = embedder.run(documents=documents)
+documents_with_embeddings = result["documents"]
+print(documents_with_embeddings)
+
+## [Document(id=...,
+##           content='A photo of a cat',
+##           meta={'file_path': 'cat.jpg',
+##                 'embedding_source': {'type': 'image', 'file_path_meta_field': 'file_path'}},
+##           embedding=vector of size 512),
+##  ...]
+```
+
+### In a pipeline
+
+In this example, we can see an indexing pipeline with 3 components:
+
+- `ImageFileToDocument` Converter that creates empty documents with a reference to an image in the `meta.file_path` field,
+- `SentenceTransformersDocumentImageEmbedder` that loads the images, computes embeddings and stores them in documents,
+- `DocumentWriter` that writes the documents in the `InMemoryDocumentStore`
+
+There is also a multimodal retrieval pipeline, composed by a `SentenceTransformersTextEmbedder` (using the same model as before) and an `InMemoryEmbeddingRetriever`.
+
+```python
+from haystack import Pipeline
+from haystack.components.converters.image import ImageFileToDocument
+from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+document_store = InMemoryDocumentStore()
+
+## Indexing pipeline
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("image_converter", ImageFileToDocument())
+indexing_pipeline.add_component(
+    "embedder",
+    SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
+)
+indexing_pipeline.add_component(
+    "writer", DocumentWriter(document_store=document_store)
+)
+indexing_pipeline.connect("image_converter", "embedder")
+indexing_pipeline.connect("embedder", "writer")
+
+indexing_pipeline.run(data={"image_converter": {"sources": ["dog.jpg", "hyena.jpeg"]}})
+
+## Multimodal retrieval pipeline
+retrieval_pipeline = Pipeline()
+retrieval_pipeline.add_component(
+    "embedder",
+    SentenceTransformersTextEmbedder(model="sentence-transformers/clip-ViT-B-32")
+)
+retrieval_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store, top_k=2)
+)
+retrieval_pipeline.connect("embedder", "retriever")
+
+result = retrieval_pipeline.run(data={"text": "man's best friend"})
+print(result)
+
+## {
+##     'retriever': {
+##         'documents': [
+##             Document(
+##                 id=0c96...,
+##                 meta={
+##                     'file_path': 'dog.jpg',
+##                     'embedding_source': {
+##                         'type': 'image',
+##                         'file_path_meta_field': 'file_path'
+##                     }
+##                 },
+##                 score=32.025817780129856
+##             ),
+##             Document(
+##                 id=5e76...,
+##                 meta={
+##                     'file_path': 'hyena.jpeg',
+##                     'embedding_source': {
+##                         'type': 'image',
+##                         'file_path_meta_field': 'file_path'
+##                     }
+##                 },
+##                 score=20.648225327085242
+##             )
+##         ]
+##     }
+## }
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Introduction to Multimodality](https://haystack.deepset.ai/cookbook/multimodal_intro)

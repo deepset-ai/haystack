@@ -1,0 +1,90 @@
+---
+title: "MetadataRouter"
+id: metadatarouter
+slug: "/metadatarouter"
+description: "Use this component to route documents or byte streams to different output connections based on the content of their metadata fields."
+---
+
+# MetadataRouter
+
+Use this component to route documents or byte streams to different output connections based on the content of their metadata fields.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After components that classify documents, such as [`DocumentLanguageClassifier`](../classifiers/documentlanguageclassifier.mdx)  |
+| **Mandatory init variables** | "rules": A dictionary with metadata routing rules (see our API Reference for examples) |
+| **Mandatory run variables** | “documents”: A list of documents or byte streams |
+| **Output variables** | “unmatched”: A list of documents or byte streams not matching any rule  <br /> <br />“_name_of_the_rule_”: A list of documents or byte streams matching custom rules. There's one output per one rule you define. Each of these outputs is a list of documents or byte streams. |
+| **API reference** | [Routers](/reference/routers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/metadata_router.py |
+
+## Overview
+
+`MetadataRouter` routes documents or byte streams to different outputs based on their metadata. You initialize it with `rules` defining the names of the outputs and filters to match documents or byte streams to one of the connections. The filters follow the same syntax as filters in Document Stores. If a document or byte stream matches multiple filters, it is sent to multiple outputs. Objects that do not match any rule go to an output connection named `unmatched`.
+
+In pipelines, this component is most useful after a Classifier (such as the `DocumentLanguageClassifier`) that adds the classification results to the documents' metadata.
+
+This component has no default rules. If you don't define any rules when initializing the component, it routes all documents or byte streams to the `unmatched` output.
+
+## Usage
+
+### On its own
+
+Below is an example that uses the `MetadataRouter` to filter out documents based on their metadata. We initialize the router by setting a rule to pass on all documents with `language` set to `en` in their metadata to an output connection called `en`. Documents that don't match this rule go to an output connection named `unmatched`.
+
+```python
+from haystack import Document
+from haystack.components.routers import MetadataRouter
+
+docs = [Document(content="Paris is the capital of France.", meta={"language": "en"}), Document(content="Berlin ist die Haupststadt von Deutschland.", meta={"language": "de"})]
+router = MetadataRouter(rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}})
+router.run(documents=docs)
+```
+
+### Routing ByteStreams
+
+You can also use `MetadataRouter` to route `ByteStream` objects based on their metadata. This is useful when working with binary data or when you need to route files before they're converted to documents.
+
+```python
+from haystack.dataclasses import ByteStream
+from haystack.components.routers import MetadataRouter
+
+streams = [
+    ByteStream.from_string("Hello world", meta={"language": "en"}),
+    ByteStream.from_string("Bonjour le monde", meta={"language": "fr"})
+]
+
+router = MetadataRouter(
+    rules={"english": {"field": "meta.language", "operator": "==", "value": "en"}},
+    output_type=list[ByteStream]
+)
+
+result = router.run(documents=streams)
+## {'english': [ByteStream(...)], 'unmatched': [ByteStream(...)]}
+```
+
+### In a pipeline
+
+Below is an example of an indexing pipeline that converts text files to documents and uses the `DocumentLanguageClassifier` to detect the language of the text and add it to the documents' metadata. It then uses the `MetadataRouter` to forward only English language documents to the `DocumentWriter`. Documents of other languages will not be added to the `DocumentStore`.
+
+```python
+from haystack import Pipeline
+from haystack.components.file_converters import TextFileToDocument
+from haystack.components.classifiers import DocumentLanguageClassifier
+from haystack.components.routers import MetadataRouter
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+document_store = InMemoryDocumentStore()
+p = Pipeline()
+p.add_component(instance=TextFileToDocument(), name="text_file_converter")
+p.add_component(instance=DocumentLanguageClassifier(), name="language_classifier")
+p.add_component(
+    instance=MetadataRouter(rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}}), name="router"
+)
+p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+p.connect("text_file_converter.documents", "language_classifier.documents")
+p.connect("language_classifier.documents", "router.documents")
+p.connect("router.en", "writer.documents")
+p.run({"text_file_converter": {"sources": ["english-file-will-be-added.txt", "german-file-will-not-be-added.txt"]}})
+```

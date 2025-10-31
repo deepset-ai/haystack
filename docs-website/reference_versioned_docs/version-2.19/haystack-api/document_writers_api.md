@@ -2,6 +2,7 @@
 title: Document Writers
 id: document-writers-api
 description: Writes Documents to a DocumentStore.
+slug: "/document-writers-api"
 ---
 
 <a id="document_writer"></a>

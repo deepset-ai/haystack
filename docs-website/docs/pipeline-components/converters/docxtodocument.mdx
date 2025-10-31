@@ -1,0 +1,71 @@
+---
+title: "DOCXToDocument"
+id: docxtodocument
+slug: "/docxtodocument"
+description: "Convert DOCX files to documents."
+---
+
+# DOCXToDocument
+
+Convert DOCX files to documents.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx)  or right at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | "sources": DOCX file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects           |
+| **Output variables**                   | "documents": A list of documents                                                               |
+| **API reference**                      | [Converters](/reference/converters-api)                                                               |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/docx.py      |
+
+## Overview
+
+The `DOCXToDocument` component converts DOCX files into documents. It takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents. By defining the table format (CSV or Markdown), you can use this component to extract tables in your DOCX files. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+
+## Usage
+
+First, install the`python-docx` package to start using this converter:
+
+```shell
+pip install python-docx
+```
+
+### On its own
+
+```python
+from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat
+
+converter = DOCXToDocument()
+## or define the table format
+converter = DOCXToDocument(table_format=DOCXTableFormat.CSV)
+
+results = converter.run(sources=["sample.docx"], meta={"date_added": datetime.now().isoformat()})
+documents = results["documents"]
+
+print(documents[0].content)
+
+## 'This is the text from the DOCX file.'
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import DOCXToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", DOCXToDocument())
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": file_names}})
+```

@@ -292,20 +292,6 @@ Return the data associated with the span.
 
 The data associated with the span.
 
-<a id="haystack_integrations.tracing.langfuse.tracer.LangfuseSpan.set_tags"></a>
-
-#### LangfuseSpan.set\_tags
-
-```python
-def set_tags(tags: dict[str, Any]) -> None
-```
-
-Set multiple tags on the span.
-
-**Arguments**:
-
-- `tags`: a mapping of tag names to tag values.
-
 <a id="haystack_integrations.tracing.langfuse.tracer.SpanContext"></a>
 
 ### SpanContext
@@ -496,3 +482,4 @@ Return the trace ID.
 **Returns**:
 
 The trace ID.
+

@@ -1,0 +1,105 @@
+---
+title: "OpenAPIServiceToFunctions"
+id: openapiservicetofunctions
+slug: "/openapiservicetofunctions"
+description: "`OpenAPIServiceToFunctions` is a component that transforms OpenAPI service specifications into a format compatible with OpenAI's function calling mechanism."
+---
+
+# OpenAPIServiceToFunctions
+
+`OpenAPIServiceToFunctions` is a component that transforms OpenAPI service specifications into a format compatible with OpenAI's function calling mechanism.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Flexible |
+| **Mandatory run variables** | “sources”: A list of OpenAPI specification sources, which can be file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects |
+| **Output variables** | “functions”: A list of JSON OpenAI function calling definitions objects. For each path definition in OpenAPI specification, a corresponding OpenAI function calling definitions is generated.  <br /> <br />“openapi_specs”: A list of JSON/YAML objects with references resolved. Such OpenAPI spec (with references resolved) can, in turn, be used as input to OpenAPIServiceConnector. |
+| **API reference** | [Converters](/reference/converters-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/openapi_functions.py |
+
+## Overview
+
+`OpenAPIServiceToFunctions` transforms OpenAPI service specifications into an OpenAI function calling format. It takes an OpenAPI specification, processes it to extract function definitions, and formats these definitions to be compatible with OpenAI's function calling JSON format.
+
+`OpenAPIServiceToFunctions` is valuable when used together with [`OpenAPIServiceConnector`](../connectors/openapiserviceconnector.mdx) component. It converts OpenAPI specifications into definitions suitable for OpenAI's function calls, allowing `OpenAPIServiceConnector` to handle input parameters for the OpenAPI specification and facilitate their use in REST API calls through `OpenAPIServiceConnector`.
+
+To use `OpenAPIServiceToFunctions`, you need to install an optional `jsonref` dependency with:
+
+```shell
+pip install jsonref
+```
+
+`OpenAPIServiceToFunctions` component doesn’t have any init parameters.
+
+## Usage
+
+### On its own
+
+This component is primarily meant to be used in pipelines. Using this component alone is useful when you want to convert OpenAPI specification into OpenAI's function call specification and then perhaps save it in a file and subsequently use it in function calling.
+
+### In a pipeline
+
+In a pipeline context, `OpenAPIServiceToFunctions` is most valuable when used alongside `OpenAPIServiceConnector`. For instance, let’s consider integrating [serper.dev](http://serper.dev/) search engine bridge into a pipeline. `OpenAPIServiceToFunctions` retrieves the OpenAPI specification of Serper from https://bit.ly/serper_dev_spec, converts this specification into a format that OpenAI's function calling mechanism can understand, and then seamlessly passes this translated specification as `generation_kwargs` for LLM function calling invocation.
+
+:::info
+To run the following code snippet, note that you have to have your own Serper and OpenAI API keys.
+:::
+
+```python
+import json
+import requests
+
+from typing import Dict, Any, List
+from haystack import Pipeline
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.converters import OpenAPIServiceToFunctions, OutputAdapter
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.connectors import OpenAPIServiceConnector
+from haystack.components.fetchers import LinkContentFetcher
+from haystack.dataclasses import ChatMessage, ByteStream
+from haystack.utils import Secret
+
+def prepare_fc_params(openai_functions_schema: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "tools": [{
+            "type": "function",
+            "function": openai_functions_schema
+        }],
+        "tool_choice": {
+            "type": "function",
+            "function": {"name": openai_functions_schema["name"]}
+        }
+    }
+
+system_prompt = requests.get("https://bit.ly/serper_dev_system_prompt").text
+serper_spec = requests.get("https://bit.ly/serper_dev_spec").text
+
+pipe = Pipeline()
+pipe.add_component("spec_to_functions", OpenAPIServiceToFunctions())
+pipe.add_component("functions_llm", OpenAIChatGenerator(api_key=Secret.from_token(llm_api_key), model="gpt-3.5-turbo-0613"))
+pipe.add_component("openapi_container", OpenAPIServiceConnector())
+pipe.add_component("a1", OutputAdapter("{{functions[0] | prepare_fc}}", Dict[str, Any], {"prepare_fc": prepare_fc_params}))
+pipe.add_component("a2", OutputAdapter("{{specs[0]}}", Dict[str, Any]))
+pipe.add_component("a3", OutputAdapter("{{system_message + service_response}}", List[ChatMessage]))
+pipe.add_component("llm", OpenAIChatGenerator(api_key=Secret.from_token(llm_api_key), model="gpt-4-1106-preview", streaming_callback=print_streaming_chunk))
+
+pipe.connect("spec_to_functions.functions", "a1.functions")
+pipe.connect("spec_to_functions.openapi_specs", "a2.specs")
+pipe.connect("a1", "functions_llm.generation_kwargs")
+pipe.connect("functions_llm.replies", "openapi_container.messages")
+pipe.connect("a2", "openapi_container.service_openapi_spec")
+pipe.connect("openapi_container.service_response", "a3.service_response")
+pipe.connect("a3", "llm.messages")
+
+user_prompt = "Why was Sam Altman ousted from OpenAI?"
+
+result = pipe.run(data={"functions_llm": {"messages":[ChatMessage.from_system("Only do function calling"), ChatMessage.from_user(user_prompt)]},
+                        "openapi_container": {"service_credentials": serper_dev_key},
+                        "spec_to_functions": {"sources": [ByteStream.from_string(serper_spec)]},
+                        "a3": {"system_message": [ChatMessage.from_system(system_prompt)]}})
+
+>Sam Altman was ousted from OpenAI on November 17, 2023, following
+>a "deliberative review process" by the board of directors. The board concluded
+>that he was not "consistently candid in his communications". However, he
+>returned as CEO just days after his ouster.
+```

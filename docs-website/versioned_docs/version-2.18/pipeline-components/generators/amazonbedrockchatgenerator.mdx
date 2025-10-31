@@ -1,0 +1,87 @@
+---
+title: "AmazonBedrockChatGenerator"
+id: amazonbedrockchatgenerator
+slug: "/amazonbedrockchatgenerator"
+description: "This component enables chat completion using models through Amazon Bedrock service."
+---
+
+# AmazonBedrockChatGenerator
+
+This component enables chat completion using models through Amazon Bedrock service.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)  |
+| **Mandatory init variables** | "model": The model to use  <br /> <br />"aws_access_key_id": AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />"aws_secret_access_key": AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />"aws_region_name": AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  instances |
+| **Output variables** | "replies": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_bedrock |
+
+[Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) is a fully managed service that makes high-performing foundation models from leading AI startups and Amazon available through a unified API. You can choose from various foundation models to find the one best suited for your use case.
+
+`AmazonBedrockChatGenerator` enables chat completion using chat models from Anthropic, Cohere, Meta Llama 2, and Mistral with a single component.
+
+The models that we currently support are Anthropic's _Claude_, Meta's _Llama 2_, and _Mistral_, but as more chat models are added, their support will be provided through `AmazonBedrockChatGenerator`.
+
+## Overview
+
+This component uses AWS for authentication. You can use the AWS CLI to authenticate through your IAM. For more information on setting up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
+
+:::note
+Using AWS CLI
+
+Consider using AWS CLI as a more straightforward tool to manage your AWS services. With AWS CLI, you can quickly configure your [boto3 credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html). This way, you won't need to provide detailed authentication parameters when initializing Amazon Bedrock Generator in Haystack.
+:::
+
+To use this component for text generation, initialize an AmazonBedrockGenerator with the model name, the AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`) should be set as environment variables, be configured as described above or passed as [Secret](../../concepts/secret-management.mdx) arguments. Note, make sure the region you set supports Amazon Bedrock.
+
+To start using Amazon Bedrock with Haystack, install the `amazon-bedrock-haystack` package:
+
+```shell
+pip install amazon-bedrock-haystack
+```
+
+### Streaming
+
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+
+## Usage
+
+### On its own
+
+Basic usage:
+
+```python
+from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+from haystack.dataclasses import ChatMessage
+
+generator = AmazonBedrockChatGenerator(model="meta.llama2-70b-chat-v1")
+messages = [ChatMessage.from_system("You are a helpful assistant that answers question in Spanish only"), ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+
+response = generator.run(messages)
+print(response)
+```
+
+### In a pipeline
+
+In a RAG pipeline:
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", AmazonBedrockChatGenerator(model="meta.llama2-70b-chat-v1"))
+pipe.connect("prompt_builder", "llm")
+
+country = "Germany"
+system_message = ChatMessage.from_system("You are an assistant giving out valuable information to language learners.")
+messages = [system_message, ChatMessage.from_user("What's the official language of {{ country }}?")]
+
+res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
+print(res)
+```

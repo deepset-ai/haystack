@@ -7,11 +7,11 @@ slug: "/audio-api"
 
 <a id="whisper_local"></a>
 
-# Module whisper\_local
+## Module whisper\_local
 
 <a id="whisper_local.LocalWhisperTranscriber"></a>
 
-## LocalWhisperTranscriber
+### LocalWhisperTranscriber
 
 Transcribes audio files using OpenAI's Whisper model on your local machine.
 
@@ -144,11 +144,11 @@ A list of Documents, one for each file.
 
 <a id="whisper_remote"></a>
 
-# Module whisper\_remote
+## Module whisper\_remote
 
 <a id="whisper_remote.RemoteWhisperTranscriber"></a>
 
-## RemoteWhisperTranscriber
+### RemoteWhisperTranscriber
 
 Transcribes audio files using the OpenAI's Whisper API.
 

@@ -1,0 +1,96 @@
+---
+title: "ImageFileToDocument"
+id: imagefiletodocument
+slug: "/imagefiletodocument"
+description: "Converts image file references into empty `Document` objects with associated metadata."
+---
+
+# ImageFileToDocument
+
+Converts image file references into empty `Document` objects with associated metadata.
+
+|                                        |                                                                                                                             |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | Before a component that processes images, like `SentenceTransformersImageDocumentEmbedder` or `LLMDocumentContentExtractor` |
+| **Mandatory run variables**            | "sources": A list of image file paths or ByteStreams                                                                        |
+| **Output variables**                   | "documents": A list of empty Document objects with associated metadata                                                      |
+| **API reference**                      | [Image Converters](/reference/image-converters-api)                                                                                |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/image/file_to_document.py                 |
+
+## Overview
+
+`ImageFileToDocument` converts image file sources into empty `Document` objects with associated metadata.
+
+This component is useful in pipelines where image file paths need to be wrapped in `Document` objects to be processed by downstream components such as  `SentenceTransformersImageDocumentEmbedder` or `LLMDocumentContentExtractor`.
+
+It _does not_ extract any content from the image files, but instead creates `Document` objects with `None` as their content and attaches metadata such as file path and any user-provided values.
+
+Each source can be:
+
+- A file path (string or `Path`), or
+- A `ByteStream` object.
+
+Optionally, you can provide metadata using the `meta` parameter. This can be a single dictionary (applied to all documents) or a list matching the length of `sources`.
+
+## Usage
+
+### On its own
+
+This component is primarily meant to be used in pipelines.
+
+```python
+
+from haystack.components.converters.image import ImageFileToDocument
+
+converter = ImageFileToDocument()
+
+sources = ["image.jpg", "another_image.png"]
+
+result = converter.run(sources=sources)
+documents = result["documents"]
+
+print(documents)
+
+## [Document(id=..., content=None, meta={'file_path': 'image.jpg'}),
+## Document(id=..., content=None, meta={'file_path': 'another_image.png'})]
+```
+
+### In a pipeline
+
+In the following Pipeline, image documents are created using the `ImageFileToDocument` component, then they are enriched with image embeddings and saved in the Document Store.
+
+```python
+from haystack import Pipeline
+from haystack.components.converters.image import ImageFileToDocument
+from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
+from haystack.components.writers.document_writer import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+## Create our document store
+doc_store = InMemoryDocumentStore()
+
+## Define pipeline with components
+indexing_pipe = Pipeline()
+indexing_pipe.add_component("image_converter", ImageFileToDocument(store_full_path=True))
+indexing_pipe.add_component("image_doc_embedder", SentenceTransformersDocumentImageEmbedder())
+indexing_pipe.add_component("document_writer", DocumentWriter(doc_store))
+
+indexing_pipe.connect("image_converter.documents", "image_doc_embedder.documents")
+indexing_pipe.connect("image_doc_embedder.documents", "document_writer.documents")
+
+indexing_result = indexing_pipe.run(
+    data={"image_converter": {"sources": [
+        "apple.jpg",
+        "kiwi.png"
+    ]}},
+)
+
+indexed_documents = doc_store.filter_documents()
+print(f"Indexed {len(indexed_documents)} documents")
+## Indexed 2 documents
+
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Introduction to Multimodality](https://haystack.deepset.ai/cookbook/multimodal_intro)

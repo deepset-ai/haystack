@@ -7,11 +7,11 @@ slug: "/evaluators-api"
 
 <a id="answer_exact_match"></a>
 
-# Module answer\_exact\_match
+## Module answer\_exact\_match
 
 <a id="answer_exact_match.AnswerExactMatchEvaluator"></a>
 
-## AnswerExactMatchEvaluator
+### AnswerExactMatchEvaluator
 
 An answer exact match evaluator class.
 
@@ -66,11 +66,11 @@ A dictionary with the following outputs:
 
 <a id="context_relevance"></a>
 
-# Module context\_relevance
+## Module context\_relevance
 
 <a id="context_relevance.ContextRelevanceEvaluator"></a>
 
-## ContextRelevanceEvaluator
+### ContextRelevanceEvaluator
 
 Evaluator that checks if a provided context is relevant to the question.
 
@@ -327,11 +327,11 @@ True if the received output is a valid JSON with the expected keys, False otherw
 
 <a id="document_map"></a>
 
-# Module document\_map
+## Module document\_map
 
 <a id="document_map.DocumentMAPEvaluator"></a>
 
-## DocumentMAPEvaluator
+### DocumentMAPEvaluator
 
 A Mean Average Precision (MAP) evaluator for documents.
 
@@ -393,11 +393,11 @@ A dictionary with the following outputs:
 
 <a id="document_mrr"></a>
 
-# Module document\_mrr
+## Module document\_mrr
 
 <a id="document_mrr.DocumentMRREvaluator"></a>
 
-## DocumentMRREvaluator
+### DocumentMRREvaluator
 
 Evaluator that calculates the mean reciprocal rank of the retrieved documents.
 
@@ -457,11 +457,11 @@ A dictionary with the following outputs:
 
 <a id="document_ndcg"></a>
 
-# Module document\_ndcg
+## Module document\_ndcg
 
 <a id="document_ndcg.DocumentNDCGEvaluator"></a>
 
-## DocumentNDCGEvaluator
+### DocumentNDCGEvaluator
 
 Evaluator that calculates the normalized discounted cumulative gain (NDCG) of retrieved documents.
 
@@ -576,11 +576,11 @@ The ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
 <a id="document_recall"></a>
 
-# Module document\_recall
+## Module document\_recall
 
 <a id="document_recall.RecallMode"></a>
 
-## RecallMode
+### RecallMode
 
 Enum for the mode to use for calculating the recall score.
 
@@ -597,7 +597,7 @@ Convert a string to a RecallMode enum.
 
 <a id="document_recall.DocumentRecallEvaluator"></a>
 
-## DocumentRecallEvaluator
+### DocumentRecallEvaluator
 
 Evaluator that calculates the Recall score for a list of documents.
 
@@ -679,11 +679,11 @@ Dictionary with serialized data.
 
 <a id="faithfulness"></a>
 
-# Module faithfulness
+## Module faithfulness
 
 <a id="faithfulness.FaithfulnessEvaluator"></a>
 
-## FaithfulnessEvaluator
+### FaithfulnessEvaluator
 
 Evaluator that checks if a generated answer can be inferred from the provided contexts.
 
@@ -924,11 +924,11 @@ True if the received output is a valid JSON with the expected keys, False otherw
 
 <a id="llm_evaluator"></a>
 
-# Module llm\_evaluator
+## Module llm\_evaluator
 
 <a id="llm_evaluator.LLMEvaluator"></a>
 
-## LLMEvaluator
+### LLMEvaluator
 
 Uses an LLM to evaluate inputs based on a prompt containing instructions and examples.
 
@@ -1162,11 +1162,11 @@ True if the received output is a valid JSON with the expected keys, False otherw
 
 <a id="sas_evaluator"></a>
 
-# Module sas\_evaluator
+## Module sas\_evaluator
 
 <a id="sas_evaluator.SASEvaluator"></a>
 
-## SASEvaluator
+### SASEvaluator
 
 SASEvaluator computes the Semantic Answer Similarity (SAS) between a list of predictions and a one of ground truths.
 

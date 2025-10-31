@@ -165,13 +165,16 @@ class LLMMetadataExtractor:
         self.expanded_range = expand_page_range(page_range) if page_range else None
         self.max_workers = max_workers
         self._chat_generator = chat_generator
+        self._is_warmed_up = False
 
     def warm_up(self):
         """
         Warm up the LLM provider component.
         """
-        if hasattr(self._chat_generator, "warm_up"):
-            self._chat_generator.warm_up()
+        if not self._is_warmed_up:
+            if hasattr(self._chat_generator, "warm_up"):
+                self._chat_generator.warm_up()
+            self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -304,6 +307,9 @@ class LLMMetadataExtractor:
         if len(documents) == 0:
             logger.warning("No documents provided. Skipping metadata extraction.")
             return {"documents": [], "failed_documents": []}
+
+        if not self._is_warmed_up:
+            self.warm_up()
 
         expanded_range = self.expanded_range
         if page_range:

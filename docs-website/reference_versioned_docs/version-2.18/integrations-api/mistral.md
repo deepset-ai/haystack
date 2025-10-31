@@ -86,67 +86,6 @@ Serializes the component to a dictionary.
 
 Dictionary with serialized data.
 
-<a id="haystack_integrations.components.embedders.mistral.document_embedder.MistralDocumentEmbedder.from_dict"></a>
-
-#### MistralDocumentEmbedder.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAIDocumentEmbedder"
-```
-
-Deserializes the component from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized component.
-
-<a id="haystack_integrations.components.embedders.mistral.document_embedder.MistralDocumentEmbedder.run"></a>
-
-#### MistralDocumentEmbedder.run
-
-```python
-@component.output_types(documents=list[Document], meta=dict[str, Any])
-def run(documents: list[Document])
-```
-
-Embeds a list of documents.
-
-**Arguments**:
-
-- `documents`: A list of documents to embed.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `documents`: A list of documents with embeddings.
-- `meta`: Information about the usage of the model.
-
-<a id="haystack_integrations.components.embedders.mistral.document_embedder.MistralDocumentEmbedder.run_async"></a>
-
-#### MistralDocumentEmbedder.run\_async
-
-```python
-@component.output_types(documents=list[Document], meta=dict[str, Any])
-async def run_async(documents: list[Document])
-```
-
-Embeds a list of documents asynchronously.
-
-**Arguments**:
-
-- `documents`: A list of documents to embed.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `documents`: A list of documents with embeddings.
-- `meta`: Information about the usage of the model.
-
 <a id="haystack_integrations.components.embedders.mistral.text_embedder"></a>
 
 ## Module haystack\_integrations.components.embedders.mistral.text\_embedder
@@ -221,70 +160,6 @@ Serializes the component to a dictionary.
 **Returns**:
 
 Dictionary with serialized data.
-
-<a id="haystack_integrations.components.embedders.mistral.text_embedder.MistralTextEmbedder.from_dict"></a>
-
-#### MistralTextEmbedder.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAITextEmbedder"
-```
-
-Deserializes the component from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized component.
-
-<a id="haystack_integrations.components.embedders.mistral.text_embedder.MistralTextEmbedder.run"></a>
-
-#### MistralTextEmbedder.run
-
-```python
-@component.output_types(embedding=list[float], meta=dict[str, Any])
-def run(text: str)
-```
-
-Embeds a single string.
-
-**Arguments**:
-
-- `text`: Text to embed.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `embedding`: The embedding of the input text.
-- `meta`: Information about the usage of the model.
-
-<a id="haystack_integrations.components.embedders.mistral.text_embedder.MistralTextEmbedder.run_async"></a>
-
-#### MistralTextEmbedder.run\_async
-
-```python
-@component.output_types(embedding=list[float], meta=dict[str, Any])
-async def run_async(text: str)
-```
-
-Asynchronously embed a single string.
-
-This is the asynchronous version of the `run` method. It has the same parameters and return values
-but can be used with `await` in async code.
-
-**Arguments**:
-
-- `text`: Text to embed.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `embedding`: The embedding of the input text.
-- `meta`: Information about the usage of the model.
 
 <a id="haystack_integrations.components.generators.mistral.chat.chat_generator"></a>
 
@@ -382,8 +257,8 @@ Some of the supported parameters:
     Notes:
     - For structured outputs with streaming,
       the `response_format` must be a JSON schema and not a Pydantic model.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+Each tool should have a unique name.
 - `timeout`: The timeout for the Mistral API call. If not set, it defaults to either the `OPENAI_TIMEOUT`
 environment variable, or 30 seconds.
 - `max_retries`: Maximum number of retries to contact OpenAI after an internal error.
@@ -405,93 +280,197 @@ Serialize this component to a dictionary.
 
 The serialized component as a dictionary.
 
-<a id="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator.from_dict"></a>
+<a id="haystack_integrations.components.converters.mistral.ocr_document_converter"></a>
 
-#### MistralChatGenerator.from\_dict
+## Module haystack\_integrations.components.converters.mistral.ocr\_document\_converter
+
+<a id="haystack_integrations.components.converters.mistral.ocr_document_converter.MistralOCRDocumentConverter"></a>
+
+### MistralOCRDocumentConverter
+
+This component extracts text from documents using Mistral's OCR API, with optional structured
+annotations for both individual image regions (bounding boxes) and full documents.
+
+Accepts document sources in various formats (str/Path for local files, ByteStream for in-memory data,
+DocumentURLChunk for document URLs, ImageURLChunk for image URLs, or FileChunk for Mistral file IDs)
+and retrieves the recognized text via Mistral's OCR service. Local files are automatically uploaded
+to Mistral's storage.
+Returns Haystack Documents (one per source) containing all pages concatenated with form feed characters (\f),
+ensuring compatibility with Haystack's DocumentSplitter for accurate page-wise splitting and overlap handling.
+
+**How Annotations Work:**
+When annotation schemas (`bbox_annotation_schema` or `document_annotation_schema`) are provided,
+the OCR model first extracts text and structure from the document. Then, a Vision LLM is called
+to analyze the content and generate structured annotations according to your defined schemas.
+For more details, see: https://docs.mistral.ai/capabilities/document_ai/annotations/`how`-it-works
+
+**Usage Example:**
+
+**Structured Output Example:**
+```python
+from haystack.utils import Secret
+from haystack_integrations.mistral import MistralOCRDocumentConverter
+from mistralai.models import DocumentURLChunk, ImageURLChunk, FileChunk
+
+converter = MistralOCRDocumentConverter(
+    api_key=Secret.from_env_var("MISTRAL_API_KEY"),
+    model="mistral-ocr-2505"
+)
+
+# Process multiple sources
+sources = [
+    DocumentURLChunk(document_url="https://example.com/document.pdf"),
+    ImageURLChunk(image_url="https://example.com/receipt.jpg"),
+    FileChunk(file_id="file-abc123"),
+]
+result = converter.run(sources=sources)
+
+documents = result["documents"]  # List of 3 Documents
+raw_responses = result["raw_mistral_response"]  # List of 3 raw responses
+```
+```python
+from pydantic import BaseModel, Field
+from haystack_integrations.mistral import MistralOCRDocumentConverter
+
+# Define schema for structured image annotations
+class ImageAnnotation(BaseModel):
+    image_type: str = Field(..., description="The type of image content")
+    short_description: str = Field(..., description="Short natural-language description")
+    summary: str = Field(..., description="Detailed summary of the image content")
+
+# Define schema for structured document annotations
+class DocumentAnnotation(BaseModel):
+    language: str = Field(..., description="Primary language of the document")
+    chapter_titles: List[str] = Field(..., description="Detected chapter or section titles")
+    urls: List[str] = Field(..., description="URLs found in the text")
+
+converter = MistralOCRDocumentConverter(
+    model="mistral-ocr-2505",
+)
+
+sources = [DocumentURLChunk(document_url="https://example.com/report.pdf")]
+result = converter.run(
+    sources=sources,
+    bbox_annotation_schema=ImageAnnotation,
+    document_annotation_schema=DocumentAnnotation,
+)
+
+documents = result["documents"]
+raw_responses = result["raw_mistral_response"]
+```
+
+<a id="haystack_integrations.components.converters.mistral.ocr_document_converter.MistralOCRDocumentConverter.__init__"></a>
+
+#### MistralOCRDocumentConverter.\_\_init\_\_
+
+```python
+def __init__(api_key: Secret = Secret.from_env_var("MISTRAL_API_KEY"),
+             model: str = "mistral-ocr-2505",
+             include_image_base64: bool = False,
+             pages: Optional[List[int]] = None,
+             image_limit: Optional[int] = None,
+             image_min_size: Optional[int] = None,
+             cleanup_uploaded_files: bool = True)
+```
+
+Creates a MistralOCRDocumentConverter component.
+
+**Arguments**:
+
+- `api_key`: The Mistral API key. Defaults to the MISTRAL_API_KEY environment variable.
+- `model`: The OCR model to use. Default is "mistral-ocr-2505".
+See more: https://docs.mistral.ai/getting-started/models/models_overview/
+- `include_image_base64`: If True, includes base64 encoded images in the response.
+This may significantly increase response size and processing time.
+- `pages`: Specific page numbers to process (0-indexed). If None, processes all pages.
+- `image_limit`: Maximum number of images to extract from the document.
+- `image_min_size`: Minimum height and width (in pixels) for images to be extracted.
+- `cleanup_uploaded_files`: If True, automatically deletes files uploaded to Mistral after processing.
+Only affects files uploaded from local sources (str, Path, ByteStream).
+Files provided as FileChunk are not deleted. Default is True.
+
+<a id="haystack_integrations.components.converters.mistral.ocr_document_converter.MistralOCRDocumentConverter.to_dict"></a>
+
+#### MistralOCRDocumentConverter.to\_dict
+
+```python
+def to_dict() -> Dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="haystack_integrations.components.converters.mistral.ocr_document_converter.MistralOCRDocumentConverter.from_dict"></a>
+
+#### MistralOCRDocumentConverter.from\_dict
 
 ```python
 @classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAIChatGenerator"
+def from_dict(cls, data: Dict[str, Any]) -> "MistralOCRDocumentConverter"
 ```
 
-Deserialize this component from a dictionary.
+Deserializes the component from a dictionary.
 
 **Arguments**:
 
-- `data`: The dictionary representation of this component.
+- `data`: Dictionary to deserialize from.
 
 **Returns**:
 
-The deserialized component instance.
+Deserialized component.
 
-<a id="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator.run"></a>
+<a id="haystack_integrations.components.converters.mistral.ocr_document_converter.MistralOCRDocumentConverter.run"></a>
 
-#### MistralChatGenerator.run
+#### MistralOCRDocumentConverter.run
 
 ```python
-@component.output_types(replies=list[ChatMessage])
-def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        *,
-        tools: Optional[ToolsType] = None,
-        tools_strict: Optional[bool] = None)
+@component.output_types(documents=List[Document],
+                        raw_mistral_response=List[Dict[str, Any]])
+def run(
+    sources: List[Union[str, Path, ByteStream, DocumentURLChunk, FileChunk,
+                        ImageURLChunk]],
+    meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    bbox_annotation_schema: Optional[Type[BaseModel]] = None,
+    document_annotation_schema: Optional[Type[BaseModel]] = None
+) -> Dict[str, Any]
 ```
 
-Invokes chat completion based on the provided messages and generation parameters.
+Extract text from documents using Mistral OCR.
 
 **Arguments**:
 
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
-override the parameters passed during component initialization.
-For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If set, it will override the `tools` parameter provided during initialization.
-- `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-If set, it will override the `tools_strict` parameter set during component initialization.
+- `sources`: List of document sources to process. Each source can be one of:
+- str: File path to a local document
+- Path: Path object to a local document
+- ByteStream: Haystack ByteStream object containing document data
+- DocumentURLChunk: Mistral chunk for document URLs (signed or public URLs to PDFs, etc.)
+- ImageURLChunk: Mistral chunk for image URLs (signed or public URLs to images)
+- FileChunk: Mistral chunk for file IDs (files previously uploaded to Mistral)
+- `meta`: Optional metadata to attach to the Documents.
+This value can be either a list of dictionaries or a single dictionary.
+If it's a single dictionary, its content is added to the metadata of all produced Documents.
+If it's a list, the length of the list must match the number of sources, because they will be zipped.
+- `bbox_annotation_schema`: Optional Pydantic model for structured annotations per bounding box.
+When provided, a Vision LLM analyzes each image region and returns structured data.
+- `document_annotation_schema`: Optional Pydantic model for structured annotations for the full document.
+When provided, a Vision LLM analyzes the entire document and returns structured data.
+Note: Document annotation is limited to a maximum of 8 pages. Documents exceeding
+this limit will not be processed for document annotation.
 
 **Returns**:
 
-A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
+A dictionary with the following keys:
+- `documents`: List of Haystack Documents (one per source). Each Document has the following structure:
+    - `content`: All pages joined with form feed (\f) separators in markdown format.
+      When using bbox_annotation_schema, image tags will be enriched with your defined descriptions.
+    - `meta`: Aggregated metadata dictionary with structure:
+      `{"source_page_count": int, "source_total_images": int, "source_*": any}`.
+      If document_annotation_schema was provided, all annotation fields are unpacked
+      with 'source_' prefix (e.g., source_language, source_chapter_titles, source_urls).
+- `raw_mistral_response`:
+    List of dictionaries containing raw OCR responses from Mistral API (one per source).
+    Each response includes per-page details, images, annotations, and usage info.
 
-<a id="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator.run_async"></a>
-
-#### MistralChatGenerator.run\_async
-
-```python
-@component.output_types(replies=list[ChatMessage])
-async def run_async(messages: list[ChatMessage],
-                    streaming_callback: Optional[StreamingCallbackT] = None,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    *,
-                    tools: Optional[ToolsType] = None,
-                    tools_strict: Optional[bool] = None)
-```
-
-Asynchronously invokes chat completion based on the provided messages and generation parameters.
-
-This is the asynchronous version of the `run` method. It has the same parameters and return values
-but can be used with `await` in async code.
-
-**Arguments**:
-
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-Must be a coroutine.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
-override the parameters passed during component initialization.
-For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If set, it will override the `tools` parameter provided during initialization.
-- `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns**:
-
-A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.

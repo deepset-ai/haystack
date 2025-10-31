@@ -142,6 +142,7 @@ class TestLLMDocumentContentExtractor:
         mock_chat_generator = Mock()
         extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
         extractor.warm_up()
+        assert extractor._is_warmed_up is True
 
     def test_run_no_documents(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

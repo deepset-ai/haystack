@@ -2,6 +2,7 @@
 title: Agents
 id: agents-api
 description: Tool-using agents with provider-agnostic chat model support.
+slug: "/agents-api"
 ---
 
 <a id="agent"></a>

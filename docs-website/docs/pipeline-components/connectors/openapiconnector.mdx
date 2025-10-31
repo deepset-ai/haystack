@@ -1,0 +1,97 @@
+---
+title: "OpenAPIConnector"
+id: openapiconnector
+slug: "/openapiconnector"
+description: "`OpenAPIConnector` is a component that acts as an interface between the Haystack ecosystem and OpenAPI services."
+---
+
+# OpenAPIConnector
+
+`OpenAPIConnector` is a component that acts as an interface between the Haystack ecosystem and OpenAPI services.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Anywhere, after components providing input for its run parameters                                  |
+| **Mandatory init variables**           | "openapi_spec": The OpenAPI specification for the service. Can be a URL, file path, or raw string. |
+| **Mandatory run variables**            | "operation_id": The operationId from the OpenAPI spec to invoke.                                   |
+| **Output variables**                   | “response”: A REST service response                                                                |
+| **API reference**                      | [Connectors](/reference/connectors-api)                                                                   |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/connectors/openapi.py       |
+
+## Overview
+
+The `OpenAPIConnector` is a component within the Haystack ecosystem that allows direct invocation of REST endpoints defined in an OpenAPI (formerly Swagger) specification. It acts as a bridge between Haystack pipelines and any REST API that follows the OpenAPI standard, enabling dynamic method calls, authentication, and parameter handling.
+
+To use the `OpenAPIConnector`, ensure that you have the `openapi-llm` dependency installed:
+
+```shell
+pip install openapi-llm
+```
+
+Unlike [OpenAPIServiceConnector](openapiserviceconnector.mdx), which works with LLMs, `OpenAPIConnector` directly calls REST endpoints using explicit input arguments.
+
+## Usage
+
+### On its own
+
+You can initialize and use the `OpenAPIConnector` on its own by passing an OpenAPI specification and other parameters:
+
+```python
+from haystack.utils import Secret
+from haystack.components.connectors.openapi import OpenAPIConnector
+
+connector = OpenAPIConnector(
+    openapi_spec="https://bit.ly/serperdev_openapi",
+    credentials=Secret.from_env_var("SERPERDEV_API_KEY"),
+    service_kwargs={"config_factory": my_custom_config_factory}
+)
+
+response = connector.run(
+    operation_id="search",
+    arguments={"q": "Who was Nikola Tesla?"}
+)
+```
+
+#### Output
+
+The `OpenAPIConnector` returns a dictionary containing the service response:
+
+```json
+{
+    "response": { // here goes REST endpoint response JSON
+    }
+}
+```
+
+### In a pipeline
+
+The `OpenAPIConnector` can be integrated into a Haystack pipeline to interact with OpenAPI services. For example, here’s how you can link the `OpenAPIConnector` to a pipeline:
+
+```python
+from haystack import Pipeline
+from haystack.components.connectors.openapi import OpenAPIConnector
+from haystack.dataclasses.chat_message import ChatMessage
+from haystack.utils import Secret
+
+## Initialize the OpenAPIConnector
+connector = OpenAPIConnector(
+    openapi_spec="https://bit.ly/serperdev_openapi",
+    credentials=Secret.from_env_var("SERPERDEV_API_KEY")
+)
+
+## Create a ChatMessage from the user
+user_message = ChatMessage.from_user(text="Who was Nikola Tesla?")
+
+## Define the pipeline
+pipeline = Pipeline()
+pipeline.add_component("openapi_connector", connector)
+
+## Run the pipeline
+response = pipeline.run(
+    data={"openapi_connector": {"operation_id": "search", "arguments": {"q": user_message.text}}}
+)
+
+## Extract the answer from the response
+answer = response.get("openapi_connector", {}).get("response", {})
+print(answer)
+```

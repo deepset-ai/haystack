@@ -7,11 +7,11 @@ slug: "/joiners-api"
 
 <a id="answer_joiner"></a>
 
-# Module answer\_joiner
+## Module answer\_joiner
 
 <a id="answer_joiner.JoinMode"></a>
 
-## JoinMode
+### JoinMode
 
 Enum for AnswerJoiner join modes.
 
@@ -28,7 +28,7 @@ Convert a string to a JoinMode enum.
 
 <a id="answer_joiner.AnswerJoiner"></a>
 
-## AnswerJoiner
+### AnswerJoiner
 
 Merges multiple lists of `Answer` objects into a single list.
 
@@ -148,11 +148,11 @@ The deserialized component.
 
 <a id="branch"></a>
 
-# Module branch
+## Module branch
 
 <a id="branch.BranchJoiner"></a>
 
-## BranchJoiner
+### BranchJoiner
 
 A component that merges multiple input branches of a pipeline into a single output stream.
 
@@ -296,11 +296,11 @@ A dictionary with a single key `value`, containing the first input received.
 
 <a id="document_joiner"></a>
 
-# Module document\_joiner
+## Module document\_joiner
 
 <a id="document_joiner.JoinMode"></a>
 
-## JoinMode
+### JoinMode
 
 Enum for join mode.
 
@@ -317,7 +317,7 @@ Convert a string to a JoinMode enum.
 
 <a id="document_joiner.DocumentJoiner"></a>
 
-## DocumentJoiner
+### DocumentJoiner
 
 Joins multiple lists of documents into a single list.
 
@@ -444,11 +444,11 @@ The deserialized component.
 
 <a id="list_joiner"></a>
 
-# Module list\_joiner
+## Module list\_joiner
 
 <a id="list_joiner.ListJoiner"></a>
 
-## ListJoiner
+### ListJoiner
 
 A component that joins multiple lists into a single flat list.
 
@@ -569,11 +569,11 @@ Dictionary with 'values' key containing the joined list.
 
 <a id="string_joiner"></a>
 
-# Module string\_joiner
+## Module string\_joiner
 
 <a id="string_joiner.StringJoiner"></a>
 
-## StringJoiner
+### StringJoiner
 
 Component to join strings from different components to a list of strings.
 

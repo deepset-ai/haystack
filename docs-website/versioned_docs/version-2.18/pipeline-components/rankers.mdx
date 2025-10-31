@@ -1,0 +1,23 @@
+---
+title: "Rankers"
+id: rankers
+slug: "/rankers"
+description: "Rankers are a group of components that order documents by given criteria. Their goal is to improve your document retrieval results."
+---
+
+# Rankers
+
+Rankers are a group of components that order documents by given criteria. Their goal is to improve your document retrieval results.
+
+|  |  |
+| --- | --- |
+| [AmazonBedrockRanker](rankers/amazonbedrockranker.mdx) | Ranks documents based on their similarity to the query using Amazon Bedrock models. |
+| [CohereRanker](rankers/cohereranker.mdx) | Ranks documents based on their similarity to the query using Cohere rerank models. |
+| [FastembedRanker](rankers/fastembedranker.mdx) | Ranks documents based on their similarity to the query using cross-encoder models supported by FastEmbed. |
+| [HuggingFaceTEIRanker](rankers/huggingfaceteiranker.mdx) | Ranks documents based on their similarity to the query using a Text Embeddings Inference (TEI) API endpoint. |
+| [JinaRanker](rankers/jinaranker.mdx) | Ranks documents based on their similarity to the query using Jina AI models. |
+| [LostInTheMiddleRanker](rankers/lostinthemiddleranker.mdx) | Positions the most relevant documents at the beginning and at the end of the resulting list while placing the least relevant documents in the middle, based on a [research paper](https://arxiv.org/abs/2307.03172). |
+| [MetaFieldRanker](rankers/metafieldranker.mdx) | A lightweight Ranker that orders documents based on a specific metadata field value.  |
+| [MetaFieldGroupingRanker](rankers/metafieldgroupingranker.mdx) | Reorders the documents by grouping them based on metadata keys. |
+| [NvidiaRanker](rankers/nvidiaranker.mdx) | Ranks documents using large-language models from [NVIDIA NIMs](https://ai.nvidia.com) . |
+| [TransformersSimilarityRanker](rankers/transformerssimilarityranker.mdx) | A legacy version of [SentenceTransformersSimilarityRanker](rankers/sentencetransformerssimilarityranker.mdx). |
