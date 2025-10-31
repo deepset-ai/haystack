@@ -11,9 +11,9 @@ import ClickableImage from "@site/src/components/ClickableImage";
 
 Speed up your Haystack application by engaging the GPU.
 
-The Transformer models used in Haystack are designed to be run on GPU-accelerated hardware. The steps for GPU acceleration setup depend on the environment that you're working in. 
+The Transformer models used in Haystack are designed to be run on GPU-accelerated hardware. The steps for GPU acceleration setup depend on the environment that you're working in.
 
-Once you have GPU enabled on your machine, you can set the `device` on which a given model for a component is loaded. 
+Once you have GPU enabled on your machine, you can set the `device` on which a given model for a component is loaded.
 
 For example, to load a model for the `HuggingFaceLocalGenerator`, set `device="ComponentDevice.from_single(Device.gpu(id=0))` or `device = ComponentDevice.from_str("cuda:0")` when initializing.
 
@@ -23,13 +23,13 @@ You can find more information on the [Device management](../concepts/device-mana
 
 1. Ensure that you have a fitting version of NVIDIA CUDA installed. To learn how to install CUDA, see the [NVIDIA CUDA Guide for Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html).
 
-2. Run the `nvidia-smi`in the command line to check if the GPU is enabled. If the GPU is enabled, the output shows a list of available GPUs and their memory usage:  
-   ![A screenshot of the command output with the name of the GPU device and its memory usage highlighted.](https://files.readme.io/b44c7f4-gpu_enabled_cropped.png)
+2. Run the `nvidia-smi`in the command line to check if the GPU is enabled. If the GPU is enabled, the output shows a list of available GPUs and their memory usage:
+   <ClickableImage src="/img/b44c7f4-gpu_enabled_cropped.png" alt="A screenshot of the command output with the name of the GPU device and its memory usage highlighted." />
 
 ### Enabling the GPU in Colab
 
 1. In your Colab environment, select **Runtime>Change Runtime type**.
-<ClickableImage src="/img/85079c7-68747470733a2f2f7261772e67697468756275736572636f6e74656e742e636f6d2f646565707365742d61692f686179737461636b2f6d61696e2f646f63732f696d672f636f6c61625f6770755f72756e74696d652e6a7067.jpeg" alt="" />
+<ClickableImage src="/img/85079c7-68747470733a2f2f7261772e67697468756275736572636f6e74656e742e636f6d2f646565707365742d61692f686179737461636b2f6d61696e2f646f63732f696d672f636f6c61625f6770755f72756e74696d652e6a7067.jpeg" alt="Google Colab Runtime menu with Change runtime type option highlighted for selecting GPU acceleration" size="large" />
 
 2. Choose **Hardware accelerator>GPU**.
 3. To check if the GPU is enabled, run:

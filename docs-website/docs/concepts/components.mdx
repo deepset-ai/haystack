@@ -17,14 +17,14 @@ Components are connected to each other using a [pipeline](pipelines.mdx), and th
 
 You can integrate components in a pipeline to perform a specific task. But you can also use some of them stand-alone, outside of a pipeline. For example, you can run `DocumentWriter` on its own, to write documents into a Document Store. To check how to use a component and if it's usable outside of a pipeline, check the _Usage_ section on the component's documentation page.
 
-Each component has a `run()` method. When you connect components in a pipeline, and you run the pipeline by calling `Pipeline.run()`, it invokes the `run()` method for each component sequentially. 
+Each component has a `run()` method. When you connect components in a pipeline, and you run the pipeline by calling `Pipeline.run()`, it invokes the `run()` method for each component sequentially.
 
 ## Input and Output
 
-To connect components in a pipeline, you need to know the names of the inputs and outputs they accept. The output of one component must be compatible with the input the subsequent component accepts. For example, to connect Retriever and Ranker in a pipeline, you must know that the Retriever outputs `documents` and the Ranker accepts `documents` as input. 
+To connect components in a pipeline, you need to know the names of the inputs and outputs they accept. The output of one component must be compatible with the input the subsequent component accepts. For example, to connect Retriever and Ranker in a pipeline, you must know that the Retriever outputs `documents` and the Ranker accepts `documents` as input.
 
 The mandatory inputs and outputs are listed in a table at the top of each component's documentation page so that you can quickly check them:
-<ClickableImage src="/img/3a53f3e-inputs_and_outputs.png" alt="" />
+<ClickableImage src="/img/3a53f3e-inputs_and_outputs.png" alt="DocumentWriter component specification table showing Name, Folder Path, Position in Pipeline, Inputs (documents list), and Outputs (documents_written integer)" />
 
 You can also look them up in the code in the component`run()` method. Here's an example of the inputs and outputs of `TransformerSimilarityRanker`:
 
@@ -56,6 +56,6 @@ result = doc_embedder.run([doc]) # And finally, run it
 print(result['documents'][0].embedding)
 ```
 
-If you're using a component that has the `warm_up()` method in a pipeline, you don't have to do anything additionally. The pipeline takes care of warming it up before running. 
+If you're using a component that has the `warm_up()` method in a pipeline, you don't have to do anything additionally. The pipeline takes care of warming it up before running.
 
 The `warm_up()` method is a nice way to keep the `init()` methods lightweight and the validation fast. (Validation in the pipeline happens when connecting the components but before warming them up and running.)

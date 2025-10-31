@@ -266,6 +266,6 @@ spec:
 
 Implementing the above configuration will create three pods. Each pod will run a different instance of Hayhooks, all serving the same example pipeline provided by the mounted volume in the previous example.
 
-<ClickableImage src="/img/f3f0ac4b22a37039f0837c22b0cb8b640937bbb0db4acfcbdf7bd016b545d84a-Screenshot_2025-04-16_at_09.32.07.png" alt="" />
+<ClickableImage src="/img/f3f0ac4b22a37039f0837c22b0cb8b640937bbb0db4acfcbdf7bd016b545d84a-Screenshot_2025-04-16_at_09.32.07.png" alt="Kubernetes Lens interface showing three haystack-deployment pods in Running status with their resource configurations" />
 
 Note that the `NodePort` you created before will now act as a load balancer and will distribute incoming requests to the three Hayhooks Pods.

@@ -113,7 +113,7 @@ print(json.loads(result["validator"]["validated"][0].text))
 
 <summary>Expand to see the pipeline graph</summary>
 
-<ClickableImage src="/img/9dc767d-loop_chart.png" alt="" />
+<ClickableImage src="/img/9dc767d-loop_chart.png" alt="Pipeline flowchart showing a validation loop with adapter, joiner, language model, and validator components forming a cycle until validation succeeds" size="large" />
 
 </details>
 
@@ -192,6 +192,6 @@ print(result["llm"]["replies"][0])
 
 <summary>Expand to see the pipeline graph</summary>
 
-<ClickableImage src="/img/6da5ddd-join_chart.png" alt="" />
+<ClickableImage src="/img/6da5ddd-join_chart.png" alt="Pipeline flowchart demonstrating BranchJoiner reconciling outputs from three language-specific retrievers into a single prompt builder" />
 
 </details>

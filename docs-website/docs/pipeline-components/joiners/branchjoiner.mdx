@@ -24,7 +24,7 @@ Use this component to join different branches of a pipeline into a single output
 
 `BranchJoiner` joins multiple branches in a pipeline, allowing their outputs to be reconciled into a single branch. This is especially useful in pipelines with multiple branches that need to be unified before moving to the single component that comes next.
 
-`BranchJoiner` receives multiple data connections of the same type from other components and passes the first value it receives to its single output. This makes it essential for closing loops in pipelines or reconciling multiple branches from a decision component. 
+`BranchJoiner` receives multiple data connections of the same type from other components and passes the first value it receives to its single output. This makes it essential for closing loops in pipelines or reconciling multiple branches from a decision component.
 
 `BranchJoiner` can handle only one input of one data type, declared in the `__init__` function. It ensures that the data type remains consistent across the pipeline branches. If more than one value is received for the input when `run` is invoked, the component will raise an error:
 
@@ -116,7 +116,7 @@ print(json.loads(result["validator"]["validated"][0].text))
 <details>
 
 <summary>Expand to see the pipeline graph</summary>
-<ClickableImage src="/img/9dc767d-loop_chart.png" alt="" />
+<ClickableImage src="/img/9dc767d-loop_chart.png" alt="Pipeline flowchart showing a validation loop with adapter, joiner, language model, and validator components forming a cycle until validation succeeds" size="large" />
 
 </details>
 
@@ -134,7 +134,7 @@ from haystack.components.generators import OpenAIGenerator
 from haystack.components.routers import TextLanguageRouter
 
 prompt_template = """
-Answer the quesiton based on the given reviews.
+Answer the question based on the given reviews.
 Reviews:
   {% for doc in documents %}
     {{ doc.content }}
@@ -157,7 +157,7 @@ documents = [
         content="It is very central and appartement has a nice appearance (even though a lot IKEA stuff), *W A R N I N G** the appartement presents itself as a elegant and as a place to relax, very wrong place to relax - you cannot sleep in this appartement, even the beds are vibrating from the bass of the clubs in the same building - you get ear plugs from the hotel."
     ),
     Document(
-        content="Céntrico. Muy cómodo para moverse y ver Oporto. Edificio con terraza propia en la última planta. Todo reformado y nuevo. Te traen un estupendo desayuno todas las mañanas al apartamento. Solo que se puede escuchar algo de ruido de la calle a primeras horas de la noche. Es un zona de ocio nocturno. Pero respetan los horarios."
+        content="Céntrico. Muy cómodo para moverse y ver Oporto. Edificio con terraza propia en la última planta. Todo reformado y nuevo. The staff brings a great breakfast every morning to the apartment. Solo que se puede escuchar algo de ruido de la street a primeras horas de la noche. Es un zona de ocio nocturno. Pero respetan los horarios."
     ),
 ]
 
@@ -194,6 +194,6 @@ print(result["llm"]["replies"][0])
 <details>
 
 <summary>Expand to see the pipeline graph</summary>
-<ClickableImage src="/img/6da5ddd-join_chart.png" alt="" />
+<ClickableImage src="/img/6da5ddd-join_chart.png" alt="Pipeline flowchart demonstrating BranchJoiner reconciling outputs from three language-specific retrievers into a single prompt builder" />
 
 </details>
