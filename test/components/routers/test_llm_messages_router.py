@@ -100,7 +100,12 @@ class TestLLMMessagesRouter:
 
     def test_run_no_warm_up_with_warmable_chat_generator(self):
         """Warm up is run automatically if not done before."""
+
+        def mock_run(messages):
+            return {"replies": [ChatMessage.from_assistant("safe")]}
+
         chat_generator = Mock()
+        chat_generator.run = mock_run
         router = LLMMessagesRouter(
             chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
         )
