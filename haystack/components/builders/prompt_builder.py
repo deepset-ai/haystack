@@ -4,7 +4,7 @@
 
 from typing import Any, Literal, Optional, Union
 
-from jinja2 import meta
+from jinja2 import meta, nodes
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_to_dict, logging
@@ -178,7 +178,13 @@ class PromptBuilder:
             # infer variables from template
             ast = self._env.parse(template)
             template_variables = meta.find_undeclared_variables(ast)
-            variables = list(template_variables)
+
+            assigned_variables = set()
+            for node in ast.find_all((nodes.Assign, nodes.For)):
+                if hasattr(node.target, "name"):
+                    assigned_variables.add(node.target.name)
+
+            variables = list(template_variables - assigned_variables)
         variables = variables or []
         self.variables = variables
 
