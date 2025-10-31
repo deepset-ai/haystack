@@ -13,7 +13,7 @@ This component enables chat completion using Google Gemini models through Google
 | -------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                             |
 | **Mandatory init variables**           | "api_key": A Google API key. Can be set with `GOOGLE_API_KEY` env var.                         |
-| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](/docs/chatmessage)  objects representing the chat        |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat        |
 | **Output variables**                   | “replies”: A list of alternative replies of the model to the input chat                        |
 | **API reference**                      | [Google GenAI](/reference/integrations-google-genai)                                                  |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_genai |
@@ -24,7 +24,7 @@ This component enables chat completion using Google Gemini models through Google
 
 ### Streaming
 
-This Generator supports [streaming](/docs/choosing-the-right-generator#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ### Authentication
 
@@ -33,7 +33,7 @@ Google Gen AI is compatible with both the Gemini Developer API and the Vertex AI
 To use this component with the Gemini Developer API and get an API key, visit [Google AI Studio](https://aistudio.google.com/).
 To use this component with the Vertex AI API, visit [Google Cloud > Vertex AI](https://cloud.google.com/vertex-ai).
 
-The component uses a `GOOGLE_API_KEY` or `GEMINI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](/docs/secret-management) and `Secret.from_token` static method:
+The component uses a `GOOGLE_API_KEY` or `GEMINI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token` static method:
 
 ```python
 embedder = GoogleGenAITextEmbedder(api_key=Secret.from_token("<your-api-key>"))

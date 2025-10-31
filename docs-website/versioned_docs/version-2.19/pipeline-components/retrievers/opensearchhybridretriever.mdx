@@ -2,12 +2,12 @@
 title: "OpenSearchHybridRetriever"
 id: opensearchhybridretriever
 slug: "/opensearchhybridretriever"
-description: "This is a [SuperComponent](/docs/supercomponents) that implements a Hybrid Retriever in a single component, relying on OpenSearch as the backend Document Store."
+description: "This is a [SuperComponent](../../concepts/components/supercomponents.mdx) that implements a Hybrid Retriever in a single component, relying on OpenSearch as the backend Document Store."
 ---
 
 # OpenSearchHybridRetriever
 
-This is a [SuperComponent](/docs/supercomponents) that implements a Hybrid Retriever in a single component, relying on OpenSearch as the backend Document Store.
+This is a [SuperComponent](../../concepts/components/supercomponents.mdx) that implements a Hybrid Retriever in a single component, relying on OpenSearch as the backend Document Store.
 
 A Hybrid Retriever uses both traditional keyword-based search (such as BM25) and embedding-based search to retrieve documents, combining the strengths of both approaches. The Retriever then merges and re-ranks the results from both methods.
 
@@ -24,7 +24,7 @@ A Hybrid Retriever uses both traditional keyword-based search (such as BM25) and
 
 The `OpenSearchHybridRetriever` combines two retrieval methods:
 
-1. **BM25 Retrieval**: A keyword-based search that uses the BM25 algorithm to find documents based on term frequency and inverse document frequency. It's based on the [`OpenSearchBM25Retriever`](doc:opensearchbm25retriever) component and is suitable for traditional keyword-based search.
+1. **BM25 Retrieval**: A keyword-based search that uses the BM25 algorithm to find documents based on term frequency and inverse document frequency. It's based on the [`OpenSearchBM25Retriever`](opensearchbm25retriever.mdx) component and is suitable for traditional keyword-based search.
 2. **Embedding-based Retrieval**: A semantic search that uses vector similarity to find documents that are semantically similar to the query. It's based on the [`OpenSearchEmbeddingRetriever`](opensearchembeddingretriever.mdx) component and is suitable for semantic search.
 
 The component automatically handles:

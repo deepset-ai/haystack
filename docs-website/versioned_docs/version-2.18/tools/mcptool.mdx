@@ -135,7 +135,7 @@ print(result["response_llm"]["replies"][0].text)
 
 ### With the Agent Component
 
-You can  use `MCPTool` with the [Agent](/docs/agent) component. Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
+You can  use `MCPTool` with the [Agent](../pipeline-components/agents-1/agent.mdx) component. Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator

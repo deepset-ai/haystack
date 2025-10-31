@@ -84,8 +84,8 @@ In this case, since we didn’t pass any embeddings along with our documents, Ch
 
 The Haystack Chroma integration comes with three Retriever components. They all rely on the Chroma [query API](https://docs.trychroma.com/reference/Collection#query), but they have different inputs and outputs so that you can pick the one that best fits your pipeline:
 
-- [`ChromaQueryTextRetriever`](/docs/chromaqueryretriever): This Retriever takes a plain-text query string in input and returns a list of matching documents. Chroma will create the embeddings for the query using its [default embedding function](https://docs.trychroma.com/embeddings#default-all-minilm-l6-v2).
-- [`ChromaEmbeddingRetriever`](/docs/chromaembeddingretriever): This Retriever takes the embeddings of a single query in input and returns a list of matching documents. The query needs to be embedded before being passed to this component. For example, you can use an [embedder](/docs/embedders) component.
+- [`ChromaQueryTextRetriever`](../pipeline-components/retrievers/chromaqueryretriever.mdx): This Retriever takes a plain-text query string in input and returns a list of matching documents. Chroma will create the embeddings for the query using its [default embedding function](https://docs.trychroma.com/embeddings#default-all-minilm-l6-v2).
+- [`ChromaEmbeddingRetriever`](../pipeline-components/retrievers/chromaembeddingretriever.mdx): This Retriever takes the embeddings of a single query in input and returns a list of matching documents. The query needs to be embedded before being passed to this component. For example, you can use an [embedder](../pipeline-components/embedders.mdx) component.
 
 ## Additional References
 

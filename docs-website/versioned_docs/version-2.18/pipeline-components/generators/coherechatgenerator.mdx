@@ -13,8 +13,8 @@ CohereChatGenerator enables chat completions using Cohere's large language model
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)  |
 | **Mandatory init variables** | "api_key": The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
-| **Mandatory run variables** | “messages” A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects |
-| **Output variables** | "replies": A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Mandatory run variables** | “messages” A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
+| **Output variables** | "replies": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
 | **API reference** | [Cohere](/reference/integrations-cohere) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cohere |
 
@@ -24,7 +24,7 @@ This integration supports Cohere `chat` models such as `command`,`command-r` and
 
 `CohereChatGenerator` needs a Cohere API key to work. You can set this key in:
 
-- The `api_key` init parameter using [Secret API](/docs/secret-management)
+- The `api_key` init parameter using [Secret API](../../concepts/secret-management.mdx)
 - The `COHERE_API_KEY` environment variable (recommended)
 
 Then, the component needs a prompt to operate, but you can pass any text generation parameters valid for the `Co.chat` method directly to this component using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the parameters supported by the Cohere API, refer to the [Cohere documentation](https://docs.cohere.com/reference/chat).
@@ -33,7 +33,7 @@ Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMe
 
 ### Streaming
 
-This Generator supports [streaming](/docs/choosing-the-right-generator#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ## Usage
 

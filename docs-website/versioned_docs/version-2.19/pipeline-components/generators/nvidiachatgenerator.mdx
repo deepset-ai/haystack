@@ -13,20 +13,20 @@ This Generator enables chat completion using Nvidia-hosted models.
 | -------------------------------------- | ---------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                     |
 | **Mandatory init variables**           | "api_key": API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var.         |
-| **Mandatory run variables**            | "messages": A list of [ChatMessage](/docs/chatmessage) objects                           |
-| **Output variables**                   | "replies": A list of [ChatMessage](/docs/chatmessage) objects                            |
+| **Mandatory run variables**            | "messages": A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                           |
+| **Output variables**                   | "replies": A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                            |
 | **API reference**                      | [NVIDIA API](https://build.nvidia.com/models)                                            |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/nvidia |
 
 ## Overview
 
-`NvidiaChatGenerator` enables chat completions using NVIDIA's generative models via the NVIDIA API. It is compatible with the [ChatMessage](/docs/chatmessage) format for both input and output, ensuring seamless integration in chat-based pipelines.
+`NvidiaChatGenerator` enables chat completions using NVIDIA's generative models via the NVIDIA API. It is compatible with the [ChatMessage](../../concepts/data-classes/chatmessage.mdx) format for both input and output, ensuring seamless integration in chat-based pipelines.
 
 You can use LLMs self-hosted with NVIDIA NIM or models hosted on the [NVIDIA API catalog](https://build.nvidia.com/explore/discover). The default model for this component is `meta/llama-3.1-8b-instruct`.
 
-To use this integration, you must have a NVIDIA API key. You can provide it with the `NVIDIA_API_KEY` environment variable or by using a [Secret](/docs/secret-management).
+To use this integration, you must have a NVIDIA API key. You can provide it with the `NVIDIA_API_KEY` environment variable or by using a [Secret](../../concepts/secret-management.mdx).
 
-This generator supports [streaming](/docs/choosing-the-right-generator#streaming-support) responses from the LLM. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
+This generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
 
 ## Usage
 

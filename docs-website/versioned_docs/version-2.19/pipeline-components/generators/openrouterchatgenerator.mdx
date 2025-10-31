@@ -13,8 +13,8 @@ This component enables chat completion with any model hosted on [OpenRouter](htt
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                                |
 | **Mandatory init variables**           | “api_key”: An OpenRouter API key. Can be set with `OPENROUTER_API_KEY` env variable or passed to `init()` method. |
-| **Mandatory run variables**            | “messages:” A list of [ChatMessage](doc:chatmessage) objects                                                      |
-| **Output variables**                   | “replies”: A list of [ChatMessage](doc:chatmessage) objects                                                       |
+| **Mandatory run variables**            | “messages:” A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                                                      |
+| **Output variables**                   | “replies”: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                                                       |
 | **API reference**                      | [OpenRouter](/reference/integrations-openrouter)                                                                         |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/openrouter                      |
 
@@ -27,13 +27,13 @@ This generator also supports OpenRouter-specific features such as:
 - Provider routing and model fallback that are configurable with the `generation_kwargs` parameter during initialization or runtime.
 - Custom HTTP headers that can be supplied using the `extra_headers` parameter.
 
-This component uses the same `ChatMessage` format as other Haystack Chat Generators for structured input and output. For more information, see the [ChatMessage documentation](doc:chatmessage).
+This component uses the same `ChatMessage` format as other Haystack Chat Generators for structured input and output. For more information, see the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
 
 It is also fully compatible with Haystack [Tools](../../tools/tool.mdx) and [Toolsets](../../tools/toolset.mdx) that allow function-calling capabilities with supported models.
 
 ### Initialization
 
-To use this integration, you must have an active OpenRouter subscription with sufficient credits and an API key. You can provide it with the `OPENROUTER_API_KEY` environment variable or by using a [Secret](/docs/secret-management).
+To use this integration, you must have an active OpenRouter subscription with sufficient credits and an API key. You can provide it with the `OPENROUTER_API_KEY` environment variable or by using a [Secret](../../concepts/secret-management.mdx).
 
 Then, install the `openrouter-haystack` integration:
 
@@ -43,7 +43,7 @@ pip install openrouter-haystack
 
 ### Streaming
 
-`OpenRouterChatGenerator` supports [streaming](/docs/choosing-the-right-generator#streaming-support) responses from the LLM, allowing tokens to be emitted as they are generated. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
+`OpenRouterChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM, allowing tokens to be emitted as they are generated. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
 
 ## Usage
 

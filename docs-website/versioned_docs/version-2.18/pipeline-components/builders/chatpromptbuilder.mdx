@@ -12,7 +12,7 @@ This component constructs prompts dynamically by processing chat messages.
 |                                        |                                                                                                                                                |
 | :------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | Before a [Generator](../generators.mdx)                                                                                                         |
-| **Mandatory init variables**           | "template": A list of [`ChatMessage`](/docs/chatmessage) objects or a special string template. Needs to be provided either during init or run. |
+| **Mandatory init variables**           | "template": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects or a special string template. Needs to be provided either during init or run. |
 | **Mandatory run variables**            | “\*\*kwargs”: Any strings that should be used to render the prompt template. See [Variables](#variables) section for more details.             |
 | **Output variables**                   | “prompt”: A dynamically constructed prompt                                                                                                     |
 | **API reference**                      | [Builders](/reference/builders-api)                                                                                                                   |
@@ -24,7 +24,7 @@ The `ChatPromptBuilder` component creates prompts using static or dynamic templa
 
 To use it, start by providing a list of `ChatMessage` objects or a special string as the template.
 
-[`ChatMessage`](/docs/chatmessage) is a data class that includes message content, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
+[`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) is a data class that includes message content, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 The builder looks for placeholders in the template and identifies the required variables. You can also list these variables manually. During runtime, the `run` method takes the template and the variables, fills in the placeholders, and returns the completed prompt. If required variables are missing. If the template is invalid, the builder raises an error.
 
@@ -76,7 +76,7 @@ The components only waits for the required inputs before running.
 
 ### Roles
 
-A [`ChatMessage`](/docs/chatmessage) represents a single message in the conversation and can have one of three class methods that build the chat messages: `from_user`, `from_system`, or `from_assistant`. `from_user` messages are inputs provided by the user, such as a query or request. `from_system` messages provide context or instructions to guide the LLM’s behavior, such as setting a tone or purpose for the conversation. `from_assistant` defines the expected or actual response from the LLM.
+A [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) represents a single message in the conversation and can have one of three class methods that build the chat messages: `from_user`, `from_system`, or `from_assistant`. `from_user` messages are inputs provided by the user, such as a query or request. `from_system` messages provide context or instructions to guide the LLM’s behavior, such as setting a tone or purpose for the conversation. `from_assistant` defines the expected or actual response from the LLM.
 
 Here’s how the roles work together in a `ChatPromptBuilder`:
 

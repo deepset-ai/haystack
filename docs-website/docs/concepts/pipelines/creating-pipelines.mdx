@@ -11,9 +11,9 @@ import ClickableImage from "@site/src/components/ClickableImage";
 
 Learn the general principles of creating a pipeline.
 
-You can use these instructions to create both indexing and query pipelines. 
+You can use these instructions to create both indexing and query pipelines.
 
-This task uses an example of a semantic document search pipeline. 
+This task uses an example of a semantic document search pipeline.
 
 ## Prerequisites
 
@@ -23,7 +23,7 @@ For each component you want to use in your pipeline, you must know the names of 
 
 ### 1\. Import dependencies
 
-Import all the dependencies, like pipeline, documents, Document Store, and all the components you want to use in your pipeline.  
+Import all the dependencies, like pipeline, documents, Document Store, and all the components you want to use in your pipeline.
 For example, to create a semantic document search pipelines, you need the `Document` object, the pipeline, the Document Store, Embedders, and a Retriever:
 
 ```python
@@ -35,7 +35,7 @@ from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 ### 2\. Initialize components
 
-Initialize the components, passing any parameters you want to configure: 
+Initialize the components, passing any parameters you want to configure:
 
 ```python
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
@@ -84,7 +84,7 @@ pipeline.connect("component1", "component2")
 ## you can pass just the name of the component with a single output, but for the component with
 ## multiple inputs, you must specify which input you want to connect
 
-## Here, component1 has only one output, but component2 has mulitiple inputs:
+## Here, component1 has only one output, but component2 has multiple inputs:
 pipeline.connect("component1", "component2.input1")
 
 ## And here's how it should look like for the semantic document search pipeline we're using as an example:
@@ -167,7 +167,7 @@ From the above response, you can see that the `urls` input is mandatory for `Lin
 
 ```python
 pipeline.run(data=
-             {"fetcher": 
+             {"fetcher":
               	{"urls": ["https://docs.haystack.deepset.ai/docs/pipelines"]}
              }
             )
@@ -182,4 +182,4 @@ RECIPE MISSING
 Here's what a [visualized Mermaid graph](visualizing-pipelines.mdx) of this pipeline would look like:
 
 <br />
-<ClickableImage src="/img/5ffb7db-doc.png" alt="" />
+<ClickableImage src="/img/5ffb7db-doc.png" alt="Simple RAG pipeline flowchart showing sequential flow from query input through retriever, prompt builder, and language model to final output" size="large" />

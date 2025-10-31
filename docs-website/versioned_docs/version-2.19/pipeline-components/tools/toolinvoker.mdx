@@ -13,7 +13,7 @@ This component is designed to execute tool calls prepared by language m
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | After a Chat Generator                                                                                                             |
 | **Mandatory init variables**           | “tools”: A list of [`Tools`](../../tools/tool.mdx) that can be invoked                                                                       |
-| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](/docs/chatmessage) objects from a Chat Generator containing tool calls                       |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects from a Chat Generator containing tool calls                       |
 | **Output variables**                   | “tool_messages”: A list of `ChatMessage` objects with tool role. Each `ChatMessage` objects wraps the result of a tool invocation. |
 | **API reference**                      | [Tools](/reference/tools-api)                                                                                                             |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/tools/tool_invoker.py                                       |
@@ -32,7 +32,7 @@ The `ToolInvoker` has two additionally helpful parameters:
 :::note
 ChatMessage and Tool Data Classes
 
-Follow the links to learn more about [ChatMessage](doc:chatmessage) and [Tool](../../tools/tool.mdx) data classes.
+Follow the links to learn more about [ChatMessage](../../concepts/data-classes/chatmessage.mdx) and [Tool](../../tools/tool.mdx) data classes.
 :::
 
 ## Usage

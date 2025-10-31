@@ -2,6 +2,7 @@
 title: Audio
 id: audio-api
 description: Transcribes audio files.
+slug: "/audio-api"
 ---
 
 <a id="whisper_local"></a>

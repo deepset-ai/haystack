@@ -17,7 +17,7 @@ This guide aims to simplify the process of choosing the right Generator based on
 The first distinction we are talking about is between Generators and ChatGenerators, for example, OpenAIGenerator and OpenAIChatGenerator, HuggingFaceAPIGenerator and HuggingFaceAPIChatGenerator, and so on.
 
 - **Generators** are components that expect a prompt (a string) and return the generated text in “replies”.
-- **ChatGenerators** support the [ChatMessage data class](/docs/data-classes#chatmessage) out of the box. They expect a list of Chat Messages and return a Chat Message in “replies”.
+- **ChatGenerators** support the [ChatMessage data class](../../../concepts/data-classes/chatmessage.mdx) out of the box. They expect a list of Chat Messages and return a Chat Message in “replies”.
 
 The choice between Generators and ChatGenerators depends on your use case and the underlying model. If you anticipate a multi-turn interaction with the Language Model in a chat scenario, opting for a ChatGenerator is generally better.
 

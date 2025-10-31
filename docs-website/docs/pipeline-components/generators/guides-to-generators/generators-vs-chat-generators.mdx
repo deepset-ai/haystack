@@ -15,7 +15,7 @@ This page explains the difference between Generators and Chat Generators in Hays
 | --- | --- | --- |
 |             |                   |                                                          |
 |             | **Generators**    | **Chat Generators**                                      |
-| **Inputs**  | String (a prompt) | A list of [ChatMessages](../../../concepts/data-classes.mdx#chatmessage) |
+| **Inputs**  | String (a prompt) | A list of [ChatMessages](../../../concepts/data-classes/chatmessage.mdx) |
 | **Outputs** | Text              | Chat Message (in “replies)                               |
 
 ## Pick the Right Class
@@ -55,15 +55,15 @@ In such cases, opting for a Chat Generator simplifies the process, as Haystack h
 
 If a Generator does not have a corresponding Chat Generator, this does not imply that the Generator cannot be utilized in a chat scenario.
 
-For example, [`LlamaCppGenerator`](../llamacppgenerator.mdx) can be used with both chat and non-chat models.  
+For example, [`LlamaCppGenerator`](../llamacppgenerator.mdx) can be used with both chat and non-chat models.
 However, without the `ChatMessage` data class, you need to pay close attention to the model's prompt template and adhere to it.
 
 #### Chat (Prompt) Template
 
-The chat template may be available on the Model card on Hugging Face for open Language Models in a human-readable form.  
+The chat template may be available on the Model card on Hugging Face for open Language Models in a human-readable form.
 See an example for [argilla/notus-7b-v1](https://huggingface.co/argilla/notus-7b-v1#prompt-template) model on the Hugging Face.
 
-Usually, it is also available as a Jinja template in the tokenizer_config.json.  
+Usually, it is also available as a Jinja template in the tokenizer_config.json.
 Here’s an example for [argilla/notus-7b-v1](https://huggingface.co/argilla/notus-7b-v1/blob/main/tokenizer_config.json#L34):
 
 ```json
@@ -90,10 +90,10 @@ For instance, given the prompt “What is music...” the pretrained model can g
 - Adding follow-up questions: “? What is sound? What is harmony?”
 - Providing an answer: “Music is a form of artistic expression…”
 
-The model that emerges from this pretraining is commonly referred to as the **base Language Model**.  
+The model that emerges from this pretraining is commonly referred to as the **base Language Model**.
 Examples include [meta-llama/Llama-2-70b](https://huggingface.co/meta-llama/Llama-2-70b-hf) and [mistralai/Mistral-7B-v0.1](https://huggingface.co/mistralai/Mistral-7B-v0.1).
 
-Using base Language Models is infrequent in practical applications, as they cannot follow instructions or engage in conversation. 
+Using base Language Models is infrequent in practical applications, as they cannot follow instructions or engage in conversation.
 
 If you want to experiment with them, use the Haystack text Generators.
 
@@ -101,12 +101,12 @@ If you want to experiment with them, use the Haystack text Generators.
 
 To make the language model helpful in real applications, two additional training steps are usually performed.
 
-- Supervised Fine Tuning: The language Model is further trained on a dataset containing instruction-response pairs or multi-turn interactions. Depending on the dataset, the model can acquire the capability to follow instructions or engage in chat.  
+- Supervised Fine Tuning: The language Model is further trained on a dataset containing instruction-response pairs or multi-turn interactions. Depending on the dataset, the model can acquire the capability to follow instructions or engage in chat.
   _If model training stops at this point, it may perform well on some benchmarks, but it does not behave in a way that aligns with human user preferences._
-- Alignment with Human Preferences: This crucial step ensures that the Language Model aligns with human intent. Various techniques, such as RLHF and DPO, can be employed.  
+- Alignment with Human Preferences: This crucial step ensures that the Language Model aligns with human intent. Various techniques, such as RLHF and DPO, can be employed.
   _To learn more about these techniques and this evolving landscape, you can read [this blog post](https://ai-scholar.tech/en/articles/rlhf%2FDirect-Preference-Optimization)._
 
-After these phases, a Language Model suitable for practical applications is obtained.  
+After these phases, a Language Model suitable for practical applications is obtained.
 Examples include [meta-llama/Llama-2-70b-chat-hf](https://huggingface.co/meta-llama/Llama-2-70b-chat-hf) and [mistralai/Mistral-7B-Instruct-v0.2](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2).
 
 #### Instruct vs Chat Language Models
@@ -123,8 +123,8 @@ It's worth noting that many recent Instruct models are equipped with a [chat tem
 Utilizing a Chat Generator is the optimal choice if the model features a Chat template and you intend to use it in chat scenarios. In these cases, you can expect out-of-the-box support for Chat Messages, and you don’t need to manually apply the aforementioned template.
 
 > 🚧 Caution
-> 
+>
 > The distinction between Instruct and Chat models is not a strict dichotomy.
-> 
+>
 > - Following pre-training, Supervised Fine Tuning (SFT) and Alignment with Human Preferences can be executed multiple times using diverse datasets. In some cases, the differentiation between Instruct and Chat models may not be particularly meaningful.
 > - Some open Language Models on Hugging Face lack explicit indications of their nature.

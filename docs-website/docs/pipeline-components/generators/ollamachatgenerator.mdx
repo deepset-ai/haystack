@@ -12,7 +12,7 @@ This component enables chat completion using an LLM running on Ollama.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
-| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes.mdx#chatmessage)  objects representing the chat |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables**                   | “replies”: A list of LLM’s alternative replies                                                       |
 | **API reference**                      | [Ollama](/reference/integrations-ollama)                                                                    |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/ollama             |
@@ -21,11 +21,11 @@ This component enables chat completion using an LLM running on Ollama.
 
 [Ollama](https://github.com/jmorganca/ollama) is a project focused on running LLMs locally. Internally, it uses the quantized GGUF format by default. This means it is possible to run LLMs on standard machines (even without GPUs) without having to handle complex installation procedures.
 
-`OllamaChatGenerator` supports models running on Ollama, such as `llama2` and `mixtral`. Find the full list of supported models [here](https://ollama.ai/library). 
+`OllamaChatGenerator` supports models running on Ollama, such as `llama2` and `mixtral`. Find the full list of supported models [here](https://ollama.ai/library).
 
-`OllamaChatGenerator`  needs a `model`  name and a `url` to work. By default, it uses `"orca-mini"` model and `"http://localhost:11434"` url. 
+`OllamaChatGenerator`  needs a `model`  name and a `url` to work. By default, it uses `"orca-mini"` model and `"http://localhost:11434"` url.
 
-The way to operate with `OllamaChatGenerator` is by using  `ChatMessage` objects. [ChatMessage](../../concepts/data-classes.mdx#chatmessage)  is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. See the [usage](#usage) section for an example.
+The way to operate with `OllamaChatGenerator` is by using  `ChatMessage` objects. [ChatMessage](../../concepts/data-classes/chatmessage.mdx)  is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. See the [usage](#usage) section for an example.
 
 ### Streaming
 
@@ -55,14 +55,14 @@ Give preference to `print_streaming_chunk` by default. Write a custom callback o
 
 ## Usage
 
-1. You need a running instance of Ollama. The installation instructions are [in the Ollama GitHub repository](https://github.com/jmorganca/ollama).  
+1. You need a running instance of Ollama. The installation instructions are [in the Ollama GitHub repository](https://github.com/jmorganca/ollama).
    A fast way to run Ollama is using Docker:
 
 ```bash
 docker run -d -p 11434:11434 --name ollama ollama/ollama:latest
 ```
 
-2. You need to download or pull the desired LLM. The model library is available on the [Ollama website](https://ollama.ai/library).  
+2. You need to download or pull the desired LLM. The model library is available on the [Ollama website](https://ollama.ai/library).
    If you are using Docker, you can, for example, pull the Zephyr model:
 
 ```bash

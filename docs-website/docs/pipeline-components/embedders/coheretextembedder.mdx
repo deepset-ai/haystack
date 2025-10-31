@@ -11,7 +11,7 @@ This component transforms a string into a vector that captures its semantics usi
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before an embedding [Retriever](/docs/pipeline-components/retrievers.mdx)  in a query/RAG pipeline |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
 | **Mandatory init variables** | "api_key": The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
 | **Mandatory run variables** | “text”: A string |
 | **Output variables** | “embedding”: A list of float numbers (vectors)  <br /> <br />“meta”:  A dictionary of metadata strings |
@@ -20,7 +20,7 @@ This component transforms a string into a vector that captures its semantics usi
 
 ## Overview
 
-`CohereTextEmbedder` embeds a simple string (such as a query) into a vector. For embedding lists of documents, use the use the [`CohereDocumentEmbedder`](https://docs.haystack.deepset.ai/v2.0/docs/coheredocumentembedder), which enriches the document with the computed embedding, also known as vector.
+`CohereTextEmbedder` embeds a simple string (such as a query) into a vector. For embedding lists of documents, use the use the [`CohereDocumentEmbedder`](coheredocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
 
 The component supports the following Cohere models:
 `"embed-english-v3.0"`, `"embed-english-light-v3.0"`, `"embed-multilingual-v3.0"`,

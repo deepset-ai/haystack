@@ -22,7 +22,7 @@ The HyDE method is highly useful when:
 ## How Does It Work?
 
 Many embedding retrievers generalize poorly to new, unseen domains. This approach tries to tackle this problem. Given a query, the Hypothetical Document Embeddings (HyDE) first zero-shot prompts an instruction-following language model to generate a “fake” hypothetical document that captures relevant textual patterns from the initial query - in practice, this is done five times. Then, it encodes each hypothetical document into an embedding vector and averages them. The resulting, single embedding can be used to identify a neighbourhood in the document embedding space from which similar actual documents are retrieved based on vector similarity. As with any other retriever, these retrieved documents can then be used downstream in a pipeline (for example, in a Generator for RAG). Refer to the paper “[Precise Zero-Shot Dense Retrieval without Relevance Labels](https://aclanthology.org/2023.acl-long.99/)” for more details.
-<ClickableImage src="/img/2d00628-Untitled_2.png" alt="" />
+<ClickableImage src="/img/2d00628-Untitled_2.png" alt="HyDE model architecture diagram showing how GPT generates hypothetical documents from queries in multiple languages, which are then matched with real documents via a Contriever model" size="large" />
 
 ## How To Build It in Haystack?
 
@@ -62,7 +62,7 @@ embedder.warm_up()
 ## Adding one custom component that returns one, "average" embedding from multiple (hypothetical) document embeddings
 @component
 class HypotheticalDocumentEmbedder:
-  
+
   @component.output_types(hypothetical_embedding=List[float])
   def run(self, documents: List[Document]):
     stacked_embeddings = array([doc.embedding for doc in documents])
@@ -94,7 +94,7 @@ result = pipeline.run(data={"prompt_builder": {"question": query}})
 ```
 
 Here's the graph of the resulting pipeline:
-<ClickableImage src="/img/74f3daa-hyde.png" alt="" />
+<ClickableImage src="/img/74f3daa-hyde.png" alt="HyDE pipeline implementation flowchart showing prompt builder, generator, adapter, embedder, and hypothetical document embedder components" />
 
 This pipeline example turns your query into one embedding.
 
