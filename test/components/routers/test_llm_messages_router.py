@@ -99,13 +99,14 @@ class TestLLMMessagesRouter:
         router.run([ChatMessage.from_user("Hello")])
 
     def test_run_no_warm_up_with_warmable_chat_generator(self):
+        """Warm up is run automatically if not done before."""
         chat_generator = Mock()
         router = LLMMessagesRouter(
             chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
         )
-
-        with pytest.raises(RuntimeError):
-            router.run([ChatMessage.from_user("Hello")])
+        router.run([ChatMessage.from_user("Hello")])
+        assert chat_generator.warm_up.call_count == 1
+        assert router._is_warmed_up is True
 
     def test_run(self):
         router = LLMMessagesRouter(
