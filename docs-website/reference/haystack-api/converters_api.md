@@ -318,7 +318,7 @@ Create a DOCXToDocument component.
 - `table_format`: The format for table output. Can be either DOCXTableFormat.MARKDOWN,
 DOCXTableFormat.CSV, "markdown", or "csv".
 - `link_format`: The format for link output. Can be either:
-DOCXLinkFormat.MARKDOWN or "markdown" to get [text](address),
+DOCXLinkFormat.MARKDOWN or "markdown" to get `[text](address)`,
 DOCXLinkFormat.PLAIN or "plain" to get text (address),
 DOCXLinkFormat.NONE or "none" to get text without links.
 - `store_full_path`: If True, the full path of the file is stored in the metadata of the document.
