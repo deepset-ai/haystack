@@ -54,6 +54,7 @@ class SentenceTransformersSparseDocumentEmbedder:
         meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
         trust_remote_code: bool = False,
+        revision: Optional[str] = None,
         local_files_only: bool = False,
         model_kwargs: Optional[dict[str, Any]] = None,
         tokenizer_kwargs: Optional[dict[str, Any]] = None,
@@ -86,6 +87,9 @@ class SentenceTransformersSparseDocumentEmbedder:
         :param trust_remote_code:
             If `False`, allows only Hugging Face verified model architectures.
             If `True`, allows custom models and scripts.
+        :param revision:
+            The specific model version to use. It can be a branch name, a tag name, or a commit id,
+            for a stored model on Hugging Face.
         :param local_files_only:
             If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
         :param model_kwargs:
@@ -112,6 +116,7 @@ class SentenceTransformersSparseDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.trust_remote_code = trust_remote_code
+        self.revision = revision
         self.local_files_only = local_files_only
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
@@ -144,6 +149,7 @@ class SentenceTransformersSparseDocumentEmbedder:
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             trust_remote_code=self.trust_remote_code,
+            revision=self.revision,
             local_files_only=self.local_files_only,
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
@@ -182,6 +188,7 @@ class SentenceTransformersSparseDocumentEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                revision=self.revision,
                 local_files_only=self.local_files_only,
                 model_kwargs=self.model_kwargs,
                 tokenizer_kwargs=self.tokenizer_kwargs,

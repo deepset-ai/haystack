@@ -46,6 +46,7 @@ class SentenceTransformersTextEmbedder:
         progress_bar: bool = True,
         normalize_embeddings: bool = False,
         trust_remote_code: bool = False,
+        revision: Optional[str] = None,
         local_files_only: bool = False,
         truncate_dim: Optional[int] = None,
         model_kwargs: Optional[dict[str, Any]] = None,
@@ -81,6 +82,9 @@ class SentenceTransformersTextEmbedder:
         :param trust_remote_code:
             If `False`, permits only Hugging Face verified model architectures.
             If `True`, permits custom models and scripts.
+        :param revision:
+            The specific model version to use. It can be a branch name, a tag name, or a commit id,
+            for a stored model on Hugging Face.
         :param local_files_only:
             If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
         :param truncate_dim:
@@ -119,6 +123,7 @@ class SentenceTransformersTextEmbedder:
         self.progress_bar = progress_bar
         self.normalize_embeddings = normalize_embeddings
         self.trust_remote_code = trust_remote_code
+        self.revision = revision
         self.local_files_only = local_files_only
         self.truncate_dim = truncate_dim
         self.model_kwargs = model_kwargs
@@ -153,6 +158,7 @@ class SentenceTransformersTextEmbedder:
             progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
             trust_remote_code=self.trust_remote_code,
+            revision=self.revision,
             local_files_only=self.local_files_only,
             truncate_dim=self.truncate_dim,
             model_kwargs=self.model_kwargs,
@@ -194,6 +200,7 @@ class SentenceTransformersTextEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                revision=self.revision,
                 local_files_only=self.local_files_only,
                 truncate_dim=self.truncate_dim,
                 model_kwargs=self.model_kwargs,
