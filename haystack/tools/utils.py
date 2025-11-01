@@ -24,12 +24,24 @@ def warm_up_tools(tools: "Optional[ToolsType]" = None) -> None:
     if isinstance(tools, Toolset):
         if hasattr(tools, "warm_up"):
             tools.warm_up()
+        # Also warm up individual tools inside the toolset
+        for tool in tools:
+            if hasattr(tool, "warm_up"):
+                tool.warm_up()
         return
 
     # If tools is a list, warm up each item (Tool or Toolset)
     if isinstance(tools, list):
         for item in tools:
-            if isinstance(item, (Toolset, Tool)) and hasattr(item, "warm_up"):
+            if isinstance(item, Toolset):
+                # Warm up the toolset itself
+                if hasattr(item, "warm_up"):
+                    item.warm_up()
+                # Also warm up individual tools inside the toolset
+                for tool in item:
+                    if hasattr(tool, "warm_up"):
+                        tool.warm_up()
+            elif isinstance(item, Tool) and hasattr(item, "warm_up"):
                 item.warm_up()
 
 
