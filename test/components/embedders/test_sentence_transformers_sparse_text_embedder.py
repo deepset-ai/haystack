@@ -27,6 +27,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert embedder.prefix == ""
         assert embedder.suffix == ""
         assert embedder.trust_remote_code is False
+        assert embedder.revision is None
         assert embedder.local_files_only is False
 
     def test_init_with_parameters(self):
@@ -37,6 +38,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             prefix="prefix",
             suffix="suffix",
             trust_remote_code=True,
+            revision="v1.0",
             local_files_only=True,
         )
         assert embedder.model == "model"
@@ -45,6 +47,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
         assert embedder.trust_remote_code is True
+        assert embedder.revision == "v1.0"
         assert embedder.local_files_only is True
 
     def test_to_dict(self):
@@ -59,6 +62,7 @@ class TestSentenceTransformersSparseTextEmbedder:
                 "prefix": "",
                 "suffix": "",
                 "trust_remote_code": False,
+                "revision": None,
                 "local_files_only": False,
                 "model_kwargs": None,
                 "tokenizer_kwargs": None,
@@ -91,6 +95,7 @@ class TestSentenceTransformersSparseTextEmbedder:
                 "prefix": "prefix",
                 "suffix": "suffix",
                 "trust_remote_code": True,
+                "revision": None,
                 "local_files_only": True,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
@@ -114,6 +119,7 @@ class TestSentenceTransformersSparseTextEmbedder:
                 "prefix": "",
                 "suffix": "",
                 "trust_remote_code": False,
+                "revision": "v1.0",
                 "local_files_only": False,
                 "model_kwargs": {"torch_dtype": "torch.float32"},
                 "tokenizer_kwargs": {"model_max_length": 512},
@@ -127,6 +133,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert component.prefix == ""
         assert component.suffix == ""
         assert component.trust_remote_code is False
+        assert component.revision == "v1.0"
         assert component.local_files_only is False
         assert component.model_kwargs == {"torch_dtype": torch.float32}
         assert component.tokenizer_kwargs == {"model_max_length": 512}
@@ -141,6 +148,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert component.prefix == ""
         assert component.suffix == ""
         assert component.trust_remote_code is False
+        assert component.revision is None
         assert component.local_files_only is False
 
     def test_from_dict_none_device(self):
@@ -163,6 +171,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         assert component.prefix == ""
         assert component.suffix == ""
         assert component.trust_remote_code is False
+        assert component.revision is None
         assert component.local_files_only is False
 
     @patch(
@@ -183,6 +192,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             model_kwargs=None,
             tokenizer_kwargs={"model_max_length": 512},
@@ -253,6 +263,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             model_kwargs={"file_name": "onnx/model.onnx"},
             tokenizer_kwargs=None,
@@ -281,6 +292,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             model_kwargs={"file_name": "openvino/openvino_model.xml"},
             tokenizer_kwargs=None,
@@ -306,6 +318,7 @@ class TestSentenceTransformersSparseTextEmbedder:
             device="cuda:0",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             model_kwargs=model_kwargs,
             tokenizer_kwargs=None,

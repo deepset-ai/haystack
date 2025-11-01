@@ -45,6 +45,7 @@ class SentenceTransformersSparseTextEmbedder:
         prefix: str = "",
         suffix: str = "",
         trust_remote_code: bool = False,
+        revision: Optional[str] = None,
         local_files_only: bool = False,
         model_kwargs: Optional[dict[str, Any]] = None,
         tokenizer_kwargs: Optional[dict[str, Any]] = None,
@@ -69,6 +70,9 @@ class SentenceTransformersSparseTextEmbedder:
         :param trust_remote_code:
             If `False`, permits only Hugging Face verified model architectures.
             If `True`, permits custom models and scripts.
+        :param revision:
+            The specific model version to use. It can be a branch name, a tag name, or a commit id,
+            for a stored model on Hugging Face.
         :param local_files_only:
             If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
         :param model_kwargs:
@@ -91,6 +95,7 @@ class SentenceTransformersSparseTextEmbedder:
         self.prefix = prefix
         self.suffix = suffix
         self.trust_remote_code = trust_remote_code
+        self.revision = revision
         self.local_files_only = local_files_only
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
@@ -119,6 +124,7 @@ class SentenceTransformersSparseTextEmbedder:
             prefix=self.prefix,
             suffix=self.suffix,
             trust_remote_code=self.trust_remote_code,
+            revision=self.revision,
             local_files_only=self.local_files_only,
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
@@ -157,6 +163,7 @@ class SentenceTransformersSparseTextEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                revision=self.revision,
                 local_files_only=self.local_files_only,
                 model_kwargs=self.model_kwargs,
                 tokenizer_kwargs=self.tokenizer_kwargs,
