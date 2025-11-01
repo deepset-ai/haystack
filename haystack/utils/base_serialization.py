@@ -5,6 +5,8 @@
 from enum import Enum
 from typing import Any, Union
 
+import pydantic
+
 from haystack import logging
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
@@ -61,7 +63,7 @@ def deserialize_class_instance(data: dict[str, Any]) -> Any:
     return obj_class.from_dict(data["data"])
 
 
-def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # pylint: disable=too-many-return-statements
+def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # pylint: disable=too-many-return-statements # noqa: PLR0911
     """
     Serializes a value into a schema-aware format suitable for storage or transmission.
 
@@ -81,8 +83,13 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # pylint: dis
         - "serialized_data": Contains the actual data in a simplified format.
 
     """
+    # Handle pydantic
+    if isinstance(payload, pydantic.BaseModel):
+        type_name = generate_qualified_class_name(type(payload))
+        return {"serialization_schema": {"type": type_name}, "serialized_data": payload.model_dump()}
+
     # Handle dictionary case - iterate through fields
-    if isinstance(payload, dict):
+    elif isinstance(payload, dict):
         schema: dict[str, Any] = {}
         data: dict[str, Any] = {}
 
@@ -268,6 +275,15 @@ def _deserialize_value(value: dict[str, Any]) -> Any:
     # try from_dict (e.g. Haystack dataclasses and Components)
     if hasattr(cls, "from_dict") and callable(cls.from_dict):
         return cls.from_dict(payload)
+
+    # handle pydantic models
+    if issubclass(cls, pydantic.BaseModel):
+        try:
+            return cls(**payload)
+        except Exception as e:
+            raise DeserializationError(
+                f"Failed to deserialize data '{payload}' into Pydantic model '{value_type}'"
+            ) from e
 
     # handle enum types
     if issubclass(cls, Enum):

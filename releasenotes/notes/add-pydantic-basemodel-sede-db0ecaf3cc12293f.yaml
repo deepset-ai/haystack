@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Updated our serialization and deserialization of PipelineSnapshots to work with pydantic BaseModels
