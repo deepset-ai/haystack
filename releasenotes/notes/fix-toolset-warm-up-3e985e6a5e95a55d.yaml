@@ -1,0 +1,7 @@
+fixes:
+  - |
+    Fixed warm_up_tools() utility function to properly warm up individual
+    tools inside Toolset objects. Previously, only the Toolset's warm_up()
+    method was called (which is a no-op), leaving individual tools
+    uninitialized. Now both the Toolset and its contained tools are
+    properly warmed up before pipeline execution."
