@@ -2,12 +2,12 @@
 title: "State"
 id: state
 slug: "/state"
-description: "`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to maintain conversation history, share data between tools, and store intermediate results throughout an agent's workflow."
+description: "`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to store messages during execution, share data between tools, and store intermediate results throughout an agent's workflow."
 ---
 
 # State
 
-`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to maintain conversation history, share data between tools, and store intermediate results throughout an agent's workflow.
+`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to store messages during execution, share data between tools, and store intermediate results throughout an agent's workflow.
 
 ## Overview
 
@@ -30,7 +30,7 @@ State supports standard Python types:
 
 ### Automatic Message Handling
 
-State automatically includes a `messages` field to store conversation history. You don't need to define this in your schema.
+State automatically includes a `messages` field to store messages during execution. You don't need to define this in your schema.
 
 ```python
 ## State automatically adds messages field
@@ -40,11 +40,11 @@ state = State(schema={"user_id": {"type": str}})
 print("messages" in state.schema)  # True
 print(state.schema["messages"]["type"])  # list[ChatMessage]
 
-## Access conversation history
+## Access messages
 messages = state.get("messages", [])
 ```
 
-The `messages` field uses `list[ChatMessage]` type and `merge_lists` handler by default, which means new messages are appended to the conversation history.
+The `messages` field uses `list[ChatMessage]` type and `merge_lists` handler by default, which means new messages are appended during execution.
 
 ## Usage
 
@@ -505,7 +505,7 @@ result = agent.run(
 factorial_result = result["factorial_result"]
 calc_result = result["calc_result"]
 
-## Access conversation messages
+## Access messages from execution
 for message in result["messages"]:
     print(f"{message.role}: {message.text}")
 ```

@@ -1,8 +1,7 @@
 ---
 title: Data Classes
-id: data-classess-api
+id: data-classes-api
 description: Core classes that carry data through the system.
-slug: "/data-classess-api"
 ---
 
 <a id="answer"></a>

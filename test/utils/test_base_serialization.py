@@ -4,6 +4,7 @@
 
 from enum import Enum
 
+import pydantic
 import pytest
 
 from haystack.core.errors import DeserializationError, SerializationError
@@ -14,6 +15,11 @@ from haystack.utils.base_serialization import (
     deserialize_class_instance,
     serialize_class_instance,
 )
+
+
+class CustomModel(pydantic.BaseModel):
+    id: int
+    name: str
 
 
 class CustomEnum(Enum):
@@ -423,4 +429,33 @@ def test_deserialize_value_with_wrong_value():
     with pytest.raises(DeserializationError, match="Value 'NOT_VALID' is not a valid member of Enum"):
         _deserialize_value_with_schema(
             {"serialization_schema": {"type": "test_base_serialization.CustomEnum"}, "serialized_data": "NOT_VALID"}
+        )
+
+
+def test_serialize_and_deserialize_pydantic_model():
+    model_instance = CustomModel(id=1, name="Test")
+    serialized = _serialize_value_with_schema(model_instance)
+    expected_serialized = {
+        "serialization_schema": {"type": "test_base_serialization.CustomModel"},
+        "serialized_data": {"id": 1, "name": "Test"},
+    }
+    assert serialized == expected_serialized
+
+    deserialized = _deserialize_value_with_schema(expected_serialized)
+    assert isinstance(deserialized, CustomModel)
+    assert deserialized.id == 1
+    assert deserialized.name == "Test"
+
+
+def test_deserialize_pydantic_model_with_invalid_data():
+    with pytest.raises(
+        DeserializationError,
+        match="Failed to deserialize data '{'id': 'not_an_integer', 'name': 'Test'}' into "
+        "Pydantic model 'test_base_serialization.CustomModel'",
+    ):
+        _deserialize_value_with_schema(
+            {
+                "serialization_schema": {"type": "test_base_serialization.CustomModel"},
+                "serialized_data": {"id": "not_an_integer", "name": "Test"},
+            }
         )
