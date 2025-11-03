@@ -84,7 +84,7 @@ query = "Cities in France"
 res = document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
 ```
 
-:::tip `top_k` parameter
+:::note `top_k` parameter
 
 In the example above, the `top_k` values for the Retriever and the Ranker are different. The Retriever's `top_k` specifies how many documents it returns. The Ranker then orders these documents.
 
