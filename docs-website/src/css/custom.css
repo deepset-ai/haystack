@@ -39,8 +39,8 @@
   --ifm-font-family-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Admonition Custom Colors */
-  --docusaurus-admonition-tip-bg: rgba(104, 229, 233, 0.1);
-  --docusaurus-admonition-tip-border: #68E5E9;
+  --docusaurus-admonition-tip-bg: rgba(104, 229, 233, 0.15);
+  --docusaurus-admonition-tip-border: var(--ifm-color-primary);
   --docusaurus-admonition-note-bg: rgba(213, 233, 255, 0.15);
   --docusaurus-admonition-note-border: #8BA5FF;
   --docusaurus-admonition-info-bg: rgba(160, 244, 235, 0.1);
@@ -217,20 +217,20 @@ button, .button {
 
 /* Add background highlight only to the actual page (leaf node) */
 .theme-doc-sidebar-item-link .menu__link--active {
-  background-color: var(--ifm-color-primary-lighter);
+  background-color: rgba(104, 229, 233, 0.15);
   border-left: 3px solid var(--ifm-color-primary);
   padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 3px);
 }
 
 /* Hover state for sidebar links */
 .menu__link:hover {
-  background-color: var(--ifm-color-primary-lightest);
+  background-color: rgba(104, 229, 233, 0.08);
   transition: background-color 0.2s ease;
 }
 
 /* Active link hover - keep stronger background */
 .theme-doc-sidebar-item-link .menu__link--active:hover {
-  background-color: var(--ifm-color-primary-lighter);
+  background-color: rgba(104, 229, 233, 0.15);
 }
 
 /* Dark mode adjustments for sidebar */
@@ -252,10 +252,10 @@ button, .button {
    ADMONITION STYLING - Brand Colors
    ======================================== */
 
-/* Tip Admonitions - Teal Medium */
+/* Tip Admonitions - Match sidebar navigation color */
 .theme-admonition.alert.alert--success {
-  background-color: var(--docusaurus-admonition-tip-bg);
-  border-left: 4px solid var(--docusaurus-admonition-tip-border);
+  background-color: rgba(104, 229, 233, 0.15);
+  border-left: 4px solid var(--ifm-color-primary);
 }
 
 .theme-admonition.alert.alert--success .admonition-icon svg {
