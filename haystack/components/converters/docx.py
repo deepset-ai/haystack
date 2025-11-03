@@ -148,7 +148,7 @@ class DOCXToDocument:
         :param table_format: The format for table output. Can be either DOCXTableFormat.MARKDOWN,
             DOCXTableFormat.CSV, "markdown", or "csv".
         :param link_format: The format for link output. Can be either:
-            DOCXLinkFormat.MARKDOWN or "markdown" to get [text](address),
+            DOCXLinkFormat.MARKDOWN or "markdown" to get `[text](address)`,
             DOCXLinkFormat.PLAIN or "plain" to get text (address),
             DOCXLinkFormat.NONE or "none" to get text without links.
         :param store_full_path:

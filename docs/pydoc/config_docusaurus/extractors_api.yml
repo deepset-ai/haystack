@@ -19,12 +19,10 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
-  excerpt: Components to extract specific elements from textual data.
-  category_slug: haystack-api
+  type: haystack_pydoc_tools.renderers.DocusaurusRenderer
+  description: Components to extract specific elements from textual data.
   title: Extractors
-  slug: extractors-api
-  order: 65
+  id: extractors-api
   markdown:
     descriptive_class_title: false
     classdef_code_block: false
