@@ -426,6 +426,16 @@ code:not([class*="language-"]) a:hover {
   background-color: rgba(104, 229, 233, 0.2);
 }
 
+/* Hide language badge for single-line code blocks */
+.hide-language-badge .code-block-language-badge {
+  display: none;
+}
+
+/* Hide action buttons for two-line code blocks */
+.hide-action-buttons div[class*="buttonGroup"] {
+  display: none;
+}
+
 /* ========================================
    VERSION BADGE & BANNER - Brand Colors
    ======================================== */
