@@ -1,0 +1,100 @@
+---
+title: "SerperDevWebSearch"
+id: serperdevwebsearch
+slug: "/serperdevwebsearch"
+description: "Search engine using SerperDev API."
+---
+
+# SerperDevWebSearch
+
+Search engine using SerperDev API.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [`LinkContentFetcher`](../fetchers/linkcontentfetcher.mdx)  or [Converters](../converters.mdx)  |
+| **Mandatory init variables** | "api_key": The SearchAPI API key. Can be set with `SERPERDEV_API_KEY` env var. |
+| **Mandatory run variables** | “query”: A string with your query |
+| **Output variables** | “documents”: A list of documents  <br /> <br />”links”: A list of strings of resulting links |
+| **API reference** | [Websearch](/reference/websearch-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/websearch/serper_dev.py |
+
+## Overview
+
+When you give `SerperDevWebSearch` a query, it returns a list of the URLs most relevant to your search. It uses page snippets (pieces of text displayed under the page title in search results) to find the answers, not the whole pages.
+
+To search the content of the web pages, use the [`LinkContentFetcher`](../fetchers/linkcontentfetcher.mdx) component.
+
+`SerperDevWebSearch` requires a [SerperDev](https://serper.dev/) key to work. It uses a `SERPERDEV_API_KEY` environment variable by default. Otherwise, you can pass an `api_key` at initialization – see code examples below.
+
+:::note Alternative search
+
+To use [Search API](https://www.searchapi.io/) as an alternative, see its respective [documentation page](searchapiwebsearch.mdx).
+:::
+
+## Usage
+
+### On its own
+
+This is an example of how `SerperDevWebSearch` looks up answers to our query on the web and converts the results into a list of documents with content snippets of the results, as well as URLs as strings.
+
+```python
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.utils import Secret
+
+web_search = SerperDevWebSearch(api_key=Secret.from_token("<your-api-key>"))
+query = "What is the capital of Germany?"
+
+response = web_search.run(query)
+```
+
+### In a pipeline
+
+Here’s an example of a RAG pipeline where we use a `SerperDevWebSearch` to look up the answer to the query. The resulting documents are then passed to `LinkContentFetcher` to get the full text from the URLs. Finally, `PromptBuilder` and `OpenAIGenerator` work together to form the final answer.
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.fetchers import LinkContentFetcher
+from haystack.components.converters import HTMLToDocument
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+web_search = SerperDevWebSearch(api_key=Secret.from_token("<your-api-key>"), top_k=2)
+link_content = LinkContentFetcher()
+html_converter = HTMLToDocument()
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given the information below:\n"
+        "{% for document in documents %}{{ document.content }}{% endfor %}\n"
+        "Answer question: {{ query }}.\nAnswer:"
+    )
+]
+
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"})
+llm = OpenAIChatGenerator(api_key=Secret.from_token("<your-api-key>"), model="gpt-3.5-turbo")
+
+pipe = Pipeline()
+pipe.add_component("search", web_search)
+pipe.add_component("fetcher", link_content)
+pipe.add_component("converter", html_converter)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+pipe.connect("search.links", "fetcher.urls")
+pipe.connect("fetcher.streams", "converter.sources")
+pipe.connect("converter.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.messages", "llm.messages")
+
+query = "What is the most famous landmark in Berlin?"
+
+pipe.run(data={"search": {"query": query}, "prompt_builder": {"query": query}})
+```
+
+## Additional References
+
+:notebook: Tutorial: [Building Fallbacks to Websearch with Conditional Routing](https://haystack.deepset.ai/tutorials/36_building_fallbacks_with_conditional_routing)

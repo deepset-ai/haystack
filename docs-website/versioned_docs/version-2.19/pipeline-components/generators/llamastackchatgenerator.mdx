@@ -1,0 +1,143 @@
+---
+title: "LlamaStackChatGenerator"
+id: llamastackchatgenerator
+slug: "/llamastackchatgenerator"
+description: "This component enables chat completions using any model made available by inference providers on a Llama Stack server."
+---
+
+# LlamaStackChatGenerator
+
+This component enables chat completions using any model made available by inference providers on a Llama Stack server.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | "model": The name of the model to use for chat completion.   This depends on the inference provider used for the Llama Stack Server. |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Output variables** | “replies”: A list of alternative replies of the model to the input chat |
+| **API reference** | [Llama Stack](/reference/integrations-llama-stack) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/llama_stack |
+
+## Overview
+
+[Llama Stack](https://llama-stack.readthedocs.io/en/latest/index.html) provides building blocks and unified APIs to streamline the development of AI applications across various environments.
+
+The `LlamaStackChatGenerator` enables you to access any LLMs exposed by inference providers hosted on a Llama Stack server. It abstracts away the underlying provider details, allowing you to reuse the same client-side code regardless of the inference backend. For a list of supported providers and configuration options, refer to the [Llama Stack documentation](https://llama-stack.readthedocs.io/en/latest/providers/inference/index.html).
+
+This component uses the same `ChatMessage` format as other Haystack Chat Generators for structured input and output. For more information, see the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
+
+### Tool Support
+
+`LlamaStackChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = LlamaStackChatGenerator(
+    model="ollama/llama3.2:3b",
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+## Initialization
+
+To use this integration, you must have:
+
+- A running instance of a Llama Stack server (local or remote)
+- A valid model name supported by your selected inference provider
+
+Then initialize the `LlamaStackChatGenerator` by specifying the `model` name or ID. The value depends on the inference provider running on your server.
+
+**Examples:**
+
+- For Ollama: `model="ollama/llama3.2:3b"`
+- For vLLM: `model="meta-llama/Llama-3.2-3B"`
+
+**Note:** Switching the inference provider only requires updating the model name.
+
+### Streaming
+
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+
+## Usage
+
+To start using this integration, install the package with:
+
+```shell
+pip install llama-stack-haystack
+```
+
+### On its own
+
+```python
+import os
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
+
+client = LlamaStackChatGenerator(model="ollama/llama3.2:3b")
+response = client.run(
+    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
+)
+print(response["replies"])
+```
+
+#### With Streaming
+
+```python
+import os
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+
+client = LlamaStackChatGenerator(model="ollama/llama3.2:3b",
+				streaming_callback=print_streaming_chunk)
+response = client.run(
+    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
+)
+print(response["replies"])
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
+
+prompt_builder = ChatPromptBuilder()
+llm = LlamaStackChatGenerator(model="ollama/llama3.2:3b")
+
+pipe = Pipeline()
+pipe.add_component("builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system("Give brief answers."),
+    ChatMessage.from_user("Tell me about {{city}}")
+]
+
+response = pipe.run(
+    data={"builder": {"template": messages,
+                      "template_variables": {"city": "Berlin"}}}
+)
+print(response)
+```

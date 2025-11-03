@@ -9,16 +9,17 @@ description: "`VertexAIGeminiChatGenerator` enables chat completion using Google
 
 `VertexAIGeminiChatGenerator` enables chat completion using Google Gemini models.
 
-> 🚧 Deprecation Notice
-> 
-> This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
-> 
-> We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::warning Deprecation Notice
+
+This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
+
+We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::
 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
-| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes.mdx#chatmessage)  objects representing the chat |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables**                   | “replies”: A list of alternative replies of the model to the input chat                              |
 | **API reference**                      | [Google Vertex](/reference/integrations-google-vertex)                                                      |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_vertex      |
@@ -110,7 +111,7 @@ messages = [ChatMessage.from_user("What is the temperature in celsius in Berlin?
 res = gemini_chat.run(messages=messages)
 
 print(res["replies"][0].tool_calls)
->>> [ToolCall(tool_name='get_current_weather', 
+>>> [ToolCall(tool_name='get_current_weather',
 >>>           arguments={'unit': 'celsius', 'location': 'Berlin'}, id=None)]
 
 tool_messages = tool_invoker.run(messages=replies)["tool_messages"]

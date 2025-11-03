@@ -13,7 +13,7 @@ description: "`OpenAIChatGenerator` enables chat completion using OpenAI’s lar
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
 | **Mandatory init variables**           | "api_key": An OpenAI API key. Can be set with `OPENAI_API_KEY` env var.                              |
-| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes.mdx#chatmessage)  objects representing the chat |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables**                   | “replies”: A list of alternative replies of the LLM to the input chat                                |
 | **API reference**                      | [Generators](/reference/generators-api)                                                                     |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/openai.py     |
@@ -67,15 +67,14 @@ response = client.run(messages=[
 print(response["replies"][0].text)
 
 >> {"recipient_name":"David Julius","award_year":2021,"category":"Physiology or Medicine",
->> "achievement_description":"David Julius was awarded for his transformative findings 
->> regarding the molecular mechanisms underlying the human body's sense of temperature 
->> and touch. Through innovative experiments, he identified specific receptors responsible 
->> for detecting heat and mechanical stimuli, ranging from gentle touch to pain-inducing 
+>> "achievement_description":"David Julius was awarded for his transformative findings
+>> regarding the molecular mechanisms underlying the human body's sense of temperature
+>> and touch. Through innovative experiments, he identified specific receptors responsible
+>> for detecting heat and mechanical stimuli, ranging from gentle touch to pain-inducing
 >> pressure.","nationality":"American"}
 ```
 
-:::info
-Model Compatibility and Limitations
+:::info Model Compatibility and Limitations
 
 - Pydantic models and JSON schemas are supported for latest models starting from `gpt-4o-2024-08-06`.
 - Older models only support basic JSON mode through `{"type": "json_object"}`. For details, see [OpenAI JSON mode documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
@@ -129,12 +128,12 @@ print(response)
 >> [TextContent(text='Natural Language Processing (NLP) is a field of artificial
 >> intelligence that focuses on the interaction between computers and humans through
 >> natural language. It involves enabling machines to understand, interpret, and
->> generate human language in a meaningful way, facilitating tasks such as 
->> language translation, sentiment analysis, and text summarization.')], 
->> _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 
+>> generate human language in a meaningful way, facilitating tasks such as
+>> language translation, sentiment analysis, and text summarization.')],
+>> _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0,
 >> 'finish_reason': 'stop', 'usage': {'completion_tokens': 59, 'prompt_tokens': 15,
->>  'total_tokens': 74, 'completion_tokens_details': {'accepted_prediction_tokens': 
->>  0, 'audio_tokens': 0, 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0}, 
+>>  'total_tokens': 74, 'completion_tokens_details': {'accepted_prediction_tokens':
+>>  0, 'audio_tokens': 0, 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0},
 >>  'prompt_tokens_details': {'audio_tokens': 0, 'cached_tokens': 0}}})]}
 ```
 
@@ -150,19 +149,19 @@ response = client.run(
 )
 print(response)
 
->> Natural Language Processing (NLP) is a field of artificial intelligence that 
->> focuses on the interaction between computers and humans through natural language. 
->> It involves enabling machines to understand, interpret, and generate human 
->> language in a way that is both meaningful and useful. NLP encompasses various 
->> tasks, including speech recognition, language translation, sentiment analysis, 
->> and text summarization.{'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 
->> 'assistant'>, _content=[TextContent(text='Natural Language Processing (NLP) is a 
->> field of artificial intelligence that focuses on the interaction between computers 
->> and humans through natural language. It involves enabling machines to understand, 
->> interpret, and generate human language in a way that is both meaningful and 
->> useful. NLP encompasses various tasks, including speech recognition, language 
+>> Natural Language Processing (NLP) is a field of artificial intelligence that
+>> focuses on the interaction between computers and humans through natural language.
+>> It involves enabling machines to understand, interpret, and generate human
+>> language in a way that is both meaningful and useful. NLP encompasses various
+>> tasks, including speech recognition, language translation, sentiment analysis,
+>> and text summarization.{'replies': [ChatMessage(_role=<ChatRole.ASSISTANT:
+>> 'assistant'>, _content=[TextContent(text='Natural Language Processing (NLP) is a
+>> field of artificial intelligence that focuses on the interaction between computers
+>> and humans through natural language. It involves enabling machines to understand,
+>> interpret, and generate human language in a way that is both meaningful and
+>> useful. NLP encompasses various tasks, including speech recognition, language
 >> translation, sentiment analysis, and text summarization.')], _name=None, _meta={'
->> model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 
+>> model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop',
 >> 'completion_start_time': '2025-05-15T13:32:16.572912', 'usage': None})]}
 ```
 
@@ -208,21 +207,21 @@ messages = [ChatMessage.from_system("Always respond in German even if some input
             ChatMessage.from_user("Tell me about {{location}}")]
 pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
 
->> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, 
->> _content=[TextContent(text='Berlin ist die Hauptstadt Deutschlands und eine der 
->> bedeutendsten Städte Europas. Sie ist bekannt für ihre reiche Geschichte, 
->> kulturelle Vielfalt und kreative Szene. \n\nDie Stadt hat eine bewegte 
->> Vergangenheit, die stark von der Teilung zwischen Ost- und Westberlin während 
->> des Kalten Krieges geprägt war. Die Berliner Mauer, die von 1961 bis 1989 die 
->> Stadt teilte, ist heute ein Symbol für die Wiedervereinigung und die Freiheit. 
->> \n\nBerlin bietet eine Fülle von Sehenswürdigkeiten, darunter das Brandenburger 
->> Tor, den Reichstag, die Museumsinsel und den Alexanderplatz. Die Stadt ist auch 
->> für ihre lebendige Kunst- und Musikszene bekannt, mit zahlreichen Galerien, 
->> Theatern und Clubs. ')], _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 
->> 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 260, 
->> 'prompt_tokens': 29, 'total_tokens': 289, 'completion_tokens_details': 
->> {'accepted_prediction_tokens': 0, 'audio_tokens': 0, 'reasoning_tokens': 0, 
->> 'rejected_prediction_tokens': 0}, 'prompt_tokens_details': {'audio_tokens': 0, 
+>> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+>> _content=[TextContent(text='Berlin ist die Hauptstadt Deutschlands und eine der
+>> bedeutendsten Städte Europas. Es ist bekannt für ihre reiche Geschichte,
+>> kulturelle Vielfalt und kreative Scene. \n\nDie Stadt hat eine bewegte
+>> Vergangenheit, die stark von der Teilung zwischen Ost- und Westberlin während
+>> des Kalten Krieges geprägt war. Die Berliner Mauer, die von 1961 bis 1989 die
+>> Stadt teilte, ist heute ein Symbol für die Wiedervereinigung und die Freiheit.
+>> \n\nBerlin bietet eine Fülle von Sehenswürdigkeiten, darunter das Brandenburger
+>> Tor, den Reichstag, die Museumsinsel und den Alexanderplatz. Die Stadt ist auch
+>> für ihre lebendige Kunst- und Musikszene bekannt, mit zahlreichen Galerien,
+>> Theatern und Clubs. ')], _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18',
+>> 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 260,
+>> 'prompt_tokens': 29, 'total_tokens': 289, 'completion_tokens_details':
+>> {'accepted_prediction_tokens': 0, 'audio_tokens': 0, 'reasoning_tokens': 0,
+>> 'rejected_prediction_tokens': 0}, 'prompt_tokens_details': {'audio_tokens': 0,
 >> 'cached_tokens': 0}}})]}}
 ```
 

@@ -7,11 +7,11 @@ slug: "/generators-api"
 
 <a id="azure"></a>
 
-# Module azure
+## Module azure
 
 <a id="azure.AzureOpenAIGenerator"></a>
 
-## AzureOpenAIGenerator
+### AzureOpenAIGenerator
 
 Generates text using OpenAI's large language models (LLMs).
 
@@ -183,11 +183,11 @@ for each response.
 
 <a id="hugging_face_local"></a>
 
-# Module hugging\_face\_local
+## Module hugging\_face\_local
 
 <a id="hugging_face_local.HuggingFaceLocalGenerator"></a>
 
-## HuggingFaceLocalGenerator
+### HuggingFaceLocalGenerator
 
 Generates text using models from Hugging Face that run locally.
 
@@ -327,11 +327,11 @@ A dictionary containing the generated replies.
 
 <a id="hugging_face_api"></a>
 
-# Module hugging\_face\_api
+## Module hugging\_face\_api
 
 <a id="hugging_face_api.HuggingFaceAPIGenerator"></a>
 
-## HuggingFaceAPIGenerator
+### HuggingFaceAPIGenerator
 
 Generates text using Hugging Face APIs.
 
@@ -478,11 +478,11 @@ A dictionary with the generated replies and metadata. Both are lists of length n
 
 <a id="openai"></a>
 
-# Module openai
+## Module openai
 
 <a id="openai.OpenAIGenerator"></a>
 
-## OpenAIGenerator
+### OpenAIGenerator
 
 Generates text using OpenAI's large language models (LLMs).
 
@@ -636,11 +636,11 @@ for each response.
 
 <a id="openai_dalle"></a>
 
-# Module openai\_dalle
+## Module openai\_dalle
 
 <a id="openai_dalle.DALLEImageGenerator"></a>
 
-## DALLEImageGenerator
+### DALLEImageGenerator
 
 Generates images using OpenAI's DALL-E model.
 
@@ -769,11 +769,11 @@ The deserialized component instance.
 
 <a id="chat/azure"></a>
 
-# Module chat/azure
+## Module chat/azure
 
 <a id="chat/azure.AzureOpenAIChatGenerator"></a>
 
-## AzureOpenAIChatGenerator
+### AzureOpenAIChatGenerator
 
 Generates text using OpenAI's models on Azure.
 
@@ -899,6 +899,19 @@ every request.
 - `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
 For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
 
+<a id="chat/azure.AzureOpenAIChatGenerator.warm_up"></a>
+
+#### AzureOpenAIChatGenerator.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the Azure OpenAI chat generator.
+
+This will warm up the tools registered in the chat generator.
+This method is idempotent and will only warm up the tools once.
+
 <a id="chat/azure.AzureOpenAIChatGenerator.to_dict"></a>
 
 #### AzureOpenAIChatGenerator.to\_dict
@@ -1006,7 +1019,7 @@ A dictionary with the following key:
 
 <a id="chat/hugging_face_local"></a>
 
-# Module chat/hugging\_face\_local
+## Module chat/hugging\_face\_local
 
 <a id="chat/hugging_face_local.default_tool_parser"></a>
 
@@ -1030,7 +1043,7 @@ A list containing a single ToolCall if a valid tool call is found, None otherwis
 
 <a id="chat/hugging_face_local.HuggingFaceLocalChatGenerator"></a>
 
-## HuggingFaceLocalChatGenerator
+### HuggingFaceLocalChatGenerator
 
 Generates chat responses using models from Hugging Face that run locally.
 
@@ -1160,7 +1173,7 @@ Explicitly shutdown the executor if we own it.
 def warm_up() -> None
 ```
 
-Initializes the component.
+Initializes the component and warms up tools if provided.
 
 <a id="chat/hugging_face_local.HuggingFaceLocalChatGenerator.to_dict"></a>
 
@@ -1284,11 +1297,11 @@ A dictionary with the following keys:
 
 <a id="chat/hugging_face_api"></a>
 
-# Module chat/hugging\_face\_api
+## Module chat/hugging\_face\_api
 
 <a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator"></a>
 
-## HuggingFaceAPIChatGenerator
+### HuggingFaceAPIChatGenerator
 
 Completes chats using Hugging Face APIs.
 
@@ -1426,6 +1439,19 @@ The chosen model should support tool/function calling, according to the model ca
 Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
 unexpected behavior.
 
+<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.warm_up"></a>
+
+#### HuggingFaceAPIChatGenerator.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the Hugging Face API chat generator.
+
+This will warm up the tools registered in the chat generator.
+This method is idempotent and will only warm up the tools once.
+
 <a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.to_dict"></a>
 
 #### HuggingFaceAPIChatGenerator.to\_dict
@@ -1514,11 +1540,11 @@ A dictionary with the following keys:
 
 <a id="chat/openai"></a>
 
-# Module chat/openai
+## Module chat/openai
 
 <a id="chat/openai.OpenAIChatGenerator"></a>
 
-## OpenAIChatGenerator
+### OpenAIChatGenerator
 
 Completes chats using OpenAI's large language models (LLMs).
 
@@ -1636,6 +1662,19 @@ the schema provided in the `parameters` field of the tool definition, but this m
 - `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
 For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
 
+<a id="chat/openai.OpenAIChatGenerator.warm_up"></a>
+
+#### OpenAIChatGenerator.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the OpenAI chat generator.
+
+This will warm up the tools registered in the chat generator.
+This method is idempotent and will only warm up the tools once.
+
 <a id="chat/openai.OpenAIChatGenerator.to_dict"></a>
 
 #### OpenAIChatGenerator.to\_dict
@@ -1743,11 +1782,11 @@ A dictionary with the following key:
 
 <a id="chat/fallback"></a>
 
-# Module chat/fallback
+## Module chat/fallback
 
 <a id="chat/fallback.FallbackChatGenerator"></a>
 
-## FallbackChatGenerator
+### FallbackChatGenerator
 
 A chat generator wrapper that tries multiple chat generators sequentially.
 
@@ -1810,6 +1849,18 @@ def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator
 ```
 
 Rebuild the component from a serialized representation, restoring nested chat generators.
+
+<a id="chat/fallback.FallbackChatGenerator.warm_up"></a>
+
+#### FallbackChatGenerator.warm\_up
+
+```python
+def warm_up() -> None
+```
+
+Warm up all underlying chat generators.
+
+This method calls warm_up() on each underlying generator that supports it.
 
 <a id="chat/fallback.FallbackChatGenerator.run"></a>
 

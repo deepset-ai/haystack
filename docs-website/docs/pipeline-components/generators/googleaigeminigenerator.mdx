@@ -9,11 +9,12 @@ description: "This component enables text generation using the Google Gemini mod
 
 This component enables text generation using the Google Gemini models.
 
-> 🚧 Deprecation Notice
-> 
-> This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
-> 
-> We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::warning Deprecation Notice
+
+This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
+
+We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::
 
 |  |  |
 | --- | --- |
@@ -124,7 +125,7 @@ docstore = InMemoryDocumentStore()
 template = """
 Given the following information, answer the question.
 
-Context: 
+Context:
 {% for document in documents %}
     {{ document.content }}
 {% endfor %}

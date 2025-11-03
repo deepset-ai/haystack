@@ -23,6 +23,7 @@ from haystack.tools import (
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
 )
+from haystack.tools.utils import warm_up_tools
 from haystack.utils import (
     ComponentDevice,
     Secret,
@@ -249,6 +250,7 @@ class HuggingFaceLocalChatGenerator:
             if async_executor is None
             else async_executor
         )
+        self._is_warmed_up = False
 
     def __del__(self) -> None:
         """
@@ -274,10 +276,20 @@ class HuggingFaceLocalChatGenerator:
 
     def warm_up(self) -> None:
         """
-        Initializes the component.
+        Initializes the component and warms up tools if provided.
         """
+        if self._is_warmed_up:
+            return
+
+        # Initialize the pipeline (existing logic)
         if self.pipeline is None:
             self.pipeline = pipeline(**self.huggingface_pipeline_kwargs)
+
+        # Warm up tools (new logic)
+        if self.tools:
+            warm_up_tools(self.tools)
+
+        self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
         """

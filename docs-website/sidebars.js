@@ -6,7 +6,7 @@ export default {
   docs: [
     {
       type: 'doc',
-      id: 'overview/intro',
+      id: 'intro',
       label: 'Introduction',
     },
     {
@@ -24,11 +24,19 @@ export default {
     {
       type: 'category',
       label: 'Haystack Concepts',
-      link: {
-        type: 'doc',
-        id: 'concepts/concepts-overview'
-      },
       items: [
+        'concepts/concepts-overview',
+        {
+          type: 'category',
+          label: 'Agents',
+          link: {
+            type: 'doc',
+            id: 'concepts/agents'
+          },
+          items: [
+            'concepts/agents/state',
+          ],
+        },
         {
           type: 'category',
           label: 'Components',
@@ -41,7 +49,23 @@ export default {
             'concepts/components/supercomponents',
           ],
         },
-        'concepts/components-overview',
+        {
+          type: 'category',
+          label: 'Pipelines',
+          link: {
+            type: 'doc',
+            id: 'concepts/pipelines'
+          },
+          items: [
+            'concepts/pipelines/creating-pipelines',
+            'concepts/pipelines/serialization',
+            'concepts/pipelines/visualizing-pipelines',
+            'concepts/pipelines/debugging-pipelines',
+            'concepts/pipelines/pipeline-breakpoints',
+            'concepts/pipelines/pipeline-templates',
+            'concepts/pipelines/asyncpipeline',
+          ],
+        },
         {
           type: 'category',
           label: 'Data Classes',
@@ -65,39 +89,11 @@ export default {
             'concepts/document-store/creating-custom-document-stores',
           ],
         },
-        {
-          type: 'category',
-          label: 'Pipelines',
-          link: {
-            type: 'doc',
-            id: 'concepts/pipelines'
-          },
-          items: [
-            'concepts/pipelines/creating-pipelines',
-            'concepts/pipelines/serialization',
-            'concepts/pipelines/visualizing-pipelines',
-            'concepts/pipelines/debugging-pipelines',
-            'concepts/pipelines/pipeline-breakpoints',
-            'concepts/pipelines/pipeline-templates',
-            'concepts/pipelines/asyncpipeline',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Agents',
-          link: {
-            type: 'doc',
-            id: 'concepts/agents'
-          },
-          items: [
-            'concepts/agents/state',
-          ],
-        },
-        'concepts/integrations',
-        'concepts/jinja-templates',
         'concepts/metadata-filtering',
         'concepts/device-management',
         'concepts/secret-management',
+        'concepts/jinja-templates',
+        'concepts/integrations',
         'concepts/experimental-package',
       ],
     },
@@ -239,6 +235,7 @@ export default {
             'pipeline-components/converters/imagefiletoimagecontent',
             'pipeline-components/converters/jsonconverter',
             'pipeline-components/converters/markdowntodocument',
+            'pipeline-components/converters/mistralocrdocumentconverter',
             'pipeline-components/converters/msgtodocument',
             'pipeline-components/converters/multifileconverter',
             'pipeline-components/converters/openapiservicetofunctions',
@@ -268,12 +265,12 @@ export default {
             id: 'pipeline-components/embedders'
           },
           items: [
+            'pipeline-components/embedders/choosing-the-right-embedder',
             'pipeline-components/embedders/amazonbedrockdocumentembedder',
             'pipeline-components/embedders/amazonbedrockdocumentimageembedder',
             'pipeline-components/embedders/amazonbedrocktextembedder',
             'pipeline-components/embedders/azureopenaidocumentembedder',
             'pipeline-components/embedders/azureopenaitextembedder',
-            'pipeline-components/embedders/choosing-the-right-embedder',
             'pipeline-components/embedders/coheredocumentembedder',
             'pipeline-components/embedders/coheredocumentimageembedder',
             'pipeline-components/embedders/coheretextembedder',
@@ -367,6 +364,15 @@ export default {
             id: 'pipeline-components/generators'
           },
           items: [
+            {
+              type: 'category',
+              label: 'Guides to Generators',
+              items: [
+                'pipeline-components/generators/guides-to-generators/choosing-the-right-generator',
+                'pipeline-components/generators/guides-to-generators/function-calling',
+                'pipeline-components/generators/guides-to-generators/generators-vs-chat-generators',
+              ],
+            },
             'pipeline-components/generators/amazonbedrockchatgenerator',
             'pipeline-components/generators/amazonbedrockgenerator',
             'pipeline-components/generators/anthropicchatgenerator',
@@ -382,15 +388,6 @@ export default {
             'pipeline-components/generators/googleaigeminichatgenerator',
             'pipeline-components/generators/googleaigeminigenerator',
             'pipeline-components/generators/googlegenaichatgenerator',
-            {
-              type: 'category',
-              label: 'Guides to Generators',
-              items: [
-                'pipeline-components/generators/guides-to-generators/choosing-the-right-generator',
-                'pipeline-components/generators/guides-to-generators/function-calling',
-                'pipeline-components/generators/guides-to-generators/generators-vs-chat-generators',
-              ],
-            },
             'pipeline-components/generators/huggingfaceapichatgenerator',
             'pipeline-components/generators/huggingfaceapigenerator',
             'pipeline-components/generators/huggingfacelocalchatgenerator',
@@ -409,6 +406,8 @@ export default {
             'pipeline-components/generators/openrouterchatgenerator',
             'pipeline-components/generators/sagemakergenerator',
             'pipeline-components/generators/stackitchatgenerator',
+            'pipeline-components/generators/togetheraichatgenerator',
+            'pipeline-components/generators/togetheraigenerator',
             'pipeline-components/generators/vertexaicodegenerator',
             'pipeline-components/generators/vertexaigeminichatgenerator',
             'pipeline-components/generators/vertexaigeminigenerator',
@@ -462,8 +461,8 @@ export default {
             id: 'pipeline-components/rankers'
           },
           items: [
-            'pipeline-components/rankers/amazonbedrockranker',
             'pipeline-components/rankers/choosing-the-right-ranker',
+            'pipeline-components/rankers/amazonbedrockranker',
             'pipeline-components/rankers/cohereranker',
             'pipeline-components/rankers/external-integrations-rankers',
             'pipeline-components/rankers/fastembedranker',

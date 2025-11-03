@@ -2,6 +2,7 @@
 title: Classifiers
 id: classifiers-api
 description: Classify documents based on the provided labels.
+slug: "/classifiers-api"
 ---
 
 <a id="document_language_classifier"></a>

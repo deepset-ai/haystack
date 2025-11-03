@@ -1153,6 +1153,112 @@ class TestOpenAIChatGenerator:
         assert len(deserialized.tools) == 2
         assert all(isinstance(ts, Toolset) for ts in deserialized.tools)
 
+    def test_warm_up_with_tools(self, monkeypatch):
+        """Test that warm_up() calls warm_up on tools and is idempotent."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        # Create a mock tool that tracks if warm_up() was called
+        class MockTool(Tool):
+            warm_up_call_count = 0  # Class variable to track calls
+
+            def __init__(self):
+                super().__init__(
+                    name="mock_tool",
+                    description="A mock tool for testing",
+                    parameters={"x": {"type": "string"}},
+                    function=lambda x: x,
+                )
+
+            def warm_up(self):
+                MockTool.warm_up_call_count += 1
+
+        # Reset the class variable before test
+        MockTool.warm_up_call_count = 0
+        mock_tool = MockTool()
+
+        # Create OpenAIChatGenerator with the mock tool
+        component = OpenAIChatGenerator(tools=[mock_tool])
+
+        # Verify initial state - warm_up not called yet
+        assert MockTool.warm_up_call_count == 0
+        assert not component._is_warmed_up
+
+        # Call warm_up() on the generator
+        component.warm_up()
+
+        # Assert that the tool's warm_up() was called
+        assert MockTool.warm_up_call_count == 1
+        assert component._is_warmed_up
+
+        # Call warm_up() again and verify it's idempotent (only warms up once)
+        component.warm_up()
+
+        # The tool's warm_up should still only have been called once
+        assert MockTool.warm_up_call_count == 1
+        assert component._is_warmed_up
+
+    def test_warm_up_with_no_tools(self, monkeypatch):
+        """Test that warm_up() works when no tools are provided."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        component = OpenAIChatGenerator()
+
+        # Verify initial state
+        assert not component._is_warmed_up
+        assert component.tools is None
+
+        # Call warm_up() - should not raise an error
+        component.warm_up()
+
+        # Verify the component is warmed up
+        assert component._is_warmed_up
+
+        # Call warm_up() again - should be idempotent
+        component.warm_up()
+        assert component._is_warmed_up
+
+    def test_warm_up_with_multiple_tools(self, monkeypatch):
+        """Test that warm_up() works with multiple tools."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        from haystack.tools import Tool
+
+        # Track warm_up calls
+        warm_up_calls = []
+
+        class MockTool(Tool):
+            def __init__(self, tool_name):
+                super().__init__(
+                    name=tool_name,
+                    description=f"Mock tool {tool_name}",
+                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
+                    function=lambda x: f"{tool_name} result: {x}",
+                )
+
+            def warm_up(self):
+                warm_up_calls.append(self.name)
+
+        mock_tool1 = MockTool("tool1")
+        mock_tool2 = MockTool("tool2")
+
+        # Use a LIST of tools, not a Toolset
+        component = OpenAIChatGenerator(tools=[mock_tool1, mock_tool2])
+
+        # Call warm_up()
+        component.warm_up()
+
+        # Assert that both tools' warm_up() were called
+        assert "tool1" in warm_up_calls
+        assert "tool2" in warm_up_calls
+        assert component._is_warmed_up
+
+        # Track count
+        call_count = len(warm_up_calls)
+
+        # Verify idempotency
+        component.warm_up()
+        assert len(warm_up_calls) == call_count
+
 
 @pytest.fixture
 def chat_completion_chunks():

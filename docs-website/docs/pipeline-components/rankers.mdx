@@ -11,16 +11,15 @@ Rankers are a group of components that order documents by given criteria. Their 
 
 | Ranker | Description |
 | --- | --- |
-| [AmazonBedrockRanker](../../docs/pipeline-components/rankers/amazonbedrockranker.mdx) | Ranks documents based on their similarity to the query using Amazon Bedrock models. |
-| [CohereRanker](../../docs/pipeline-components/rankers/cohereranker.mdx) | Ranks documents based on their similarity to the query using Cohere rerank models. |
-| [FastembedRanker](../../docs/pipeline-components/rankers/fastembedranker.mdx) | Ranks documents based on their similarity to the query using cross-encoder models supported by FastEmbed. |
-| [HuggingFaceTEIRanker](../../docs/pipeline-components/rankers/huggingfaceteiranker.mdx) | Ranks documents based on their similarity to the query using a Text Embeddings Inference (TEI) API endpoint. |
-| [JinaRanker](../../docs/pipeline-components/rankers/jinaranker.mdx) | Ranks documents based on their similarity to the query using Jina AI models. |
-| [LostInTheMiddleRanker](../../docs/pipeline-components/rankers/lostinthemiddleranker.mdx) | Positions the most relevant documents at the beginning and at the end of the resulting list while placing the least relevant documents in the middle, based on a [research paper](https://arxiv.org/abs/2307.03172). |
-| [MetaFieldRanker](../../docs/pipeline-components/rankers/metafieldranker.mdx) | A lightweight Ranker that orders documents based on a specific metadata field value. |
-| [MetaFieldGroupingRanker](../../docs/pipeline-components/rankers/metafieldgroupingranker.mdx) | Reorders the documents by grouping them based on metadata keys. |
-| [NvidiaRanker](../../docs/pipeline-components/rankers/nvidiaranker.mdx) | Ranks documents using large-language models from [NVIDIA NIMs](https://ai.nvidia.com) . |
-| [TransformersSimilarityRanker](../../docs/pipeline-components/rankers/transformerssimilarityranker.mdx) | A legacy version of [SentenceTransformersSimilarityRanker](../../docs/pipeline-components/rankers/sentencetransformerssimilarityranker.mdx). |
-| [SentenceTransformersDiversityRanker](../../docs/pipeline-components/rankers/sentencetransformersdiversityranker.mdx) | A Diversity Ranker based on Sentence Transformers. |
-| [SentenceTransformersSimilarityRanker](../../docs/pipeline-components/rankers/sentencetransformerssimilarityranker.mdx) | A model-based Ranker that orders documents based on their relevance to the query. It uses a cross-encoder model to produce query and document embeddings. It then compares the similarity of the query embedding to the document embeddings to produce a ranking with the most similar documents appearing first.  <br /> <br />It's a powerful Ranker that takes word order and syntax into account. You can use it to improve the initial ranking done by a weaker Retriever, but it's also more expensive computationally than the Rankers that don't use models. |
-
+| [AmazonBedrockRanker](rankers/amazonbedrockranker.mdx) | Ranks documents based on their similarity to the query using Amazon Bedrock models. |
+| [CohereRanker](rankers/cohereranker.mdx) | Ranks documents based on their similarity to the query using Cohere rerank models. |
+| [FastembedRanker](rankers/fastembedranker.mdx) | Ranks documents based on their similarity to the query using cross-encoder models supported by FastEmbed. |
+| [HuggingFaceTEIRanker](rankers/huggingfaceteiranker.mdx) | Ranks documents based on their similarity to the query using a Text Embeddings Inference (TEI) API endpoint. |
+| [JinaRanker](rankers/jinaranker.mdx) | Ranks documents based on their similarity to the query using Jina AI models. |
+| [LostInTheMiddleRanker](rankers/lostinthemiddleranker.mdx) | Positions the most relevant documents at the beginning and at the end of the resulting list while placing the least relevant documents in the middle, based on a [research paper](https://arxiv.org/abs/2307.03172). |
+| [MetaFieldRanker](rankers/metafieldranker.mdx) | A lightweight Ranker that orders documents based on a specific metadata field value. |
+| [MetaFieldGroupingRanker](rankers/metafieldgroupingranker.mdx) | Reorders the documents by grouping them based on metadata keys. |
+| [NvidiaRanker](rankers/nvidiaranker.mdx) | Ranks documents using large-language models from [NVIDIA NIMs](https://ai.nvidia.com) . |
+| [TransformersSimilarityRanker](rankers/transformerssimilarityranker.mdx) | A legacy version of [SentenceTransformersSimilarityRanker](rankers/sentencetransformerssimilarityranker.mdx). |
+| [SentenceTransformersDiversityRanker](rankers/sentencetransformersdiversityranker.mdx) | A Diversity Ranker based on Sentence Transformers. |
+| [SentenceTransformersSimilarityRanker](rankers/sentencetransformerssimilarityranker.mdx) | A model-based Ranker that orders documents based on their relevance to the query. It uses a cross-encoder model to produce query and document embeddings. It then compares the similarity of the query embedding to the document embeddings to produce a ranking with the most similar documents appearing first.  <br /> <br />It's a powerful Ranker that takes word order and syntax into account. You can use it to improve the initial ranking done by a weaker Retriever, but it's also more expensive computationally than the Rankers that don't use models. |

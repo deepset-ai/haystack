@@ -11,7 +11,7 @@ Use this component to compute document embeddings using various Hugging Face API
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before a [`DocumentWriter`](../../../docs/pipeline-components/writers/documentwriter.mdx)  in an indexing pipeline |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
 | **Mandatory init variables** | "api_type": The type of Hugging Face API to use  <br /> <br />"api_params": A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.  <br /> <br />"token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | “documents”: A list of documents to be embedded |
 | **Output variables** | “documents”: A list of documents to be embedded (enriched with embeddings) |
@@ -30,7 +30,7 @@ Use this component to compute document embeddings using various Hugging Face API
 This component should be used to embed a list of documents. To embed a string, use [`HuggingFaceAPITextEmbedder`](huggingfaceapitextembedder.mdx).
 :::
 
-The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.  
+The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
 The token is needed:
 
 - If you use the Serverless Inference API, or
@@ -38,7 +38,7 @@ The token is needed:
 
 ## Usage
 
-Similarly to other Document Embedders, this component allows adding prefixes (and postfixes) to include instruction and embedding metadata.  
+Similarly to other Document Embedders, this component allows adding prefixes (and postfixes) to include instruction and embedding metadata.
 For more fine-grained details, refer to the component’s [API reference](/reference/embedders-api#huggingfaceapidocumentembedder).
 
 ### On its own
@@ -47,8 +47,8 @@ For more fine-grained details, refer to the component’s [API reference](/refer
 
 Formerly known as (free) Hugging Face Inference API, this API allows you to quickly experiment with many models hosted on the Hugging Face Hub, offloading the inference to Hugging Face servers. It’s rate-limited and not meant for production.
 
-To use this API, you need a [free Hugging Face token](https://huggingface.co/settings/tokens).  
-The Embedder expects the `model` in `api_params`. 
+To use this API, you need a [free Hugging Face token](https://huggingface.co/settings/tokens).
+The Embedder expects the `model` in `api_params`.
 
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
@@ -73,8 +73,8 @@ In this case, a private instance of the model is deployed by Hugging Face, and y
 
 To understand how to spin up an Inference Endpoint, visit [Hugging Face documentation](https://huggingface.co/inference-endpoints/dedicated).
 
-Additionally, in this case, you need to provide your Hugging Face token.  
-The Embedder expects the `url` of your endpoint in `api_params`. 
+Additionally, in this case, you need to provide your Hugging Face token.
+The Embedder expects the `url` of your endpoint in `api_params`.
 
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
@@ -111,7 +111,7 @@ docker run --gpus all -p 8080:80 -v $volume:/data --pull always ghcr.io/huggingf
 
 For more information, refer to the [official TEI repository](https://github.com/huggingface/text-embeddings-inference).
 
-The Embedder expects the `url` of your TEI instance in `api_params`. 
+The Embedder expects the `url` of your TEI instance in `api_params`.
 
 ```python
 from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder

@@ -1,0 +1,489 @@
+---
+title: "Migration Guide"
+id: migration
+slug: "/migration"
+description: "Learn how to make the move to Haystack 2.x from Haystack 1.x."
+---
+
+# Migration Guide
+
+Learn how to make the move to Haystack 2.x from Haystack 1.x.
+
+This guide is designed for those with previous experience with Haystack and who are interested in understanding the differences between Haystack 1.x and Haystack 2.x. If you're new to Haystack, skip this page and proceed directly to Haystack 2.x [documentation](get-started.mdx).
+
+## Major Changes
+
+Haystack 2.x represents a significant overhaul of Haystack 1.x, and it's important to note that certain key concepts outlined in this section don't have a direct correlation between the two versions.
+
+### Package Name
+
+Haystack 1.x was distributed with a package called `farm-haystack`. To migrate your application, you must uninstall `farm-haystack` and install the new `haystack-ai` package for Haystack 2.x.
+
+:::warning
+Two versions of the project cannot coexist in the same Python environment.
+
+One of the options is to remove both packages if they are installed in the same environment, followed by installing only one of them:
+
+```bash
+pip uninstall -y farm-haystack haystack-ai
+pip install haystack-ai
+```
+:::
+
+### Nodes
+
+While Haystack 2.x continues to rely on the `Pipeline` abstraction, the elements linked in a pipeline graph are now referred to as just _components_, replacing the terms _nodes_ and _pipeline components_ used in the previous versions. The [_Migrating Components_](#migrating-components) paragraph below outlines which component in Haystack 2.x can be used as a replacement for a specific 1.x node.
+
+### Pipelines
+
+Pipelines continue to serve as the fundamental structure of all Haystack applications. While the concept of `Pipeline` abstraction remains consistent, Haystack 2.x introduces significant enhancements that address various limitations of its predecessor. For instance, the pipelines now support loops. Pipelines also offer greater flexibility in their input, which is no longer restricted to queries. The pipeline now allows to route the output of a component to multiple recipients. This increases flexibility, however, comes with notable differences in the pipeline definition process in Haystack 2.x compared to the previous version.
+
+In Haystack 1.x, a pipeline was built by adding one node after the other. In the resulting pipeline graph, edges are automatically added to connect those nodes in the order they were added.
+
+Building a pipeline in Haystack 2.x is a two-step process:
+
+1. Initially, components are added to the pipeline without any specific order by calling the `add_component` method.
+2. Subsequently, the components must be explicitly connected by calling the `connect` method to define the final graph.
+
+To migrate an existing pipeline, the first step is to go through the nodes and identify their counterparts in Haystack 2.x (see the following section,  [_Migrating Components_](#migrating-components), for guidance). If all the nodes can be replaced by corresponding components, they have to be added to the pipeline with `add_component` and explicitly connected with the appropriate calls to `connect`. Here is an example:
+
+**Haystack 1.x**
+
+```python
+pipeline = Pipeline()
+
+node_1 = SomeNode()
+node_2 = AnotherNode()
+
+pipeline.add_node(node_1, name="Node_1", inputs=["Query"])
+pipeline.add_node(node_2, name="Node_2", inputs=["Node_1"])
+```
+
+**Haystack 2.x**
+
+```python
+pipeline = Pipeline()
+
+component_1 = SomeComponent()
+component_2 = AnotherComponent()
+
+pipeline.add_component("Comp_1", component_1)
+pipeline.add_component("Comp_2", component_2)
+
+pipeline.connect("Comp_1", "Comp_2")
+```
+
+In case a specific replacement component is not available for one of your nodes, migrating the pipeline might still be possible by:
+
+- Either [creating a custom component](../concepts/components/custom-components.mdx), or
+- Changing the pipeline logic, as the last resort.
+
+:::note
+Check out the [Pipelines](../concepts/pipelines.mdx) section of our 2.x documentation to understand how new pipelines work more granularly.
+
+:::
+
+### Document Stores
+
+The fundamental concept of Document Stores as gateways to access text and metadata stored in a database didn’t change in Haystack 2.x, but there are significant differences against Haystack 1.x.
+
+In Haystack 1.x, Document Stores were a special type of node that you can use in two ways:
+
+- As the last node in an indexing pipeline (such as a pipeline whose ultimate goal is storing data in a database).
+- As a normal Python instance passed to a Retriever node.
+
+In Haystack 2.x, the Document Store is not a component, so to migrate the two use cases above to version 2.x, you can respectively:
+
+- Replace the Document Store at the end of the pipeline with a [`DocumentWriter`](../pipeline-components/writers/documentwriter.mdx)  component.
+- Identify the right Retriever component and create it passing the Document Store instance, same as it is in Haystack 1.x.
+
+### Retrievers
+
+Haystack 1.x provided a set of nodes that filter relevant documents from different data sources according to a given query. Each of those nodes implements a certain retrieval algorithm and supports one or more types of Document Stores. For example, the `BM25Retriever` node in Haystack 1.x can work seamlessly with OpenSearch and Elasticsearch but not with Qdrant; the `EmbeddingRetriever`, on the contrary, can work with all the three databases.
+
+In Haystack 2.x, the concept is flipped, and each Document Store provides one or more retriever components, depending on which retrieval methods the underlying vector database supports. For example, the `OpenSearchDocumentStore` comes with [two Retriever components](../document-stores/opensearch-document-store.mdx#supported-retrievers), one relying on BM25, and the other on vector similarity.
+
+To migrate a 1.x retrieval pipeline to 2.x, the first step is to identify the Document Store being used and replace the Retriever node with the corresponding Retriever component from Haystack 2.x with the Document Store of choice. For example, a `BM25Retriever` node using Elasticsearch in a Haystack 1.x pipeline should be replaced with the [`ElasticsearchBM25Retriever`](../pipeline-components/retrievers/elasticsearchbm25retriever.mdx)  component.
+
+### PromptNode
+
+The `PromptNode`  in Haystack 1.x represented the gateway to any Large Language Model (LLM) inference provider, whether it is locally available or remote. Based on the name of the model, Haystack infers the right provider to call and forward the query.
+
+In Haystack 2.x, the task of using LLMs is assigned to [Generators](../pipeline-components/generators.mdx). These are a set of components that are highly specialized and tailored for each inference provider.
+
+The first step when migrating a pipeline with a `PromptNode` is to identify the model provider used and to replace the node with two components:
+
+- A Generator component for the model provider of choice,
+- A `PromptBuilder` or `ChatPromptBuilder` component to build the prompt to be used.
+
+The [_Migration examples_](#migration-examples) section below shows how to port a `PromptNode` using OpenAI with a prompt template to a corresponding Haystack 2.x pipeline using the `OpenAIGenerator` in conjunction with a `PromptBuilder` component.
+
+### Agents
+
+The agentic approach facilitates the answering of questions that are significantly more complex than those typically addressed by extractive or generative question answering techniques.
+
+Haystack 1.x provided Agents, enabling the use of LLMs in a loop.
+
+Currently in Haystack 2.x, you can build Agents using three main elements in a pipeline: Chat Generators, ToolInvoker component, and Tools. A standalone Agent abstraction in Haystack 2.x is in an experimental phase.
+
+:::note Agents Documentation Page
+
+Take a look at our 2.x [Agents](../concepts/agents.mdx) documentation page for more information and detailed examples.
+:::
+
+### REST API
+
+Haystack 1.x enabled the deployment of pipelines through a RESTful API over HTTP. This feature is facilitated by a separate application named `rest_api` which is exclusively accessible in the form of a [source code on GitHub](https://github.com/deepset-ai/haystack/tree/v1.x/rest_api).
+
+Haystack 2.x takes the same RESTful approach, but in this case, the application to be used to deploy pipelines is called [Hayhooks](../development/hayhooks.mdx) and can be installed with `pip install hayhooks`.
+
+At the moment, porting an existing Haystack 1.x deployment using the `rest_api` project to Hayhooks would require a complete rewrite of the application.
+
+## Dependencies
+
+In order to minimize runtime errors, Haystack 1.x was distributed in a package that’s quite large, as it tries to set up the Python environment with as many dependencies as possible.
+
+In contrast, Haystack 2.x strives for a more streamlined approach, offering a minimal set of dependencies right out of the box. It features a system that issues a warning when an additional dependency is required, thereby providing the user with the necessary instructions.
+
+To make sure all the dependencies are satisfied when migrating a Haystack 1.x application to version 2.x, a good strategy is to run end-to-end tests and cover all the execution paths to ensure all the required dependencies are available in the target Python environment.
+
+## Migrating Components
+
+This table outlines which component (or a group of components) can be used to replace a certain node when porting a Haystack 1.x pipeline to the latest 2.x version. It’s important to note that when a Haystack 2.x replacement is not available, this doesn’t necessarily mean we are planning this feature.
+
+If you need help migrating a 1.x node without a 2.x counterpart, open an [issue](https://github.com/deepset-ai/haystack/issues) in Haystack GitHub repository.
+
+### Data Handling
+
+| Haystack 1.x               | Description                                                                                                                                                                             | Haystack 2.x                                                                         |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Crawler                    | Scrapes text from websites. **Example usage:** To run searches on your website content.                                                                                                 | Not Available                                                                        |
+| DocumentClassifier         | Classifies documents by attaching metadata to them. **Example usage:** Labeling documents by their characteristic (for example, sentiment).                                             | [TransformersZeroShotDocumentClassifier](../pipeline-components/classifiers/transformerszeroshotdocumentclassifier.mdx) |
+| DocumentLanguageClassifier | Detects the language of the documents you pass to it and adds it to the document metadata.                                                                                              | [DocumentLanguageClassifier](../pipeline-components/classifiers/documentlanguageclassifier.mdx)                       |
+| EntityExtractor            | Extracts predefined entities out of a piece of text. **Example usage:** Named entity extraction (NER).                                                                                  | [NamedEntityExtractor](../pipeline-components/extractors/namedentityextractor.mdx)                                   |
+| FileClassifier             | Distinguishes between text, PDF, Markdown, Docx, and HTML files. **Example usage:** Routing files to appropriate converters (for example, it routes PDF files to `PDFToTextConverter`). | [FileTypeRouter](../pipeline-components/routers/filetyperouter.mdx)                                               |
+| FileConverter              | Cleans and splits documents in different formats. **Example usage:** In indexing pipelines, extracting text from a file and casting it into the Document class format.                  | [Converters](../pipeline-components/converters.mdx)                                                       |
+| PreProcessor               | Cleans and splits documents. **Example usage:** Normalizing white spaces, getting rid of headers and footers, splitting documents into smaller ones.                                    | [PreProcessors](../pipeline-components/preprocessors.mdx)                                                 |
+
+### Semantic Search
+
+| Haystack 1.x      | Description                                                                                                                                                                                                                 | Haystack 2.x                                                                            |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Ranker            | Orders documents based on how relevant they are to the query. **Example usage:** In a query pipeline, after a keyword-based Retriever to rank the documents it returns.                                                     | [Rankers](../pipeline-components/rankers.mdx)                                                                |
+| Reader            | Finds an answer by selecting a text span in documents. **Example usage:** In a query pipeline when you want to know the location of the answer.                                                                             | [ExtractiveReader](../pipeline-components/readers/extractivereader.mdx)                                              |
+| Retriever         | Fetches relevant documents from the Document Store. **Example usage:** Coupling Retriever with a Reader in a query pipeline to speed up the search (the Reader only goes through the documents it gets from the Retriever). | [Retrievers](../pipeline-components/retrievers.mdx)                                                          |
+| QuestionGenerator | When given a document, it generates questions this document can answer. **Example usage:** Auto-suggested questions in your search app.                                                                                     | Prompt [Builders](../pipeline-components/builders.mdx) with dedicated prompt, [Generators](../pipeline-components/generators.mdx) |
+
+### Prompts and LLMs
+
+| Haystack 1.x | Description                                                                                                                                                                                                                   | Haystack 2.x                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| PromptNode   | Uses large language models to perform various NLP tasks in a pipeline or on its own. **Example usage:** It's a very versatile component that can perform tasks like summarization, question answering, translation, and more. | Prompt [Builders](../pipeline-components/builders.mdx),[Generators](../pipeline-components/generators.mdx) |
+
+### Routing
+
+|  |  |
+| --- | --- |
+| QueryClassifier | Categorizes queries. **Example usage:** Distinguishing between keyword queries and natural language questions and routing them to the Retrievers that can handle them best. |
+| RouteDocuments | Routes documents to different branches of your pipeline based on their content type or metadata field. **Example usage:** Routing table data to `TableReader` and text data to `TransfomersReader` for better handling. |
+
+### Utility Components
+
+| Haystack 1.x            | Description                                                                                                                                                                                                                                                                                                                                            | Haystack 2.x                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| DocumentMerger          | Concatenates multiple documents into a single one. **Example usage: **Merge the documents to summarize in a summarization pipeline.                                                                                                                                                                                                                    | Prompt [Builders](../pipeline-components/builders.mdx)                                                       |
+| Docs2Answers            | Converts Documents into Answers. **Example usage:** When using REST API for document retrieval. REST API expects Answer as output, you can use `Doc2Answer` as the last node to convert the retrieved documents to answers.                                                                                                                            | [AnswerBuilder](../pipeline-components/builders/answerbuilder.mdx)                                                    |
+| JoinAnswers             | Takes answers returned by multiple components and joins them in a single list of answers. **Example usage:** For running queries on different document types (for example, tables and text), where the documents are routed to different readers, and each reader returns a separate list of answers.                                                  | [AnswerJoiner](../pipeline-components/joiners/answerjoiner.mdx)                                                        |
+| JoinDocuments           | Takes documents returned by different components and joins them to form one list of documents. **Example usage:** In document retrieval pipelines, where there are different types of documents, each routed to a different Retriever. Each Retriever returns a separate list of documents, and you can join them into one list using `JoinDocuments`. | [DocumentJoiner](../pipeline-components/joiners/documentjoiner.mdx)                                                  |
+| Shaper                  | Currently functions mostly as `PromptNode` helper making sure the `PromptNode` input or output is correct. **Example usage:** In a question answering pipeline using `PromptNode`, where the `PromptTemplate` expects questions as input, while Haystack pipelines use query. You can use Shaper to rename queries to questions.                       | Prompt [Builders](../pipeline-components/builders.mdx)                                                       |
+| Summarizer              | Creates an overview of a document. **Example usage:** To get a glimpse of the documents the Retriever is returning.                                                                                                                                                                                                                                    | Prompt [Builders](../pipeline-components/builders.mdx) with dedicated prompt, [Generators](../pipeline-components/generators.mdx) |
+| TransformersImageToText | Generates captions for images. **Example usage:** Automatically generate captions for a list of images that you can later use in your knowledge base.                                                                                                                                                                                                  | [VertexAIImageQA](../pipeline-components/generators/vertexaiimageqa.mdx)                                                  |
+| Translator              | Translates text from one language into another. **Example usage:** Running searches on documents in other languages.                                                                                                                                                                                                                                   | Prompt [Builders](../pipeline-components/builders.mdx) with dedicated prompt, [Generators](../pipeline-components/generators.mdx) |
+
+### Extras
+
+| Haystack 1.x     | Description                                                                                                                                                                      | Haystack 2.x                                                                   |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| AnswerToSpeech   | Converts text answers into speech answers. **Example usage:** Improving accessibility of your search system by providing a way to have the answer and its context read out loud. | [ElevenLabs](https://haystack.deepset.ai/integrations/elevenlabs) Integration  |
+| DocumentToSpeech | Converts text documents to speech documents. **Example usage:** Improving accessibility of a document retrieval pipeline by providing the option to read documents out loud.     | [ElevenLabs](https://haystack.deepset.ai/integrations/elevenlabs)  Integration |
+
+## Migration examples
+
+:::note
+This section might grow as we assist users with their use cases.
+
+:::
+
+### Indexing Pipeline
+
+<details>
+
+<summary>Haystack 1.x</summary>
+
+```python
+from haystack.document_stores import InMemoryDocumentStore
+from haystack.nodes.file_classifier import FileTypeClassifier
+from haystack.nodes.file_converter import TextConverter
+from haystack.nodes.preprocessor import PreProcessor
+from haystack.pipelines import Pipeline
+
+## Initialize a DocumentStore
+document_store = InMemoryDocumentStore()
+
+## Indexing Pipeline
+indexing_pipeline = Pipeline()
+
+## Makes sure the file is a TXT file (FileTypeClassifier node)
+classifier = FileTypeClassifier()
+indexing_pipeline.add_node(classifier, name="Classifier", inputs=["File"])
+
+## Converts a file into text and performs basic cleaning (TextConverter node)
+text_converter = TextConverter(remove_numeric_tables=True)
+indexing_pipeline.add_node(text_converter, name="Text_converter", inputs=["Classifier.output_1"])
+
+## Pre-processes the text by performing splits and adding metadata to the text (Preprocessor node)
+preprocessor = PreProcessor(
+    clean_whitespace=True,
+    clean_empty_lines=True,
+    split_length=100,
+    split_overlap=50,
+    split_respect_sentence_boundary=True,
+)
+indexing_pipeline.add_node(preprocessor, name="Preprocessor", inputs=["Text_converter"])
+
+## - Writes the resulting documents into the document store
+indexing_pipeline.add_node(document_store, name="Document_Store", inputs=["Preprocessor"])
+
+## Then we run it with the documents and their metadata as input
+result = indexing_pipeline.run(file_paths=file_paths, meta=files_metadata)
+```
+
+</details>
+
+<details>
+
+<summary>Haystack 2.x</summary>
+
+```python
+from haystack import Pipeline
+from haystack.components.routers import FileTypeRouter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import TextFileToDocument
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+## Initialize a DocumentStore
+document_store = InMemoryDocumentStore()
+
+## Indexing Pipeline
+indexing_pipeline = Pipeline()
+
+## Makes sure the file is a TXT file (FileTypeRouter component)
+classifier = FileTypeRouter(mime_types=["text/plain"])
+indexing_pipeline.add_component("file_type_router", classifier)
+
+## Converts a file into a Document (TextFileToDocument component)
+text_converter = TextFileToDocument()
+indexing_pipeline.add_component("text_converter", text_converter)
+
+## Performs basic cleaning (DocumentCleaner component)
+cleaner = DocumentCleaner(
+    remove_empty_lines=True,
+    remove_extra_whitespaces=True,
+)
+indexing_pipeline.add_component("cleaner", cleaner)
+
+## Pre-processes the text by performing splits and adding metadata to the text (DocumentSplitter component)
+preprocessor = DocumentSplitter(
+    split_by="passage",
+    split_length=100,
+    split_overlap=50
+)
+indexing_pipeline.add_component("preprocessor", preprocessor)
+
+## - Writes the resulting documents into the document store
+indexing_pipeline.add_component("writer", DocumentWriter(document_store))
+
+## Connect all the components
+indexing_pipeline.connect("file_type_router.text/plain", "text_converter")
+indexing_pipeline.connect("text_converter", "cleaner")
+indexing_pipeline.connect("cleaner", "preprocessor")
+indexing_pipeline.connect("preprocessor", "writer")
+
+## Then we run it with the documents and their metadata as input
+result = indexing_pipeline.run({"file_type_router": {"sources": file_paths}})
+```
+
+</details>
+
+### Query Pipeline
+
+<details>
+
+<summary>Haystack 1.x</summary>
+
+```python
+from haystack.document_stores import InMemoryDocumentStore
+from haystack.pipelines import ExtractiveQAPipeline
+from haystack import Document
+from haystack.nodes import BM25Retriever
+from haystack.nodes import FARMReader
+
+document_store = InMemoryDocumentStore(use_bm25=True)
+document_store.write_documents([
+    Document(content="Paris is the capital of France."),
+    Document(content="Berlin is the capital of Germany."),
+    Document(content="Rome is the capital of Italy."),
+    Document(content="Madrid is the capital of Spain."),
+])
+
+retriever = BM25Retriever(document_store=document_store)
+reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
+extractive_qa_pipeline = ExtractiveQAPipeline(reader, retriever)
+
+query = "What is the capital of France?"
+result = extractive_qa_pipeline.run(
+	query=query,
+	params={
+		"Retriever": {"top_k": 10},
+		"Reader": {"top_k": 5}
+	}
+)
+```
+
+</details>
+
+<details>
+
+<summary>Haystack 2.x</summary>
+
+```python
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.readers import ExtractiveReader
+
+document_store = InMemoryDocumentStore()
+document_store.write_documents([
+    Document(content="Paris is the capital of France."),
+    Document(content="Berlin is the capital of Germany."),
+    Document(content="Rome is the capital of Italy."),
+    Document(content="Madrid is the capital of Spain."),
+])
+
+retriever = InMemoryBM25Retriever(document_store)
+reader = ExtractiveReader(model="deepset/roberta-base-squad2")
+extractive_qa_pipeline = Pipeline()
+extractive_qa_pipeline.add_component("retriever", retriever)
+extractive_qa_pipeline.add_component("reader", reader)
+extractive_qa_pipeline.connect("retriever", "reader")
+
+query = "What is the capital of France?"
+result = extractive_qa_pipeline.run(data={
+	"retriever": {"query": query, "top_k": 3},
+	"reader": {"query": query, "top_k": 2}
+})
+```
+
+</details>
+
+### RAG Pipeline
+
+<details>
+
+<summary>Haystack 1.x</summary>
+
+```python
+from datasets import load_dataset
+
+from haystack.pipelines import Pipeline
+from haystack.document_stores import InMemoryDocumentStore
+from haystack.nodes import EmbeddingRetriever, PromptNode, PromptTemplate, AnswerParser
+
+document_store = InMemoryDocumentStore(embedding_dim=384)
+dataset = load_dataset("bilgeyucel/seven-wonders", split="train")
+document_store.write_documents(dataset)
+retriever = EmbeddingRetriever(embedding_model="sentence-transformers/all-MiniLM-L6-v2", document_store=document_store, top_k=2)
+document_store.update_embeddings(retriever)
+
+rag_prompt = PromptTemplate(
+    prompt="""Synthesize a comprehensive answer from the following text for the given question.
+                             Provide a clear and concise response that summarizes the key points and information presented in the text.
+                             Your answer should be in your own words and be no longer than 50 words.
+                             \n\n Related text: {join(documents)} \n\n Question: {query} \n\n Answer:""",
+    output_parser=AnswerParser(),
+)
+
+prompt_node = PromptNode(model_name_or_path="gpt-3.5-turbo", api_key=OPENAI_API_KEY, default_prompt_template=rag_prompt)
+
+pipe = Pipeline()
+pipe.add_node(component=retriever, name="retriever", inputs=["Query"])
+pipe.add_node(component=prompt_node, name="prompt_node", inputs=["retriever"])
+
+output = pipe.run(query="What does Rhodes Statue look like?")
+```
+
+</details>
+
+<details>
+
+<summary>Haystack 2.x</summary>
+
+```python
+from datasets import load_dataset
+
+from haystack import Document, Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.builders import PromptBuilder
+from haystack.components.generators import OpenAIGenerator
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack.components.retrievers import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore()
+dataset = load_dataset("bilgeyucel/seven-wonders", split="train")
+embedder = SentenceTransformersDocumentEmbedder("sentence-transformers/all-MiniLM-L6-v2")
+embedder.warm_up()
+output = embedder.run([Document(**ds) for ds in dataset])
+document_store.write_documents(output.get("documents"))
+
+template = """
+Given the following information, answer the question.
+
+Context:
+{% for document in documents %}
+    {{ document.content }}
+{% endfor %}
+
+Question: {{question}}
+Answer:
+"""
+prompt_builder = PromptBuilder(template=template)
+
+retriever = InMemoryEmbeddingRetriever(document_store=document_store, top_k=2)
+generator = OpenAIGenerator(model="gpt-3.5-turbo")
+query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+
+basic_rag_pipeline = Pipeline()
+basic_rag_pipeline.add_component("text_embedder", query_embedder)
+basic_rag_pipeline.add_component("retriever", retriever)
+basic_rag_pipeline.add_component("prompt_builder", prompt_builder)
+basic_rag_pipeline.add_component("llm", generator)
+
+basic_rag_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+basic_rag_pipeline.connect("retriever", "prompt_builder.documents")
+basic_rag_pipeline.connect("prompt_builder", "llm")
+
+query = "What does Rhodes Statue look like?"
+output = basic_rag_pipeline.run({"text_embedder": {"text": query}, "prompt_builder": {"question": query}})
+```
+
+</details>
+
+## Documentation and Tutorials for Haystack 1.x
+
+You can access old tutorials in the [GitHub history](https://github.com/deepset-ai/haystack-tutorials/tree/5917718cbfbb61410aab4121ee6fe754040a5dc7) and download the Haystack 1.x documentation as a [ZIP file](https://core-engineering.s3.eu-central-1.amazonaws.com/public/docs/haystack-v1-docs.zip).
+
+The ZIP file contains documentation for all minor releases from version 1.0 to 1.26.
+
+To download documentation for a specific release, replace the version number in the following URL: `https://core-engineering.s3.eu-central-1.amazonaws.com/public/docs/v1.26.zip`.

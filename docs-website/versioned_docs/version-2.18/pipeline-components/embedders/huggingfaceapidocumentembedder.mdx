@@ -1,0 +1,172 @@
+---
+title: "HuggingFaceAPIDocumentEmbedder"
+id: huggingfaceapidocumentembedder
+slug: "/huggingfaceapidocumentembedder"
+description: "Use this component to compute document embeddings using various Hugging Face APIs."
+---
+
+# HuggingFaceAPIDocumentEmbedder
+
+Use this component to compute document embeddings using various Hugging Face APIs.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
+| **Mandatory init variables** | "api_type": The type of Hugging Face API to use  <br /> <br />"api_params": A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.  <br /> <br />"token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory run variables** | “documents”: A list of documents to be embedded |
+| **Output variables** | “documents”: A list of documents to be embedded (enriched with embeddings) |
+| **API reference** | [Embedders](/reference/embedders-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/hugging_face_api_document_embedder.py |
+
+## Overview
+
+`HuggingFaceAPIDocumentEmbedder` can be used to compute document embeddings using different Hugging Face APIs:
+
+- [Free Serverless Inference API](https://huggingface.co/inference-api)
+- [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
+- [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
+
+:::note
+This component should be used to embed a list of documents. To embed a string, use [`HuggingFaceAPITextEmbedder`](huggingfaceapitextembedder.mdx).
+
+:::
+
+The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
+The token is needed:
+
+- If you use the Serverless Inference API, or
+- If you use the Inference Endpoints.
+
+## Usage
+
+Similarly to other Document Embedders, this component allows adding prefixes (and postfixes) to include instruction and embedding metadata.
+For more fine-grained details, refer to the component’s [API reference](/reference/embedders-api#huggingfaceapidocumentembedder).
+
+### On its own
+
+#### Using Free Serverless Inference API
+
+Formerly known as (free) Hugging Face Inference API, this API allows you to quickly experiment with many models hosted on the Hugging Face Hub, offloading the inference to Hugging Face servers. It’s rate-limited and not meant for production.
+
+To use this API, you need a [free Hugging Face token](https://huggingface.co/settings/tokens).
+The Embedder expects the `model` in `api_params`.
+
+```python
+from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
+from haystack.utils import Secret
+from haystack.dataclasses import Document
+
+doc = Document(content="I love pizza!")
+
+document_embedder = HuggingFaceAPIDocumentEmbedder(api_type="serverless_inference_api",
+                                              api_params={"model": "BAAI/bge-small-en-v1.5"},
+                                              token=Secret.from_token("<your-api-key>"))
+
+result = document_embedder.run([doc])
+print(result["documents"][0].embedding)
+
+## [0.017020374536514282, -0.023255806416273117, ...]
+```
+
+#### Using Paid Inference Endpoints
+
+In this case, a private instance of the model is deployed by Hugging Face, and you typically pay per hour.
+
+To understand how to spin up an Inference Endpoint, visit [Hugging Face documentation](https://huggingface.co/inference-endpoints/dedicated).
+
+Additionally, in this case, you need to provide your Hugging Face token.
+The Embedder expects the `url` of your endpoint in `api_params`.
+
+```python
+from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
+from haystack.utils import Secret
+from haystack.dataclasses import Document
+
+doc = Document(content="I love pizza!")
+
+document_embedder = HuggingFaceAPIDocumentEmbedder(api_type="inference_endpoints",
+                                              api_params={"url": "<your-inference-endpoint-url>"},
+                                              token=Secret.from_token("<your-api-key>"))
+
+result = document_embedder.run([doc])
+print(result["documents"][0].embedding)
+
+## [0.017020374536514282, -0.023255806416273117, ...]
+```
+
+#### Using Self-Hosted Text Embeddings Inference (TEI)
+
+[Hugging Face Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference) is a toolkit for efficiently deploying and serving text embedding models.
+
+While it powers the most recent versions of Serverless Inference API and Inference Endpoints, it can be used easily on-premise through Docker.
+
+For example, you can run a TEI container as follows:
+
+```shell
+model=BAAI/bge-large-en-v1.5
+revision=refs/pr/5
+volume=$PWD/data # share a volume with the Docker container to avoid downloading weights every run
+
+docker run --gpus all -p 8080:80 -v $volume:/data --pull always ghcr.io/huggingface/text-embeddings-inference:1.2 --model-id $model --revision $revision
+```
+
+For more information, refer to the [official TEI repository](https://github.com/huggingface/text-embeddings-inference).
+
+The Embedder expects the `url` of your TEI instance in `api_params`.
+
+```python
+from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
+from haystack.dataclasses import Document
+
+doc = Document(content="I love pizza!")
+
+document_embedder = HuggingFaceAPIDocumentEmbedder(api_type="text_embeddings_inference",
+                                              api_params={"url": "http://localhost:8080"})
+
+result = document_embedder.run([doc])
+print(result["documents"][0].embedding)
+
+## [0.017020374536514282, -0.023255806416273117, ...]
+```
+
+### In a pipeline
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.embedders import HuggingFaceAPITextEmbedder, HuggingFaceAPIDocumentEmbedder
+from haystack.components.writers import DocumentWriter
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
+
+document_embedder = HuggingFaceAPIDocumentEmbedder(api_type="serverless_inference_api",
+				                                           api_params={"model": "BAAI/bge-small-en-v1.5"})
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("document_embedder", document_embedder)
+indexing_pipeline.add_component("doc_writer", DocumentWriter(document_store=document_store)
+indexing_pipeline.connect("document_embedder", "doc_writer")
+indexing_pipeline.run({"document_embedder": {"documents": documents}})
+
+text_embedder = HuggingFaceAPITextEmbedder(api_type="serverless_inference_api",
+                                           api_params={"model": "BAAI/bge-small-en-v1.5"})
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", text_embedder)
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder":{"text": query}})
+
+print(result['retriever']['documents'][0])
+
+## Document(id=..., content: 'My name is Wolfgang and I live in Berlin', ...)
+```

@@ -2,6 +2,7 @@
 title: Readers
 id: readers-api
 description: Takes a query and a set of Documents as input and returns ExtractedAnswers by selecting a text span within the Documents.
+slug: "/readers-api"
 ---
 
 <a id="extractive"></a>

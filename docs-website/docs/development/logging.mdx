@@ -53,7 +53,7 @@ tracing.enable_tracing(LoggingTracer(tags_color_strings={"haystack.component.inp
 ```
 
 Here’s what the resulting log would look like when a pipeline is run:
-<ClickableImage src="/img/55c3d5c84282d726c95fb3350ec36be49a354edca8a6164f5dffdab7121cec58-image_2.png" alt="" />
+<ClickableImage src="/img/55c3d5c84282d726c95fb3350ec36be49a354edca8a6164f5dffdab7121cec58-image_2.png" alt="Console output showing Haystack pipeline execution with DEBUG level tracing logs including component names, types, and input/output specifications" />
 
 ## Structured Logging
 
@@ -64,10 +64,9 @@ If Haystack detects a [structlog installation](https://www.structlog.org/en/stab
 ### Console Rendering
 
 To make development a more pleasurable experience, Haystack uses [structlog’s `ConsoleRender`](https://www.structlog.org/en/stable/console-output.html) by default to render structured logs as a nicely aligned and colorful output:
-<ClickableImage src="/img/e49a1f2-Screenshot_2024-02-27_at_16.13.51.png" alt="" />
+<ClickableImage src="/img/e49a1f2-Screenshot_2024-02-27_at_16.13.51.png" alt="Python code snippet demonstrating basic logging setup with getLogger and a warning level log message output" />
 
-:::tip
-Rich Formatting
+:::tip Rich Formatting
 
 Install [_rich_](https://rich.readthedocs.io/en/stable/index.html) to beautify your logs even more!
 :::
@@ -84,7 +83,7 @@ We recommend JSON logging when deploying Haystack to production. Haystack will a
 
   haystack.logging.configure_logging(use_json=True)
   ```
-<ClickableImage src="/img/bff93d4-Screenshot_2024-02-27_at_16.15.35.png" alt="" />
+<ClickableImage src="/img/bff93d4-Screenshot_2024-02-27_at_16.15.35.png" alt="Python code snippet showing structured JSON logging configuration with example JSON formatted log output including event, level, and timestamp fields" />
 
 ### Disabling Structured Logging
 

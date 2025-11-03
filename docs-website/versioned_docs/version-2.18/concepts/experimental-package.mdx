@@ -1,0 +1,69 @@
+---
+title: "Experimental Package"
+id: experimental-package
+slug: "/experimental-package"
+description: "Try out new experimental features with Haystack."
+---
+
+# Experimental Package
+
+Try out new experimental features with Haystack.
+
+The `haystack-experimental` package allows you to test new experimental features without committing to their official release. Its main goal is to gather user feedback and iterate on new features quickly.
+
+Check out the `haystack-experimental` [GitHub repository](https://github.com/deepset-ai/haystack-experimental) for the latest catalog of available features, or take a look at our [Experiments API Reference](/reference/).
+
+### Installation
+
+For simplicity, every release of `haystack-experimental` includes all the available experiments at that time. To install the latest features, run:
+
+```shell
+pip install -U haystack-experimental
+```
+
+:::note
+The latest version of the experimental package is only tested against the latest version of Haystack. Compatibility with older versions of Haystack is not guaranteed.
+
+:::
+
+### Lifecycle
+
+Each experimental feature has a default lifespan of 3 months starting from the date of the first non-pre-release build that includes it. Once it reaches the end of its lifespan, we will remove it from `haystack-experimental` and either:
+
+- Merge the feature into Haystack and publish it with the next minor release,
+- Release the feature as an integration, or
+- Drop the feature.
+
+### Usage
+
+You can import the experimental new features like any other Haystack integration package:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_experimental.components.generators import FoobarGenerator
+
+c = FoobarGenerator()
+c.run([ChatMessage.from_user("What's an experiment? Be brief.")])
+```
+
+Experiments can also override existing Haystack features. For example, you can opt into an experimental type of `Pipeline` by changing the usual import:
+
+```python
+## from haystack import Pipeline
+from haystack_experimental import Pipeline
+
+pipe = Pipeline()
+## ...
+pipe.run(...)
+```
+
+## Additional References
+
+:cook: Cookbooks:
+
+- [Improving Retrieval with Auto-Merging and Hierarchical Document Retrieval](https://haystack.deepset.ai/cookbook/auto_merging_retriever)
+- [Invoking APIs with OpenAPITool](https://haystack.deepset.ai/cookbook/openapitool)
+- [Conversational RAG using Memory](https://haystack.deepset.ai/cookbook/conversational_rag_using_memory)
+- [Evaluating RAG Pipelines with EvaluationHarness](https://haystack.deepset.ai/cookbook/rag_eval_harness)
+- [Define & Run Tools](https://haystack.deepset.ai/cookbook/tools_support)
+- [Newsletter Sending Agent with Experimental Haystack Tools](https://haystack.deepset.ai/cookbook/newsletter-agent)

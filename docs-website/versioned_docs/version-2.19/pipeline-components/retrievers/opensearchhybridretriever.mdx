@@ -1,0 +1,129 @@
+---
+title: "OpenSearchHybridRetriever"
+id: opensearchhybridretriever
+slug: "/opensearchhybridretriever"
+description: "This is a [SuperComponent](../../concepts/components/supercomponents.mdx) that implements a Hybrid Retriever in a single component, relying on OpenSearch as the backend Document Store."
+---
+
+# OpenSearchHybridRetriever
+
+This is a [SuperComponent](../../concepts/components/supercomponents.mdx) that implements a Hybrid Retriever in a single component, relying on OpenSearch as the backend Document Store.
+
+A Hybrid Retriever uses both traditional keyword-based search (such as BM25) and embedding-based search to retrieve documents, combining the strengths of both approaches. The Retriever then merges and re-ranks the results from both methods.
+
+|  |  |
+| --- | --- |
+| Most common position in a pipeline | After an [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx) |
+| Mandatory init variables | "document_store:: An instance of `OpenSearchDocumentStore` to use for retrieval  <br /> <br />"embedder": Any [Embedder](../embedders.mdx) implementing the `TextEmbedder` protocol |
+| Mandatory run variables | "query": A query string |
+| Output variables | "documents": A list of documents matching the query |
+| API reference | [OpenSearch](/reference/integrations-opensearch) |
+| GitHub | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch |
+
+## Overview
+
+The `OpenSearchHybridRetriever` combines two retrieval methods:
+
+1. **BM25 Retrieval**: A keyword-based search that uses the BM25 algorithm to find documents based on term frequency and inverse document frequency. It's based on the [`OpenSearchBM25Retriever`](opensearchbm25retriever.mdx) component and is suitable for traditional keyword-based search.
+2. **Embedding-based Retrieval**: A semantic search that uses vector similarity to find documents that are semantically similar to the query. It's based on the [`OpenSearchEmbeddingRetriever`](opensearchembeddingretriever.mdx) component and is suitable for semantic search.
+
+The component automatically handles:
+
+- Converting the query into an embedding using the provided embedded,
+- Running both retrieval methods in parallel,
+- Merging and re-ranking the results using the specified join mode.
+
+### Setup and Installation
+
+```shell
+pip install opensearch-haystack
+```
+
+### Optional Parameters
+
+This Retriever accepts various optional parameters. You can verify the most up-to-date list of parameters in our [API Reference](/reference/integrations-opensearch#opensearchhybridretriever).
+
+You can pass additional parameters to the underlying components using the `bm25_retriever` and `embedding_retriever` dictionaries.
+The `DocumentJoiner` parameters are all exposed on the `OpenSearchHybridRetriever` class, so you can set them directly.
+
+Here's an example:
+
+```python
+retriever = OpenSearchHybridRetriever(
+    document_store=document_store,
+    embedder=embedder,
+    bm25_retriever={"raise_on_failure": True},
+    embedding_retriever={"raise_on_failure": False}
+)
+```
+
+## Usage
+
+### On its own
+
+This Retriever needs the `OpensearchDocumentStore` populated with documents to run. You can’t use it on its own.
+
+### In a pipeline
+
+Here's a basic example of how to use the `OpenSearchHybridRetriever`:
+
+You can use the following command to run OpenSearch locally using Docker. Make sure you have Docker installed and running on your machine. Note that this example disables the security plugin for simplicity. In a production environment, you should enable security features.
+
+```dockerfile
+docker run -d \\
+  --name opensearch-nosec \\
+  -p 9200:9200 \\
+  -p 9600:9600 \\
+  -e "discovery.type=single-node" \\
+  -e "DISABLE_SECURITY_PLUGIN=true" \\
+  opensearchproject/opensearch:2.12.0
+```
+
+```python
+from haystack import Document
+from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.retrievers.opensearch import OpenSearchHybridRetriever
+from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
+
+## Initialize the document store
+doc_store = OpenSearchDocumentStore(
+    hosts=["http://localhost:9200"],
+    index="document_store",
+    embedding_dim=384,
+)
+
+## Create some sample documents
+docs = [
+    Document(content="Machine learning is a subset of artificial intelligence."),
+    Document(content="Deep learning is a subset of machine learning."),
+    Document(content="Natural language processing is a field of AI."),
+    Document(content="Reinforcement learning is a type of machine learning."),
+    Document(content="Supervised learning is a type of machine learning."),
+]
+
+## Embed the documents and add them to the document store
+doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+doc_embedder.warm_up()
+docs = doc_embedder.run(docs)
+doc_store.write_documents(docs['documents'])
+
+## Initialize some haystack text embedder, in this case the SentenceTransformersTextEmbedder
+embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+
+## Initialize the hybrid retriever
+retriever = OpenSearchHybridRetriever(
+    document_store=doc_store,
+    embedder=embedder,
+    top_k_bm25=3,
+    top_k_embedding=3,
+    join_mode="reciprocal_rank_fusion"
+)
+
+## Run the retriever
+results = retriever.run(query="What is reinforcement learning?", filters_bm25=None, filters_embedding=None)
+
+{'documents': [Document(id=..., content: 'Reinforcement learning is a type of machine learning.', score: 1.0),
+  Document(id=..., content: 'Supervised learning is a type of machine learning.', score: 0.9760624679979518),
+  Document(id=..., content: 'Deep learning is a subset of machine learning.', score: 0.4919354838709677),
+  Document(id=..., content: 'Machine learning is a subset of artificial intelligence.', score: 0.4841269841269841)]}
+```

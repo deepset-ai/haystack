@@ -1,25 +1,31 @@
 ---
 title: "Data Classes"
-id: "data-classes"
+id: data-classes
+slug: "/data-classes"
 description: "In Haystack, there are a handful of core classes that are regularly used in many different places. These are classes that carry data through the system and you are likely to interact with these as either the input or output of your pipeline."
 ---
+
+# Data Classes
+
+In Haystack, there are a handful of core classes that are regularly used in many different places. These are classes that carry data through the system and you are likely to interact with these as either the input or output of your pipeline.
+
 Haystack uses data classes to help components communicate with each other in a simple and modular way. By doing this, data flows seamlessly through the Haystack pipelines. This page goes over the available data classes in Haystack: ByteStream, Answer (along with its variants ExtractedAnswer and GeneratedAnswer), ChatMessage, Document, and StreamingChunk, explaining how they contribute to the Haystack ecosystem.
 
-You can check out the detailed parameters in our [Data Classes](ref:data-classes-api) API reference.
+You can check out the detailed parameters in our [Data Classes](/reference/data-classes-api) API reference.
 
-## Answer
+### Answer
 
-### Overview
+#### Overview
 
 The `Answer` class serves as the base for responses generated within Haystack, containing the answer's data, the originating query, and additional metadata.
 
-### Key Features
+#### Key Features
 
 - Adaptable data handling, accommodating any data type (`data`).
 - Query tracking for contextual relevance (`query`).
 - Extensive metadata support for detailed answer description.
 
-### Attributes
+#### Attributes
 
 ```python
 @dataclass(frozen=True)
@@ -29,19 +35,19 @@ class Answer:
     meta: Dict[str, Any]
 ```
 
-## ExtractedAnswer
+### ExtractedAnswer
 
-### Overview
+#### Overview
 
 `ExtractedAnswer` is a subclass of `Answer` that deals explicitly with answers derived from Documents, offering more detailed attributes.
 
-### Key Features
+#### Key Features
 
 - Includes reference to the originating `Document`.
 - Score attribute to quantify the answer's confidence level.
 - Optional start and end indices for pinpointing answer location within the source.
 
-### Attributes
+#### Attributes
 
 ```python
 @dataclass
@@ -56,18 +62,18 @@ class ExtractedAnswer:
     meta: Dict[str, Any] = field(default_factory=dict)
 ```
 
-## GeneratedAnswer
+### GeneratedAnswer
 
-### Overview
+#### Overview
 
 `GeneratedAnswer` extends the `Answer` class to accommodate answers generated from multiple Documents.
 
-### Key Features
+#### Key Features
 
 - Handles string-type data.
 - Links to a list of `Document` objects, enhancing answer traceability.
 
-### Attributes
+#### Attributes
 
 ```python
 @dataclass
@@ -78,19 +84,19 @@ class GeneratedAnswer:
     meta: Dict[str, Any] = field(default_factory=dict)
 ```
 
-## ByteStream
+### ByteStream
 
-### Overview
+#### Overview
 
 `ByteStream` represents binary object abstraction in the Haystack framework and is crucial for handling various binary data formats.
 
-### Key Features
+#### Key Features
 
 - Holds binary data and associated metadata.
 - Optional MIME type specification for flexibility.
 - File interaction methods (`to_file`, `from_file_path`, `from_string`) for easy data manipulation.
 
-### Attributes
+#### Attributes
 
 ```python
 @dataclass(frozen=True)
@@ -100,7 +106,7 @@ class ByteStream:
     mime_type: Optional[str] = field(default=None)
 ```
 
-### Example
+#### Example
 
 ```python
 from haystack.dataclasses.byte_stream import ByteStream
@@ -108,26 +114,26 @@ from haystack.dataclasses.byte_stream import ByteStream
 image = ByteStream.from_file_path("dog.jpg")
 ```
 
-## ChatMessage
+### ChatMessage
 
-`ChatMessage` is the central abstraction to represent a message for a LLM. It contains role, metadata and several types of content, including text, tool calls and tool calls results.
+`ChatMessage` is the central abstraction to represent a message for a LLM. It contains role, metadata and several types of content, including text, tool calls and tool calls results.
 
-Read the detailed documentation for the `ChatMessage` data class on a dedicated [ChatMessage](doc:chatmessage) page.
+Read the detailed documentation for the `ChatMessage` data class on a dedicated [ChatMessage](data-classes/chatmessage.mdx) page.
 
-## Document
+### Document
 
-### Overview
+#### Overview
 
 `Document` represents a central data abstraction in Haystack, capable of holding text, tables, and binary data.
 
-### Key Features
+#### Key Features
 
 - Unique ID for each document.
 - Multiple content types are supported: text, binary (`blob`).
 - Custom metadata and scoring for advanced document management.
 - Optional embedding for AI-based applications.
 
-### Attributes
+#### Attributes
 
 ```python
 @dataclass
@@ -141,7 +147,7 @@ class Document(metaclass=_BackwardCompatible):
     sparse_embedding: Optional[SparseEmbedding] = field(default=None)
 ```
 
-### Example
+#### Example
 
 ```python
 from haystack import Document
@@ -149,38 +155,126 @@ from haystack import Document
 documents = Document(content="Here are the contents of your document", embedding=[0.1]*768)
 ```
 
-## StreamingChunk
+### StreamingChunk
 
-### Overview
+#### Overview
 
-`StreamingChunk` represents a partially streamed LLM response, enabling real-time LLM response.
+`StreamingChunk` represents a partially streamed LLM response, enabling real-time LLM response processing. It encapsulates a segment of streamed content along with associated metadata and provides comprehensive information about the streaming state.
 
-### Key Features
+#### Key Features
 
-- String-based content representation.
-- Accompanying metadata for additional context and management.
+- String-based content representation for text chunks
+- Support for tool calls and tool call results
+- Component tracking and metadata management
+- Streaming state indicators (start, finish reason)
+- Content block indexing for multi-part responses
 
-### Attributes
+#### Attributes
 
 ```python
+@dataclass
 class StreamingChunk:
     content: str
-    metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
+    meta: dict[str, Any] = field(default_factory=dict, hash=False)
+    component_info: Optional[ComponentInfo] = field(default=None)
+    index: Optional[int] = field(default=None)
+    tool_calls: Optional[list[ToolCallDelta]] = field(default=None)
+    tool_call_result: Optional[ToolCallResult] = field(default=None)
+    start: bool = field(default=False)
+    finish_reason: Optional[FinishReason] = field(default=None)
 ```
 
-## SparseEmbedding
+#### Example
 
-### Overview
+```python
+from haystack.dataclasses.streaming_chunk import StreamingChunk, ComponentInfo
 
-The `SparseEmbedding` class represents a sparse embedding: a vector where most values are zeros.
+## Basic text chunk
+chunk = StreamingChunk(
+    content="Hello world",
+    start=True,
+    meta={"model": "gpt-3.5-turbo"}
+)
 
-### Attributes
+## Tool call chunk
+tool_chunk = StreamingChunk(
+    tool_calls=[ToolCallDelta(index=0, tool_name="calculator", arguments='{"operation": "add", "a": 2, "b": 3}')],
+    index=0,
+    start=False,
+    finish_reason="tool_calls"
+)
+```
+
+### ToolCallDelta
+
+#### Overview
+
+`ToolCallDelta` represents a tool call prepared by the model, usually contained in an assistant message during streaming.
+
+#### Attributes
+
+```python
+@dataclass
+class ToolCallDelta:
+    index: int
+    tool_name: Optional[str] = field(default=None)
+    arguments: Optional[str] = field(default=None)
+    id: Optional[str] = field(default=None)
+```
+
+### ComponentInfo
+
+#### Overview
+
+The `ComponentInfo` class represents information about a component within a Haystack pipeline. It is used to track the type and name of components that generate or process data, aiding in debugging, tracing, and metadata management throughout the pipeline.
+
+#### Key Features
+
+- Stores the type of the component (including module and class name).
+- Optionally stores the name assigned to the component in the pipeline.
+- Provides a convenient class method to create a `ComponentInfo` instance from a `Component` object.
+
+#### Attributes
+
+```python
+@dataclass
+class ComponentInfo:
+    type: str
+    name: Optional[str] = field(default=None)
+
+    @classmethod
+    def from_component(cls, component: Component) -> "ComponentInfo":
+        ...
+```
+
+#### Example
+
+```python
+from haystack.dataclasses.streaming_chunk import ComponentInfo
+from haystack.core.component import Component
+
+class MyComponent(Component):
+    ...
+
+component = MyComponent()
+info = ComponentInfo.from_component(component)
+print(info.type)  # e.g., 'my_module.MyComponent'
+print(info.name)  # Name assigned in the pipeline, if any
+```
+
+### SparseEmbedding
+
+#### Overview
+
+The `SparseEmbedding` class represents a sparse embedding: a vector where most values are zeros.
+
+#### Attributes
 
 - `indices`: List of indices of non-zero elements in the embedding.
 - `values`: List of values of non-zero elements in the embedding.
 
-## Tool
+### Tool
 
 `Tool` is a data class representing a tool that Language Models can prepare a call for.
 
-Read the detailed documentation for the `Tool` data class on a dedicated [Tool](doc:tool) page.
+Read the detailed documentation for the `Tool` data class on a dedicated [Tool](../tools/tool.mdx) page.

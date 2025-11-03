@@ -11,7 +11,7 @@ description: "`CSVDocumentSplitter` divides CSV documents into smaller sub-table
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In indexing pipelines after [Converters](https://docs.haystack.deepset.ai../../../docs/pipeline-components/converters.mdx) , before [CSVDocumentCleaner](csvdocumentcleaner.mdx) |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx) , before [CSVDocumentCleaner](csvdocumentcleaner.mdx) |
 | **Mandatory run variables**            | "documents": A list of documents with CSV-formatted content                                                                                      |
 | **Output variables**                   | "documents": A list of documents, each containing a sub-table extracted from the original CSV file                                               |
 | **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                                                           |
@@ -19,7 +19,7 @@ description: "`CSVDocumentSplitter` divides CSV documents into smaller sub-table
 
 ## Overview
 
-`CSVDocumentSplitter` expects a list of documents containing CSV-formatted content and returns a list of new `Document` objects, each representing a sub-table extracted from the original document. 
+`CSVDocumentSplitter` expects a list of documents containing CSV-formatted content and returns a list of new `Document` objects, each representing a sub-table extracted from the original document.
 
 There are two modes of operation for the splitter:
 

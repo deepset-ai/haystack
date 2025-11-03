@@ -81,6 +81,16 @@ class FallbackChatGenerator:
         data["init_parameters"] = init_params
         return default_from_dict(cls, data)
 
+    def warm_up(self) -> None:
+        """
+        Warm up all underlying chat generators.
+
+        This method calls warm_up() on each underlying generator that supports it.
+        """
+        for gen in self.chat_generators:
+            if hasattr(gen, "warm_up") and callable(gen.warm_up):
+                gen.warm_up()
+
     def _run_single_sync(  # pylint: disable=too-many-positional-arguments
         self,
         gen: Any,

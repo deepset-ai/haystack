@@ -1,0 +1,93 @@
+---
+title: "TextCleaner"
+id: textcleaner
+slug: "/textcleaner"
+description: "Use `TextCleaner` to make text data more readable. It removes regexes, punctuation, and numbers, as well as converts text to lowercase. This is especially useful to clean up text data before evaluation."
+---
+
+# TextCleaner
+
+Use `TextCleaner` to make text data more readable. It removes regexes, punctuation, and numbers, as well as converts text to lowercase. This is especially useful to clean up text data before evaluation.
+
+|                                        |                                                                                                      |
+| :------------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | Between a [Generator](../generators.mdx)  and an [Evaluator](../evaluators.mdx)                        |
+| **Mandatory run variables**            | "texts": A list of strings to be cleaned                                                             |
+| **Output variables**                   | "texts": A list of cleaned texts                                                                     |
+| **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                               |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/text_cleaner.py |
+
+## Overview
+
+`TextCleaner` expects a list of strings as input and returns a list of strings with cleaned texts. Selectable cleaning steps are to `convert_to_lowercase`, `remove_punctuation`, and to `remove_numbers`. These three parameters are booleans that need to be set when the component is initialized.
+
+- `convert_to_lowercase` converts all characters in texts to lowercase.
+- `remove_punctuation` removes all punctuation from the text.
+- `remove_numbers` removes all numerical digits from the text.
+
+In addition, you can specify a regular expression with the parameter `remove_regexps`, and any matches will be removed.
+
+## Usage
+
+### On its own
+
+You can use it outside of a pipeline to clean up any texts:
+
+```python
+from haystack.components.preprocessors import TextCleaner
+
+text_to_clean = "1Moonlight shimmered softly, 300 Wolves howled nearby, Night enveloped everything."
+
+cleaner = TextCleaner(convert_to_lowercase=True, remove_punctuation=False, remove_numbers=True)
+result = cleaner.run(texts=[text_to_clean])
+```
+
+### In a pipeline
+
+In this example, we are using `TextCleaner` after an `ExtractiveReader` and an `OutputAdapter` to remove the punctuation in texts. Then, our custom-made `ExactMatchEvaluator` component compares the retrieved answer to the ground truth answer.
+
+```python
+from typing import List
+from haystack import component, Document, Pipeline
+from haystack.components.converters import OutputAdapter
+from haystack.components.preprocessors import TextCleaner
+from haystack.components.readers import ExtractiveReader
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+document_store = InMemoryDocumentStore()
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+			       Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+			       Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+document_store.write_documents(documents=documents)
+
+@component
+class ExactMatchEvaluator:
+	@component.output_types(score=int)
+	def run(self, expected: str, provided: List[str]):
+		return {"score": int(expected in provided)}
+
+adapter = OutputAdapter(
+    template="{{answers | extract_data}}",
+    output_type=List[str],
+    custom_filters={"extract_data": lambda data: [answer.data for answer in data if answer.data]}
+)
+
+p = Pipeline()
+p.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+p.add_component("reader", ExtractiveReader())
+p.add_component("adapter", adapter)
+p.add_component("cleaner", TextCleaner(remove_punctuation=True))
+p.add_component("evaluator", ExactMatchEvaluator())
+
+p.connect("retriever", "reader")
+p.connect("reader", "adapter")
+p.connect("adapter", "cleaner.texts")
+p.connect("cleaner", "evaluator.provided")
+
+question = "What behavior indicates a high level of self-awareness of elephants?"
+ground_truth_answer = "recognizing themselves in mirrors"
+
+result = p.run({"retriever": {"query": question}, "reader": {"query": question}, "evaluator": {"expected": ground_truth_answer}})
+print(result)
+```

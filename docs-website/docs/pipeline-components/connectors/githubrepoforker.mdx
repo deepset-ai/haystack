@@ -11,11 +11,11 @@ This component forks a GitHub repository from an issue URL through the GitHub AP
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Right at the beginning of a pipeline and before an [Agent](../../../docs/pipeline-components/agents-1/agent.mdx) component that expects the name of a GitHub branch as input |
+| **Most common position in a pipeline** | Right at the beginning of a pipeline and before an [Agent](../agents-1/agent.mdx) component that expects the name of a GitHub branch as input |
 | **Mandatory init variables** | "github_token": GitHub personal access token. Can be set with `GITHUB_TOKEN` env var. |
 | **Mandatory run variables** | "url": The URL of a GitHub issue in the repository that should be forked |
 | **Output variables** | "repo": Fork repository path  <br /> <br />"issue_branch": Issue-specific branch name (if created) |
-| **API reference** | [GitHub](/reference/integrations-hanlp) |
+| **API reference** | [GitHub](/reference/integrations-github) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
 
 ## Overview
@@ -45,8 +45,7 @@ pip install github-haystack
 
 ## Usage
 
-:::info
-Repository Placeholder
+:::info Repository Placeholder
 
 To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
 :::

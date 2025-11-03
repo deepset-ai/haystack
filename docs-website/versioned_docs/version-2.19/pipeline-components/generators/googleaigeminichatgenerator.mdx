@@ -1,0 +1,149 @@
+---
+title: "GoogleAIGeminiChatGenerator"
+id: googleaigeminichatgenerator
+slug: "/googleaigeminichatgenerator"
+description: "This component enables chat completion using Google Gemini models."
+---
+
+# GoogleAIGeminiChatGenerator
+
+This component enables chat completion using Google Gemini models.
+
+:::warning Deprecation Notice
+
+This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
+
+We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::
+
+|                                        |                                                                                                      |
+| :------------------------------------- | :--------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
+| **Mandatory init variables**           | "api_key": A Google AI Studio API key. Can be set with `GOOGLE_API_KEY` env var.                     |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Output variables**                   | “replies”: A list of alternative replies of the model to the input chat                              |
+| **API reference**                      | [Google AI](/reference/integrations-google-ai)                                                              |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_ai          |
+
+`GoogleAIGeminiChatGenerator` supports `gemini-2.5-pro-exp-03-25`, `gemini-2.0-flash`, `gemini-1.5-pro`, and `gemini-1.5-flash` models.
+
+For available models, see https://ai.google.dev/gemini-api/docs/models/gemini.
+
+### Parameters Overview
+
+`GoogleAIGeminiChatGenerator` uses a Google Studio API key for authentication. You can write this key in an `api_key` parameter or as a `GOOGLE_API_KEY` environment variable (recommended).
+
+To get an API key, visit the [Google AI Studio](https://aistudio.google.com/) website.
+
+### Streaming
+
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+
+## Usage
+
+To begin working with `GoogleAIGeminiChatGenerator`, install the `google-ai-haystack` package:
+
+```shell
+pip install google-ai-haystack
+```
+
+### On its own
+
+Basic usage:
+
+```python
+import os
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiChatGenerator
+
+os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
+gemini_chat = GoogleAIGeminiChatGenerator()
+
+messages = [ChatMessage.from_user("Tell me the name of a movie")]
+res = gemini_chat.run(messages)
+
+print(res["replies"][0].text)
+
+messages += [res["replies"], ChatMessage.from_user("Who's the main actor?")]
+res = gemini_chat.run(messages)
+
+print(res["replies"][0].text)
+```
+
+When chatting with Gemini, you can also easily use function calls. First, define the function locally and convert into a [Tool](../../tools/tool.mdx):
+
+```python
+from typing import Annotated
+from haystack.tools import create_tool_from_function
+
+## example function to get the current weather
+def get_current_weather(
+    location: Annotated[str, "The city for which to get the weather, e.g. 'San Francisco'"] = "Munich",
+    unit: Annotated[str, "The unit for the temperature, e.g. 'celsius'"] = "celsius",
+) -> str:
+    return f"The weather in {location} is sunny. The temperature is 20 {unit}."
+
+tool = create_tool_from_function(get_current_weather)
+```
+
+Create a new instance of `GoogleAIGeminiChatGenerator` to set the tools and a [ToolInvoker](../tools/toolinvoker.mdx) to invoke the tools.
+
+```python
+import os
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiChatGenerator
+from haystack.components.tools import ToolInvoker
+
+os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
+
+gemini_chat = GoogleAIGeminiChatGenerator(model="gemini-2.0-flash", tools=[tool])
+
+tool_invoker = ToolInvoker(tools=[tool])
+
+```
+
+And then ask a question:
+
+```python
+from haystack.dataclasses import ChatMessage
+
+messages = [ChatMessage.from_user("What is the temperature in celsius in Berlin?")]
+res = gemini_chat.run(messages=messages)
+
+print(res["replies"][0].tool_calls)
+
+tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
+messages = user_message + replies + tool_messages
+
+messages += res["replies"][0] + [ChatMessage.from_function(content=weather, name="get_current_weather")]
+
+final_replies = gemini_chat.run(messages=messages)["replies"]
+print(final_replies[0].text)
+```
+
+### In a pipeline
+
+```python
+import os
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+from haystack_integrations.components.generators.google_ai import GoogleAIGeminiChatGenerator
+
+## no parameter init, we don't use any runtime template variables
+prompt_builder = ChatPromptBuilder()
+
+os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
+gemini_chat = GoogleAIGeminiChatGenerator()
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("gemini", gemini_chat)
+pipe.connect("prompt_builder.prompt", "gemini.messages")
+
+location = "Rome"
+messages = [ChatMessage.from_user("Tell me briefly about {{location}} history")]
+res = pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
+
+print(res)
+
+```
