@@ -539,3 +539,23 @@ code:not([class*="language-"]) a:hover {
 .tabs__item:hover {
   color: var(--ifm-color-primary-light);
 }
+
+/* ========================================
+   IMAGES - Dark Mode White Background
+   ======================================== */
+
+/* Add white background to images with transparent PNGs in dark mode */
+[data-theme='dark'] .img-white-bg img,
+[data-theme='dark'] .img-white-bg picture img {
+  background-color: #ffffff;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+/* Alternative: light grey background (less harsh) */
+[data-theme='dark'] .img-light-bg img,
+[data-theme='dark'] .img-light-bg picture img {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+}
