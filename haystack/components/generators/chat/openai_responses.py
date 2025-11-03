@@ -688,6 +688,7 @@ def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[s
                 formatted_tool_results.append(tool_result)
         formatted_messages.extend(formatted_tool_results)
 
+    # the API expects a reasoning id even if there is no reasoning text
     if reasonings:
         formatted_reasonings = []
         for reasoning in reasonings:
