@@ -98,8 +98,7 @@ Thanks to serialization, you can save and then load your pipelines. Serializatio
 
 Haystack pipelines delegate the serialization to its components, so serializing a pipeline simply means serializing each component in the pipeline one after the other, along with their connections. The pipeline is serialized into a dictionary format, which acts as an intermediate format that you can then convert into the final format you want.
 
-:::note
-Serialization formats
+:::note Serialization formats
 
 Haystack only supports YAML format at this time. We'll be rolling out more formats gradually.
 :::
