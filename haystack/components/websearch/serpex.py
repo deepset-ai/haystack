@@ -25,7 +25,7 @@ class SerpexWebSearch:
     ### Usage example
 
     ```python
-    from haystack.components.fetchers import SerpexWebSearch
+    from haystack.components.websearch import SerpexWebSearch
     from haystack.utils import Secret
 
     fetcher = SerpexWebSearch(api_key=Secret.from_token("your-serpex-api-key"))
