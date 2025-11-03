@@ -38,7 +38,7 @@ from haystack.components.evaluators import SASEvaluator
 sas_evaluator = SASEvaluator()
 sas_evaluator.warm_up()
 result = sas_evaluator.run(
-  ground_truth_answers=["Berlin", "Paris"], 
+  ground_truth_answers=["Berlin", "Paris"],
   predicted_answers=["Berlin", "Lyon"]
 )
 print(result["individual_scores"])
@@ -86,4 +86,4 @@ for evaluator in result:
 
 ## Additional References
 
-:cook: Cookbook: [Prompt Optimization with DSPy](https://haystack.deepset.ai/cookbook/prompt_optimization_with_dspy)
+🧑‍🍳 Cookbook: [Prompt Optimization with DSPy](https://haystack.deepset.ai/cookbook/prompt_optimization_with_dspy)
