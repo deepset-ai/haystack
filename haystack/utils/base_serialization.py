@@ -279,7 +279,7 @@ def _deserialize_value(value: dict[str, Any]) -> Any:
     # handle pydantic models
     if issubclass(cls, pydantic.BaseModel):
         try:
-            return cls(**payload)
+            return cls.model_validate(payload)
         except Exception as e:
             raise DeserializationError(
                 f"Failed to deserialize data '{payload}' into Pydantic model '{value_type}'"
