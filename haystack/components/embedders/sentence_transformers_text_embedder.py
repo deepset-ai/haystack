@@ -46,7 +46,6 @@ class SentenceTransformersTextEmbedder:
         progress_bar: bool = True,
         normalize_embeddings: bool = False,
         trust_remote_code: bool = False,
-        revision: Optional[str] = None,
         local_files_only: bool = False,
         truncate_dim: Optional[int] = None,
         model_kwargs: Optional[dict[str, Any]] = None,
@@ -55,6 +54,7 @@ class SentenceTransformersTextEmbedder:
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
         encode_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
+        revision: Optional[str] = None,
     ):
         """
         Create a SentenceTransformersTextEmbedder component.
@@ -82,9 +82,6 @@ class SentenceTransformersTextEmbedder:
         :param trust_remote_code:
             If `False`, permits only Hugging Face verified model architectures.
             If `True`, permits custom models and scripts.
-        :param revision:
-            The specific model version to use. It can be a branch name, a tag name, or a commit id,
-            for a stored model on Hugging Face.
         :param local_files_only:
             If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
         :param truncate_dim:
@@ -112,6 +109,9 @@ class SentenceTransformersTextEmbedder:
             The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
             Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
             for more information on acceleration and quantization options.
+        :param revision:
+            The specific model version to use. It can be a branch name, a tag name, or a commit id,
+            for a stored model on Hugging Face.
         """
 
         self.model = model

@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Added a `revision` parameter to all Sentence Transformers embedder components
+    (`SentenceTransformersDocumentEmbedder`, `SentenceTransformersTextEmbedder`,
+    `SentenceTransformersSparseDocumentEmbedder`, and `SentenceTransformersSparseTextEmbedder`)
+    to allow users to specify a specific model revision/version from the Hugging Face Hub.
+    This enables pinning to a particular model version for reproducibility and stability.

@@ -45,13 +45,13 @@ class SentenceTransformersSparseTextEmbedder:
         prefix: str = "",
         suffix: str = "",
         trust_remote_code: bool = False,
-        revision: Optional[str] = None,
         local_files_only: bool = False,
         model_kwargs: Optional[dict[str, Any]] = None,
         tokenizer_kwargs: Optional[dict[str, Any]] = None,
         config_kwargs: Optional[dict[str, Any]] = None,
         encode_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
+        revision: Optional[str] = None,
     ):
         """
         Create a SentenceTransformersSparseTextEmbedder component.
@@ -70,9 +70,6 @@ class SentenceTransformersSparseTextEmbedder:
         :param trust_remote_code:
             If `False`, permits only Hugging Face verified model architectures.
             If `True`, permits custom models and scripts.
-        :param revision:
-            The specific model version to use. It can be a branch name, a tag name, or a commit id,
-            for a stored model on Hugging Face.
         :param local_files_only:
             If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
         :param model_kwargs:
@@ -87,6 +84,9 @@ class SentenceTransformersSparseTextEmbedder:
             The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
             Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
             for more information on acceleration and quantization options.
+        :param revision:
+            The specific model version to use. It can be a branch name, a tag name, or a commit id,
+            for a stored model on Hugging Face.
         """
 
         self.model = model
