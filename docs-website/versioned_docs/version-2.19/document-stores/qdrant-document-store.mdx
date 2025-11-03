@@ -45,8 +45,7 @@ document_store.write_documents([
 print(document_store.count_documents())
 ```
 
-:::warning
-Collections Created Outside Haystack
+:::warning Collections Created Outside Haystack
 
 When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. If you want to migrate your existing collection, see the sample script at https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/qdrant/src/haystack_integrations/document_stores/qdrant/migrate_to_sparse.py.
 :::
@@ -73,8 +72,7 @@ document_store.write_documents([
 print(document_store.count_documents())
 ```
 
-:::tip
-More information
+:::tip More information
 
 You can find more ways to initialize and use QdrantDocumentStore on our [integration page](https://haystack.deepset.ai/integrations/qdrant-document-store).
 :::
@@ -85,8 +83,7 @@ You can find more ways to initialize and use QdrantDocumentStore on our [integra
 - [`QdrantSparseEmbeddingRetriever`](../pipeline-components/retrievers/qdrantsparseembeddingretriever.mdx): Retrieves documents from the `QdrantDocumentStore` based on their sparse embeddings.
 - [`QdrantHybridRetriever`](../pipeline-components/retrievers/qdranthybridretriever.mdx): Retrieves documents from the `QdrantDocumentStore` based on both dense and sparse embeddings.
 
-:::note
-Sparse Embedding Support
+:::note Sparse Embedding Support
 
 To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
 

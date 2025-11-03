@@ -38,8 +38,7 @@ downloader = S3Downloader(
 
 The component downloads multiple files in parallel using the `max_workers` parameter (default is 32 workers) to speed up processing of large document sets. Downloaded files are cached locally, and when the cache exceeds `max_cache_size` (default is 100 files), least recently accessed files are automatically removed. Already downloaded files are touched to update their access time without re-downloading.
 
-:::info
-Required Configuration
+:::info Required Configuration
 
 The component requires two critical configurations:
 
@@ -55,7 +54,7 @@ You can use the `file_extensions` parameter to download only specific file types
 
 ### Custom S3 Key Generation
 
-By default, the component uses the `file_name` from Document metadata as the S3 key. If your S3 file structure doesn't match the file names in metadata, you can provide an optional `s3_key_generation_function` to customize how S3 keys are generated from Document metadata. 
+By default, the component uses the `file_name` from Document metadata as the S3 key. If your S3 file structure doesn't match the file names in metadata, you can provide an optional `s3_key_generation_function` to customize how S3 keys are generated from Document metadata.
 
 ## Usage
 
@@ -173,7 +172,7 @@ pipe = Pipeline()
 
 ## Add S3Downloader to download files from S3
 pipe.add_component(
-    "downloader", 
+    "downloader",
     S3Downloader(
         file_root_path="/tmp/s3_downloads",
         file_extensions=[".pdf", ".txt"]
@@ -182,7 +181,7 @@ pipe.add_component(
 
 ## Route documents by file type
 pipe.add_component(
-    "router", 
+    "router",
     DocumentTypeRouter(
         file_path_meta_field="file_path",
         mime_types=["application/pdf", "text/plain"]
