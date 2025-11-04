@@ -1,0 +1,24 @@
+---
+features:
+  - |
+    Added the `AzureOpenAIResponsesChatGenerator`, a new component that integrates Azure OpenAI's Responses API into Haystack.
+    This unlocks several advanced capabilities from the Responses API:
+    - Allowing retrieval of concise summaries of the model's reasoning process.
+    - Allowing the use of native OpenAI or MCP tool formats, along with Haystack Tool objects and Toolset instances.
+
+    Example with reasoning and web search tool:
+    ```python
+    from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
+    from haystack.dataclasses import ChatMessage
+
+    chat_generator = AzureOpenAIResponsesChatGenerator(
+    azure_endpoint="https://example-resource.azure.openai.com/",
+        azure_deployment="gpt-5-mini",
+        generation_kwargs={{"summary": "auto", "effort": "low"}},
+    )
+
+    response = chat_generator.run(
+        messages=[ChatMessage.from_user("What's Natural Language Processing?")]
+    )
+    print(response["replies"][0].text)
+    ```
