@@ -11,6 +11,8 @@ A keyword-based Retriever that fetches Documents matching a query from the Azure
 
 A keyword-based Retriever that fetches documents matching a query from the Azure AI Search Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
@@ -20,11 +22,13 @@ A keyword-based Retriever that fetches documents matching a query from the Azure
 | **API reference**                      | [Azure AI Search](/reference/integrations-azure_ai_search)                                                                                                                                                               |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_ai_search                                                                                                                 |
 
+</div>
+
 ## Overview
 
-The `AzureAISearchBM25Retriever` is a keyword-based Retriever designed to fetch documents that match a query from an `AzureAISearchDocumentStore`. It uses the BM25 algorithm which calculates a weighted word overlap between the query and the documents to determine their similarity. The Retriever accepts textual query but you can also provide a combination of terms with boolean operators. Some examples of valid queries could be `"pool"`, `"pool spa"`, and `"pool spa +airport"`. 
+The `AzureAISearchBM25Retriever` is a keyword-based Retriever designed to fetch documents that match a query from an `AzureAISearchDocumentStore`. It uses the BM25 algorithm which calculates a weighted word overlap between the query and the documents to determine their similarity. The Retriever accepts textual query but you can also provide a combination of terms with boolean operators. Some examples of valid queries could be `"pool"`, `"pool spa"`, and `"pool spa +airport"`.
 
-In addition to the `query`, the `AzureAISearchBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space. 
+In addition to the `query`, the `AzureAISearchBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
 
 If your search index includes a [semantic configuration](https://learn.microsoft.com/en-us/azure/search/semantic-how-to-query-request), you can enable semantic ranking to apply it to the Retriever's results. For more details, refer to the [Azure AI documentation](https://learn.microsoft.com/en-us/azure/search/hybrid-search-how-to-query#semantic-hybrid-search).
 

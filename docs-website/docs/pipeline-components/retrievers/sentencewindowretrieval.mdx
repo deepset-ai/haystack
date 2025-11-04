@@ -9,6 +9,8 @@ description: "Use this component to retrieve neighboring sentences around releva
 
 Use this component to retrieve neighboring sentences around relevant sentences to get the full context.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Used after the main Retriever component, like the `InMemoryEmbeddingRetriever` or any other Retriever. |
@@ -17,6 +19,8 @@ Use this component to retrieve neighboring sentences around relevant sentences t
 | **Output variables** | “context_windows”: A list of strings  <br /> <br />"context_documents": A list of documents ordered by `split_idx_start` |
 | **API reference** | [Retrievers](/reference/retrievers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/sentence_window_retriever.py |
+
+</div>
 
 ## Overview
 
@@ -33,8 +37,8 @@ This component is meant to be used with other Retrievers, such as the `InMemoryE
 ### On its own
 
 ```python
-splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")  
-text = ("This is a text with some words. There is a second sentence. And there is also a third sentence. "  
+splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
+text = ("This is a text with some words. There is a second sentence. And there is also a third sentence. "
         "It also contains a fourth sentence. And a fifth sentence. And a sixth sentence. And a seventh sentence")
 doc = Document(content=text)
 
@@ -48,12 +52,12 @@ retriever = SentenceWindowRetriever(document_store=doc_store, window_size=3)
 ### In a Pipeline
 
 ```python
-from haystack import Document, Pipeline  
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever  
-from haystack.components.retrievers import SentenceWindowRetriever  
-from haystack.components.preprocessors import DocumentSplitter  
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.retrievers import SentenceWindowRetriever
+from haystack.components.preprocessors import DocumentSplitter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-    
+
 splitter = DocumentSplitter(split_length=10, split_overlap=5, split_by="word")
 text = (
         "This is a text with some words. There is a second sentence. And there is also a third sentence. "

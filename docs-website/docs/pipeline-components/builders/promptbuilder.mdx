@@ -9,6 +9,8 @@ description: "Use this component in pipelines before a Generator to render a pro
 
 Use this component in pipelines before a Generator to render a prompt template and fill in variable values.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a querying pipeline, before a [Generator](../generators.mdx)                                                                      |
@@ -17,6 +19,8 @@ Use this component in pipelines before a Generator to render a prompt template a
 | **Output variables**                   | “prompt”: A string that represents the rendered prompt template                                                                     |
 | **API reference**                      | [Builders](/reference/builders-api)                                                                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/builders/prompt_builder.py                                   |
+
+</div>
 
 ## Overview
 
@@ -187,7 +191,7 @@ print(result)
 
 ```python
 documents = [
-    Document(content="Joe lives in Berlin", meta={"name": "doc1"}), 
+    Document(content="Joe lives in Berlin", meta={"name": "doc1"}),
     Document(content="Joe is a software engineer", meta={"name": "doc1"}),
 ]
 new_template = """
@@ -205,8 +209,8 @@ new_template = """
     """
 p.run({
       "prompt_builder": {
-          "documents": documents, 
-          "query": question, 
+          "documents": documents,
+          "query": question,
           "template": new_template,
       },
   })
@@ -235,15 +239,15 @@ language_template = """
     """
 p.run({
       "prompt_builder": {
-          "documents": documents, 
-          "query": question, 
-          "template": language_template, 
+          "documents": documents,
+          "query": question,
+          "template": language_template,
           "template_variables": {"answer_language": "German"},
       },
   })
 ```
 
-Note that `language_template` introduces `answer_language` variable which is not bound to any pipeline variable. If not set otherwise, it would use its default value, "English". In this example, we overwrite its value to "German".  
+Note that `language_template` introduces `answer_language` variable which is not bound to any pipeline variable. If not set otherwise, it would use its default value, "English". In this example, we overwrite its value to "German".
 The `template_variables` allows you to overwrite pipeline variables (such as documents) as well.
 
 ## Additional References

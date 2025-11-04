@@ -9,6 +9,8 @@ description: "`ConditionalRouter` routes your data through different paths down 
 
 `ConditionalRouter` routes your data through different paths down the pipeline by evaluating the conditions that you specified.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible                                                                                                                              |
@@ -18,9 +20,11 @@ description: "`ConditionalRouter` routes your data through different paths down 
 | **API reference**                      | [Routers](/reference/routers-api)                                                                                                            |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/conditional_router.py                                  |
 
+</div>
+
 ## Overview
 
-To use `ConditionalRouter` you need to define a list of routes.  
+To use `ConditionalRouter` you need to define a list of routes.
 Each route is a dictionary with the following elements:
 
 - `'condition'`: A Jinja2 string expression that determines if the route is selected.

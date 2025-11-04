@@ -9,6 +9,8 @@ description: "This component constructs prompts dynamically by processing chat m
 
 This component constructs prompts dynamically by processing chat messages.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [Generator](../generators.mdx)                                                                                                         |
@@ -18,13 +20,15 @@ This component constructs prompts dynamically by processing chat messages.
 | **API reference**                      | [Builders](/reference/builders-api)                                                                                                                   |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/builders/chat_prompt_builder.py                                         |
 
+</div>
+
 ## Overview
 
 The `ChatPromptBuilder` component creates prompts using static or dynamic templates written in [Jinja2](https://palletsprojects.com/p/jinja/) syntax, by processing a list of chat messages or a special string template. The templates contain placeholders like `{{ variable }}` that are filled with values provided during runtime. You can use it for static prompts set at initialization or change the templates and variables dynamically while running.
 
 To use it, start by providing a list of `ChatMessage` objects or a special string as the template.
 
-[`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) is a data class that includes message content, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. 
+[`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) is a data class that includes message content, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 The builder looks for placeholders in the template and identifies the required variables. You can also list these variables manually. During runtime, the `run` method takes the template and the variables, fills in the placeholders, and returns the completed prompt. If required variables are missing. If the template is invalid, the builder raises an error.
 
@@ -200,7 +204,7 @@ Hello, my name is {{name}}!
 
 builder = ChatPromptBuilder(template=template)
 result = builder.run(name="John")
-  
+
 assert result["prompt"] == [ChatMessage.from_user("Hello, my name is John!")]
 ```
 
@@ -292,7 +296,7 @@ assert result["prompt"] == [
         content_parts=["Hello! I am John. What's the difference between the following images?",
         *images]
     )
-] 
+]
 ```
 
 ### In a pipeline

@@ -9,6 +9,8 @@ description: "The `DocumentMAPEvaluator` evaluates documents retrieved by Haysta
 
 The `DocumentMAPEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks to what extent the list of retrieved documents contains only relevant documents as specified in the ground truth labels or also non-relevant documents. This metric is called mean average precision (MAP).
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
@@ -17,11 +19,13 @@ The `DocumentMAPEvaluator` evaluates documents retrieved by Haystack pipelines u
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/document_map.py |
 
+</div>
+
 ## Overview
 
 You can use the `DocumentMAPEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, against ground truth labels. A higher mean average precision is better, indicating that the list of retrieved documents contains many relevant documents and only a few non-relevant documents or none at all.
 
-To initialize a `DocumentMAPEvaluator`, there are no parameters required. 
+To initialize a `DocumentMAPEvaluator`, there are no parameters required.
 
 ## Usage
 

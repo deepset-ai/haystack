@@ -9,14 +9,18 @@ description: "This is an embedding Retriever compatible with the Chroma Document
 
 This is an embedding Retriever compatible with the Chroma Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline  2. The last component in the semantic search pipeline  3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
 | **Mandatory init variables**           | "document_store": An instance of a [ChromaDocumentStore](../../document-stores/chromadocumentstore.mdx)                                                                                                                                                                                         |
 | **Mandatory run variables**            | "query_embedding": A list of floats                                                                                                                                                                                                                                         |
-| **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                            |
+| **Output variables**                   | "documents": A list of documents                                                                                                                                                                                                                                            |
 | **API reference**                      | [Chroma](/reference/integrations-chroma)                                                                                                                                                                                                                                           |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/chroma                                                                                                                                                                                    |
+
+</div>
 
 ## Overview
 
@@ -46,7 +50,7 @@ retriever.run(query_embedding=[0.1]*384)
 
 #### In a pipeline
 
-Here is how you could use the `ChromaEmbeddingRetriever` in a pipeline. In this example, you would create two pipelines: an indexing one and a querying one. 
+Here is how you could use the `ChromaEmbeddingRetriever` in a pipeline. In this example, you would create two pipelines: an indexing one and a querying one.
 
 In the indexing pipeline, the documents are passed to the Document Embedder and then written into the document Store.
 

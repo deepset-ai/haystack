@@ -9,6 +9,8 @@ description: "Use this Retriever with any Document Store to get the Documents th
 
 Use this Retriever with any Document Store to get the Documents that match specific filters.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | At the beginning of a Pipeline                                                                        |
@@ -18,11 +20,13 @@ Use this Retriever with any Document Store to get the Documents that match speci
 | **API reference**                      | [Retrievers](/reference/retrievers-api)                                                                      |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/filter_retriever.py |
 
+</div>
+
 ## Overview
 
 `FilterRetriever` retrieves Documents that match the provided filters.
 
-It’s a special kind of Retriever – it can work with all Document Stores instead of being specialized to work with only one. 
+It’s a special kind of Retriever – it can work with all Document Stores instead of being specialized to work with only one.
 
 However, as every other Retriever, it needs some Document Store at initialization time, and it will perform filtering on the content of that instance only.
 

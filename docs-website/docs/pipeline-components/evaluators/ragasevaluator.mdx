@@ -9,6 +9,8 @@ description: "This component evaluates Haystack pipelines using LLM-based metric
 
 This component evaluates Haystack pipelines using LLM-based metrics. It supports metrics like context relevance, factual accuracy, response relevance, and more.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline has generated the inputs for the Evaluator. |
@@ -17,6 +19,8 @@ This component evaluates Haystack pipelines using LLM-based metrics. It supports
 | **Output variables** | “results”: A nested list of metric results. There can be one or more results, depending on the metric. Each result is a dictionary containing:  <br /> <br />- `name` - The name of the metric.  <br /> <br />- `score` - The score of the metric. |
 | **API reference** | [Ragas](/reference/integrations-ragas) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/ragas |
+
+</div>
 
 Ragas is an evaluation framework that provides a number of LLM-based evaluation metrics. You can use the `RagasEvaluator` component to evaluate a Haystack pipeline, such as a retrieval-augmented generative pipeline, against one of the metrics provided by Ragas.
 
@@ -24,6 +28,8 @@ Ragas is an evaluation framework that provides a number of LLM-based evaluation 
 
 Ragas supports a number of metrics, which we expose through the Ragas metric enumeration. Below is the list of metrics supported by the `RagasEvaluator` in Haystack with the expected `metric_params` while initializing the evaluator. Many metrics use OpenAI models and require an environment variable `OPENAI_API_KEY` to be set. For a complete guide on these metrics, visit the [Ragas documentation](https://docs.ragas.io/).
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline has generated the inputs for the Evaluator. |
@@ -33,9 +39,11 @@ Ragas supports a number of metrics, which we expose through the Ragas metric enu
 | **API reference** | [Ragas](/reference/integrations-ragas) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/ragas |
 
+</div>
+
 ## Parameters Overview
 
-To initialize a `RagasEvaluator`, you need to provide the following parameters : 
+To initialize a `RagasEvaluator`, you need to provide the following parameters :
 
 - `metric`: A `RagasMetric`.
 - `metric_params`: Optionally, if the metric calls for any additional parameters, you should provide them here.
@@ -73,7 +81,7 @@ pipeline.add_component("evaluator", evaluator)
 To run the evaluation pipeline, you should have the _expected inputs_ for the metric ready at hand. This metric expects a list of `questions` and `contexts`, which should come from the results of the pipeline you want to evaluate.
 
 ```python
-results = pipeline.run({"evaluator": {"questions": ["When was the Rhodes Statue built?", "Where is the Pyramid of Giza?"], 
+results = pipeline.run({"evaluator": {"questions": ["When was the Rhodes Statue built?", "Where is the Pyramid of Giza?"],
                                                 "contexts": [["Context for question 1"], ["Context for question 2"]]}})
 ```
 
@@ -101,7 +109,7 @@ To run the evaluation pipeline, you should have the _expected inputs_ for the me
 
 ```python
 QUESTIONS = ["Which is the most popular global sport?", "Who created the Python language?"]
-CONTEXTS = [["The popularity of sports can be measured in various ways, including TV viewership, social media presence, number of participants, and economic impact. Football is undoubtedly the world's most popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and Messi, drawing a followership of more than 4 billion people."], 
+CONTEXTS = [["The popularity of sports can be measured in various ways, including TV viewership, social media presence, number of participants, and economic impact. Football is undoubtedly the world's most popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and Messi, drawing a followership of more than 4 billion people."],
                  ["Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects."]]
 RESPONSES = ["Football is the most popular sport with around 4 billion followers worldwide", "Python language was created by Guido van Rossum."]
 GROUND_TRUTHS = ["Football is the most popular sport", "Python language was created by Guido van Rossum."]

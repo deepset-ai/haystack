@@ -9,6 +9,8 @@ description: "This component computes the embeddings of a string using embedding
 
 This component computes the embeddings of a string using embedding models supported by FastEmbed.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline                  |
@@ -16,6 +18,8 @@ This component computes the embeddings of a string using embedding models suppor
 | **Output variables**                   | “embedding”: A vector (list of float numbers)                                               |
 | **API reference**                      | [FastEmbed](/reference/fastembed-embedders)                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
+
+</div>
 
 This component should be used to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`FastembedDocumentEmbedder`](fastembeddocumentembedder.mdx), which enriches the document with the computed embedding, known as vector.
 
@@ -41,7 +45,7 @@ pip install fastembed-haystack
 
 ### Instructions
 
-Some recent models that you can find in MTEB require prepending the text with an instruction to work better for retrieval.  
+Some recent models that you can find in MTEB require prepending the text with an instruction to work better for retrieval.
 For example, if you use `[BAAI/bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5#model-list)` model, you should prefix your query with the `instruction: “passage:”`.
 
 This is how it works with `FastembedTextEmbedder`:
@@ -83,8 +87,8 @@ If you create a Text Embedder and a Document Embedder based on the same model, H
 ```python
 from haystack_integrations.components.embedders.fastembed import FastembedTextEmbedder
 
-text = """It clearly says online this will work on a Mac OS system. 
-The disk comes and it does not, only Windows. 
+text = """It clearly says online this will work on a Mac OS system.
+The disk comes and it does not, only Windows.
 Do Not order this if you have a Mac!!"""
 text_embedder = FastembedTextEmbedder(model="BAAI/bge-small-en-v1.5")
 text_embedder.warm_up()

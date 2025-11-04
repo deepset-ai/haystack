@@ -9,6 +9,8 @@ description: "This component enables code generation using Google Vertex AI gene
 
 This component enables code generation using Google Vertex AI generative model.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Mandatory run variables** | “prefix”: A string of code before the current point  <br /> <br />”suffix”: An optional string of code after the current point |
@@ -16,7 +18,9 @@ This component enables code generation using Google Vertex AI generative model.
 | **API reference** | [Google Vertex](/reference/integrations-google-vertex) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_vertex |
 
-`VertexAICodeGenerator` supports `code-bison`, `code-bison-32k`, and `code-gecko`. 
+</div>
+
+`VertexAICodeGenerator` supports `code-bison`, `code-bison-32k`, and `code-gecko`.
 
 ### Parameters Overview
 
@@ -48,17 +52,17 @@ for answer in result["replies"]:
 
 >>> ```python
 >>> import json
->>> 
+>>>
 >>> def to_json(data):
 >>>   """Converts a Python object to a JSON string.
->>> 
+>>>
 >>>   Args:
 >>>     data: The Python object to convert.
->>> 
+>>>
 >>>   Returns:
 >>>     A JSON string representing the Python object.
 >>>   """
->>> 
+>>>
 >>>   return json.dumps(data)
 >>> ```
 ````
