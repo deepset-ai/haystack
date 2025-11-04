@@ -428,7 +428,7 @@ class OpenAIResponsesChatGenerator:
         openai_tools = {}
         # Build tool definitions
         if tools:
-            tool_definitions = []
+            tool_definitions: list[Any] = []
             if isinstance(tools, list) and isinstance(tools[0], dict):
                 # Predefined OpenAI/MCP-style tools
                 tool_definitions = tools
@@ -443,7 +443,7 @@ class OpenAIResponsesChatGenerator:
                     if not tools_strict:
                         function_spec["strict"] = False
                     function_spec["parameters"]["additionalProperties"] = False
-                    tool_definitions.append({"type": "function", **function_spec})  # type: ignore[arg-type]
+                    tool_definitions.append({"type": "function", **function_spec})
 
             openai_tools = {"tools": tool_definitions}
 
@@ -497,7 +497,6 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
     tool_calls = []
     reasoning = None
-    tool_call_details = {}
     for output in responses.output:
         if isinstance(output, ResponseOutputRefusal):
             logger.warning(f"OpenAI returned a refusal output: {output}")
@@ -524,11 +523,10 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     _name=output.name,
                     _arguments=output.arguments,
                 )
-            # We need to store both function call id and call_id for tool calls
-            tool_call_details[output.id] = {"call_id": output.call_id, "status": output.status}
+            print("Output as dict", output.to_dict())
 
             tool_calls.append(
-                ToolCall(id=output.id, call_id=output.call_id, tool_name=output.name, arguments=arguments)
+                ToolCall(id=output.id, tool_name=output.name, arguments=arguments, extra={"call_id": output.call_id})
             )
 
     # we save the response as dict because it contains resp_id etc.
@@ -565,23 +563,28 @@ def _convert_response_chunk_to_streaming_chunk(
 
     # Responses API always returns reasoning chunks even if there is no summary
     elif chunk.type == "response.output_item.added" and chunk.item.type == "reasoning":
-        reasoning = ReasoningContent(reasoning_text="", extra=chunk.item.to_dict())
-        return StreamingChunk(content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning)
+        meta = chunk.item.to_dict()
+        reasoning = ReasoningContent(reasoning_text="")
+        return StreamingChunk(
+            content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, meta=meta
+        )
 
     elif chunk.type == "response.reasoning_summary_text.delta":
         # we remove the delta from the extra because it is already in the reasoning_text
         # rest of the information needs to be saved for chat message
-        extra = chunk.to_dict()
-        extra.pop("delta")
-        reasoning = ReasoningContent(reasoning_text=chunk.delta, extra=extra)
-        return StreamingChunk(content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning)
+        meta = chunk.to_dict()
+        meta.pop("delta")
+        reasoning = ReasoningContent(reasoning_text=chunk.delta)
+        return StreamingChunk(
+            content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, meta=meta
+        )
 
     # the function name is only streamed at the start and end of the function call
     elif chunk.type == "response.output_item.added" and chunk.item.type == "function_call":
         function = chunk.item.name
         meta = chunk.item.to_dict()
         tool_call = ToolCallDelta(
-            index=chunk.output_index, id=chunk.item.id, call_id=chunk.item.call_id, tool_name=function
+            index=chunk.output_index, id=chunk.item.id, tool_name=function, extra={"call_id": chunk.item.call_id}
         )
         return StreamingChunk(
             content="",
@@ -682,7 +685,7 @@ def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[s
             if result.origin.id is not None:
                 tool_result = {
                     "type": "function_call_output",
-                    "call_id": result.origin.call_id,
+                    "call_id": result.origin.extra.get("call_id"),
                     "output": result.result,
                 }
                 formatted_tool_results.append(tool_result)
@@ -708,11 +711,9 @@ def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[s
                 "name": tc.tool_name,
                 "arguments": json.dumps(tc.arguments, ensure_ascii=False),
                 "id": tc.id,
-                "call_id": tc.call_id,
+                "call_id": tc.extra.get("call_id"),
             }
-            # call_id = tool_call_details.get(tc.id, {}).get("call_id")
-            # if call_id is not None:
-            #    openai_tool_call["call_id"] = call_id
+
             formatted_tool_calls.append(openai_tool_call)
         formatted_messages.extend(formatted_tool_calls)
 
@@ -753,8 +754,8 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                     tool_call_data[tool_call.id]["name"] = tool_call.tool_name
                 if tool_call.arguments is not None:
                     tool_call_data[tool_call.id]["arguments"] += tool_call.arguments
-                if tool_call.call_id is not None:
-                    tool_call_data[tool_call.id]["call_id"] = tool_call.call_id
+                if tool_call.extra is not None:
+                    tool_call_data[tool_call.id]["extra"] = tool_call.extra
 
         if chunk.reasoning:
             reasoning = chunk.reasoning
@@ -765,11 +766,8 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         tool_call_dict = tool_call_data[key]
         try:
             arguments = json.loads(tool_call_dict.get("arguments", "{}")) if tool_call_dict.get("arguments") else {}
-            tool_calls.append(
-                ToolCall(
-                    id=key, tool_name=tool_call_dict["name"], arguments=arguments, call_id=tool_call_dict["call_id"]
-                )
-            )
+            extra = tool_call_dict.get("extra", {})
+            tool_calls.append(ToolCall(id=key, tool_name=tool_call_dict["name"], arguments=arguments, extra=extra))
 
         except json.JSONDecodeError:
             logger.warning(

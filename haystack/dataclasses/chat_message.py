@@ -54,18 +54,20 @@ class ToolCall:
     :param id: The ID of the Tool call.
     :param tool_name: The name of the Tool to call.
     :param arguments: The arguments to call the Tool with.
+    :param extra: Dictionary of extra information about the Tool call. Use to store provider-specific
+        information. To avoid serialization issues, values should be JSON serializable.
     """
 
     tool_name: str
     arguments: dict[str, Any]
     id: Optional[str] = None  # noqa: A003
-    call_id: Optional[str] = None  # noqa: A003
+    extra: Optional[dict[str, Any]] = None
 
     def to_dict(self) -> dict[str, Any]:
         """
         Convert ToolCall into a dictionary.
 
-        :returns: A dictionary with keys 'tool_name', 'arguments', 'id', and 'call_id'.
+        :returns: A dictionary with keys 'tool_name', 'arguments', 'id', and 'extra'.
         """
         return asdict(self)
 

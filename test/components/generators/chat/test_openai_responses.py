@@ -340,7 +340,7 @@ class TestOpenAIResponsesChatGenerator:
                     tool_name="weather",
                     arguments={"location": "Berlin"},
                     id="fc_0d13efdd",
-                    call_id="call_a82vwFAIzku9SmBuQuecQSRq",
+                    extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"},
                 ),
             ],
             _name=None,
@@ -374,7 +374,6 @@ class TestOpenAIResponsesChatGenerator:
             },
         )
         responses_api_format = convert_message_to_responses_api_format(chat_message)
-        print("Responses API format", responses_api_format)
         assert responses_api_format == [
             {
                 "id": "rs_0d13efdd",
@@ -943,24 +942,21 @@ class TestOpenAIResponsesChatGenerator:
             ),
             StreamingChunk(
                 content="",
-                meta={},
+                meta={
+                    "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                    "summary": [],
+                    "type": "reasoning",
+                    "content": None,
+                    "encrypted_content": None,
+                    "status": None,
+                },
                 component_info=None,
                 index=0,
                 tool_calls=None,
                 tool_call_result=None,
                 start=False,
                 finish_reason=None,
-                reasoning=ReasoningContent(
-                    reasoning_text="",
-                    extra={
-                        "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
-                        "summary": [],
-                        "type": "reasoning",
-                        "content": None,
-                        "encrypted_content": None,
-                        "status": None,
-                    },
-                ),
+                reasoning=ReasoningContent(reasoning_text="", extra={}),
             ),
             StreamingChunk(
                 content="",
@@ -1003,7 +999,7 @@ class TestOpenAIResponsesChatGenerator:
                         tool_name="weather",
                         arguments=None,
                         id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
-                        call_id="call_OZZXFm7SLb4F3Xg8a9XVVCvv",
+                        extra={"call_id": "call_OZZXFm7SLb4F3Xg8a9XVVCvv"},
                     )
                 ],
                 tool_call_result=None,
@@ -1028,7 +1024,7 @@ class TestOpenAIResponsesChatGenerator:
                         tool_name=None,
                         arguments='{"city":',
                         id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
-                        call_id=None,
+                        extra=None,
                     )
                 ],
                 tool_call_result=None,
@@ -1053,7 +1049,7 @@ class TestOpenAIResponsesChatGenerator:
                         tool_name=None,
                         arguments='"Paris"}',
                         id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
-                        call_id=None,
+                        extra=None,
                     )
                 ],
                 tool_call_result=None,
