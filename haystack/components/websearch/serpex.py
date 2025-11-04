@@ -64,9 +64,6 @@ class SerpexWebSearch:
         self.timeout = timeout
         self.retry_attempts = retry_attempts
 
-        # Ensure that the API key is resolved
-        _ = self.api_key.resolve_value()
-
         # Create httpx client
         self._client = httpx.Client(timeout=timeout, follow_redirects=True)
 
