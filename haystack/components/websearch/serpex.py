@@ -158,7 +158,7 @@ class SerpexWebSearch:
             response = self._make_request("https://api.serpex.dev/api/search", headers, params)
             data = response.json()
 
-            # Parse search results (API returns 'results' not 'organic_results')
+            # Parse search results
             if "results" in data and isinstance(data["results"], list):
                 for result in data["results"]:
                     # Extract result data
@@ -199,10 +199,10 @@ class SerpexWebSearch:
             )
             raise
         except httpx.RequestError as e:
-            logger.error("Request error occurred while fetching SERPEX results: {error}", error=str(e))
+            logger.error("Request error occurred while fetching SERPEX results: {error}", error=e)
             raise
         except Exception as e:
-            logger.error("Unexpected error occurred while fetching SERPEX results: {error}", error=str(e))
+            logger.error("Unexpected error occurred while fetching SERPEX results: {error}", error=e)
             raise
 
         return {"documents": documents}
