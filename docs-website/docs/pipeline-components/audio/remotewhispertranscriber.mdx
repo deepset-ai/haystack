@@ -34,7 +34,7 @@ transcriber = RemoteWhisperTranscriber()
 Additionally, the component requires the following parameters to work:
 
 - `model` specifies the Whisper model.
-- `api_base_url` specifies the OpenAI base URL and defaults to `"https://api.openai.com/v1"`. If you are using Whisper provider other than OpenAI set this parameter according to provider's documentation. 
+- `api_base_url` specifies the OpenAI base URL and defaults to `"https://api.openai.com/v1"`. If you are using Whisper provider other than OpenAI set this parameter according to provider's documentation.
 
 See other optional parameters in our [API documentation](/reference/audio-api).
 
@@ -53,7 +53,7 @@ from haystack.components.audio import RemoteWhisperTranscriber
 response = requests.get("https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3")
 with open("kennedy_speech.mp3", "wb") as file:
     file.write(response.content)
-    
+
 transcriber = RemoteWhisperTranscriber()
 transcription = transcriber.run(sources=["./kennedy_speech.mp3"])
 
@@ -82,4 +82,4 @@ print(result["transcriber"]["documents"][0].content)
 
 ## Additional References
 
-:cook: Cookbook: [Multilingual RAG from a podcast with Whisper, Qdrant and Mistral](https://haystack.deepset.ai/cookbook/multilingual_rag_podcast)
+🧑‍🍳 Cookbook: [Multilingual RAG from a podcast with Whisper, Qdrant and Mistral](https://haystack.deepset.ai/cookbook/multilingual_rag_podcast)

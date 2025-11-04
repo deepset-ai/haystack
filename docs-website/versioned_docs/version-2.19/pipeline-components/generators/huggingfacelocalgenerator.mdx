@@ -22,10 +22,9 @@ description: "`HuggingFaceLocalGenerator` provides an interface to generate text
 
 Keep in mind that if LLMs run locally, you may need a powerful machine to run them. This depends strongly on the model you select and its parameter count.
 
-:::note
-Looking for chat completion?
+:::note Looking for chat completion?
 
-This component is designed for text generation, not for chat. If you want to use Hugging Face LLMs for chat, consider using [`HuggingFaceLocalChatGenerator`](/docs/huggingfacelocalchatgenerator) instead.
+This component is designed for text generation, not for chat. If you want to use Hugging Face LLMs for chat, consider using [`HuggingFaceLocalChatGenerator`](huggingfacelocalchatgenerator.mdx) instead.
 :::
 
 For remote files authorization, this component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token`:
@@ -36,7 +35,7 @@ local_generator = HuggingFaceLocalGenerator(token=Secret.from_token("<your-api-k
 
 ### Streaming
 
-This Generator supports [streaming](/docs/choosing-the-right-generator#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ## Usage
 
@@ -111,7 +110,7 @@ print(res)
 
 ## Additional References
 
-:cook: Cookbooks:
+🧑‍🍳 Cookbooks:
 
 - [Use Zephyr 7B Beta with Hugging Face for RAG](https://haystack.deepset.ai/cookbook/zephyr-7b-beta-for-rag)
 - [Information Extraction with Gorilla](https://haystack.deepset.ai/cookbook/information-extraction-gorilla)

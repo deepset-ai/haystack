@@ -13,7 +13,7 @@ The `Agent` component is a tool-using agent that interacts with chat-based LLMs 
 | -------------------------------------- | -------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) or user input                     |
 | **Mandatory init variables**           | `chat_generator`: An instance of a Chat Generator that supports tools                  |
-| **Mandatory run variables**            | `messages`: A list of [`ChatMessage`](/docs/chatmessage)s                              |
+| **Mandatory run variables**            | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)s                              |
 | **Output variables**                   | `messages`: Chat history with tool and model responses                                 |
 | **API reference**                      | [Agents](/reference/agents-api)                                                               |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/agents/agent.py |

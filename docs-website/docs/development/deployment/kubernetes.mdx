@@ -11,7 +11,7 @@ import ClickableImage from "@site/src/components/ClickableImage";
 
 Learn how to deploy your Haystack pipelines through Kubernetes.
 
-The best way to get Haystack running as a workload in a container orchestrator like Kubernetes is to create a service to expose one or more [Hayhooks](../hayhooks.mdx) instances. 
+The best way to get Haystack running as a workload in a container orchestrator like Kubernetes is to create a service to expose one or more [Hayhooks](../hayhooks.mdx) instances.
 
 ## Create a Haystack Kubernetes Service using Hayhooks
 
@@ -55,8 +55,8 @@ spec:
 
 ```
 
-After applying the above to an existing Kubernetes cluster, a `hayhooks` Pod will show up as a Service called `haystack-service`. 
-<ClickableImage src="/img/6eb9fb0c7b00367bfbe8182ffc7c3746f3f3d03b720e963df045e28160362d7f-Screenshot_2025-04-15_at_16.15.28.png" alt="" />
+After applying the above to an existing Kubernetes cluster, a `hayhooks` Pod will show up as a Service called `haystack-service`.
+<ClickableImage src="/img/6eb9fb0c7b00367bfbe8182ffc7c3746f3f3d03b720e963df045e28160362d7f-Screenshot_2025-04-15_at_16.15.28.png" alt="Kubernetes Lens interface showing the hayhooks Pod running in the default namespace with status Running" />
 
 Note that the `Service` defined above is of type `ClusterIP`. That means it's exposed only _inside_ the Kubernetes cluster. To expose the Hayhooks API to the _outside_ world as well, you need a `NodePort` or `Ingress` resource. As an alternative, it's also possible to use [Port Forwarding](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/) to access the `Service` locally.
 
@@ -182,7 +182,7 @@ data:
 ```
 
 After applying this, check your Hayhooks Pod logs, and you'll see that the `chat_with_website` pipelines have already been deployed.
-<ClickableImage src="/img/2dbf42dd2db1cb355ee7222d7f8e96c45b611200d83ca289be3456264a854c38-Screenshot_2025-04-16_at_09.19.14.png" alt="" />
+<ClickableImage src="/img/2dbf42dd2db1cb355ee7222d7f8e96c45b611200d83ca289be3456264a854c38-Screenshot_2025-04-16_at_09.19.14.png" alt="Kubernetes Lens interface displaying pod logs with application startup messages and deployed pipeline confirmation" />
 
 ## Roll Out Multiple Pods
 
@@ -264,6 +264,6 @@ spec:
 
 Implementing the above configuration will create three pods. Each pod will run a different instance of Hayhooks, all serving the same example pipeline provided by the mounted volume in the previous example.
 
-![](https://files.readme.io/f3f0ac4b22a37039f0837c22b0cb8b640937bbb0db4acfcbdf7bd016b545d84a-Screenshot_2025-04-16_at_09.32.07.png)
+<ClickableImage src="/img/f3f0ac4b22a37039f0837c22b0cb8b640937bbb0db4acfcbdf7bd016b545d84a-Screenshot_2025-04-16_at_09.32.07.png" alt="Kubernetes Lens interface showing three haystack-deployment pods in Running status with their resource configurations" />
 
 Note that the `NodePort` you created before will now act as a load balancer and will distribute incoming requests to the three Hayhooks Pods.

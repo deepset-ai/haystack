@@ -12,7 +12,7 @@ Use this component to ensure that an LLM-generated chat message JSON adheres to 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [Generator](../generators.mdx)  |
-| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](/docs/data-classes#chatmessage)  instances to be validated – the last message in this list is the one that is validated |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  instances to be validated – the last message in this list is the one that is validated |
 | **Output variables** | “validated”: A list of messages if the last message is valid  <br /> <br />”validation_error”: A list of messages if the last message is invalid |
 | **API reference** | [Validators](/reference/validators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/validators/json_schema.py |

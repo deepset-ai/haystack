@@ -24,7 +24,7 @@ The `HierarchicalDocumentSplitter` divides documents into blocks of different si
 
 A block is one of the chunks of text that the splitter produces. It is similar to cutting a long piece of text into smaller pieces: each piece is a block. Blocks form a tree structure where your full document is the root block, and as you split it into smaller and smaller pieces you get child-blocks and leaf-blocks, down to whatever smallest size specified.
 
-The [`AutoMergingRetriever`](doc:automergingretriever) component then leverages this hierarchical structure to improve document retrieval.
+The [`AutoMergingRetriever`](../retrievers/automergingretriever.mdx) component then leverages this hierarchical structure to improve document retrieval.
 
 To initialize the component, you need to specify the `block_size`, which is the “maximum length” of each of the blocks, measured in the specific unit (see `split_by` parameter). Pass a set of sizes (for example, `{20, 5}`), and it will:
 

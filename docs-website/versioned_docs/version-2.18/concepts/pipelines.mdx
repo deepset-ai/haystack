@@ -32,23 +32,23 @@ Haystack loops and branches enable the creation of complex applications like age
 
 A pipeline can have multiple branches that process data concurrently. For example, to process different file types, you can have a pipeline with a bunch of converters, each handling a specific file type. You then feed all your files to the pipeline and it smartly divides and routes them to appropriate converters all at once, saving you the effort of sending your files one by one for processing.
 
-<ClickableImage src="/img/83f686b-Pipeline_Illustrations_1_1.png" alt="" />
+<ClickableImage src="/img/83f686b-Pipeline_Illustrations_1_1.png" alt="Pipeline architecture diagram showing components arranged in parallel branches that converge into a single pipeline flow" size="large" />
 
 ### Loops
 
 Components in a pipeline can work in iterative loops, which you can cap at a desired number. This can be handy for scenarios like self-correcting loops, where you have a generator producing some output and then a validator component to check if the output is correct. If the generator's output has errors, the validator component can loop back to the generator for a corrected output. The loop goes on until the output passes the validation and can be sent further down the pipeline.
 
-<ClickableImage src="/img/2390eea-Pipeline_Illustrations_1_2.png" alt="" />
+<ClickableImage src="/img/2390eea-Pipeline_Illustrations_1_2.png" alt="Pipeline architecture diagram illustrating a feedback loop where output from later components loops back to earlier components" size="large" />
 
 ### Async Pipelines
 
 The AsyncPipeline enables parallel execution of Haystack components when their dependencies allow it. This improves performance in complex pipelines with independent operations. For example, it can run multiple Retrievers or LLM calls simultaneously, execute independent pipeline branches in parallel, and efficiently handle I/O-bound operations that would otherwise cause delays. Through concurrent execution, the AsyncPipeline significantly reduces total processing time compared to sequential execution.
 
-Find out more in our [AsyncPipeline](doc:asyncpipeline) documentation.
+Find out more in our [AsyncPipeline](pipelines/asyncpipeline.mdx) documentation.
 
 ## SuperComponents
 
-To simplify your code, we have introduced [SuperComponents](doc:supercomponents) that allow you to wrap complete pipelines and reuse them as a single component. Check out their documentation page for the details and examples.
+To simplify your code, we have introduced [SuperComponents](components/supercomponents.mdx) that allow you to wrap complete pipelines and reuse them as a single component. Check out their documentation page for the details and examples.
 
 ## Data Flow
 
@@ -74,9 +74,9 @@ Once all your components are created and ready to be combined in a pipeline, the
 4. Run the pipeline with `.run({"component_1": {"mandatory_inputs": value}})`.
    Finally, you run the Pipeline by specifying the first component in the pipeline and passing its mandatory inputs. Optionally, you can pass inputs to other components, for example: `.run({"component_1": {"mandatory_inputs": value}, "component_2": {"inputs": value}})`.
 
-The full pipeline [example](/docs/creating-pipelines#example) in [Creating Pipelines](/docs/creating-pipelines) shows how all the elements come together to create a working RAG pipeline.
+The full pipeline [example](pipelines/creating-pipelines.mdx#example) in [Creating Pipelines](pipelines/creating-pipelines.mdx) shows how all the elements come together to create a working RAG pipeline.
 
-Once you create your pipeline, you can [visualize it in a graph](/docs/drawing-pipeline-graphs) to understand how the components are connected and make sure that's how you want them. You can use Mermaid graphs to do that.
+Once you create your pipeline, you can [visualize it in a graph](pipelines/visualizing-pipelines.mdx) to understand how the components are connected and make sure that's how you want them. You can use Mermaid graphs to do that.
 
 ## Validation
 

@@ -11,7 +11,7 @@ This component transforms a string into a vector that captures its semantics usi
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before an embedding [Retriever](../../../docs/pipeline-components/retrievers.mdx)  in a query/RAG pipeline |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
 | **Mandatory init variables** | "api_key": The Jina API key. Can be set with `JINA_API_KEY` env var. |
 | **Mandatory run variables** | “text”: A string |
 | **Output variables** | “embedding”: A list of float numbers  <br /> <br />”meta”: A dictionary of metadata |
@@ -99,4 +99,4 @@ print(result['retriever']['documents'][0])
 
 ## Additional References
 
-:cook: Cookbook: [Using the Jina-embeddings-v2-base-en model in a Haystack RAG pipeline for legal document analysis](https://haystack.deepset.ai/cookbook/jina-embeddings-v2-legal-analysis-rag)
+🧑‍🍳 Cookbook: [Using the Jina-embeddings-v2-base-en model in a Haystack RAG pipeline for legal document analysis](https://haystack.deepset.ai/cookbook/jina-embeddings-v2-legal-analysis-rag)

@@ -16,7 +16,7 @@ A Tool that allows Agents and ToolInvokers to fetch and parse GitHub issues into
 
 ## Overview
 
-`GitHubIssueViewerTool` wraps the [`GitHubIssueViewer`](doc:githubissueviewer) component, providing a tool interface for use in agent workflows and tool-based pipelines.
+`GitHubIssueViewerTool` wraps the [`GitHubIssueViewer`](../../pipeline-components/connectors/githubissueviewer.mdx) component, providing a tool interface for use in agent workflows and tool-based pipelines.
 
 The tool takes a GitHub issue URL and returns a list of documents where:
 
@@ -69,7 +69,7 @@ Fixed with #124 ', meta: {'type': 'comment', 'issue_number': 123, 'created_at': 
 
 ### With an Agent
 
-You can use `GitHubIssueViewerTool` with the [Agent](/docs/agent) component. The Agent will automatically invoke the tool when needed to fetch GitHub issue information.
+You can use `GitHubIssueViewerTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically invoke the tool when needed to fetch GitHub issue information.
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator

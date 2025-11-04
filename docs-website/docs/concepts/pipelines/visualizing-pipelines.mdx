@@ -13,8 +13,7 @@ You can visualize your pipelines as graphs to better understand how the componen
 
 Haystack pipelines have  `draw()` and `show()` methods that enable you to visualize the pipeline as a graph using Mermaid graphs.
 
-:::info
-Data Privacy Notice
+:::note Data Privacy Notice
 
 Exercise caution with sensitive data when using pipeline visualization.
 
@@ -30,7 +29,7 @@ To use Mermaid graphs, you must have an internet connection to reach the Mermaid
 Use the pipeline's `show()` method to display the diagram in Jupyter notebooks.
 
 ```python
-
+my_pipeline.show()
 ```
 
 ## Saving a Graph
@@ -79,7 +78,7 @@ my_pipeline.draw("my_pipeline.png", server_url="http://localhost:3000")
 ## Example
 
 This is an example of what a pipeline graph may look like:
-<ClickableImage src="/img/46a8989-Untitled.png" alt="" />
+<ClickableImage src="/img/46a8989-Untitled.png" alt="RAG pipeline flowchart showing the data flow from query through retriever, prompt builder, language model, and answer builder components" size="large" />
 
 <br />
 

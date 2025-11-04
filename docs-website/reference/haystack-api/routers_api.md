@@ -639,7 +639,6 @@ Classify the messages based on LLM output and route them to the appropriate outp
 **Raises**:
 
 - `ValueError`: If messages is an empty list or contains messages with unsupported roles.
-- `RuntimeError`: If the component is not warmed up and the ChatGenerator has a warm_up method.
 
 **Returns**:
 

@@ -11,7 +11,7 @@ Use this component to rank documents based on their similarity to the query usin
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../../../docs/pipeline-components/retrievers.mdx) |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
 | **Mandatory run variables** | “documents”: A list of documents  <br /> <br />”query”: A query string |
 | **Output variables** | “documents”: A list of documents |
 | **API reference** | [FastEmbed](/reference/fastembed-embedders) |
@@ -19,7 +19,7 @@ Use this component to rank documents based on their similarity to the query usin
 
 ## Overview
 
-`FastembedRanker` ranks the documents based on how similar they are to the query.  It uses [cross-encoder models supported by FastEmbed](https://qdrant.github.io/fastembed/examples/Supported_Models/).  
+`FastembedRanker` ranks the documents based on how similar they are to the query.  It uses [cross-encoder models supported by FastEmbed](https://qdrant.github.io/fastembed/examples/Supported_Models/).
 Based on ONXX Runtime, FastEmbed provides a fast experience on standard CPU machines.
 
 `FastembedRanker` is most useful in query pipelines such as a retrieval-augmented generation (RAG) pipeline or a document search pipeline to ensure the retrieved documents are ordered by relevance. You can use it after a Retriever (such as the [`InMemoryEmbeddingRetriever`](../retrievers/inmemoryembeddingretriever.mdx)) to improve the search results. When using `FastembedRanker` with a Retriever, consider setting the Retriever's `top_k` to a small number. This way, the Ranker will have fewer documents to process, which can help make your pipeline faster.

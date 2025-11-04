@@ -11,7 +11,7 @@ This component computes the embeddings of a list of documents and stores the obt
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before a [`DocumentWriter`](../../../docs/pipeline-components/writers/documentwriter.mdx)  in an indexing pipeline |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
 | **Mandatory init variables** | "api_key": API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var. |
 | **Mandatory run variables** | “documents”: A list of documents |
 | **Output variables** | “documents”: A list of documents (enriched with embeddings)  <br /> <br />”meta”: A dictionary of metadata |
@@ -120,4 +120,4 @@ print(result['retriever']['documents'][0])
 
 ## Additional References
 
-:cook: Cookbook: [Haystack RAG Pipeline with Self-Deployed AI models using NVIDIA NIMs](https://haystack.deepset.ai/cookbook/rag-with-nims)
+🧑‍🍳 Cookbook: [Haystack RAG Pipeline with Self-Deployed AI models using NVIDIA NIMs](https://haystack.deepset.ai/cookbook/rag-with-nims)

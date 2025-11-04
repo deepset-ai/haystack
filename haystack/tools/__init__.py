@@ -16,7 +16,12 @@ from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, ser
 from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
 
 # Type alias for tools parameter - allows mixing Tools and Toolsets in a list
-ToolsType = Union[list[Union[Tool, Toolset]], Toolset]
+# Explicitly list all valid combinations due to list invariance:
+# - list[Tool]: Most common pattern - list of Tool objects
+# - list[Toolset]: Less common pattern - list of Toolset objects
+# - list[Union[Tool, Toolset]]: Mixing Tools and Toolsets in one list
+# - Toolset: Single Toolset (not in a list)
+ToolsType = Union[list[Tool], list[Toolset], list[Union[Tool, Toolset]], Toolset]
 
 __all__ = [
     "_check_duplicate_tool_names",

@@ -30,7 +30,7 @@ To use Mermaid graphs, you must have an internet connection to reach the Mermaid
 Use the pipeline's `show()` method to display the diagram in Jupyter notebooks.
 
 ```python
-
+my_pipeline.show()
 ```
 
 ## Saving a Graph
@@ -43,7 +43,7 @@ my_pipeline.draw(path=local_path)
 
 ## Visualizing SuperComponents
 
-To show the internal structure of [SuperComponents](doc:supercomponents) in your digram instead of a black box component, set the `super_component_expansion` parameter to `True`:
+To show the internal structure of [SuperComponents](../components/supercomponents.mdx) in your digram instead of a black box component, set the `super_component_expansion` parameter to `True`:
 
 ```python
 my_pipeline.show(super_component_expansion=True)
@@ -80,7 +80,7 @@ my_pipeline.draw("my_pipeline.png", server_url="http://localhost:3000")
 
 This is an example of what a pipeline graph may look like:
 
-<ClickableImage src="/img/46a8989-Untitled.png" alt="" />
+<ClickableImage src="/img/46a8989-Untitled.png" alt="RAG pipeline flowchart showing the data flow from query through retriever, prompt builder, language model, and answer builder components" size="large" />
 
 <br />
 

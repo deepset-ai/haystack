@@ -11,9 +11,9 @@ A Retriever based both on dense and sparse embeddings, compatible with the Qdran
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1\. After a Text Embedder and before a [`PromptBuilder`](/docs/promptbuilder)  in a RAG pipeline  <br /> <br />2. The last component in a hybrid search pipeline      3. After a Text Embedder and before an [`ExtractiveReader`](/docs/extractivereader)  in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1\. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)  in a RAG pipeline  <br /> <br />2. The last component in a hybrid search pipeline      3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)  in an extractive QA pipeline |
 | **Mandatory init variables** | "document_store": An instance of a [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx) |
-| **Mandatory run variables** | “query_embedding”: A dense vector representing the query (a list of floats)  <br /> <br />“query_sparse_embedding”: A [`SparseEmbedding`](/docs/data-classes#sparseembedding)  object containing a vectorial representation of the query |
+| **Mandatory run variables** | “query_embedding”: A dense vector representing the query (a list of floats)  <br /> <br />“query_sparse_embedding”: A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding)  object containing a vectorial representation of the query |
 | **Output variables** | “document”: A list of documents |
 | **API reference** | [Qdrant](/reference/integrations-qdrant) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/qdrant |
@@ -24,10 +24,9 @@ The `QdrantHybridRetriever` is a Retriever based both on dense and sparse embedd
 
 It compares the query and document’s dense and sparse embeddings and fetches the documents most relevant to the query from the `QdrantDocumentStore`, fusing the scores with Reciprocal Rank Fusion.
 
-:::tip
-Hybrid Retrieval Pipeline
+:::tip Hybrid Retrieval Pipeline
 
-If you want additional customization for merging or fusing results, consider creating a hybrid retrieval pipeline with [`DocumentJoiner`](/docs/documentjoiner).
+If you want additional customization for merging or fusing results, consider creating a hybrid retrieval pipeline with [`DocumentJoiner`](../joiners/documentjoiner.mdx).
 
 You can check out our hybrid retrieval pipeline [tutorial](https://haystack.deepset.ai/tutorials/33_hybrid_retrieval) for detailed steps.
 :::
@@ -39,8 +38,7 @@ When using the `QdrantHybridRetriever`, make sure it has the query and document 
 
 In addition to `query_embedding` and `query_sparse_embedding`, the `QdrantHybridRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
 
-:::note
-Sparse Embedding Support
+:::note Sparse Embedding Support
 
 To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
 
@@ -159,4 +157,4 @@ print(result["retriever"]["documents"][0])
 
 :notebook: Tutorial: [Creating a Hybrid Retrieval Pipeline](https://haystack.deepset.ai/tutorials/33_hybrid_retrieval)
 
-:cook: Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)
+🧑‍🍳 Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)

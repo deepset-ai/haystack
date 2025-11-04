@@ -2,6 +2,7 @@
 title: Evaluation
 id: evaluation-api
 description: Represents the results of evaluation.
+slug: "/evaluation-api"
 ---
 
 <a id="eval_run_result"></a>

@@ -354,3 +354,71 @@ async def test_failover_trigger_401_authentication_async():
     assert result["replies"][0].text == "success_after_auth"
     assert result["meta"]["successful_chat_generator_index"] == 1
     assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+
+
+@component
+class _DummyGenWithWarmUp:
+    """Dummy generator that tracks warm_up calls."""
+
+    def __init__(self, text: str = "ok"):
+        self.text = text
+        self.warm_up_called = False
+
+    def warm_up(self) -> None:
+        self.warm_up_called = True
+
+    def run(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[ToolsType] = None,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+    ) -> dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant(self.text)], "meta": {}}
+
+
+def test_warm_up_delegates_to_generators():
+    """Test that warm_up() is called on each underlying generator."""
+    gen1 = _DummyGenWithWarmUp(text="A")
+    gen2 = _DummyGenWithWarmUp(text="B")
+    gen3 = _DummyGenWithWarmUp(text="C")
+
+    fallback = FallbackChatGenerator(chat_generators=[gen1, gen2, gen3])
+    fallback.warm_up()
+
+    assert gen1.warm_up_called
+    assert gen2.warm_up_called
+    assert gen3.warm_up_called
+
+
+def test_warm_up_with_no_warm_up_method():
+    """Test that warm_up() handles generators without warm_up() gracefully."""
+    gen1 = _DummySuccessGen(text="A")
+    gen2 = _DummySuccessGen(text="B")
+
+    fallback = FallbackChatGenerator(chat_generators=[gen1, gen2])
+    # Should not raise any error
+    fallback.warm_up()
+
+    # Verify generators still work
+    result = fallback.run([ChatMessage.from_user("test")])
+    assert result["replies"][0].text == "A"
+
+
+def test_warm_up_mixed_generators():
+    """Test warm_up() with a mix of generators with and without warm_up()."""
+    gen1 = _DummyGenWithWarmUp(text="A")
+    gen2 = _DummySuccessGen(text="B")
+    gen3 = _DummyGenWithWarmUp(text="C")
+    gen4 = _DummyFailGen()
+
+    fallback = FallbackChatGenerator(chat_generators=[gen1, gen2, gen3, gen4])
+    fallback.warm_up()
+
+    # Only generators with warm_up() should have been called
+    assert gen1.warm_up_called
+    assert gen3.warm_up_called
+
+    # Verify the fallback still works correctly
+    result = fallback.run([ChatMessage.from_user("test")])
+    assert result["replies"][0].text == "A"

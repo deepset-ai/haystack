@@ -13,11 +13,11 @@ Use this component to embed a simple string (such as a query) into a sparse vect
 | :------------------------------------- | :------------------------------------------------------------------------------------------ |
 | **Most common position in a pipeline** | Before a sparse embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline            |
 | **Mandatory run variables**            | “text”: A string                                                                            |
-| **Output variables**                   | “sparse_embedding”: A [`SparseEmbedding`](/docs/data-classes#sparseembedding)  object       |
+| **Output variables**                   | “sparse_embedding”: A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding)  object       |
 | **API reference**                      | [FastEmbed](/reference/fastembed-embedders)                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
 
-For embedding lists of documents, use the [`FastembedSparseDocumentEmbedder`](/docs/fastembedsparsedocumentembedder), which enriches the document with the computed sparse embedding.
+For embedding lists of documents, use the [`FastembedSparseDocumentEmbedder`](fastembedsparsedocumentembedder.mdx), which enriches the document with the computed sparse embedding.
 
 ## Overview
 
@@ -137,4 +137,4 @@ print(result["sparse_retriever"]["documents"][0])  # noqa: T201
 
 ## Additional References
 
-:cook: Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)
+🧑‍🍳 Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)

@@ -11,7 +11,7 @@ This component computes embeddings for text (such as a query) using models throu
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before an embedding [Retriever](../../../docs/pipeline-components/retrievers.mdx)  in a query/RAG pipeline |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
 | **Mandatory init variables** | "model": The embedding model to use  <br /> <br />"aws_access_key_id": AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />"aws_secret_access_key": AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />"aws_region_name": AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
 | **Mandatory run variables** | “text”: A string |
 | **Output variables** | “embedding”: A list of float numbers (vector) |
@@ -28,7 +28,7 @@ Use `AmazonBedrockTextEmbedder` to embed a simple string (such as a query) int
 
 ### Authentication
 
-`AmazonBedrockTextEmbedder` uses AWS for authentication. You can either provide credentials as parameters directly to the component or use the AWS CLI and authenticate through your IAM. For more information on how to set up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).  
+`AmazonBedrockTextEmbedder` uses AWS for authentication. You can either provide credentials as parameters directly to the component or use the AWS CLI and authenticate through your IAM. For more information on how to set up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
 To initialize `AmazonBedrockTextEmbedder` and authenticate by providing credentials, provide the `model` name, as well as `aws_access_key_id`, `aws_secret_access_key`, and `aws_region_name`. Other parameters are optional, you can check them out in our [API reference](/reference/integrations-amazon-bedrock#amazonbedrocktextembedder).
 
 ### Model-specific parameters
@@ -116,4 +116,4 @@ print(result['retriever']['documents'][0])
 
 ## Additional References
 
-:cook: Cookbook: [PDF-Based Question Answering with Amazon Bedrock and Haystack](https://haystack.deepset.ai/cookbook/amazon_bedrock_for_documentation_qa)
+🧑‍🍳 Cookbook: [PDF-Based Question Answering with Amazon Bedrock and Haystack](https://haystack.deepset.ai/cookbook/amazon_bedrock_for_documentation_qa)

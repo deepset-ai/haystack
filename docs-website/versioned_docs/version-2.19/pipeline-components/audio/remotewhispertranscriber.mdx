@@ -22,7 +22,7 @@ Use `RemoteWhisperTranscriber` to transcribe audio files using OpenAI's Whisper 
 
 `RemoteWhisperTranscriber` works with OpenAI-compatible clients and isn't limited to just OpenAI as a provider. For example, [Groq](https://console.groq.com/docs/speech-text) offers a drop-in replacement that can be used as well. You can set the API key in one of two ways:
 
-1. Through the `api_key` initialization parameter, where the key is resolved using [Secret API](/docs/secret-management).
+1. Through the `api_key` initialization parameter, where the key is resolved using [Secret API](../../concepts/secret-management.mdx).
 2. By setting it in the `OPENAI_API_KEY` environment variable, which the system will use to access the key.
 
 ```python
@@ -82,4 +82,4 @@ print(result["transcriber"]["documents"][0].content)
 
 ## Additional References
 
-:cook: Cookbook: [Multilingual RAG from a podcast with Whisper, Qdrant and Mistral](https://haystack.deepset.ai/cookbook/multilingual_rag_podcast)
+🧑‍🍳 Cookbook: [Multilingual RAG from a podcast with Whisper, Qdrant and Mistral](https://haystack.deepset.ai/cookbook/multilingual_rag_podcast)

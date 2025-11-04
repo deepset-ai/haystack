@@ -35,7 +35,7 @@ DeepEval supports a number of metrics, which we expose through the [DeepEval met
 
 ## Parameters Overview
 
-To initialize a `DeepEvalEvaluator`, you need to provide the following parameters : 
+To initialize a `DeepEvalEvaluator`, you need to provide the following parameters :
 
 - `metric`: A `DeepEvalMetric`.
 - `metric_params`: Optionally, if the metric calls for any additional parameters, you should provide them here.
@@ -74,11 +74,11 @@ pipeline.add_component("evaluator", evaluator)
 To run the evaluation pipeline, you should have the _expected inputs_ for the metric ready at hand. This metric expects a list of `questions` and `contexts`. These should come from the results of the pipeline you want to evaluate.
 
 ```python
-results = pipeline.run({"evaluator": {"questions": ["When was the Rhodes Statue built?", "Where is the Pyramid of Giza?"], 
+results = pipeline.run({"evaluator": {"questions": ["When was the Rhodes Statue built?", "Where is the Pyramid of Giza?"],
                                       "contexts": [["Context for question 1"], ["Context for question 2"]],
-                                      "responses": ["Response for queston 1", "Reponse for question 2"]}})
+                                      "responses": ["Response for question 1", "response for question 2"]}})
 ```
 
 ## Additional References
 
-:cook: Cookbook: [RAG Pipeline Evaluation Using DeepEval](https://haystack.deepset.ai/cookbook/rag_eval_deep_eval)
+🧑‍🍳 Cookbook: [RAG Pipeline Evaluation Using DeepEval](https://haystack.deepset.ai/cookbook/rag_eval_deep_eval)

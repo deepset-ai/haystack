@@ -13,11 +13,11 @@ Use this component to embed a simple string (such as a query) into a sparse vect
 | :------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | Before a sparse embedding [Retriever](../retrievers.mdx) in a query/RAG pipeline                                                |
 | **Mandatory run variables**            | "text": A string                                                                                                               |
-| **Output variables**                   | "sparse_embedding": A [`SparseEmbedding`](/docs/data-classes#sparseembedding) object                                           |
+| **Output variables**                   | "sparse_embedding": A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding) object                                           |
 | **API reference**                      | [Embedders](/reference/embedders-api)                                                                                                 |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_sparse_text_embedder.py |
 
-For embedding lists of documents, use the [`SentenceTransformersSparseDocumentEmbedder`](/docs/sentencetransformerssparsedocumentembedder), which enriches the document with the computed sparse embedding.
+For embedding lists of documents, use the [`SentenceTransformersSparseDocumentEmbedder`](sentencetransformerssparsedocumentembedder.mdx), which enriches the document with the computed sparse embedding.
 
 ## Overview
 
@@ -37,7 +37,7 @@ You can find compatible SPLADE models on the [Hugging Face Model Hub](https://hu
 
 Authentication with a Hugging Face API Token is only required to access private or gated models.
 
-The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you can pass a Hugging Face API token at initialization. See our [Secret Management](doc:secret-management) page for more information.
+The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you can pass a Hugging Face API token at initialization. See our [Secret Management](../../concepts/secret-management.mdx) page for more information.
 
 ```python
 from haystack.utils import Secret

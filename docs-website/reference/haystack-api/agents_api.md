@@ -26,22 +26,67 @@ When you call an Agent without tools, it acts as a ChatGenerator, produces one r
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.tools.tool import Tool
+from haystack.tools import Tool
 
-tools = [Tool(name="calculator", description="..."), Tool(name="search", description="...")]
+# Tool functions - in practice, these would have real implementations
+def search(query: str) -> str:
+    '''Search for information on the web.'''
+    # Placeholder: would call actual search API
+    return "In France, a 15% service charge is typically included, but leaving 5-10% extra is appreciated."
 
+def calculator(operation: str, a: float, b: float) -> float:
+    '''Perform mathematical calculations.'''
+    if operation == "multiply":
+        return a * b
+    elif operation == "percentage":
+        return (a / 100) * b
+    return 0
+
+# Define tools with JSON Schema
+tools = [
+    Tool(
+        name="search",
+        description="Searches for information on the web",
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The search query"}
+            },
+            "required": ["query"]
+        },
+        function=search
+    ),
+    Tool(
+        name="calculator",
+        description="Performs mathematical calculations",
+        parameters={
+            "type": "object",
+            "properties": {
+                "operation": {"type": "string", "description": "Operation: multiply, percentage"},
+                "a": {"type": "number", "description": "First number"},
+                "b": {"type": "number", "description": "Second number"}
+            },
+            "required": ["operation", "a", "b"]
+        },
+        function=calculator
+    )
+]
+
+# Create and run the agent
 agent = Agent(
     chat_generator=OpenAIChatGenerator(),
-    tools=tools,
-    exit_conditions=["search"],
+    tools=tools
 )
 
-# Run the agent
 result = agent.run(
-    messages=[ChatMessage.from_user("Find information about Haystack")]
+    messages=[ChatMessage.from_user("Calculate the appropriate tip for an €85 meal in France")]
 )
 
-assert "messages" in result  # Contains conversation history
+# The agent will:
+# 1. Search for tipping customs in France
+# 2. Use calculator to compute tip based on findings
+# 3. Return the final answer with context
+print(result["messages"][-1].text)
 ```
 
 <a id="agent.Agent.__init__"></a>
@@ -136,6 +181,7 @@ Deserialized agent
 def run(messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
@@ -150,6 +196,8 @@ Process messages and execute tools until an exit condition is met.
 - `messages`: List of Haystack ChatMessage objects to process.
 - `streaming_callback`: A callback that will be invoked when a response is streamed from the LLM.
 The same callback can be configured to emit tool results when a tool is called.
+- `generation_kwargs`: Additional keyword arguments for LLM. These parameters will
+override the parameters passed during component initialization.
 - `break_point`: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
 for "tool_invoker".
 - `snapshot`: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
@@ -180,6 +228,7 @@ A dictionary with the following keys:
 async def run_async(messages: list[ChatMessage],
                     streaming_callback: Optional[StreamingCallbackT] = None,
                     *,
+                    generation_kwargs: Optional[dict[str, Any]] = None,
                     break_point: Optional[AgentBreakpoint] = None,
                     snapshot: Optional[AgentSnapshot] = None,
                     system_prompt: Optional[str] = None,
@@ -198,6 +247,8 @@ if available.
 - `messages`: List of Haystack ChatMessage objects to process.
 - `streaming_callback`: An asynchronous callback that will be invoked when a response is streamed from the
 LLM. The same callback can be configured to emit tool results when a tool is called.
+- `generation_kwargs`: Additional keyword arguments for LLM. These parameters will
+override the parameters passed during component initialization.
 - `break_point`: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
 for "tool_invoker".
 - `snapshot`: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains

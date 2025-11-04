@@ -14,7 +14,7 @@ Use the Qdrant vector database with Haystack.
 | API reference | [Qdrant](/reference/integrations-qdrant)                                                        |
 | GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/qdrant |
 
-Qdrant is a powerful high-performance, massive-scale vector database. The `QdrantDocumentStore` can be used with any Qdrant instance, in-memory, locally persisted, hosted, and the official Qdrant Cloud. 
+Qdrant is a powerful high-performance, massive-scale vector database. The `QdrantDocumentStore` can be used with any Qdrant instance, in-memory, locally persisted, hosted, and the official Qdrant Cloud.
 
 ### Installation
 
@@ -39,15 +39,16 @@ document_store = QdrantDocumentStore(
     wait_result_from_api=True,
 )
 document_store.write_documents([
-	  Document(content="This is first", embedding=[0.0]*5), 
+	  Document(content="This is first", embedding=[0.0]*5),
 	  Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5])
 ])
 print(document_store.count_documents())
 ```
 
-> 🚧 Collections Created Outside Haystack
-> 
-> When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. If you want to migrate your existing collection, see the sample script at https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/qdrant/src/haystack_integrations/document_stores/qdrant/migrate_to_sparse.py.
+:::warning Collections Created Outside Haystack
+
+When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. If you want to migrate your existing collection, see the sample script at https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/qdrant/src/haystack_integrations/document_stores/qdrant/migrate_to_sparse.py.
+:::
 
 You can also connect directly to [Qdrant Cloud](https://cloud.qdrant.io/login) directly. Once you have your API key and your cluster URL from the Qdrant dashboard, you can connect like this:
 
@@ -65,14 +66,13 @@ document_store = QdrantDocumentStore(
 )
 
 document_store.write_documents([
-	  Document(content="This is first", embedding=[0.0]*5), 
+	  Document(content="This is first", embedding=[0.0]*5),
 	  Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5])
 ])
 print(document_store.count_documents())
 ```
 
-:::tip
-More information
+:::tip More information
 
 You can find more ways to initialize and use QdrantDocumentStore on our [integration page](https://haystack.deepset.ai/integrations/qdrant-document-store).
 :::
@@ -83,8 +83,7 @@ You can find more ways to initialize and use QdrantDocumentStore on our [integra
 - [`QdrantSparseEmbeddingRetriever`](../pipeline-components/retrievers/qdrantsparseembeddingretriever.mdx): Retrieves documents from the `QdrantDocumentStore` based on their sparse embeddings.
 - [`QdrantHybridRetriever`](../pipeline-components/retrievers/qdranthybridretriever.mdx): Retrieves documents from the `QdrantDocumentStore` based on both dense and sparse embeddings.
 
-:::info
-Sparse Embedding Support
+:::note Sparse Embedding Support
 
 To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
 
@@ -93,4 +92,4 @@ If you want to use Document Store or collection previously created with this fea
 
 ## Additional References
 
-:cook: Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)
+🧑‍🍳 Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)

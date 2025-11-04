@@ -13,8 +13,8 @@ This component enables chat completions using Anthropic large language models (L
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)  |
 | **Mandatory init variables** | "api_key": An Anthropic API key. Can be set with `ANTHROPIC_API_KEY` env var. |
-| **Mandatory run variables** | “messages” A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects |
-| **Output variables** | "replies": A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Mandatory run variables** | “messages” A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
+| **Output variables** | "replies": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
 | **API reference** | [Anthropic](/reference/integrations-anthropic) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic |
 
@@ -27,7 +27,7 @@ This integration supports Anthropic `chat` models such as `claude-3-5-sonnet-
 `AnthropicChatGenerator` needs an Anthropic API key to work. You can provide this key in:
 
 - The `ANTHROPIC_API_KEY` environment variable (recommended)
-- The `api_key` init parameter and Haystack [Secret](/docs/secret-management) API: `Secret.from_token("your-api-key-here")`
+- The `api_key` init parameter and Haystack [Secret](../../concepts/secret-management.mdx) API: `Secret.from_token("your-api-key-here")`
 
 Set your preferred Anthropic model with the `model` parameter when initializing the component.
 
@@ -60,7 +60,7 @@ Streaming works only with a single response. If a provider supports multiple can
 
 :::
 
-See our [Streaming Support](/docs/choosing-the-right-generator#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
 
 Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
 
@@ -143,4 +143,4 @@ print(res)
 
 ## Additional References
 
-:cook: Cookbook: [Advanced Prompt Customization for Anthropic](https://haystack.deepset.ai/cookbook/prompt_customization_for_anthropic)
+🧑‍🍳 Cookbook: [Advanced Prompt Customization for Anthropic](https://haystack.deepset.ai/cookbook/prompt_customization_for_anthropic)

@@ -251,6 +251,141 @@ class TestHuggingFaceLocalChatGenerator:
             model="mistralai/Mistral-7B-Instruct-v0.2", task="text2text-generation", token=None, device="cpu"
         )
 
+    @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
+    def test_warm_up_with_tools(self, pipeline_mock, monkeypatch):
+        """Test that warm_up() calls warm_up on tools and is idempotent."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
+        # Create a mock tool that tracks if warm_up() was called
+        class MockTool(Tool):
+            warm_up_call_count = 0  # Class variable to track calls
+
+            def __init__(self):
+                super().__init__(
+                    name="mock_tool",
+                    description="A mock tool for testing",
+                    parameters={"x": {"type": "string"}},
+                    function=lambda x: x,
+                )
+
+            def warm_up(self):
+                MockTool.warm_up_call_count += 1
+
+        # Reset the class variable before test
+        MockTool.warm_up_call_count = 0
+        mock_tool = MockTool()
+
+        # Create HuggingFaceLocalChatGenerator with the mock tool
+        generator = HuggingFaceLocalChatGenerator(
+            model="mistralai/Mistral-7B-Instruct-v0.2",
+            task="text2text-generation",
+            device=ComponentDevice.from_str("cpu"),
+            tools=[mock_tool],
+        )
+
+        # Verify initial state - warm_up not called yet
+        assert MockTool.warm_up_call_count == 0
+        assert not generator._is_warmed_up
+
+        # Call warm_up() on the generator
+        generator.warm_up()
+
+        # Assert that the tool's warm_up() was called
+        assert MockTool.warm_up_call_count == 1
+        assert generator._is_warmed_up
+
+        # Verify pipeline was initialized
+        pipeline_mock.assert_called_once()
+
+        # Call warm_up() again and verify it's idempotent (only warms up once)
+        generator.warm_up()
+
+        # The tool's warm_up should still only have been called once
+        assert MockTool.warm_up_call_count == 1
+        assert generator._is_warmed_up
+        # Pipeline should still only have been called once
+        pipeline_mock.assert_called_once()
+
+    @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
+    def test_warm_up_with_no_tools(self, pipeline_mock, monkeypatch):
+        """Test that warm_up() works when no tools are provided."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
+        generator = HuggingFaceLocalChatGenerator(
+            model="mistralai/Mistral-7B-Instruct-v0.2",
+            task="text2text-generation",
+            device=ComponentDevice.from_str("cpu"),
+        )
+
+        # Verify initial state
+        assert not generator._is_warmed_up
+        assert generator.tools is None
+
+        # Call warm_up() - should not raise an error
+        generator.warm_up()
+
+        # Verify the component is warmed up
+        assert generator._is_warmed_up
+        pipeline_mock.assert_called_once()
+
+        # Call warm_up() again - should be idempotent
+        generator.warm_up()
+        assert generator._is_warmed_up
+        # Pipeline should still only have been called once
+        pipeline_mock.assert_called_once()
+
+    @patch("haystack.components.generators.chat.hugging_face_local.pipeline")
+    def test_warm_up_with_multiple_tools(self, pipeline_mock, monkeypatch):
+        """Test that warm_up() works with multiple tools."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        monkeypatch.delenv("HF_TOKEN", raising=False)
+
+        # Track warm_up calls
+        warm_up_calls = []
+
+        class MockTool(Tool):
+            def __init__(self, tool_name):
+                super().__init__(
+                    name=tool_name,
+                    description=f"Mock tool {tool_name}",
+                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
+                    function=lambda x: f"{tool_name} result: {x}",
+                )
+
+            def warm_up(self):
+                warm_up_calls.append(self.name)
+
+        mock_tool1 = MockTool("tool1")
+        mock_tool2 = MockTool("tool2")
+
+        # Use a LIST of tools, not a Toolset
+        generator = HuggingFaceLocalChatGenerator(
+            model="mistralai/Mistral-7B-Instruct-v0.2",
+            task="text2text-generation",
+            device=ComponentDevice.from_str("cpu"),
+            tools=[mock_tool1, mock_tool2],
+        )
+
+        # Call warm_up()
+        generator.warm_up()
+
+        # Assert that both tools' warm_up() were called
+        assert "tool1" in warm_up_calls
+        assert "tool2" in warm_up_calls
+        assert generator._is_warmed_up
+        pipeline_mock.assert_called_once()
+
+        # Track count
+        call_count = len(warm_up_calls)
+
+        # Verify idempotency
+        generator.warm_up()
+        assert len(warm_up_calls) == call_count
+        # Pipeline should still only have been called once
+        pipeline_mock.assert_called_once()
+
     def test_run(self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages):
         generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
 

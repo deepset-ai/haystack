@@ -13,7 +13,7 @@ This generator enables chat completion using various Hugging Face APIs.
 | --- | --- |
 | **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx)  |
 | **Mandatory init variables** | "api_type": The type of Hugging Face API to use  <br /> <br />"api_params": A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`."token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
-| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects representing the chat |
+| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables** | “replies”: A list of replies of the LLM to the input chat |
 | **API reference** | [Generators](/reference/generators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/hugging_face_api.py |
@@ -26,10 +26,10 @@ This generator enables chat completion using various Hugging Face APIs.
 - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
 - [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
-This component's main input is a list of `ChatMessage` objects. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. For more information, check out our [`ChatMessage` docs](/docs/chatmessage).
+This component's main input is a list of `ChatMessage` objects. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. For more information, check out our [`ChatMessage` docs](../../concepts/data-classes/chatmessage.mdx).
 
 :::note
-This component is designed for chat completion, so it expects a list of messages, not a single string. If you want to use Hugging Face APIs for simple text generation (such as translation or summarization tasks) or don't want to use the `ChatMessage` object, use [`HuggingFaceAPIGenerator`](/docs/huggingfaceapigenerator) instead.
+This component is designed for chat completion, so it expects a list of messages, not a single string. If you want to use Hugging Face APIs for simple text generation (such as translation or summarization tasks) or don't want to use the `ChatMessage` object, use [`HuggingFaceAPIGenerator`](huggingfaceapigenerator.mdx) instead.
 
 :::
 
@@ -41,7 +41,7 @@ The token is needed:
 
 ### Streaming
 
-This Generator supports [streaming](/docs/choosing-the-right-generator#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ## Usage
 
@@ -194,4 +194,4 @@ print(result)
 
 ## Additional References
 
-:cook: Cookbook: [Build with Google Gemma: chat and RAG](https://haystack.deepset.ai/cookbook/gemma_chat_rag)
+🧑‍🍳 Cookbook: [Build with Google Gemma: chat and RAG](https://haystack.deepset.ai/cookbook/gemma_chat_rag)

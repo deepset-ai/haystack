@@ -13,7 +13,7 @@ description: "`OpenAIChatGenerator` enables chat completion using OpenAI’s lar
 | :------------------------------------- | :--------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
 | **Mandatory init variables**           | "api_key": An OpenAI API key. Can be set with `OPENAI_API_KEY` env var.                              |
-| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects representing the chat |
+| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables**                   | “replies”: A list of alternative replies of the LLM to the input chat                                |
 | **API reference**                      | [Generators](/reference/generators-api)                                                                     |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/openai.py     |
@@ -100,7 +100,7 @@ Streaming works only with a single response. If a provider supports multiple can
 
 :::
 
-See our [Streaming Support](/docs/choosing-the-right-generator#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
 
 Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
 
@@ -183,4 +183,4 @@ pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "
 
 :notebook: Tutorial: [Building a Chat Application with Function Calling](https://haystack.deepset.ai/tutorials/40_building_chat_application_with_function_calling)
 
-:cook: Cookbook: [Function Calling with OpenAIChatGenerator](https://haystack.deepset.ai/cookbook/function_calling_with_openaichatgenerator)
+🧑‍🍳 Cookbook: [Function Calling with OpenAIChatGenerator](https://haystack.deepset.ai/cookbook/function_calling_with_openaichatgenerator)

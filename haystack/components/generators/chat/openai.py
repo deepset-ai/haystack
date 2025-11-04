@@ -41,6 +41,7 @@ from haystack.tools import (
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -200,6 +201,18 @@ class OpenAIChatGenerator:
         self.async_client = AsyncOpenAI(
             http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
         )
+        self._is_warmed_up = False
+
+    def warm_up(self):
+        """
+        Warm up the OpenAI chat generator.
+
+        This will warm up the tools registered in the chat generator.
+        This method is idempotent and will only warm up the tools once.
+        """
+        if not self._is_warmed_up:
+            warm_up_tools(self.tools)
+            self._is_warmed_up = True
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """

@@ -71,24 +71,24 @@ This method of using small cross-encoder models as evaluators is faster and chea
 
 ## Model-Based Evaluation Pipelines in Haystack
 
-There are two ways of performing model-based evaluation in Haystack, both of which leverage [Pipelines](/docs/pipelines) and [Evaluator](/docs/evaluators) components.
+There are two ways of performing model-based evaluation in Haystack, both of which leverage [Pipelines](../../concepts/pipelines.mdx) and [Evaluator](../../pipeline-components/evaluators.mdx) components.
 
 - You can create and run an evaluation Pipeline independently. This means you’ll have to provide the required inputs to the evaluation Pipeline manually. We recommend this way because the separation of your RAG Pipeline and your evaluation Pipeline allows you to store the results of your RAG Pipeline and try out different evaluation metrics afterward without needing to re-run your RAG Pipeline every time.
 - As another option, you can add an evaluator component to the end of a RAG Pipeline. This means you run both a RAG Pipeline and evaluation on top of it in a single `pipeline.run()`  call.
 
 ### Model-based Evaluation of Retrieved Documents
 
-#### [ContextRelevanceEvaluator](/docs/contextrelevanceevaluator)
+#### [ContextRelevanceEvaluator](../../pipeline-components/evaluators/contextrelevanceevaluator.mdx)
 
 Context relevance refers to how relevant the retrieved documents are to the query. An LLM is used to judge that aspect. It first extracts statements from the documents and then checks how many of them are relevant for answering the query.
 
 ### Model-based Evaluation of Generated or Extracted Answers
 
-#### [FaithfulnessEvaluator](/docs/faithfulnessevaluator)
+#### [FaithfulnessEvaluator](../../pipeline-components/evaluators/faithfulnessevaluator.mdx)
 
 Faithfulness, also called groundedness, evaluates to what extent a generated answer is based on retrieved documents. An LLM is used to extract statements from the answer and check the faithfulness for each separately. If the answer is not based on the documents, the answer, or at least parts of it, is called a hallucination.
 
-#### [SASEvaluator](/docs/sasevaluator) (Semantic Answer Similarity)
+#### [SASEvaluator](../../pipeline-components/evaluators/sasevaluator.mdx) (Semantic Answer Similarity)
 
 Semantic answer similarity uses a transformer-based, cross-encoder architecture to evaluate the semantic similarity of two answers rather than their lexical overlap. While F1 and EM would both score _one hundred percent_ as sharing zero similarity with _100 %_, SAS is trained to assign a high score to such cases. SAS is particularly useful for seeking out cases where F1 doesn't give a good indication of the validity of a predicted answer. You can read more about SAS in [Semantic Answer Similarity for Evaluating Question-Answering Models paper](https://arxiv.org/abs/2108.06130).
 
@@ -96,8 +96,8 @@ Semantic answer similarity uses a transformer-based, cross-encoder architecture 
 
 Currently, Haystack has integrations with [DeepEval](https://docs.confident-ai.com/docs/metrics-introduction) and [Ragas](https://docs.ragas.io/en/stable/index.html). There is an Evaluator component available for each of these frameworks:
 
-- [RagasEvaluator](/docs/ragasevaluator)
-- [DeepEvalEvaluator](/docs/deepevalevaluator)
+- [RagasEvaluator](../../pipeline-components/evaluators/ragasevaluator.mdx)
+- [DeepEvalEvaluator](../../pipeline-components/evaluators/deepevalevaluator.mdx)
 
 |  |  |
 | --- | --- |
@@ -107,8 +107,7 @@ Currently, Haystack has integrations with [DeepEval](https://docs.confident-ai.c
 | Explanations of scores | ❌ |
 | Monitoring dashboard | ❌ |
 
-:::note
-Framework Documentation
+:::note Framework Documentation
 
 You can find more information about the metrics in the documentation of the respective evaluation frameworks:
 

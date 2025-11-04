@@ -1,7 +1,13 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+from typing import Optional
+
 from jinja2 import Environment, meta, nodes
 
 
-def extract_declared_variables(template_str: str, env: Environment | None = None) -> list[str]:
+def extract_declared_variables(template_str: str, env: Optional[Environment] = None) -> list[str]:
     """
     Extract declared variables from a Jinja2 template string.
 

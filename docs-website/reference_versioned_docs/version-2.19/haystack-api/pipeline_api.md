@@ -2,6 +2,7 @@
 title: Pipeline
 id: pipeline-api
 description: Arranges components and integrations in flow.
+slug: "/pipeline-api"
 ---
 
 <a id="async_pipeline"></a>

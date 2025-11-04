@@ -20,7 +20,7 @@ This component computes the embeddings of a list of documents and stores the obt
 
 ## Overview
 
-`JinaDocumentEmbedder` enriches the metadata of documents with an embedding of their content. To embed a string, you should use the [`JinaTextEmbedder`](https://docs.haystack.deepset.ai/v2.0/docs/jinatextembedder). To see the list of compatible Jina Embeddings models, head to Jina AI’s [website](https://jina.ai/embeddings/). The default model for `JinaDocumentEmbedder` is `jina-embeddings-v2-base-en`.
+`JinaDocumentEmbedder` enriches the metadata of documents with an embedding of their content. To embed a string, you should use the [`JinaTextEmbedder`](jinatextembedder.mdx). To see the list of compatible Jina Embeddings models, head to Jina AI’s [website](https://jina.ai/embeddings/). The default model for `JinaDocumentEmbedder` is `jina-embeddings-v2-base-en`.
 
 To start using this integration with Haystack, install the package with:
 
@@ -122,4 +122,4 @@ print(result['retriever']['documents'][0])
 
 ## Additional References
 
-:cook: Cookbook: [Using the Jina-embeddings-v2-base-en model in a Haystack RAG pipeline for legal document analysis](https://haystack.deepset.ai/cookbook/jina-embeddings-v2-legal-analysis-rag)
+🧑‍🍳 Cookbook: [Using the Jina-embeddings-v2-base-en model in a Haystack RAG pipeline for legal document analysis](https://haystack.deepset.ai/cookbook/jina-embeddings-v2-legal-analysis-rag)

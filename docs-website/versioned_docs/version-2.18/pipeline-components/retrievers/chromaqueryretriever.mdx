@@ -11,7 +11,7 @@ This is a a Retriever compatible with the Chroma Document Store.
 
 |                                        |                                                                                                                                                                                                                                                                             |
 | :------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](/docs/promptbuilder)   in a RAG pipeline  2. The last component in the semantic search pipeline  3. After a Text Embedder and before an [`ExtractiveReader`](/docs/extractivereader)   in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline  2. The last component in the semantic search pipeline  3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
 | **Mandatory init variables**           | "document_store": An instance of a [ChromaDocumentStore](../../document-stores/chromadocumentstore.mdx)                                                                                                                                                                                         |
 | **Mandatory run variables**            | “query”: A single query in plain-text format to be processed by the [Retriever](../retrievers.mdx)                                                                                                                                                                           |
 | **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                            |
@@ -85,4 +85,4 @@ for d in results["retriever"]["documents"]:
 
 ## Additional References
 
-:cook: Cookbook: [Use Chroma for RAG and Indexing](https://haystack.deepset.ai/cookbook/chroma-indexing-and-rag-examples)
+🧑‍🍳 Cookbook: [Use Chroma for RAG and Indexing](https://haystack.deepset.ai/cookbook/chroma-indexing-and-rag-examples)

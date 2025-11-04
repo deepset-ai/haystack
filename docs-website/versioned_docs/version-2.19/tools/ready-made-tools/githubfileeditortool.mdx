@@ -17,7 +17,7 @@ A Tool that allows Agents and ToolInvokers to edit files in GitHub repositories.
 
 ## Overview
 
-`GitHubFileEditorTool` wraps the [`GitHubFileEditor`](doc:githubfileeditor) component, providing a tool interface for use in agent workflows and tool-based pipelines.
+`GitHubFileEditorTool` wraps the [`GitHubFileEditor`](../../pipeline-components/connectors/githubfileeditor.mdx) component, providing a tool interface for use in agent workflows and tool-based pipelines.
 
 The tool supports multiple file operations including editing existing files, creating new files, deleting files, and undoing recent changes. It supports four main commands:
 
@@ -43,8 +43,7 @@ Install the GitHub integration to use the `GitHubFileEditorTool`:
 pip install github-haystack
 ```
 
-:::note
-Repository Placeholder
+:::note Repository Placeholder
 
 To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
 :::
@@ -78,7 +77,7 @@ print(result)
 
 ### With an Agent
 
-You can use `GitHubFileEditorTool` with the [Agent](/docs/agent) component. The Agent will automatically invoke the tool when needed to edit files in GitHub repositories.
+You can use `GitHubFileEditorTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically invoke the tool when needed to edit files in GitHub repositories.
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator

@@ -13,14 +13,16 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: haystack_pydoc_tools.renderers.DocusaurusRenderer
-  description: Core classes that carry data through the system.
+  type: haystack_pydoc_tools.renderers.ReadmeCoreRenderer
+  excerpt: Core classes that carry data through the system.
+  category_slug: haystack-api
   title: Data Classes
-  id: data-classess-api
+  slug: data-classes-api
+  order: 30
   markdown:
     descriptive_class_title: false
     classdef_code_block: false
     descriptive_module_title: true
     add_method_class_prefix: true
     add_member_class_prefix: false
-    filename: data_classess_api.md
+    filename: data_classes_api.md

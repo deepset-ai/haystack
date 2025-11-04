@@ -1,0 +1,137 @@
+---
+title: "TogetherAIChatGenerator"
+id: togetheraichatgenerator
+slug: "/togetheraichatgenerator"
+description: "This component enables chat completion using models hosted on Together AI."
+---
+
+# TogetherAIChatGenerator
+
+This component enables chat completion using models hosted on Together AI.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | "api_key": A Together API key. Can be set with `TOGETHER_API_KEY` env var. |
+| **Mandatory run variables** | "messages": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | "replies": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **API reference** | [TogetherAI](/reference/integrations-togetherai) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/togetherai |
+
+## Overview
+
+`TogetherAIChatGenerator` supports models hosted on [Together AI](https://docs.together.ai/intro), such as `meta-llama/Llama-3.3-70B-Instruct-Turbo`. For the full list of supported models, see [Together AI documentation](https://docs.together.ai/docs/chat-models).
+
+This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+
+You can pass any text generation parameters valid for the Together AI chat completion API directly to this component using the `generation_kwargs` parameter in `__init__` or the `generation_kwargs` parameter in `run` method. For more details on the parameters supported by the Together AI API, see [Together AI API documentation](https://docs.together.ai/reference/chat-completions-1).
+
+To use this integration, you need to have an active TogetherAI subscription with sufficient credits and an API key. You can provide it with:
+
+- The `TOGETHER_API_KEY` environment variable (recommended)
+- The `api_key` init parameter and Haystack [Secret](../../concepts/secret-management.mdx) API: `Secret.from_token("your-api-key-here")`
+
+By default, the component uses Together AI's OpenAI-compatible base URL `https://api.together.xyz/v1`, which you can override with `api_base_url` if needed.
+
+### Tool Support
+
+`TogetherAIChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = TogetherAIChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
+
+`TogetherAIChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM, allowing tokens to be emitted as they are generated. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
+
+## Usage
+
+Install the `togetherai-haystack` package to use the `TogetherAIChatGenerator`:
+
+```shell
+pip install togetherai-haystack
+```
+
+### On its own
+
+Basic usage:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
+
+client = TogetherAIChatGenerator()
+response = client.run(
+    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
+)
+print(response["replies"][0].text)
+```
+
+With streaming:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
+
+client = TogetherAIChatGenerator(
+    model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
+)
+
+response = client.run(
+    [ChatMessage.from_user("What are Agentic Pipelines? Be brief.")]
+)
+
+# check the model used for the response
+print("\n\nModel used:", response["replies"][0].meta.get("model"))
+```
+
+### In a Pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
+
+prompt_builder = ChatPromptBuilder()
+llm = TogetherAIChatGenerator(model="meta-llama/Llama-3.3-70B-Instruct-Turbo")
+
+pipe = Pipeline()
+pipe.add_component("builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system("Give brief answers."),
+    ChatMessage.from_user("Tell me about {{city}}"),
+]
+
+response = pipe.run(
+    data={"builder": {"template": messages,
+                      "template_variables": {"city": "Berlin"}}}
+)
+print(response)
+```

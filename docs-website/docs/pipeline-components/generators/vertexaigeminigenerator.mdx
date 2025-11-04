@@ -9,11 +9,12 @@ description: "`VertexAIGeminiGenerator` enables text generation using Google Gem
 
 `VertexAIGeminiGenerator` enables text generation using Google Gemini models.
 
-> 🚧 Deprecation Notice
-> 
-> This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
-> 
-> We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::warning Deprecation Notice
+
+This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
+
+We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::
 
 |  |  |
 | --- | --- |
@@ -122,7 +123,7 @@ query = "What is the capital of France?"
 template = """
 Given the following information, answer the question.
 
-Context: 
+Context:
 {% for document in documents %}
     {{ document.content }}
 {% endfor %}
@@ -151,4 +152,4 @@ print(res)
 
 ## Additional References
 
-:cook: Cookbook: [Function Calling and Multimodal QA with Gemini](https://haystack.deepset.ai/cookbook/vertexai-gemini-examples)
+🧑‍🍳 Cookbook: [Function Calling and Multimodal QA with Gemini](https://haystack.deepset.ai/cookbook/vertexai-gemini-examples)
