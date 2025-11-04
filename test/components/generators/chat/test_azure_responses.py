@@ -315,13 +315,17 @@ class TestAzureOpenAIChatGenerator:
     )
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = AzureOpenAIResponsesChatGenerator(organization="HaystackCI")
+        component = AzureOpenAIResponsesChatGenerator(
+            # api_version="/openai/v1/",
+            api_version=None,
+            azure_deployment="gpt-4o-mini",
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
         assert "gpt-4o-mini" in message.meta["model"]
-        assert message.meta["finish_reason"] == "stop"
+        assert message.meta["status"] == "completed"
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -522,12 +526,12 @@ class TestAzureOpenAIChatGeneratorAsync:
     @pytest.mark.asyncio
     async def test_live_run_async(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = AzureOpenAIResponsesChatGenerator(generation_kwargs={"n": 1})
+        component = AzureOpenAIResponsesChatGenerator()
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-4o" in message.meta["model"]
+        assert "gpt-5-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
     @pytest.mark.integration

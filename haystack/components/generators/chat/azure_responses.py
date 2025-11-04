@@ -3,25 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Optional, Union
+from typing import Any, Awaitable, Callable, Optional, Union
 
 from openai.lib._pydantic import to_strict_json_schema
-from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
-from haystack.tools import (
-    ToolsType,
-    _check_duplicate_tool_names,
-    deserialize_tools_or_toolset_inplace,
-    flatten_tools_or_toolsets,
-    serialize_tools_or_toolset,
-    warm_up_tools,
-)
+from haystack.tools import ToolsType, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
-from haystack.utils.http_client import init_http_client
 
 
 @component
@@ -58,35 +49,33 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
     ```
     """
 
-    # pylint: disable=super-init-not-called
     # ruff: noqa: PLR0913
     def __init__(
         self,
         *,
+        api_key: Union[Secret, Callable[[], str], Callable[[], Awaitable[str]]] = Secret.from_env_var(
+            "AZURE_OPENAI_API_KEY"
+        ),
         azure_endpoint: Optional[str] = None,
-        api_version: Optional[str] = "2025-06-01",
-        azure_deployment: Optional[str] = "gpt-5-mini",
-        api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
-        azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
-        organization: Optional[str] = None,
+        azure_deployment: str = "gpt-5-mini",
         streaming_callback: Optional[StreamingCallbackT] = None,
+        organization: Optional[str] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        default_headers: Optional[dict[str, str]] = None,
         tools: Optional[ToolsType] = None,
         tools_strict: bool = False,
-        azure_ad_token_provider: Optional[Union[AzureADTokenProvider, AsyncAzureADTokenProvider]] = None,
         http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
-        Initialize the Azure OpenAI Chat Generator component.
+        Initialize the AzureOpenAIResponsesChatGenerator component.
 
+        :param api_key: The API key to use for authentication. Can be:
+            - A `Secret` object containing the API key.
+            - A `Secret` object containing the [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
+            - A function that returns an Azure Active Directory token.
         :param azure_endpoint: The endpoint of the deployed model, for example `"https://example-resource.azure.openai.com/"`.
-        :param api_version: The version of the API to use. Defaults to 2023-05-15.
         :param azure_deployment: The deployment of the model, usually the model name.
-        :param api_key: The API key to use for authentication.
-        :param azure_ad_token: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
         :param organization: Your organization ID, defaults to `None`. For help, see
         [Setting up your organization](https://platform.openai.com/docs/guides/production-best-practices/setting-up-your-organization).
         :param streaming_callback: A callback function called when a new token is received from the stream.
@@ -124,83 +113,35 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
                 - `generate_summary`: Whether to generate a summary of the reasoning.
                 Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
                 For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
-        :param default_headers: Default headers to use for the AzureOpenAI client.
         :param tools:
             A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-        :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
-            every request.
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
         """
-        # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
-        # with the API.
-
-        # Why is this here?
-        # AzureOpenAI init is forcing us to use an init method that takes either base_url or azure_endpoint as not
-        # None init parameters. This way we accommodate the use case where env var AZURE_OPENAI_ENDPOINT is set instead
-        # of passing it as a parameter.
-        azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
-        if not azure_endpoint:
-            raise ValueError("Please provide an Azure endpoint or set the environment variable AZURE_OPENAI_ENDPOINT.")
-
-        if api_key is None and azure_ad_token is None:
-            raise ValueError("Please provide an API key or an Azure Active Directory token.")
-
-        # The check above makes mypy incorrectly infer that api_key is never None,
-        # which propagates the incorrect type.
-        self.api_key = api_key  # type: ignore
-        self.azure_ad_token = azure_ad_token
-        self.generation_kwargs = generation_kwargs or {}
-        self.streaming_callback = streaming_callback
-        self.api_version = api_version
-        self.azure_endpoint = azure_endpoint
-        self.azure_deployment = azure_deployment
-        self.organization = organization
-        self.model = azure_deployment or "gpt-5"
-        self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
-        self.default_headers = default_headers or {}
-        self.azure_ad_token_provider = azure_ad_token_provider
-        self.http_client_kwargs = http_client_kwargs
-        _check_duplicate_tool_names(flatten_tools_or_toolsets(tools))
-        self.tools = tools
-        self.tools_strict = tools_strict
-
-        client_args: dict[str, Any] = {
-            "api_version": api_version,
-            "azure_endpoint": azure_endpoint,
-            "azure_deployment": azure_deployment,
-            "api_key": api_key.resolve_value() if api_key is not None else None,
-            "azure_ad_token": azure_ad_token.resolve_value() if azure_ad_token is not None else None,
-            "organization": organization,
-            "timeout": self.timeout,
-            "max_retries": self.max_retries,
-            "default_headers": self.default_headers,
-            "azure_ad_token_provider": azure_ad_token_provider,
-        }
-
-        self.client = AzureOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_args
+        azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
+        if azure_endpoint is None:
+            raise ValueError(
+                "You must provide `azure_endpoint` or set the `AZURE_OPENAI_ENDPOINT` environment variable."
+            )
+        self._azure_endpoint = azure_endpoint
+        self._azure_deployment = azure_deployment
+        super(AzureOpenAIResponsesChatGenerator, self).__init__(
+            api_key=api_key,
+            model=self._azure_deployment,
+            streaming_callback=streaming_callback,
+            api_base_url=f"{self._azure_endpoint.rstrip('/')}openai/v1",
+            organization=organization,
+            generation_kwargs=generation_kwargs,
+            timeout=timeout,
+            max_retries=max_retries,
+            tools=tools,
+            tools_strict=tools_strict,
+            http_client_kwargs=http_client_kwargs,
         )
-        self.async_client = AsyncAzureOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_args
-        )
-        self._is_warmed_up = False
-
-    def warm_up(self):
-        """
-        Warm up the Azure OpenAI chat generator.
-
-        This will warm up the tools registered in the chat generator.
-        This method is idempotent and will only warm up the tools once.
-        """
-        if not self._is_warmed_up:
-            warm_up_tools(self.tools)
-            self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -210,9 +151,16 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             The serialized component as a dictionary.
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
-        azure_ad_token_provider_name = None
-        if self.azure_ad_token_provider:
-            azure_ad_token_provider_name = serialize_callable(self.azure_ad_token_provider)
+
+        # API key can be a secret or a callable
+        serialized_api_key = (
+            serialize_callable(self.api_key)
+            if callable(self.api_key)
+            else self.api_key.to_dict()
+            if isinstance(self.api_key, Secret)
+            else None
+        )
+
         # If the response format is a Pydantic model, it's converted to openai's json schema format
         # If it's already a json schema, it's left as is
         generation_kwargs = self.generation_kwargs.copy()
@@ -235,23 +183,18 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             # function returns correct type but mypy doesn't know it
             serialized_tools = serialize_tools_or_toolset(self.tools)  # type: ignore[assignment]
 
-        # TODO Double check all variables are present
         return default_to_dict(
             self,
-            azure_endpoint=self.azure_endpoint,
-            azure_deployment=self.azure_deployment,
-            organization=self.organization,
-            api_version=self.api_version,
+            azure_endpoint=self._azure_endpoint,
+            api_key=serialized_api_key,
+            azure_deployment=self._azure_deployment,
             streaming_callback=callback_name,
+            organization=self.organization,
             generation_kwargs=generation_kwargs,
             timeout=self.timeout,
             max_retries=self.max_retries,
-            api_key=self.api_key.to_dict() if self.api_key is not None else None,
-            azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
-            default_headers=self.default_headers,
             tools=serialized_tools,
             tools_strict=self.tools_strict,
-            azure_ad_token_provider=azure_ad_token_provider_name,
             http_client_kwargs=self.http_client_kwargs,
         )
 
@@ -264,7 +207,14 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
+        # TODO Need to be a bit more clever with api_key. Need try Secret deserialization, if it fails then
+        #  try callable deserialization. If that fails, raise the error.
+        try:
+            deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
+        except Exception:
+            serialized_api_key = data["init_parameters"].get("api_key")
+            if serialized_api_key:
+                data["init_parameters"]["api_key"] = deserialize_callable(serialized_api_key)
 
         # we only deserialize the tools if they are haystack tools
         # because openai tools are not serialized in the same way
@@ -281,9 +231,4 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
             data["init_parameters"]["streaming_callback"] = deserialize_callable(serialized_callback_handler)
-        serialized_azure_ad_token_provider = init_params.get("azure_ad_token_provider")
-        if serialized_azure_ad_token_provider:
-            data["init_parameters"]["azure_ad_token_provider"] = deserialize_callable(
-                serialized_azure_ad_token_provider
-            )
         return default_from_dict(cls, data)
