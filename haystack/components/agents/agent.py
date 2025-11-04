@@ -133,7 +133,6 @@ class Agent:
         tools=tools
     )
 
-    agent.warm_up()
     result = agent.run(
         messages=[ChatMessage.from_user("Calculate the appropriate tip for an €85 meal in France")]
     )
