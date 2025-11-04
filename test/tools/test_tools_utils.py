@@ -193,6 +193,8 @@ class WarmupTrackingToolset(Toolset):
 
     def warm_up(self):
         self.was_warmed_up = True
+        # Call parent to warm up individual tools
+        super().warm_up()
 
 
 class TestWarmUpTools:
@@ -372,6 +374,7 @@ class TestWarmUpTools:
 
             def warm_up(self):
                 self.warm_up_count += 1
+                super().warm_up()  # Also warm up individual tools
 
         tool = WarmupCountingTool(
             name="counting_tool",

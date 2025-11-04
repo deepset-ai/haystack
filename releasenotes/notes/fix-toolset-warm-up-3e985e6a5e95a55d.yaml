@@ -1,7 +1,7 @@
-fixes:
+enhancements:
   - |
-    Fixed warm_up_tools() utility function to properly warm up individual
-    tools inside Toolset objects. Previously, only the Toolset's warm_up()
-    method was called (which is a no-op), leaving individual tools
-    uninitialized. Now both the Toolset and its contained tools are
-    properly warmed up before pipeline execution."
+    Improved Toolset warm-up architecture for better encapsulation. The base
+    Toolset.warm_up() method now warms up all tools by default, while subclasses
+    can override it to customize initialization (e.g., setting up shared resources
+    instead of warming individual tools). The warm_up_tools() utility function has
+    been simplified to delegate to Toolset.warm_up().
