@@ -523,7 +523,6 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     _name=output.name,
                     _arguments=output.arguments,
                 )
-            print("Output as dict", output.to_dict())
 
             tool_calls.append(
                 ToolCall(id=output.id, tool_name=output.name, arguments=arguments, extra={"call_id": output.call_id})
@@ -564,7 +563,7 @@ def _convert_response_chunk_to_streaming_chunk(
     # Responses API always returns reasoning chunks even if there is no summary
     elif chunk.type == "response.output_item.added" and chunk.item.type == "reasoning":
         meta = chunk.item.to_dict()
-        reasoning = ReasoningContent(reasoning_text="")
+        reasoning = ReasoningContent(reasoning_text="", extra=meta)
         return StreamingChunk(
             content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, meta=meta
         )
@@ -574,7 +573,7 @@ def _convert_response_chunk_to_streaming_chunk(
         # rest of the information needs to be saved for chat message
         meta = chunk.to_dict()
         meta.pop("delta")
-        reasoning = ReasoningContent(reasoning_text=chunk.delta)
+        reasoning = ReasoningContent(reasoning_text=chunk.delta, extra=meta)
         return StreamingChunk(
             content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, meta=meta
         )
