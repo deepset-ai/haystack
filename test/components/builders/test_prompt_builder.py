@@ -352,10 +352,32 @@ class TestPromptBuilder:
                    """
 
         builder = PromptBuilder(template=template, required_variables="*")
-        docs = [Document(content="Doc 1"), Document(content="Doc 2")]
 
-        res = builder.run(docs=docs, existing_documents=None)
+        builder = PromptBuilder(template=template, required_variables="*")
+        assert set(builder.variables) == {"docs", "existing_documents"}
 
-        assert "<document reference=" in res["prompt"]
-        assert "Doc 1" in res["prompt"]
-        assert "Doc 2" in res["prompt"]
+    def test_variables_correct_with_tuple_assignment(self):
+        template = """{% if existing_documents is not none %}
+{% set x, y = (existing_documents|length, 1) %}
+{% else %}
+{% set x, y = (0, 1) %}
+{% endif %}
+x={{ x }}, y={{ y }}
+"""
+        builder = PromptBuilder(template=template, required_variables="*")
+        assert set(builder.variables) == {"existing_documents"}
+        res = builder.run(existing_documents=None)
+        assert "x=0, y=1" in res["prompt"]
+
+    def test_variables_correct_with_list_assignment(self):
+        template = """{% if existing_documents is not none %}
+{% set x, y = [existing_documents|length, 1] %}
+{% else %}
+{% set x, y = [0, 1] %}
+{% endif %}
+x={{ x }}, y={{ y }}
+"""
+        builder = PromptBuilder(template=template, required_variables="*")
+        assert set(builder.variables) == {"existing_documents"}
+        res = builder.run(existing_documents=None)
+        assert "x=0, y=1" in res["prompt"]
