@@ -123,9 +123,10 @@ class SerpexWebSearch:
     def run(
         self,
         query: str,
+        *,
         engine: Optional[Literal["auto", "google", "bing", "duckduckgo", "brave", "yahoo", "yandex"]] = None,
         num_results: Optional[int] = None,
-        time_range: Optional[str] = None,
+        time_range: Optional[Literal["all", "day", "week", "month", "year"]] = None,
     ) -> dict[str, list[Document]]:
         """
         Fetches web search results for the given query.
