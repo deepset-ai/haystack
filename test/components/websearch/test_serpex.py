@@ -61,7 +61,11 @@ class TestSerpexWebSearch:
     def test_init_custom_params(self):
         """Test initialization with custom parameters"""
         fetcher = SerpexWebSearch(
-            api_key=Secret.from_token("test-key"), engine="bing", num_results=5, timeout=20.0, retry_attempts=3
+            api_key=Secret.from_token("test-key"),
+            engine="bing",
+            num_results=5,
+            timeout=20.0,
+            retry_attempts=3,
         )
         assert fetcher.api_key.resolve_value() == "test-key"
         assert fetcher.engine == "bing"
@@ -71,7 +75,11 @@ class TestSerpexWebSearch:
 
     def test_to_dict(self):
         """Test serialization to dictionary"""
-        fetcher = SerpexWebSearch(api_key=Secret.from_token("test-api-key"), engine="duckduckgo", num_results=15)
+        fetcher = SerpexWebSearch(
+            api_key=Secret.from_token("test-api-key"),
+            engine="duckduckgo",
+            num_results=15,
+        )
         data = fetcher.to_dict()
         assert data["init_parameters"]["api_key"]["type"] == "env_var"
         assert data["init_parameters"]["engine"] == "duckduckgo"
@@ -84,7 +92,11 @@ class TestSerpexWebSearch:
         data = {
             "type": "haystack.components.websearch.serpex.SerpexWebSearch",
             "init_parameters": {
-                "api_key": {"type": "env_var", "env_vars": ["SERPEX_API_KEY"], "strict": True},
+                "api_key": {
+                    "type": "env_var",
+                    "env_vars": ["SERPEX_API_KEY"],
+                    "strict": True,
+                },
                 "engine": "brave",
                 "num_results": 20,
                 "timeout": 15.0,
@@ -112,7 +124,10 @@ class TestSerpexWebSearch:
 
             # Check first document
             assert isinstance(documents[0], Document)
-            assert documents[0].content == "Haystack is an open-source framework for building production-ready LLM applications."
+            assert (
+                documents[0].content
+                == "Haystack is an open-source framework for building production-ready LLM applications."
+            )
             assert documents[0].meta["title"] == "Haystack - Open Source LLM Framework"
             assert documents[0].meta["url"] == "https://haystack.deepset.ai/"
             assert documents[0].meta["position"] == 1
@@ -147,7 +162,9 @@ class TestSerpexWebSearch:
             mock_response.json.return_value = mock_serpex_response
             mock_get.return_value = mock_response
 
-            fetcher = SerpexWebSearch(api_key=Secret.from_token("test-api-key"), engine="google")
+            fetcher = SerpexWebSearch(
+                api_key=Secret.from_token("test-api-key"), engine="google"
+            )
             result = fetcher.run(query="test query", engine="bing")
 
             # Verify the request was made with the overridden engine
@@ -165,8 +182,10 @@ class TestSerpexWebSearch:
             mock_response.json.return_value = mock_serpex_response
             mock_get.return_value = mock_response
 
-            fetcher = SerpexWebSearch(api_key=Secret.from_token("test-api-key"), num_results=10)
-            result = fetcher.run(query="test query", num_results=5)
+            fetcher = SerpexWebSearch(
+                api_key=Secret.from_token("test-api-key"), num_results=10
+            )
+            fetcher.run(query="test query", num_results=5)
 
             # Verify the request was made with the overridden num_results
             call_args = mock_get.call_args
@@ -180,7 +199,7 @@ class TestSerpexWebSearch:
             mock_get.return_value = mock_response
 
             fetcher = SerpexWebSearch(api_key=Secret.from_token("test-api-key"))
-            result = fetcher.run(query="test query", time_range="week")
+            fetcher.run(query="test query", time_range="week")
 
             # Verify the request was made with time_range parameter
             call_args = mock_get.call_args
@@ -202,7 +221,9 @@ class TestSerpexWebSearch:
     def test_run_with_network_error(self):
         """Test run method with network error"""
         with patch("haystack.components.websearch.serpex.httpx.Client.get") as mock_get:
-            mock_get.side_effect = httpx.RequestError("Connection failed", request=Mock())
+            mock_get.side_effect = httpx.RequestError(
+                "Connection failed", request=Mock()
+            )
 
             fetcher = SerpexWebSearch(api_key=Secret.from_token("test-api-key"))
             with pytest.raises(httpx.RequestError):
@@ -238,7 +259,9 @@ class TestSerpexWebSearch:
             assert call_args[0][0] == "https://api.serpex.dev/api/search"
 
     @pytest.mark.integration
-    @pytest.mark.skipif(not os.environ.get("SERPEX_API_KEY"), reason="SERPEX_API_KEY not set")
+    @pytest.mark.skipif(
+        not os.environ.get("SERPEX_API_KEY"), reason="SERPEX_API_KEY not set"
+    )
     def test_run_with_real_api(self):
         """Integration test with real SERPEX API"""
         api_key = os.environ.get("SERPEX_API_KEY")
@@ -255,7 +278,9 @@ class TestSerpexWebSearch:
         assert all(doc.content for doc in documents)
 
     @pytest.mark.integration
-    @pytest.mark.skipif(not os.environ.get("SERPEX_API_KEY"), reason="SERPEX_API_KEY not set")
+    @pytest.mark.skipif(
+        not os.environ.get("SERPEX_API_KEY"), reason="SERPEX_API_KEY not set"
+    )
     def test_run_with_different_engines(self):
         """Integration test with different search engines"""
         api_key = os.environ.get("SERPEX_API_KEY")

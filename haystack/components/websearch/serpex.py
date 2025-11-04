@@ -5,7 +5,12 @@
 from typing import Any, Literal, Optional
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import Document
@@ -43,7 +48,9 @@ class SerpexWebSearch:
         self,
         *,
         api_key: Secret = Secret.from_env_var("SERPEX_API_KEY"),
-        engine: Literal["auto", "google", "bing", "duckduckgo", "brave", "yahoo", "yandex"] = "google",
+        engine: Literal[
+            "auto", "google", "bing", "duckduckgo", "brave", "yahoo", "yandex"
+        ] = "google",
         num_results: int = 10,
         timeout: float = 10.0,
         retry_attempts: int = 2,
@@ -74,7 +81,9 @@ class SerpexWebSearch:
             wait=wait_exponential(multiplier=1, min=2, max=10),
             retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError)),
         )
-        def make_request(url: str, headers: dict[str, str], params: dict[str, Any]) -> httpx.Response:
+        def make_request(
+            url: str, headers: dict[str, str], params: dict[str, Any]
+        ) -> httpx.Response:
             response = self._client.get(url, headers=headers, params=params)
             response.raise_for_status()
             return response
@@ -124,7 +133,9 @@ class SerpexWebSearch:
         self,
         query: str,
         *,
-        engine: Optional[Literal["auto", "google", "bing", "duckduckgo", "brave", "yahoo", "yandex"]] = None,
+        engine: Optional[
+            Literal["auto", "google", "bing", "duckduckgo", "brave", "yahoo", "yandex"]
+        ] = None,
         num_results: Optional[int] = None,
         time_range: Optional[Literal["all", "day", "week", "month", "year"]] = None,
     ) -> dict[str, list[Document]]:
@@ -152,10 +163,15 @@ class SerpexWebSearch:
             if time_range:
                 params["time_range"] = time_range
 
-            headers = {"Authorization": f"Bearer {self.api_key.resolve_value()}", "Content-Type": "application/json"}
+            headers = {
+                "Authorization": f"Bearer {self.api_key.resolve_value()}",
+                "Content-Type": "application/json",
+            }
 
             # Make API request
-            response = self._make_request("https://api.serpex.dev/api/search", headers, params)
+            response = self._make_request(
+                "https://api.serpex.dev/api/search", headers, params
+            )
             data = response.json()
 
             # Parse search results
@@ -199,10 +215,15 @@ class SerpexWebSearch:
             )
             raise
         except httpx.RequestError as e:
-            logger.error("Request error occurred while fetching SERPEX results: {error}", error=e)
+            logger.error(
+                "Request error occurred while fetching SERPEX results: {error}", error=e
+            )
             raise
         except Exception as e:
-            logger.error("Unexpected error occurred while fetching SERPEX results: {error}", error=e)
+            logger.error(
+                "Unexpected error occurred while fetching SERPEX results: {error}",
+                error=e,
+            )
             raise
 
         return {"documents": documents}
