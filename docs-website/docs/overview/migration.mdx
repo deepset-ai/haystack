@@ -154,9 +154,8 @@ If you need help migrating a 1.x node without a 2.x counterpart, open an [issue]
 
 ### Data Handling
 
-|  |  |  |
-| --- | --- | --- |
 | Haystack 1.x               | Description                                                                                                                                                                             | Haystack 2.x                                                                         |
+| --- | --- | --- |
 | Crawler                    | Scrapes text from websites. **Example usage:** To run searches on your website content.                                                                                                 | Not Available                                                                        |
 | DocumentClassifier         | Classifies documents by attaching metadata to them. **Example usage:** Labeling documents by their characteristic (for example, sentiment).                                             | [TransformersZeroShotDocumentClassifier](../pipeline-components/classifiers/transformerszeroshotdocumentclassifier.mdx) |
 | DocumentLanguageClassifier | Detects the language of the documents you pass to it and adds it to the document metadata.                                                                                              | [DocumentLanguageClassifier](../pipeline-components/classifiers/documentlanguageclassifier.mdx)                       |
@@ -167,9 +166,8 @@ If you need help migrating a 1.x node without a 2.x counterpart, open an [issue]
 
 ### Semantic Search
 
-|  |  |  |
-| --- | --- | --- |
 | Haystack 1.x      | Description                                                                                                                                                                                                                 | Haystack 2.x                                                                            |
+| --- | --- | --- |
 | Ranker            | Orders documents based on how relevant they are to the query. **Example usage:** In a query pipeline, after a keyword-based Retriever to rank the documents it returns.                                                     | [Rankers](../pipeline-components/rankers.mdx)                                                                |
 | Reader            | Finds an answer by selecting a text span in documents. **Example usage:** In a query pipeline when you want to know the location of the answer.                                                                             | [ExtractiveReader](../pipeline-components/readers/extractivereader.mdx)                                              |
 | Retriever         | Fetches relevant documents from the Document Store. **Example usage:** Coupling Retriever with a Reader in a query pipeline to speed up the search (the Reader only goes through the documents it gets from the Retriever). | [Retrievers](../pipeline-components/retrievers.mdx)                                                          |
@@ -177,24 +175,21 @@ If you need help migrating a 1.x node without a 2.x counterpart, open an [issue]
 
 ### Prompts and LLMs
 
-|  |  |  |
-| --- | --- | --- |
 | Haystack 1.x | Description                                                                                                                                                                                                                   | Haystack 2.x                                                     |
+| --- | --- | --- |
 | PromptNode   | Uses large language models to perform various NLP tasks in a pipeline or on its own. **Example usage:** It's a very versatile component that can perform tasks like summarization, question answering, translation, and more. | Prompt [Builders](../pipeline-components/builders.mdx),[Generators](../pipeline-components/generators.mdx) |
 
 ### Routing
 
-|  |  |  |
-| --- | --- | --- |
 | Haystack 1.x | Description | Haystack 2.x |
+| --- | --- | --- |
 | QueryClassifier | Categorizes queries. **Example usage:** Distinguishing between keyword queries and natural language questions and routing them to the Retrievers that can handle them best. | [TransformersZeroShotTextRouter](../pipeline-components/routers/transformerszeroshottextrouter.mdx)  <br />[TransformersTextRouter](../pipeline-components/routers/transformerstextrouter.mdx) |
 | RouteDocuments | Routes documents to different branches of your pipeline based on their content type or metadata field. **Example usage:** Routing table data to `TableReader` and text data to `TransfomersReader` for better handling. | [Routers](../pipeline-components/routers.mdx) |
 
 ### Utility Components
 
-|  |  |  |
-| --- | --- | --- |
 | Haystack 1.x            | Description                                                                                                                                                                                                                                                                                                                                            | Haystack 2.x                                                                            |
+| --- | --- | --- |
 | DocumentMerger          | Concatenates multiple documents into a single one. **Example usage: **Merge the documents to summarize in a summarization pipeline.                                                                                                                                                                                                                    | Prompt [Builders](../pipeline-components/builders.mdx)                                                       |
 | Docs2Answers            | Converts Documents into Answers. **Example usage:** When using REST API for document retrieval. REST API expects Answer as output, you can use `Doc2Answer` as the last node to convert the retrieved documents to answers.                                                                                                                            | [AnswerBuilder](../pipeline-components/builders/answerbuilder.mdx)                                                    |
 | JoinAnswers             | Takes answers returned by multiple components and joins them in a single list of answers. **Example usage:** For running queries on different document types (for example, tables and text), where the documents are routed to different readers, and each reader returns a separate list of answers.                                                  | [AnswerJoiner](../pipeline-components/joiners/answerjoiner.mdx)                                                        |
@@ -206,9 +201,8 @@ If you need help migrating a 1.x node without a 2.x counterpart, open an [issue]
 
 ### Extras
 
-|  |  |  |
-| --- | --- | --- |
 | Haystack 1.x     | Description                                                                                                                                                                      | Haystack 2.x                                                                   |
+| --- | --- | --- |
 | AnswerToSpeech   | Converts text answers into speech answers. **Example usage:** Improving accessibility of your search system by providing a way to have the answer and its context read out loud. | [ElevenLabs](https://haystack.deepset.ai/integrations/elevenlabs) Integration  |
 | DocumentToSpeech | Converts text documents to speech documents. **Example usage:** Improving accessibility of a document retrieval pipeline by providing the option to read documents out loud.     | [ElevenLabs](https://haystack.deepset.ai/integrations/elevenlabs)  Integration |
 
