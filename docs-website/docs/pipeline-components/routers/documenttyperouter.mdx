@@ -11,10 +11,10 @@ Use this Router in pipelines to route documents based on their MIME types to dif
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | As a preprocessing component to route documents by type before sending them to specific [Converters](/docs/pipeline-components/converters.mdx) or [Preprocessors](/docs/pipeline-components/preprocessors.mdx) |
+| **Most common position in a pipeline** | As a preprocessing component to route documents by type before sending them to specific [Converters](../converters.mdx) or [Preprocessors](../preprocessors.mdx) |
 | **Mandatory init variables** | "mime_types": A list of MIME types or regex patterns for classification |
-| **Mandatory run variables** | "documents": A list of [Documents](/docs/concepts/data-classes.mdx#document) to categorize |
-| **Output variables** | "unclassified": A list of uncategorized [Documents](/docs/concepts/data-classes.mdx#document)  <br /> <br />"mime_types": For example "text/plain", "application/pdf", "image/jpeg": List of categorized [Documents](/docs/concepts/data-classes.mdx#document) |
+| **Mandatory run variables** | "documents": A list of [Documents](../../concepts/data-classes.mdx#document) to categorize |
+| **Output variables** | "unclassified": A list of uncategorized [Documents](../../concepts/data-classes.mdx#document)  <br /> <br />"mime_types": For example "text/plain", "application/pdf", "image/jpeg": List of categorized [Documents](../../concepts/data-classes.mdx#document) |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/document_type_router.py |
 

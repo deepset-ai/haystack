@@ -17,7 +17,7 @@ This guide aims to simplify the process of choosing the right Generator based on
 The first distinction we are talking about is between Generators and ChatGenerators, for example, OpenAIGenerator and OpenAIChatGenerator, HuggingFaceAPIGenerator and HuggingFaceAPIChatGenerator, and so on.
 
 - **Generators** are components that expect a prompt (a string) and return the generated text in “replies”.
-- **ChatGenerators** support the [ChatMessage data class](/docs/data-classes#chatmessage) out of the box. They expect a list of Chat Messages and return a Chat Message in “replies”.
+- **ChatGenerators** support the [ChatMessage data class](../../../concepts/data-classes/chatmessage.mdx) out of the box. They expect a list of Chat Messages and return a Chat Message in “replies”.
 
 The choice between Generators and ChatGenerators depends on your use case and the underlying model. If you anticipate a multi-turn interaction with the Language Model in a chat scenario, opting for a ChatGenerator is generally better.
 
@@ -42,8 +42,7 @@ Only one of these fields appears per chunk. Use `chunk.start` and `chunk.finish_
 
 For providers that support multiple candidates, set `n=1` to stream.
 
-:::note
-Parameter Details
+:::note Parameter Details
 
 Check out the parameter details in our [API Reference for StreamingChunk](/reference/data-classes-api#streamingchunk).
 :::
@@ -104,8 +103,7 @@ We also support [Amazon Bedrock](../amazonbedrockgenerator.mdx): it provides acc
 
 When discussing open (weights) models, we're referring to models with public weights that anyone can deploy on their infrastructure. The datasets used for training are shared less frequently. One could choose to use an open model for several reasons, including more transparency and control of the model.
 
-:::note
-Commercial Use
+:::note Commercial Use
 
 Not all open models are suitable for commercial use. We advise thoroughly reviewing the license, typically available on Hugging Face, before considering their adoption.
 :::

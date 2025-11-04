@@ -11,7 +11,7 @@ This component creates pull requests from a fork back to the original repository
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | At the end of a pipeline, after [GitHubRepoForker](doc:githubrepoforker), [GitHubFileEditor](githubfileeditor.mdx) and other components that prepare changes for submission |
+| **Most common position in a pipeline** | At the end of a pipeline, after [GitHubRepoForker](githubrepoforker.mdx), [GitHubFileEditor](githubfileeditor.mdx) and other components that prepare changes for submission |
 | **Mandatory init variables** | "github_token": GitHub personal access token. Can be set with `GITHUB_TOKEN` env var. |
 | **Mandatory run variables** | "issue_url": GitHub issue URL  <br /> <br />"title": PR title  <br /> <br />"branch": Source branch  <br /> <br />"base": Target branch |
 | **Output variables** | "result": String indicating the pull request creation result |
@@ -47,8 +47,7 @@ pip install github-haystack
 
 ## Usage
 
-:::note
-Repository Placeholder
+:::note Repository Placeholder
 
 To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
 :::

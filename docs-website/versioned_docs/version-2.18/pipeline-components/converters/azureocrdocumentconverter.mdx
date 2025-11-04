@@ -20,7 +20,7 @@ description: "`AzureOCRDocumentConverter` converts files to documents using Azur
 
 ## Overview
 
-`AzureOCRDocumentConverter` takes a list of file paths or [`ByteStream`](/docs/data-classes#bytestresm) objects as input and uses Azure services to convert the files to a list of documents. Optionally, metadata can be attached to the documents through the `meta` input parameter. You need an active Azure account and a Document Intelligence or Cognitive Services resource to use this integration. Follow the steps described in the Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api) to set up your resource.
+`AzureOCRDocumentConverter` takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and uses Azure services to convert the files to a list of documents. Optionally, metadata can be attached to the documents through the `meta` input parameter. You need an active Azure account and a Document Intelligence or Cognitive Services resource to use this integration. Follow the steps described in the Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api) to set up your resource.
 
 The component uses an `AZURE_AI_API_KEY` environment variable by default. Otherwise, you can pass an `api_key` at initialization – see code examples below.
 

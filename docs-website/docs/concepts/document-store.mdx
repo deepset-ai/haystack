@@ -9,16 +9,14 @@ description: "You can think of the Document Store as a database that stores your
 
 You can think of the Document Store as a database that stores your data and provides them to the Retriever at query time. Learn how to use Document Store in a pipeline or how to create your own.
 
-Document Store is an object that stores your documents. In Haystack, a Document Store is different from a component, as it doesn’t have the `run()` method. You can think of it as an interface to your database – you put the information there, or you can look through it. This means that a Document Store is not a piece of a pipeline but rather a tool that the components of a pipeline have access to and can interact with.
+Document Store is an object that stores your documents. In Haystack, a Document Store is different from a component, as it doesn't have the `run()` method. You can think of it as an interface to your database – you put the information there, or you can look through it. This means that a Document Store is not a piece of a pipeline but rather a tool that the components of a pipeline have access to and can interact with.
 
-:::tip
-Work with Retrievers
+:::tip Work with Retrievers
 
 The most common way to use a Document Store in Haystack is to fetch documents using a Retriever. A Document Store will often have a corresponding Retriever to get the most out of specific technologies. See more information in our [Retriever](../pipeline-components/retrievers.mdx) documentation.
 :::
 
-:::info
-How to choose a Document Store?
+:::note How to choose a Document Store?
 
 To learn about different types of Document Stores and their strengths and disadvantages, head to the [Choosing a Document Store](document-store/choosing-a-document-store.mdx) page.
 :::
@@ -40,7 +38,7 @@ See the installation and initialization details for each Document Store in the "
 
 ### Work with Documents
 
-Convert your data into `Document` objects before writing them into a Document Store along with its metadata and document ID. 
+Convert your data into `Document` objects before writing them into a Document Store along with its metadata and document ID.
 
 The ID field is mandatory, so if you don’t choose a specific ID yourself, Haystack will do its best to come up with a unique ID based on the document’s information and assign it automatically. However, since Haystack uses the document’s contents to create an ID, two identical documents might have identical IDs. Keep it in mind as you update your documents, as the ID will not be updated automatically.
 
@@ -61,14 +59,13 @@ To write documents into the `InMemoryDocumentStore`, simply call the `.write_doc
 
 ```python
 document_store.write_documents([
-    Document(content="My name is Jean and I live in Paris."), 
-    Document(content="My name is Mark and I live in Berlin."), 
+    Document(content="My name is Jean and I live in Paris."),
+    Document(content="My name is Mark and I live in Berlin."),
     Document(content="My name is Giorgio and I live in Rome.")
 ])
 ```
 
-:::info
-`DocumentWriter`
+:::note `DocumentWriter`
 
 See `DocumentWriter` component [docs](../pipeline-components/writers/documentwriter.mdx) to write your documents into a Document Store in a pipeline.
 :::

@@ -23,9 +23,9 @@ You can use the `ContextRelevanceEvaluator` component to evaluate documents retr
 
 ### Parameters
 
-The default model for this Evaluator is `gpt-4o-mini`. You can override the model using the `chat_generator` parameter during initialization. This needs to be a Chat Generator instance configured to return a JSON object. For example, when using the [`OpenAIChatGenerator`](/docs/openaichatgenerator), you should pass `{"response_format": {"type": "json_object"}}` in its `generation_kwargs`.
+The default model for this Evaluator is `gpt-4o-mini`. You can override the model using the `chat_generator` parameter during initialization. This needs to be a Chat Generator instance configured to return a JSON object. For example, when using the [`OpenAIChatGenerator`](../generators/openaichatgenerator.mdx), you should pass `{"response_format": {"type": "json_object"}}` in its `generation_kwargs`.
 
-If you are not initializing the Evaluator with your own Chat Generator other than OpenAI, a valid OpenAI API key must be set as an `OPENAI_API_KEY` environment variable. For details, see our [documentation page on secret management](/docs/secret-management).
+If you are not initializing the Evaluator with your own Chat Generator other than OpenAI, a valid OpenAI API key must be set as an `OPENAI_API_KEY` environment variable. For details, see our [documentation page on secret management](../../concepts/secret-management.mdx).
 
 Two optional initialization parameters are:
 

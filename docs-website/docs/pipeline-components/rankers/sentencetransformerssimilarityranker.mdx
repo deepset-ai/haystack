@@ -11,7 +11,7 @@ Use this component to rank documents based on their similarity to the query. The
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](/docs/pipeline-components/retrievers.mdx) |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
 | **Mandatory init variables** | "token" (only for private models): The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | “documents”: A list of documents  <br /> <br />”query”: A query string |
 | **Output variables** | “documents”: A list of documents |
@@ -93,8 +93,7 @@ document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3},
 
 ```
 
-:::info
-Ranker top_k
+:::note Ranker top_k
 
 In the example above, the `top_k` values for the Retriever and the Ranker are different. The Retriever's `top_k` specifies how many documents it returns. The Ranker then orders these documents.
 

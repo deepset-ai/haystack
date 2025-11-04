@@ -13,8 +13,8 @@ Use this component with IBM watsonx models like `granite-3-2b-instruct` for chat
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)  |
 | **Mandatory init variables** | "api_key": The IBM Cloud API key. Can be set with `WATSONX_API_KEY` env var.  <br /> <br />"project_id": The IBM Cloud project ID. Can be set with `WATSONX_PROJECT_ID` env var. |
-| **Mandatory run variables** | "messages" A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects |
-| **Output variables** | "replies": A list of [`ChatMessage`](/docs/data-classes#chatmessage)  objects |
+| **Mandatory run variables** | "messages" A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
+| **Output variables** | "replies": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
 | **API reference** | [Watsonx](/reference/integrations-watsonx) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/watsonx |
 
@@ -24,7 +24,7 @@ This integration supports IBM watsonx.ai foundation models such as `ibm/granite-
 
 `WatsonxChatGenerator` needs IBM Cloud credentials to work. You can set these in:
 
-- The `api_key` and `project_id` init parameters using [Secret API](/docs/secret-management)
+- The `api_key` and `project_id` init parameters using [Secret API](../../concepts/secret-management.mdx)
 - The `WATSONX_API_KEY` and `WATSONX_PROJECT_ID` environment variables (recommended)
 
 Then, the component needs a prompt to operate, but you can pass any text generation parameters valid for the IBM watsonx.ai API directly to this component using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the parameters supported by the IBM watsonx.ai API, refer to the [IBM watsonx.ai documentation](https://cloud.ibm.com/apidocs/watsonx-ai).
@@ -33,7 +33,7 @@ Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMe
 
 ### Streaming
 
-This Generator supports [streaming](/docs/choosing-the-right-generator#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ## Usage
 

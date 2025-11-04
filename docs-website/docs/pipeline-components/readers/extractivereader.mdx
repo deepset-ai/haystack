@@ -11,10 +11,10 @@ Use this component in extractive question answering pipelines based on a query a
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In query pipelines, after a component that returns a list of documents, such as a [Retriever](/docs/pipeline-components/retrievers.mdx) |
+| **Most common position in a pipeline** | In query pipelines, after a component that returns a list of documents, such as a [Retriever](../retrievers.mdx) |
 | **Mandatory init variables** | "token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | "documents": A list of documents  <br /> <br />"query": A query string |
-| **Output variables** | "answers": A list of [`ExtractedAnswer`](/docs/concepts/data-classes.mdx#extractedanswer)  objects |
+| **Output variables** | "answers": A list of [`ExtractedAnswer`](../../concepts/data-classes.mdx#extractedanswer)  objects |
 | **API reference** | [Readers](/reference/readers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/readers/extractive.py |
 

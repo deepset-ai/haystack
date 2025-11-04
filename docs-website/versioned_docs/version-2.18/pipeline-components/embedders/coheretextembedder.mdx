@@ -20,7 +20,7 @@ This component transforms a string into a vector that captures its semantics usi
 
 ## Overview
 
-`CohereTextEmbedder` embeds a simple string (such as a query) into a vector. For embedding lists of documents, use the use the [`CohereDocumentEmbedder`](https://docs.haystack.deepset.ai/v2.0/docs/coheredocumentembedder), which enriches the document with the computed embedding, also known as vector.
+`CohereTextEmbedder` embeds a simple string (such as a query) into a vector. For embedding lists of documents, use the use the [`CohereDocumentEmbedder`](coheredocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
 
 The component supports the following Cohere models:
 `"embed-english-v3.0"`, `"embed-english-light-v3.0"`, `"embed-multilingual-v3.0"`,
@@ -33,7 +33,7 @@ To start using this integration with Haystack, install it with:
 pip install cohere-haystack
 ```
 
-The component uses a `COHERE_API_KEY` or `CO_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](/docs/secret-management) and `Secret.from_token` static method:
+The component uses a `COHERE_API_KEY` or `CO_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token` static method:
 
 ```python
 embedder = CohereTextEmbedder(api_key=Secret.from_token("<your-api-key>"))

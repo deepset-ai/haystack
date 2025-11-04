@@ -17,7 +17,7 @@ A Tool that allows Agents and ToolInvokers to create pull requests from a fork b
 
 ## Overview
 
-`GitHubPRCreatorTool` wraps the [`GitHubPRCreator`](doc:githubprcreator) component, providing a tool interface for use in agent workflows and tool-based pipelines.
+`GitHubPRCreatorTool` wraps the [`GitHubPRCreator`](../../pipeline-components/connectors/githubprcreator.mdx) component, providing a tool interface for use in agent workflows and tool-based pipelines.
 
 The tool takes a GitHub issue URL and creates a pull request from your fork to the original repository, automatically linking it to the specified issue. It's designed to work with existing forks and assumes you have already made changes in a branch.
 
@@ -36,8 +36,7 @@ Install the GitHub integration to use the `GitHubPRCreatorTool`:
 pip install github-haystack
 ```
 
-:::note
-Repository Placeholder
+:::note Repository Placeholder
 
 To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
 :::
@@ -67,7 +66,7 @@ print(result)
 
 ### With an Agent
 
-You can use `GitHubPRCreatorTool` with the [Agent](/docs/agent) component. The Agent will automatically invoke the tool when needed to create pull requests.
+You can use `GitHubPRCreatorTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically invoke the tool when needed to create pull requests.
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator

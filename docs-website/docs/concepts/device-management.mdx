@@ -24,8 +24,7 @@ Haystack’s device management is built on the following abstractions:
 
 With the above abstractions, Haystack can fully address any supported device that’s part of your local machine and can support the usage of multiple devices at the same time. Every component that supports local inference will internally handle the conversion of these generic representations to their backend-specific representations.
 
-:::info
-Source Code
+:::info Source Code
 
 Find the full code for the abstractions above in the Haystack GitHub [repo](https://github.com/deepset-ai/haystack/blob/6a776e672fb69cc4ee42df9039066200f1baf24e/haystack/utils/device.py).
 :::
@@ -82,14 +81,14 @@ class MyComponent(Component):
         self.model = AutoModel.from_pretrained("deepset/bert-base-cased-squad2", device=self.device.to_hf())
 
 	  def to_dict(self):
-	    # Serialize the policy like any other (custom) data. 
+	    # Serialize the policy like any other (custom) data.
 	    return default_to_dict(self,
 							 device=self.device.to_dict() if self.device else None,
 							 ...)
-	
+
 	  @classmethod
 	  def from_dict(cls, data):
-	    # Deserialize the device data inplace before passing 
+	    # Deserialize the device data inplace before passing
 			# it to the generic from_dict function.
 	    init_params = data["init_parameters"]
       init_params["device"] = ComponentDevice.from_dict(init_params["device"])

@@ -58,6 +58,6 @@ You can enable semantic reranking in `AzureAISearchDocumentStore` by providing [
 
 The Haystack Azure AI Search integration includes three Retriever components. Each Retriever leverages the Azure AI Search API  and you can select the one that best suits your pipeline:
 
-- [`AzureAISearchEmbeddingRetriever`](doc:azureaisearchembeddingretriever): This Retriever accepts the embeddings of a single query as input and returns a list of matching documents. The query must be embedded beforehand, which can be done using an [Embedder](/docs/embedders) component.
-- [`AzureAISearchBM25Retriever`](doc:azureaisearchbm25retriever): A keyword-based Retriever that retrieves documents matching a query from the Azure AI Search index.
-- [`AzureAISearchHybridRetriever`](doc:azureaisearchhybridretriever): This Retriever combines embedding-based retrieval and keyword search to find matching documents in the search index to get more relevant results.
+- [`AzureAISearchEmbeddingRetriever`](../pipeline-components/retrievers/azureaisearchembeddingretriever.mdx): This Retriever accepts the embeddings of a single query as input and returns a list of matching documents. The query must be embedded beforehand, which can be done using an [Embedder](../pipeline-components/embedders.mdx) component.
+- [`AzureAISearchBM25Retriever`](../pipeline-components/retrievers/azureaisearchbm25retriever.mdx): A keyword-based Retriever that retrieves documents matching a query from the Azure AI Search index.
+- [`AzureAISearchHybridRetriever`](../pipeline-components/retrievers/azureaisearchhybridretriever.mdx): This Retriever combines embedding-based retrieval and keyword search to find matching documents in the search index to get more relevant results.

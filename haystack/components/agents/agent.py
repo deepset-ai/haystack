@@ -82,60 +82,68 @@ class Agent:
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.tools import Tool
-    from haystack.components.tools import ToolInvoker
 
-    # These would need to be your proper functions, here we use simple examples
-    def calculator(a: int, b: int) -> int:
-        '''Add two numbers.'''
-        return a + b
-
+    # Tool functions - in practice, these would have real implementations
     def search(query: str) -> str:
-        '''Search for information.'''
-        return f"Results for: {query}"
+        '''Search for information on the web.'''
+        # Placeholder: would call actual search API
+        return "In France, a 15% service charge is typically included, but leaving 5-10% extra is appreciated."
 
-    # Create tools with proper JSON Schema
+    def calculator(operation: str, a: float, b: float) -> float:
+        '''Perform mathematical calculations.'''
+        if operation == "multiply":
+            return a * b
+        elif operation == "percentage":
+            return (a / 100) * b
+        return 0
+
+    # Define tools with JSON Schema
     tools = [
         Tool(
-            name="calculator",
-            description="Adds two numbers",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "a": {"type": "integer", "description": "First number"},
-                    "b": {"type": "integer", "description": "Second number"}
-                },
-                "required": ["a", "b"]
-            },
-            function=calculator
-        ),
-        Tool(
             name="search",
-            description="Searches for information",
+            description="Searches for information on the web",
             parameters={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Search query"}
+                    "query": {"type": "string", "description": "The search query"}
                 },
                 "required": ["query"]
             },
             function=search
+        ),
+        Tool(
+            name="calculator",
+            description="Performs mathematical calculations",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "operation": {"type": "string", "description": "Operation: multiply, percentage"},
+                    "a": {"type": "number", "description": "First number"},
+                    "b": {"type": "number", "description": "Second number"}
+                },
+                "required": ["operation", "a", "b"]
+            },
+            function=calculator
         )
     ]
 
+    # Create and run the agent
     agent = Agent(
         chat_generator=OpenAIChatGenerator(),
-        tools=tools,
-        exit_conditions=["search"],
+        tools=tools
     )
 
-    # Run the agent
-    agent.warm_up()
     result = agent.run(
-        messages=[ChatMessage.from_user("Find information about Haystack")]
+        messages=[ChatMessage.from_user("Calculate the appropriate tip for an €85 meal in France")]
     )
 
-    assert "messages" in result  # Contains conversation history
+    # The agent will:
+    # 1. Search for tipping customs in France
+    # 2. Use calculator to compute tip based on findings
+    # 3. Return the final answer with context
+    print(result["messages"][-1].text)
     ```
+
     """
 
     def __init__(
@@ -277,7 +285,7 @@ class Agent:
 
         deserialize_chatgenerator_inplace(init_params, key="chat_generator")
 
-        if "state_schema" in init_params:
+        if init_params.get("state_schema") is not None:
             init_params["state_schema"] = _schema_from_dict(init_params["state_schema"])
 
         if init_params.get("streaming_callback") is not None:
@@ -444,18 +452,16 @@ class Agent:
             skip_chat_generator=skip_chat_generator,
         )
 
-    def _runtime_checks(self, break_point: Optional[AgentBreakpoint], snapshot: Optional[AgentSnapshot]) -> None:
+    def _runtime_checks(self, break_point: Optional[AgentBreakpoint]) -> None:
         """
         Perform runtime checks before running the agent.
 
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
-        :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
-        :raises RuntimeError: If the Agent component wasn't warmed up before calling `run()`.
         :raises ValueError: If the break_point is invalid.
         """
-        if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
-            raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
+        if not self._is_warmed_up:
+            self.warm_up()
 
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
             _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
@@ -560,7 +566,7 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point, snapshot=snapshot)
+        self._runtime_checks(break_point=break_point)
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
@@ -728,7 +734,7 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point, snapshot=snapshot)
+        self._runtime_checks(break_point=break_point)
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(

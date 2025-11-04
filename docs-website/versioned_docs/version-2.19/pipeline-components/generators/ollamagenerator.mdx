@@ -27,7 +27,7 @@ A component that provides an interface to generate text using an LLM running on 
 
 ### Streaming
 
-This Generator supports [streaming](/docs/choosing-the-right-generator#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
 
 ## Usage
 
@@ -51,8 +51,7 @@ If you have already installed Ollama in your system, you can execute:
 ollama pull zephyr
 ```
 
-:::tip
-Choose a specific version of a model
+:::tip Choose a specific version of a model
 
 You can also specify a tag to choose a specific (quantized) version of your model. The available tags are shown in the model card of the Ollama models library. This is an [example](https://ollama.ai/library/zephyr/tags) for Zephyr.
 In this case, simply run

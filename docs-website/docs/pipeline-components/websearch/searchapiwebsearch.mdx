@@ -11,7 +11,7 @@ Search engine using Search API.
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before [`LinkContentFetcher`](/docs/pipeline-components/fetchers/linkcontentfetcher.mdx)  or [Converters](/docs/pipeline-components/converters.mdx) |
+| **Most common position in a pipeline** | Before [`LinkContentFetcher`](../fetchers/linkcontentfetcher.mdx)  or [Converters](../converters.mdx) |
 | **Mandatory init variables** | "api_key": The SearchAPI API key. Can be set with `SEARCHAPI_API_KEY` env var. |
 | **Mandatory run variables** | “query”: A string with your query |
 | **Output variables** | “documents”: A list of documents  <br /> <br />”links”: A list of strings of resulting links |
@@ -26,8 +26,7 @@ To search the content of the web pages, use the [`LinkContentFetcher`](../fetche
 
 `SearchApiWebSearch` requires a [SearchApi](https://www.searchapi.io) key to work. It uses a `SEARCHAPI_API_KEY` environment variable by default. Otherwise, you can pass an `api_key` at initialization – see code examples below.
 
-:::info
-Alternative search
+:::info Alternative search
 
 To use [Serper Dev](https://serper.dev/?gclid=Cj0KCQiAgqGrBhDtARIsAM5s0_kPElllv3M59UPok1Ad-ZNudLaY21zDvbt5qw-b78OcUoqqvplVHRwaAgRgEALw_wcB) as an alternative, see its respective [documentation page](serperdevwebsearch.mdx).
 :::

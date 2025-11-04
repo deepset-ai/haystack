@@ -50,8 +50,7 @@ pip install langfuse-haystack
 
 <br />
 
-:::info
-Usage Notice
+:::info Usage Notice
 
 To ensure proper tracing, always set environment variables before importing any Haystack components. This is crucial because Haystack initializes its internal tracing components during import. In the example below, we first set the environmental variables and then import the relevant Haystack components.
 
@@ -127,8 +126,8 @@ weather_data = {
 return weather_data.get(city, f"Weather information for {city} not available")
 
 @tool
-def calculate(operation: Annotated[str, "Mathematical operation: add, subtract, multiply, divide"], 
-          a: Annotated[float, "First number"], 
+def calculate(operation: Annotated[str, "Mathematical operation: add, subtract, multiply, divide"],
+          a: Annotated[float, "First number"],
           b: Annotated[float, "Second number"]) -> str:
 """Perform basic mathematical calculations."""
 if operation == "add":

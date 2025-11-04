@@ -2,6 +2,7 @@
 title: Tools
 id: tools-api
 description: Unified abstractions to represent tools across the framework.
+slug: "/tools-api"
 ---
 
 <a id="tool"></a>

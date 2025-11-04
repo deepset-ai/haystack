@@ -13,8 +13,8 @@ This component enables chat completion with any model hosted available with Meta
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                          |
 | **Mandatory init variables**           | “api_key”: A Meta Llama API key. Can be set with `LLAMA_API_KEY` env variable or passed to `init()` method. |
-| **Mandatory run variables**            | “messages:” A list of [ChatMessage](doc:chatmessage) objects                                                |
-| **Output variables**                   | “replies”: A list of [ChatMessage](doc:chatmessage) objects                                                 |
+| **Mandatory run variables**            | “messages:” A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                                                |
+| **Output variables**                   | “replies”: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                                                 |
 | **API reference**                      | [Meta Llama API](/reference/integrations-meta-llama)                                                               |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/meta_llama                |
 
@@ -31,13 +31,40 @@ Currently available models are:
 | `Llama-3.3-70B-Instruct`                 | 128k                 | 4028                  | Text             | Text              |
 | `Llama-3.3-8B-Instruct`                  | 128k                 | 4028                  | Text             | Text              |
 
-This component uses the same `ChatMessage` format as other Haystack Chat Generators for structured input and output. For more information, see the [ChatMessage documentation](doc:chatmessage).
+This component uses the same `ChatMessage` format as other Haystack Chat Generators for structured input and output. For more information, see the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
 
-It is also fully compatible with Haystack [Tools](../../tools/tool.mdx) and [Toolsets](../../tools/toolset.mdx) that allow function-calling capabilities with supported models.
+### Tool Support
+
+`MetaLlamaChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.meta_llama import MetaLlamaChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = MetaLlamaChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
 
 ### Initialization
 
-To use this integration, you must have a Meta Llama API key. You can provide it with the `LLAMA_API_KEY` environment variable or by using a [Secret](/docs/secret-management).
+To use this integration, you must have a Meta Llama API key. You can provide it with the `LLAMA_API_KEY` environment variable or by using a [Secret](../../concepts/secret-management.mdx).
 
 Then, install the `meta-llama-haystack` integration:
 
@@ -47,7 +74,7 @@ pip install meta-llama-haystack
 
 ### Streaming
 
-`MetaLlamaChatGenerator` supports [streaming](/docs/choosing-the-right-generator#streaming-support) responses from the LLM, allowing tokens to be emitted as they are generated. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
+`MetaLlamaChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM, allowing tokens to be emitted as they are generated. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
 
 ## Usage
 

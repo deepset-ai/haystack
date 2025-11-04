@@ -9,8 +9,7 @@ description: "Hayhooks is a web application you can use to serve Haystack pipeli
 
 Hayhooks is a web application you can use to serve Haystack pipelines through HTTP endpoints. This page provides an overview of the main features of Hayhooks.
 
-:::info
-Hayhooks GitHub
+:::info Hayhooks GitHub
 
 You can find the code and an in-depth explanation of the features in the [Hayhooks GitHub repository](https://github.com/deepset-ai/hayhooks).
 :::
@@ -238,10 +237,10 @@ To deploy a pipeline without listing it as an MCP Tool, set `skip_mcp = True` in
 class PipelineWrapper(BasePipelineWrapper):
     # This will skip the MCP Tool listing
     skip_mcp = True
-    
+
     def setup(self) -> None:
         ...
-    
+
     def run_api(self, urls: List[str], question: str) -> str:
         ...
 ```

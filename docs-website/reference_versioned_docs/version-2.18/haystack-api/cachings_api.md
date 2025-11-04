@@ -2,6 +2,7 @@
 title: Caching
 id: caching-api
 description: Checks if any document coming from the given URL is already present in the store.
+slug: "/caching-api"
 ---
 
 <a id="cache_checker"></a>

@@ -2,6 +2,7 @@
 title: Extractors
 id: extractors-api
 description: Extracts predefined entities out of a piece of text.
+slug: "/extractors-api"
 ---
 
 <a id="named_entity_extractor"></a>

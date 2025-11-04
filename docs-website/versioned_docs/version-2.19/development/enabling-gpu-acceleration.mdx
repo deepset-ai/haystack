@@ -17,7 +17,7 @@ Once you have GPU enabled on your machine, you can set the `device` on which a g
 
 For example, to load a model for the `HuggingFaceLocalGenerator`, set `device="ComponentDevice.from_single(Device.gpu(id=0))` or `device = ComponentDevice.from_str("cuda:0")` when initializing.
 
-You can find more information on the [Device management](/docs/device-management) page.
+You can find more information on the [Device management](../concepts/device-management.mdx) page.
 
 ### Enabling the GPU in Linux
 
@@ -30,7 +30,7 @@ You can find more information on the [Device management](/docs/device-management
 
 1. In your Colab environment, select **Runtime>Change Runtime type**.
 
-<ClickableImage src="/img/85079c7-68747470733a2f2f7261772e67697468756275736572636f6e74656e742e636f6d2f646565707365742d61692f686179737461636b2f6d61696e2f646f63732f696d672f636f6c61625f6770755f72756e74696d652e6a7067.jpeg" alt="None" />
+<ClickableImage src="/img/85079c7-68747470733a2f2f7261772e67697468756275736572636f6e74656e742e636f6d2f646565707365742d61692f686179737461636b2f6d61696e2f646f63732f696d672f636f6c61625f6770755f72756e74696d652e6a7067.jpeg" alt="Google Colab Runtime menu with Change runtime type option highlighted for selecting GPU acceleration" size="large" />
 
 2. Choose **Hardware accelerator>GPU**.
 3. To check if the GPU is enabled, run:

@@ -2,6 +2,7 @@
 title: Connectors
 id: connectors-api
 description: Various connectors to integrate with external services.
+slug: "/connectors-api"
 ---
 
 <a id="openapi_service"></a>

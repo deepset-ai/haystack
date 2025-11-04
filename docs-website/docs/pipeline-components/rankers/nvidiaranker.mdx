@@ -11,7 +11,7 @@ Use this component to rank documents based on their similarity to the query usin
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](/docs/pipeline-components/retrievers.mdx) |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
 | **Mandatory init variables** | "api_key": API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var. |
 | **Mandatory run variables** | ”query”: A query string  <br /> <br />“documents”: A list of document objects |
 | **Output variables** | “documents”: A list of document objects |
@@ -97,8 +97,7 @@ query = "Cities in France"
 res = document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
 ```
 
-:::tip
-`top_k` parameter
+:::note `top_k` parameter
 
 In the example above, the `top_k` values for the Retriever and the Ranker are different. The Retriever's `top_k` specifies how many documents it returns. The Ranker then orders these documents.
 

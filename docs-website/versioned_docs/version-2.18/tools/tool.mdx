@@ -13,7 +13,7 @@ A growing number of Language Models now support passing tool definitions alongsi
 
 Tool calling refers to the ability of Language Models to generate calls to tools - be they functions or APIs - when responding to user queries. The model prepares the tool call but does not execute it.
 
-If you are looking for the details of this data class's methods and parameters, visit our [API documentation](/reference/data-classes-api#module-tool).
+If you are looking for the details of this data class's methods and parameters, visit our [API documentation](/reference/tools-api).
 
 ## Tool class
 
@@ -21,7 +21,7 @@ If you are looking for the details of this data class's methods and parameters, 
 
 A tool is a function for which Language Models can prepare a call.
 
-The `Tool` class is used in Chat Generators and provides a consistent experience across models. `Tool` is also used in the [`ToolInvoker`](/docs/toolinvoker) component that executes calls prepared by Language Models.
+The `Tool` class is used in Chat Generators and provides a consistent experience across models. `Tool` is also used in the [`ToolInvoker`](../pipeline-components/tools/toolinvoker.mdx) component that executes calls prepared by Language Models.
 
 ```python
 @dataclass
@@ -163,11 +163,11 @@ from haystack.tools import Toolset
 math_toolset = Toolset([add_tool, subtract_tool])
 ```
 
-See more details and examples on the [Toolset documentation page](/docs/toolset).
+See more details and examples on the [Toolset documentation page](toolset.mdx).
 
 ## Usage
 
-To better understand this section, make sure you are also familiar with Haystack's [`ChatMessage`](/docs/chatmessage) data class.
+To better understand this section, make sure you are also familiar with Haystack's [`ChatMessage`](../concepts/data-classes/chatmessage.mdx) data class.
 
 ### Passing Tools to a Chat Generator
 
@@ -225,7 +225,7 @@ print(res_w_tool_call)
 
 ### Executing Tool Calls
 
-To execute prepared tool calls, you can use the [`ToolInvoker`](/docs/toolinvoker) component. This component acts as the execution engine for tools, processing the calls prepared by the Language Model.
+To execute prepared tool calls, you can use the [`ToolInvoker`](../pipeline-components/tools/toolinvoker.mdx) component. This component acts as the execution engine for tools, processing the calls prepared by the Language Model.
 
 Here's an example:
 
@@ -345,7 +345,7 @@ current weather in Berlin is 2 °C with a humidity level of 15%.')], _meta={'mod
 
 ### Passing Tools to Agent
 
-You can also use `Tool` with the [Agent](/docs/agent) component. Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
+You can also use `Tool` with the [Agent](../pipeline-components/agents-1/agent.mdx) component. Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator

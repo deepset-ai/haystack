@@ -31,24 +31,24 @@ Most statistical evaluators require ground truth labels, such as the documents r
 
 **Model-based evaluation using a language model or statistical evaluation.**
 
-Model-based evaluation uses LLMs with prompt instructions or smaller fine-tuned models to score aspects of a pipeline’s outputs. Statistical evaluation requires no models and is thus a more lightweight way to score pipeline outputs. For more information, see our docs on [model-based](/docs/model-based-evaluation) evaluation and [statistical](/docs/statistical-evaluation) evaluation.
+Model-based evaluation uses LLMs with prompt instructions or smaller fine-tuned models to score aspects of a pipeline’s outputs. Statistical evaluation requires no models and is thus a more lightweight way to score pipeline outputs. For more information, see our docs on [model-based](evaluation/model-based-evaluation.mdx) evaluation and [statistical](evaluation/statistical-evaluation.mdx) evaluation.
 
 ## Evaluator Components
 
 | Evaluator                                                    | Evaluates Answers or Documents | Model-based or Statistical | Requires Labels |
 | ------------------------------------------------------------ | ------------------------------ | -------------------------- | --------------- |
-| [AnswerExactMatchEvaluator](/docs/answerexactmatchevaluator) | Answers                        | Statistical                | Yes             |
-| [ContextRelevanceEvaluator](/docs/contextrelevanceevaluator) | Documents                      | Model-based                | No              |
-| [DocumentMRREvaluator](/docs/documentmrrevaluator)           | Documents                      | Statistical                | Yes             |
-| [DocumentMAPEvaluator](/docs/documentmapevaluator)           | Documents                      | Statistical                | Yes             |
-| [DocumentRecallEvaluator](/docs/documentrecallevaluator)     | Documents                      | Statistical                | Yes             |
-| [FaithfulnessEvaluator](/docs/faithfulnessevaluator)         | Answers                        | Model-based                | No              |
-| [LLMEvaluator](/docs/llmevaluator)                           | User-defined                   | Model-based                | No              |
-| [SASEvaluator](/docs/sasevaluator)                           | Answers                        | Model-based                | Yes             |
+| [AnswerExactMatchEvaluator](../pipeline-components/evaluators/answerexactmatchevaluator.mdx) | Answers                        | Statistical                | Yes             |
+| [ContextRelevanceEvaluator](../pipeline-components/evaluators/contextrelevanceevaluator.mdx) | Documents                      | Model-based                | No              |
+| [DocumentMRREvaluator](../pipeline-components/evaluators/documentmrrevaluator.mdx)           | Documents                      | Statistical                | Yes             |
+| [DocumentMAPEvaluator](../pipeline-components/evaluators/documentmapevaluator.mdx)           | Documents                      | Statistical                | Yes             |
+| [DocumentRecallEvaluator](../pipeline-components/evaluators/documentrecallevaluator.mdx)     | Documents                      | Statistical                | Yes             |
+| [FaithfulnessEvaluator](../pipeline-components/evaluators/faithfulnessevaluator.mdx)         | Answers                        | Model-based                | No              |
+| [LLMEvaluator](../pipeline-components/evaluators/llmevaluator.mdx)                           | User-defined                   | Model-based                | No              |
+| [SASEvaluator](../pipeline-components/evaluators/sasevaluator.mdx)                           | Answers                        | Model-based                | Yes             |
 
 ## Evaluator Integrations
 
-To learn more about our integration with the Ragas and DeepEval evaluation frameworks, head over to the [RagasEvaluator](/docs/ragasevaluator) and [DeepEvalEvaluator](/docs/deepevalevaluator) component docs.
+To learn more about our integration with the Ragas and DeepEval evaluation frameworks, head over to the [RagasEvaluator](../pipeline-components/evaluators/ragasevaluator.mdx) and [DeepEvalEvaluator](../pipeline-components/evaluators/deepevalevaluator.mdx) component docs.
 
 To get started using practical examples, check out our evaluation tutorial or the respective cookbooks below.
 

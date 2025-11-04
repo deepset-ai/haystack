@@ -165,7 +165,7 @@ spec:
 
 Note that:
 
-- We changed the Hayhooks container `command` to install `trafilaura` dependency before startup, since it's needed for our [chat_with_website](https://github.com/deepset-ai/hayhooks/tree/main/examples/pipeline_wrappers/chat_with_website) example pipeline. For a real production environment, we recommend creating a custom Hayhooks image as described [here](/docs/docker#customizing-the-haystack-docker-image).
+- We changed the Hayhooks container `command` to install `trafilaura` dependency before startup, since it's needed for our [chat_with_website](https://github.com/deepset-ai/hayhooks/tree/main/examples/pipeline_wrappers/chat_with_website) example pipeline. For a real production environment, we recommend creating a custom Hayhooks image as described [here](docker.mdx#customizing-the-haystack-docker-image).
 - We make Hayhooks container read `OPENAI_API_KEY` from a Kubernetes Secret.
 
 Before applying this new configuration, create the `openai-secret`:
@@ -266,6 +266,6 @@ spec:
 
 Implementing the above configuration will create three pods. Each pod will run a different instance of Hayhooks, all serving the same example pipeline provided by the mounted volume in the previous example.
 
-<ClickableImage src="/img/f3f0ac4b22a37039f0837c22b0cb8b640937bbb0db4acfcbdf7bd016b545d84a-Screenshot_2025-04-16_at_09.32.07.png" alt="" />
+<ClickableImage src="/img/f3f0ac4b22a37039f0837c22b0cb8b640937bbb0db4acfcbdf7bd016b545d84a-Screenshot_2025-04-16_at_09.32.07.png" alt="Kubernetes Lens interface showing three haystack-deployment pods in Running status with their resource configurations" />
 
 Note that the `NodePort` you created before will now act as a load balancer and will distribute incoming requests to the three Hayhooks Pods.

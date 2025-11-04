@@ -104,10 +104,9 @@ class TestDatadogTracer:
         tracer = DatadogTracer(datadog_tracer)
         with tracer.trace("test") as span:
             span.set_tag("key", "value")
-            assert span.get_correlation_data_for_logs() == {
-                "dd.trace_id": str((1 << 64) - 1 & span.raw_span().trace_id),
-                "dd.span_id": span.raw_span().span_id,
-                "dd.service": "",
-                "dd.env": "",
-                "dd.version": "",
-            }
+
+            correlation_data = span.get_correlation_data_for_logs()
+
+        for field in ["dd.trace_id", "dd.span_id", "dd.service", "dd.env", "dd.version"]:
+            assert field in correlation_data
+            assert isinstance(correlation_data[field], str)

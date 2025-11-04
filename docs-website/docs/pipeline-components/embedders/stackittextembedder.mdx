@@ -20,13 +20,13 @@ This component enables text embedding using the STACKIT API.
 
 ## Overview
 
-`STACKITTextEmbedder` enables text embedding models served by STACKIT through their API. 
+`STACKITTextEmbedder` enables text embedding models served by STACKIT through their API.
 
 ### Parameters
 
-To use the `STACKITTextEmbedder`, ensure you have set a `STACKIT_API_KEY` as an environment variable. Alternatively, provide the API key as an environment variable with a different name or a token by setting `api_key` and using Haystack’s [secret management](https://docs.haystack.deepset.ai/docs/secret-management).
+To use the `STACKITTextEmbedder`, ensure you have set a `STACKIT_API_KEY` as an environment variable. Alternatively, provide the API key as an environment variable with a different name or a token by setting `api_key` and using Haystack’s [secret management](../../concepts/secret-management.mdx).
 
-Set your preferred supported model with the `model` parameter when initializing the component. See the full list of all supported models on the [STACKIT website](https://docs.stackit.cloud/stackit/en/models-licenses-319914532.html). 
+Set your preferred supported model with the `model` parameter when initializing the component. See the full list of all supported models on the [STACKIT website](https://docs.stackit.cloud/stackit/en/models-licenses-319914532.html).
 
 Optionally, you can change the default `api_base_url`, which is `"https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1"`.
 
