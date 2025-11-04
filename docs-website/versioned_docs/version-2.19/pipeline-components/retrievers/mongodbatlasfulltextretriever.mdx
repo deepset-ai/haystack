@@ -9,6 +9,8 @@ description: "This is a full-text search Retriever compatible with the MongoDB A
 
 This is a full-text search Retriever compatible with the MongoDB Atlas Document Store.
 
+<div className="key-value-table">
+
 |                                        |                                                                                                                                                                                                                   |
 | :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | 1. Before a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [ExtractiveReader](../readers/extractivereader.mdx) in an extractive QA pipeline |
@@ -17,6 +19,8 @@ This is a full-text search Retriever compatible with the MongoDB Atlas Document 
 | **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                  |
 | **API reference**                      | [MongoDB Atlas](/reference/integrations-mongodb-atlas)                                                                                                                                                                   |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mongodb_atlas                                                                                                                   |
+
+</div>
 
 The `MongoDBAtlasFullTextRetriever` is a full-text search Retriever compatible with the [`MongoDBAtlasDocumentStore`](../../document-stores/mongodbatlasdocumentstore.mdx). The full-text search is dependent on the `full_text_search_index` used in the [`MongoDBAtlasDocumentStore`](../../document-stores/mongodbatlasdocumentstore.mdx).
 
