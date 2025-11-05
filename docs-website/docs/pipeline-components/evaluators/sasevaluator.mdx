@@ -9,6 +9,8 @@ description: "The `SASEvaluator` evaluates answers predicted by Haystack pipelin
 
 The `SASEvaluator` evaluates answers predicted by Haystack pipelines using ground truth labels. It checks the semantic similarity of a predicted answer and the ground truth answer using a fine-tuned language model. This metric is called semantic answer similarity.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
@@ -17,6 +19,8 @@ The `SASEvaluator` evaluates answers predicted by Haystack pipelines using groun
 | **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 representing the mean SAS score for all pairs of predicted answers and ground truth answers  <br /> <br />- `individual_scores`: A list of the SAS scores ranging from 0.0 to 1.0 of all pairs of predicted answers and ground truth answers |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/sas_evaluator.py |
+
+</div>
 
 ## Overview
 
@@ -38,7 +42,7 @@ from haystack.components.evaluators import SASEvaluator
 sas_evaluator = SASEvaluator()
 sas_evaluator.warm_up()
 result = sas_evaluator.run(
-  ground_truth_answers=["Berlin", "Paris"], 
+  ground_truth_answers=["Berlin", "Paris"],
   predicted_answers=["Berlin", "Lyon"]
 )
 print(result["individual_scores"])
@@ -86,4 +90,4 @@ for evaluator in result:
 
 ## Additional References
 
-:cook: Cookbook: [Prompt Optimization with DSPy](https://haystack.deepset.ai/cookbook/prompt_optimization_with_dspy)
+🧑‍🍳 Cookbook: [Prompt Optimization with DSPy](https://haystack.deepset.ai/cookbook/prompt_optimization_with_dspy)

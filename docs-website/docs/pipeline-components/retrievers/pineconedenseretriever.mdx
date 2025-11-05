@@ -9,6 +9,8 @@ description: "An embedding-based Retriever compatible with the Pinecone Document
 
 An embedding-based Retriever compatible with the Pinecone Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
@@ -18,9 +20,11 @@ An embedding-based Retriever compatible with the Pinecone Document Store.
 | **API reference**                      | [Pinecone](/reference/integrations-pinecone)                                                                                                                                                                                                                                     |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/pinecone                                                                                                                                                                                |
 
+</div>
+
 ## Overview
 
-The `PineconeEmbeddingRetriever` is an embedding-based Retriever compatible with the `PineconeDocumentStore`. It compares the query and Document embeddings and fetches the Documents most relevant to the query from the `PineconeDocumentStore` based on the outcome. 
+The `PineconeEmbeddingRetriever` is an embedding-based Retriever compatible with the `PineconeDocumentStore`. It compares the query and Document embeddings and fetches the Documents most relevant to the query from the `PineconeDocumentStore` based on the outcome.
 
 When using the `PineconeEmbeddingRetriever` in your NLP system, make sure it has the query and Document embeddings available. You can do so by adding a Document Embedder to your indexing Pipeline and a Text Embedder to your query Pipeline.
 
@@ -77,7 +81,7 @@ documents = [Document(content="There are over 7,000 languages spoken around the 
 						Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
 						Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
 
-document_embedder = SentenceTransformersDocumentEmbedder()  
+document_embedder = SentenceTransformersDocumentEmbedder()
 document_embedder.warm_up()
 documents_with_embeddings = document_embedder.run(documents)
 

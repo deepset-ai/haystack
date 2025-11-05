@@ -9,6 +9,8 @@ description: "This component enables chat completion using models hosted on Toge
 
 This component enables chat completion using models hosted on Together AI.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
@@ -18,6 +20,8 @@ This component enables chat completion using models hosted on Together AI.
 | **API reference** | [TogetherAI](/reference/integrations-togetherai) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/togetherai |
 
+</div>
+
 ## Overview
 
 `TogetherAIChatGenerator` supports models hosted on [Together AI](https://docs.together.ai/intro), such as `meta-llama/Llama-3.3-70B-Instruct-Turbo`. For the full list of supported models, see [Together AI documentation](https://docs.together.ai/docs/chat-models).
@@ -26,8 +30,6 @@ This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatm
 
 You can pass any text generation parameters valid for the Together AI chat completion API directly to this component using the `generation_kwargs` parameter in `__init__` or the `generation_kwargs` parameter in `run` method. For more details on the parameters supported by the Together AI API, see [Together AI API documentation](https://docs.together.ai/reference/chat-completions-1).
 
-`TogetherAIChatGenerator` can support function calling with Together AI models. It is fully compatible with Haystack [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) for function-calling capabilities with supported models.
-
 To use this integration, you need to have an active TogetherAI subscription with sufficient credits and an API key. You can provide it with:
 
 - The `TOGETHER_API_KEY` environment variable (recommended)
@@ -35,9 +37,38 @@ To use this integration, you need to have an active TogetherAI subscription with
 
 By default, the component uses Together AI's OpenAI-compatible base URL `https://api.together.xyz/v1`, which you can override with `api_base_url` if needed.
 
+### Tool Support
+
+`TogetherAIChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.togetherai import TogetherAIChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = TogetherAIChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
 ### Streaming
 
-`TogetherAIChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM, allowing tokens to be emitted as they are generated. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
+`TogetherAIChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM, allowing tokens to be emitted as they are generated. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
 
 ## Usage
 

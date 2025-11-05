@@ -9,14 +9,18 @@ description: "A Retriever based on sparse embeddings, compatible with the Qdrant
 
 A Retriever based on sparse embeddings, compatible with the Qdrant Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1\. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)  in a RAG pipeline  <br /> <br />2. The last component in the semantic search pipeline  <br />   3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)  in an extractive QA pipeline |
 | **Mandatory init variables** | "document_store": An instance of a [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx) |
-| **Mandatory run variables** | “query_sparse_embedding”: A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding)  object containing a vectorial representation of the query |
-| **Output variables** | “documents”: A list of documents |
+| **Mandatory run variables** | "query_sparse_embedding": A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding)  object containing a vectorial representation of the query |
+| **Output variables** | "documents": A list of documents |
 | **API reference** | [Qdrant](/reference/integrations-qdrant) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/qdrant |
+
+</div>
 
 ## Overview
 
@@ -28,8 +32,7 @@ When using the `QdrantSparseEmbeddingRetriever`, make sure it has the query and 
 
 In addition to the `query_sparse_embedding`, the `QdrantSparseEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
 
-:::info
-Sparse Embedding Support
+:::note Sparse Embedding Support
 
 To use Sparse Embedding support, you need to initialize the `QdrantDocumentStore` with `use_sparse_embeddings=True`, which is `False` by default.
 
@@ -131,4 +134,4 @@ print(result["sparse_retriever"]["documents"][0])  # noqa: T201
 
 ## Additional References
 
-:cook: Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)
+🧑‍🍳 Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)

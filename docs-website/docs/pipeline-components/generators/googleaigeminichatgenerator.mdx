@@ -9,11 +9,14 @@ description: "This component enables chat completion using Google Gemini models.
 
 This component enables chat completion using Google Gemini models.
 
-> 🚧 Deprecation Notice
->
-> This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
->
-> We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::warning Deprecation Notice
+
+This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
+
+We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::
+
+<div className="key-value-table">
 
 |  |  |
 | --- | --- |
@@ -23,6 +26,8 @@ This component enables chat completion using Google Gemini models.
 | **Output variables**                   | “replies”: A list of alternative replies of the model to the input chat                              |
 | **API reference**                      | [Google AI](/reference/integrations-google-ai)                                                              |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_ai          |
+
+</div>
 
 `GoogleAIGeminiChatGenerator` supports `gemini-2.5-pro-exp-03-25`, `gemini-2.0-flash`, `gemini-1.5-pro`, and `gemini-1.5-flash` models.
 

@@ -294,6 +294,7 @@ class TestAgentBreakpoints:
                                         "tool_name": "weather_tool",
                                         "arguments": {"location": "Berlin"},
                                         "id": None,
+                                        "extra": None,
                                     }
                                 },
                             ],
@@ -335,6 +336,7 @@ class TestAgentBreakpoints:
                                                     "tool_name": "weather_tool",
                                                     "arguments": {"location": "Berlin"},
                                                     "id": None,
+                                                    "extra": None,
                                                 }
                                             },
                                         ],
@@ -400,6 +402,7 @@ class TestAgentBreakpoints:
                                         "tool_name": "weather_tool",
                                         "arguments": {"location": "Berlin"},
                                         "id": None,
+                                        "extra": None,
                                     }
                                 },
                             ],

@@ -9,19 +9,23 @@ description: "This is a a Retriever compatible with the Chroma Document Store."
 
 This is a a Retriever compatible with the Chroma Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline  2. The last component in the semantic search pipeline  3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
 | **Mandatory init variables**           | "document_store": An instance of a [ChromaDocumentStore](../../document-stores/chromadocumentstore.mdx)                                                                                                                                                                                         |
-| **Mandatory run variables**            | “query”: A single query in plain-text format to be processed by the [Retriever](../retrievers.mdx)                                                                                                                                                                           |
-| **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                            |
+| **Mandatory run variables**            | "query": A single query in plain-text format to be processed by the [Retriever](../retrievers.mdx)                                                                                                                                                                           |
+| **Output variables**                   | "documents": A list of documents                                                                                                                                                                                                                                            |
 | **API reference**                      | [Chroma](/reference/integrations-chroma)                                                                                                                                                                                                                                           |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/chroma                                                                                                                                                                                    |
 
+</div>
+
 ## Overview
 
-The `ChromaQueryTextRetriever` is an embedding-based Retriever compatible with the `ChromaDocumentStore` that uses the Chroma [query API](https://docs.trychroma.com/reference/Collection#query).  
-This component takes a plain-text query string in input and returns the matching documents.  
+The `ChromaQueryTextRetriever` is an embedding-based Retriever compatible with the `ChromaDocumentStore` that uses the Chroma [query API](https://docs.trychroma.com/reference/Collection#query).
+This component takes a plain-text query string in input and returns the matching documents.
 Chroma will create the embedding for the query using its [embedding function](https://docs.trychroma.com/embeddings#default-all-minilm-l6-v2); in case you do not want to use the default embedding function, this must be specified at `ChromaDocumentStore` initialization.
 
 ### Usage
@@ -44,7 +48,7 @@ retriever.run(query = "How does Chroma Retriever work?")
 
 #### In a pipeline
 
-Here is how you could use the `ChromaQueryTextRetriever` in a Pipeline. In this example, you would create two pipelines: an indexing one and a querying one. 
+Here is how you could use the `ChromaQueryTextRetriever` in a Pipeline. In this example, you would create two pipelines: an indexing one and a querying one.
 
 In the indexing pipeline, the documents are written in the Document Store.
 
@@ -85,4 +89,4 @@ for d in results["retriever"]["documents"]:
 
 ## Additional References
 
-:cook: Cookbook: [Use Chroma for RAG and Indexing](https://haystack.deepset.ai/cookbook/chroma-indexing-and-rag-examples)
+🧑‍🍳 Cookbook: [Use Chroma for RAG and Indexing](https://haystack.deepset.ai/cookbook/chroma-indexing-and-rag-examples)

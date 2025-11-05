@@ -9,6 +9,8 @@ description: "Reorder the documents by grouping them based on metadata keys."
 
 Reorder the documents by grouping them based on metadata keys.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents, such as a [Retriever](../retrievers.mdx) |
@@ -18,9 +20,11 @@ Reorder the documents by grouping them based on metadata keys.
 | **API reference**                      | [Rankers](/reference/rankers-api)                                                                                       |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/meta_field_grouping_ranker.py     |
 
+</div>
+
 ## Overview
 
-The `MetaFieldGroupingRanker` component groups documents by a primary metadata key `group_by`, and subgroups them with an optional secondary key, `subgroup_by`.  
+The `MetaFieldGroupingRanker` component groups documents by a primary metadata key `group_by`, and subgroups them with an optional secondary key, `subgroup_by`.
 Within each group or subgroup, the component can also sort documents by a metadata key `sort_docs_by`.
 
 The output is a flat list of documents ordered by `group_by` and `subgroup_by` values. Any documents without a group are placed at the end of the list.
@@ -95,7 +99,7 @@ ranked_docs = ranked_result["documents"]
 messages = [
     ChatMessage.from_system("You are a helpful programming tutor."),
     ChatMessage.from_user(
-        f"Here are the course documents in order:\n" + 
+        f"Here are the course documents in order:\n" +
         "\n".join([f"- {doc.content}" for doc in ranked_docs]) +
         "\n\nBased on these documents, explain the structure of this Python course."
     )

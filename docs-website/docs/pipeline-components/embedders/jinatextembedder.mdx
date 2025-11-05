@@ -9,6 +9,8 @@ description: "This component transforms a string into a vector that captures its
 
 This component transforms a string into a vector that captures its semantics using a Jina Embeddings model. When you perform embedding retrieval, you use this component to transform your query into a vector. Then, the embedding Retriever looks for similar or relevant documents.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
@@ -17,6 +19,8 @@ This component transforms a string into a vector that captures its semantics usi
 | **Output variables** | “embedding”: A list of float numbers  <br /> <br />”meta”: A dictionary of metadata |
 | **API reference** | [Jina](/reference/integrations-jina) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina |
+
+</div>
 
 ## Overview
 
@@ -99,4 +103,4 @@ print(result['retriever']['documents'][0])
 
 ## Additional References
 
-:cook: Cookbook: [Using the Jina-embeddings-v2-base-en model in a Haystack RAG pipeline for legal document analysis](https://haystack.deepset.ai/cookbook/jina-embeddings-v2-legal-analysis-rag)
+🧑‍🍳 Cookbook: [Using the Jina-embeddings-v2-base-en model in a Haystack RAG pipeline for legal document analysis](https://haystack.deepset.ai/cookbook/jina-embeddings-v2-legal-analysis-rag)

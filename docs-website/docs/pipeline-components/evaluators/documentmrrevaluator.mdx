@@ -9,6 +9,8 @@ description: "The `DocumentMRREvaluator` evaluates documents retrieved by Haysta
 
 The `DocumentMRREvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks at what rank ground truth documents appear in the list of retrieved documents. This metric is called mean reciprocal rank (MRR).
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
@@ -17,11 +19,13 @@ The `DocumentMRREvaluator` evaluates documents retrieved by Haystack pipelines u
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/document_mrr.py |
 
+</div>
+
 ## Overview
 
 You can use the `DocumentMRREvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, against ground truth labels. A higher mean reciprocal rank is better and indicates that relevant documents appear at an earlier position in the list of retrieved documents.
 
-To initialize a `DocumentMRREvaluator`, there are no parameters required. 
+To initialize a `DocumentMRREvaluator`, there are no parameters required.
 
 ## Usage
 

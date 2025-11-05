@@ -9,6 +9,8 @@ description: "A Retriever that combines BM25 keyword search and vector similarit
 
 A Retriever that combines BM25 keyword search and vector similarity to fetch documents from the Weaviate Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a hybrid search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
@@ -17,6 +19,8 @@ A Retriever that combines BM25 keyword search and vector similarity to fetch doc
 | **Output variables** | "documents": A list of documents (matching the query) |
 | **API reference** | [Weaviate](/reference/integrations-weaviate) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weaviate |
+
+</div>
 
 ## Overview
 

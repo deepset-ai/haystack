@@ -105,6 +105,14 @@ TOOL_CALL_SCHEMA = {
             "description": "The arguments to call the Tool with.",
             "additionalProperties": True,
         },
+        "extra": {
+            "anyOf": [{"additionalProperties": True, "type": "object"}, {"type": "null"}],
+            "default": None,
+            "description": "Dictionary of extra information about the Tool call. Use to "
+            "store provider-specific\n"
+            "information. To avoid serialization issues, values should be "
+            "JSON serializable.",
+        },
         "id": {
             "anyOf": [{"type": "string"}, {"type": "null"}],
             "default": None,

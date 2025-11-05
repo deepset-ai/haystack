@@ -9,6 +9,8 @@ description: "This component recursively breaks down text into smaller chunks by
 
 This component recursively breaks down text into smaller chunks by applying a given list of separators to the text.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | Most common position in a pipeline | In indexing pipelines after [Converters](../converters.mdx)   and [`DocumentCleaner`](documentcleaner.mdx)  , before [Classifiers](../classifiers.mdx) |
@@ -16,6 +18,8 @@ This component recursively breaks down text into smaller chunks by applying a gi
 | Output variables                   | “documents”: A list of documents                                                                                                                       |
 | API reference                      | [PreProcessors](/reference/preprocessors-api)                                                                                                                 |
 | Github link                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/recursive_splitter.py                                             |
+
+</div>
 
 ## Overview
 
@@ -77,11 +81,11 @@ p.add_component(instance=RecursiveDocumentSplitter(
         split_unit="char",
         separators=["\n\n", "\n", "sentence", " "],
         sentence_splitter_params={
-	        "language": "en", 
-	        "use_split_rules": True, 
+	        "language": "en",
+	        "use_split_rules": True,
 	        "keep_white_spaces": False
         }
-    ), 
+    ),
 	name="recursive_splitter")
 p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
 p.connect("text_file_converter.documents", "cleaner.documents")

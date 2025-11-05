@@ -9,6 +9,8 @@ description: "This component enables chat completions using any model made avail
 
 This component enables chat completions using any model made available by inference providers on a Llama Stack server.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
@@ -18,6 +20,8 @@ This component enables chat completions using any model made available by infere
 | **API reference** | [Llama Stack](/reference/integrations-llama-stack) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/llama_stack |
 
+</div>
+
 ## Overview
 
 [Llama Stack](https://llama-stack.readthedocs.io/en/latest/index.html) provides building blocks and unified APIs to streamline the development of AI applications across various environments.
@@ -26,7 +30,35 @@ The `LlamaStackChatGenerator` enables you to access any LLMs exposed by inferenc
 
 This component uses the same `ChatMessage` format as other Haystack Chat Generators for structured input and output. For more information, see the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
 
-It is also fully compatible with Haystack **Tools / Toolsets**, enabling function-calling capabilities with supported models.
+### Tool Support
+
+`LlamaStackChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.llama_stack import LlamaStackChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = LlamaStackChatGenerator(
+    model="ollama/llama3.2:3b",
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
 
 ## Initialization
 

@@ -9,6 +9,8 @@ description: "This component is designed to execute tool calls prepared b
 
 This component is designed to execute tool calls prepared by language models. It acts as a bridge between the language model's output and the actual execution of functions or tools that perform specific tasks.
 
+<div className="key-value-table">
+
 |                                        |                                                                                                                                    |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | After a Chat Generator                                                                                                             |
@@ -17,6 +19,8 @@ This component is designed to execute tool calls prepared by language m
 | **Output variables**                   | “tool_messages”: A list of `ChatMessage` objects with tool role. Each `ChatMessage` objects wraps the result of a tool invocation. |
 | **API reference**                      | [Tools](/reference/tools-api)                                                                                                             |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/tools/tool_invoker.py                                       |
+
+</div>
 
 ## Overview
 
@@ -29,8 +33,7 @@ The `ToolInvoker` has two additionally helpful parameters:
 - `convert_result_to_json_string`: Use `json.dumps` (when True) or `str` (when False) to convert the result into a string.
 - `raise_on_failure`: If True, it will raise an exception in case of errors. If False, it will return a `ChatMessage` object with `error=True` and a description of the error in `result`. Use this, for example, when you want to keep the Language Model running in a loop and fixing its errors.
 
-:::note
-ChatMessage and Tool Data Classes
+:::note ChatMessage and Tool Data Classes
 
 Follow the links to learn more about [ChatMessage](../../concepts/data-classes/chatmessage.mdx) and [Tool](../../tools/tool.mdx) data classes.
 :::

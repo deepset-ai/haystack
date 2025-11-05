@@ -7,16 +7,20 @@ description: "`OpenAIChatGenerator` enables chat completion using OpenAI’s lar
 
 # OpenAIChatGenerator
 
-`OpenAIChatGenerator` enables chat completion using OpenAI’s large language models (LLMs).
+`OpenAIChatGenerator` enables chat completion using OpenAI's large language models (LLMs).
+
+<div className="key-value-table">
 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
 | **Mandatory init variables**           | "api_key": An OpenAI API key. Can be set with `OPENAI_API_KEY` env var.                              |
-| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
-| **Output variables**                   | “replies”: A list of alternative replies of the LLM to the input chat                                |
+| **Mandatory run variables**            | "messages": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Output variables**                   | "replies": A list of alternative replies of the LLM to the input chat                                |
 | **API reference**                      | [Generators](/reference/generators-api)                                                                     |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/openai.py     |
+
+</div>
 
 ## Overview
 
@@ -74,8 +78,7 @@ print(response["replies"][0].text)
 >> pressure.","nationality":"American"}
 ```
 
-:::info
-Model Compatibility and Limitations
+:::info Model Compatibility and Limitations
 
 - Pydantic models and JSON schemas are supported for latest models starting from `gpt-4o-2024-08-06`.
 - Older models only support basic JSON mode through `{"type": "json_object"}`. For details, see [OpenAI JSON mode documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
@@ -230,4 +233,4 @@ pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "
 
 :notebook: Tutorial: [Building a Chat Application with Function Calling](https://haystack.deepset.ai/tutorials/40_building_chat_application_with_function_calling)
 
-:cook: Cookbook: [Function Calling with OpenAIChatGenerator](https://haystack.deepset.ai/cookbook/function_calling_with_openaichatgenerator)
+🧑‍🍳 Cookbook: [Function Calling with OpenAIChatGenerator](https://haystack.deepset.ai/cookbook/function_calling_with_openaichatgenerator)

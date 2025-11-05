@@ -9,11 +9,15 @@ description: "A Tool that allows Agents and ToolInvokers to edit files in GitHub
 
 A Tool that allows Agents and ToolInvokers to edit files in GitHub repositories.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Mandatory init variables** | "github_token": GitHub personal access token. Can be set with `GITHUB_TOKEN` env var.    |
 | **API reference**            | [Tools](/reference/tools-api)                                                            |
 | **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+</div>
 
 ## Overview
 
@@ -22,7 +26,7 @@ A Tool that allows Agents and ToolInvokers to edit files in GitHub repositories.
 The tool supports multiple file operations including editing existing files, creating new files, deleting files, and undoing recent changes. It supports four main commands:
 
 - **EDIT**: Edit an existing file by replacing specific content
-- **CREATE**: Create a new file with specified content  
+- **CREATE**: Create a new file with specified content
 - **DELETE**: Delete an existing file
 - **UNDO**: Revert the last commit if made by the same user
 
@@ -43,8 +47,7 @@ Install the GitHub integration to use the `GitHubFileEditorTool`:
 pip install github-haystack
 ```
 
-:::info
-Repository Placeholder
+:::info Repository Placeholder
 
 To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
 :::

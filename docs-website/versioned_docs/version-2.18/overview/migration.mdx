@@ -20,7 +20,7 @@ Haystack 2.x represents a significant overhaul of Haystack 1.x, and it's importa
 Haystack 1.x was distributed with a package called `farm-haystack`. To migrate your application, you must uninstall `farm-haystack` and install the new `haystack-ai` package for Haystack 2.x.
 
 :::warning
-Note that the two versions of the project cannot coexist in the same Python environment.
+Two versions of the project cannot coexist in the same Python environment.
 
 One of the options is to remove both packages if they are installed in the same environment, followed by installing only one of them:
 
@@ -173,7 +173,8 @@ If you need help migrating a 1.x node without a 2.x counterpart, open an [issue]
 | Ranker            | Orders documents based on how relevant they are to the query. **Example usage:** In a query pipeline, after a keyword-based Retriever to rank the documents it returns.                                                     | [Rankers](../pipeline-components/rankers.mdx)                                                                |
 | Reader            | Finds an answer by selecting a text span in documents. **Example usage:** In a query pipeline when you want to know the location of the answer.                                                                             | [ExtractiveReader](../pipeline-components/readers/extractivereader.mdx)                                              |
 | Retriever         | Fetches relevant documents from the Document Store. **Example usage:** Coupling Retriever with a Reader in a query pipeline to speed up the search (the Reader only goes through the documents it gets from the Retriever). | [Retrievers](../pipeline-components/retrievers.mdx)                                                          |
-| QuestionGenerator | When given a document, it generates questions this document can answer. **Example usage: **Auto-suggested questions in your search app.                                                                                     | Prompt [Builders](../pipeline-components/builders.mdx) with dedicated prompt, [Generators](../pipeline-components/generators.mdx) |
+| QuestionGenerator | When given a document, it generates questions this document can answer. **Example usage:**
+Auto-suggested questions in your search app.                                                                                     | Prompt [Builders](../pipeline-components/builders.mdx) with dedicated prompt, [Generators](../pipeline-components/generators.mdx) |
 
 ### Prompts and LLMs
 
@@ -183,10 +184,10 @@ If you need help migrating a 1.x node without a 2.x counterpart, open an [issue]
 
 ### Routing
 
-|  |  |
-| --- | --- |
-| QueryClassifier | Categorizes queries. **Example usage:** Distinguishing between keyword queries and natural language questions and routing them to the Retrievers that can handle them best. |
-| RouteDocuments | Routes documents to different branches of your pipeline based on their content type or metadata field. **Example usage:** Routing table data to `TableReader` and text data to `TransfomersReader` for better handling. |
+| Haystack 1.x | Description | Haystack 2.x |
+| --- | --- | --- |
+| QueryClassifier | Categorizes queries. **Example usage:** Distinguishing between keyword queries and natural language questions and routing them to the Retrievers that can handle them best. | [TransformersZeroShotTextRouter](../pipeline-components/routers/transformerszeroshottextrouter.mdx)  <br />[TransformersTextRouter](../pipeline-components/routers/transformerstextrouter.mdx) |
+| RouteDocuments | Routes documents to different branches of your pipeline based on their content type or metadata field. **Example usage:** Routing table data to `TableReader` and text data to `TransfomersReader` for better handling. | [Routers](../pipeline-components/routers.mdx) |
 
 ### Utility Components
 
