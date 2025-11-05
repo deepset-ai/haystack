@@ -746,11 +746,6 @@ class TestAgent:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()
 
-        tool_result_msg = ChatMessage.from_tool(
-            tool_result="Weather in Berlin: 20C",
-            origin=ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
-        )
-
         # Mock responses: first returns tool call, then after tools run, we hit max steps
         agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=1, final_answer_on_max_steps=True)
         agent.warm_up()
@@ -762,9 +757,13 @@ class TestAgent:
             call_count += 1
             if call_count == 1:
                 # First call: LLM wants to call tool
-                return {"replies": [ChatMessage.from_assistant(
-                    tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-                )]}
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                        )
+                    ]
+                }
             else:
                 # Final answer call (no tools available)
                 return {"replies": [ChatMessage.from_assistant("Based on the weather data, it's 20C in Berlin.")]}
@@ -783,10 +782,7 @@ class TestAgent:
         generator = OpenAIChatGenerator()
 
         agent = Agent(
-            chat_generator=generator,
-            tools=[weather_tool],
-            max_agent_steps=1,
-            final_answer_on_max_steps=False
+            chat_generator=generator, tools=[weather_tool], max_agent_steps=1, final_answer_on_max_steps=False
         )
         agent.warm_up()
 
@@ -796,13 +792,17 @@ class TestAgent:
             nonlocal call_count
             call_count += 1
             # Always return tool call to ensure we'd end with tool result
-            return {"replies": [ChatMessage.from_assistant(
-                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-            )]}
+            return {
+                "replies": [
+                    ChatMessage.from_assistant(
+                        tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                    )
+                ]
+            }
 
         agent.chat_generator.run = mock_run
 
-        result = agent.run([ChatMessage.from_user("What's the weather?")])
+        agent.run([ChatMessage.from_user("What's the weather?")])
 
         # Should have ended without final answer call (only 1 LLM call, not 2)
         assert call_count == 1

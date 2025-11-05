@@ -546,11 +546,9 @@ class Agent:
             )
 
             # Make final call with tools disabled
-            final_inputs = {k: v for k, v in exe_context.chat_generator_inputs.items() if k != 'tools'}
+            final_inputs = {k: v for k, v in exe_context.chat_generator_inputs.items() if k != "tools"}
             final_result = self.chat_generator.run(
-                messages=exe_context.state.data["messages"] + [final_prompt],
-                tools=[],
-                **final_inputs
+                messages=exe_context.state.data["messages"] + [final_prompt], tools=[], **final_inputs
             )
 
             # Append final response
@@ -562,13 +560,14 @@ class Agent:
 
         except Exception as e:
             logger.warning(
-                "Failed to generate final answer: {error}. Returning with tool result as last message.",
-                error=str(e)
+                "Failed to generate final answer: {error}. Returning with tool result as last message.", error=str(e)
             )
             span.set_tag("haystack.agent.final_answer_failed", True)
 
     async def _generate_final_answer_async(self, exe_context: _ExecutionContext, span) -> None:
-        """Async version: Generate a final text response when max steps is reached with a tool result as last message."""
+        """
+        Async version: Generate a final text response when max steps is reached with tool result as last message.
+        """
         if not self.final_answer_on_max_steps or not exe_context.state.data.get("messages"):
             return
 
@@ -587,16 +586,13 @@ class Agent:
             )
 
             # Make final call with tools disabled using AsyncPipeline
-            final_inputs = {k: v for k, v in exe_context.chat_generator_inputs.items() if k != 'tools'}
+            final_inputs = {k: v for k, v in exe_context.chat_generator_inputs.items() if k != "tools"}
             final_inputs["tools"] = []
 
             final_result = await AsyncPipeline._run_component_async(
                 component_name="chat_generator",
                 component={"instance": self.chat_generator},
-                component_inputs={
-                    "messages": exe_context.state.data["messages"] + [final_prompt],
-                    **final_inputs,
-                },
+                component_inputs={"messages": exe_context.state.data["messages"] + [final_prompt], **final_inputs},
                 component_visits=exe_context.component_visits,
                 parent_span=span,
             )
@@ -610,8 +606,7 @@ class Agent:
 
         except Exception as e:
             logger.warning(
-                "Failed to generate final answer: {error}. Returning with tool result as last message.",
-                error=str(e)
+                "Failed to generate final answer: {error}. Returning with tool result as last message.", error=str(e)
             )
             span.set_tag("haystack.agent.final_answer_failed", True)
 
