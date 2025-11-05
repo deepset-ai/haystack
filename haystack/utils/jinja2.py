@@ -4,10 +4,10 @@
 
 from typing import Optional
 
-from jinja2 import Environment, meta, nodes
+from jinja2 import Environment, nodes
 
 
-def extract_declared_variables(template_str: str, env: Optional[Environment] = None) -> list[str]:
+def extract_declared_variables(template_str: str, env: Optional[Environment] = None) -> set:
     """
     Extract declared variables from a Jinja2 template string.
 

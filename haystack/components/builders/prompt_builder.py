@@ -4,7 +4,7 @@
 
 from typing import Any, Literal, Optional, Union
 
-from jinja2 import meta, nodes
+from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_to_dict, logging
