@@ -15,13 +15,17 @@ def warm_up_tools(tools: "Optional[ToolsType]" = None) -> None:
     """
     Warm up tools from various formats (Tools, Toolsets, or mixed lists).
 
+    For Toolset objects, this delegates to Toolset.warm_up(), which by default
+    warms up all tools in the Toolset. Toolset subclasses can override warm_up()
+    to customize initialization behavior (e.g., setting up shared resources).
+
     :param tools: A list of Tool and/or Toolset objects, a single Toolset, or None.
     """
     if tools is None:
         return
 
-    # If tools is a single Toolset, warm up the toolset itself
-    if isinstance(tools, Toolset):
+    # If tools is a single Toolset or Tool, warm it up
+    if isinstance(tools, (Toolset, Tool)):
         if hasattr(tools, "warm_up"):
             tools.warm_up()
         return
@@ -29,7 +33,7 @@ def warm_up_tools(tools: "Optional[ToolsType]" = None) -> None:
     # If tools is a list, warm up each item (Tool or Toolset)
     if isinstance(tools, list):
         for item in tools:
-            if isinstance(item, (Toolset, Tool)) and hasattr(item, "warm_up"):
+            if hasattr(item, "warm_up"):
                 item.warm_up()
 
 

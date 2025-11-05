@@ -9,6 +9,8 @@ description: "Use this component to embed a simple string (such as a query) into
 
 Use this component to embed a simple string (such as a query) into a sparse vector.
 
+<div className="key-value-table">
+
 |                                        |                                                                                             |
 | :------------------------------------- | :------------------------------------------------------------------------------------------ |
 | **Most common position in a pipeline** | Before a sparse embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline            |
@@ -16,6 +18,8 @@ Use this component to embed a simple string (such as a query) into a sparse vect
 | **Output variables**                   | “sparse_embedding”: A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding)  object       |
 | **API reference**                      | [FastEmbed](/reference/fastembed-embedders)                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
+
+</div>
 
 For embedding lists of documents, use the [`FastembedSparseDocumentEmbedder`](fastembedsparsedocumentembedder.mdx), which enriches the document with the computed sparse embedding.
 
@@ -137,4 +141,4 @@ print(result["sparse_retriever"]["documents"][0])  # noqa: T201
 
 ## Additional References
 
-:cook: Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)
+🧑‍🍳 Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)

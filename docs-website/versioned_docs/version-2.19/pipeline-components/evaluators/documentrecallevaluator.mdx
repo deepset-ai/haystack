@@ -9,6 +9,8 @@ description: "The `DocumentRecallEvaluator` evaluates documents retrieved by Hay
 
 The `DocumentRecallEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks how many of the ground truth documents were retrieved. This metric is called recall.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
@@ -16,6 +18,8 @@ The `DocumentRecallEvaluator` evaluates documents retrieved by Haystack pipeline
 | **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 that represents the mean recall score over all inputs  <br /> <br />- `individual_scores`: A list of the individual recall scores ranging from 0.0 to 1.0 of each input pair of a list of retrieved documents and a list of ground truth documents. If the mode is set to single_hit, each individual score is either 0 or 1. |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/document_recall.py |
+
+</div>
 
 ## Overview
 

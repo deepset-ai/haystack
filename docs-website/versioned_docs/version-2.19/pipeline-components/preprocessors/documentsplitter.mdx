@@ -9,6 +9,8 @@ description: "`DocumentSplitter` divides a list of text documents into a list of
 
 `DocumentSplitter` divides a list of text documents into a list of shorter text documents. This is useful for long texts that otherwise wouldn't fit into the maximum text length of language models and can also speed up question answering.
 
+<div className="key-value-table">
+
 |                                        |                                                                                                                                                      |
 | :------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx)  and [`DocumentCleaner`](documentcleaner.mdx) , before [Classifiers](../classifiers.mdx) |
@@ -16,6 +18,8 @@ description: "`DocumentSplitter` divides a list of text documents into a list of
 | **Output variables**                   | "documents": A list of documents                                                                                                                     |
 | **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                                                               |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/document_splitter.py                                            |
+
+</div>
 
 ## Overview
 

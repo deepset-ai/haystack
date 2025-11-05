@@ -94,11 +94,11 @@ result = pipeline.run(data={"prompt_builder": {"question": query}})
 ```
 
 Here's the graph of the resulting pipeline:
-<ClickableImage src="/img/74f3daa-hyde.png" alt="HyDE pipeline implementation flowchart showing prompt builder, generator, adapter, embedder, and hypothetical document embedder components" />
+<ClickableImage src="/img/74f3daa-hyde.png" alt="HyDE pipeline implementation flowchart showing prompt builder, generator, adapter, embedder, and hypothetical document embedder components" size="large"/>
 
 This pipeline example turns your query into one embedding.
 
-You can continue and feed this embedding to any [Embedding Retriever](../../pipeline-components/retrievers.mdx#embedding-based-retrievers) to find similar documents in your Document Store.
+You can continue and feed this embedding to any [Embedding Retriever](../../pipeline-components/retrievers.mdx#dense-embedding-based-retrievers) to find similar documents in your Document Store.
 
 ## Additional References
 

@@ -9,13 +9,14 @@ description: "This component computes embeddings for documents using models thro
 
 This component computes embeddings for documents using models through VertexAI Embeddings API.
 
-:::warning
-Deprecation Notice
+:::warning Deprecation Notice
 
 This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
 
 We recommend switching to the new [GoogleGenAIDocumentEmbedder](googlegenaidocumentembedder.mdx) integration instead.
 :::
+
+<div className="key-value-table">
 
 |                                        |                                                                                                 |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -25,6 +26,8 @@ We recommend switching to the new [GoogleGenAIDocumentEmbedder](googlegenaidocum
 | **Output variables**                   | “documents”: A list of documents enriched with embeddings                                       |
 | **API reference**                      | [Google Vertex](/reference/integrations-google-vertex)                                                 |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_vertex |
+
+</div>
 
 `VertexAIDocumentEmbedder` enriches the metadata of documents with an embedding of their content. To embed a string, use the [`VertexAITextEmbedder`](vertexaitextembedder.mdx).
 

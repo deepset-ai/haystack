@@ -9,6 +9,8 @@ description: "Use this component to route Chat Messages to various output connec
 
 Use this component to route Chat Messages to various output connections using a generative Language Model to perform classification.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
@@ -18,13 +20,15 @@ Use this component to route Chat Messages to various output connections using a 
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/llm_messages_router.py |
 
+</div>
+
 ## Overview
 
 `LLMMessagesRouter` uses an LLM to classify chat messages and route them to different outputs based on that classification.
 
 This is especially useful for tasks like content moderation.  If a message is deemed safe, you might forward it to a Chat Generator to generate a reply. Otherwise, you may halt the interaction or log the message separately.
 
-First, you need to pass a ChatGenerator instance in the `chat_generator` parameter.  
+First, you need to pass a ChatGenerator instance in the `chat_generator` parameter.
 Then, define two lists of the same length:
 
 - `output_names`: The names of the outputs to which you want to route messages,
@@ -114,7 +118,7 @@ print(router.run(messages))
 
 ### In a pipeline
 
-Below is an example of a RAG pipeline that includes content moderation.  
+Below is an example of a RAG pipeline that includes content moderation.
 Safe messages are routed to an LLM to generate a response, while unsafe messages are returned through the `moderation_router.unsafe` output edge.
 
 ```python

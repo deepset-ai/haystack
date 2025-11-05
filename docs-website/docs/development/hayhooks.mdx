@@ -9,8 +9,7 @@ description: "Hayhooks is a web application you can use to serve Haystack pipeli
 
 Hayhooks is a web application you can use to serve Haystack pipelines through HTTP endpoints. This page provides an overview of the main features of Hayhooks.
 
-:::info
-Hayhooks GitHub
+:::info Hayhooks GitHub
 
 You can find the code and an in-depth explanation of the features in the [Hayhooks GitHub repository](https://github.com/deepset-ai/hayhooks).
 :::
@@ -60,6 +59,8 @@ Hayhooks can be configured in three ways:
 
 ### Environment Variables
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | Variable                          | Description                        |
@@ -71,7 +72,11 @@ Hayhooks can be configured in three ways:
 | `HAYHOOKS_DISABLE_SSL`            | Disable SSL verification (boolean) |
 | `HAYHOOKS_SHOW_TRACEBACKS`        | Show error tracebacks (boolean)    |
 
+</div>
+
 ### CORS Settings
+
+<div className="key-value-table">
 
 |  |  |
 | --- | --- |
@@ -83,6 +88,8 @@ Hayhooks can be configured in three ways:
 | `HAYHOOKS_CORS_ALLOW_ORIGIN_REGEX` | Regex pattern for allowed origins (default: `null`) |
 | `HAYHOOKS_CORS_EXPOSE_HEADERS`     | Headers to expose in response (default: `[]`)       |
 | `HAYHOOKS_CORS_MAX_AGE`            | Max age for preflight responses (default: `600`)    |
+
+</div>
 
 ## Running Hayhooks
 
@@ -238,10 +245,10 @@ To deploy a pipeline without listing it as an MCP Tool, set `skip_mcp = True` in
 class PipelineWrapper(BasePipelineWrapper):
     # This will skip the MCP Tool listing
     skip_mcp = True
-    
+
     def setup(self) -> None:
         ...
-    
+
     def run_api(self, urls: List[str], question: str) -> str:
         ...
 ```

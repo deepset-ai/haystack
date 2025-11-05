@@ -9,6 +9,8 @@ description: "The `DocumentNDCGEvaluator` evaluates documents retrieved by Hayst
 
 The `DocumentNDCGEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks at what rank ground truth documents appear in the list of retrieved documents. This metric is called normalized discounted cumulative gain (NDCG).
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
@@ -16,6 +18,8 @@ The `DocumentNDCGEvaluator` evaluates documents retrieved by Haystack pipelines 
 | **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 that represents the NDCG  <br /> <br />- `individual_scores`: A list of individual NDCG values ranging from 0.0 to 1.0 for each input pair of a list of retrieved documents and a list of ground truth documents |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/document_ndcg.py |
+
+</div>
 
 ## Overview
 

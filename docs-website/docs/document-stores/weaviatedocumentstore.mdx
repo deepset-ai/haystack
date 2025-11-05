@@ -6,10 +6,14 @@ slug: "/weaviatedocumentstore"
 
 # WeaviateDocumentStore
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | API reference | [Weaviate](/reference/integrations-weaviate)                                                      |
 | GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weaviate |
+
+</div>
 
 Weaviate is a multi-purpose vector DB that can store both embeddings and data objects, making it a good choice for multi-modality.
 
@@ -71,7 +75,10 @@ volumes:
 ...
 ```
 
-> 🚧 With this example, we explicitly enable access without authentication, so you don't need to set any username, password, or API key to connect to our local instance. That is strongly discouraged for production use. See the [authorization](#authorization) section for detailed information.
+:::warning
+With this example, we explicitly enable access without authentication, so you don't need to set any username, password, or API key to connect to our local instance. That is strongly discouraged for production use. See the [authorization](#authorization) section for detailed information.
+
+:::
 
 Start your container with `docker compose up -d` and then initialize the Document Store with:
 

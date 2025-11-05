@@ -9,6 +9,8 @@ description: "This component enables chat completion with any model hosted on [O
 
 This component enables chat completion with any model hosted on [OpenRouter](https://openrouter.ai/).
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                                |
@@ -17,6 +19,8 @@ This component enables chat completion with any model hosted on [OpenRouter](htt
 | **Output variables**                   | “replies”: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                                                       |
 | **API reference**                      | [OpenRouter](/reference/integrations-openrouter)                                                                         |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/openrouter                      |
+
+</div>
 
 ## Overview
 
@@ -29,7 +33,34 @@ This generator also supports OpenRouter-specific features such as:
 
 This component uses the same `ChatMessage` format as other Haystack Chat Generators for structured input and output. For more information, see the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
 
-It is also fully compatible with Haystack [Tools](../../tools/tool.mdx) and [Toolsets](../../tools/toolset.mdx) that allow function-calling capabilities with supported models.
+### Tool Support
+
+`OpenRouterChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = OpenRouterChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
 
 ### Initialization
 
@@ -66,7 +97,7 @@ With streaming and model routing:
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
 
-client = OpenRouterChatGenerator(model="openrouter/auto", 
+client = OpenRouterChatGenerator(model="openrouter/auto",
 streaming_callback=lambda chunk: print(chunk.content, end="", flush=True))
 
 response = client.run(

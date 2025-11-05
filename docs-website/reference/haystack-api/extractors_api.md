@@ -1,20 +1,17 @@
 ---
-title: Extractors
-excerpt: Components to extract specific elements from textual data.
-category: placeholder-haystack-api
-slug: extractors-api
-parentDoc: 
-order: 65
-hidden: false
+title: "Extractors"
+id: extractors-api
+description: "Components to extract specific elements from textual data."
+slug: "/extractors-api"
 ---
 
 <a id="named_entity_extractor"></a>
 
-# Module named\_entity\_extractor
+## Module named\_entity\_extractor
 
 <a id="named_entity_extractor.NamedEntityExtractorBackend"></a>
 
-## NamedEntityExtractorBackend
+### NamedEntityExtractorBackend
 
 NLP backend to use for Named Entity Recognition.
 
@@ -43,7 +40,7 @@ Convert a string to a NamedEntityExtractorBackend enum.
 
 <a id="named_entity_extractor.NamedEntityAnnotation"></a>
 
-## NamedEntityAnnotation
+### NamedEntityAnnotation
 
 Describes a single NER annotation.
 
@@ -56,7 +53,7 @@ Describes a single NER annotation.
 
 <a id="named_entity_extractor.NamedEntityExtractor"></a>
 
-## NamedEntityExtractor
+### NamedEntityExtractor
 
 Annotates named entities in a collection of documents.
 
@@ -219,11 +216,11 @@ The stored annotations.
 
 <a id="llm_metadata_extractor"></a>
 
-# Module llm\_metadata\_extractor
+## Module llm\_metadata\_extractor
 
 <a id="llm_metadata_extractor.LLMMetadataExtractor"></a>
 
-## LLMMetadataExtractor
+### LLMMetadataExtractor
 
 Extracts metadata from documents using a Large Language Model (LLM).
 
@@ -436,11 +433,11 @@ re-run with the extractor to extract metadata.
 
 <a id="image/llm_document_content_extractor"></a>
 
-# Module image/llm\_document\_content\_extractor
+## Module image/llm\_document\_content\_extractor
 
 <a id="image/llm_document_content_extractor.LLMDocumentContentExtractor"></a>
 
-## LLMDocumentContentExtractor
+### LLMDocumentContentExtractor
 
 Extracts textual content from image-based documents using a vision-enabled LLM (Large Language Model).
 
@@ -581,11 +578,11 @@ A dictionary with:
 
 <a id="regex_text_extractor"></a>
 
-# Module regex\_text\_extractor
+## Module regex\_text\_extractor
 
 <a id="regex_text_extractor.RegexTextExtractor"></a>
 
-## RegexTextExtractor
+### RegexTextExtractor
 
 Extracts text from chat message or string input using a regex pattern.
 

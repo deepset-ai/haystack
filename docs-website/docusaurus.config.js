@@ -18,13 +18,13 @@ const config = {
   url: 'https://docs.haystack.deepset.ai',
   baseUrl: '/',
 
-  onBrokenLinks: 'warn',
-  onBrokenAnchors: 'warn',
-  onDuplicateRoutes: 'warn',
+  onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
+  onDuplicateRoutes: 'throw',
 
   markdown: {
     hooks: {
-      onBrokenMarkdownLinks: 'warn',
+      onBrokenMarkdownLinks: 'throw',
     },
   },
 

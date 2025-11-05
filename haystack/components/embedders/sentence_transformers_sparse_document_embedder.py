@@ -59,6 +59,7 @@ class SentenceTransformersSparseDocumentEmbedder:
         tokenizer_kwargs: Optional[dict[str, Any]] = None,
         config_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
+        revision: Optional[str] = None,
     ):
         """
         Creates a SentenceTransformersSparseDocumentEmbedder component.
@@ -100,6 +101,9 @@ class SentenceTransformersSparseDocumentEmbedder:
             The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
             Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
             for more information on acceleration and quantization options.
+        :param revision:
+            The specific model version to use. It can be a branch name, a tag name, or a commit id,
+            for a stored model on Hugging Face.
         """
 
         self.model = model
@@ -112,6 +116,7 @@ class SentenceTransformersSparseDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.trust_remote_code = trust_remote_code
+        self.revision = revision
         self.local_files_only = local_files_only
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
@@ -144,6 +149,7 @@ class SentenceTransformersSparseDocumentEmbedder:
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             trust_remote_code=self.trust_remote_code,
+            revision=self.revision,
             local_files_only=self.local_files_only,
             model_kwargs=self.model_kwargs,
             tokenizer_kwargs=self.tokenizer_kwargs,
@@ -182,6 +188,7 @@ class SentenceTransformersSparseDocumentEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                revision=self.revision,
                 local_files_only=self.local_files_only,
                 model_kwargs=self.model_kwargs,
                 tokenizer_kwargs=self.tokenizer_kwargs,

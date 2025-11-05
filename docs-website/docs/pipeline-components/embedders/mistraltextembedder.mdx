@@ -9,6 +9,8 @@ description: "This component transforms a string into a vector using the Mistral
 
 This component transforms a string into a vector using the Mistral API and models. Use it for embedding retrieval to transform your query into an embedding.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
@@ -17,6 +19,8 @@ This component transforms a string into a vector using the Mistral API and model
 | **Output variables** | “embedding”: A list of float numbers (vectors)  <br /> <br />“meta”: A dictionary of metadata strings |
 | **API reference** | [Mistral](/reference/integrations-mistral) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mistral |
+
+</div>
 
 Use `MistalTextEmbedder` to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`MistralDocumentEmbedder`](mistraldocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
 

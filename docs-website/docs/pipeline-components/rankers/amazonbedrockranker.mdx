@@ -9,6 +9,8 @@ description: "Use this component to rank documents based on their similarity to 
 
 Use this component to rank documents based on their similarity to the query using Amazon Bedrock models.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
@@ -17,6 +19,8 @@ Use this component to rank documents based on their similarity to the query usin
 | **Output variables** | “documents”: A list of document objects |
 | **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_bedrock/ |
+
+</div>
 
 ## Overview
 
@@ -36,8 +40,7 @@ pip install amazon-bedrock-haystack
 
 This component uses AWS for authentication. You can use the AWS CLI to authenticate through your IAM. For more information on setting up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
 
-:::info
-Using AWS CLI
+:::info Using AWS CLI
 
 Consider using AWS CLI as a more straightforward tool to manage your AWS services. With AWS CLI, you can quickly configure your [boto3 credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html). This way, you won't need to provide detailed authentication parameters when initializing Amazon Bedrock in Haystack.
 :::

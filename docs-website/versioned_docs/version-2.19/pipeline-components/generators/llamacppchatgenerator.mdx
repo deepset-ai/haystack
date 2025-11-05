@@ -9,6 +9,8 @@ description: "`LlamaCppGenerator` enables chat completion using an LLM running o
 
 `LlamaCppGenerator` enables chat completion using an LLM running on Llama.cpp.
 
+<div className="key-value-table">
+
 |                                        |                                                                                                                           |
 | :------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
 | **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx)                                                                    |
@@ -18,11 +20,43 @@ description: "`LlamaCppGenerator` enables chat completion using an LLM running o
 | **API reference**                      | [Llama.cpp](/reference/integrations-llama-cpp)                                                                                   |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/llama_cpp                               |
 
+</div>
+
 ## Overview
 
 [Llama.cpp](https://github.com/ggerganov/llama.cpp) is a library written in C/C++ for efficient inference of Large Language Models. It leverages the efficient quantized GGUF format, dramatically reducing memory requirements and accelerating inference. This means it is possible to run LLMs efficiently on standard machines (even without GPUs).
 
 `Llama.cpp` uses the quantized binary file of the LLM in GGUF format, which can be downloaded from [Hugging Face](https://huggingface.co/models?library=gguf). `LlamaCppChatGenerator` supports models running on `Llama.cpp`  by taking the path to the locally saved GGUF file as `model` parameter at initialization.
+
+### Tool Support
+
+`LlamaCppChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.llama_cpp import LlamaCppChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = LlamaCppChatGenerator(
+    model="/path/to/model.gguf",
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
 
 ## Installation
 

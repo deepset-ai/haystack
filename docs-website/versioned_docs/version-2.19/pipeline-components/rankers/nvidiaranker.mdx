@@ -9,6 +9,8 @@ description: "Use this component to rank documents based on their similarity to 
 
 Use this component to rank documents based on their similarity to the query using Nvidia-hosted models.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx)  |
@@ -17,6 +19,8 @@ Use this component to rank documents based on their similarity to the query usin
 | **Output variables** | “documents”: A list of document objects |
 | **API reference** | [Nvidia](/reference/integrations-nvidia) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/nvidia |
+
+</div>
 
 ## Overview
 
@@ -97,8 +101,7 @@ query = "Cities in France"
 res = document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
 ```
 
-:::tip
-`top_k` parameter
+:::note `top_k` parameter
 
 In the example above, the `top_k` values for the Retriever and the Ranker are different. The Retriever's `top_k` specifies how many documents it returns. The Ranker then orders these documents.
 

@@ -9,11 +9,14 @@ description: "`VertexAIGeminiChatGenerator` enables chat completion using Google
 
 `VertexAIGeminiChatGenerator` enables chat completion using Google Gemini models.
 
-> 🚧 Deprecation Notice
->
-> This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
->
-> We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::warning Deprecation Notice
+
+This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
+
+We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
+:::
+
+<div className="key-value-table">
 
 |  |  |
 | --- | --- |
@@ -22,6 +25,8 @@ description: "`VertexAIGeminiChatGenerator` enables chat completion using Google
 | **Output variables**                   | “replies”: A list of alternative replies of the model to the input chat                              |
 | **API reference**                      | [Google Vertex](/reference/integrations-google-vertex)                                                      |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_vertex      |
+
+</div>
 
 `VertexAIGeminiGenerator` supports `gemini-1.5-pro` and `gemini-1.5-flash`/  `gemini-2.0-flash` models. Note that [Google recommends upgrading](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions) from `gemini-1.5-pro` to `gemini-2.0-flash`.
 
@@ -162,4 +167,4 @@ print(res)
 
 ## Additional References
 
-:cook: Cookbook: [Function Calling and Multimodal QA with Gemini](https://haystack.deepset.ai/cookbook/vertexai-gemini-examples)
+🧑‍🍳 Cookbook: [Function Calling and Multimodal QA with Gemini](https://haystack.deepset.ai/cookbook/vertexai-gemini-examples)

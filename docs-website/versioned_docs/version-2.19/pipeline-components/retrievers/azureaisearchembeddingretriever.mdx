@@ -11,6 +11,8 @@ An embedding Retriever compatible with the Azure AI Search Document Store.
 
 This Retriever accepts the embeddings of a single query as input and returns a list of matching documents.
 
+<div className="key-value-table">
+
 |                                        |                                                                                                                                                                                                                                                                           |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the embedding retrieval pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
@@ -19,6 +21,8 @@ This Retriever accepts the embeddings of a single query as input and returns a l
 | **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                          |
 | **API reference**                      | [Azure AI Search](/reference/integrations-azure_ai_search)                                                                                                                                                                                                                       |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_ai_search                                                                                                                                                                         |
+
+</div>
 
 ## Overview
 
@@ -30,8 +34,7 @@ By default, the `AzureAISearchDocumentStore` uses the [HNSW algorithm](https://l
 
 In addition to the `query_embedding`, the `AzureAISearchEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
 
-:::note
-Semantic Ranking
+:::note Semantic Ranking
 
 The semantic ranking capability of Azure AI Search is not available for vector retrieval. To include semantic ranking in your retrieval process, use the [`AzureAISearchBM25Retriever`](azureaisearchbm25retriever.mdx) or [`AzureAISearchHybridRetriever`](azureaisearchhybridretriever.mdx). For more details, see [Azure AI documentation](https://learn.microsoft.com/en-us/azure/search/semantic-how-to-query-request?tabs=portal-query#set-up-the-query).
 :::

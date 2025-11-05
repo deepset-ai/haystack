@@ -24,7 +24,7 @@ export default function Versions() {
           <p>Documentation for the unreleased version.</p>
           <ul>
             <li>
-              <Link to="/docs/next/overview/intro">Documentation</Link>
+              <Link to="/docs/next/intro">Documentation</Link>
             </li>
           </ul>
         </div>
@@ -34,7 +34,7 @@ export default function Versions() {
           <p>Documentation for the current stable release (v{currentVersion}).</p>
           <ul>
             <li>
-              <Link to="/docs/overview/intro">Documentation</Link>
+              <Link to="/docs/intro">Documentation</Link>
             </li>
           </ul>
         </div>
@@ -48,7 +48,7 @@ export default function Versions() {
             <ul>
               {versions.slice(1).map((version) => (
                 <li key={version}>
-                  <Link to={`/docs/${version}/Overview/get-started`}>
+                  <Link to={`/docs/${version}/get-started`}>
                     Version {version}
                   </Link>
                 </li>

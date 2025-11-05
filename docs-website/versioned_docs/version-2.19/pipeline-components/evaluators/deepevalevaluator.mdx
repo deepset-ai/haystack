@@ -9,6 +9,8 @@ description: "The DeepEvalEvaluator evaluates Haystack pipelines using LLM-based
 
 The DeepEvalEvaluator evaluates Haystack pipelines using LLM-based metrics. It supports metrics like answer relevancy, faithfulness, contextual relevance, and more.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline has generated the inputs for the Evaluator. |
@@ -18,11 +20,15 @@ The DeepEvalEvaluator evaluates Haystack pipelines using LLM-based metrics. It s
 | **API reference** | [DeepEval](/reference/integrations-deepeval) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/deepeval |
 
+</div>
+
 DeepEval is an evaluation framework that provides a number of LLM-based evaluation metrics. You can use the `DeepEvalEvaluator` component to evaluate a Haystack pipeline, such as a retrieval-augmented generated pipeline, against one of the metrics provided by DeepEval.
 
 ## Supported Metrics
 
 DeepEval supports a number of metrics, which we expose through the [DeepEval metric enumeration.](/reference/integrations-deepeval#deepevalmetric) [`DeepEvalEvaluator`](/reference/integrations-deepeval#deepevalevaluator) in Haystack supports the metrics listed below with the expected `metric_params` while initializing the Evaluator. Many metrics use OpenAI models and require you to set an environment variable `OPENAI_API_KEY`. For a complete guide on these metrics, visit the [DeepEval documentation](https://docs.confident-ai.com/docs/getting-started).
+
+<div className="key-value-table">
 
 |  |  |
 | --- | --- |
@@ -31,6 +37,8 @@ DeepEval supports a number of metrics, which we expose through the [DeepEval met
 | `CONTEXTUAL_PRECISION` | `model: str` |
 | `CONTEXTUAL_RECALL` | `model: str` |
 | `CONTEXTUAL_RELEVANCE` | `model: str` |
+
+</div>
 
 ## Parameters Overview
 
@@ -80,4 +88,4 @@ results = pipeline.run({"evaluator": {"questions": ["When was the Rhodes Statue 
 
 ## Additional References
 
-:cook: Cookbook: [RAG Pipeline Evaluation Using DeepEval](https://haystack.deepset.ai/cookbook/rag_eval_deep_eval)
+🧑‍🍳 Cookbook: [RAG Pipeline Evaluation Using DeepEval](https://haystack.deepset.ai/cookbook/rag_eval_deep_eval)

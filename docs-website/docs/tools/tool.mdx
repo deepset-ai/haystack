@@ -13,7 +13,7 @@ A growing number of Language Models now support passing tool definitions alongsi
 
 Tool calling refers to the ability of Language Models to generate calls to tools - be they functions or APIs - when responding to user queries. The model prepares the tool call but does not execute it.
 
-If you are looking for the details of this data class's methods and parameters, visit our [API documentation](/reference/data-classess-api#module-tool).
+If you are looking for the details of this data class's methods and parameters, visit our [API documentation](/reference/tools-api).
 
 ## Tool class
 
@@ -78,8 +78,8 @@ print(add_tool.invoke(a=15, b=10))
     'parameters':{'type': 'object',
         'properties':{'a':{'type': 'integer'}, 'b':{'type': 'integer'}},
         'required':['a', 'b']}}
-        
-25        
+
+25
 ```
 
 ### @tool decorator
@@ -114,12 +114,12 @@ parameters={
     },
     }
 },
-function=<function get_weather at 0x7f7b3a8a9b80>)  
+function=<function get_weather at 0x7f7b3a8a9b80>)
 ```
 
 ### create_tool_from_function
 
-The `create_tool_from_function` method provides more flexibility than the`@tool` decorator and allows setting Tool name and description. It infers the Tool parameters automatically and generates a JSON schema automatically in the same way as the `@tool` decorator. 
+The `create_tool_from_function` method provides more flexibility than the`@tool` decorator and allows setting Tool name and description. It infers the Tool parameters automatically and generates a JSON schema automatically in the same way as the `@tool` decorator.
 
 ```python
 from typing import Annotated, Literal
@@ -150,7 +150,7 @@ parameters={
     },
     }
 },
-function=<function get_weather at 0x7f7b3a8a9b80>)  
+function=<function get_weather at 0x7f7b3a8a9b80>)
 ```
 
 ## Toolset
@@ -173,8 +173,7 @@ To better understand this section, make sure you are also familiar with Haystack
 
 Using the `tools` parameter, you can pass tools as a list of Tool instances or a single Toolset during initialization or in the `run` method. Tools passed at runtime override those set at initialization.
 
-:::info
-Chat Generators support
+:::info Chat Generators support
 
 Not all Chat Generators currently support tools, but we are actively expanding tool support across more models.
 
@@ -205,11 +204,11 @@ print(res)
 )],
             _meta={...})]}
 
-            
+
 {'replies':[ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
             _content=[TextContent(text='Lions primarily inhabit grasslands, savannas, and open woodlands. ...'
 )],
-            _meta={...})]}            
+            _meta={...})]}
 ```
 
 The same result of the previous run can be achieved by passing tools at runtime:
@@ -275,8 +274,8 @@ arguments={'location': 'Berlin'}, id='call_YEvCEAmlvc42JGXV84NU8wtV')], _meta={'
 'index':0, 'finish_reason': 'tool_calls', 'usage':{'completion_tokens':13, 'prompt_tokens':50, 'total_tokens':
 63}})]
 
-tool messages: [ChatMessage(_role=<ChatRole.TOOL: 'tool'>, _content=[ToolCallResult(result="{'temp': '22 °C', 
-'humidity': '35%'}", origin=ToolCall(tool_name='weather', arguments={'location': 'Berlin'}, 
+tool messages: [ChatMessage(_role=<ChatRole.TOOL: 'tool'>, _content=[ToolCallResult(result="{'temp': '22 °C',
+'humidity': '35%'}", origin=ToolCall(tool_name='weather', arguments={'location': 'Berlin'},
 id='call_YEvCEAmlvc42JGXV84NU8wtV'), error=False)], _meta={})]
 ```
 
@@ -333,13 +332,13 @@ arguments={'location': 'Berlin'}, id='call_jHX0RCDHRKX7h8V9RrNs6apy')], _meta={'
 'index':0, 'finish_reason': 'tool_calls', 'usage':{'completion_tokens':13, 'prompt_tokens':50, 'total_tokens':
 63}})]
 
-tool messages: [ChatMessage(_role=<ChatRole.TOOL: 'tool'>, _content=[ToolCallResult(result="{'temp': '2 °C', 
-'humidity': '15%'}", origin=ToolCall(tool_name='weather', arguments={'location': 'Berlin'}, 
+tool messages: [ChatMessage(_role=<ChatRole.TOOL: 'tool'>, _content=[ToolCallResult(result="{'temp': '2 °C',
+'humidity': '15%'}", origin=ToolCall(tool_name='weather', arguments={'location': 'Berlin'},
 id='call_jHX0RCDHRKX7h8V9RrNs6apy'), error=False)], _meta={})]
 
-final assistant messages: [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='The 
-current weather in Berlin is 2 °C with a humidity level of 15%.')], _meta={'model': 'gpt-4o-mini-2024-07-18', 
-'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 19, 'prompt_tokens': 85, 'total_tokens': 
+final assistant messages: [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='The
+current weather in Berlin is 2 °C with a humidity level of 15%.')], _meta={'model': 'gpt-4o-mini-2024-07-18',
+'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 19, 'prompt_tokens': 85, 'total_tokens':
 104}})]
 ```
 

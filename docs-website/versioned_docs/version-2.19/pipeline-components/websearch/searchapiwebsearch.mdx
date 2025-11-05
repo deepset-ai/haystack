@@ -9,6 +9,8 @@ description: "Search engine using Search API."
 
 Search engine using Search API.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before [`LinkContentFetcher`](../fetchers/linkcontentfetcher.mdx)  or [Converters](../converters.mdx)  |
@@ -18,6 +20,8 @@ Search engine using Search API.
 | **API reference** | [Websearch](/reference/websearch-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/websearch/searchapi.py |
 
+</div>
+
 ## Overview
 
 When you give `SearchApiWebSearch` a query, it returns a list of the URLs most relevant to your search. It uses page snippets (pieces of text displayed under the page title in search results) to find the answers, not the whole pages.
@@ -26,8 +30,7 @@ To search the content of the web pages, use the [`LinkContentFetcher`](../fetche
 
 `SearchApiWebSearch` requires a [SearchApi](https://www.searchapi.io) key to work. It uses a `SEARCHAPI_API_KEY` environment variable by default. Otherwise, you can pass an `api_key` at initialization – see code examples below.
 
-:::note
-Alternative search
+:::note Alternative search
 
 To use [Serper Dev](https://serper.dev/?gclid=Cj0KCQiAgqGrBhDtARIsAM5s0_kPElllv3M59UPok1Ad-ZNudLaY21zDvbt5qw-b78OcUoqqvplVHRwaAgRgEALw_wcB) as an alternative, see its respective [documentation page](serperdevwebsearch.mdx).
 :::

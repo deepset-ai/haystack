@@ -9,6 +9,8 @@ description: "Use this component to route documents or byte streams to different
 
 Use this component to route documents or byte streams to different output connections based on the content of their metadata fields.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After components that classify documents, such as [`DocumentLanguageClassifier`](../classifiers/documentlanguageclassifier.mdx)  |
@@ -17,6 +19,8 @@ Use this component to route documents or byte streams to different output connec
 | **Output variables** | “unmatched”: A list of documents or byte streams not matching any rule  <br /> <br />“_name_of_the_rule_”: A list of documents or byte streams matching custom rules. There's one output per one rule you define. Each of these outputs is a list of documents or byte streams. |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/metadata_router.py |
+
+</div>
 
 ## Overview
 

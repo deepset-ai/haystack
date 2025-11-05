@@ -9,6 +9,8 @@ description: "This is a keyword-based Retriever that fetches Documents matching 
 
 This is a keyword-based Retriever that fetches Documents matching a query from the Weaviate Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
@@ -18,10 +20,12 @@ This is a keyword-based Retriever that fetches Documents matching a query from t
 | **API reference**                      | [Weaviate](/reference/integrations-weaviate)                                                                                                                                                                                 |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weaviate                                                                                                                            |
 
+</div>
+
 ## Overview
 
-`WeaviateBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from [`WeaviateDocumentStore`](../../document-stores/weaviatedocumentstore.mdx). It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the  
-two strings. 
+`WeaviateBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from [`WeaviateDocumentStore`](../../document-stores/weaviatedocumentstore.mdx). It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the
+two strings.
 
 Since the `WeaviateBM25Retriever` matches strings based on word overlap, it’s often used to find exact matches to names of persons or products, IDs, or well-defined error messages. The BM25 algorithm is very lightweight and simple. Beating it with more complex embedding-based approaches on out-of-domain data can be hard.
 
