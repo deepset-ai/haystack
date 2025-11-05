@@ -79,7 +79,7 @@ class TestAzureOpenAIChatGenerator:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
         assert component.client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-5-mini"
+        assert component._azure_deployment == "gpt-5-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
 
@@ -97,16 +97,14 @@ class TestAzureOpenAIChatGenerator:
             generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             tools=tools,
             tools_strict=True,
-            azure_ad_token_provider=default_azure_ad_token_provider,
         )
         assert component.client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-5-mini"
+        assert component._azure_deployment == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.tools == tools
         assert component.tools_strict
-        assert component.azure_ad_token_provider is not None
-        assert component.max_retries == 5
+        assert component.max_retries is None
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
@@ -121,8 +119,8 @@ class TestAzureOpenAIChatGenerator:
                 "organization": None,
                 "streaming_callback": None,
                 "generation_kwargs": {},
-                "timeout": 30.0,
-                "max_retries": 5,
+                "timeout": None,
+                "max_retries": None,
                 "tools": None,
                 "tools_strict": False,
                 "http_client_kwargs": None,
@@ -180,7 +178,6 @@ class TestAzureOpenAIChatGenerator:
                 },
                 "tools": None,
                 "tools_strict": False,
-                "default_headers": {},
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
             },
         }
@@ -251,8 +248,8 @@ class TestAzureOpenAIChatGenerator:
                         "organization": None,
                         "streaming_callback": None,
                         "generation_kwargs": {},
-                        "timeout": 30.0,
-                        "max_retries": 5,
+                        "timeout": None,
+                        "max_retries": None,
                         "api_key": {"type": "env_var", "env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False},
                         "tools": None,
                         "tools_strict": False,
@@ -490,7 +487,7 @@ class TestAzureOpenAIChatGeneratorAsync:
             tools_strict=True,
         )
         assert component.async_client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-5-mini"
+        assert component._azure_deployment == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.tools == tools

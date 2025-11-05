@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
-from haystack.tools import ToolsType, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
+from haystack.tools import ToolsType, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset, warm_up_tools
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 
@@ -54,7 +54,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         self,
         *,
         api_key: Union[Secret, Callable[[], str], Callable[[], Awaitable[str]]] = Secret.from_env_var(
-            "AZURE_OPENAI_API_KEY"
+            "AZURE_OPENAI_API_KEY", strict=False
         ),
         azure_endpoint: Optional[str] = None,
         azure_deployment: str = "gpt-5-mini",
@@ -142,6 +142,18 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             tools_strict=tools_strict,
             http_client_kwargs=http_client_kwargs,
         )
+        self._is_warmed_up = False
+
+    def warm_up(self):
+        """
+        Warm up the Azure OpenAI chat generator.
+
+        This will warm up the tools registered in the chat generator.
+        This method is idempotent and will only warm up the tools once.
+        """
+        if not self._is_warmed_up:
+            warm_up_tools(self.tools)
+            self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
         """
