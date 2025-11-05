@@ -11,6 +11,8 @@ SentenceTransformersTextEmbedder transforms a string into a vector that captures
 
 When you perform embedding retrieval, use this component first to transform your query into a vector. Then, the embedding Retriever will use the vector to search for similar or relevant documents.
 
+<div className="key-value-table">
+
 |                                        |                                                                                                                         |
 | :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline                                              |
@@ -18,6 +20,8 @@ When you perform embedding retrieval, use this component first to transform your
 | **Output variables**                   | `embedding`: A list of float numbers                                                                                    |
 | **API reference**                      | [Embedders](/reference/embedders-api)                                                                                          |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_text_embedder.py |
+
+</div>
 
 ## Overview
 

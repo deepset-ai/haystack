@@ -9,6 +9,8 @@ description: "This is an embedding Retriever compatible with the MongoDB Atlas D
 
 This is an embedding Retriever compatible with the MongoDB Atlas Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
@@ -17,6 +19,8 @@ This is an embedding Retriever compatible with the MongoDB Atlas Document Store.
 | **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                          |
 | **API reference**                      | [MongoDB Atlas](/reference/integrations-mongodb-atlas)                                                                                                                                                                                                                           |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mongodb_atlas                                                                                                                                                                           |
+
+</div>
 
 The `MongoDBAtlasEmbeddingRetriever` is an embedding-based Retriever compatible with the [`MongoDBAtlasDocumentStore`](../../document-stores/mongodbatlasdocumentstore.mdx). It compares the query and Document embeddings and fetches the Documents most relevant to the query from the Document Store based on the outcome.
 

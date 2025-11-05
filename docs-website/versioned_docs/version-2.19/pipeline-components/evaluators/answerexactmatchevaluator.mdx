@@ -9,6 +9,8 @@ description: "The `AnswerExactMatchEvaluator` evaluates answers predicted by Hay
 
 The `AnswerExactMatchEvaluator` evaluates answers predicted by Haystack pipelines using ground truth labels. It checks character by character whether a predicted answer exactly matches the ground truth answer. This metric is called the exact match.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
@@ -16,6 +18,8 @@ The `AnswerExactMatchEvaluator` evaluates answers predicted by Haystack pipeline
 | **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 representing the proportion of questions in which any predicted answer matched the ground truth answers  <br /> <br />- `individual_scores`: A list of 0s and 1s, where 1 means that the predicted answer matched one of the ground truths |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/answer_exact_match.py |
+
+</div>
 
 ## Overview
 

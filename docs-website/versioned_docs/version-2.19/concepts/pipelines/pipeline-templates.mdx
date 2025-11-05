@@ -19,11 +19,15 @@ In this section we detail the available templates and how they can be used.
 
 Generates a pipeline to read a web page and ask questions about its content.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | Template identifier | `CHAT_WITH_WEBSITE` |
 | Template params | \- |
 | Inputs (**\*** means mandatory) | `'converter': {'meta': {}} `   `'fetcher': {'urls': ["https://example.com"]}`**\***   `'llm': {'generation_kwargs': {}}`   `'prompt': {'query': 'the question to ask'}` |
+
+</div>
 
 Example code:
 
@@ -39,11 +43,15 @@ pipeline.run({"fetcher": {"urls": ["https://haystack.deepset.ai:"]}, "prompt": {
 
 Generates a simple pipeline to ask a generic query using an `OpenAIGenerator`.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | Template identifier | `GENERATIVE_QA` |
 | Template params | \- |
 | Inputs (**\*** means mandatory) | `'generator': {'generation_kwargs': {}}`   `'prompt_builder': {'question': "" }` |
+
+</div>
 
 Example code:
 
@@ -58,11 +66,15 @@ pipeline.run({"prompt_builder":{"question":"Where is Rome?"}})
 
 Generates a pipeline that imports documents from one or more text files, creates the embeddings for each of them, and finally stores them in an [`InMemoryDocumentStore`](../../document-stores/inmemorydocumentstore.mdx).
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | Template identifier | `INDEXING` |
 | Template params | \- |
 | Inputs (**\*** means mandatory) | `'llm': {'generation_kwargs': {}}`   `'prompt_builder': {'query': ''}`   `'retriever': {'filters': {}, 'top_k': None}`   `'text_embedder': {'text': ''}}`\* |
+
+</div>
 
 Example code:
 
@@ -77,11 +89,15 @@ result = pipeline.run({"converter": {"sources": ["some_file.txt"]}})
 
 Generates a RAG pipeline using data that was previously indexed (you can use the Indexing template).
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | Template identifier | `RAG` |
 | Template params | \- |
 | Inputs (**\*** means mandatory) | `'llm': {'generation_kwargs': {}}`   `'prompt_builder': {'query': ''}`   `'retriever': {'filters': {}, 'top_k': None}`   `'text_embedder': {'text': ''}}`\* |
+
+</div>
 
 Example code:
 

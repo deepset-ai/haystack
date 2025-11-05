@@ -9,6 +9,8 @@ description: "Use this Router in pipelines to route documents based on their MIM
 
 Use this Router in pipelines to route documents based on their MIME types to different outputs for further processing.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | As a preprocessing component to route documents by type before sending them to specific [Converters](../converters.mdx) or [Preprocessors](../preprocessors.mdx) |
@@ -17,6 +19,8 @@ Use this Router in pipelines to route documents based on their MIME types to dif
 | **Output variables** | `unclassified`: A list of uncategorized [Documents](../../concepts/data-classes.mdx#document)  <br /> <br />`mime_types`: For example "text/plain", "application/pdf", `image/jpeg`: List of categorized [Documents](../../concepts/data-classes.mdx#document) |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/document_type_router.py |
+
+</div>
 
 ## Overview
 

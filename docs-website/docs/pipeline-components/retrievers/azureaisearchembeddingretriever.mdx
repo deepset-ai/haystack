@@ -11,6 +11,8 @@ An embedding Retriever compatible with the Azure AI Search Document Store.
 
 This Retriever accepts the embeddings of a single query as input and returns a list of matching documents.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the embedding retrieval pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
@@ -19,6 +21,8 @@ This Retriever accepts the embeddings of a single query as input and returns a l
 | **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                          |
 | **API reference**                      | [Azure AI Search](/reference/integrations-azure_ai_search)                                                                                                                                                                                                                       |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_ai_search                                                                                                                                                                         |
+
+</div>
 
 ## Overview
 

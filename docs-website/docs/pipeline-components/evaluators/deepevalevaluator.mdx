@@ -9,6 +9,8 @@ description: "The DeepEvalEvaluator evaluates Haystack pipelines using LLM-based
 
 The DeepEvalEvaluator evaluates Haystack pipelines using LLM-based metrics. It supports metrics like answer relevancy, faithfulness, contextual relevance, and more.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline has generated the inputs for the Evaluator. |
@@ -17,6 +19,8 @@ The DeepEvalEvaluator evaluates Haystack pipelines using LLM-based metrics. It s
 | **Output variables** | “results”: A nested list of metric results. There can be one or more results, depending on the metric. Each result is a dictionary containing:  <br /> <br />- `name` - The name of the metric  <br />- `score` - The score of the metric  <br />- `explanation` - An optional explanation of the score |
 | **API reference** | [DeepEval](/reference/integrations-deepeval) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/deepeval |
+
+</div>
 
 DeepEval is an evaluation framework that provides a number of LLM-based evaluation metrics. You can use the `DeepEvalEvaluator` component to evaluate a Haystack pipeline, such as a retrieval-augmented generated pipeline, against one of the metrics provided by DeepEval.
 
@@ -24,6 +28,8 @@ DeepEval is an evaluation framework that provides a number of LLM-based evaluati
 
 DeepEval supports a number of metrics, which we expose through the [DeepEval metric enumeration.](/reference/integrations-deepeval#deepevalmetric) [`DeepEvalEvaluator`](/reference/integrations-deepeval#deepevalevaluator) in Haystack supports the metrics listed below with the expected `metric_params` while initializing the Evaluator. Many metrics use OpenAI models and require you to set an environment variable `OPENAI_API_KEY`. For a complete guide on these metrics, visit the [DeepEval documentation](https://docs.confident-ai.com/docs/getting-started).
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline has generated the inputs for the Evaluator. |
@@ -32,6 +38,8 @@ DeepEval supports a number of metrics, which we expose through the [DeepEval met
 | **Output variables** | “results”: A nested list of metric results. There can be one or more results, depending on the metric. Each result is a dictionary containing:  <br /> <br />- `name` - The name of the metric  <br />- `score` - The score of the metric  <br />- `explanation` - An optional explanation of the score |
 | **API reference** | [DeepEval](/reference/integrations-deepeval) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/deepeval |
+
+</div>
 
 ## Parameters Overview
 
