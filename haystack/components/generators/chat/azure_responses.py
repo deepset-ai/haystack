@@ -225,7 +225,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         # If it's a str, most likely a callable
         elif isinstance(serialized_api_key, str):
-            data["init_parameters"]["api_key"] = serialized_api_key
+            data["init_parameters"]["api_key"] = deserialize_callable(serialized_api_key)
 
         # we only deserialize the tools if they are haystack tools
         # because openai tools are not serialized in the same way
