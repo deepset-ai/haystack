@@ -14,9 +14,9 @@ Use this component to retrieve neighboring sentences around relevant sentences t
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Used after the main Retriever component, like the `InMemoryEmbeddingRetriever` or any other Retriever. |
-| **Mandatory init variables** | "document_store": An instance of a Document Store |
-| **Mandatory run variables** | "retrieved_documents": A list of already retrieved documents for which you want to get a context window |
-| **Output variables** | “context_windows”: A list of strings  <br /> <br />"context_documents": A list of documents ordered by `split_idx_start` |
+| **Mandatory init variables** | `document_store`: An instance of a Document Store |
+| **Mandatory run variables** | `retrieved_documents`: A list of already retrieved documents for which you want to get a context window |
+| **Output variables** | `context_windows`: A list of strings  <br /> <br />`context_documents`: A list of documents ordered by `split_idx_start` |
 | **API reference** | [Retrievers](/reference/retrievers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/sentence_window_retriever.py |
 

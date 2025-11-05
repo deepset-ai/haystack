@@ -14,9 +14,9 @@ Converts JSON files to text documents.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx) , or right at the beginning of an indexing pipeline |
-| **Mandatory init variables** | ONE OF, OR BOTH:  <br /> <br />"jq_schema": A jq filter string to extract content  <br /> <br />"content_key": A key string to extract document content |
-| **Mandatory run variables** | "sources": A list of file paths or [ByteStream](../../concepts/data-classes.mdx#bytestream) objects |
-| **Output variables** | "documents": A list of documents |
+| **Mandatory init variables** | ONE OF, OR BOTH:  <br /> <br />`jq_schema`: A jq filter string to extract content  <br /> <br />`content_key`: A key string to extract document content |
+| **Mandatory run variables** | `sources`: A list of file paths or [ByteStream](../../concepts/data-classes.mdx#bytestream) objects |
+| **Output variables** | `documents`: A list of documents |
 | **API reference** | [Converters](/reference/converters-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/json.py |
 

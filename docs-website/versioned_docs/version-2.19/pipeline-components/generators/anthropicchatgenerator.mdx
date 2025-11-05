@@ -14,9 +14,9 @@ This component enables chat completions using Anthropic large language models (L
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)  |
-| **Mandatory init variables** | "api_key": An Anthropic API key. Can be set with `ANTHROPIC_API_KEY` env var. |
-| **Mandatory run variables** | “messages” A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
-| **Output variables** | "replies": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Mandatory init variables** | `api_key`: An Anthropic API key. Can be set with `ANTHROPIC_API_KEY` env var. |
+| **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
 | **API reference** | [Anthropic](/reference/integrations-anthropic) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic |
 

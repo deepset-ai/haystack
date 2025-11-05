@@ -14,9 +14,9 @@ This component transforms a string into a vector that captures its semantics usi
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
-| **Mandatory init variables** | "api_key": The Jina API key. Can be set with `JINA_API_KEY` env var. |
-| **Mandatory run variables** | “text”: A string |
-| **Output variables** | “embedding”: A list of float numbers  <br /> <br />”meta”: A dictionary of metadata |
+| **Mandatory init variables** | `api_key`: The Jina API key. Can be set with `JINA_API_KEY` env var. |
+| **Mandatory run variables** | `text`: A string |
+| **Output variables** | `embedding`: A list of float numbers  <br /> <br />`meta`: A dictionary of metadata |
 | **API reference** | [Jina](/reference/integrations-jina) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina |
 
@@ -57,13 +57,12 @@ print(text_embedder.run(text_to_embed))
 
 ## {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
 ## 'meta': {'model': 'text-embedding-ada-002-v2',
-##              'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
+## 'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
 
 ```
 
-:::note
+:::info
 We recommend setting JINA_API_KEY as an environment variable instead of setting it as a parameter.
-
 :::
 
 ### In a pipeline
@@ -98,7 +97,7 @@ result = query_pipeline.run({"text_embedder":{"text": query}})
 print(result['retriever']['documents'][0])
 
 ## Document(id=..., mimetype: 'text/plain',
-##  text: 'My name is Wolfgang and I live in Berlin')
+## text: 'My name is Wolfgang and I live in Berlin')
 
 ```
 

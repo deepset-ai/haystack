@@ -14,9 +14,9 @@ Use this Retriever with the InMemoryDocumentStore if you're looking for embeddin
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In query pipelines:   In a RAG pipeline, before a [`PromptBuilder`](../builders/promptbuilder.mdx)   In a semantic search pipeline, as the last component   In an extractive QA pipeline, after a Tex tEmbedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)  |
-| **Mandatory init variables** | "document_store": An instance of [InMemoryDocumentStore](../../document-stores/inmemorydocumentstore.mdx) |
-| **Mandatory run variables** | "query_embedding": A list of floating point numbers |
-| **Output variables** | "documents": A list of documents |
+| **Mandatory init variables** | `document_store`: An instance of [InMemoryDocumentStore](../../document-stores/inmemorydocumentstore.mdx) |
+| **Mandatory run variables** | `query_embedding`: A list of floating point numbers |
+| **Output variables** | `documents`: A list of documents |
 | **API reference** | [Retrievers](/reference/retrievers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/in_memory/embedding_retriever.py |
 

@@ -16,9 +16,9 @@ Use this component to join different branches of a pipeline into a single output
 |                                        |                                                                                                                                                         |
 | :------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Most common position in a pipeline** | Flexible: Can appear at the beginning of a pipeline or at the start of loops.                                                                           |
-| **Mandatory init variables**           | "type": The type of data expected from preceding components                                                                                             |
-| **Mandatory run variables**            | “\*\*kwargs”: Any input data type defined at the initialization. This input is variadic, meaning you can connect a variable number of components to it. |
-| **Output variables**                   | “value”: The first value received from the connected components.                                                                                        |
+| **Mandatory init variables**           | `type`: The type of data expected from preceding components                                                                                             |
+| **Mandatory run variables**            | `**kwargs`: Any input data type defined at the initialization. This input is variadic, meaning you can connect a variable number of components to it. |
+| **Output variables**                   | `value`: The first value received from the connected components.                                                                                        |
 | **API reference**                      | [Joiners](/reference/joiners-api)                                                                                                                              |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/joiners/branch.py                                                                |
 
