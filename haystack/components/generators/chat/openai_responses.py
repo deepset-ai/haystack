@@ -565,7 +565,9 @@ def _convert_response_chunk_to_streaming_chunk(
     elif chunk.type == "response.output_item.added" and chunk.item.type == "reasoning":
         extra = chunk.item.to_dict()
         reasoning = ReasoningContent(reasoning_text="", extra=extra)
-        return StreamingChunk(content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning)
+        return StreamingChunk(
+            content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, start=True
+        )
 
     elif chunk.type == "response.reasoning_summary_text.delta":
         # we remove the delta from the extra because it is already in the reasoning_text
@@ -573,7 +575,9 @@ def _convert_response_chunk_to_streaming_chunk(
         extra = chunk.to_dict()
         extra.pop("delta")
         reasoning = ReasoningContent(reasoning_text=chunk.delta, extra=extra)
-        return StreamingChunk(content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning)
+        return StreamingChunk(
+            content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, start=False
+        )
 
     # the function name is only streamed at the start and end of the function call
     elif chunk.type == "response.output_item.added" and chunk.item.type == "function_call":
@@ -594,7 +598,7 @@ def _convert_response_chunk_to_streaming_chunk(
         # so we use the item_id which is the function call id
         tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item_id, arguments=arguments, extra=extra)
         return StreamingChunk(
-            content="", component_info=component_info, index=chunk.output_index, tool_calls=[tool_call], start=True
+            content="", component_info=component_info, index=chunk.output_index, tool_calls=[tool_call], start=False
         )
 
     # we return rest of the chunk as is
@@ -740,7 +744,8 @@ def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[s
                 formatted_tool_results.append(tool_result)
         formatted_messages.extend(formatted_tool_results)
 
-    # the API expects a reasoning id even if there is no reasoning text
+    # Note: the API expects a reasoning id even if there is no reasoning text
+    # function calls without reasoning ids are not supported by the API
     if reasonings:
         formatted_reasonings = []
         for reasoning in reasonings:

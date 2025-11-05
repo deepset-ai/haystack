@@ -34,6 +34,7 @@ from haystack.components.generators.chat.openai_responses import (
     _convert_response_chunk_to_streaming_chunk,
     convert_message_to_responses_api_format,
 )
+from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import (
     ChatMessage,
     ChatRole,
@@ -142,7 +143,7 @@ class TestOpenAIResponsesChatGenerator:
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"),
             model="gpt-4o-mini",
-            streaming_callback=callback,
+            streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
             timeout=40.0,
@@ -153,7 +154,7 @@ class TestOpenAIResponsesChatGenerator:
         )
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4o-mini"
-        assert component.streaming_callback is callback
+        assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 40.0
         assert component.client.max_retries == 1
@@ -167,13 +168,13 @@ class TestOpenAIResponsesChatGenerator:
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"),
             model="gpt-4o-mini",
-            streaming_callback=callback,
+            streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
         assert component.model == "gpt-4o-mini"
-        assert component.streaming_callback is callback
+        assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 100.0
         assert component.client.max_retries == 10
@@ -206,7 +207,7 @@ class TestOpenAIResponsesChatGenerator:
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_env_var("ENV_VAR"),
             model="gpt-5-mini",
-            streaming_callback=callback,
+            streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params", "text_format": calendar_event_model},
             tools=[tool],
@@ -226,7 +227,7 @@ class TestOpenAIResponsesChatGenerator:
                 "api_base_url": "test-base-url",
                 "max_retries": 10,
                 "timeout": 100.0,
-                "streaming_callback": "generators.chat.test_openai_responses.callback",
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {
                     "max_tokens": 10,
                     "some_test_param": "test-params",
@@ -276,7 +277,7 @@ class TestOpenAIResponsesChatGenerator:
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "model": "gpt-5-mini",
                 "api_base_url": "test-base-url",
-                "streaming_callback": "generators.chat.test_openai_responses.callback",
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "max_retries": 10,
                 "timeout": 100.0,
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
@@ -299,7 +300,7 @@ class TestOpenAIResponsesChatGenerator:
 
         assert isinstance(component, OpenAIResponsesChatGenerator)
         assert component.model == "gpt-5-mini"
-        assert component.streaming_callback is callback
+        assert component.streaming_callback is print_streaming_chunk
         assert component.api_base_url == "test-base-url"
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
@@ -320,7 +321,7 @@ class TestOpenAIResponsesChatGenerator:
                 "model": "gpt-5-mini",
                 "organization": None,
                 "api_base_url": "test-base-url",
-                "streaming_callback": "test.components.generators.chat.test_openai_responses.callback",
+                "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "generation_kwargs": {"max_tokens": 10, "some_test_param": "test-params"},
                 "tools": None,
             },
@@ -441,15 +442,6 @@ class TestOpenAIResponsesChatGenerator:
         assert "Marketing Summit" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    # So far from documentation, responses.parse only supports BaseModel
-    def test_live_run_with_text_format_json_schema(self):
-        pass
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -961,7 +953,7 @@ class TestOpenAIResponsesChatGenerator:
                 index=0,
                 tool_calls=None,
                 tool_call_result=None,
-                start=False,
+                start=True,
                 finish_reason=None,
                 reasoning=ReasoningContent(
                     reasoning_text="",
@@ -1042,7 +1034,7 @@ class TestOpenAIResponsesChatGenerator:
                     )
                 ],
                 tool_call_result=None,
-                start=True,
+                start=False,
                 finish_reason=None,
                 reasoning=None,
             ),
@@ -1067,7 +1059,7 @@ class TestOpenAIResponsesChatGenerator:
                     )
                 ],
                 tool_call_result=None,
-                start=True,
+                start=False,
                 finish_reason=None,
                 reasoning=None,
             ),
