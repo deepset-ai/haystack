@@ -61,7 +61,6 @@ class SentenceTransformersDocumentEmbedder:
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
         encode_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-        *,
         revision: Optional[str] = None,
     ):
         """
