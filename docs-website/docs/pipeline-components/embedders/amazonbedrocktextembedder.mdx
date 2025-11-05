@@ -12,7 +12,7 @@ This component computes embeddings for text (such as a query) using models throu
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
-| **Mandatory init variables** | "model": The embedding model to use  <br /> <br />"aws_access_key_id": AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />"aws_secret_access_key": AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />"aws_region_name": AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
+| **Mandatory init variables** | `model`: The embedding model to use  <br /> <br />`aws_access_key_id`: AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />`aws_secret_access_key`: AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />`aws_region_name`: AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
 | **Mandatory run variables** | “text”: A string |
 | **Output variables** | “embedding”: A list of float numbers (vector) |
 | **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |

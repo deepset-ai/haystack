@@ -12,9 +12,9 @@ This component constructs prompts dynamically by processing chat messages.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [Generator](../generators.mdx)                                                                                                         |
-| **Mandatory init variables**           | "template": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects or a special string template. Needs to be provided either during init or run. |
-| **Mandatory run variables**            | “\*\*kwargs”: Any strings that should be used to render the prompt template. See [Variables](#variables) section for more details.             |
-| **Output variables**                   | “prompt”: A dynamically constructed prompt                                                                                                     |
+| **Mandatory init variables**           | `template`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects or a special string template. Needs to be provided either during init or run. |
+| **Mandatory run variables**            | `**kwargs`: Any strings that should be used to render the prompt template. See [Variables](#variables) section for more details.             |
+| **Output variables**                   | `prompt`: A dynamically constructed prompt                                                                                                     |
 | **API reference**                      | [Builders](/reference/builders-api)                                                                                                                   |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/builders/chat_prompt_builder.py                                         |
 

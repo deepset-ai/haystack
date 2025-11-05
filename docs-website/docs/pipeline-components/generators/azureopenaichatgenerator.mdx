@@ -12,7 +12,7 @@ This component enables chat completion using OpenAI’s large language models (L
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
-| **Mandatory init variables** | "api_key": The Azure OpenAI API key. Can be set with `AZURE_OPENAI_API_KEY` env var.  <br /> <br />"azure_ad_token": Microsoft Entra ID token. Can be set with `AZURE_OPENAI_AD_TOKEN` env var. |
+| **Mandatory init variables** | `api_key`: The Azure OpenAI API key. Can be set with `AZURE_OPENAI_API_KEY` env var.  <br /> <br />`azure_ad_token`: Microsoft Entra ID token. Can be set with `AZURE_OPENAI_AD_TOKEN` env var. |
 | **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables** | “replies”: A list of alternative replies of the LLM to the input chat |
 | **API reference** | [Generators](/reference/generators-api) |

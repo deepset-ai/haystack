@@ -12,7 +12,7 @@ This Evaluator uses an LLM to evaluate inputs based on a prompt containing user-
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
-| **Mandatory init variables** | "instructions": The prompt instructions string  <br /> <br />"inputs": The expected inputs  <br /> <br />"outputs": The output names of the evaluation results  <br /> <br />"examples": Few-shot examples conforming to the input and output format |
+| **Mandatory init variables** | `instructions`: The prompt instructions string  <br /> <br />`inputs`: The expected inputs  <br /> <br />`outputs`: The output names of the evaluation results  <br /> <br />`examples`: Few-shot examples conforming to the input and output format |
 | **Mandatory run variables** | “inputs”: Defined by the user – for example, questions or responses |
 | **Output variables** | “results”: A dictionary containing keys defined by the user, such as score |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
@@ -20,7 +20,7 @@ This Evaluator uses an LLM to evaluate inputs based on a prompt containing user-
 
 ## Overview
 
-The `LLMEvaluator` component can evaluate answers, documents, or any other outputs of a Haystack pipeline based on a user-defined aspect. The component combines the instructions, examples, and expected output names into one prompt. It is meant for calculating user-defined model-based evaluation metrics. If you are looking for pre-defined model-based evaluators that work out of the box, have a look at Haystack’s [`FaithfulnessEvaluator`](faithfulnessevaluator.mdx) and [`ContextRelevanceEvaluator`](contextrelevanceevaluator.mdx) components instead. 
+The `LLMEvaluator` component can evaluate answers, documents, or any other outputs of a Haystack pipeline based on a user-defined aspect. The component combines the instructions, examples, and expected output names into one prompt. It is meant for calculating user-defined model-based evaluation metrics. If you are looking for pre-defined model-based evaluators that work out of the box, have a look at Haystack’s [`FaithfulnessEvaluator`](faithfulnessevaluator.mdx) and [`ContextRelevanceEvaluator`](contextrelevanceevaluator.mdx) components instead.
 
 ### Parameters
 
@@ -28,7 +28,7 @@ The default model for this Evaluator is `gpt-4o-mini`. You can override the mode
 
 If you are not initializing the Evaluator with your own Chat Generator other than OpenAI, a valid OpenAI API key must be set as an `OPENAI_API_KEY` environment variable. For details, see our [documentation page on secret management](../../concepts/secret-management.mdx).
 
-`LLMEvaluator` requires six parameters for initialization: 
+`LLMEvaluator` requires six parameters for initialization:
 
 - `instructions`: The prompt instructions to use for evaluation, such as a question about the inputs that the LLM can answer with _yes,_ _no_, or a score.
 - `inputs`: The inputs that the `LLMEvaluator` expects and that it evaluates. The inputs determine the incoming connections of the component. Each input is a tuple of an input name and input type. Input types must be lists. An example could be `[("responses", List[str])]`.
@@ -37,8 +37,8 @@ If you are not initializing the Evaluator with your own Chat Generator other tha
 - `raise_on_failure`: If True (default), raise an exception on an unsuccessful API call.
 - `progress_bar`: Whether to show a progress bar during the evaluation. None is the default.
 
-Each example must be a dictionary with keys `inputs` and `outputs`.  
-`inputs` must be a dictionary with keys `questions` and `contexts`.  
+Each example must be a dictionary with keys `inputs` and `outputs`.
+`inputs` must be a dictionary with keys `questions` and `contexts`.
 `outputs` must be a dictionary with `statements` and `statement_scores`.
 
 Here is the expected format:

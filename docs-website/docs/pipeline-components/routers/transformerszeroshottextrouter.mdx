@@ -12,7 +12,7 @@ Use this component to route text input to various output connections based on it
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory init variables** | "labels": A list of labels for classification  <br /> <br />"token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory init variables** | `labels`: A list of labels for classification  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | “text”: The text to be routed to one of the specified outputs based on which label it has been categorized into |
 | **Output variables** | “documents”: A dictionary with the label as key and the text as value |
 | **API reference** | [Routers](/reference/routers-api) |
@@ -32,15 +32,15 @@ To see the full list of parameters, check out our [API reference](/reference/rou
 
 ### On its own
 
-The `TransformersZeroShotTextRouter` isn’t very effective on its own, as its main strength lies in working within a pipeline. The component's true potential is unlocked when it is integrated into a pipeline, where it can efficiently route text to the most appropriate components. Please see the following section for a complete example of usage.  
+The `TransformersZeroShotTextRouter` isn’t very effective on its own, as its main strength lies in working within a pipeline. The component's true potential is unlocked when it is integrated into a pipeline, where it can efficiently route text to the most appropriate components. Please see the following section for a complete example of usage.
 
 ### In a pipeline
 
-Below is an example of a simple pipeline that routes input text to an appropriate route in the pipeline. 
+Below is an example of a simple pipeline that routes input text to an appropriate route in the pipeline.
 
-We first create an `InMemoryDocumentStore` and populate it with documents about Germany and France, embedding these documents using `SentenceTransformersDocumentEmbedder`. 
+We first create an `InMemoryDocumentStore` and populate it with documents about Germany and France, embedding these documents using `SentenceTransformersDocumentEmbedder`.
 
-We then create a retrieving pipeline with the `TransformersZeroShotTextRouter` to categorize an incoming text as either "passage" or "query" based on these predefined labels. Depending on the categorization, the text is then processed by appropriate Embedders tailored for passages and queries, respectively. These Embedders generate embeddings that are used by `InMemoryEmbeddingRetriever` to find relevant documents in the Document Store. 
+We then create a retrieving pipeline with the `TransformersZeroShotTextRouter` to categorize an incoming text as either "passage" or "query" based on these predefined labels. Depending on the categorization, the text is then processed by appropriate Embedders tailored for passages and queries, respectively. These Embedders generate embeddings that are used by `InMemoryEmbeddingRetriever` to find relevant documents in the Document Store.
 
 Finally, the pipeline is executed with a sample text: "What is the capital of Germany?” which categorizes this input text as “query” and routes it to Query Embedder and subsequently Query Retriever to return the relevant results.
 
@@ -99,10 +99,10 @@ p.connect("query_embedder.embedding", "query_retriever.query_embedding")
 result = p.run({"text_router": {"text": "What is the capital of Germany?"}})
 print(result)
 
->>{'query_retriever': {'documents': [Document(id=32d393dd8ee60648ae7e630cfe34b1922e747812ddf9a2c8b3650e66e0ecdb5a, 
-content: 'Germany, officially the Federal Republic of Germany, is a country in the western region of Central E...', 
-score: 0.8625669285150891), Document(id=c17102d8d818ce5cdfee0288488c518f5c9df238a9739a080142090e8c4cb3ba, 
-content: 'France, officially the French Republic, is a country located primarily in Western Europe. France is ...', 
+>>{'query_retriever': {'documents': [Document(id=32d393dd8ee60648ae7e630cfe34b1922e747812ddf9a2c8b3650e66e0ecdb5a,
+content: 'Germany, officially the Federal Republic of Germany, is a country in the western region of Central E...',
+score: 0.8625669285150891), Document(id=c17102d8d818ce5cdfee0288488c518f5c9df238a9739a080142090e8c4cb3ba,
+content: 'France, officially the French Republic, is a country located primarily in Western Europe. France is ...',
 score: 0.7637571978602222)]}}
 
 ```

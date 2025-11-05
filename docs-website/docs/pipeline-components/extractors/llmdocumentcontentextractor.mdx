@@ -12,9 +12,9 @@ Extracts textual content from image-based documents using a vision-enabled Large
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After [Converters](../converters.mdx) in an indexing pipeline to extract text from image-based documents |
-| **Mandatory init variables** | "chat_generator": A ChatGenerator instance that supports vision-based input  <br /> <br />"prompt": Instructional text for the LLM on how to extract content (no Jinja variables allowed) |
-| **Mandatory run variables** | "documents": A list of documents with file paths in metadata |
-| **Output variables** | "documents": Successfully processed documents with extracted content  <br /> <br />"failed_documents": Documents that failed processing with error metadata |
+| **Mandatory init variables** | `chat_generator`: A ChatGenerator instance that supports vision-based input  <br /> <br />`prompt`: Instructional text for the LLM on how to extract content (no Jinja variables allowed) |
+| **Mandatory run variables** | `documents`: A list of documents with file paths in metadata |
+| **Output variables** | `documents`: Successfully processed documents with extracted content  <br /> <br />`failed_documents`: Documents that failed processing with error metadata |
 | **API reference** | [Extractors](/reference/extractors-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/extractors/image/llm_document_content_extractor.py |
 

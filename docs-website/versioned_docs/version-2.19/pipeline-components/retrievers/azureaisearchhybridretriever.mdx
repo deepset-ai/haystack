@@ -14,8 +14,8 @@ This Retriever combines embedding-based retrieval and BM25 text search search to
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. After a TextEmbedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a hybrid search pipeline 3. After a TextEmbedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
-| **Mandatory init variables** | "document_store": An instance of [`AzureAISearchDocumentStore`](../../document-stores/azureaisearchdocumentstore.mdx)  |
-| **Mandatory run variables** | "query": A string  <br /> <br />”query_embedding”: A list of floats |
+| **Mandatory init variables** | `document_store`: An instance of [`AzureAISearchDocumentStore`](../../document-stores/azureaisearchdocumentstore.mdx)  |
+| **Mandatory run variables** | `query`: A string  <br /> <br />”query_embedding”: A list of floats |
 | **Output variables** | “documents”: A list of documents (matching the query) |
 | **API reference** | [Azure AI Search](/reference/integrations-azure_ai_search) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_ai_search |

@@ -12,7 +12,7 @@ Use this component to route text input to various output connections based on a 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory init variables** | "model": The name or path of a Hugging Face model for text classification  <br /> <br />"token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory init variables** | `model`: The name or path of a Hugging Face model for text classification  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | “text”: The text to be routed to one of the specified outputs based on which label it has been categorized into |
 | **Output variables** | “documents”: A dictionary with the label as key and the text as value |
 | **API reference** | [Routers](/reference/routers-api) |
@@ -32,7 +32,7 @@ To see the full list of parameters, check out our [API reference](/reference/rou
 
 ### On its own
 
-The `TransformersTextRouter` isn’t very effective on its own, as its main strength lies in working within a pipeline. The component's true potential is unlocked when it is integrated into a pipeline, where it can efficiently route text to the most appropriate components. Please see the following section for a complete example of usage.  
+The `TransformersTextRouter` isn’t very effective on its own, as its main strength lies in working within a pipeline. The component's true potential is unlocked when it is integrated into a pipeline, where it can efficiently route text to the most appropriate components. Please see the following section for a complete example of usage.
 
 ### In a pipeline
 

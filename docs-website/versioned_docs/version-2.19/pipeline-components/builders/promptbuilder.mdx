@@ -12,9 +12,9 @@ Use this component in pipelines before a Generator to render a prompt template a
 |                                        |                                                                                                                                     |
 | :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | In a querying pipeline, before a [Generator](../generators.mdx)                                                                      |
-| **Mandatory init variables**           | "template": A prompt template string that uses Jinja2 syntax                                                                        |
-| **Mandatory run variables**            | “\*\*kwargs”: Any strings that should be used to render the prompt template. See [Variables](#variables)  section for more details. |
-| **Output variables**                   | “prompt”: A string that represents the rendered prompt template                                                                     |
+| **Mandatory init variables**           | `template`: A prompt template string that uses Jinja2 syntax                                                                        |
+| **Mandatory run variables**            | `**kwargs`: Any strings that should be used to render the prompt template. See [Variables](#variables)  section for more details. |
+| **Output variables**                   | `prompt`: A string that represents the rendered prompt template                                                                     |
 | **API reference**                      | [Builders](/reference/builders-api)                                                                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/builders/prompt_builder.py                                   |
 

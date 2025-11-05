@@ -12,15 +12,15 @@ Use this component to write documents into a Document Store of your choice.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | As the last component in an indexing pipeline                                                     |
-| **Mandatory init variables**           | "document_store": A Document Store instance                                                       |
-| **Mandatory run variables**            | "documents": A list of documents                                                                  |
-| **Output variables**                   | "documents_written": The number of documents written (integer)                                    |
+| **Mandatory init variables**           | `document_store`: A Document Store instance                                                       |
+| **Mandatory run variables**            | `documents`: A list of documents                                                                  |
+| **Output variables**                   | `documents_written`: The number of documents written (integer)                                    |
 | **API reference**                      | [Document Writers](/reference/document-writers-api)                                                      |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/writers/document_writer.py |
 
 ## Overview
 
-`DocumentWriter` writes a list of documents into a Document Store of your choice. It’s typically used in an indexing pipeline as the final step after preprocessing documents and creating their embeddings. 
+`DocumentWriter` writes a list of documents into a Document Store of your choice. It’s typically used in an indexing pipeline as the final step after preprocessing documents and creating their embeddings.
 
 To use this component with a specific file type, make sure you use the correct [Converter](../converters.mdx) before it. For example, to use `DocumentWriter` with Markdown files, use the `MarkdownToDocument` component before `DocumentWriter` in your indexing pipeline.
 

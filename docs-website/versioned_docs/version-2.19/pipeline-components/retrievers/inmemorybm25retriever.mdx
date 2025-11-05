@@ -12,9 +12,9 @@ A keyword-based Retriever compatible with InMemoryDocumentStore.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In query pipelines:   In a RAG pipeline, before a [`PromptBuilder`](../builders/promptbuilder.mdx)   In a semantic search pipeline, as the last component   In an extractive QA pipeline, before an [`ExtractiveReader`](../readers/extractivereader.mdx)  |
-| **Mandatory init variables** | "document_store": An instance of [InMemoryDocumentStore](../../document-stores/inmemorydocumentstore.mdx) |
-| **Mandatory run variables** | "query": A query string |
-| **Output variables** | "documents": A list of documents (matching the query) |
+| **Mandatory init variables** | `document_store`: An instance of [InMemoryDocumentStore](../../document-stores/inmemorydocumentstore.mdx) |
+| **Mandatory run variables** | `query`: A query string |
+| **Output variables** | `documents`: A list of documents (matching the query) |
 | **API reference** | [Retrievers](/reference/retrievers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/in_memory/bm25_retriever.py |
 

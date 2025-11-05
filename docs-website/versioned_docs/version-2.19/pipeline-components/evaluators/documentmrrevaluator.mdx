@@ -12,7 +12,7 @@ The `DocumentMRREvaluator` evaluates documents retrieved by Haystack pipelines u
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
-| **Mandatory run variables** | "ground_truth_documents": A list containing another list of ground truth documents. This accounts for one list of ground truth documents per question.  <br /> <br />"retrieved_documents": A list containing another list of retrieved documents. This accounts for one list of retrieved documents per question. |
+| **Mandatory run variables** | `ground_truth_documents`: A list containing another list of ground truth documents. This accounts for one list of ground truth documents per question.  <br /> <br />`retrieved_documents`: A list containing another list of retrieved documents. This accounts for one list of retrieved documents per question. |
 | **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 that represents the mean reciprocal rank  <br /> <br />- `individual_scores`: A list of the individual reciprocal ranks ranging from 0.0 to 1.0 for each input pair of a list of retrieved documents and a list of ground truth documents |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/document_mrr.py |

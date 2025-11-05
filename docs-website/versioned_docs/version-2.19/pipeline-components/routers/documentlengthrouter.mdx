@@ -12,8 +12,8 @@ Routes documents to different output connections based on the length of their `c
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory run variables** | "documents": A list of documents |
-| **Output variables** | "short_documents": A list of documents where `content` is None or the length of `content` is less than or equal to the threshold.  <br /> <br />”long_documents”: A list of documents where the length of `content` is greater than the threshold. |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `short_documents`: A list of documents where `content` is None or the length of `content` is less than or equal to the threshold.  <br /> <br />”long_documents”: A list of documents where the length of `content` is greater than the threshold. |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/document_length_router.py |
 

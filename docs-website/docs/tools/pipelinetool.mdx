@@ -11,17 +11,17 @@ Wraps a Haystack pipeline so an LLM can call it as a tool.
 
 |  |  |
 | --- | --- |
-| **Mandatory init variables** | "pipeline": The Haystack pipeline to wrap  <br /> <br />"name": The name of the tool  <br /> <br />"description": Description of the tool |
+| **Mandatory init variables** | `pipeline`: The Haystack pipeline to wrap  <br /> <br />`name`: The name of the tool  <br /> <br />`description`: Description of the tool |
 | **API reference** | [Tools](/reference/tools-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/pipeline_tool.py |
 
 ## Overview
 
-`PipelineTool` lets you wrap a whole Haystack pipeline and expose it as a tool that an LLM can call.  
-It replaces the older workflow of first wrapping a pipeline in a `SuperComponent` and then passing that to  
+`PipelineTool` lets you wrap a whole Haystack pipeline and expose it as a tool that an LLM can call.
+It replaces the older workflow of first wrapping a pipeline in a `SuperComponent` and then passing that to
 `ComponentTool`.
 
-`PipelineTool` builds the tool parameter schema from the pipeline’s input sockets and uses the underlying components’ docstrings for input descriptions. You can choose which pipeline inputs and outputs to expose with  
+`PipelineTool` builds the tool parameter schema from the pipeline’s input sockets and uses the underlying components’ docstrings for input descriptions. You can choose which pipeline inputs and outputs to expose with
 `input_mapping` and `output_mapping`. It works with both `Pipeline` and `AsyncPipeline` and can be used in a pipeline with `ToolInvoker` or directly with the `Agent` component.
 
 ### Parameters
@@ -29,9 +29,9 @@ It replaces the older workflow of first wrapping a pipeline in a `SuperComponent
 - `pipeline` is mandatory and must be a `Pipeline` or `AsyncPipeline` instance.
 - `name` is mandatory and specifies the tool name.
 - `description` is mandatory and explains what the tool does.
-- `input_mapping` is optional. It maps tool input names to pipeline input socket paths. If omitted, a default  
+- `input_mapping` is optional. It maps tool input names to pipeline input socket paths. If omitted, a default
   mapping is created from all pipeline inputs.
-- `output_mapping` is optional. It maps pipeline output socket paths to tool output names. If omitted, a default  
+- `output_mapping` is optional. It maps pipeline output socket paths to tool output names. If omitted, a default
   mapping is created from all pipeline outputs.
 
 ## Usage

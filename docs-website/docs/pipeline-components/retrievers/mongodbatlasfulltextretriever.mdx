@@ -12,7 +12,7 @@ This is a full-text search Retriever compatible with the MongoDB Atlas Document 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. Before a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [ExtractiveReader](../readers/extractivereader.mdx) in an extractive QA pipeline |
-| **Mandatory init variables**           | "document_store": An instance of a [MongoDBAtlasDocumentStore](../../document-stores/mongodbatlasdocumentstore.mdx)                                                                                                                   |
+| **Mandatory init variables**           | `document_store`: An instance of a [MongoDBAtlasDocumentStore](../../document-stores/mongodbatlasdocumentstore.mdx)                                                                                                                   |
 | **Mandatory run variables**            | “query”: A query string to search for. If the query contains multiple terms, Atlas Search evaluates each term separately for matches.                                                                             |
 | **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                  |
 | **API reference**                      | [MongoDB Atlas](/reference/integrations-mongodb-atlas)                                                                                                                                                                   |
@@ -22,7 +22,7 @@ The `MongoDBAtlasFullTextRetriever` is a full-text search Retriever compatible w
 
 ### Parameters
 
-In addition to the `query`, the `MongoDBAtlasFullTextRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space. 
+In addition to the `query`, the `MongoDBAtlasFullTextRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
 
 When running the component, you can specify more optional parameters such as `fuzzy` or `synonyms`, `match_criteria`, `score`. Check out our [MongoDB Atlas](/reference/integrations-mongodb-atlas) API Reference for more details on all parameters.
 

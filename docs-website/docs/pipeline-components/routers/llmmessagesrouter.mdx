@@ -14,7 +14,7 @@ Use this component to route Chat Messages to various output connections using a 
 | **Most common position in a pipeline** | Flexible |
 | **Mandatory init variables** | “chat_generator”: A Chat Generator instance (the LLM used for classification)  <br /> <br />”output_names”: A list of output connection names  <br /> <br />”output_patterns”: A list of regular expressions to be matched against the output of the LLM. |
 | **Mandatory run variables** | “messages”: A list of Chat Messages |
-| **Output variables** | "chat_generator_text": The text output of the LLM, useful for debugging  <br /> <br />"output_names": Each contains the list of messages that matched the corresponding pattern  <br /> <br />"unmatched": Messages not matching any pattern |
+| **Output variables** | `chat_generator_text`: The text output of the LLM, useful for debugging  <br /> <br />`output_names`: Each contains the list of messages that matched the corresponding pattern  <br /> <br />`unmatched`: Messages not matching any pattern |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/llm_messages_router.py |
 
@@ -24,7 +24,7 @@ Use this component to route Chat Messages to various output connections using a 
 
 This is especially useful for tasks like content moderation.  If a message is deemed safe, you might forward it to a Chat Generator to generate a reply. Otherwise, you may halt the interaction or log the message separately.
 
-First, you need to pass a ChatGenerator instance in the `chat_generator` parameter.  
+First, you need to pass a ChatGenerator instance in the `chat_generator` parameter.
 Then, define two lists of the same length:
 
 - `output_names`: The names of the outputs to which you want to route messages,
@@ -114,7 +114,7 @@ print(router.run(messages))
 
 ### In a pipeline
 
-Below is an example of a RAG pipeline that includes content moderation.  
+Below is an example of a RAG pipeline that includes content moderation.
 Safe messages are routed to an LLM to generate a response, while unsafe messages are returned through the `moderation_router.unsafe` output edge.
 
 ```python

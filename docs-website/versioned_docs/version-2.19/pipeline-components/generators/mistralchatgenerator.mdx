@@ -12,9 +12,9 @@ This component enables chat completion using Mistral’s text generation models.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)  |
-| **Mandatory init variables** | "api_key": The Mistral API key. Can be set with `MISTRAL_API_KEY` env var. |
+| **Mandatory init variables** | `api_key`: The Mistral API key. Can be set with `MISTRAL_API_KEY` env var. |
 | **Mandatory run variables** | “messages” A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
-| **Output variables** | "replies": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />”meta”: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
 | **API reference** | [Mistral](/reference/integrations-mistral) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mistral |
 

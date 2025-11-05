@@ -12,9 +12,9 @@ description: "`AmazonBedrockDocumentImageEmbedder` computes image embeddings for
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline |
-| **Mandatory init variables** | "model": The multimodal embedding model to use.  <br /> <br />"aws_access_key_id": AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />"aws_secret_access_key": AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />"aws_region_name": AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
-| **Mandatory run variables** | "documents": A list of documents, with a meta field containing an image file path |
-| **Output variables** | "documents": A list of documents (enriched with embeddings) |
+| **Mandatory init variables** | `model`: The multimodal embedding model to use.  <br /> <br />`aws_access_key_id`: AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />`aws_secret_access_key`: AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />`aws_region_name`: AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
+| **Mandatory run variables** | `documents`: A list of documents, with a meta field containing an image file path |
+| **Output variables** | `documents`: A list of documents (enriched with embeddings) |
 | **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_bedrock |
 

@@ -12,9 +12,9 @@ Use this component in pipelines to route a query based on its language.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | As the first component to route a query to different [Retrievers](../retrievers.mdx) , based on its language |
-| **Mandatory init variables** | "languages": A list of ISO language codes |
+| **Mandatory init variables** | `languages`: A list of ISO language codes |
 | **Mandatory run variables** | “text”: A string |
-| **Output variables** | “unmatched”: A string  <br /> <br />“_language defined during initialization_”: A string. For example: "fr": French language string. |
+| **Output variables** | “unmatched”: A string  <br /> <br />“_language defined during initialization_”: A string. For example: `fr`: French language string. |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/text_language_router.py |
 
