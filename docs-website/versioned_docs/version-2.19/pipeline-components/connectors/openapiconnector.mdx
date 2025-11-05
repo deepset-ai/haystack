@@ -14,9 +14,9 @@ description: "`OpenAPIConnector` is a component that acts as an interface betwee
 |                                        |                                                                                                    |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | Anywhere, after components providing input for its run parameters                                  |
-| **Mandatory init variables**           | "openapi_spec": The OpenAPI specification for the service. Can be a URL, file path, or raw string. |
-| **Mandatory run variables**            | "operation_id": The operationId from the OpenAPI spec to invoke.                                   |
-| **Output variables**                   | “response”: A REST service response                                                                |
+| **Mandatory init variables**           | `openapi_spec`: The OpenAPI specification for the service. Can be a URL, file path, or raw string. |
+| **Mandatory run variables**            | `operation_id`: The operationId from the OpenAPI spec to invoke.                                   |
+| **Output variables**                   | `response`: A REST service response                                                                |
 | **API reference**                      | [Connectors](/reference/connectors-api)                                                                   |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/connectors/openapi.py       |
 
