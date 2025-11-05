@@ -133,7 +133,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             api_key=api_key,
             model=self._azure_deployment,
             streaming_callback=streaming_callback,
-            api_base_url=f"{self._azure_endpoint.rstrip('/')}openai/v1",
+            api_base_url=f"{self._azure_endpoint.rstrip('/')}/openai/v1",
             organization=organization,
             generation_kwargs=generation_kwargs,
             timeout=timeout,

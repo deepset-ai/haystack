@@ -348,11 +348,7 @@ class TestAzureOpenAIChatGenerator:
     )
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = AzureOpenAIResponsesChatGenerator(
-            # api_version="/openai/v1/",
-            api_version=None,
-            azure_deployment="gpt-4o-mini",
-        )
+        component = AzureOpenAIResponsesChatGenerator(azure_deployment="gpt-4o-mini")
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -371,7 +367,9 @@ class TestAzureOpenAIChatGenerator:
     )
     def test_live_run_with_tools(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
-        component = AzureOpenAIResponsesChatGenerator(organization="HaystackCI", tools=tools)
+        component = AzureOpenAIResponsesChatGenerator(
+            organization="HaystackCI", tools=tools, azure_deployment="gpt-4o-mini"
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -383,7 +381,7 @@ class TestAzureOpenAIChatGenerator:
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
-        assert message.meta["finish_reason"] == "tool_calls"
+        assert message.meta["status"] == "completed"
 
     @pytest.mark.skipif(
         not os.environ.get("AZURE_OPENAI_API_KEY", None),
@@ -395,7 +393,7 @@ class TestAzureOpenAIChatGenerator:
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
         component = AzureOpenAIResponsesChatGenerator(
-            api_version="2025-06-01", generation_kwargs={"response_format": CalendarEvent}
+            azure_deployment="gpt-4o-mini", generation_kwargs={"text_format": CalendarEvent}
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
@@ -404,8 +402,7 @@ class TestAzureOpenAIChatGenerator:
         assert "Marketing Summit" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
-
-        assert message.meta["finish_reason"] == "stop"
+        assert message.meta["status"] == "completed"
 
     def test_to_dict_with_toolset(self, tools, monkeypatch):
         """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""
@@ -559,13 +556,13 @@ class TestAzureOpenAIChatGeneratorAsync:
     @pytest.mark.asyncio
     async def test_live_run_async(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = AzureOpenAIResponsesChatGenerator()
+        component = AzureOpenAIResponsesChatGenerator(azure_deployment="gpt-4o-mini")
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-5-mini" in message.meta["model"]
-        assert message.meta["finish_reason"] == "stop"
+        assert "gpt-4o-mini" in message.meta["model"]
+        assert message.meta["status"] == "completed"
 
     @pytest.mark.integration
     @pytest.mark.skipif(
@@ -579,7 +576,7 @@ class TestAzureOpenAIChatGeneratorAsync:
     @pytest.mark.asyncio
     async def test_live_run_with_tools_async(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
-        component = AzureOpenAIResponsesChatGenerator(tools=tools)
+        component = AzureOpenAIResponsesChatGenerator(tools=tools, azure_deployment="gpt-4o-mini")
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -591,6 +588,6 @@ class TestAzureOpenAIChatGeneratorAsync:
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
         assert tool_call.arguments == {"city": "Paris"}
-        assert message.meta["finish_reason"] == "tool_calls"
+        assert message.meta["status"] == "completed"
 
     # additional tests intentionally omitted as they are covered by test_openai.py
