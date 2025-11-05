@@ -9,6 +9,8 @@ description: "This component computes the embeddings of a list of documents usin
 
 This component computes the embeddings of a list of documents using the Mistral API and models.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
@@ -17,6 +19,8 @@ This component computes the embeddings of a list of documents using the Mistral 
 | **Output variables** | “documents”: A list of documents (enriched with embeddings)  <br /> <br />“meta”: A dictionary of metadata strings |
 | **API reference** | [Mistral](/reference/integrations-mistral) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mistral |
+
+</div>
 
 This component should be used to embed a list of Documents. To embed a string, use the [`MistralTextEmbedder`](mistraltextembedder.mdx).
 

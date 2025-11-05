@@ -9,6 +9,8 @@ description: "Use this Retriever with the InMemoryDocumentStore if you're lookin
 
 Use this Retriever with the InMemoryDocumentStore if you're looking for embedding-based retrieval.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In query pipelines:   In a RAG pipeline, before a [`PromptBuilder`](../builders/promptbuilder.mdx)   In a semantic search pipeline, as the last component   In an extractive QA pipeline, after a Tex tEmbedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)  |
@@ -17,6 +19,8 @@ Use this Retriever with the InMemoryDocumentStore if you're looking for embeddin
 | **Output variables** | "documents": A list of documents |
 | **API reference** | [Retrievers](/reference/retrievers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/in_memory/embedding_retriever.py |
+
+</div>
 
 ## Overview
 

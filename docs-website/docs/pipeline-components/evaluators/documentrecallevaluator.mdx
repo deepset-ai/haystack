@@ -9,6 +9,8 @@ description: "The `DocumentRecallEvaluator` evaluates documents retrieved by Hay
 
 The `DocumentRecallEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks how many of the ground truth documents were retrieved. This metric is called recall.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
@@ -17,14 +19,16 @@ The `DocumentRecallEvaluator` evaluates documents retrieved by Haystack pipeline
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/document_recall.py |
 
+</div>
+
 ## Overview
 
 You can use the `DocumentRecallEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG Pipeline, against ground truth labels.
 
-When initializing a `DocumentRecallEvaluator`, you can set the `mode` parameter to  
-`RecallMode.SINGLE_HIT` or `RecallMode.MULTI_HIT`. By default, `RecallMode.SINGLE_HIT` is used. 
+When initializing a `DocumentRecallEvaluator`, you can set the `mode` parameter to
+`RecallMode.SINGLE_HIT` or `RecallMode.MULTI_HIT`. By default, `RecallMode.SINGLE_HIT` is used.
 
-`RecallMode.SINGLE_HIT` means that _any_ of the ground truth documents need to be retrieved to count as a correct retrieval with a recall score of 1. A single retrieved document can achieve the full score. 
+`RecallMode.SINGLE_HIT` means that _any_ of the ground truth documents need to be retrieved to count as a correct retrieval with a recall score of 1. A single retrieved document can achieve the full score.
 
 `RecallMode.MULTI_HIT` means that _all_ of the ground truth documents need to be retrieved to count as a correct retrieval with a recall score of 1. The number of retrieved documents must be at least the number of ground truth documents to achieve the full score.
 

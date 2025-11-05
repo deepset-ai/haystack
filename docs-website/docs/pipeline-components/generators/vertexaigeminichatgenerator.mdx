@@ -16,6 +16,8 @@ This integration uses the deprecated google-generativeai SDK, which will lose su
 We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgenerator.mdx) integration instead.
 :::
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
@@ -23,6 +25,8 @@ We recommend switching to the new [GoogleGenAIChatGenerator](googlegenaichatgene
 | **Output variables**                   | “replies”: A list of alternative replies of the model to the input chat                              |
 | **API reference**                      | [Google Vertex](/reference/integrations-google-vertex)                                                      |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_vertex      |
+
+</div>
 
 `VertexAIGeminiGenerator` supports `gemini-1.5-pro` and `gemini-1.5-flash`/  `gemini-2.0-flash` models. Note that [Google recommends upgrading](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions) from `gemini-1.5-pro` to `gemini-2.0-flash`.
 

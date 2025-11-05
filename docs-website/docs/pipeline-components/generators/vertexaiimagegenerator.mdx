@@ -9,6 +9,8 @@ description: "This component enables image generation using Google Vertex AI gen
 
 This component enables image generation using Google Vertex AI generative model.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Mandatory run variables** | “prompt”: A string containing the prompt for the model                                                      |
@@ -16,7 +18,9 @@ This component enables image generation using Google Vertex AI generative model.
 | **API reference**           | [Google Vertex](/reference/integrations-google-vertex)                                                             |
 | **GitHub link**             | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_vertex             |
 
-`VertexAIImageGenerator` supports the `imagegeneration` model. 
+</div>
+
+`VertexAIImageGenerator` supports the `imagegeneration` model.
 
 ### Parameters Overview
 
@@ -48,7 +52,7 @@ result = generator.run(prompt="Generate an image of a cute cat")
 result["images"][0].to_file(Path("my_image.png"))
 ```
 
-You can also set other parameters like the number of images generated and the guidance scale to change the strength of the prompt. 
+You can also set other parameters like the number of images generated and the guidance scale to change the strength of the prompt.
 
 Let’s also use a negative prompt to omit something from the image:
 

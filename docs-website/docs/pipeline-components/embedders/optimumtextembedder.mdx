@@ -9,6 +9,8 @@ description: "A component to embed text using models loaded with the Hugging Fac
 
 A component to embed text using models loaded with the Hugging Face Optimum library.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline                |
@@ -16,6 +18,8 @@ A component to embed text using models loaded with the Hugging Face Optimum libr
 | **Output variables**                   | “embedding”: A list of float numbers (vectors)                                            |
 | **API reference**                      | [Optimum](/reference/integrations-optimum)                                                       |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/optimum |
+
+</div>
 
 ## Overview
 
@@ -93,7 +97,7 @@ pipeline.add_component("embedder", embedder)
 results = pipeline.run(
     {
         "embedder": {
-            "text": "Ex profunditate antiquae doctrinae, Ad caelos supra semper, Hoc incantamentum evoco, draco apparet, Incantamentum iam transactum est"
+            "text": "Ex profunditate antique doctrinae, Ad caelos supra semper, Hoc incantamentum evoco, draco apparet, Incantamentum iam transactum est"
         },
     }
 )

@@ -11,6 +11,8 @@ SentenceTransformersTextEmbedder transforms a string into a vector that captures
 
 When you perform embedding retrieval, use this component first to transform your query into a vector. Then, the embedding Retriever will use the vector to search for similar or relevant documents.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline                                              |
@@ -18,6 +20,8 @@ When you perform embedding retrieval, use this component first to transform your
 | **Output variables**                   | "embedding": A list of float numbers                                                                                    |
 | **API reference**                      | [Embedders](/reference/embedders-api)                                                                                          |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_text_embedder.py |
+
+</div>
 
 ## Overview
 
@@ -39,12 +43,12 @@ The default embedding model is [\`sentence-transformers/all-mpnet-base-v2](https
 
 See the original models in the Sentence Transformers [documentation](https://www.sbert.net/docs/pretrained_models.html).
 
-Nowadays, most of the models in the [Massive Text Embedding Benchmark (MTEB) Leaderboard](https://huggingface.co/spaces/mteb/leaderboard) are compatible with Sentence Transformers.  
+Nowadays, most of the models in the [Massive Text Embedding Benchmark (MTEB) Leaderboard](https://huggingface.co/spaces/mteb/leaderboard) are compatible with Sentence Transformers.
 You can look for compatibility in the model card: [an example related to BGE models](https://huggingface.co/BAAI/bge-large-en-v1.5#using-sentence-transformers).
 
 ### Instructions
 
-Some recent models that you can find in MTEB require prepending the text with an instruction to work better for retrieval.  
+Some recent models that you can find in MTEB require prepending the text with an instruction to work better for retrieval.
 For example, if you use [BAAI/bge-large-en-v1.5](https://huggingface.co/BAAI/bge-large-en-v1.5#model-list), you should prefix your query with the following instruction: “Represent this sentence for searching relevant passages:”
 
 This is how it works with `SentenceTransformersTextEmbedder`:
@@ -53,7 +57,7 @@ This is how it works with `SentenceTransformersTextEmbedder`:
 instruction = "Represent this sentence for searching relevant passages:"
 embedder = SentenceTransformersTextEmbedder(
 	*model="*BAAI/bge-large-en-v1.5",
-	prefix=instruction)  
+	prefix=instruction)
 ```
 
 :::tip
