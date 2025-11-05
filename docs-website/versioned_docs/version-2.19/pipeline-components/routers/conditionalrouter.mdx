@@ -9,11 +9,11 @@ description: "`ConditionalRouter` routes your data through different paths down 
 
 `ConditionalRouter` routes your data through different paths down the pipeline by evaluating the conditions that you specified.
 
-|                                        |                                                                                                                                       |
-| :------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------ |
+|  |  |
+| --- | --- |
 | **Most common position in a pipeline** | Flexible                                                                                                                              |
 | **Mandatory init variables**           | `routes`: A list of dictionaries defining routs (See the [Overview](#overview) section below)                                         |
-| **Mandatory run variables**            | “\*\*kwargs”: Input variables to evaluate in order to choose a specific route. See [Variables](#variables)  section for more details. |
+| **Mandatory run variables**            | `**kwargs`: Input variables to evaluate in order to choose a specific route. See [Variables](#variables)  section for more details. |
 | **Output variables**                   | A dictionary containing one or more output names and values of the chosen route                                                       |
 | **API reference**                      | [Routers](/reference/routers-api)                                                                                                            |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/conditional_router.py                                  |
