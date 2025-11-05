@@ -391,3 +391,24 @@ Asynchronously deletes documents that match the provided `document_ids` from the
 **Arguments**:
 
 - `document_ids`: the document ids to delete
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.delete_all_documents"></a>
+
+#### PineconeDocumentStore.delete\_all\_documents
+
+```python
+def delete_all_documents() -> None
+```
+
+Deletes all documents in the document store.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.delete_all_documents_async"></a>
+
+#### PineconeDocumentStore.delete\_all\_documents\_async
+
+```python
+async def delete_all_documents_async() -> None
+```
+
+Asynchronously deletes all documents in the document store.
+
