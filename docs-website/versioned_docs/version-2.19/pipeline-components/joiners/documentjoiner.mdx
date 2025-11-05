@@ -14,8 +14,8 @@ Use this component in hybrid retrieval pipelines or indexing pipelines with mult
 |                                        |                                                                                                                                                                               |
 | :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | In indexing and query pipelines, after components that return a list of documents such as multiple [Retrievers](../retrievers.mdx)  or multiple [Converters](../converters.mdx) |
-| **Mandatory run variables**            | “documents”: A list of documents. This input is `variadic`, meaning you can connect a variable number of components to it.                                                    |
-| **Output variables**                   | “documents”: A list of documents                                                                                                                                              |
+| **Mandatory run variables**            | `documents`: A list of documents. This input is `variadic`, meaning you can connect a variable number of components to it.                                                    |
+| **Output variables**                   | `documents`: A list of documents                                                                                                                                              |
 | **API reference**                      | [Joiners](/reference/joiners-api)                                                                                                                                                    |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/joiners/document_joiner.py                                                                             |
 

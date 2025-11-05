@@ -14,7 +14,7 @@ Classifies the documents based on the provided labels and adds them to their met
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [MetadataRouter](../routers/metadatarouter.mdx) |
-| **Mandatory init variables** | `model`: The name or path of a Hugging Face model for zero shot document classification  <br /> <br />`labels`: The set of possible class labels to classify each document into, for example, ["positive", "negative"]. The labels depend on the selected model. |
+| **Mandatory init variables** | `model`: The name or path of a Hugging Face model for zero shot document classification  <br /> <br />`labels`: The set of possible class labels to classify each document into, for example, [`positive`, `negative`]. The labels depend on the selected model. |
 | **Mandatory run variables** | `documents`: A list of documents to classify |
 | **Output variables** |  `documents`: A list of processed documents with an added `classification` metadata field |
 | **API reference** | [Classifiers](/reference/classifiers-api) |
