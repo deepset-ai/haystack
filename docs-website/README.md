@@ -1,132 +1,170 @@
-# Haystack Docs Website
+# Haystack Documentation Website
 
-This folder contains the Docusaurus-powered Haystack documentation website.
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0-brightgreen)](https://nodejs.org/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
+
+This directory contains the Docusaurus-powered documentation website for [Haystack](https://github.com/deepset-ai/haystack), an open-source framework for building production-ready applications with Large Language Models (LLMs).
+
+**Live site:** https://docs.haystack.deepset.ai
+
+## About
+
+This documentation site is built with Docusaurus 3 and provides comprehensive guides, tutorials, API references, and best practices for using Haystack. The site supports multiple versions, automated API reference generation, and includes quality assurance through prose linting and Python code snippet testing.
+
+## Key Features
+
+- **Versioned Documentation**: Multiple Haystack versions with dropdown navigation
+- **Dual Documentation Plugins**: Separate sections for narrative docs (`docs/`) and API reference (`reference/`)
+- **Automated API Generation**: Python docstrings automatically synced from the main Haystack codebase
+- **Python Snippet Testing**: All code examples are automatically tested for accuracy
+- **Prose Linting**: Vale integration ensures consistent writing style (Google Developer Documentation Style Guide)
+- **Live Reload**: Development server with instant preview of changes
+- **Optimized Images**: Responsive image processing for faster page loads
 
 ## Prerequisites
 
-- Node.js >= 18
-- npm (preferred, repo includes `package-lock.json`) or Yarn
-- Run all commands from `haystack/docs-website`
+- **Node.js** 18 or higher
+- **npm** (included with Node.js) or Yarn
+- Optional: Python 3.11+ (for testing documentation code snippets)
+- Optional: [Vale](https://vale.sh/) (for local prose linting)
 
-## Quick start
-
-Install dependencies:
+## Quick Start
 
 ```bash
+# Install dependencies
 npm install
-# or
-yarn
-```
 
-Start the local dev server:
-
-```bash
-npm run start
-# or
-yarn start
-```
-
-This opens a local server with live-reload. Edits to docs reflect automatically.
-
-> [!NOTE]
-> The legacy Python docs under `haystack/docs/` are not part of this site. They remain unchanged and will be integrated later.
-
-## Build and preview
-
-Build static assets:
-
-```bash
-npm run build
-# or
-yarn build
-```
-
-Preview the production build locally:
-
-```bash
-npm run serve
-# or
-yarn serve
-```
-
-## Testing Python Snippets
-
-Python code snippets in the docs are automatically tested. To test locally:
-
-```bash
-# Setup dependencies for a specific Haystack version
-./scripts/setup-dev.sh 2.16.1
-
-# Run tests
-python scripts/test_python_snippets.py --verbose
-```
-
-See `scripts/` directory for more details.
-
-## Versioning
-
-Use the Docusaurus CLI to create and manage versions. See the official docs for details: [Versioning](https://docusaurus.io/docs/versioning).
-
-Create a new version from the current docs (default plugin):
-
-```bash
-npm run docusaurus -- docs:version 2.1.0
-# or
-yarn docusaurus docs:version 2.1.0
-```
-
-If you also need to version the API Reference docs (separate docs plugin with id `reference`), run:
-
-```bash
-npm run docusaurus -- docs:version 2.1.0 -- --id reference
-# or
-yarn docusaurus docs:version 2.1.0 --id reference
-```
-
-These commands will:
-- Create `versioned_docs/` and `versioned_sidebars/` entries for the new version
-- Update `versions.json`
-
-Optional configuration:
-- You can customize the label shown for the “current” docs via `docs.versions.current.label` in `docusaurus.config.js`.
-- To control which versions appear and the order in the dropdown, adjust `lastVersion` and `onlyIncludeVersions` in the docs plugin config.
-
-## Authoring templates (hidden, not rendered)
-
-- Templates live under `docs/_templates/` and are excluded from the site build.
-- Duplicate a template and move the copy to the appropriate place under `docs/`:
-  - `docs/_templates/component-template.mdx` → for new component docs
-  - `docs/_templates/document-store-template.mdx` → for new document store docs
-- After copying, update the frontmatter (`title`, `id`, `description`, `slug`) and fill in the sections.
-- Do not commit new docs under `_templates/`; place them in their final location under `docs/`.
-
-## Troubleshooting
-
-### Blank page
-
-If you see a blank page when running `npm start`:
-
-```bash
-# Clear Docusaurus cache and restart
-npm run clear
+# Start the development server
 npm start
+
+# The site opens at http://localhost:3000 with live reload
 ```
 
-If the issue persists, you may need to build once to generate route metadata:
+## Common tasks
 
-```bash
-npm run build
-npm start
+- Edit a page: update files under `docs/` and preview at http://localhost:3000
+- Add to sidebar: update `sidebars.js` with your doc ID
+- Production check: `npm run build && npm run serve`
+- Prose lint (optional): `vale --config .vale.ini "docs/**/*.{md,mdx}"`
+- Test Python snippets (optional):
+  ```bash
+  ./scripts/setup-dev.sh main
+  python scripts/test_python_snippets.py --verbose
+  ```
+- Full guidance: see `CONTRIBUTING.md`
+
+## Project Structure
+
+```
+docs-website/
+├── docs/                          # Main documentation (guides, tutorials, concepts)
+│   ├── _templates/               # Authoring templates (excluded from build)
+│   ├── concepts/                 # Core Haystack concepts
+│   ├── pipeline-components/      # Component documentation
+│   └── ...
+├── reference/                     # API reference (auto-generated, do not edit manually)
+├── versioned_docs/               # Versioned copies of docs/
+├── reference_versioned_docs/     # Versioned copies of reference/
+├── src/                          # React components and custom code
+│   ├── components/              # Custom React components
+│   ├── css/                     # Global styles
+│   ├── pages/                   # Custom pages
+│   ├── remark/                  # Remark plugins
+│   └── theme/                   # Docusaurus theme customizations
+├── static/                       # Static assets (images, files)
+├── scripts/                      # Build and test scripts
+│   ├── test_python_snippets.py  # Tests Python code in docs
+│   ├── generate_requirements.py # Generates Python dependencies
+│   └── setup-dev.sh             # Development environment setup
+├── .vale/                        # Vale prose linting configuration
+├── sidebars.js                   # Navigation for docs/
+├── reference-sidebars.js         # Navigation for reference/
+├── docusaurus.config.js          # Main Docusaurus configuration
+├── versions.json                 # Available docs versions
+├── reference_versions.json       # Available API reference versions
+└── package.json                  # Node.js dependencies and scripts
 ```
 
-This happens because Docusaurus needs to generate internal routing metadata for versioned docs on first run.
+## Technology Stack
 
-### General issues
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| [Docusaurus](https://docusaurus.io/) | 3.8.1 | Static site generator |
+| [React](https://react.dev/) | 19.0.0 | UI framework |
+| [MDX](https://mdxjs.com/) | 3.0.0 | Markdown with JSX |
+| [Node.js](https://nodejs.org/) | ≥18.0 | Runtime environment |
+| [Vale](https://vale.sh/) | Latest | Prose linting |
+| [Python](https://www.python.org/) | 3.11+ | Snippet testing |
 
-Clear cached data if something looks off:
+**Key Docusaurus Plugins:**
+- `@docusaurus/plugin-content-docs` (dual instances for docs and API reference)
+- `@docusaurus/plugin-ideal-image` (responsive image optimization)
+- Custom remark plugins for versioned reference links
 
-```bash
-npm run clear
-# or
-yarn clear
-```
+## Available Scripts
+
+Run these commands from the `docs-website` directory:
+
+| Command | Description |
+|---------|-------------|
+| `npm install` | Install all dependencies |
+| `npm start` | Start development server with live reload (http://localhost:3000) |
+| `npm run build` | Build production-ready static files to `build/` |
+| `npm run serve` | Preview production build locally |
+| `npm run clear` | Clear Docusaurus cache (use if encountering build issues) |
+| `npm run docusaurus` | Run Docusaurus CLI commands directly |
+| `npm run swizzle` | Eject and customize Docusaurus theme components |
+
+**Additional Scripts:**
+- `scripts/setup-dev.sh <version>`: Set up Python environment for snippet testing
+- `scripts/test_python_snippets.py`: Test all Python code snippets in documentation
+
+## Contributing
+
+We welcome contributions to improve the documentation! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
+
+- Writing and style guidelines
+- How to author new documentation pages
+- Setting up your development environment
+- Testing requirements
+- Pull request process
+- Versioning workflow
+
+For code contributions to Haystack itself, see the [main repository's contribution guide](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md).
+
+## CI/CD and Automation
+
+This site uses automated workflows for prose linting, Python snippet tests, API reference sync, versioning, and preview deployments. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+
+## Deployment
+
+The documentation site is automatically deployed to **https://docs.haystack.deepset.ai** when changes are merged to the `main` branch. The deployment infrastructure handles:
+
+- Building static assets
+- Hosting on a CDN
+- SSL/TLS certificates
+- Version routing
+
+No manual deployment steps are required for contributors.
+
+## Related Links
+
+- **Main Haystack Repository**: https://github.com/deepset-ai/haystack
+- **Haystack Documentation**: https://docs.haystack.deepset.ai
+- **Discord Community**: https://discord.com/invite/haystack
+- **Twitter**: https://twitter.com/haystack_ai
+- **Tutorials**: https://haystack.deepset.ai/tutorials
+- **Code of Conduct**: https://github.com/deepset-ai/haystack/blob/main/code_of_conduct.txt
+
+## License
+
+This project is licensed under the Apache License 2.0. See the [LICENSE](https://github.com/deepset-ai/haystack/blob/main/LICENSE) file in the main Haystack repository for details.
+
+© 2025 deepset GmbH. All rights reserved.
+
+## Support
+
+- **Questions**: Join our [Discord community](https://discord.com/invite/haystack)
+- **Bug Reports**: [Open an issue](https://github.com/deepset-ai/haystack/issues/new?template=bug_report.md)
+- **Feature Requests**: [Start a discussion](https://github.com/deepset-ai/haystack/discussions)
+- **Documentation Issues**: [Open an issue](https://github.com/deepset-ai/haystack/issues/new) with the `documentation` label
