@@ -741,6 +741,72 @@ class TestAgent:
             agent.run([ChatMessage.from_user("Hello")])
             assert "Agent reached maximum agent steps" in caplog.text
 
+    def test_final_answer_on_max_steps_enabled(self, monkeypatch, weather_tool):
+        """Test that final answer is generated when max steps is reached with tool result as last message."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        tool_result_msg = ChatMessage.from_tool(
+            tool_result="Weather in Berlin: 20C",
+            origin=ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+        )
+
+        # Mock responses: first returns tool call, then after tools run, we hit max steps
+        agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=1, final_answer_on_max_steps=True)
+        agent.warm_up()
+
+        call_count = 0
+
+        def mock_run(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # First call: LLM wants to call tool
+                return {"replies": [ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                )]}
+            else:
+                # Final answer call (no tools available)
+                return {"replies": [ChatMessage.from_assistant("Based on the weather data, it's 20C in Berlin.")]}
+
+        agent.chat_generator.run = mock_run
+
+        result = agent.run([ChatMessage.from_user("What's the weather in Berlin?")])
+
+        # Last message should be text response, not tool result
+        assert result["last_message"].text
+        assert "Berlin" in result["last_message"].text
+
+    def test_final_answer_on_max_steps_disabled(self, monkeypatch, weather_tool):
+        """Test that no final answer is generated when final_answer_on_max_steps=False."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        agent = Agent(
+            chat_generator=generator,
+            tools=[weather_tool],
+            max_agent_steps=1,
+            final_answer_on_max_steps=False
+        )
+        agent.warm_up()
+
+        call_count = 0
+
+        def mock_run(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            # Always return tool call to ensure we'd end with tool result
+            return {"replies": [ChatMessage.from_assistant(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+            )]}
+
+        agent.chat_generator.run = mock_run
+
+        result = agent.run([ChatMessage.from_user("What's the weather?")])
+
+        # Should have ended without final answer call (only 1 LLM call, not 2)
+        assert call_count == 1
+
     def test_exit_conditions_checked_across_all_llm_messages(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()
