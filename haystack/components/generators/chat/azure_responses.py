@@ -207,14 +207,13 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         :returns:
             The deserialized component instance.
         """
-        # TODO Need to be a bit more clever with api_key. Need try Secret deserialization, if it fails then
-        #  try callable deserialization. If that fails, raise the error.
-        try:
+        serialized_api_key = data["init_parameters"].get("api_key")
+        # If it's a dict most likely a Secret
+        if isinstance(serialized_api_key, dict):
             deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
-        except Exception:
-            serialized_api_key = data["init_parameters"].get("api_key")
-            if serialized_api_key:
-                data["init_parameters"]["api_key"] = deserialize_callable(serialized_api_key)
+        # If it's a str, most likely a callable
+        elif isinstance(serialized_api_key, str):
+            data["init_parameters"]["api_key"] = serialized_api_key
 
         # we only deserialize the tools if they are haystack tools
         # because openai tools are not serialized in the same way

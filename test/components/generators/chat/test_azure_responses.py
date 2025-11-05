@@ -116,8 +116,6 @@ class TestAzureOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.azure_responses.AzureOpenAIResponsesChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
-                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "api_version": "2025-06-01",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "azure_deployment": "gpt-5-mini",
                 "organization": None,
@@ -125,19 +123,17 @@ class TestAzureOpenAIChatGenerator:
                 "generation_kwargs": {},
                 "timeout": 30.0,
                 "max_retries": 5,
-                "default_headers": {},
                 "tools": None,
                 "tools_strict": False,
-                "azure_ad_token_provider": None,
                 "http_client_kwargs": None,
             },
         }
 
+    # TODO Add a to_dict test where api_key=default_azure_ad_token_provider
     def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
-            azure_ad_token=Secret.from_env_var("ENV_VAR1", strict=False),
             azure_endpoint="some-non-existing-endpoint",
             streaming_callback=print_streaming_chunk,
             timeout=2.5,
@@ -147,7 +143,6 @@ class TestAzureOpenAIChatGenerator:
                 "some_test_param": "test-params",
                 "response_format": calendar_event_model,
             },
-            azure_ad_token_provider=default_azure_ad_token_provider,
             http_client_kwargs={"proxy": "http://localhost:8080"},
         )
         data = component.to_dict()
@@ -155,8 +150,6 @@ class TestAzureOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.azure_responses.AzureOpenAIResponsesChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
-                "azure_ad_token": {"env_vars": ["ENV_VAR1"], "strict": False, "type": "env_var"},
-                "api_version": "2025-06-01",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "azure_deployment": "gpt-5-mini",
                 "organization": None,
@@ -188,7 +181,6 @@ class TestAzureOpenAIChatGenerator:
                 "tools": None,
                 "tools_strict": False,
                 "default_headers": {},
-                "azure_ad_token_provider": "haystack.utils.azure.default_azure_ad_token_provider",
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
             },
         }
@@ -200,8 +192,6 @@ class TestAzureOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.azure_responses.AzureOpenAIResponsesChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
-                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "api_version": "2025-06-01",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "azure_deployment": "gpt-5-mini",
                 "organization": None,
@@ -209,7 +199,6 @@ class TestAzureOpenAIChatGenerator:
                 "generation_kwargs": {},
                 "timeout": 30.0,
                 "max_retries": 5,
-                "default_headers": {},
                 "tools": [
                     {
                         "type": "haystack.tools.tool.Tool",
@@ -230,16 +219,13 @@ class TestAzureOpenAIChatGenerator:
         assert isinstance(generator, AzureOpenAIResponsesChatGenerator)
 
         assert generator.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
-        assert generator.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False)
-        assert generator.api_version == "2025-06-01"
-        assert generator.azure_endpoint == "some-non-existing-endpoint"
-        assert generator.azure_deployment == "gpt-5-mini"
+        assert generator._azure_endpoint == "some-non-existing-endpoint"
+        assert generator._azure_deployment == "gpt-5-mini"
         assert generator.organization is None
         assert generator.streaming_callback is None
         assert generator.generation_kwargs == {}
         assert generator.timeout == 30.0
         assert generator.max_retries == 5
-        assert generator.default_headers == {}
         assert generator.tools == [
             Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
         ]
@@ -263,17 +249,13 @@ class TestAzureOpenAIChatGenerator:
                         "azure_endpoint": "some-non-existing-endpoint",
                         "azure_deployment": "gpt-5-mini",
                         "organization": None,
-                        "api_version": "2025-06-01",
                         "streaming_callback": None,
                         "generation_kwargs": {},
                         "timeout": 30.0,
                         "max_retries": 5,
                         "api_key": {"type": "env_var", "env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False},
-                        "azure_ad_token": {"type": "env_var", "env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False},
-                        "default_headers": {},
                         "tools": None,
                         "tools_strict": False,
-                        "azure_ad_token_provider": None,
                         "http_client_kwargs": None,
                     },
                 }
@@ -282,7 +264,7 @@ class TestAzureOpenAIChatGenerator:
         }
         p_str = p.dumps()
         q = Pipeline.loads(p_str)
-        assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization w/ AzureOpenAIChatGenerator failed."
+        assert p.to_dict() == q.to_dict()
 
     def test_azure_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
         """Test that the AzureOpenAIChatGenerator can be initialized with a Toolset."""
