@@ -169,8 +169,9 @@ class OpenAIResponsesChatGenerator:
         if max_retries is None:
             max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
 
+        resolved_api_key = api_key.resolve_value() if isinstance(api_key, Secret) else api_key
         client_kwargs: dict[str, Any] = {
-            "api_key": api_key.resolve_value(),
+            "api_key": resolved_api_key,
             "organization": organization,
             "base_url": api_base_url,
             "timeout": timeout,
