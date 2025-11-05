@@ -38,13 +38,16 @@ class TestContentParts:
 
     def test_tool_call_to_dict(self):
         tc = ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
-        assert tc.to_dict() == {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}}
+        assert tc.to_dict() == {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}, "extra": None}
 
     def test_tool_call_from_dict(self):
-        tc = ToolCall.from_dict({"id": "123", "tool_name": "mytool", "arguments": {"a": 1}})
+        tc = ToolCall.from_dict(
+            {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}, "extra": {"call_id": "123"}}
+        )
         assert tc.id == "123"
         assert tc.tool_name == "mytool"
         assert tc.arguments == {"a": 1}
+        assert tc.extra == {"call_id": "123"}
 
     def test_tool_call_result_init(self):
         tcr = ToolCallResult(
@@ -60,7 +63,7 @@ class TestContentParts:
         )
         assert tcr.to_dict() == {
             "result": "result",
-            "origin": {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}},
+            "origin": {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}, "extra": None},
             "error": True,
         }
 
@@ -338,7 +341,7 @@ class TestChatMessage:
         role = ChatRole.ASSISTANT
 
         text_content = TextContent(text="Hello")
-        tool_call = ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
+        tool_call = ToolCall(id="123", tool_name="mytool", arguments={"a": 1}, extra={"call_id": "123"})
         tool_call_result = ToolCallResult(result="result", origin=tool_call, error=False)
         image_content = ImageContent(
             base64_image=base64_image_string,
@@ -360,12 +363,17 @@ class TestChatMessage:
         assert serialized_message == {
             "content": [
                 {"text": "Hello"},
-                {"tool_call": {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}}},
+                {"tool_call": {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}, "extra": {"call_id": "123"}}},
                 {
                     "tool_call_result": {
                         "result": "result",
                         "error": False,
-                        "origin": {"id": "123", "tool_name": "mytool", "arguments": {"a": 1}},
+                        "origin": {
+                            "id": "123",
+                            "tool_name": "mytool",
+                            "arguments": {"a": 1},
+                            "extra": {"call_id": "123"},
+                        },
                     }
                 },
                 {
