@@ -31,8 +31,8 @@ from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat.openai_responses import (
     OpenAIResponsesChatGenerator,
+    _convert_chat_message_to_responses_api_format,
     _convert_response_chunk_to_streaming_chunk,
-    convert_message_to_responses_api_format,
 )
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import (
@@ -329,6 +329,26 @@ class TestOpenAIResponsesChatGenerator:
         with pytest.raises(ValueError):
             OpenAIResponsesChatGenerator.from_dict(data)
 
+    def test_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
+        """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        generator = OpenAIResponsesChatGenerator(tools=toolset)
+        assert generator.tools == toolset
+
+    def test_from_dict_with_toolset(self, tools, monkeypatch):
+        """Test that the OpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        component = OpenAIResponsesChatGenerator(tools=toolset)
+        data = component.to_dict()
+
+        deserialized_component = OpenAIResponsesChatGenerator.from_dict(data)
+
+        assert isinstance(deserialized_component.tools, Toolset)
+        assert len(deserialized_component.tools) == len(tools)
+        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
+
     def test_convert_chat_message_to_responses_api_format(self):
         chat_message = ChatMessage(
             _role=ChatRole.ASSISTANT,
@@ -374,7 +394,7 @@ class TestOpenAIResponsesChatGenerator:
                 "store": True,
             },
         )
-        responses_api_format = convert_message_to_responses_api_format(chat_message)
+        responses_api_format = _convert_chat_message_to_responses_api_format(chat_message)
         assert responses_api_format == [
             {
                 "id": "rs_0d13efdd",
@@ -389,6 +409,111 @@ class TestOpenAIResponsesChatGenerator:
                 "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
             },
         ]
+
+    def test_warm_up_with_tools(self, monkeypatch):
+        """Test that warm_up() calls warm_up on tools and is idempotent."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        # Create a mock tool that tracks if warm_up() was called
+        class MockTool(Tool):
+            warm_up_call_count = 0  # Class variable to track calls
+
+            def __init__(self):
+                super().__init__(
+                    name="mock_tool",
+                    description="A mock tool for testing",
+                    parameters={"x": {"type": "string"}},
+                    function=lambda x: x,
+                )
+
+            def warm_up(self):
+                MockTool.warm_up_call_count += 1
+
+        # Reset the class variable before test
+        MockTool.warm_up_call_count = 0
+        mock_tool = MockTool()
+
+        # Create OpenAIChatGenerator with the mock tool
+        component = OpenAIResponsesChatGenerator(tools=[mock_tool])
+
+        # Verify initial state - warm_up not called yet
+        assert MockTool.warm_up_call_count == 0
+        assert not component._is_warmed_up
+
+        # Call warm_up() on the generator
+        component.warm_up()
+
+        # Assert that the tool's warm_up() was called
+        assert MockTool.warm_up_call_count == 1
+        assert component._is_warmed_up
+
+        component.warm_up()
+
+        # The tool's warm_up should still only have been called once
+        assert MockTool.warm_up_call_count == 1
+        assert component._is_warmed_up
+
+    def test_warm_up_with_no_tools(self, monkeypatch):
+        """Test that warm_up() works when no tools are provided."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        component = OpenAIResponsesChatGenerator()
+
+        # Verify initial state
+        assert not component._is_warmed_up
+        assert component.tools is None
+
+        # Call warm_up() - should not raise an error
+        component.warm_up()
+
+        # Verify the component is warmed up
+        assert component._is_warmed_up
+
+        # Call warm_up() again - should be idempotent
+        component.warm_up()
+        assert component._is_warmed_up
+
+    def test_warm_up_with_multiple_tools(self, monkeypatch):
+        """Test that warm_up() works with multiple tools."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        from haystack.tools import Tool
+
+        # Track warm_up calls
+        warm_up_calls = []
+
+        class MockTool(Tool):
+            def __init__(self, tool_name):
+                super().__init__(
+                    name=tool_name,
+                    description=f"Mock tool {tool_name}",
+                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
+                    function=lambda x: f"{tool_name} result: {x}",
+                )
+
+            def warm_up(self):
+                warm_up_calls.append(self.name)
+
+        mock_tool1 = MockTool("tool1")
+        mock_tool2 = MockTool("tool2")
+
+        # Use a LIST of tools, not a Toolset
+        component = OpenAIResponsesChatGenerator(tools=[mock_tool1, mock_tool2])
+
+        # Call warm_up()
+        component.warm_up()
+
+        # Assert that both tools' warm_up() were called
+        assert "tool1" in warm_up_calls
+        assert "tool2" in warm_up_calls
+        assert component._is_warmed_up
+
+        # Track count
+        call_count = len(warm_up_calls)
+
+        # Verify idempotency
+        component.warm_up()
+        assert len(warm_up_calls) == call_count
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -452,7 +577,9 @@ class TestOpenAIResponsesChatGenerator:
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
-        component = OpenAIResponsesChatGenerator(generation_kwargs={"text_format": calendar_event_model})
+        component = OpenAIResponsesChatGenerator(
+            streaming_callback=print_streaming_chunk, generation_kwargs={"text_format": calendar_event_model}
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -524,9 +651,7 @@ class TestOpenAIResponsesChatGenerator:
     def test_live_run_with_tools_streaming(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
 
-        def callback(chunk: StreamingChunk) -> None: ...
-
-        component = OpenAIResponsesChatGenerator(tools=tools, streaming_callback=callback)
+        component = OpenAIResponsesChatGenerator(tools=tools, streaming_callback=print_streaming_chunk)
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -543,26 +668,6 @@ class TestOpenAIResponsesChatGenerator:
 
         arguments = [tool_call.arguments for tool_call in tool_calls]
         assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
-
-    def test_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
-        """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        toolset = Toolset(tools)
-        generator = OpenAIResponsesChatGenerator(tools=toolset)
-        assert generator.tools == toolset
-
-    def test_from_dict_with_toolset(self, tools, monkeypatch):
-        """Test that the OpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        toolset = Toolset(tools)
-        component = OpenAIResponsesChatGenerator(tools=toolset)
-        data = component.to_dict()
-
-        deserialized_component = OpenAIResponsesChatGenerator.from_dict(data)
-
-        assert isinstance(deserialized_component.tools, Toolset)
-        assert len(deserialized_component.tools) == len(tools)
-        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -649,11 +754,9 @@ class TestOpenAIResponsesChatGenerator:
     def test_live_run_with_tools_streaming_and_reasoning(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
 
-        def callback(chunk: StreamingChunk) -> None: ...
-
         component = OpenAIResponsesChatGenerator(
             tools=tools,
-            streaming_callback=callback,
+            streaming_callback=print_streaming_chunk,
             generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}},
         )
         results = component.run(chat_messages)
@@ -682,7 +785,6 @@ class TestOpenAIResponsesChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_agent_streaming(self):
-        def callback(chunk: StreamingChunk) -> None: ...
         # Tool Function
         def calculate(expression: str) -> dict:
             try:
@@ -707,7 +809,7 @@ class TestOpenAIResponsesChatGenerator:
         # Agent Setup
         agent = Agent(
             chat_generator=OpenAIResponsesChatGenerator(tools_strict=True),
-            streaming_callback=callback,
+            streaming_callback=print_streaming_chunk,
             tools=[calculator_tool],
             exit_conditions=["text"],
             state_schema={"calc_result": {"type": int}},

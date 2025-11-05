@@ -33,6 +33,7 @@ from haystack.tools import (
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -182,6 +183,18 @@ class OpenAIResponsesChatGenerator:
         self.async_client = AsyncOpenAI(
             http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
         )
+        self._is_warmed_up = False
+
+    def warm_up(self):
+        """
+        Warm up the OpenAI chat generator.
+
+        This will warm up the tools registered in the chat generator.
+        This method is idempotent and will only warm up the tools once.
+        """
+        if not self._is_warmed_up:
+            warm_up_tools(self.tools)
+            self._is_warmed_up = True
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -421,7 +434,7 @@ class OpenAIResponsesChatGenerator:
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages: list[dict[str, Any]] = []
         for message in messages:
-            openai_formatted_messages.extend(convert_message_to_responses_api_format(message))
+            openai_formatted_messages.extend(_convert_chat_message_to_responses_api_format(message))
 
         tools = tools or self.tools
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
@@ -500,7 +513,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
     reasoning = None
     for output in responses.output:
         if isinstance(output, ResponseOutputRefusal):
-            logger.warning(f"OpenAI returned a refusal output: {output}")
+            logger.warning("OpenAI returned a refusal output: {output}", output=output)
             continue
         if output.type == "reasoning":
             # openai doesn't return the reasoning tokens, but we can view summary if its enabled
@@ -524,6 +537,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     _name=output.name,
                     _arguments=output.arguments,
                 )
+                arguments = {}
 
             tool_calls.append(
                 ToolCall(id=output.id, tool_name=output.name, arguments=arguments, extra={"call_id": output.call_id})
@@ -673,7 +687,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta, reasoning=reasoning)
 
 
-def convert_message_to_responses_api_format(message: ChatMessage) -> list[dict[str, Any]]:
+def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[dict[str, Any]]:
     """
     Convert a ChatMessage to the dictionary format expected by OpenAI's Responses API.
 
