@@ -40,7 +40,7 @@ class SentenceTransformersDocumentEmbedder:
     ```
     """
 
-    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments,too-many-arguments
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[ComponentDevice] = None,
