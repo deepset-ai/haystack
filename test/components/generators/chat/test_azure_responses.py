@@ -85,7 +85,7 @@ class TestAzureOpenAIChatGenerator:
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
-        monkeypatch.delenv("AZURE_OPENAI_AD_TOKEN", raising=False)
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(OpenAIError):
             AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
 
