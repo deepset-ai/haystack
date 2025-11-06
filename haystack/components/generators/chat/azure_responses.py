@@ -142,18 +142,6 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             tools_strict=tools_strict,
             http_client_kwargs=http_client_kwargs,
         )
-        self._is_warmed_up = False
-
-    def warm_up(self):
-        """
-        Warm up the Azure OpenAI chat generator.
-
-        This will warm up the tools registered in the chat generator.
-        This method is idempotent and will only warm up the tools once.
-        """
-        if not self._is_warmed_up:
-            warm_up_tools(self.tools)
-            self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
         """
