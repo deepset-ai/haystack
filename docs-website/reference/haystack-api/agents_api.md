@@ -417,4 +417,3 @@ def from_dict(cls, data: dict[str, Any])
 ```
 
 Convert a dictionary back to a State object.
-
