@@ -30,7 +30,7 @@ class ToolCallDelta:
     index: int
     tool_name: Optional[str] = field(default=None)
     arguments: Optional[str] = field(default=None)
-    id: Optional[str] = field(default=None)  # noqa: A003
+    id: Optional[str] = field(default=None)
     extra: Optional[dict[str, Any]] = field(default=None)
 
     def to_dict(self) -> dict[str, Any]:

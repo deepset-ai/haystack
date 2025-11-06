@@ -12,6 +12,7 @@ loaders:
         "chat/hugging_face_local",
         "chat/hugging_face_api",
         "chat/openai",
+        "chat/openai_responses",
         "chat/fallback",
       ]
     ignore_when_discovered: ["__init__"]
