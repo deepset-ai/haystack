@@ -60,7 +60,7 @@ reader.warm_up()
 reader.run(query="What is the capital of France?", documents=docs, top_k=2)
 ```
 
-### In a pipeline - simple change here -
+### In a pipeline
 
 Below is an example of a pipeline that retrieves a document from an `InMemoryDocumentStore` based on keyword search (using `InMemoryBM25Retriever`). It then uses the `ExtractiveReader` to extract the answer to our query from the top retrieved documents.
 
