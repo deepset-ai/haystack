@@ -64,6 +64,24 @@ message = ChatMessage.from_user("What's Natural Language Processing? Be brief.")
 print(generator.run([message]))
 ```
 
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.watsonx.chat.chat_generator import WatsonxChatGenerator
+
+# Create an image from file path or base64
+image = ImageContent.from_file_path("path/to/your/image.jpg")
+
+# Create a multimodal message with both text and image
+messages = [ChatMessage.from_user(content_parts=["What's in this image?", image])]
+
+# Use a multimodal model
+generator = WatsonxChatGenerator(model="meta-llama/llama-3-2-11b-vision-instruct")
+response = generator.run(messages)
+print(response)
+```
+
 #### In a Pipeline
 
 You can also use `WatsonxChatGenerator` to use IBM watsonx.ai chat models in your pipeline.

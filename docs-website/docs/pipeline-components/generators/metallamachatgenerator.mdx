@@ -117,6 +117,21 @@ response = llm.run(
 print("\n\n Model used: ", response["replies"][0].meta["model"])
 ```
 
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.meta_llama import MetaLlamaChatGenerator
+
+llm = MetaLlamaChatGenerator(model="Llama-4-Scout-17B-16E-Instruct-FP8")
+
+image = ImageContent.from_file_path("apple.jpg")
+messages = [ChatMessage.from_user(content_parts=["What does the image show? Max 5 words.", image])]
+
+response = llm.run(messages)
+print(response["replies"][0].text)
+```
+
 ### In a pipeline
 
 ```python

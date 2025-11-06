@@ -96,6 +96,21 @@ response = generator.run(messages)
 print(response)
 ```
 
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
+
+generator = AmazonBedrockChatGenerator(model="anthropic.claude-3-5-sonnet-20240620-v1:0")
+
+image = ImageContent.from_file_path("apple.jpg")
+message = ChatMessage.from_user(content_parts=["Describe the image using 10 words at most.", image])
+
+response = generator.run(messages=[message])
+print(response)
+```
+
 ### In a pipeline
 
 In a RAG pipeline:

@@ -128,6 +128,21 @@ response = chat_generator.run(messages=messages)
 print(response["replies"][0].text)
 ```
 
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
+
+chat_generator = GoogleGenAIChatGenerator()
+
+image = ImageContent.from_file_path("apple.jpg")
+messages = [ChatMessage.from_user(content_parts=["What does the image show? Max 5 words.", image])]
+
+response = chat_generator.run(messages=messages)
+print(response["replies"][0].text)
+```
+
 You can also easily use function calls. First, define the function locally and convert into a [Tool](https://www.notion.so/docs/tool):
 
 ```python
