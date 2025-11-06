@@ -361,8 +361,8 @@ class Pipeline(PipelineBase):
                 )
                 if break_point and (component_break_point_triggered or agent_break_point_triggered):
                     new_pipeline_snapshot = _create_pipeline_snapshot(
-                        inputs=deepcopy(inputs),
-                        component_inputs=deepcopy(component_inputs),
+                        inputs=_deepcopy_with_exceptions(inputs),
+                        component_inputs=_deepcopy_with_exceptions(component_inputs),
                         break_point=break_point,
                         component_visits=component_visits,
                         original_input_data=data,
@@ -399,8 +399,8 @@ class Pipeline(PipelineBase):
 
                     # Create a snapshot of the state of the pipeline before the error occurred.
                     pipeline_snapshot = _create_pipeline_snapshot(
-                        inputs=deepcopy(inputs),
-                        component_inputs=deepcopy(component_inputs),
+                        inputs=_deepcopy_with_exceptions(inputs),
+                        component_inputs=_deepcopy_with_exceptions(component_inputs),
                         break_point=break_point,
                         component_visits=component_visits,
                         original_input_data=data,
