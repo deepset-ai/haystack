@@ -8,11 +8,11 @@ loaders:
         "hugging_face_api",
         "openai",
         "openai_dalle",
-        "openai_responses",
         "chat/azure",
         "chat/hugging_face_local",
         "chat/hugging_face_api",
         "chat/openai",
+        "chat/openai_responses",
         "chat/fallback",
       ]
     ignore_when_discovered: ["__init__"]
