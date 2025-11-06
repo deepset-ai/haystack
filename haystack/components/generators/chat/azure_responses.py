@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
-from haystack.tools import ToolsType, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset, warm_up_tools
+from haystack.tools import ToolsType, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 
 
