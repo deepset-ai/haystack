@@ -130,7 +130,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         self._azure_endpoint = azure_endpoint
         self._azure_deployment = azure_deployment
         super(AzureOpenAIResponsesChatGenerator, self).__init__(
-            api_key=api_key,
+            api_key=api_key,  # type: ignore[arg-type]
             model=self._azure_deployment,
             streaming_callback=streaming_callback,
             api_base_url=f"{self._azure_endpoint.rstrip('/')}/openai/v1",
@@ -177,11 +177,12 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             generation_kwargs["response_format"] = json_schema
 
         # OpenAI/MCP tools are passed as list of dictionaries
+        serialized_tools: Union[dict[str, Any], list[dict[str, Any]], None]
         if self.tools and isinstance(self.tools, list) and isinstance(self.tools[0], dict):
-            serialized_tools = self.tools
+            # mypy can't infer that self.tools is list[dict] here
+            serialized_tools = self.tools  # type: ignore[assignment]
         else:
-            # function returns correct type but mypy doesn't know it
-            serialized_tools = serialize_tools_or_toolset(self.tools)  # type: ignore[assignment]
+            serialized_tools = serialize_tools_or_toolset(self.tools)  # type: ignore[arg-type]
 
         return default_to_dict(
             self,
