@@ -594,6 +594,10 @@ class TestOpenAIResponsesChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
+    @pytest.mark.skip(
+        reason="Streaming plus pydantic based model does not work due to known issue in openai python "
+        "sdk https://github.com/openai/openai-python/issues/2305"
+    )
     def test_live_run_with_text_format_and_streaming(self, calendar_event_model):
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
