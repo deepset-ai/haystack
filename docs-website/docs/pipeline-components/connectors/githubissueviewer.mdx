@@ -9,13 +9,17 @@ description: "This component fetches and parses GitHub issues into Haystack docu
 
 This component fetches and parses GitHub issues into Haystack documents.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Right at the beginning of a pipeline and before a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) that expects the content of a GitHub issue as input |
-| **Mandatory run variables**            | "url": A GitHub issue URL                                                                                                                        |
-| **Output variables**                   | "documents": A list of documents containing the main issue and its comments                                                                      |
+| **Mandatory run variables**            | `url`: A GitHub issue URL                                                                                                                        |
+| **Output variables**                   | `documents`: A list of documents containing the main issue and its comments                                                                      |
 | **API reference**                      | [GitHub](/reference/integrations-github)                                                                                                                |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github                                                         |
+
+</div>
 
 ## Overview
 

@@ -9,13 +9,17 @@ description: "This component computes the embeddings of a string using embedding
 
 This component computes the embeddings of a string using embedding models supported by FastEmbed.
 
+<div className="key-value-table">
+
 |                                        |                                                                                             |
 | :------------------------------------- | :------------------------------------------------------------------------------------------ |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline                  |
-| **Mandatory run variables**            | “text”: A string                                                                            |
-| **Output variables**                   | “embedding”: A vector (list of float numbers)                                               |
+| **Mandatory run variables**            | `text`: A string                                                                            |
+| **Output variables**                   | `embedding`: A vector (list of float numbers)                                               |
 | **API reference**                      | [FastEmbed](/reference/fastembed-embedders)                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
+
+</div>
 
 This component should be used to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`FastembedDocumentEmbedder`](fastembeddocumentembedder.mdx), which enriches the document with the computed embedding, known as vector.
 

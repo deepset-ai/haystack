@@ -9,14 +9,18 @@ description: "This is an embedding Retriever compatible with the Weaviate Docume
 
 This is an embedding Retriever compatible with the Weaviate Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
-| **Mandatory init variables**           | "document_store": An instance of a [WeaviateDocumentStore](../../document-stores/weaviatedocumentstore.mdx)                                                                                                                                                                                     |
-| **Mandatory run variables**            | “query_embedding”: A list of floats                                                                                                                                                                                                                                       |
-| **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                          |
+| **Mandatory init variables**           | `document_store`: An instance of a [WeaviateDocumentStore](../../document-stores/weaviatedocumentstore.mdx)                                                                                                                                                                                     |
+| **Mandatory run variables**            | `query_embedding`: A list of floats                                                                                                                                                                                                                                       |
+| **Output variables**                   | `documents`: A list of documents                                                                                                                                                                                                                                          |
 | **API reference**                      | [Weaviate](/reference/integrations-weaviate)                                                                                                                                                                                                                                     |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weaviate                                                                                                                                                                                |
+
+</div>
 
 ## Overview
 
@@ -26,7 +30,7 @@ The `WeaviateEmbeddingRetriever` is an embedding-based Retriever compatible with
 
 When using the `WeaviateEmbeddingRetriever` in your NLP system, ensure the query and Document [embeddings](../embedders.mdx) are available. You can do so by adding a Document Embedder to your indexing Pipeline and a Text Embedder to your query Pipeline.
 
-In addition to the `query_embedding`, the `WeaviateEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space. 
+In addition to the `query_embedding`, the `WeaviateEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
 
 You can also specify `distance`, the maximum allowed distance between embeddings, and `certainty`, the normalized distance between the result items and the search embedding. The behavior of `distance` depends on the Collection’s distance metric used. See the [official Weaviate documentation](https://weaviate.io/developers/weaviate/api/graphql/search-operators#variables) for more information.
 

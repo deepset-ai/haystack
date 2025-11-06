@@ -9,6 +9,8 @@ description: "The `Agent` component is a tool-using agent that interacts with ch
 
 The `Agent` component is a tool-using agent that interacts with chat-based LLMs and tools to solve complex queries iteratively. It can execute external tools, manage state across multiple LLM calls, and stop execution based on configurable `exit_conditions`.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) or user input                     |
@@ -17,6 +19,8 @@ The `Agent` component is a tool-using agent that interacts with chat-based LLMs 
 | **Output variables**                   | `messages`: Chat history with tool and model responses                                 |
 | **API reference**                      | [Agents](/reference/agents-api)                                                               |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/agents/agent.py |
+
+</div>
 
 ## Overview
 
@@ -151,7 +155,7 @@ document_store = InMemoryDocumentStore() # create a document store or an SQL dat
 def add_database_tool(name: str, surname: str, job_title: Optional[str], other: Optional[str]):
     """Use this tool to add names to the database with information about them"""
     document_store.write_documents([Document(content=name + " " + surname + " " + (job_title or ""), meta={"other":other})])
-    return 
+    return
 
 database_asistant = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),

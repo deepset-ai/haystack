@@ -9,13 +9,17 @@ description: "Use this component in hybrid retrieval pipelines or indexing pipel
 
 Use this component in hybrid retrieval pipelines or indexing pipelines with multiple file converters to join lists of documents.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In indexing and query pipelines, after components that return a list of documents such as multiple [Retrievers](../retrievers.mdx)  or multiple [Converters](../converters.mdx) |
-| **Mandatory run variables**            | “documents”: A list of documents. This input is `variadic`, meaning you can connect a variable number of components to it.                                                    |
-| **Output variables**                   | “documents”: A list of documents                                                                                                                                              |
+| **Mandatory run variables**            | `documents`: A list of documents. This input is `variadic`, meaning you can connect a variable number of components to it.                                                    |
+| **Output variables**                   | `documents`: A list of documents                                                                                                                                              |
 | **API reference**                      | [Joiners](/reference/joiners-api)                                                                                                                                                    |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/joiners/document_joiner.py                                                                             |
+
+</div>
 
 ## Overview
 
@@ -24,7 +28,7 @@ Use this component in hybrid retrieval pipelines or indexing pipelines with mult
 - `concatenate` - Combines document from multiple components, discarding any duplicates. documents get their scores from the last component in the pipeline that assigns scores. This mode doesn’t influence document scores.
 - `merge` - Merges the scores of duplicate documents coming from multiple components. You can also assign a weight to the scores to influence how they’re merged and set the top_k limit to specify how many documents you want `DocumentJoiner` to return.
 - `reciprocal_rank_fusion`- Combines documents into a single list based on their ranking received from multiple components. It then calculates a new score based on the ranks of documents in the input lists. If the same Document appears in more than one list (was returned by multiple components), it gets a higher score.
-- `distribution_based_rank_fusion` – Combines rankings from multiple sources into a single, unified ranking. It analyzes how scores are spread out and normalizes them, ensuring that each component's scoring method is taken into account. This normalization helps to balance the influence of each component, resulting in a more robust and fair combined ranking. If a document appears in multiple lists, its final score is adjusted based on the distribution of scores from all lists. 
+- `distribution_based_rank_fusion` – Combines rankings from multiple sources into a single, unified ranking. It analyzes how scores are spread out and normalizes them, ensuring that each component's scoring method is taken into account. This normalization helps to balance the influence of each component, resulting in a more robust and fair combined ranking. If a document appears in multiple lists, its final score is adjusted based on the distribution of scores from all lists.
 
 ## Usage
 
@@ -72,7 +76,7 @@ p.connect("bm25_retriever", "joiner")
 p.connect("embedding_retriever", "joiner")
 p.connect("text_embedder", "embedding_retriever")
 query = "What is the capital of France?"
-p.run(data={"bm25_retriever": {"query": query}, 
+p.run(data={"bm25_retriever": {"query": query},
             "text_embedder": {"text": query}})
 ```
 

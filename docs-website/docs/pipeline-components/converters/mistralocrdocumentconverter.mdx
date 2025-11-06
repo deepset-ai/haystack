@@ -9,14 +9,18 @@ description: "`MistralOCRDocumentConverter` extracts text from documents using M
 
 `MistralOCRDocumentConverter` extracts text from documents using Mistral's OCR API, with optional structured annotations for both individual image regions and full documents. It supports various input formats including local files, URLs, and Mistral file IDs.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx), or right at the beginning of an indexing pipeline |
-| **Mandatory init variables** | "api_key": The Mistral API key. Can be set with `MISTRAL_API_KEY` environment variable. |
-| **Mandatory run variables** | "sources": A list of document sources (file paths, ByteStreams, URLs, or Mistral chunks) |
-| **Output variables** | "documents": A list of documents <br /> <br />"raw_mistral_response": A list of raw OCR responses from Mistral API |
+| **Mandatory init variables** | `api_key`: The Mistral API key. Can be set with `MISTRAL_API_KEY` environment variable. |
+| **Mandatory run variables** | `sources`: A list of document sources (file paths, ByteStreams, URLs, or Mistral chunks) |
+| **Output variables** | `documents`: A list of documents <br /> <br />`raw_mistral_response`: A list of raw OCR responses from Mistral API |
 | **API reference** | [Mistral](/reference/integrations-mistral) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mistral |
+
+</div>
 
 ## Overview
 

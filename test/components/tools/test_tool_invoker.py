@@ -136,6 +136,8 @@ class WarmupTrackingToolset(Toolset):
 
     def warm_up(self):
         self.was_warmed_up = True
+        # Call parent to warm up individual tools
+        super().warm_up()
 
 
 class TestToolInvokerCore:

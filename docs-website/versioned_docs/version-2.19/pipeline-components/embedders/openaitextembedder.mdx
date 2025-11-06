@@ -11,14 +11,18 @@ OpenAITextEmbedder transforms a string into a vector that captures its semantics
 
 When you perform embedding retrieval, you use this component to transform your query into a vector. Then, the embedding Retriever looks for similar or relevant documents.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
-| **Mandatory init variables** | "api_key": An OpenAI API key. Can be set with `OPENAI_API_KEY` env var. |
-| **Mandatory run variables** | "text": A string |
-| **Output variables** | "embedding": A list of float numbers  <br /> <br />"meta": A dictionary of metadata |
+| **Mandatory init variables** | `api_key`: An OpenAI API key. Can be set with `OPENAI_API_KEY` env var. |
+| **Mandatory run variables** | `text`: A string |
+| **Output variables** | `embedding`: A list of float numbers  <br /> <br />`meta`: A dictionary of metadata |
 | **API reference** | [Embedders](/reference/embedders-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/openai_text_embedder.py |
+
+</div>
 
 ## Overview
 

@@ -9,14 +9,18 @@ description: "Use Jina AI’s Reader API with Haystack."
 
 Use Jina AI’s Reader API with Haystack.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | As the first component in a pipeline that passes the resulting document downstream |
-| **Mandatory init variables** | “mode”: The operation mode for the reader (`read`, `search`, or `ground`)  <br /> <br />”api_key”: The Jina API key. Can be set with `JINA_API_KEY` env var. |
-| **Mandatory run variables** | “query”: A query string |
-| **Output variables** | “document”: A list of documents |
+| **Mandatory init variables** | `mode`: The operation mode for the reader (`read`, `search`, or `ground`)  <br /> <br />`api_key`: The Jina API key. Can be set with `JINA_API_KEY` env var. |
+| **Mandatory run variables** | `query`: A query string |
+| **Output variables** | `documents`: A list of documents |
 | **API reference** | [Jina](/reference/integrations-jina) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina |
+
+</div>
 
 ## Overview
 

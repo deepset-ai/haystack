@@ -9,14 +9,18 @@ description: "Use this component to route text input to various output connectio
 
 Use this component to route text input to various output connections based on its user-defined categorization label.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory init variables** | "labels": A list of labels for classification  <br /> <br />"token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
-| **Mandatory run variables** | “text”: The text to be routed to one of the specified outputs based on which label it has been categorized into |
-| **Output variables** | “documents”: A dictionary with the label as key and the text as value |
+| **Mandatory init variables** | `labels`: A list of labels for classification  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory run variables** | `text`: The text to be routed to one of the specified outputs based on which label it has been categorized into |
+| **Output variables** | `documents`: A dictionary with the label as key and the text as value |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/zero_shot_text_router.py |
+
+</div>
 
 ## Overview
 
@@ -99,6 +103,7 @@ p.connect("query_embedder.embedding", "query_retriever.query_embedding")
 result = p.run({"text_router": {"text": "What is the capital of Germany?"}})
 print(result)
 
+>>{'query_retriever': {'documents': [Document(id=32d393dd8ee60648ae7e630cfe34b1922e747812ddf9a2c8b3650e66e0ecdb5a,
 content: 'Germany, officially the Federal Republic of Germany, is a country in the western region of Central E...',
 score: 0.8625669285150891), Document(id=c17102d8d818ce5cdfee0288488c518f5c9df238a9739a080142090e8c4cb3ba,
 content: 'France, officially the French Republic, is a country located primarily in Western Europe. France is ...',

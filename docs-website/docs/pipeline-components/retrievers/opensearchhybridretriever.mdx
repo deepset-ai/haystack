@@ -11,14 +11,18 @@ This is a [SuperComponent](../../concepts/components/supercomponents.mdx) that i
 
 A Hybrid Retriever uses both traditional keyword-based search (such as BM25) and embedding-based search to retrieve documents, combining the strengths of both approaches. The Retriever then merges and re-ranks the results from both methods.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | Most common position in a pipeline | After an [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx) |
-| Mandatory init variables | "document_store:: An instance of `OpenSearchDocumentStore` to use for retrieval  <br /> <br />"embedder": Any [Embedder](../embedders.mdx) implementing the `TextEmbedder` protocol |
-| Mandatory run variables | "query": A query string |
-| Output variables | "documents": A list of documents matching the query |
+| Mandatory init variables | `document_store`: An instance of `OpenSearchDocumentStore` to use for retrieval  <br /> <br />`embedder`: Any [Embedder](../embedders.mdx) implementing the `TextEmbedder` protocol |
+| Mandatory run variables | `query`: A query string |
+| Output variables | `documents`: A list of documents matching the query |
 | API reference | [OpenSearch](/reference/integrations-opensearch) |
 | GitHub | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch |
+
+</div>
 
 ## Overview
 
