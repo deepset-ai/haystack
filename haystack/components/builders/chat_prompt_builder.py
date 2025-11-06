@@ -172,7 +172,9 @@ class ChatPromptBuilder:
         extracted_variables = []
         if template and not variables:
 
-            def _extract_from_text(text: str, role: Optional[str] = None, is_filter_allowed: bool = False) -> list:
+            def _extract_from_text(
+                text: Optional[str], role: Optional[str] = None, is_filter_allowed: bool = False
+            ) -> list:
                 if text is None:
                     raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=role or "unknown", message=text))
                 if is_filter_allowed and "templatize_part" in text:
