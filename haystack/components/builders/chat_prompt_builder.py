@@ -12,7 +12,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Jinja2TimeExtension
+from haystack.utils import Jinja2TimeExtension, extract_declared_variables
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
 
 logger = logging.getLogger(__name__)
@@ -171,21 +171,28 @@ class ChatPromptBuilder:
 
         extracted_variables = []
         if template and not variables:
+
+            def _extract_from_text(text: str, role: Optional[str] = None, is_filter_allowed: bool = False) -> list:
+                if text is None:
+                    raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=role or "unknown", message=text))
+                if is_filter_allowed and "templatize_part" in text:
+                    raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
+
+                ast = self._env.parse(text)
+                template_variables = meta.find_undeclared_variables(ast)
+                assigned_variables = extract_declared_variables(text, env=self._env)
+                return list(template_variables - assigned_variables)
+
             if isinstance(template, list):
                 for message in template:
                     if message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM):
-                        # infer variables from template
-                        if message.text is None:
-                            raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
-                        if message.text and "templatize_part" in message.text:
-                            raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
-                        ast = self._env.parse(message.text)
-                        template_variables = meta.find_undeclared_variables(ast)
-                        extracted_variables += list(template_variables)
+                        extracted_variables += _extract_from_text(
+                            message.text, role=message.role.value, is_filter_allowed=True
+                        )
             elif isinstance(template, str):
-                ast = self._env.parse(template)
-                extracted_variables = list(meta.find_undeclared_variables(ast))
+                extracted_variables = _extract_from_text(template, is_filter_allowed=False)
 
+        extracted_variables = extracted_variables or []
         self.variables = variables or extracted_variables
         self.required_variables = required_variables or []
 
