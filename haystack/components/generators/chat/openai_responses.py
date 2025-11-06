@@ -484,8 +484,10 @@ class OpenAIResponsesChatGenerator:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
 
-        for chunk in responses:  # pylint: disable=not-an-iterable
-            chunk_delta = _convert_response_chunk_to_streaming_chunk(chunk=chunk, component_info=component_info)
+        for openai_chunk in responses:  # pylint: disable=not-an-iterable
+            chunk_delta = _convert_response_chunk_to_streaming_chunk(
+                chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
+            )
             if chunk_delta:
                 chunks.append(chunk_delta)
                 callback(chunk_delta)
@@ -497,8 +499,10 @@ class OpenAIResponsesChatGenerator:
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
-        async for chunk in responses:  # pylint: disable=not-an-iterable
-            chunk_delta = _convert_response_chunk_to_streaming_chunk(chunk=chunk, component_info=component_info)
+        async for openai_chunk in responses:  # pylint: disable=not-an-iterable
+            chunk_delta = _convert_response_chunk_to_streaming_chunk(
+                chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
+            )
             if chunk_delta:
                 chunks.append(chunk_delta)
                 await callback(chunk_delta)
@@ -563,7 +567,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
 
 def _convert_response_chunk_to_streaming_chunk(
-    chunk: ResponseStreamEvent, component_info: Optional[ComponentInfo] = None
+    chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: Optional[ComponentInfo] = None
 ) -> StreamingChunk:
     """
     Converts the streaming response chunk from the OpenAI Responses API to a StreamingChunk.
@@ -574,18 +578,38 @@ def _convert_response_chunk_to_streaming_chunk(
     :returns:
         A StreamingChunk object representing the content of the chunk from the OpenAI Responses API.
     """
-    if chunk.type == "response.output_text.delta":
+    if chunk.type == "response.output_item.added":
+        # Responses API always returns reasoning chunks even if there is no summary
+        if chunk.item.type == "reasoning":
+            extra = chunk.item.to_dict()
+            reasoning = ReasoningContent(reasoning_text="", extra=extra)
+            return StreamingChunk(
+                content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, start=True
+            )
+
+        # the function name is only streamed at the start and end of the function call
+        if chunk.item.type == "function_call":
+            function = chunk.item.name
+            extra = {"type": "function_call", "call_id": chunk.item.call_id, "status": chunk.item.status}
+            tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item.id, tool_name=function, extra=extra)
+            return StreamingChunk(
+                content="", component_info=component_info, index=chunk.output_index, tool_calls=[tool_call], start=True
+            )
+
+    elif chunk.type == "response.output_text.delta":
         # if item is a ResponseTextDeltaEvent
         meta = chunk.to_dict()
         meta["received_at"] = datetime.now().isoformat()
-        return StreamingChunk(content=chunk.delta, component_info=component_info, index=chunk.content_index, meta=meta)
 
-    # Responses API always returns reasoning chunks even if there is no summary
-    elif chunk.type == "response.output_item.added" and chunk.item.type == "reasoning":
-        extra = chunk.item.to_dict()
-        reasoning = ReasoningContent(reasoning_text="", extra=extra)
+        # Start is determined by checking if this is the first text delta event of a new output_index
+        # 1) Check if all previous chunks have different output_index
+        # 2) If any chunks do have the same output_index, check if they have content
+        # If none of them have content, this is the start of a new text output
+        start = all(c.index != chunk.output_index for c in previous_chunks) or all(
+            c.content == "" for c in previous_chunks if c.index == chunk.output_index
+        )
         return StreamingChunk(
-            content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, start=True
+            content=chunk.delta, component_info=component_info, index=chunk.output_index, meta=meta, start=start
         )
 
     elif chunk.type == "response.reasoning_summary_text.delta":
@@ -596,15 +620,6 @@ def _convert_response_chunk_to_streaming_chunk(
         reasoning = ReasoningContent(reasoning_text=chunk.delta, extra=extra)
         return StreamingChunk(
             content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, start=False
-        )
-
-    # the function name is only streamed at the start and end of the function call
-    elif chunk.type == "response.output_item.added" and chunk.item.type == "function_call":
-        function = chunk.item.name
-        extra = {"type": "function_call", "call_id": chunk.item.call_id, "status": chunk.item.status}
-        tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item.id, tool_name=function, extra=extra)
-        return StreamingChunk(
-            content="", component_info=component_info, index=chunk.output_index, tool_calls=[tool_call], start=True
         )
 
     # the function arguments are streamed in parts

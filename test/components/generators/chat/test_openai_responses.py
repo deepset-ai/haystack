@@ -10,17 +10,26 @@ from unittest.mock import MagicMock
 
 import pytest
 from openai import OpenAIError
+from openai.types import ResponseFormatText
 from openai.types.responses import (
     FunctionTool,
     Response,
     ResponseCompletedEvent,
+    ResponseContentPartAddedEvent,
+    ResponseContentPartDoneEvent,
     ResponseCreatedEvent,
     ResponseFunctionCallArgumentsDeltaEvent,
     ResponseFunctionCallArgumentsDoneEvent,
     ResponseFunctionToolCall,
+    ResponseInProgressEvent,
     ResponseOutputItemAddedEvent,
     ResponseOutputItemDoneEvent,
+    ResponseOutputMessage,
+    ResponseOutputText,
     ResponseReasoningItem,
+    ResponseTextConfig,
+    ResponseTextDeltaEvent,
+    ResponseTextDoneEvent,
     ResponseUsage,
 )
 from openai.types.responses.response import Reasoning
@@ -859,7 +868,277 @@ class TestOpenAIResponsesChatGenerator:
         assert "calc_result" in response
         assert response["messages"][-1].text is not None
 
-    def test_convert_response_chunk_to_streaming_chunk(self):
+
+class TestConvertResponseChunkToStreamingChunk:
+    def test_convert_only_text(self):
+        openai_chunks = [
+            ResponseCreatedEvent(
+                response=Response(
+                    id="resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
+                    created_at=1762418678.0,
+                    metadata={},
+                    model="gpt-5-mini-2025-08-07",
+                    object="response",
+                    output=[],
+                    parallel_tool_calls=True,
+                    temperature=1.0,
+                    tool_choice="auto",
+                    tools=[],
+                    top_p=1.0,
+                    background=False,
+                    reasoning=Reasoning(effort="medium", generate_summary=None, summary=None),
+                    service_tier="auto",
+                    status="in_progress",
+                    text=ResponseTextConfig(format=ResponseFormatText(type="text"), verbosity="medium"),
+                    top_logprobs=0,
+                    truncation="disabled",
+                    prompt_cache_retention=None,
+                    store=True,
+                ),
+                sequence_number=0,
+                type="response.created",
+            ),
+            ResponseInProgressEvent(
+                response=Response(
+                    id="resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
+                    created_at=1762418678.0,
+                    metadata={},
+                    model="gpt-5-mini-2025-08-07",
+                    object="response",
+                    output=[],
+                    parallel_tool_calls=True,
+                    temperature=1.0,
+                    tool_choice="auto",
+                    tools=[],
+                    top_p=1.0,
+                    background=False,
+                    reasoning=Reasoning(effort="medium", generate_summary=None, summary=None),
+                    service_tier="auto",
+                    status="in_progress",
+                    text=ResponseTextConfig(format=ResponseFormatText(type="text"), verbosity="medium"),
+                    top_logprobs=0,
+                    truncation="disabled",
+                    prompt_cache_retention=None,
+                    store=True,
+                ),
+                sequence_number=1,
+                type="response.in_progress",
+            ),
+            ResponseOutputItemAddedEvent(
+                item=ResponseReasoningItem(
+                    id="rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b", summary=[], type="reasoning"
+                ),
+                output_index=0,
+                sequence_number=2,
+                type="response.output_item.added",
+            ),
+            ResponseOutputItemDoneEvent(
+                item=ResponseReasoningItem(
+                    id="rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b", summary=[], type="reasoning"
+                ),
+                output_index=0,
+                sequence_number=3,
+                type="response.output_item.done",
+            ),
+            ResponseOutputItemAddedEvent(
+                item=ResponseOutputMessage(
+                    id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    content=[],
+                    role="assistant",
+                    status="in_progress",
+                    type="message",
+                ),
+                output_index=1,
+                sequence_number=4,
+                type="response.output_item.added",
+            ),
+            ResponseContentPartAddedEvent(
+                content_index=0,
+                item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                output_index=1,
+                part=ResponseOutputText(annotations=[], text="", type="output_text", logprobs=[]),
+                sequence_number=5,
+                type="response.content_part.added",
+            ),
+            ResponseTextDeltaEvent(
+                content_index=0,
+                delta="Germany",
+                item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                logprobs=[],
+                output_index=1,
+                sequence_number=6,
+                type="response.output_text.delta",
+                obfuscation="EV5gCoyiD",
+            ),
+            ResponseTextDeltaEvent(
+                content_index=0,
+                delta=":",
+                item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                logprobs=[],
+                output_index=1,
+                sequence_number=7,
+                type="response.output_text.delta",
+                obfuscation="EkdNXp1EE2Cgj8z",
+            ),
+            ResponseTextDeltaEvent(
+                content_index=0,
+                delta=" Berlin",
+                item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                logprobs=[],
+                output_index=1,
+                sequence_number=8,
+                type="response.output_text.delta",
+                obfuscation="1eS0q9aye",
+            ),
+            ResponseTextDeltaEvent(
+                content_index=0,
+                delta="\n",
+                item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                logprobs=[],
+                output_index=1,
+                sequence_number=9,
+                type="response.output_text.delta",
+                obfuscation="H9Ict3F41DwGS4a",
+            ),
+            ResponseTextDeltaEvent(
+                content_index=0,
+                delta="France",
+                item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                logprobs=[],
+                output_index=1,
+                sequence_number=10,
+                type="response.output_text.delta",
+                obfuscation="4vxrblWURx",
+            ),
+            ResponseTextDeltaEvent(
+                content_index=0,
+                delta=":",
+                item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                logprobs=[],
+                output_index=1,
+                sequence_number=11,
+                type="response.output_text.delta",
+                obfuscation="B1CMJsNGhhqIz5K",
+            ),
+            ResponseTextDeltaEvent(
+                content_index=0,
+                delta=" Paris",
+                item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                logprobs=[],
+                output_index=1,
+                sequence_number=12,
+                type="response.output_text.delta",
+                obfuscation="ojbz89bS7j",
+            ),
+            ResponseTextDoneEvent(
+                content_index=0,
+                item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                logprobs=[],
+                output_index=1,
+                sequence_number=13,
+                text="Germany: Berlin\nFrance: Paris",
+                type="response.output_text.done",
+            ),
+            ResponseContentPartDoneEvent(
+                content_index=0,
+                item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                output_index=1,
+                part=ResponseOutputText(
+                    annotations=[], text="Germany: Berlin\nFrance: Paris", type="output_text", logprobs=[]
+                ),
+                sequence_number=14,
+                type="response.content_part.done",
+            ),
+            ResponseOutputItemDoneEvent(
+                item=ResponseOutputMessage(
+                    id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    content=[
+                        ResponseOutputText(
+                            annotations=[], text="Germany: Berlin\nFrance: Paris", type="output_text", logprobs=[]
+                        )
+                    ],
+                    role="assistant",
+                    status="completed",
+                    type="message",
+                ),
+                output_index=1,
+                sequence_number=15,
+                type="response.output_item.done",
+            ),
+            ResponseCompletedEvent(
+                response=Response(
+                    id="resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
+                    created_at=1762418678.0,
+                    error=None,
+                    incomplete_details=None,
+                    instructions=None,
+                    metadata={},
+                    model="gpt-5-mini-2025-08-07",
+                    object="response",
+                    output=[
+                        ResponseReasoningItem(
+                            id="rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b",
+                            summary=[],
+                            type="reasoning",
+                            content=None,
+                            encrypted_content=None,
+                            status=None,
+                        ),
+                        ResponseOutputMessage(
+                            id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                            content=[
+                                ResponseOutputText(
+                                    annotations=[],
+                                    text="Germany: Berlin\nFrance: Paris",
+                                    type="output_text",
+                                    logprobs=[],
+                                )
+                            ],
+                            role="assistant",
+                            status="completed",
+                            type="message",
+                        ),
+                    ],
+                    parallel_tool_calls=True,
+                    temperature=1.0,
+                    tool_choice="auto",
+                    tools=[],
+                    top_p=1.0,
+                    background=False,
+                    conversation=None,
+                    max_output_tokens=None,
+                    max_tool_calls=None,
+                    previous_response_id=None,
+                    prompt=None,
+                    prompt_cache_key=None,
+                    reasoning=Reasoning(effort="medium", generate_summary=None, summary=None),
+                    safety_identifier=None,
+                    service_tier="default",
+                    status="completed",
+                    text=ResponseTextConfig(format=ResponseFormatText(type="text"), verbosity="medium"),
+                    top_logprobs=0,
+                    truncation="disabled",
+                    usage=ResponseUsage(
+                        input_tokens=15,
+                        input_tokens_details=InputTokensDetails(cached_tokens=0),
+                        output_tokens=77,
+                        output_tokens_details=OutputTokensDetails(reasoning_tokens=64),
+                        total_tokens=92,
+                    ),
+                    user=None,
+                    prompt_cache_retention=None,
+                    store=True,
+                ),
+                sequence_number=16,
+                type="response.completed",
+            ),
+        ]
+        streaming_chunks = []
+        for chunk in openai_chunks:
+            streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
+            streaming_chunks.append(streaming_chunk)
+
+    def test_convert_only_function_call(self):
         chunks = [
             ResponseCreatedEvent(
                 response=Response(
@@ -1019,7 +1298,11 @@ class TestOpenAIResponsesChatGenerator:
             ),
         ]
 
-        streaming_chunks = [_convert_response_chunk_to_streaming_chunk(chunk) for chunk in chunks]
+        streaming_chunks = []
+        for chunk in chunks:
+            streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
+            streaming_chunks.append(streaming_chunk)
+
         assert streaming_chunks == [
             StreamingChunk(
                 content="",
