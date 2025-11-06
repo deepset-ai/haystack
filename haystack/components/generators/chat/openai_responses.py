@@ -28,10 +28,10 @@ from haystack.dataclasses import (
     select_streaming_callback,
 )
 from haystack.tools import (
-    Toolset,
     ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
     warm_up_tools,
 )
@@ -83,7 +83,7 @@ class OpenAIResponsesChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        tools: Optional[ToolsType | list[dict]] = None,
+        tools: Optional[Union[ToolsType, list[dict]]] = None,
         tools_strict: bool = False,
         http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
@@ -193,7 +193,11 @@ class OpenAIResponsesChatGenerator:
         This method is idempotent and will only warm up the tools once.
         """
         if not self._is_warmed_up:
-            warm_up_tools(self.tools)
+            is_openai_tool = isinstance(self.tools, list) and isinstance(self.tools[0], dict)
+            # We only warm up Haystack tools, not OpenAI/MCP tools
+            # The type ignore is needed because mypy cannot infer the type correctly
+            if not is_openai_tool:
+                warm_up_tools(self.tools)  # type: ignore[arg-type]
             self._is_warmed_up = True
 
     def _get_telemetry_data(self) -> dict[str, Any]:
@@ -227,11 +231,12 @@ class OpenAIResponsesChatGenerator:
             generation_kwargs["text_format"] = json_schema
 
         # OpenAI/MCP tools are passed as list of dictionaries
+        serialized_tools: Union[dict[str, Any], list[dict[str, Any]], None]
         if self.tools and isinstance(self.tools, list) and isinstance(self.tools[0], dict):
-            serialized_tools = self.tools
+            # mypy can't infer that self.tools is list[dict] here
+            serialized_tools = self.tools  # type: ignore[assignment]
         else:
-            # function returns correct type but mypy doesn't know it
-            serialized_tools = serialize_tools_or_toolset(self.tools)  # type: ignore[assignment]
+            serialized_tools = serialize_tools_or_toolset(self.tools)  # type: ignore[arg-type]
 
         return default_to_dict(
             self,
@@ -285,7 +290,7 @@ class OpenAIResponsesChatGenerator:
         *,
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType | list[dict]] = None,
+        tools: Optional[Union[ToolsType, list[dict]]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -352,7 +357,7 @@ class OpenAIResponsesChatGenerator:
         *,
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType | list[dict]] = None,
+        tools: Optional[Union[ToolsType, list[dict]]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -423,7 +428,7 @@ class OpenAIResponsesChatGenerator:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType | list[dict]] = None,
+        tools: Optional[Union[ToolsType, list[dict]]] = None,
         tools_strict: Optional[bool] = None,
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
@@ -449,11 +454,11 @@ class OpenAIResponsesChatGenerator:
 
             # Convert all tool objects to the correct OpenAI-compatible structure
             else:
-                if isinstance(tools, Toolset):
-                    tools = list(tools)
-                _check_duplicate_tool_names(tools)  # type: ignore[arg-type]
-                for t in tools:
-                    function_spec = {**t.tool_spec}  # type: ignore[union-attr]
+                # mypy can't infer that tools is ToolsType here
+                flattened_tools = flatten_tools_or_toolsets(tools)  # type: ignore[arg-type]
+                _check_duplicate_tool_names(flattened_tools)
+                for t in flattened_tools:
+                    function_spec = {**t.tool_spec}
                     if not tools_strict:
                         function_spec["strict"] = False
                     function_spec["parameters"]["additionalProperties"] = False
