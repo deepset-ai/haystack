@@ -566,7 +566,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
     return chat_message
 
 
-def _convert_response_chunk_to_streaming_chunk(
+def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-return-statements
     chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: Optional[ComponentInfo] = None
 ) -> StreamingChunk:
     """
