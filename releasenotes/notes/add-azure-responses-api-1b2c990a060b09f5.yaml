@@ -12,9 +12,9 @@ features:
     from haystack.dataclasses import ChatMessage
 
     chat_generator = AzureOpenAIResponsesChatGenerator(
-    azure_endpoint="https://example-resource.azure.openai.com/",
+        azure_endpoint="https://example-resource.azure.openai.com/",
         azure_deployment="gpt-5-mini",
-        generation_kwargs={{"summary": "auto", "effort": "low"}},
+        generation_kwargs={"reasoning": {"effort": "low", "summary": "auto"}},
     )
 
     response = chat_generator.run(
