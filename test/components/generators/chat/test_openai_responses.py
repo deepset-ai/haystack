@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from typing import Any, Optional
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from openai import OpenAIError
@@ -1138,6 +1138,353 @@ class TestConvertResponseChunkToStreamingChunk:
             streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
             streaming_chunks.append(streaming_chunk)
 
+        assert streaming_chunks == [
+            StreamingChunk(
+                content="",
+                meta={
+                    "response": {
+                        "id": "resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
+                        "created_at": 1762418678.0,
+                        "metadata": {},
+                        "model": "gpt-5-mini-2025-08-07",
+                        "object": "response",
+                        "output": [],
+                        "parallel_tool_calls": True,
+                        "temperature": 1.0,
+                        "tool_choice": "auto",
+                        "tools": [],
+                        "top_p": 1.0,
+                        "background": False,
+                        "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
+                        "service_tier": "auto",
+                        "status": "in_progress",
+                        "text": {"format": {"type": "text"}, "verbosity": "medium"},
+                        "top_logprobs": 0,
+                        "truncation": "disabled",
+                        "prompt_cache_retention": None,
+                        "store": True,
+                    },
+                    "sequence_number": 0,
+                    "type": "response.created",
+                },
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "response": {
+                        "id": "resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
+                        "created_at": 1762418678.0,
+                        "metadata": {},
+                        "model": "gpt-5-mini-2025-08-07",
+                        "object": "response",
+                        "output": [],
+                        "parallel_tool_calls": True,
+                        "temperature": 1.0,
+                        "tool_choice": "auto",
+                        "tools": [],
+                        "top_p": 1.0,
+                        "background": False,
+                        "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
+                        "service_tier": "auto",
+                        "status": "in_progress",
+                        "text": {"format": {"type": "text"}, "verbosity": "medium"},
+                        "top_logprobs": 0,
+                        "truncation": "disabled",
+                        "prompt_cache_retention": None,
+                        "store": True,
+                    },
+                    "sequence_number": 1,
+                    "type": "response.in_progress",
+                },
+            ),
+            StreamingChunk(
+                content="",
+                meta={},
+                index=0,
+                start=True,
+                reasoning=ReasoningContent(
+                    reasoning_text="",
+                    extra={
+                        "id": "rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b",
+                        "summary": [],
+                        "type": "reasoning",
+                    },
+                ),
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "item": {
+                        "id": "rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b",
+                        "summary": [],
+                        "type": "reasoning",
+                    },
+                    "output_index": 0,
+                    "sequence_number": 3,
+                    "type": "response.output_item.done",
+                },
+                index=0,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "item": {
+                        "id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                        "content": [],
+                        "role": "assistant",
+                        "status": "in_progress",
+                        "type": "message",
+                    },
+                    "output_index": 1,
+                    "sequence_number": 4,
+                    "type": "response.output_item.added",
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "content_index": 0,
+                    "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    "output_index": 1,
+                    "part": {"annotations": [], "text": "", "type": "output_text", "logprobs": []},
+                    "sequence_number": 5,
+                    "type": "response.content_part.added",
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content="Germany",
+                meta={
+                    "content_index": 0,
+                    "delta": "Germany",
+                    "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    "logprobs": [],
+                    "output_index": 1,
+                    "sequence_number": 6,
+                    "type": "response.output_text.delta",
+                    "obfuscation": "EV5gCoyiD",
+                    "received_at": ANY,
+                },
+                index=1,
+                start=True,
+            ),
+            StreamingChunk(
+                content=":",
+                meta={
+                    "content_index": 0,
+                    "delta": ":",
+                    "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    "logprobs": [],
+                    "output_index": 1,
+                    "sequence_number": 7,
+                    "type": "response.output_text.delta",
+                    "obfuscation": "EkdNXp1EE2Cgj8z",
+                    "received_at": ANY,
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content=" Berlin",
+                meta={
+                    "content_index": 0,
+                    "delta": " Berlin",
+                    "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    "logprobs": [],
+                    "output_index": 1,
+                    "sequence_number": 8,
+                    "type": "response.output_text.delta",
+                    "obfuscation": "1eS0q9aye",
+                    "received_at": ANY,
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content="\n",
+                meta={
+                    "content_index": 0,
+                    "delta": "\n",
+                    "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    "logprobs": [],
+                    "output_index": 1,
+                    "sequence_number": 9,
+                    "type": "response.output_text.delta",
+                    "obfuscation": "H9Ict3F41DwGS4a",
+                    "received_at": ANY,
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content="France",
+                meta={
+                    "content_index": 0,
+                    "delta": "France",
+                    "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    "logprobs": [],
+                    "output_index": 1,
+                    "sequence_number": 10,
+                    "type": "response.output_text.delta",
+                    "obfuscation": "4vxrblWURx",
+                    "received_at": ANY,
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content=":",
+                meta={
+                    "content_index": 0,
+                    "delta": ":",
+                    "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    "logprobs": [],
+                    "output_index": 1,
+                    "sequence_number": 11,
+                    "type": "response.output_text.delta",
+                    "obfuscation": "B1CMJsNGhhqIz5K",
+                    "received_at": ANY,
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content=" Paris",
+                meta={
+                    "content_index": 0,
+                    "delta": " Paris",
+                    "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    "logprobs": [],
+                    "output_index": 1,
+                    "sequence_number": 12,
+                    "type": "response.output_text.delta",
+                    "obfuscation": "ojbz89bS7j",
+                    "received_at": ANY,
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "content_index": 0,
+                    "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    "logprobs": [],
+                    "output_index": 1,
+                    "sequence_number": 13,
+                    "text": "Germany: Berlin\nFrance: Paris",
+                    "type": "response.output_text.done",
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "content_index": 0,
+                    "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                    "output_index": 1,
+                    "part": {
+                        "annotations": [],
+                        "text": "Germany: Berlin\nFrance: Paris",
+                        "type": "output_text",
+                        "logprobs": [],
+                    },
+                    "sequence_number": 14,
+                    "type": "response.content_part.done",
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "item": {
+                        "id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                        "content": [
+                            {
+                                "annotations": [],
+                                "text": "Germany: Berlin\nFrance: Paris",
+                                "type": "output_text",
+                                "logprobs": [],
+                            }
+                        ],
+                        "role": "assistant",
+                        "status": "completed",
+                        "type": "message",
+                    },
+                    "output_index": 1,
+                    "sequence_number": 15,
+                    "type": "response.output_item.done",
+                },
+                index=1,
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "response": {
+                        "id": "resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
+                        "created_at": 1762418678.0,
+                        "error": None,
+                        "incomplete_details": None,
+                        "instructions": None,
+                        "metadata": {},
+                        "model": "gpt-5-mini-2025-08-07",
+                        "object": "response",
+                        "output": [
+                            {
+                                "id": "rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b",
+                                "summary": [],
+                                "type": "reasoning",
+                                "content": None,
+                                "encrypted_content": None,
+                                "status": None,
+                            },
+                            {
+                                "id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
+                                "content": [
+                                    {
+                                        "annotations": [],
+                                        "text": "Germany: Berlin\nFrance: Paris",
+                                        "type": "output_text",
+                                        "logprobs": [],
+                                    }
+                                ],
+                                "role": "assistant",
+                                "status": "completed",
+                                "type": "message",
+                            },
+                        ],
+                        "parallel_tool_calls": True,
+                        "temperature": 1.0,
+                        "tool_choice": "auto",
+                        "tools": [],
+                        "top_p": 1.0,
+                        "background": False,
+                        "conversation": None,
+                        "max_output_tokens": None,
+                        "max_tool_calls": None,
+                        "previous_response_id": None,
+                        "prompt": None,
+                        "prompt_cache_key": None,
+                        "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
+                        "safety_identifier": None,
+                        "service_tier": "default",
+                        "status": "completed",
+                        "text": {"format": {"type": "text"}, "verbosity": "medium"},
+                        "top_logprobs": 0,
+                        "truncation": "disabled",
+                        "usage": {
+                            "input_tokens": 15,
+                            "input_tokens_details": {"cached_tokens": 0},
+                            "output_tokens": 77,
+                            "output_tokens_details": {"reasoning_tokens": 64},
+                            "total_tokens": 92,
+                        },
+                        "user": None,
+                        "prompt_cache_retention": None,
+                        "store": True,
+                    },
+                    "sequence_number": 16,
+                    "type": "response.completed",
+                },
+                finish_reason="stop",
+            ),
+        ]
+
     def test_convert_only_function_call(self):
         chunks = [
             ResponseCreatedEvent(
@@ -1340,23 +1687,12 @@ class TestConvertResponseChunkToStreamingChunk:
                     "sequence_number": 0,
                     "type": "response.created",
                 },
-                component_info=None,
-                index=None,
-                tool_calls=None,
-                tool_call_result=None,
-                start=False,
-                finish_reason=None,
-                reasoning=None,
             ),
             StreamingChunk(
                 content="",
                 meta={},
-                component_info=None,
                 index=0,
-                tool_calls=None,
-                tool_call_result=None,
                 start=True,
-                finish_reason=None,
                 reasoning=ReasoningContent(
                     reasoning_text="",
                     extra={
@@ -1384,18 +1720,11 @@ class TestConvertResponseChunkToStreamingChunk:
                     "sequence_number": 3,
                     "type": "response.output_item.done",
                 },
-                component_info=None,
                 index=0,
-                tool_calls=None,
-                tool_call_result=None,
-                start=False,
-                finish_reason=None,
-                reasoning=None,
             ),
             StreamingChunk(
                 content="",
                 meta={},
-                component_info=None,
                 index=1,
                 tool_calls=[
                     ToolCallDelta(
@@ -1410,15 +1739,11 @@ class TestConvertResponseChunkToStreamingChunk:
                         },
                     )
                 ],
-                tool_call_result=None,
                 start=True,
-                finish_reason=None,
-                reasoning=None,
             ),
             StreamingChunk(
                 content="",
                 meta={},
-                component_info=None,
                 index=1,
                 tool_calls=[
                     ToolCallDelta(
@@ -1435,15 +1760,10 @@ class TestConvertResponseChunkToStreamingChunk:
                         },
                     )
                 ],
-                tool_call_result=None,
-                start=False,
-                finish_reason=None,
-                reasoning=None,
             ),
             StreamingChunk(
                 content="",
                 meta={},
-                component_info=None,
                 index=1,
                 tool_calls=[
                     ToolCallDelta(
@@ -1460,10 +1780,6 @@ class TestConvertResponseChunkToStreamingChunk:
                         },
                     )
                 ],
-                tool_call_result=None,
-                start=False,
-                finish_reason=None,
-                reasoning=None,
             ),
             StreamingChunk(
                 content="",
@@ -1475,13 +1791,7 @@ class TestConvertResponseChunkToStreamingChunk:
                     "sequence_number": 10,
                     "type": "response.function_call_arguments.done",
                 },
-                component_info=None,
                 index=1,
-                tool_calls=None,
-                tool_call_result=None,
-                start=False,
-                finish_reason=None,
-                reasoning=None,
             ),
             StreamingChunk(
                 content="",
@@ -1544,12 +1854,6 @@ class TestConvertResponseChunkToStreamingChunk:
                     "sequence_number": 12,
                     "type": "response.completed",
                 },
-                component_info=None,
-                index=None,
-                tool_calls=None,
-                tool_call_result=None,
-                start=False,
-                finish_reason=None,
-                reasoning=None,
+                finish_reason="tool_calls",
             ),
         ]

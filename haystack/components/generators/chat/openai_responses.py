@@ -596,6 +596,17 @@ def _convert_response_chunk_to_streaming_chunk(
                 content="", component_info=component_info, index=chunk.output_index, tool_calls=[tool_call], start=True
             )
 
+    elif chunk.type == "response.completed":
+        # This means a full response is finished
+        # If there are tool_calls present in the final output we mark finish_reason as tool_calls otherwise it's
+        # marked as stop
+        return StreamingChunk(
+            content="",
+            component_info=component_info,
+            finish_reason="tool_calls" if any(o.type == "function_call" for o in chunk.response.output) else "stop",
+            meta=chunk.to_dict(),
+        )
+
     elif chunk.type == "response.output_text.delta":
         # if item is a ResponseTextDeltaEvent
         meta = chunk.to_dict()
