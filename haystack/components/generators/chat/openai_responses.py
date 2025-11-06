@@ -83,7 +83,7 @@ class OpenAIResponsesChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        tools: Optional[ToolsType] = None,
+        tools: Optional[ToolsType | list[dict]] = None,
         tools_strict: bool = False,
         http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
@@ -187,7 +187,7 @@ class OpenAIResponsesChatGenerator:
 
     def warm_up(self):
         """
-        Warm up the OpenAI chat generator.
+        Warm up the OpenAI responses chat generator.
 
         This will warm up the tools registered in the chat generator.
         This method is idempotent and will only warm up the tools once.
@@ -285,7 +285,7 @@ class OpenAIResponsesChatGenerator:
         *,
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
+        tools: Optional[ToolsType | list[dict]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -352,7 +352,7 @@ class OpenAIResponsesChatGenerator:
         *,
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
+        tools: Optional[ToolsType | list[dict]] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -423,7 +423,7 @@ class OpenAIResponsesChatGenerator:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
+        tools: Optional[ToolsType | list[dict]] = None,
         tools_strict: Optional[bool] = None,
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
@@ -528,20 +528,20 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
         elif output.type == "function_call":
             try:
                 arguments = json.loads(output.arguments)
+                tool_calls.append(
+                    ToolCall(
+                        id=output.id, tool_name=output.name, arguments=arguments, extra={"call_id": output.call_id}
+                    )
+                )
             except json.JSONDecodeError:
                 logger.warning(
-                    "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
+                    "The LLM provider returned a malformed JSON string for tool call arguments. This tool call "
                     "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
                     "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
                     _id=output.id,
                     _name=output.name,
                     _arguments=output.arguments,
                 )
-                arguments = {}
-
-            tool_calls.append(
-                ToolCall(id=output.id, tool_name=output.name, arguments=arguments, extra={"call_id": output.call_id})
-            )
 
     # we save the response as dict because it contains resp_id etc.
     meta = responses.to_dict()
@@ -664,7 +664,6 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
             arguments = json.loads(tool_call_dict.get("arguments", "{}")) if tool_call_dict.get("arguments") else {}
             extra: dict[str, Any] = tool_call_dict.get("extra", {})
             tool_calls.append(ToolCall(id=key, tool_name=tool_call_dict["name"], arguments=arguments, extra=extra))
-
         except json.JSONDecodeError:
             logger.warning(
                 "The LLM provider returned a malformed JSON string for tool call arguments. This tool call "

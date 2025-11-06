@@ -463,13 +463,29 @@ class TestOpenAIResponsesChatGenerator:
         assert not component._is_warmed_up
         assert component.tools is None
 
-        # Call warm_up() - should not raise an error
-        component.warm_up()
-
         # Verify the component is warmed up
+        component.warm_up()
         assert component._is_warmed_up
 
-        # Call warm_up() again - should be idempotent
+    def test_warm_up_with_no_openai_tools(self, monkeypatch):
+        """Test that warm_up() works when no tools are provided."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        component = OpenAIResponsesChatGenerator(
+            tools=[
+                {"type": "web_search_preview"},
+                {
+                    "type": "mcp",
+                    "server_label": "dmcp",
+                    "server_description": "A Dungeons and Dragons MCP server to assist with dice rolling.",
+                    "server_url": "https://dmcp-server.deno.dev/sse",
+                    "require_approval": "never",
+                },
+            ]
+        )
+
+        # Make sure the component can still be warmed up even when using openai tools
+        assert not component._is_warmed_up
         component.warm_up()
         assert component._is_warmed_up
 
@@ -500,18 +516,14 @@ class TestOpenAIResponsesChatGenerator:
         # Use a LIST of tools, not a Toolset
         component = OpenAIResponsesChatGenerator(tools=[mock_tool1, mock_tool2])
 
-        # Call warm_up()
-        component.warm_up()
-
         # Assert that both tools' warm_up() were called
+        component.warm_up()
         assert "tool1" in warm_up_calls
         assert "tool2" in warm_up_calls
         assert component._is_warmed_up
 
-        # Track count
-        call_count = len(warm_up_calls)
-
         # Verify idempotency
+        call_count = len(warm_up_calls)
         component.warm_up()
         assert len(warm_up_calls) == call_count
 
@@ -573,7 +585,7 @@ class TestOpenAIResponsesChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format_and_streaming(self, calendar_event_model):
+    def test_live_run_with_text_format_and_streaming(self, calendar_event_model):
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
@@ -716,6 +728,11 @@ class TestOpenAIResponsesChatGenerator:
         assert not message.tool_calls
         assert not message.tool_call_results
 
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
     @pytest.mark.skip(reason="The tool calls time out resulting in failing")
     def test_live_run_with_openai_tools(self):
         """

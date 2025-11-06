@@ -8,6 +8,7 @@ loaders:
         "hugging_face_api",
         "openai",
         "openai_dalle",
+        "openai_responses",
         "chat/azure",
         "chat/hugging_face_local",
         "chat/hugging_face_api",
