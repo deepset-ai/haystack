@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +12,7 @@ from networkx import MultiDiGraph
 
 from haystack import logging
 from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError
+from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import (
     AgentBreakpoint,
@@ -338,8 +338,10 @@ def _create_agent_snapshot(
     """
     return AgentSnapshot(
         component_inputs={
-            "chat_generator": _serialize_value_with_schema(deepcopy(component_inputs["chat_generator"])),
-            "tool_invoker": _serialize_value_with_schema(deepcopy(component_inputs["tool_invoker"])),
+            "chat_generator": _serialize_value_with_schema(
+                _deepcopy_with_exceptions(component_inputs["chat_generator"])
+            ),
+            "tool_invoker": _serialize_value_with_schema(_deepcopy_with_exceptions(component_inputs["tool_invoker"])),
         },
         component_visits=component_visits,
         break_point=agent_breakpoint,
