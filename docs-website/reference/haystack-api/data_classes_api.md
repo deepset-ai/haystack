@@ -1150,12 +1150,6 @@ Represents a Tool call prepared by the model, usually contained in an assistant 
 - `extra`: Dictionary of extra information about the Tool call. Use to store provider-specific
 information. To avoid serialization issues, values should be JSON serializable.
 
-<a id="streaming_chunk.ToolCallDelta.id"></a>
-
-#### id
-
-noqa: A003
-
 <a id="streaming_chunk.ToolCallDelta.to_dict"></a>
 
 #### ToolCallDelta.to\_dict
