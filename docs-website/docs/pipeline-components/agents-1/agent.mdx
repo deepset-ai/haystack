@@ -133,6 +133,77 @@ print(response["messages"])
 print("Calc Result:", response.get("calc_result"))
 ```
 
+### Agents as Tools
+
+You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to create multi-agent systems where specialized agents act as tools for a coordinator agent.
+
+When wrapping an `Agent` as a `ComponentTool`, use the `outputs_to_string` parameter with `{"source": "last_message"}` to extract only the agent's final response text, rather than the entire conversation history with tool calls to keep the coordinator agent's context clean and focused.
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool, ComponentTool
+from haystack.components.agents import Agent
+
+## Define a tool for the specialist agent
+def search_knowledge_base(query: str) -> dict:
+    """Search internal knowledge base for information."""
+    ## In a real application, this would query a document store
+    knowledge = {
+        "Haystack": "Haystack is an open-source framework for building AI applications."
+    }
+    return {"result": knowledge.get(query, f"No information found for: {query}")}
+
+search_tool = Tool(
+    name="search_knowledge_base",
+    description="Search the internal knowledge base for information",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "The topic to search for"}
+        },
+        "required": ["query"]
+    },
+    function=search_knowledge_base
+)
+
+## Create a specialist research agent
+research_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=[search_tool],
+    system_prompt="You are a research specialist. Use the search tool to find information and provide concise answers.",
+    exit_conditions=["text"]
+)
+
+## Wrap the agent as a ComponentTool with outputs_to_string
+research_tool = ComponentTool(
+    component=research_agent,
+    name="research_specialist",
+    description="A specialist that can research topics from the knowledge base",
+    outputs_to_string={"source": "last_message"}  ## Extract only the final response
+)
+
+## Create a coordinator agent that uses the specialist
+coordinator_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=[research_tool],
+    system_prompt="You are a coordinator that delegates research tasks to a specialist.",
+    exit_conditions=["text"]
+)
+
+## Warm up and run
+research_agent.warm_up()
+coordinator_agent.warm_up()
+
+result = coordinator_agent.run(
+    messages=[ChatMessage.from_user("Tell me about Haystack")]
+)
+
+print(result["last_message"].text)
+```
+
+When you run this code, the coordinator agent receives the user's question and delegates it to the `research_specialist` tool (which is the wrapped research agent). The research agent then uses its `search_knowledge_base` tool to find relevant information, and returns only its final answer back to the coordinator, which presents it to the user.
+
 ### In a pipeline
 
 The example pipeline below creates a database assistant using `OpenAIChatGenerator`, `LinkContentFetcher`, and custom database tool. It reads the given URL and processes the page content, then builds a prompt for the AI. The assistant uses this information to write people's names and titles from the given page to the database.
@@ -197,4 +268,6 @@ print(agent_output["database_agent"]["messages"][-1].text)
 
 🧑‍🍳 Cookbook: [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
 
-📓 Tutorial: [Build a Tool-Calling Agent](https://haystack.deepset.ai/tutorials/43_building_a_tool_calling_agent)
+📓 Tutorials:
+- [Build a Tool-Calling Agent](https://haystack.deepset.ai/tutorials/43_building_a_tool_calling_agent)
+- [Creating a Multi-Agent System](https://haystack.deepset.ai/tutorials/45_creating_a_multi_agent_system)
