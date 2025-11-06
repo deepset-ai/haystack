@@ -11,6 +11,7 @@ _import_structure = {
     "openai": ["OpenAIChatGenerator"],
     "openai_responses": ["OpenAIResponsesChatGenerator"],
     "azure": ["AzureOpenAIChatGenerator"],
+    "azure_responses": ["AzureOpenAIResponsesChatGenerator"],
     "hugging_face_local": ["HuggingFaceLocalChatGenerator"],
     "hugging_face_api": ["HuggingFaceAPIChatGenerator"],
     "fallback": ["FallbackChatGenerator"],
@@ -18,6 +19,7 @@ _import_structure = {
 
 if TYPE_CHECKING:
     from .azure import AzureOpenAIChatGenerator as AzureOpenAIChatGenerator
+    from .azure_responses import AzureOpenAIResponsesChatGenerator as AzureOpenAIResponsesChatGenerator
     from .fallback import FallbackChatGenerator as FallbackChatGenerator
     from .hugging_face_api import HuggingFaceAPIChatGenerator as HuggingFaceAPIChatGenerator
     from .hugging_face_local import HuggingFaceLocalChatGenerator as HuggingFaceLocalChatGenerator
