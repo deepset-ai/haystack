@@ -40,7 +40,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
 
     messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 
-    client = OpenAIResponsesChatGenerator(
+    client = AzureOpenAIResponsesChatGenerator(
         azure_endpoint="https://example-resource.azure.openai.com/",
         generation_kwargs={"reasoning": {"effort": "low", "summary": "auto"}}
     )
