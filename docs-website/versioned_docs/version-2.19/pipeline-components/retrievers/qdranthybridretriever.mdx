@@ -14,9 +14,9 @@ A Retriever based both on dense and sparse embeddings, compatible with the Qdran
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1\. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)  in a RAG pipeline  <br /> <br />2. The last component in a hybrid search pipeline      3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)  in an extractive QA pipeline |
-| **Mandatory init variables** | "document_store": An instance of a [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx) |
-| **Mandatory run variables** | “query_embedding”: A dense vector representing the query (a list of floats)  <br /> <br />“query_sparse_embedding”: A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding)  object containing a vectorial representation of the query |
-| **Output variables** | “document”: A list of documents |
+| **Mandatory init variables** | `document_store`: An instance of a [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx) |
+| **Mandatory run variables** | `query_embedding`: A dense vector representing the query (a list of floats)  <br /> <br />`query_sparse_embedding`: A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding)  object containing a vectorial representation of the query |
+| **Output variables** | `document`: A list of documents |
 | **API reference** | [Qdrant](/reference/integrations-qdrant) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/qdrant |
 

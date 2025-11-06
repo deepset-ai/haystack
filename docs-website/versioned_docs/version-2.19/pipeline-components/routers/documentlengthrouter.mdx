@@ -14,8 +14,8 @@ Routes documents to different output connections based on the length of their `c
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory run variables** | "documents": A list of documents |
-| **Output variables** | "short_documents": A list of documents where `content` is None or the length of `content` is less than or equal to the threshold.  <br /> <br />”long_documents”: A list of documents where the length of `content` is greater than the threshold. |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `short_documents`: A list of documents where `content` is None or the length of `content` is less than or equal to the threshold.  <br /> <br />`long_documents`: A list of documents where the length of `content` is greater than the threshold. |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/document_length_router.py |
 
@@ -48,8 +48,8 @@ result = router.run(documents=docs)
 print(result)
 
 ## {
-##     "short_documents": [Document(content="Short", ...)],
-##     "long_documents": [Document(content="Long document ...", ...)],
+## "short_documents": [Document(content="Short", ...)],
+## "long_documents": [Document(content="Long document ...", ...)],
 ## }
 ```
 
@@ -137,17 +137,17 @@ for doc in indexed_documents:
     print("-" * 100 + "\n")
 
 ## Indexed 3 documents:
-#
+##
 ## file_path:  textual_pdf.pdf
 ## page_number:  1
 ## content:  A sample PDF ﬁle...
 ## ----------------------------------------------------------------------------------------------------
-#
+##
 ## file_path:  textual_pdf.pdf
 ## page_number:  2
 ## content:  Page 2 of Sample PDF...
 ## ----------------------------------------------------------------------------------------------------
-#
+##
 ## file_path:  non_textual_pdf.pdf
 ## page_number:  1
 ## content:  Content extracted from non-textual PDF using a LLM...

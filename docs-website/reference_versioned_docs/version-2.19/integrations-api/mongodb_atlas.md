@@ -287,6 +287,85 @@ Asynchronously deletes all documents with a matching document_ids from the docum
 
 - `document_ids`: the document ids to delete
 
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.delete_by_filter"></a>
+
+#### MongoDBAtlasDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: Dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.delete_by_filter_async"></a>
+
+#### MongoDBAtlasDocumentStore.delete\_by\_filter\_async
+
+```python
+async def delete_by_filter_async(filters: Dict[str, Any]) -> int
+```
+
+Asynchronously deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.update_by_filter"></a>
+
+#### MongoDBAtlasDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: Dict[str, Any], meta: Dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update.
+
+**Returns**:
+
+The number of documents updated.
+
+<a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.update_by_filter_async"></a>
+
+#### MongoDBAtlasDocumentStore.update\_by\_filter\_async
+
+```python
+async def update_by_filter_async(filters: Dict[str, Any],
+                                 meta: Dict[str, Any]) -> int
+```
+
+Asynchronously updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update.
+
+**Returns**:
+
+The number of documents updated.
+
 <a id="haystack_integrations.document_stores.mongodb_atlas.document_store.MongoDBAtlasDocumentStore.delete_all_documents"></a>
 
 #### MongoDBAtlasDocumentStore.delete\_all\_documents

@@ -278,6 +278,8 @@ Represents a Tool call prepared by the model, usually contained in an assistant 
 - `id`: The ID of the Tool call.
 - `tool_name`: The name of the Tool to call.
 - `arguments`: The arguments to call the Tool with.
+- `extra`: Dictionary of extra information about the Tool call. Use to store provider-specific
+information. To avoid serialization issues, values should be JSON serializable.
 
 <a id="chat_message.ToolCall.id"></a>
 
@@ -297,7 +299,7 @@ Convert ToolCall into a dictionary.
 
 **Returns**:
 
-A dictionary with keys 'tool_name', 'arguments', and 'id'.
+A dictionary with keys 'tool_name', 'arguments', 'id', and 'extra'.
 
 <a id="chat_message.ToolCall.from_dict"></a>
 
@@ -1145,6 +1147,8 @@ Represents a Tool call prepared by the model, usually contained in an assistant 
 - `tool_name`: The name of the Tool to call.
 - `arguments`: Either the full arguments in JSON format or a delta of the arguments.
 - `id`: The ID of the Tool call.
+- `extra`: Dictionary of extra information about the Tool call. Use to store provider-specific
+information. To avoid serialization issues, values should be JSON serializable.
 
 <a id="streaming_chunk.ToolCallDelta.id"></a>
 
@@ -1164,7 +1168,7 @@ Returns a dictionary representation of the ToolCallDelta.
 
 **Returns**:
 
-A dictionary with keys 'index', 'tool_name', 'arguments', and 'id'.
+A dictionary with keys 'index', 'tool_name', 'arguments', 'id', and 'extra'.
 
 <a id="streaming_chunk.ToolCallDelta.from_dict"></a>
 

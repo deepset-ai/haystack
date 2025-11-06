@@ -14,8 +14,8 @@ The `SASEvaluator` evaluates answers predicted by Haystack pipelines using groun
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
-| **Mandatory init variables** | "token": A HF API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
-| **Mandatory run variables** | "ground_truth_answers": A list of strings containing the ground truth answers  <br /> <br />"predicted_answers": A list of strings containing the predicted answers to be evaluated |
+| **Mandatory init variables** | `token`: A HF API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory run variables** | `ground_truth_answers`: A list of strings containing the ground truth answers  <br /> <br />`predicted_answers`: A list of strings containing the predicted answers to be evaluated |
 | **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 representing the mean SAS score for all pairs of predicted answers and ground truth answers  <br /> <br />- `individual_scores`: A list of the SAS scores ranging from 0.0 to 1.0 of all pairs of predicted answers and ground truth answers |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/sas_evaluator.py |

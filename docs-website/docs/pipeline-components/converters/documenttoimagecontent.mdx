@@ -14,8 +14,8 @@ description: "`DocumentToImageContent` extracts visual data from image or PDF fi
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a `ChatPromptBuilder` in a query pipeline                                                                                                                                                                             |
-| **Mandatory run variables**            | "documents": A list of documents to process. Each document should have metadata containing at minimum a 'file_path_meta_field' key. PDF documents additionally require a 'page_number' key to specify which page to convert. |
-| **Output variables**                   | "image_contents": A list of `ImageContent` objects                                                                                                                                                                           |
+| **Mandatory run variables**            | `documents`: A list of documents to process. Each document should have metadata containing at minimum a 'file_path_meta_field' key. PDF documents additionally require a 'page_number' key to specify which page to convert. |
+| **Output variables**                   | `image_contents`: A list of `ImageContent` objects                                                                                                                                                                           |
 | **API reference**                      | [Image Converters](/reference/image-converters-api)                                                                                                                                                                                 |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/image/document_to_image.py                                                                                                                 |
 

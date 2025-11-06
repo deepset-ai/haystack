@@ -8,13 +8,14 @@ import pytest
 
 from haystack import Document, Pipeline, component
 from haystack.components.agents import Agent
+from haystack.components.fetchers import LinkContentFetcher
 from haystack.components.tools import ToolInvoker
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import PipelineRuntimeError
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.tools import Tool, Toolset, create_tool_from_function
+from haystack.tools import ComponentTool, Tool, Toolset, create_tool_from_function
 
 
 def calculate(expression: str) -> dict:
@@ -38,6 +39,8 @@ failing_factorial_tool = create_tool_from_function(
 calculator_tool = create_tool_from_function(
     function=calculate, name="calculator", outputs_to_state={"calc_result": {"source": "result"}}
 )
+
+link_fetcher_tool = ComponentTool(component=LinkContentFetcher())
 
 
 @component
@@ -85,7 +88,9 @@ def test_pipeline_with_chat_generator_crash():
     """Test pipeline crash handling when chat generator fails."""
     pipe = build_pipeline(
         agent=Agent(
-            chat_generator=MockChatGenerator(True), tools=[calculator_tool], state_schema={"calc_result": {"type": int}}
+            chat_generator=MockChatGenerator(True),
+            tools=[calculator_tool, link_fetcher_tool],
+            state_schema={"calc_result": {"type": int}},
         )
     )
 

@@ -14,9 +14,9 @@ Use this component to route Chat Messages to various output connections using a 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory init variables** | “chat_generator”: A Chat Generator instance (the LLM used for classification)  <br /> <br />”output_names”: A list of output connection names  <br /> <br />”output_patterns”: A list of regular expressions to be matched against the output of the LLM. |
-| **Mandatory run variables** | “messages”: A list of Chat Messages |
-| **Output variables** | "chat_generator_text": The text output of the LLM, useful for debugging  <br /> <br />"output_names": Each contains the list of messages that matched the corresponding pattern  <br /> <br />"unmatched": Messages not matching any pattern |
+| **Mandatory init variables** | `chat_generator`: A Chat Generator instance (the LLM used for classification)  <br /> <br />`output_names`: A list of output connection names  <br /> <br />`output_patterns`: A list of regular expressions to be matched against the output of the LLM. |
+| **Mandatory run variables** | `messages`: A list of Chat Messages |
+| **Output variables** | `chat_generator_text`: The text output of the LLM, useful for debugging  <br /> <br />`output_names`: Each contains the list of messages that matched the corresponding pattern  <br /> <br />`unmatched`: Messages not matching any pattern |
 | **API reference** | [Routers](/reference/routers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/llm_messages_router.py |
 

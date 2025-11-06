@@ -14,9 +14,9 @@ description: "`SentenceTransformersDocumentImageEmbedder` computes the image emb
 |                                        |                                                                                                                                    |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                                                          |
-| **Mandatory init variables**           | "token" (only for private models): The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var.               |
-| **Mandatory run variables**            | "documents": A list of documents, with a meta field containing an image file path                                                  |
-| **Output variables**                   | "documents": A list of documents (enriched with embeddings)                                                                        |
+| **Mandatory init variables**           | `token` (only for private models): The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var.               |
+| **Mandatory run variables**            | `documents`: A list of documents, with a meta field containing an image file path                                                  |
+| **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                                                                        |
 | **API reference**                      | [Embedders](/reference/embedders-api)                                                                                                     |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/image/sentence_transformers_doc_image_embedder.py |
 
