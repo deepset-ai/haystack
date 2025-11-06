@@ -9,14 +9,18 @@ description: "This component computes the embeddings of a list of documents and 
 
 This component computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Jina AI Embeddings models.  The vectors computed by this component are necessary to perform embedding retrieval on a collection of documents. At retrieval time, the vector representing the query is compared with those of the documents to find the most similar or relevant documents.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
-| **Mandatory init variables** | "api_key": The Jina API key. Can be set with `JINA_API_KEY` env var. |
-| **Mandatory run variables** | “documents”: A list of documents |
-| **Output variables** | “documents”: A list of documents (enriched with embeddings)  <br /> <br />”meta”: A dictionary of metadata |
+| **Mandatory init variables** | `api_key`: The Jina API key. Can be set with `JINA_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `documents`: A list of documents (enriched with embeddings)  <br /> <br />`meta`: A dictionary of metadata |
 | **API reference** | [Jina](/reference/integrations-jina) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina |
+
+</div>
 
 ## Overview
 
@@ -76,9 +80,8 @@ print(result['documents'][0].embedding)
 
 ```
 
-:::note
+:::info
 We recommend setting JINA_API_KEY as an environment variable instead of setting it as a parameter.
-
 :::
 
 ### In a pipeline
@@ -116,7 +119,7 @@ result = query_pipeline.run({"text_embedder":{"text": query}})
 print(result['retriever']['documents'][0])
 
 ## Document(id=..., mimetype: 'text/plain',
-##  text: 'My name is Wolfgang and I live in Berlin')
+## text: 'My name is Wolfgang and I live in Berlin')
 
 ```
 

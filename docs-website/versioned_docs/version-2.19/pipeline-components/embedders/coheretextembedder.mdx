@@ -9,14 +9,18 @@ description: "This component transforms a string into a vector that captures its
 
 This component transforms a string into a vector that captures its semantics using a Cohere embedding model.  When you perform embedding retrieval, you use this component to transform your query into a vector. Then, the embedding Retriever looks for similar or relevant documents.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
-| **Mandatory init variables** | "api_key": The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
-| **Mandatory run variables** | “text”: A string |
-| **Output variables** | “embedding”: A list of float numbers (vectors)  <br /> <br />“meta”:  A dictionary of metadata strings |
+| **Mandatory init variables** | `api_key`: The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
+| **Mandatory run variables** | `text`: A string |
+| **Output variables** | `embedding`: A list of float numbers (vectors)  <br /> <br />`meta`:  A dictionary of metadata strings |
 | **API reference** | [Cohere](/reference/integrations-cohere) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cohere |
+
+</div>
 
 ## Overview
 
@@ -56,7 +60,7 @@ text_embedder = CohereTextEmbedder()
 
 print(text_embedder.run(text_to_embed))
 ## {'embedding': [-0.453125, 1.2236328, 2.0058594, 0.67871094...],
-##  'meta': {'api_version': {'version': '1'}, 'billed_units': {'input_tokens': 4}}}
+## 'meta': {'api_version': {'version': '1'}, 'billed_units': {'input_tokens': 4}}}
 ```
 
 ### In a pipeline

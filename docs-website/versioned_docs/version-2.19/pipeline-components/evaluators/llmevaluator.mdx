@@ -9,14 +9,18 @@ description: "This Evaluator uses an LLM to evaluate inputs based on a prompt co
 
 This Evaluator uses an LLM to evaluate inputs based on a prompt containing user-defined instructions and examples.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
-| **Mandatory init variables** | "instructions": The prompt instructions string  <br /> <br />"inputs": The expected inputs  <br /> <br />"outputs": The output names of the evaluation results  <br /> <br />"examples": Few-shot examples conforming to the input and output format |
-| **Mandatory run variables** | “inputs”: Defined by the user – for example, questions or responses |
-| **Output variables** | “results”: A dictionary containing keys defined by the user, such as score |
+| **Mandatory init variables** | `instructions`: The prompt instructions string  <br /> <br />`inputs`: The expected inputs  <br /> <br />`outputs`: The output names of the evaluation results  <br /> <br />`examples`: Few-shot examples conforming to the input and output format |
+| **Mandatory run variables** | `inputs`: Defined by the user – for example, questions or responses |
+| **Output variables** | `results`: A dictionary containing keys defined by the user, such as score |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/llm_evaluator.py |
+
+</div>
 
 ## Overview
 

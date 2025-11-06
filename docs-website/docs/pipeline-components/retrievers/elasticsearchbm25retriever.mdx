@@ -9,22 +9,26 @@ description: "A keyword-based Retriever that fetches Documents matching a query 
 
 A keyword-based Retriever that fetches Documents matching a query from the Elasticsearch Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline  2. The last component in the semantic search pipeline  3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
-| **Mandatory init variables**           | "document_store": An instance of [ElasticsearchDocumentStore](../../document-stores/elasticsearch-document-store.mdx)                                                                                                                       |
-| **Mandatory run variables**            | “query”: A string                                                                                                                                                                                                       |
-| **Output variables**                   | "documents": A list of documents (matching the query)                                                                                                                                                                   |
+| **Mandatory init variables**           | `document_store`: An instance of [ElasticsearchDocumentStore](../../document-stores/elasticsearch-document-store.mdx)                                                                                                                       |
+| **Mandatory run variables**            | `query`: A string                                                                                                                                                                                                       |
+| **Output variables**                   | `documents`: A list of documents (matching the query)                                                                                                                                                                   |
 | **API reference**                      | [Elasticsearch](/reference/integrations-elasticsearch)                                                                                                                                                                         |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch                                                                                                                         |
 
+</div>
+
 ## Overview
 
-`ElasticsearchBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from an `ElasticsearchDocumentStore`. It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the two strings. 
+`ElasticsearchBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from an `ElasticsearchDocumentStore`. It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the two strings.
 
-Since the `ElasticsearchBM25Retriever` matches strings based on word overlap, it’s often used to find exact matches to names of persons or products, IDs, or well-defined error messages. The BM25 algorithm is very lightweight and simple. Nevertheless, it can be hard to beat with more complex embedding-based approaches on out-of-domain data. 
+Since the `ElasticsearchBM25Retriever` matches strings based on word overlap, it’s often used to find exact matches to names of persons or products, IDs, or well-defined error messages. The BM25 algorithm is very lightweight and simple. Nevertheless, it can be hard to beat with more complex embedding-based approaches on out-of-domain data.
 
-In addition to the `query`, the `ElasticsearchBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.  
+In addition to the `query`, the `ElasticsearchBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
 When initializing Retriever, you can also adjust how [inexact fuzzy matching](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#fuzziness) is performed, using the `fuzziness` parameter.
 
 If you want a semantic match between a query and documents, you can use `ElasticsearchEmbeddingRetriever`, which uses vectors created by embedding models to retrieve relevant information.

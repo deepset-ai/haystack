@@ -9,14 +9,18 @@ description: "This component enables chat completions using any model made avail
 
 This component enables chat completions using any model made available by inference providers on a Llama Stack server.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
-| **Mandatory init variables** | "model": The name of the model to use for chat completion.   This depends on the inference provider used for the Llama Stack Server. |
-| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
-| **Output variables** | “replies”: A list of alternative replies of the model to the input chat |
+| **Mandatory init variables** | `model`: The name of the model to use for chat completion.   This depends on the inference provider used for the Llama Stack Server. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Output variables** | `replies`: A list of alternative replies of the model to the input chat |
 | **API reference** | [Llama Stack](/reference/integrations-llama-stack) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/llama_stack |
+
+</div>
 
 ## Overview
 

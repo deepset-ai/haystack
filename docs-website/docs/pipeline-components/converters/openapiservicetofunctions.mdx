@@ -9,13 +9,17 @@ description: "`OpenAPIServiceToFunctions` is a component that transforms OpenAPI
 
 `OpenAPIServiceToFunctions` is a component that transforms OpenAPI service specifications into a format compatible with OpenAI's function calling mechanism.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory run variables** | “sources”: A list of OpenAPI specification sources, which can be file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects |
-| **Output variables** | “functions”: A list of JSON OpenAI function calling definitions objects. For each path definition in OpenAPI specification, a corresponding OpenAI function calling definitions is generated.  <br /> <br />“openapi_specs”: A list of JSON/YAML objects with references resolved. Such OpenAPI spec (with references resolved) can, in turn, be used as input to OpenAPIServiceConnector. |
+| **Mandatory run variables** | `sources`: A list of OpenAPI specification sources, which can be file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects |
+| **Output variables** | `functions`: A list of JSON OpenAI function calling definitions objects. For each path definition in OpenAPI specification, a corresponding OpenAI function calling definitions is generated.  <br /> <br />`openapi_specs`: A list of JSON/YAML objects with references resolved. Such OpenAPI spec (with references resolved) can, in turn, be used as input to OpenAPIServiceConnector. |
 | **API reference** | [Converters](/reference/converters-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/openapi_functions.py |
+
+</div>
 
 ## Overview
 

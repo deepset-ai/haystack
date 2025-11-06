@@ -9,13 +9,17 @@ description: "Use this component in pipelines that contain a Generator to parse 
 
 Use this component in pipelines that contain a Generator to parse its replies.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Use in pipelines (such as a RAG pipeline) after a [Generator](../generators.mdx)  component to create [`GeneratedAnswer`](../../concepts/data-classes.mdx#generatedanswer)   objects from its replies. |
-| **Mandatory run variables** | “query”: A query string  <br /> <br />”replies”: A list of strings, or a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)   objects that are replies from a Generator |
-| **Output variables** | “answers”:  A list of `GeneratedAnswer` objects |
+| **Mandatory run variables** | `query`: A query string  <br /> <br />`replies`: A list of strings, or a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)   objects that are replies from a Generator |
+| **Output variables** | `answers`:  A list of `GeneratedAnswer` objects |
 | **API reference** | [Builders](/reference/builders-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/builders/answer_builder.py |
+
+</div>
 
 ## Overview
 

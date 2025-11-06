@@ -9,21 +9,25 @@ description: "This is a keyword-based Retriever that fetches documents matching 
 
 This is a keyword-based Retriever that fetches documents matching a query from the Pgvector Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
-| **Mandatory init variables**           | "document_store": An instance of a [PgvectorDocumentStore](../../document-stores/pgvectordocumentstore.mdx)                                                                                                                                 |
-| **Mandatory run variables**            | “query”:  A string                                                                                                                                                                                                    |
-| **Output variables**                   | “document”: A list of documents  (matching the query)                                                                                                                                                                 |
+| **Mandatory init variables**           | `document_store`: An instance of a [PgvectorDocumentStore](../../document-stores/pgvectordocumentstore.mdx)                                                                                                                                 |
+| **Mandatory run variables**            | `query`:  A string                                                                                                                                                                                                    |
+| **Output variables**                   | `document`: A list of documents  (matching the query)                                                                                                                                                                 |
 | **API reference**                      | [Pgvector](/reference/integrations-pgvector)                                                                                                                                                                                 |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/pgvector                                                                                                                            |
+
+</div>
 
 ## Overview
 
 The `PgvectorKeywordRetriever` is a keyword-based Retriever compatible with the `PgvectorDocumentStore`.
 
-The component uses the `ts_rank_cd` function of PostgreSQL to rank the documents.  
-It considers how often the query terms appear in the document, how close together the terms are in the document, and how important is the part of the document where they occur.  
+The component uses the `ts_rank_cd` function of PostgreSQL to rank the documents.
+It considers how often the query terms appear in the document, how close together the terms are in the document, and how important is the part of the document where they occur.
 For more details, see [Postgres documentation](https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING).
 
 Keep in mind that, unlike similar components such as `ElasticsearchBM25Retriever`, this Retriever does not apply fuzzy search out of the box, so it’s necessary to carefully formulate the query in order to avoid getting zero results.

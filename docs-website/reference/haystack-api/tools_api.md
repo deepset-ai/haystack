@@ -650,7 +650,25 @@ def warm_up() -> None
 
 Prepare the Toolset for use.
 
-Override this method to set up shared resources like database connections or HTTP sessions.
+By default, this method iterates through and warms up all tools in the Toolset.
+Subclasses can override this method to customize initialization behavior, such as:
+
+- Setting up shared resources (database connections, HTTP sessions) instead of
+  warming individual tools
+- Implementing custom initialization logic for dynamically loaded tools
+- Controlling when and how tools are initialized
+
+For example, a Toolset that manages tools from an external service (like MCPToolset)
+might override this to initialize a shared connection rather than warming up
+individual tools:
+
+```python
+class MCPToolset(Toolset):
+    def warm_up(self) -> None:
+        # Only warm up the shared MCP connection, not individual tools
+        self.mcp_connection = establish_connection(self.server_url)
+```
+
 This method should be idempotent, as it may be called multiple times.
 
 <a id="toolset.Toolset.add"></a>

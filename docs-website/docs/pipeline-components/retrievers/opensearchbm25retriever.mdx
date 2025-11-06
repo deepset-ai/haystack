@@ -9,14 +9,18 @@ description: "This is a keyword-based Retriever that fetches Documents matching 
 
 This is a keyword-based Retriever that fetches Documents matching a query from an OpenSearch Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
-| **Mandatory init variables**           | "document_store": An instance of an [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx)                                                                                                                          |
-| **Mandatory run variables**            | "query": A query string                                                                                                                                                                                               |
-| **Output variables**                   | "documents": A list of documents matching the query                                                                                                                                                                   |
+| **Mandatory init variables**           | `document_store`: An instance of an [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx)                                                                                                                          |
+| **Mandatory run variables**            | `query`: A query string                                                                                                                                                                                               |
+| **Output variables**                   | `documents`: A list of documents matching the query                                                                                                                                                                   |
 | **API reference**                      | [OpenSearch](/reference/integrations-opensearch)                                                                                                                                                                             |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch                                                                                                                          |
+
+</div>
 
 ## Overview
 

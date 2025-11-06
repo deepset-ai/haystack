@@ -9,13 +9,17 @@ description: "Use this component to embed a simple string (such as a query) into
 
 Use this component to embed a simple string (such as a query) into a sparse vector using Sentence Transformers models.
 
+<div className="key-value-table">
+
 |                                        |                                                                                                                                |
 | :------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline** | Before a sparse embedding [Retriever](../retrievers.mdx) in a query/RAG pipeline                                                |
-| **Mandatory run variables**            | "text": A string                                                                                                               |
-| **Output variables**                   | "sparse_embedding": A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding) object                                           |
+| **Mandatory run variables**            | `text`: A string                                                                                                               |
+| **Output variables**                   | `sparse_embedding`: A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding) object                                           |
 | **API reference**                      | [Embedders](/reference/embedders-api)                                                                                                 |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_sparse_text_embedder.py |
+
+</div>
 
 For embedding lists of documents, use the [`SentenceTransformersSparseDocumentEmbedder`](sentencetransformerssparsedocumentembedder.mdx), which enriches the document with the computed sparse embedding.
 

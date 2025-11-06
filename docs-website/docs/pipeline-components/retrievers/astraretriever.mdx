@@ -9,14 +9,18 @@ description: "This is an embedding-based Retriever compatible with the Astra Doc
 
 This is an embedding-based Retriever compatible with the Astra Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline <br /> 2. The last component in the semantic search pipeline <br /> 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
-| **Mandatory init variables**           | "document_store": An instance of [AstraDocumentStore](../../document-stores/astradocumentstore.mdx)                                                                                                                                                                                           |
-| **Mandatory run variables**            | “query_embedding”: A list of floats                                                                                                                                                                                                                                       |
-| **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                          |
+| **Mandatory init variables**           | `document_store`: An instance of [AstraDocumentStore](../../document-stores/astradocumentstore.mdx)                                                                                                                                                                                           |
+| **Mandatory run variables**            | `query_embedding`: A list of floats                                                                                                                                                                                                                                       |
+| **Output variables**                   | `documents`: A list of documents                                                                                                                                                                                                                                          |
 | **API reference**                      | [Astra](/reference/integrations-astra)                                                                                                                                                                                                                                           |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/astra                                                                                                                                                                                   |
+
+</div>
 
 ## Overview
 

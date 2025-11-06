@@ -9,19 +9,23 @@ description: "`DocumentSplitter` divides a list of text documents into a list of
 
 `DocumentSplitter` divides a list of text documents into a list of shorter text documents. This is useful for long texts that otherwise wouldn't fit into the maximum text length of language models and can also speed up question answering.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx)  and [`DocumentCleaner`](documentcleaner.mdx) , before [Classifiers](../classifiers.mdx) |
-| **Mandatory run variables**            | "documents": A list of documents                                                                                                                     |
-| **Output variables**                   | "documents": A list of documents                                                                                                                     |
+| **Mandatory run variables**            | `documents`: A list of documents                                                                                                                     |
+| **Output variables**                   | `documents`: A list of documents                                                                                                                     |
 | **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                                                               |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/document_splitter.py                                            |
+
+</div>
 
 ## Overview
 
 `DocumentSplitter` expects a list of documents as input and returns a list of documents with split texts. It splits each input document by `split_by` after `split_length` units with an overlap of `split_overlap` units. These additional parameters can be set when the component is initialized:
 
-- `split_by` can be `"word"`, `"sentence"`, `"passage"` (paragraph), `"page"`, `"line"` or `"function"`. 
+- `split_by` can be `"word"`, `"sentence"`, `"passage"` (paragraph), `"page"`, `"line"` or `"function"`.
 - `split_length` is an integer indicating the chunk size, which is the number of words, sentences, or passages.
 - `split_overlap` is an integer indicating the number of overlapping words, sentences, or passages between chunks.
 - `split_threshold` is an integer indicating the minimum number of words, sentences, or passages that the document fragment should have. If the fragment is below the threshold, it will be attached to the previous one.

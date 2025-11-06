@@ -9,13 +9,17 @@ description: "Component to join strings from different components into a list of
 
 Component to join strings from different components into a list of strings.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After at least two other components to join their strings                                       |
-| **Mandatory run variables**            | “strings”: Multiple strings from connected components.                                          |
-| **Output variables**                   | “strings”: A list of merged strings                                                             |
+| **Mandatory run variables**            | `strings`: Multiple strings from connected components.                                          |
+| **Output variables**                   | `strings`: A list of merged strings                                                             |
 | **API reference**                      | [Joiners](/reference/joiners-api)                                                                      |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/joiners/string_joiner.py |
+
+</div>
 
 ## Overview
 
@@ -40,7 +44,7 @@ pipeline.connect("prompt_builder_1.prompt", "string_joiner.strings")
 pipeline.connect("prompt_builder_2.prompt", "string_joiner.strings")
 
 result = pipeline.run(data={
-    "prompt_builder_1": {"query": string_1}, 
+    "prompt_builder_1": {"query": string_1},
     "prompt_builder_2": {"query": string_2}
 })
 

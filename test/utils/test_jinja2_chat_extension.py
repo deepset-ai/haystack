@@ -117,6 +117,7 @@ class TestChatMessageExtension:
                         "tool_name": "search",
                         "arguments": {"query": "an interesting question"},
                         "id": "search_1",
+                        "extra": None,
                     }
                 },
             ],
@@ -163,7 +164,12 @@ class TestChatMessageExtension:
                     "tool_call_result": {
                         "result": "Here are the search results",
                         "error": False,
-                        "origin": {"tool_name": "search", "arguments": {"query": "test"}, "id": "search_1"},
+                        "origin": {
+                            "tool_name": "search",
+                            "arguments": {"query": "test"},
+                            "id": "search_1",
+                            "extra": None,
+                        },
                     }
                 }
             ],

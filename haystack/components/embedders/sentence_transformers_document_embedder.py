@@ -40,7 +40,7 @@ class SentenceTransformersDocumentEmbedder:
     ```
     """
 
-    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments
+    def __init__(  # noqa: PLR0913 # pylint: disable=too-many-positional-arguments,too-many-arguments
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
         device: Optional[ComponentDevice] = None,
@@ -61,6 +61,7 @@ class SentenceTransformersDocumentEmbedder:
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
         encode_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
+        revision: Optional[str] = None,
     ):
         """
         Creates a SentenceTransformersDocumentEmbedder component.
@@ -119,6 +120,9 @@ class SentenceTransformersDocumentEmbedder:
             The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
             Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
             for more information on acceleration and quantization options.
+        :param revision:
+            The specific model version to use. It can be a branch name, a tag name, or a commit id,
+            for a stored model on Hugging Face.
         """
 
         self.model = model
@@ -132,6 +136,7 @@ class SentenceTransformersDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.trust_remote_code = trust_remote_code
+        self.revision = revision
         self.local_files_only = local_files_only
         self.truncate_dim = truncate_dim
         self.model_kwargs = model_kwargs
@@ -168,6 +173,7 @@ class SentenceTransformersDocumentEmbedder:
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             trust_remote_code=self.trust_remote_code,
+            revision=self.revision,
             local_files_only=self.local_files_only,
             truncate_dim=self.truncate_dim,
             model_kwargs=self.model_kwargs,
@@ -209,6 +215,7 @@ class SentenceTransformersDocumentEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                revision=self.revision,
                 local_files_only=self.local_files_only,
                 truncate_dim=self.truncate_dim,
                 model_kwargs=self.model_kwargs,

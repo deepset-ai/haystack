@@ -27,6 +27,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
         assert embedder.trust_remote_code is False
+        assert embedder.revision is None
         assert embedder.local_files_only is False
         assert embedder.truncate_dim is None
         assert embedder.precision == "float32"
@@ -44,6 +45,7 @@ class TestSentenceTransformersDocumentEmbedder:
             meta_fields_to_embed=["test_field"],
             embedding_separator=" | ",
             trust_remote_code=True,
+            revision="v1.0",
             local_files_only=True,
             truncate_dim=256,
             precision="int8",
@@ -59,6 +61,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert embedder.meta_fields_to_embed == ["test_field"]
         assert embedder.embedding_separator == " | "
         assert embedder.trust_remote_code
+        assert embedder.revision == "v1.0"
         assert embedder.local_files_only
         assert embedder.truncate_dim == 256
         assert embedder.precision == "int8"
@@ -80,6 +83,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "embedding_separator": "\n",
                 "meta_fields_to_embed": [],
                 "trust_remote_code": False,
+                "revision": None,
                 "local_files_only": False,
                 "truncate_dim": None,
                 "model_kwargs": None,
@@ -127,6 +131,7 @@ class TestSentenceTransformersDocumentEmbedder:
                 "normalize_embeddings": True,
                 "embedding_separator": " - ",
                 "trust_remote_code": True,
+                "revision": None,
                 "local_files_only": True,
                 "meta_fields_to_embed": ["meta_field"],
                 "truncate_dim": 256,
@@ -152,6 +157,7 @@ class TestSentenceTransformersDocumentEmbedder:
             "embedding_separator": " - ",
             "meta_fields_to_embed": ["meta_field"],
             "trust_remote_code": True,
+            "revision": "v1.0",
             "local_files_only": True,
             "truncate_dim": 256,
             "model_kwargs": {"torch_dtype": "torch.float32"},
@@ -175,6 +181,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.normalize_embeddings is True
         assert component.embedding_separator == " - "
         assert component.trust_remote_code
+        assert component.revision == "v1.0"
         assert component.local_files_only
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.truncate_dim == 256
@@ -200,6 +207,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.normalize_embeddings is False
         assert component.embedding_separator == "\n"
         assert component.trust_remote_code is False
+        assert component.revision is None
         assert component.local_files_only is False
         assert component.meta_fields_to_embed == []
         assert component.truncate_dim is None
@@ -238,6 +246,7 @@ class TestSentenceTransformersDocumentEmbedder:
         assert component.normalize_embeddings is True
         assert component.embedding_separator == " - "
         assert component.trust_remote_code
+        assert component.revision is None
         assert component.local_files_only is False
         assert component.meta_fields_to_embed == ["meta_field"]
         assert component.truncate_dim is None
@@ -262,6 +271,7 @@ class TestSentenceTransformersDocumentEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs=None,
@@ -396,6 +406,7 @@ class TestSentenceTransformersDocumentEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs={"file_name": "onnx/model.onnx"},
@@ -424,6 +435,7 @@ class TestSentenceTransformersDocumentEmbedder:
             device="cpu",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs={"file_name": "openvino/openvino_model.xml"},
@@ -450,6 +462,7 @@ class TestSentenceTransformersDocumentEmbedder:
             device="cuda:0",
             auth_token=None,
             trust_remote_code=False,
+            revision=None,
             local_files_only=False,
             truncate_dim=None,
             model_kwargs=model_kwargs,

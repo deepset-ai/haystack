@@ -15,14 +15,18 @@ This component is considered legacy and will no longer receive updates. It may b
 Consider using SentenceTransformersSimilarityRanker instead, as it provides the same functionality and additional features.
 :::
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
-| **Mandatory init variables** | "token" (only for private models): The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
-| **Mandatory run variables** | “documents”: A list of documents  <br /> <br />”query”: A query string |
-| **Output variables** | “documents”: A list of documents |
+| **Mandatory init variables** | `token` (only for private models): The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory run variables** | `documents`: A list of documents  <br /> <br />`query`: A query string |
+| **Output variables** | `documents`: A list of documents |
 | **API reference** | [Rankers](/reference/rankers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/transformers_similarity.py |
+
+</div>
 
 ## Overview
 

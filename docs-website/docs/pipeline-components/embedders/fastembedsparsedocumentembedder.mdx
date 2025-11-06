@@ -9,13 +9,17 @@ description: "Use this component to enrich a list of documents with their sparse
 
 Use this component to enrich a list of documents with their sparse embeddings.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline                  |
-| **Mandatory run variables**            | “documents”: A list of documents                                                            |
-| **Output variables**                   | “documents”: A list of documents (enriched with sparse embeddings)                          |
+| **Mandatory run variables**            | `documents`: A list of documents                                                            |
+| **Output variables**                   | `documents`: A list of documents (enriched with sparse embeddings)                          |
 | **API reference**                      | [FastEmbed](/reference/fastembed-embedders)                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
+
+</div>
 
 To compute a sparse embedding for a string, use the [`FastembedSparseTextEmbedder`](fastembedsparsetextembedder.mdx).
 

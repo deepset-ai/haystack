@@ -1060,7 +1060,8 @@ def __init__(model: str = "sentence-transformers/all-mpnet-base-v2",
              precision: Literal["float32", "int8", "uint8", "binary",
                                 "ubinary"] = "float32",
              encode_kwargs: Optional[dict[str, Any]] = None,
-             backend: Literal["torch", "onnx", "openvino"] = "torch")
+             backend: Literal["torch", "onnx", "openvino"] = "torch",
+             revision: Optional[str] = None)
 ```
 
 Creates a SentenceTransformersDocumentEmbedder component.
@@ -1102,6 +1103,8 @@ avoid passing parameters that change the output type.
 - `backend`: The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
 Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
 for more information on acceleration and quantization options.
+- `revision`: The specific model version to use. It can be a branch name, a tag name, or a commit id,
+for a stored model on Hugging Face.
 
 <a id="sentence_transformers_document_embedder.SentenceTransformersDocumentEmbedder.to_dict"></a>
 
@@ -1216,7 +1219,8 @@ def __init__(model: str = "sentence-transformers/all-mpnet-base-v2",
              precision: Literal["float32", "int8", "uint8", "binary",
                                 "ubinary"] = "float32",
              encode_kwargs: Optional[dict[str, Any]] = None,
-             backend: Literal["torch", "onnx", "openvino"] = "torch")
+             backend: Literal["torch", "onnx", "openvino"] = "torch",
+             revision: Optional[str] = None)
 ```
 
 Create a SentenceTransformersTextEmbedder component.
@@ -1256,6 +1260,8 @@ avoid passing parameters that change the output type.
 - `backend`: The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
 Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
 for more information on acceleration and quantization options.
+- `revision`: The specific model version to use. It can be a branch name, a tag name, or a commit id,
+for a stored model on Hugging Face.
 
 <a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.to_dict"></a>
 
@@ -1372,7 +1378,8 @@ def __init__(*,
              model_kwargs: Optional[dict[str, Any]] = None,
              tokenizer_kwargs: Optional[dict[str, Any]] = None,
              config_kwargs: Optional[dict[str, Any]] = None,
-             backend: Literal["torch", "onnx", "openvino"] = "torch")
+             backend: Literal["torch", "onnx", "openvino"] = "torch",
+             revision: Optional[str] = None)
 ```
 
 Creates a SentenceTransformersSparseDocumentEmbedder component.
@@ -1401,6 +1408,8 @@ Refer to specific model documentation for available kwargs.
 - `backend`: The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
 Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
 for more information on acceleration and quantization options.
+- `revision`: The specific model version to use. It can be a branch name, a tag name, or a commit id,
+for a stored model on Hugging Face.
 
 <a id="sentence_transformers_sparse_document_embedder.SentenceTransformersSparseDocumentEmbedder.to_dict"></a>
 
@@ -1511,7 +1520,8 @@ def __init__(*,
              tokenizer_kwargs: Optional[dict[str, Any]] = None,
              config_kwargs: Optional[dict[str, Any]] = None,
              encode_kwargs: Optional[dict[str, Any]] = None,
-             backend: Literal["torch", "onnx", "openvino"] = "torch")
+             backend: Literal["torch", "onnx", "openvino"] = "torch",
+             revision: Optional[str] = None)
 ```
 
 Create a SentenceTransformersSparseTextEmbedder component.
@@ -1535,6 +1545,8 @@ Refer to specific model documentation for available kwargs.
 - `backend`: The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
 Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
 for more information on acceleration and quantization options.
+- `revision`: The specific model version to use. It can be a branch name, a tag name, or a commit id,
+for a stored model on Hugging Face.
 
 <a id="sentence_transformers_sparse_text_embedder.SentenceTransformersSparseTextEmbedder.to_dict"></a>
 

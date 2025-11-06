@@ -9,14 +9,18 @@ description: "`CohereDocumentImageEmbedder` computes the image embeddings of a l
 
 `CohereDocumentImageEmbedder` computes the image embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Cohere embedding models with the ability to embed text and images into the same vector space.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                |
-| **Mandatory init variables**           | "api_key": The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
-| **Mandatory run variables**            | "documents": A list of documents, with a meta field containing an image file path        |
-| **Output variables**                   | "documents": A list of documents (enriched with embeddings)                              |
+| **Mandatory init variables**           | `api_key`: The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
+| **Mandatory run variables**            | `documents`: A list of documents, with a meta field containing an image file path        |
+| **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                              |
 | **API reference**                      | [Cohere](/reference/integrations-cohere)                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cohere |
+
+</div>
 
 ## Overview
 

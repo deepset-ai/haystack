@@ -23,18 +23,21 @@ class ToolCallDelta:
     :param tool_name: The name of the Tool to call.
     :param arguments: Either the full arguments in JSON format or a delta of the arguments.
     :param id: The ID of the Tool call.
+    :param extra: Dictionary of extra information about the Tool call. Use to store provider-specific
+        information. To avoid serialization issues, values should be JSON serializable.
     """
 
     index: int
     tool_name: Optional[str] = field(default=None)
     arguments: Optional[str] = field(default=None)
-    id: Optional[str] = field(default=None)  # noqa: A003
+    id: Optional[str] = field(default=None)
+    extra: Optional[dict[str, Any]] = field(default=None)
 
     def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of the ToolCallDelta.
 
-        :returns: A dictionary with keys 'index', 'tool_name', 'arguments', and 'id'.
+        :returns: A dictionary with keys 'index', 'tool_name', 'arguments', 'id', and 'extra'.
         """
         return asdict(self)
 
