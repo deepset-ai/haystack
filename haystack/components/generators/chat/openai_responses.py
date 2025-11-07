@@ -521,10 +521,17 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
     tool_calls = []
     reasoning = None
+    logprobs: list[dict] = []
     for output in responses.output:
         if isinstance(output, ResponseOutputRefusal):
             logger.warning("OpenAI returned a refusal output: {output}", output=output)
             continue
+
+        if output.type == "message":
+            for content in output.content:
+                if getattr(content, "logprobs", None):
+                    logprobs.append(_serialize_object(content.logprobs))
+
         if output.type == "reasoning":
             # openai doesn't return the reasoning tokens, but we can view summary if its enabled
             # https://platform.openai.com/docs/guides/reasoning#reasoning-summaries
@@ -558,11 +565,6 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
     meta = responses.to_dict()
     # remove output from meta because it contains toolcalls, reasoning, text etc.
     meta.pop("output")
-    logprobs = []
-    for output in responses.output:
-        for content in output.content:
-            if getattr(content, "logprobs", None):
-                logprobs.append(_serialize_object(content.logprobs))
 
     if logprobs:
         meta["logprobs"] = logprobs

@@ -659,6 +659,23 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
         #       Anthropic Claude
         resolved_index = 0
+
+    # Initialize meta dictionary
+    meta = {
+        "model": chunk.model,
+        "index": choice.index,
+        "tool_calls": choice.delta.tool_calls,
+        "finish_reason": choice.finish_reason,
+        "received_at": datetime.now().isoformat(),
+        "usage": _serialize_object(chunk.usage),
+    }
+
+    # check if logprobs are present
+    # logprobs are returned only for text content
+    logprobs = _serialize_object(choice.logprobs) if choice.logprobs else None
+    if logprobs:
+        meta["logprobs"] = logprobs
+
     chunk_message = StreamingChunk(
         content=choice.delta.content or "",
         component_info=component_info,
@@ -667,13 +684,6 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # and previous_chunks is length 1 then this is the start of text content.
         start=len(previous_chunks) == 1,
         finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
-        meta={
-            "model": chunk.model,
-            "index": choice.index,
-            "tool_calls": choice.delta.tool_calls,
-            "finish_reason": choice.finish_reason,
-            "received_at": datetime.now().isoformat(),
-            "usage": _serialize_object(chunk.usage),
-        },
+        meta=meta,
     )
     return chunk_message
