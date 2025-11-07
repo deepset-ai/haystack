@@ -529,7 +529,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
         if output.type == "message":
             for content in output.content:
-                if getattr(content, "logprobs", None):
+                if hasattr(content, "logprobs") and content.logprobs is not None:
                     logprobs.append(_serialize_object(content.logprobs))
 
         if output.type == "reasoning":
@@ -675,6 +675,11 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     :returns: The ChatMessage.
     """
     text = "".join([chunk.content for chunk in chunks])
+    logprobs: list[dict] = []
+    for chunk in chunks:
+        logprobs_value = chunk.meta.get("logprobs")
+        if logprobs_value is not None:
+            logprobs.append(logprobs_value)
     reasoning = None
     tool_calls = []
 
@@ -726,6 +731,9 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         "response_start_time": final_response.get("created_at") if final_response else None,
         "usage": final_response.get("usage") if final_response else None,
     }
+
+    if logprobs:
+        meta["logprobs"] = logprobs
 
     return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta, reasoning=reasoning)
 
