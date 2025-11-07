@@ -543,15 +543,18 @@ class TestOpenAIResponsesChatGenerator:
     @pytest.mark.integration
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = OpenAIResponsesChatGenerator()
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-4", generation_kwargs={"include": ["message.output_text.logprobs"]}
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-5-mini" in message.meta["model"]
+        assert "gpt-4" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
+        assert message.meta["logprobs"] is not None
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -642,7 +645,9 @@ class TestOpenAIResponsesChatGenerator:
                 self.responses += chunk.content if chunk.content else ""
 
         callback = Callback()
-        component = OpenAIResponsesChatGenerator(streaming_callback=callback)
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-4", streaming_callback=callback, generation_kwargs={"include": ["message.output_text.logprobs"]}
+        )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
         # Basic response checks
@@ -654,8 +659,8 @@ class TestOpenAIResponsesChatGenerator:
 
         # Metadata checks
         metadata = message.meta
-        assert "gpt-5-mini" in metadata["model"]
-
+        assert "gpt-4" in metadata["model"]
+        assert metadata["logprobs"] is not None
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
         usage = metadata["usage"]

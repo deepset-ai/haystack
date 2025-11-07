@@ -990,7 +990,7 @@ class TestOpenAIChatGenerator:
 
         callback = Callback()
         component = OpenAIChatGenerator(
-            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
+            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}, "logprobs": True}
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -1005,6 +1005,7 @@ class TestOpenAIChatGenerator:
         metadata = message.meta
         assert "gpt-4o" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
+        assert metadata["logprobs"] is not None
 
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"

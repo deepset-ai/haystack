@@ -586,6 +586,7 @@ def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-retu
     Converts the streaming response chunk from the OpenAI Responses API to a StreamingChunk.
 
     :param chunk: The chunk returned by the OpenAI Responses API.
+    :param previous_chunks: A list of previously received StreamingChunks.
     :param component_info: An optional `ComponentInfo` object containing information about the component that
         generated the chunk, such as the component name and type.
     :returns:
@@ -674,14 +675,14 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
     :returns: The ChatMessage.
     """
+    reasoning = None
+    tool_calls = []
     text = "".join([chunk.content for chunk in chunks])
     logprobs: list[dict] = []
     for chunk in chunks:
         logprobs_value = chunk.meta.get("logprobs")
         if logprobs_value is not None:
             logprobs.append(logprobs_value)
-    reasoning = None
-    tool_calls = []
 
     # Process tool calls if present in any chunk
     tool_call_data: dict[str, dict[str, Any]] = {}  # Track tool calls by id
