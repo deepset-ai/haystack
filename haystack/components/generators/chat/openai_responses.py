@@ -13,6 +13,7 @@ from openai.types.responses import ParsedResponse, Response, ResponseOutputRefus
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.utils import _serialize_object
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -551,11 +552,21 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     _name=output.name,
                     _arguments=output.arguments,
                 )
+                arguments = {}
 
     # we save the response as dict because it contains resp_id etc.
     meta = responses.to_dict()
     # remove output from meta because it contains toolcalls, reasoning, text etc.
     meta.pop("output")
+    logprobs = []
+    for output in responses.output:
+        for content in output.content:
+            if getattr(content, "logprobs", None):
+                logprobs.append(_serialize_object(content.logprobs))
+
+    if logprobs:
+        meta["logprobs"] = logprobs
+
     chat_message = ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
         reasoning=reasoning,

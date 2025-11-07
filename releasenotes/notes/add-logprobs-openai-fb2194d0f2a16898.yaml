@@ -1,0 +1,6 @@
+---
+
+features:
+  - |
+    If logprobs are enabled in the generation kwargs, return logprobs from OpenAI API
+    responses in the `ChatMessage.meta`.

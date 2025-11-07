@@ -135,3 +135,17 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     }
 
     return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
+
+
+def _serialize_object(obj):
+    """Convert an object to a serializable dict recursively"""
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    elif hasattr(obj, "__dict__"):
+        return {k: _serialize_object(v) for k, v in obj.__dict__.items() if not k.startswith("_")}
+    elif isinstance(obj, dict):
+        return {k: _serialize_object(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_serialize_object(item) for item in obj]
+    else:
+        return obj
