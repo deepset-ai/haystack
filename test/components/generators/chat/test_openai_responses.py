@@ -3,14 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import logging
 import os
 from typing import Any, Optional
 from unittest.mock import ANY, MagicMock
 
 import pytest
 from openai import OpenAIError
-from openai.types import ResponseFormatText
+from openai.types import Reasoning, ResponseFormatText
 from openai.types.responses import (
     FunctionTool,
     Response,
@@ -27,12 +26,17 @@ from openai.types.responses import (
     ResponseOutputMessage,
     ResponseOutputText,
     ResponseReasoningItem,
+    ResponseReasoningSummaryPartAddedEvent,
+    ResponseReasoningSummaryPartDoneEvent,
+    ResponseReasoningSummaryTextDeltaEvent,
+    ResponseReasoningSummaryTextDoneEvent,
     ResponseTextConfig,
     ResponseTextDeltaEvent,
     ResponseTextDoneEvent,
     ResponseUsage,
 )
-from openai.types.responses.response import Reasoning
+from openai.types.responses.response_reasoning_item import Summary
+from openai.types.responses.response_reasoning_summary_part_added_event import Part
 from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 from pydantic import BaseModel
 
@@ -55,8 +59,6 @@ from haystack.dataclasses import (
 )
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.utils import Secret
-
-logger = logging.getLogger(__name__)
 
 
 class CalendarEvent(BaseModel):
@@ -673,6 +675,35 @@ class TestOpenAIResponsesChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
+    def test_live_run_with_reasoning_and_streaming(self):
+        class Callback:
+            def __init__(self):
+                self.reasoning_content = ""
+
+            def __call__(self, chunk: StreamingChunk) -> None:
+                self.reasoning_content += chunk.reasoning.reasoning_text if chunk.reasoning else ""
+
+        chat_messages = [ChatMessage.from_user("Explain in 2 lines why is there a Moon?")]
+        callback = Callback()
+        component = OpenAIResponsesChatGenerator(
+            generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}}, streaming_callback=callback
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        assert callback.reasoning_content == message.reasoning.reasoning_text
+        assert "Moon" in message.text
+        assert "gpt-5-mini" in message.meta["model"]
+        assert message.reasonings is not None
+        assert message.meta["status"] == "completed"
+        assert message.meta["usage"]["output_tokens"] > 0
+        assert "reasoning_tokens" in message.meta["usage"]["output_tokens_details"]
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
     def test_live_run_with_tools_streaming(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
 
@@ -814,7 +845,7 @@ class TestOpenAIResponsesChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_agent_streaming(self):
+    def test_live_run_with_agent_streaming_and_reasoning(self):
         # Tool Function
         def calculate(expression: str) -> dict:
             try:
@@ -838,7 +869,9 @@ class TestOpenAIResponsesChatGenerator:
 
         # Agent Setup
         agent = Agent(
-            chat_generator=OpenAIResponsesChatGenerator(tools_strict=True),
+            chat_generator=OpenAIResponsesChatGenerator(
+                tools_strict=True, generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}}
+            ),
             streaming_callback=print_streaming_chunk,
             tools=[calculator_tool],
             exit_conditions=["text"],
@@ -849,10 +882,7 @@ class TestOpenAIResponsesChatGenerator:
         agent.warm_up()
         response = agent.run(
             messages=[
-                ChatMessage.from_user(
-                    "What is 7 * (4 + 2)? Call the calculator tool first and then,"
-                    "when you get the answer, calculate the factorial of the answer."
-                )
+                ChatMessage.from_user("What is 7 * (4 + 2)? Make sure to call the calculator tool to get the answer.")
             ]
         )
 
@@ -1081,12 +1111,7 @@ class TestConvertResponseChunkToStreamingChunk:
                     object="response",
                     output=[
                         ResponseReasoningItem(
-                            id="rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b",
-                            summary=[],
-                            type="reasoning",
-                            content=None,
-                            encrypted_content=None,
-                            status=None,
+                            id="rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b", summary=[], type="reasoning"
                         ),
                         ResponseOutputMessage(
                             id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -1109,12 +1134,6 @@ class TestConvertResponseChunkToStreamingChunk:
                     tools=[],
                     top_p=1.0,
                     background=False,
-                    conversation=None,
-                    max_output_tokens=None,
-                    max_tool_calls=None,
-                    previous_response_id=None,
-                    prompt=None,
-                    prompt_cache_key=None,
                     reasoning=Reasoning(effort="medium", generate_summary=None, summary=None),
                     safety_identifier=None,
                     service_tier="default",
@@ -1129,7 +1148,6 @@ class TestConvertResponseChunkToStreamingChunk:
                         output_tokens_details=OutputTokensDetails(reasoning_tokens=64),
                         total_tokens=92,
                     ),
-                    user=None,
                     prompt_cache_retention=None,
                     store=True,
                 ),
@@ -1495,9 +1513,6 @@ class TestConvertResponseChunkToStreamingChunk:
                 response=Response(
                     id="resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
                     created_at=1761907188.0,
-                    error=None,
-                    incomplete_details=None,
-                    instructions=None,
                     metadata={},
                     model="gpt-5-mini-2025-08-07",
                     object="response",
@@ -1527,12 +1542,7 @@ class TestConvertResponseChunkToStreamingChunk:
             ),
             ResponseOutputItemAddedEvent(
                 item=ResponseReasoningItem(
-                    id="rs_095b57053855eac100690491f54e308196878239be3ba6133c",
-                    summary=[],
-                    type="reasoning",
-                    content=None,
-                    encrypted_content=None,
-                    status=None,
+                    id="rs_095b57053855eac100690491f54e308196878239be3ba6133c", summary=[], type="reasoning"
                 ),
                 output_index=0,
                 sequence_number=2,
@@ -1540,12 +1550,7 @@ class TestConvertResponseChunkToStreamingChunk:
             ),
             ResponseOutputItemDoneEvent(
                 item=ResponseReasoningItem(
-                    id="rs_095b57053855eac100690491f54e308196878239be3ba6133c",
-                    summary=[],
-                    type="reasoning",
-                    content=None,
-                    encrypted_content=None,
-                    status=None,
+                    id="rs_095b57053855eac100690491f54e308196878239be3ba6133c", summary=[], type="reasoning"
                 ),
                 output_index=0,
                 sequence_number=3,
@@ -1592,20 +1597,12 @@ class TestConvertResponseChunkToStreamingChunk:
                 response=Response(
                     id="resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
                     created_at=1761907188.0,
-                    error=None,
-                    incomplete_details=None,
-                    instructions=None,
                     metadata={},
                     model="gpt-5-mini-2025-08-07",
                     object="response",
                     output=[
                         ResponseReasoningItem(
-                            id="rs_095b57053855eac100690491f54e308196878239be3ba6133c",
-                            summary=[],
-                            type="reasoning",
-                            content=None,
-                            encrypted_content=None,
-                            status=None,
+                            id="rs_095b57053855eac100690491f54e308196878239be3ba6133c", summary=[], type="reasoning"
                         ),
                         ResponseFunctionToolCall(
                             arguments='{"city":"Paris"}',
@@ -1655,15 +1652,14 @@ class TestConvertResponseChunkToStreamingChunk:
             streaming_chunks.append(streaming_chunk)
 
         assert streaming_chunks == [
+            # TODO Unneeded streaming chunk
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "response": {
                         "id": "resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
                         "created_at": 1761907188.0,
-                        "error": None,
-                        "incomplete_details": None,
-                        "instructions": None,
                         "metadata": {},
                         "model": "gpt-5-mini-2025-08-07",
                         "object": "response",
@@ -1694,7 +1690,7 @@ class TestConvertResponseChunkToStreamingChunk:
             ),
             StreamingChunk(
                 content="",
-                meta={},
+                meta={"received_at": ANY},
                 index=0,
                 start=True,
                 reasoning=ReasoningContent(
@@ -1703,9 +1699,6 @@ class TestConvertResponseChunkToStreamingChunk:
                         "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
                         "summary": [],
                         "type": "reasoning",
-                        "content": None,
-                        "encrypted_content": None,
-                        "status": None,
                     },
                 ),
             ),
@@ -1716,19 +1709,17 @@ class TestConvertResponseChunkToStreamingChunk:
                         "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
                         "summary": [],
                         "type": "reasoning",
-                        "content": None,
-                        "encrypted_content": None,
-                        "status": None,
                     },
                     "output_index": 0,
                     "sequence_number": 3,
                     "type": "response.output_item.done",
+                    "received_at": ANY,
                 },
                 index=0,
             ),
             StreamingChunk(
                 content="",
-                meta={},
+                meta={"received_at": ANY},
                 index=1,
                 tool_calls=[
                     ToolCallDelta(
@@ -1737,9 +1728,12 @@ class TestConvertResponseChunkToStreamingChunk:
                         arguments=None,
                         id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
                         extra={
+                            "arguments": "",
                             "call_id": "call_OZZXFm7SLb4F3Xg8a9XVVCvv",
-                            "type": "function_call",
+                            "id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                            "name": "weather",
                             "status": "in_progress",
+                            "type": "function_call",
                         },
                     )
                 ],
@@ -1747,7 +1741,7 @@ class TestConvertResponseChunkToStreamingChunk:
             ),
             StreamingChunk(
                 content="",
-                meta={},
+                meta={"received_at": ANY},
                 index=1,
                 tool_calls=[
                     ToolCallDelta(
@@ -1767,7 +1761,7 @@ class TestConvertResponseChunkToStreamingChunk:
             ),
             StreamingChunk(
                 content="",
-                meta={},
+                meta={"received_at": ANY},
                 index=1,
                 tool_calls=[
                     ToolCallDelta(
@@ -1788,6 +1782,7 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "arguments": '{"city":"Paris"}',
                     "item_id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
                     "name": "weather",
@@ -1800,12 +1795,10 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "response": {
                         "id": "resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
                         "created_at": 1761907188.0,
-                        "error": None,
-                        "incomplete_details": None,
-                        "instructions": None,
                         "metadata": {},
                         "model": "gpt-5-mini-2025-08-07",
                         "object": "response",
@@ -1814,9 +1807,6 @@ class TestConvertResponseChunkToStreamingChunk:
                                 "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
                                 "summary": [],
                                 "type": "reasoning",
-                                "content": None,
-                                "encrypted_content": None,
-                                "status": None,
                             },
                             {
                                 "arguments": '{"city":"Paris"}',
