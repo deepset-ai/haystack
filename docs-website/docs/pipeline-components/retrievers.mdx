@@ -11,7 +11,7 @@ Retrievers go through all the documents in a Document Store and select the ones 
 
 ## How Do Retrievers Work?
 
-Retrievers are the basic components of the majority of search systems. They’re used in the retrieval part of the retrieval-augmented generation (RAG) pipelines, they’re at the core of document retrieval pipelines, and they’re paired up with a Reader in extractive question answering pipelines. 
+Retrievers are the basic components of the majority of search systems. They’re used in the retrieval part of the retrieval-augmented generation (RAG) pipelines, they’re at the core of document retrieval pipelines, and they’re paired up with a Reader in extractive question answering pipelines.
 
 When given a query, the Retriever sifts through the documents in the Document Store, assigns a score to each document to indicate how relevant it is to the query, and returns top candidates. It then passes the selected documents on to the next component in the pipeline or returns them as answers to the query.
 
@@ -69,7 +69,7 @@ For more information, read this Retriever's [documentation page](retrievers/filt
 
 #### Combining Retrievers
 
-You can use different types of Retrievers in one pipeline to take advantage of the strengths and mitigate the weaknesses of each of them. There are two most common strategies to do this: combining a sparse and dense Retriever (hybrid retrieval) and using two dense Retrievers, each with a different model (multi-embedding retrieval). 
+You can use different types of Retrievers in one pipeline to take advantage of the strengths and mitigate the weaknesses of each of them. There are two most common strategies to do this: combining a sparse and dense Retriever (hybrid retrieval) and using two dense Retrievers, each with a different model (multi-embedding retrieval).
 
 ##### Hybrid Retrieval
 
@@ -77,14 +77,12 @@ You can use different Retriever types, sparse and dense, in one pipeline to take
 
 See an example of this approach in our [`DocumentJoiner` docs](joiners/documentjoiner.mdx#in-a-pipeline).
 
-:::tip
-Metadata Filtering
+:::tip Metadata Filtering
 
 When talking about hybrid retrieval, some database providers mean _metadata filtering_ on dense embedding retrieval. While this is different from combining different Retrievers, it is usually supported by Haystack Retrievers. For more information, check the [Metadata Filtering page](../concepts/metadata-filtering.mdx).
 :::
 
-:::info
-Hybrid Retrievers
+:::info Hybrid Retrievers
 
 Some Document Stores offer hybrid retrieval on the database side.
 In general, these solutions can be performant, but they offer fewer customization options (for instance, on how to merge results from different retrieval techniques).
@@ -98,7 +96,7 @@ In this strategy, you use two embedding-based Retrievers, each with a different 
 
 ## Retrievers and Document Stores
 
-Retrievers are tightly coupled with [Document Stores](../concepts/document-store.mdx). Most Document Stores can work both with a sparse or a dense Retriever or both Retriever types combined. See the documentation of a specific Document Store to check which Retrievers it supports. 
+Retrievers are tightly coupled with [Document Stores](../concepts/document-store.mdx). Most Document Stores can work both with a sparse or a dense Retriever or both Retriever types combined. See the documentation of a specific Document Store to check which Retrievers it supports.
 
 ### Naming Conventions
 
@@ -131,8 +129,9 @@ The `FilterPolicy` is set in a selected Retriever's init method, while `filters`
 
 For details on how to initialize and use a Retriever in a pipeline, see the documentation for a specific Retriever. The following Retrievers are available in Haystack:
 
-| [AstraEmbeddingRetriever](retrievers/astraretriever.mdx)                          | An embedding-based Retriever compatible with the AstraDocumentStore.                                                            |
+| Component | Description |
 | --- | --- |
+| [AstraEmbeddingRetriever](retrievers/astraretriever.mdx)                          | An embedding-based Retriever compatible with the AstraDocumentStore.                                                            |
 | [AutoMergingRetriever](retrievers/automergingretriever.mdx)                         | Retrieves complete parent documents instead of fragmented chunks when multiple related pieces match a query.                    |
 | [AzureAISearchEmbeddingRetriever](retrievers/azureaisearchembeddingretriever.mdx)   | An embedding Retriever compatible with the Azure AI Search Document Store.                                                      |
 | [AzureAISearchBM25Retriever](retrievers/azureaisearchbm25retriever.mdx)             | A keyword-based Retriever that fetches Documents matching a query from the Azure AI Search Document Store.                      |

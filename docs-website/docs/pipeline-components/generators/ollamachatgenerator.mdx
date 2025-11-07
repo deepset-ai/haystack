@@ -9,13 +9,17 @@ description: "This component enables chat completion using an LLM running on Oll
 
 This component enables chat completion using an LLM running on Ollama.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
-| **Mandatory run variables**            | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
-| **Output variables**                   | “replies”: A list of LLM’s alternative replies                                                       |
+| **Mandatory run variables**            | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Output variables**                   | `replies`: A list of LLM’s alternative replies                                                       |
 | **API reference**                      | [Ollama](/reference/integrations-ollama)                                                                    |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/ollama             |
+
+</div>
 
 ## Overview
 
@@ -26,6 +30,36 @@ This component enables chat completion using an LLM running on Ollama.
 `OllamaChatGenerator`  needs a `model`  name and a `url` to work. By default, it uses `"orca-mini"` model and `"http://localhost:11434"` url.
 
 The way to operate with `OllamaChatGenerator` is by using  `ChatMessage` objects. [ChatMessage](../../concepts/data-classes/chatmessage.mdx)  is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. See the [usage](#usage) section for an example.
+
+### Tool Support
+
+`OllamaChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.ollama import OllamaChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = OllamaChatGenerator(
+    model="llama2",
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
 
 ### Streaming
 
@@ -75,8 +109,7 @@ If you already installed Ollama in your system, you can execute:
 ollama pull zephyr
 ```
 
-:::tip
-Choose a specific version of a model
+:::tip Choose a specific version of a model
 
 You can also specify a tag to choose a specific (quantized) version of your model. The available tags are shown in the model card of the Ollama models library. This is an [example](https://ollama.ai/library/zephyr/tags) for Zephyr.
 In this case, simply run

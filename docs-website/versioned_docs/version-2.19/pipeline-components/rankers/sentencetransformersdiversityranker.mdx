@@ -9,14 +9,18 @@ description: "This is a Diversity Ranker based on Sentence Transformers."
 
 This is a Diversity Ranker based on Sentence Transformers.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx)  |
-| **Mandatory init variables** | "token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
-| **Mandatory run variables** | “documents”: A list of documents  <br /> <br />”query”: A query string |
-| **Output variables** | “documents”: A list of documents |
+| **Mandatory init variables** | `token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory run variables** | `documents`: A list of documents  <br /> <br />`query`: A query string |
+| **Output variables** | `documents`: A list of documents |
 | **API reference** | [Rankers](/reference/rankers-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/sentence_transformers_diversity.py |
+
+</div>
 
 ## Overview
 

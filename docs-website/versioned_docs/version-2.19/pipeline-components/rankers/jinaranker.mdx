@@ -9,14 +9,18 @@ description: "Use this component to rank documents based on their similarity to 
 
 Use this component to rank documents based on their similarity to the query using Jina AI models.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents (such as a [Retriever](../retrievers.mdx) ) |
-| **Mandatory init variables** | "api_key": The Jina API key. Can be set with `JINA_API_KEY` env var. |
-| **Mandatory run variables** | “query”: A query string  <br /> <br />”documents”: A list of documents |
-| **Output variables** | “documents”: A list of documents |
+| **Mandatory init variables** | `api_key`: The Jina API key. Can be set with `JINA_API_KEY` env var. |
+| **Mandatory run variables** | `query`: A query string  <br /> <br />`documents`: A list of documents |
+| **Output variables** | `documents`: A list of documents |
 | **API reference** | [Jina](/reference/integrations-jina) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina |
+
+</div>
 
 ## Overview
 

@@ -9,14 +9,18 @@ description: "This generator enables chat completion using various Hugging Face 
 
 This generator enables chat completion using various Hugging Face APIs.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) |
-| **Mandatory init variables** | "api_type": The type of Hugging Face API to use  <br /> <br />"api_params": A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`."token": The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
-| **Mandatory run variables** | “messages”: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
-| **Output variables** | “replies”: A list of replies of the LLM to the input chat |
+| **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Output variables** | `replies`: A list of replies of the LLM to the input chat |
 | **API reference** | [Generators](/reference/generators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/hugging_face_api.py |
+
+</div>
 
 ## Overview
 
@@ -193,4 +197,4 @@ print(result)
 
 ## Additional References
 
-:cook: Cookbook: [Build with Google Gemma: chat and RAG](https://haystack.deepset.ai/cookbook/gemma_chat_rag)
+🧑‍🍳 Cookbook: [Build with Google Gemma: chat and RAG](https://haystack.deepset.ai/cookbook/gemma_chat_rag)

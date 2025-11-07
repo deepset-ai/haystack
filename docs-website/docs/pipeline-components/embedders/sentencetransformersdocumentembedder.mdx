@@ -11,13 +11,17 @@ SentenceTransformersDocumentEmbedder computes the embeddings of a list of docume
 
 The vectors computed by this component are necessary to perform embedding retrieval on a collection of documents. At retrieval time, the vector that represents the query is compared with those of the documents to find the most similar or relevant documents.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline                                                  |
-| **Mandatory run variables**            | "documents": A list of documents                                                                                            |
-| **Output variables**                   | "documents": A list of documents (enriched with embeddings)                                                                 |
+| **Mandatory run variables**            | `documents`: A list of documents                                                                                            |
+| **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                                                                 |
 | **API reference**                      | [Embedders](/reference/embedders-api)                                                                                              |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_document_embedder.py |
+
+</div>
 
 ## Overview
 
@@ -39,12 +43,12 @@ The default embedding model is [\`sentence-transformers/all-mpnet-base-v2](https
 
 See the original models in the Sentence Transformers [documentation](https://www.sbert.net/docs/pretrained_models.html).
 
-Nowadays, most of the models in the [Massive Text Embedding Benchmark (MTEB) Leaderboard](https://huggingface.co/spaces/mteb/leaderboard) are compatible with Sentence Transformers.  
+Nowadays, most of the models in the [Massive Text Embedding Benchmark (MTEB) Leaderboard](https://huggingface.co/spaces/mteb/leaderboard) are compatible with Sentence Transformers.
 You can look for compatibility in the model card: [an example related to BGE models](https://huggingface.co/BAAI/bge-large-en-v1.5#using-sentence-transformers).
 
 ### Instructions
 
-Some recent models that you can find in MTEB require prepending the text with an instruction to work better for retrieval.  
+Some recent models that you can find in MTEB require prepending the text with an instruction to work better for retrieval.
 For example, if you use [intfloat/e5-large-v2](https://huggingface.co/BAAI/bge-large-en-v1.5#model-list), you should prefix your document with the following instruction: “passage:”
 
 This is how it works with `SentenceTransformersDocumentEmbedder`:

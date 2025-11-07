@@ -9,23 +9,27 @@ description: "This is a keyword-based Retriever that fetches Documents matching 
 
 This is a keyword-based Retriever that fetches Documents matching a query from an OpenSearch Document Store.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
-| **Mandatory init variables**           | "document_store": An instance of an [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx)                                                                                                                          |
-| **Mandatory run variables**            | "query": A query string                                                                                                                                                                                               |
-| **Output variables**                   | "documents": A list of documents matching the query                                                                                                                                                                   |
+| **Mandatory init variables**           | `document_store`: An instance of an [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx)                                                                                                                          |
+| **Mandatory run variables**            | `query`: A query string                                                                                                                                                                                               |
+| **Output variables**                   | `documents`: A list of documents matching the query                                                                                                                                                                   |
 | **API reference**                      | [OpenSearch](/reference/integrations-opensearch)                                                                                                                                                                             |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch                                                                                                                          |
 
+</div>
+
 ## Overview
 
-`OpenSearchBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from an `OpenSearchDocumentStore`. It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the two strings. 
+`OpenSearchBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from an `OpenSearchDocumentStore`. It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the two strings.
 
-Since the `OpenSearchBM25Retriever` matches strings based on word overlap, it’s often used to find exact matches to names of persons or products, IDs, or well-defined error messages. The BM25 algorithm is very lightweight and simple. Nevertheless, it can be hard to beat with more complex embedding-based approaches on out-of-domain data. 
+Since the `OpenSearchBM25Retriever` matches strings based on word overlap, it’s often used to find exact matches to names of persons or products, IDs, or well-defined error messages. The BM25 algorithm is very lightweight and simple. Nevertheless, it can be hard to beat with more complex embedding-based approaches on out-of-domain data.
 
-In addition to the `query`, the `OpenSearchBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.  
-You can adjust how [inexact fuzzy matching](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#fuzziness) is performed, using the `fuzziness` parameter.  
+In addition to the `query`, the `OpenSearchBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
+You can adjust how [inexact fuzzy matching](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#fuzziness) is performed, using the `fuzziness` parameter.
 It is also possible to specify if all terms in the query must match using the `all_terms_must_match` parameter, which defaults to `False`.
 
 If you want more flexible matching of a query to Documents, you can use the `OpenSearchEmbeddingRetriever`, which uses vectors created by LLMs to retrieve relevant information.
@@ -136,4 +140,4 @@ GeneratedAnswer(
 
 ## Additional References
 
-:cook: Cookbook: [PDF-Based Question Answering with Amazon Bedrock and Haystack](https://haystack.deepset.ai/cookbook/amazon_bedrock_for_documentation_qa)
+🧑‍🍳 Cookbook: [PDF-Based Question Answering with Amazon Bedrock and Haystack](https://haystack.deepset.ai/cookbook/amazon_bedrock_for_documentation_qa)

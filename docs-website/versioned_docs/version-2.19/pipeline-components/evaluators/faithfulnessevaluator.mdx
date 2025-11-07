@@ -9,13 +9,17 @@ description: "The `FaithfulnessEvaluator` uses an LLM to evaluate whether a gene
 
 The `FaithfulnessEvaluator` uses an LLM to evaluate whether a generated answer can be inferred from the provided contexts. It does not require ground truth labels. This metric is called faithfulness, sometimes also referred to as groundedness or hallucination.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
-| **Mandatory run variables** | "questions": A list of questions  <br /> <br />"contexts": A list of a list of contexts, which are the contents of documents. This accounts for one list of contexts per question.  <br /> <br />"predicted_answers": A list of predicted answers, for example, the outputs of a Generator in a RAG pipeline |
+| **Mandatory run variables** | `questions`: A list of questions  <br /> <br />`contexts`: A list of a list of contexts, which are the contents of documents. This accounts for one list of contexts per question.  <br /> <br />`predicted_answers`: A list of predicted answers, for example, the outputs of a Generator in a RAG pipeline |
 | **Output variables** | A dictionary containing:  <br /> <br />- `score`: A number from 0.0 to 1.0 that represents the average faithfulness score across all questions  <br /> <br />- `individual_scores`: A list of the individual faithfulness scores ranging from 0.0 to 1.0 for each input triple of a question, a list of contexts, and a predicted answer.  <br /> <br />- `results`:  A list of dictionaries with `statements` and `statement_scores` keys. They contain the statements extracted by an LLM from each predicted answer and the corresponding faithfulness scores per statement, which are either 0 or 1. |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/faithfulness.py |
+
+</div>
 
 You can use the `FaithfulnessEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, without ground truth labels. The component splits the generated answer into statements and checks each of them against the provided contexts with an LLM. A higher faithfulness score is better, and it indicates that a larger number of statements in the generated answers can be inferred from the contexts. The faithfulness score can be used to better understand how often and when the Generator in a RAG pipeline hallucinates.
 

@@ -9,13 +9,17 @@ description: "This component computes the embeddings of a list of documents usin
 
 This component computes the embeddings of a list of documents using the models supported by FastEmbed.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline                  |
-| **Mandatory run variables**            | “documents”: A list of documents                                                            |
-| **Output variables**                   | “documents”: A list of documents (enriched with embeddings)                                 |
+| **Mandatory run variables**            | `documents`: A list of documents                                                            |
+| **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                                 |
 | **API reference**                      | [FastEmbed](/reference/fastembed-embedders)                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
+
+</div>
 
 This component should be used to embed a list of documents. To embed a string, use the [`FastembedTextEmbedder`](fastembedtextembedder.mdx).
 
@@ -93,7 +97,7 @@ docs_w_embeddings = embedder.run(documents=[doc])["documents"]
 from haystack.dataclasses import Document
 from haystack_integrations.components.embedders.fastembed import FastembedDocumentEmbedder
 document_list = [
-	Document(content="I love pizza!"), 
+	Document(content="I love pizza!"),
 	Document(content="I like spaghetti")
 ]
 

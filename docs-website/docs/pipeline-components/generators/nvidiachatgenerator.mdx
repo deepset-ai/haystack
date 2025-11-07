@@ -9,14 +9,18 @@ description: "This Generator enables chat completion using Nvidia-hosted models.
 
 This Generator enables chat completion using Nvidia-hosted models.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                     |
-| **Mandatory init variables**           | "api_key": API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var.         |
-| **Mandatory run variables**            | "messages": A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                           |
-| **Output variables**                   | "replies": A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                            |
+| **Mandatory init variables**           | `api_key`: API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var.         |
+| **Mandatory run variables**            | `messages`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                           |
+| **Output variables**                   | `replies`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                            |
 | **API reference**                      | [NVIDIA API](https://build.nvidia.com/models)                                            |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/nvidia |
+
+</div>
 
 ## Overview
 
@@ -25,6 +29,37 @@ This Generator enables chat completion using Nvidia-hosted models.
 You can use LLMs self-hosted with NVIDIA NIM or models hosted on the [NVIDIA API catalog](https://build.nvidia.com/explore/discover). The default model for this component is `meta/llama-3.1-8b-instruct`.
 
 To use this integration, you must have a NVIDIA API key. You can provide it with the `NVIDIA_API_KEY` environment variable or by using a [Secret](../../concepts/secret-management.mdx).
+
+### Tool Support
+
+`NvidiaChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = NvidiaChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
 
 This generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
 

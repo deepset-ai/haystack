@@ -9,14 +9,18 @@ description: "Extracts metadata from documents using a Large Language Model. The
 
 Extracts metadata from documents using a Large Language Model. The metadata is extracted by providing a prompt to a LLM that generates it.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After [PreProcessors](../preprocessors.mdx) in an indexing pipeline |
-| **Mandatory init variables** | "prompt": The prompt to instruct the LLM on how to extract metadata from the document  <br /> <br />"chat_generator": A Chat Generator instance which represents the LLM configured to return a JSON object |
-| **Mandatory run variables** | “documents”: A list of documents |
-| **Output variables** | “documents”: A list of documents |
+| **Mandatory init variables** | `prompt`: The prompt to instruct the LLM on how to extract metadata from the document  <br /> <br />`chat_generator`: A Chat Generator instance which represents the LLM configured to return a JSON object |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `documents`: A list of documents |
 | **API reference** | [Extractors](/reference/extractors-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/extractors/llm_metadata_extractor.py |
+
+</div>
 
 ## Overview
 

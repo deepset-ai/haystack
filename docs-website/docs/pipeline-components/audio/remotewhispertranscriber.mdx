@@ -9,14 +9,18 @@ description: "Use `RemoteWhisperTranscriber` to transcribe audio files using Ope
 
 Use `RemoteWhisperTranscriber` to transcribe audio files using OpenAI's Whisper model.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | As the first component in an indexing pipeline                                                 |
-| **Mandatory init variables**           | "api_key": An OpenAI API key. Can be set with an environment variable `OPENAI_API_KEY`.        |
-| **Mandatory run variables**            | “sources”: A list of paths or binary streams that you want to transcribe                       |
-| **Output variables**                   | “documents”: A list of documents                                                               |
+| **Mandatory init variables**           | `api_key`: An OpenAI API key. Can be set with an environment variable `OPENAI_API_KEY`.        |
+| **Mandatory run variables**            | `sources`: A list of paths or binary streams that you want to transcribe                       |
+| **Output variables**                   | `documents`: A list of documents                                                               |
 | **API reference**                      | [Audio](/reference/audio-api)                                                                         |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/audio/whisper_remote.py |
+
+</div>
 
 ## Overview
 
@@ -34,7 +38,7 @@ transcriber = RemoteWhisperTranscriber()
 Additionally, the component requires the following parameters to work:
 
 - `model` specifies the Whisper model.
-- `api_base_url` specifies the OpenAI base URL and defaults to `"https://api.openai.com/v1"`. If you are using Whisper provider other than OpenAI set this parameter according to provider's documentation. 
+- `api_base_url` specifies the OpenAI base URL and defaults to `"https://api.openai.com/v1"`. If you are using Whisper provider other than OpenAI set this parameter according to provider's documentation.
 
 See other optional parameters in our [API documentation](/reference/audio-api).
 
@@ -53,7 +57,7 @@ from haystack.components.audio import RemoteWhisperTranscriber
 response = requests.get("https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3")
 with open("kennedy_speech.mp3", "wb") as file:
     file.write(response.content)
-    
+
 transcriber = RemoteWhisperTranscriber()
 transcription = transcriber.run(sources=["./kennedy_speech.mp3"])
 
@@ -82,4 +86,4 @@ print(result["transcriber"]["documents"][0].content)
 
 ## Additional References
 
-:cook: Cookbook: [Multilingual RAG from a podcast with Whisper, Qdrant and Mistral](https://haystack.deepset.ai/cookbook/multilingual_rag_podcast)
+🧑‍🍳 Cookbook: [Multilingual RAG from a podcast with Whisper, Qdrant and Mistral](https://haystack.deepset.ai/cookbook/multilingual_rag_podcast)

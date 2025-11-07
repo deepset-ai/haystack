@@ -59,9 +59,45 @@ Here, the custom component `WelcomeTextGenerator` accepts one input: `name` stri
 
 ## Extended Example
 
-Click on the Recipe below to see how to create two custom components and connect them in a Haystack pipeline.
+Check out an example below on how to create two custom components and connect them in a Haystack pipeline.
 
-RECIPE MISSING
+```python
+# import necessary dependencies
+from typing import List
+from haystack import component, Pipeline
+
+# Create two custom components. Note the mandatory @component decorator and @component.output_types, as well as the mandatory run method.
+@component
+class WelcomeTextGenerator:
+  """
+  A component generating personal welcome message and making it upper case
+  """
+  @component.output_types(welcome_text=str, note=str)
+  def run(self, name: str):
+    return {"welcome_text": ('Hello {name}, welcome to Haystack!'.format(name=name)).upper(), "note": "welcome message is ready"}
+
+@component
+class WhitespaceSplitter:
+  """
+  A component for splitting the text by whitespace
+  """
+  @component.output_types(split_text=List[str])
+  def run(self, text: str):
+    return {"split_text": text.split()}
+
+# create a pipeline and add the custom components to it
+text_pipeline = Pipeline()
+text_pipeline.add_component(name="welcome_text_generator", instance=WelcomeTextGenerator())
+text_pipeline.add_component(name="splitter", instance=WhitespaceSplitter())
+
+# connect the components
+text_pipeline.connect(sender="welcome_text_generator.welcome_text", receiver="splitter.text")
+
+# define the result and run the pipeline
+result = text_pipeline.run({"welcome_text_generator": {"name": "Bilge"}})
+
+print(result["splitter"]["split_text"])
+```
 
 ## Extending the Existing Components
 
@@ -81,7 +117,7 @@ An example of an extended component is Haystack's [FaithfulnessEvaluator](https:
 
 ## Additional References
 
-:cook: Cookbooks:
+🧑‍🍳 Cookbooks:
 
 - [Build quizzes and adventures with Character Codex and llamafile](https://haystack.deepset.ai/cookbook/charactercodex_llamafile/)
 - [Run tasks concurrently within a custom component](https://haystack.deepset.ai/cookbook/concurrent_tasks/)

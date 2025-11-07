@@ -9,14 +9,18 @@ description: "This component computes the embeddings of a list of documents and 
 
 This component computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Jina AI Embeddings models.  The vectors computed by this component are necessary to perform embedding retrieval on a collection of documents. At retrieval time, the vector representing the query is compared with those of the documents to find the most similar or relevant documents.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
-| **Mandatory init variables** | "api_key": The Jina API key. Can be set with `JINA_API_KEY` env var. |
-| **Mandatory run variables** | “documents”: A list of documents |
-| **Output variables** | “documents”: A list of documents (enriched with embeddings)  <br /> <br />”meta”: A dictionary of metadata |
+| **Mandatory init variables** | `api_key`: The Jina API key. Can be set with `JINA_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `documents`: A list of documents (enriched with embeddings)  <br /> <br />`meta`: A dictionary of metadata |
 | **API reference** | [Jina](/reference/integrations-jina) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina |
+
+</div>
 
 ## Overview
 
@@ -121,4 +125,4 @@ print(result['retriever']['documents'][0])
 
 ## Additional References
 
-:cook: Cookbook: [Using the Jina-embeddings-v2-base-en model in a Haystack RAG pipeline for legal document analysis](https://haystack.deepset.ai/cookbook/jina-embeddings-v2-legal-analysis-rag)
+🧑‍🍳 Cookbook: [Using the Jina-embeddings-v2-base-en model in a Haystack RAG pipeline for legal document analysis](https://haystack.deepset.ai/cookbook/jina-embeddings-v2-legal-analysis-rag)

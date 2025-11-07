@@ -9,12 +9,16 @@ description: "Use a Pinecone vector database with Haystack."
 
 Use a Pinecone vector database with Haystack.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | API reference | [Pinecone](/reference/integrations-pinecone)                                                      |
 | GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/pinecone |
 
-[Pinecone](https://www.pinecone.io/) is a cloud-based vector database. It is fast and easy to use.  
+</div>
+
+[Pinecone](https://www.pinecone.io/) is a cloud-based vector database. It is fast and easy to use.
 Unlike other solutions (such as Qdrant and Weaviate), it can’t run locally on the user's machine but provides a generous free tier.
 
 ### Installation
@@ -27,9 +31,9 @@ pip install pinecone-haystack
 
 ### Initialization
 
-- To use Pinecone as a Document Store in Haystack, sign up for a free Pinecone [account](https://app.pinecone.io/) and get your API key.  
+- To use Pinecone as a Document Store in Haystack, sign up for a free Pinecone [account](https://app.pinecone.io/) and get your API key.
   The Pinecone API key can be explicitly provided or automatically read from the environment variable `PINECONE_API_KEY` (recommended).
-- In Haystack, each `PineconeDocumentStore` operates in a specific namespace of an index. If not provided, both index and namespace are `default`.  
+- In Haystack, each `PineconeDocumentStore` operates in a specific namespace of an index. If not provided, both index and namespace are `default`.
   If the index already exists, the Document Store connects to it. Otherwise, it creates a new index.
 - When creating a new index, you can provide a `spec` in the form of a dictionary. This allows choosing between serverless and pod deployment options and setting additional parameters. Refer to the [Pinecone documentation](https://docs.pinecone.io/reference/api/control-plane/create_index) for more details. If not provided, a default spec with serverless deployment in the `us-east-1` region will be used (compatible with the free tier).
 - You can provide `dimension` and `metric`, but they are only taken into account if the Pinecone index does not already exist.
@@ -50,7 +54,7 @@ document_store = PineconeDocumentStore(
 )
 
 document_store.write_documents([
-    Document(content="This is first", embedding=[0.0]*5), 
+    Document(content="This is first", embedding=[0.0]*5),
     Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5])
     ])
 print(document_store.count_documents())

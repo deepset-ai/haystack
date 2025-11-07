@@ -9,13 +9,17 @@ description: "Learn how to work with Langfuse in Haystack."
 
 Learn how to work with Langfuse in Haystack.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Anywhere, as it’s not connected to other components |
-| **Mandatory init variables** | "name": The name of the pipeline or component to identify the tracing run |
-| **Output variables** | “name”: The name of the tracing component  <br /> <br />”trace_url”: A link to the tracing data |
+| **Mandatory init variables** | `name`: The name of the pipeline or component to identify the tracing run |
+| **Output variables** | `name`: The name of the tracing component  <br /> <br />`trace_url`: A link to the tracing data |
 | **API reference** | [langfuse](/reference/integrations-langfuse) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/langfuse |
+
+</div>
 
 ## Overview
 
@@ -50,8 +54,7 @@ pip install langfuse-haystack
 
 <br />
 
-:::note
-Usage Notice
+:::note Usage Notice
 
 To ensure proper tracing, always set environment variables before importing any Haystack components. This is crucial because Haystack initializes its internal tracing components during import. In the example below, we first set the environmental variables and then import the relevant Haystack components.
 

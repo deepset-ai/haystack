@@ -54,6 +54,7 @@ class SentenceTransformersTextEmbedder:
         precision: Literal["float32", "int8", "uint8", "binary", "ubinary"] = "float32",
         encode_kwargs: Optional[dict[str, Any]] = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
+        revision: Optional[str] = None,
     ):
         """
         Create a SentenceTransformersTextEmbedder component.
@@ -108,6 +109,9 @@ class SentenceTransformersTextEmbedder:
             The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
             Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
             for more information on acceleration and quantization options.
+        :param revision:
+            The specific model version to use. It can be a branch name, a tag name, or a commit id,
+            for a stored model on Hugging Face.
         """
 
         self.model = model
@@ -119,6 +123,7 @@ class SentenceTransformersTextEmbedder:
         self.progress_bar = progress_bar
         self.normalize_embeddings = normalize_embeddings
         self.trust_remote_code = trust_remote_code
+        self.revision = revision
         self.local_files_only = local_files_only
         self.truncate_dim = truncate_dim
         self.model_kwargs = model_kwargs
@@ -153,6 +158,7 @@ class SentenceTransformersTextEmbedder:
             progress_bar=self.progress_bar,
             normalize_embeddings=self.normalize_embeddings,
             trust_remote_code=self.trust_remote_code,
+            revision=self.revision,
             local_files_only=self.local_files_only,
             truncate_dim=self.truncate_dim,
             model_kwargs=self.model_kwargs,
@@ -194,6 +200,7 @@ class SentenceTransformersTextEmbedder:
                 device=self.device.to_torch_str(),
                 auth_token=self.token,
                 trust_remote_code=self.trust_remote_code,
+                revision=self.revision,
                 local_files_only=self.local_files_only,
                 truncate_dim=self.truncate_dim,
                 model_kwargs=self.model_kwargs,

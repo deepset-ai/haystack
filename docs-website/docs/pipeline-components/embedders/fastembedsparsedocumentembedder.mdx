@@ -9,13 +9,17 @@ description: "Use this component to enrich a list of documents with their sparse
 
 Use this component to enrich a list of documents with their sparse embeddings.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline                  |
-| **Mandatory run variables**            | “documents”: A list of documents                                                            |
-| **Output variables**                   | “documents”: A list of documents (enriched with sparse embeddings)                          |
+| **Mandatory run variables**            | `documents`: A list of documents                                                            |
+| **Output variables**                   | `documents`: A list of documents (enriched with sparse embeddings)                          |
 | **API reference**                      | [FastEmbed](/reference/fastembed-embedders)                                                        |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/fastembed |
+
+</div>
 
 To compute a sparse embedding for a string, use the [`FastembedSparseTextEmbedder`](fastembedsparsetextembedder.mdx).
 
@@ -92,7 +96,7 @@ docs_w_sparse_embeddings = embedder.run(documents=[doc])["documents"]
 from haystack.dataclasses import Document
 from haystack_integrations.components.embedders.fastembed import FastembedSparseDocumentEmbedder
 document_list = [
-	Document(content="I love pizza!"), 
+	Document(content="I love pizza!"),
 	Document(content="I like spaghetti")
 ]
 
@@ -109,7 +113,7 @@ print(result['documents'][0])
 
 ### In a pipeline
 
-Currently, sparse embedding retrieval is only supported by `QdrantDocumentStore`.  
+Currently, sparse embedding retrieval is only supported by `QdrantDocumentStore`.
 First, install the package with:
 
 ```shell
@@ -167,4 +171,4 @@ print(result["sparse_retriever"]["documents"][0])  # noqa: T201
 
 ## Additional References
 
-:cook: Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)
+🧑‍🍳 Cookbook: [Sparse Embedding Retrieval with Qdrant and FastEmbed](https://haystack.deepset.ai/cookbook/sparse_embedding_retrieval)

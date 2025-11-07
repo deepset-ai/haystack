@@ -9,14 +9,18 @@ description: "This component constructs prompts dynamically by processing chat m
 
 This component constructs prompts dynamically by processing chat messages.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [Generator](../generators.mdx)                                                                                                         |
-| **Mandatory init variables**           | "template": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects or a special string template. Needs to be provided either during init or run. |
-| **Mandatory run variables**            | “\*\*kwargs”: Any strings that should be used to render the prompt template. See [Variables](#variables) section for more details.             |
-| **Output variables**                   | “prompt”: A dynamically constructed prompt                                                                                                     |
+| **Mandatory init variables**           | `template`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects or a special string template. Needs to be provided either during init or run. |
+| **Mandatory run variables**            | `**kwargs`: Any strings that should be used to render the prompt template. See [Variables](#variables) section for more details.             |
+| **Output variables**                   | `prompt`: A dynamically constructed prompt                                                                                                     |
 | **API reference**                      | [Builders](/reference/builders-api)                                                                                                                   |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/builders/chat_prompt_builder.py                                         |
+
+</div>
 
 ## Overview
 
@@ -24,7 +28,7 @@ The `ChatPromptBuilder` component creates prompts using static or dynamic templa
 
 To use it, start by providing a list of `ChatMessage` objects or a special string as the template.
 
-[`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) is a data class that includes message content, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. 
+[`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) is a data class that includes message content, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 The builder looks for placeholders in the template and identifies the required variables. You can also list these variables manually. During runtime, the `run` method takes the template and the variables, fills in the placeholders, and returns the completed prompt. If required variables are missing. If the template is invalid, the builder raises an error.
 
@@ -200,7 +204,7 @@ Hello, my name is {{name}}!
 
 builder = ChatPromptBuilder(template=template)
 result = builder.run(name="John")
-  
+
 assert result["prompt"] == [ChatMessage.from_user("Hello, my name is John!")]
 ```
 
@@ -292,7 +296,7 @@ assert result["prompt"] == [
         content_parts=["Hello! I am John. What's the difference between the following images?",
         *images]
     )
-] 
+]
 ```
 
 ### In a pipeline
@@ -352,4 +356,4 @@ print(res)
 
 ## Additional References
 
-:cook: Cookbook: [Advanced Prompt Customization for Anthropic](https://haystack.deepset.ai/cookbook/prompt_customization_for_anthropic)
+🧑‍🍳 Cookbook: [Advanced Prompt Customization for Anthropic](https://haystack.deepset.ai/cookbook/prompt_customization_for_anthropic)

@@ -9,14 +9,18 @@ description: "`S3Downloader` downloads files from AWS S3 buckets to the local fi
 
 `S3Downloader` downloads files from AWS S3 buckets to the local filesystem and enriches documents with the local file path.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before File Converters or Routers that need local file paths |
-| **Mandatory init variables** | "file_root_path": Path where files will be downloaded. Can be set with `FILE_ROOT_PATH` env var.  <br /> <br />"aws_access_key_id": AWS access key ID. Can be set with AWS_ACCESS_KEY_ID env var.  <br /> <br />"aws_secret_access_key": AWS secret access key. Can be set with AWS_SECRET_ACCESS_KEY env var.  <br /> <br />"aws_region_name": AWS region name. Can be set with AWS_DEFAULT_REGION env var. |
-| **Mandatory run variables** | "documents": A list of documents containing name of the file to download in metadata. |
-| **Output variables** | "documents": A list of documents enriched with the local file path in `meta['file_path']` |
+| **Mandatory init variables** | `file_root_path`: Path where files will be downloaded. Can be set with `FILE_ROOT_PATH` env var.  <br /> <br />`aws_access_key_id`: AWS access key ID. Can be set with AWS_ACCESS_KEY_ID env var.  <br /> <br />`aws_secret_access_key`: AWS secret access key. Can be set with AWS_SECRET_ACCESS_KEY env var.  <br /> <br />`aws_region_name`: AWS region name. Can be set with AWS_DEFAULT_REGION env var. |
+| **Mandatory run variables** | `documents`: A list of documents containing name of the file to download in metadata. |
+| **Output variables** | `documents`: A list of documents enriched with the local file path in `meta['file_path']` |
 | **API reference** | [S3Downloader](/reference/integrations-amazon-bedrock) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_bedrock |
+
+</div>
 
 ## Overview
 
@@ -38,8 +42,7 @@ downloader = S3Downloader(
 
 The component downloads multiple files in parallel using the `max_workers` parameter (default is 32 workers) to speed up processing of large document sets. Downloaded files are cached locally, and when the cache exceeds `max_cache_size` (default is 100 files), least recently accessed files are automatically removed. Already downloaded files are touched to update their access time without re-downloading.
 
-:::info
-Required Configuration
+:::info Required Configuration
 
 The component requires two critical configurations:
 
@@ -55,7 +58,7 @@ You can use the `file_extensions` parameter to download only specific file types
 
 ### Custom S3 Key Generation
 
-By default, the component uses the `file_name` from Document metadata as the S3 key. If your S3 file structure doesn't match the file names in metadata, you can provide an optional `s3_key_generation_function` to customize how S3 keys are generated from Document metadata. 
+By default, the component uses the `file_name` from Document metadata as the S3 key. If your S3 file structure doesn't match the file names in metadata, you can provide an optional `s3_key_generation_function` to customize how S3 keys are generated from Document metadata.
 
 ## Usage
 
@@ -173,7 +176,7 @@ pipe = Pipeline()
 
 ## Add S3Downloader to download files from S3
 pipe.add_component(
-    "downloader", 
+    "downloader",
     S3Downloader(
         file_root_path="/tmp/s3_downloads",
         file_extensions=[".pdf", ".txt"]
@@ -182,7 +185,7 @@ pipe.add_component(
 
 ## Route documents by file type
 pipe.add_component(
-    "router", 
+    "router",
     DocumentTypeRouter(
         file_path_meta_field="file_path",
         mime_types=["application/pdf", "text/plain"]

@@ -9,13 +9,17 @@ description: "`DocumentToImageContent` extracts visual data from image or PDF fi
 
 `DocumentToImageContent` extracts visual data from image or PDF file-based documents and converts them into `ImageContent` objects. These are ready for multimodal AI pipelines, including tasks like image question-answering and captioning.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a `ChatPromptBuilder` in a query pipeline                                                                                                                                                                             |
-| **Mandatory run variables**            | "documents": A list of documents to process. Each document should have metadata containing at minimum a 'file_path_meta_field' key. PDF documents additionally require a 'page_number' key to specify which page to convert. |
-| **Output variables**                   | "image_contents": A list of `ImageContent` objects                                                                                                                                                                           |
+| **Mandatory run variables**            | `documents`: A list of documents to process. Each document should have metadata containing at minimum a 'file_path_meta_field' key. PDF documents additionally require a 'page_number' key to specify which page to convert. |
+| **Output variables**                   | `image_contents`: A list of `ImageContent` objects                                                                                                                                                                           |
 | **API reference**                      | [Image Converters](/reference/image-converters-api)                                                                                                                                                                                 |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/image/document_to_image.py                                                                                                                 |
+
+</div>
 
 ## Overview
 
@@ -26,7 +30,7 @@ description: "`DocumentToImageContent` extracts visual data from image or PDF fi
 
 By default, it looks for the file path in the `file_path` metadata field. You can customize this with the `file_path_meta_field` parameter. The `root_path` lets you specify a common base directory for file resolution.
 
-This component is typically used in query pipelines right before a `ChatPromptBuilder` when you would like to add Images to your user prompt. 
+This component is typically used in query pipelines right before a `ChatPromptBuilder` when you would like to add Images to your user prompt.
 
 If `size` is provided, the images will be resized while maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial when working with models that have resolution constraints or when transmitting images to remote services.
 

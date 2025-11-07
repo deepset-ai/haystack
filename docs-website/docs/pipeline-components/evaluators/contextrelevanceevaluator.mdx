@@ -9,13 +9,17 @@ description: "The `ContextRelevanceEvaluator` uses an LLM to evaluate whether co
 
 The `ContextRelevanceEvaluator` uses an LLM to evaluate whether contexts are relevant to a question. It does not require ground truth labels.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
-| **Mandatory run variables** | "questions": A list of questions  <br /> <br />"contexts": A list of a list of contexts, which are the contents of documents. This accounts for one list of contexts per question. |
+| **Mandatory run variables** | `questions`: A list of questions  <br /> <br />`contexts`: A list of a list of contexts, which are the contents of documents. This accounts for one list of contexts per question. |
 | **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 that represents the mean average precision  <br /> <br />- `individual_scores`: A list of the individual average precision scores ranging from 0.0 to 1.0 for each input pair of a list of retrieved documents and a list of ground truth documents  <br /> <br />- `results`:  A list of dictionaries with keys `statements` and `statement_scores`. They contain the statements extracted by an LLM from each context and the corresponding context relevance scores per statement, which are either 0 or 1. |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/context_relevance.py |
+
+</div>
 
 ## Overview
 
@@ -34,9 +38,9 @@ Two optional initialization parameters are:
 
 `ContextRelevanceEvaluator` has an optional `examples` parameter that can be used to pass few-shot examples conforming to the expected input and output format of `ContextRelevanceEvaluator`. These examples are included in the prompt that is sent to the LLM. Examples, therefore, increase the number of tokens of the prompt and make each request more costly. Adding examples is helpful if you want to improve the quality of the evaluation at the cost of more tokens.
 
-Each example must be a dictionary with keys `inputs` and `outputs`.  
-`inputs` must be a dictionary with keys `questions` and `contexts`.  
-`outputs` must be a dictionary with `statements` and `statement_scores`.  
+Each example must be a dictionary with keys `inputs` and `outputs`.
+`inputs` must be a dictionary with keys `questions` and `contexts`.
+`outputs` must be a dictionary with `statements` and `statement_scores`.
 Here is the expected format:
 
 ```python

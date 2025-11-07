@@ -9,14 +9,18 @@ description: "Use this component to rank documents based on their similarity to 
 
 Use this component to rank documents based on their similarity to the query using Cohere rerank models.
 
+<div className="key-value-table">
+
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx)  |
-| **Mandatory init variables** | "api_key": The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
-| **Mandatory run variables** | “documents”: A list of document objects  <br /> <br />”query”: A query string  <br /> <br />”top_k”: The maximum number of documents to return |
-| **Output variables** | “documents”: A list of document objects |
+| **Mandatory init variables** | `api_key`: The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of document objects  <br /> <br />`query`: A query string  <br /> <br />`top_k`: The maximum number of documents to return |
+| **Output variables** | `documents`: A list of document objects |
 | **API reference** | [Cohere](/reference/integrations-cohere) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cohere |
+
+</div>
 
 ## Overview
 
@@ -84,8 +88,7 @@ query = "Cities in France"
 res = document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
 ```
 
-:::tip
-`top_k` parameter
+:::note `top_k` parameter
 
 In the example above, the `top_k` values for the Retriever and the Ranker are different. The Retriever's `top_k` specifies how many documents it returns. The Ranker then orders these documents.
 

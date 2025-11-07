@@ -9,20 +9,25 @@ description: "This component computes embeddings for documents using models thro
 
 This component computes embeddings for documents using models through VertexAI Embeddings API.
 
-> 🚧 Deprecation Notice
-> 
-> This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
-> 
-> We recommend switching to the new [GoogleGenAIDocumentEmbedder](googlegenaidocumentembedder.mdx) integration instead.
+:::warning Deprecation Notice
+
+This integration uses the deprecated google-generativeai SDK, which will lose support after August 2025.
+
+We recommend switching to the new [GoogleGenAIDocumentEmbedder](googlegenaidocumentembedder.mdx) integration instead.
+:::
+
+<div className="key-value-table">
 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [DocumentWriter](../writers/documentwriter.mdx) in an indexing pipeline                           |
-| **Mandatory init variables**           | "model": The model used through the VertexAI Embeddings API                                     |
-| **Mandatory run variables**            | “documents”: A list of documents to be embedded                                                 |
-| **Output variables**                   | “documents”: A list of documents enriched with embeddings                                       |
+| **Mandatory init variables**           | `model`: The model used through the VertexAI Embeddings API                                     |
+| **Mandatory run variables**            | `documents`: A list of documents to be embedded                                                 |
+| **Output variables**                   | `documents`: A list of documents enriched with embeddings                                       |
 | **API reference**                      | [Google Vertex](/reference/integrations-google-vertex)                                                 |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_vertex |
+
+</div>
 
 `VertexAIDocumentEmbedder` enriches the metadata of documents with an embedding of their content. To embed a string, use the [`VertexAITextEmbedder`](vertexaitextembedder.mdx).
 

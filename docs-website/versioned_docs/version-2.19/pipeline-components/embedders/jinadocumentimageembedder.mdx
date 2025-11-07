@@ -9,14 +9,18 @@ description: "`JinaDocumentImageEmbedder` computes the image embeddings of a lis
 
 `JinaDocumentImageEmbedder` computes the image embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Jina embedding models with the ability to embed text and images into the same vector space.
 
+<div className="key-value-table">
+
 |                                        |                                                                                                                                                                                |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                                                                                                      |
-| **Mandatory init variables**           | "api_key": The Jina API key. Can be set with `JINA_API_KEY` env var.                                                                                                           |
-| **Mandatory run variables**            | "documents": A list of documents, with a meta field containing an image file path                                                                                              |
-| **Output variables**                   | "documents": A list of documents (enriched with embeddings)                                                                                                                    |
+| **Mandatory init variables**           | `api_key`: The Jina API key. Can be set with `JINA_API_KEY` env var.                                                                                                           |
+| **Mandatory run variables**            | `documents`: A list of documents, with a meta field containing an image file path                                                                                              |
+| **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                                                                                                                    |
 | **API reference**                      | [Jina](/reference/integrations-jina)                                                                                                                                                  |
 | **GitHub link**                        | [https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cohere) |
+
+</div>
 
 ## Overview
 
