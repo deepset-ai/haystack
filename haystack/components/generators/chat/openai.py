@@ -563,16 +563,17 @@ def _convert_chat_completion_to_chat_message(
                     _arguments=arguments_str,
                 )
 
-    chat_message = ChatMessage.from_assistant(
-        text=text,
-        tool_calls=tool_calls,
-        meta={
-            "model": completion.model,
-            "index": choice.index,
-            "finish_reason": choice.finish_reason,
-            "usage": _serialize_usage(completion.usage),
-        },
-    )
+    logprobs = _serialize_usage(choice.logprobs) if choice.logprobs else None
+    meta = {
+        "model": completion.model,
+        "index": choice.index,
+        "finish_reason": choice.finish_reason,
+        "usage": _serialize_usage(completion.usage),
+    }
+    if logprobs:
+        meta["logprobs"] = logprobs
+
+    chat_message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
 
     return chat_message
 
