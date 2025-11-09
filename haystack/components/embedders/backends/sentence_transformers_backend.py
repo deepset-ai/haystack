@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union, cast
 
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
@@ -113,5 +113,6 @@ class _SentenceTransformersEmbeddingBackend:
     def embed(self, data: Union[list[str], list["Image"]], **kwargs: Any) -> list[list[float]]:
         # Sentence Transformers encode can work with Images, but the type hint does not reflect that
         # https://sbert.net/examples/sentence_transformer/applications/image-search
-        embeddings = self.model.encode(data, **kwargs).tolist()  # type: ignore[arg-type]
+        result = self.model.encode(data, **kwargs)  # type: ignore  # mypy: sentence-transformers stubs incomplete for Image
+        embeddings = cast(list[list[float]], result.tolist())
         return embeddings
