@@ -7,33 +7,36 @@ from typing import Optional
 from jinja2 import Environment, nodes
 
 
-def extract_declared_variables(template_str: str, env: Optional[Environment] = None) -> set:
-    """
-    Extract declared variables from a Jinja2 template string.
+class JinjaTemplateVariableExtractor:
+    """Utility class for analyzing Jinja2 templates."""
 
-    Args:
-        template_str (str): The Jinja2 template string to analyze.
-        env (Environment, optional): The Jinja2 Environment. Defaults to None.
+    @staticmethod
+    def _extract_declared_variables(template_str: str, env: Optional[Environment] = None) -> set[str]:
+        """
+        Extract declared variables from a Jinja2 template string.
 
-    Returns:
-        A list of variable names used in the template.
-    """
-    env = env or Environment()
+        :param template_str: The Jinja2 template string to analyze.
+        :param env: The Jinja2 Environment. Defaults to None.
 
-    try:
-        ast = env.parse(template_str)
-    except Exception as e:
-        raise RuntimeError(f"Failed to parse Jinja2 template: {e}")
+        :returns:
+            A set of variable names used in the template.
+        """
+        env = env or Environment()
 
-    # Collect all variables assigned inside the template via {% set %}
-    assigned_variables = set()
+        try:
+            ast = env.parse(template_str)
+        except Exception as e:
+            raise RuntimeError(f"Failed to parse Jinja2 template: {e}")
 
-    for node in ast.find_all(nodes.Assign):
-        if isinstance(node.target, nodes.Name):
-            assigned_variables.add(node.target.name)
-        elif isinstance(node.target, (nodes.List, nodes.Tuple)):
-            for name_node in node.target.items:
-                if isinstance(name_node, nodes.Name):
-                    assigned_variables.add(name_node.name)
+        # Collect all variables assigned inside the template via {% set %}
+        assigned_variables = set()
 
-    return assigned_variables
+        for node in ast.find_all(nodes.Assign):
+            if isinstance(node.target, nodes.Name):
+                assigned_variables.add(node.target.name)
+            elif isinstance(node.target, (nodes.List, nodes.Tuple)):
+                for name_node in node.target.items:
+                    if isinstance(name_node, nodes.Name):
+                        assigned_variables.add(name_node.name)
+
+        return assigned_variables
