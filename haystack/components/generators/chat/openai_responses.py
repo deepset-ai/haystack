@@ -682,10 +682,14 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     text = "".join([chunk.content for chunk in chunks])
 
     # Gather reasoning information if present
-    reasoning_chunks = [chunk for chunk in chunks if chunk.reasoning]
-    reasoning_ids = [chunk.reasoning.extra.get("id") for chunk in reasoning_chunks if chunk.reasoning.extra.get("id")]
-    reasoning_id = reasoning_ids[0] if reasoning_ids else None
-    reasoning_text = "".join([chunk.reasoning.reasoning_text for chunk in reasoning_chunks]) if reasoning_chunks else ""
+    reasoning_id = None
+    reasoning_text = ""
+    for chunk in chunks:
+        if not chunk.reasoning:
+            continue
+        reasoning_text += chunk.reasoning.reasoning_text
+        if chunk.reasoning.extra.get("id"):
+            reasoning_id = chunk.reasoning.extra.get("id")
 
     # Process tool calls if present in any chunk
     tool_call_data: dict[str, dict[str, Any]] = {}  # Track tool calls by id
