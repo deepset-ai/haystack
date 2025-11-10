@@ -161,22 +161,25 @@ result = generator.run(messages)
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack_integrations.components.generators.llama_cpp import LlamaCppChatGenerator
 
-image = ImageContent.from_file_path("path/to/your/image.jpg")
-
-# Create a multimodal message with both text and image
-messages = [ChatMessage.from_user(content_parts=["What's in this image?", image])]
-
 # Initialize with multimodal support
-generator = LlamaCppChatGenerator(
+llm = LlamaCppChatGenerator(
     model="llava-v1.5-7b-q4_0.gguf",
     chat_handler_name="Llava15ChatHandler",  # Use llava-1-5 handler
     model_clip_path="mmproj-model-f16.gguf",  # CLIP model
     n_ctx=4096  # Larger context for image processing
 )
-generator.warm_up()
+llm.warm_up()
 
-result = generator.run(messages)
-print(result)
+image = ImageContent.from_file_path("apple.jpg")
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
+
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+# Red apple on straw.
 ```
 
 The `generation_kwargs` can also be passed to the `run` method of the generator directly:

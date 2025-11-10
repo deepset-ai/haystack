@@ -93,15 +93,19 @@ With multimodal inputs:
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack_integrations.components.generators.cohere import CohereChatGenerator
 
-image = ImageContent.from_file_path("path/to/your/image.jpg")
-
-# Create a multimodal message with both text and image
-messages = [ChatMessage.from_user(content_parts=["What's in this image?", image])]
-
 # Use a multimodal model like Command A Vision
-generator = CohereChatGenerator(model="command-a-vision-07-2025")
-response = generator.run(messages)
+llm = CohereChatGenerator(model="command-a-vision-07-2025")
+
+image = ImageContent.from_file_path("apple.jpg")
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
+
+response = llm.run([user_message])["replies"][0].text
 print(response)
+
+# Red apple on straw.
 ```
 
 #### In a Pipeline

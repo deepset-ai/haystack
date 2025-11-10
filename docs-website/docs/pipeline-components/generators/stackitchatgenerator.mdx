@@ -69,13 +69,18 @@ With multimodal inputs:
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack_integrations.components.generators.stackit import STACKITChatGenerator
 
-generator = STACKITChatGenerator(model="meta-llama/Llama-3.2-11B-Vision-Instruct")
+llm = STACKITChatGenerator(model="meta-llama/Llama-3.2-11B-Vision-Instruct")
 
 image = ImageContent.from_file_path("apple.jpg")
-messages = [ChatMessage.from_user(content_parts=["What does the image show? Max 5 words.", image])]
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
 
-result = generator.run(messages)
-print(result)
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+# Red apple on straw.
 ```
 
 ### In a pipeline
