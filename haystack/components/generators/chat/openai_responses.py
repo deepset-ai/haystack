@@ -215,18 +215,18 @@ class OpenAIResponsesChatGenerator:
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         generation_kwargs = self.generation_kwargs.copy()
-        response_format = generation_kwargs.get("text_format")
+        text_format = generation_kwargs.get("text_format")
 
         # If the response format is a Pydantic model, it's converted to openai's json schema format
         # If it's already a json schema, it's left as is
-        if response_format and issubclass(response_format, BaseModel):
+        if text_format and isinstance(text_format, type) and issubclass(text_format, BaseModel):
             json_schema = {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": response_format.__name__,
+                "format": {
+                    "type": "json_schema",
+                    "name": text_format.__name__,
                     "strict": True,
-                    "schema": to_strict_json_schema(response_format),
-                },
+                    "schema": to_strict_json_schema(text_format),
+                }
             }
             generation_kwargs["text_format"] = json_schema
 
@@ -468,13 +468,22 @@ class OpenAIResponsesChatGenerator:
 
         base_args = {"model": self.model, "input": openai_formatted_messages, **openai_tools, **generation_kwargs}
 
-        if text_format and issubclass(text_format, BaseModel):
-            return {
-                **base_args,
-                "stream": streaming_callback is not None,
-                "text_format": text_format,
-                "openai_endpoint": "parse",
-            }
+        if text_format:
+            if isinstance(text_format, type) and issubclass(text_format, BaseModel):
+                return {
+                    **base_args,
+                    "stream": streaming_callback is not None,
+                    "text_format": text_format,
+                    "openai_endpoint": "parse",
+                }
+            # json_schema needs to be passed to text parameter instead of text_format
+            else:
+                return {
+                    **base_args,
+                    "stream": streaming_callback is not None,
+                    "text": text_format,
+                    "openai_endpoint": "create",
+                }
         # we pass a key `openai_endpoint` as a hint to the run method to use the create or parse endpoint
         # this key will be removed before the API call is made
 
@@ -485,6 +494,7 @@ class OpenAIResponsesChatGenerator:
         chunks: list[StreamingChunk] = []
 
         for openai_chunk in responses:  # pylint: disable=not-an-iterable
+            print(openai_chunk)
             chunk_delta = _convert_response_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
