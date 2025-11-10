@@ -12,7 +12,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Jinja2TimeExtension, JinjaTemplateVariableExtractor
+from haystack.utils import Jinja2TimeExtension, extract_declared_variables
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
 
 logger = logging.getLogger(__name__)
@@ -174,7 +174,7 @@ class ChatPromptBuilder:
 
             def _extract_from_text(
                 text: Optional[str], role: Optional[str] = None, is_filter_allowed: bool = False
-            ) -> list[str]:
+            ) -> list:
                 if text is None:
                     raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=role or "unknown", message=text))
                 if is_filter_allowed and "templatize_part" in text:
@@ -182,7 +182,7 @@ class ChatPromptBuilder:
 
                 ast = self._env.parse(text)
                 template_variables = meta.find_undeclared_variables(ast)
-                assigned_variables = JinjaTemplateVariableExtractor._extract_declared_variables(text, env=self._env)
+                assigned_variables = extract_declared_variables(text, env=self._env)
                 return list(template_variables - assigned_variables)
 
             if isinstance(template, list):
