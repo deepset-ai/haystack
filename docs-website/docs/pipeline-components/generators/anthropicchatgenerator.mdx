@@ -148,6 +148,26 @@ message = ChatMessage.from_user("What's Natural Language Processing? Be brief.")
 print(generator.run([message]))
 ```
 
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+
+llm = AnthropicChatGenerator()
+
+image = ImageContent.from_file_path("apple.jpg")
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
+
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+# Red apple on straw.
+```
+
 ### In a pipeline
 
 You can also use `AnthropicChatGenerator`with the Anthropic chat models in your pipeline.

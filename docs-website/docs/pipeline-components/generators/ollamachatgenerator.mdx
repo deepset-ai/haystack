@@ -167,6 +167,26 @@ print(generator.run(messages=messages))
 }
 ```
 
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.ollama import OllamaChatGenerator
+
+llm = OllamaChatGenerator(model="llava", url="http://localhost:11434")
+
+image = ImageContent.from_file_path("apple.jpg")
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
+
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+# Red apple on straw.
+```
+
 ### In a Pipeline
 
 ```python

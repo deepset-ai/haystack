@@ -92,6 +92,26 @@ print(result["replies"])
 print(result["meta"])
 ```
 
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
+
+llm = NvidiaChatGenerator(model="meta/llama-3.2-11b-vision-instruct")
+
+image = ImageContent.from_file_path("apple.jpg")
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
+
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+# Red apple on straw.
+```
+
 ### In a Pipeline
 
 ```python
