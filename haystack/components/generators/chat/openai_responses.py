@@ -708,14 +708,13 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     reasoning_id = None
     reasoning_text = ""
     for chunk in chunks:
-      logprobs_value = chunk.meta.get("logprobs")
+        if chunk.reasoning:
+            reasoning_text += chunk.reasoning.reasoning_text
+            if chunk.reasoning.extra.get("id"):
+                reasoning_id = chunk.reasoning.extra.get("id")
+        logprobs_value = chunk.meta.get("logprobs")
         if logprobs_value is not None:
             logprobs.append(logprobs_value)
-        if chunk.reasoning:
-          reasoning_text += chunk.reasoning.reasoning_text
-          if chunk.reasoning.extra.get("id"):
-              reasoning_id = chunk.reasoning.extra.get("id")
-
 
     # Process tool calls if present in any chunk
     tool_call_data: dict[str, dict[str, Any]] = {}  # Track tool calls by id
@@ -762,7 +761,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     final_response = chunks[-1].meta.get("response")
 
     if logprobs:
-      final_response["logprobs"] = logprobs
+        final_response["logprobs"] = logprobs
 
     # Add reasoning content if both id and text are available
     reasoning = None
