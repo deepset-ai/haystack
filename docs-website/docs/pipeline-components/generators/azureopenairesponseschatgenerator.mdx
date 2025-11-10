@@ -1,0 +1,272 @@
+---
+title: "AzureOpenAIResponsesChatGenerator"
+id: azureopenairesponseschatgenerator
+slug: "/azureopenairesponseschatgenerator"
+description: "This component enables chat completion using OpenAI's Responses API through Azure services with support for reasoning models."
+---
+
+# AzureOpenAIResponsesChatGenerator
+
+This component enables chat completion using OpenAI's Responses API through Azure services with support for reasoning models.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: The Azure OpenAI API key. Can be set with `AZURE_OPENAI_API_KEY` env var or a callable for Azure AD token.  <br /> <br />`azure_endpoint`: The endpoint of the deployed model. Can be set with `AZURE_OPENAI_ENDPOINT` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects containing the generated responses |
+| **API reference** | [Generators](/reference/generators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/azure_responses.py |
+
+</div>
+
+## Overview
+
+`AzureOpenAIResponsesChatGenerator` uses OpenAI's Responses API through Azure OpenAI services. It supports gpt-5 and o-series models (reasoning models like o1, o3-mini) deployed on Azure. The default model is `gpt-5-mini`.
+
+The Responses API is designed for reasoning-capable models and supports features like reasoning summaries, multi-turn conversations with previous response IDs, and structured outputs. This component provides access to these capabilities through Azure's infrastructure.
+
+The component requires a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`), and optional metadata. See the [usage](#usage) section for examples.
+
+You can pass any parameters valid for the OpenAI Responses API directly to `AzureOpenAIResponsesChatGenerator` using the `generation_kwargs` parameter, both at initialization and to the `run()` method. For more details on the supported parameters, refer to the [Azure OpenAI documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference).
+
+You can specify a model for this component through the `azure_deployment` init parameter, which should match your Azure deployment name.
+
+### Authentication
+
+To work with Azure components, you need an Azure OpenAI API key and an Azure OpenAI endpoint. You can learn more about them in the [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference).
+
+The component uses `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` environment variables by default. Otherwise, you can pass these at initialization using a [`Secret`](../../concepts/secret-management.mdx):
+
+```python
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
+from haystack.utils import Secret
+
+client = AzureOpenAIResponsesChatGenerator(
+    azure_endpoint="https://your-resource.azure.openai.com/",
+    api_key=Secret.from_token("<your-api-key>"),
+    azure_deployment="gpt-5-mini"
+)
+```
+
+For Azure Active Directory authentication, you can pass a callable that returns a token:
+
+```python
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
+
+def get_azure_ad_token():
+    # Your Azure AD token retrieval logic
+    return "your-azure-ad-token"
+
+client = AzureOpenAIResponsesChatGenerator(
+    azure_endpoint="https://your-resource.azure.openai.com/",
+    api_key=get_azure_ad_token,
+    azure_deployment="gpt-5-mini"
+)
+```
+
+### Reasoning Support
+
+One of the key features of the Responses API is support for reasoning models. You can configure reasoning behavior using the `reasoning` parameter in `generation_kwargs`:
+
+```python
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+
+client = AzureOpenAIResponsesChatGenerator(
+    azure_endpoint="https://your-resource.azure.openai.com/",
+    generation_kwargs={"reasoning": {"effort": "medium", "summary": "auto"}}
+)
+
+messages = [ChatMessage.from_user("What's the most efficient sorting algorithm for nearly sorted data?")]
+response = client.run(messages)
+print(response)
+```
+
+The `reasoning` parameter accepts:
+- `effort`: Level of reasoning effort - `"low"`, `"medium"`, or `"high"`
+- `summary`: How to generate reasoning summaries - `"auto"` or `"generate_summary": True/False`
+
+:::note
+OpenAI does not return the actual reasoning tokens, but you can view the summary if enabled. For more details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
+:::
+
+### Multi-turn Conversations
+
+The Responses API supports multi-turn conversations using `previous_response_id`. You can pass the response ID from a previous turn to maintain conversation context:
+
+```python
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+
+client = AzureOpenAIResponsesChatGenerator(
+    azure_endpoint="https://your-resource.azure.openai.com/"
+)
+
+# First turn
+messages = [ChatMessage.from_user("What's quantum computing?")]
+response = client.run(messages)
+response_id = response["replies"][0].meta.get("id")
+
+# Second turn - reference previous response
+messages = [ChatMessage.from_user("Can you explain that in simpler terms?")]
+response = client.run(messages, generation_kwargs={"previous_response_id": response_id})
+```
+
+### Structured Output
+
+`AzureOpenAIResponsesChatGenerator` supports structured output generation through the `text_format` parameter in `generation_kwargs`. Provide a Pydantic model to define the structure of the output:
+
+```python
+from pydantic import BaseModel
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+
+class ProductInfo(BaseModel):
+    name: str
+    price: float
+    category: str
+    in_stock: bool
+
+client = AzureOpenAIResponsesChatGenerator(
+    azure_endpoint="https://your-resource.azure.openai.com/",
+    azure_deployment="gpt-4o",
+    generation_kwargs={"text_format": ProductInfo}
+)
+
+response = client.run(messages=[
+    ChatMessage.from_user(
+        "Extract product info: 'Wireless Mouse, $29.99, Electronics, Available in stock'"
+    )
+])
+print(response["replies"][0].text)
+```
+
+:::info Model Compatibility and Limitations
+- Only Pydantic models are supported right now. Passing raw JSON schemas is not yet supported by this component.
+- Structured outputs require the latest models starting from GPT-4o.
+- Older models only support the basic JSON mode through `{"type": "json_object"}`. For details, see [OpenAI JSON mode documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
+- For complete information, check the [Azure OpenAI Structured Outputs documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/structured-outputs).
+:::
+
+### Tool Support
+
+`AzureOpenAIResponsesChatGenerator` supports function calling through the `tools` parameter. It accepts flexible tool configurations:
+
+- **Haystack Tool objects and Toolsets**: Pass Haystack `Tool` objects or `Toolset` objects, including mixed lists of both
+- **OpenAI/MCP tool definitions**: Pass pre-defined OpenAI or MCP tool definitions as dictionaries
+
+Note that you cannot mix Haystack tools and OpenAI/MCP tools in the same call - choose one format or the other.
+
+```python
+from haystack.tools import Tool
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+
+def get_weather(city: str) -> str:
+    """Get weather information for a city."""
+    return f"Weather in {city}: Sunny, 22°C"
+
+weather_tool = Tool(
+    name="get_weather",
+    description="Get current weather for a city",
+    function=get_weather,
+    parameters={"type": "object", "properties": {"city": {"type": "string"}}}
+)
+
+generator = AzureOpenAIResponsesChatGenerator(
+    azure_endpoint="https://your-resource.azure.openai.com/",
+    tools=[weather_tool]
+)
+messages = [ChatMessage.from_user("What's the weather in Paris?")]
+response = generator.run(messages)
+```
+
+You can control strict schema adherence with the `tools_strict` parameter. When set to `True` (default is `False`), the model will follow the tool schema exactly. Note that the Responses API has its own strictness enforcement mechanisms independent of this parameter.
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+
+## Configure any `Generator` or `ChatGenerator` with a streaming callback
+component = SomeGeneratorOrChatGenerator(streaming_callback=print_streaming_chunk)
+
+## If this is a `ChatGenerator`, pass a list of messages:
+## from haystack.dataclasses import ChatMessage
+## component.run([ChatMessage.from_user("Your question here")])
+
+## If this is a (non-chat) `Generator`, pass a prompt:
+## component.run({"prompt": "Your prompt here"})
+```
+
+:::info
+Streaming works only with a single response. If a provider supports multiple candidates, set `n=1`.
+:::
+
+See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+
+Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+
+## Usage
+
+### On its own
+
+Here is an example of using `AzureOpenAIResponsesChatGenerator` independently with reasoning and streaming:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
+
+client = AzureOpenAIResponsesChatGenerator(
+    azure_endpoint="https://your-resource.azure.openai.com/",
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
+    generation_kwargs={"reasoning": {"effort": "high", "summary": "auto"}}
+)
+response = client.run(
+    [ChatMessage.from_user("Solve this logic puzzle: If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly?")]
+)
+print("\n")  # New line after streaming
+print(response["replies"][0].reasoning)  # Access reasoning summary if available
+```
+
+### In a pipeline
+
+This example shows a pipeline that uses `ChatPromptBuilder` to create dynamic prompts and `AzureOpenAIResponsesChatGenerator` with reasoning enabled to generate explanations of complex topics:
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+
+prompt_builder = ChatPromptBuilder()
+llm = AzureOpenAIResponsesChatGenerator(
+    azure_endpoint="https://your-resource.azure.openai.com/",
+    generation_kwargs={"reasoning": {"effort": "low", "summary": "auto"}}
+)
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+topic = "quantum computing"
+messages = [
+    ChatMessage.from_system("You are a helpful assistant that explains complex topics clearly."),
+    ChatMessage.from_user("Explain {{topic}} in simple terms")
+]
+result = pipe.run(data={
+    "prompt_builder": {
+        "template_variables": {"topic": topic},
+        "template": messages
+    }
+})
+print(result)
+```
