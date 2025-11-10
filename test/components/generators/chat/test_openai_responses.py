@@ -26,17 +26,11 @@ from openai.types.responses import (
     ResponseOutputMessage,
     ResponseOutputText,
     ResponseReasoningItem,
-    ResponseReasoningSummaryPartAddedEvent,
-    ResponseReasoningSummaryPartDoneEvent,
-    ResponseReasoningSummaryTextDeltaEvent,
-    ResponseReasoningSummaryTextDoneEvent,
     ResponseTextConfig,
     ResponseTextDeltaEvent,
     ResponseTextDoneEvent,
     ResponseUsage,
 )
-from openai.types.responses.response_reasoning_item import Summary
-from openai.types.responses.response_reasoning_summary_part_added_event import Part
 from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 from pydantic import BaseModel
 
