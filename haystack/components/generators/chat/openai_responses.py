@@ -125,8 +125,8 @@ class OpenAIResponsesChatGenerator:
                 format (unless the model returns a tool call).
                 Notes:
                 - Both JSON Schema and Pydantic models are supported for latest models starting from GPT-4o.
-                - If both are provided, text_format takes precedence and json schema passed to text is ignored.
-                - Currently, the generator doesn't support streaming for structured outputs.
+                - If both are provided, `text_format` takes precedence and json schema passed to `text` is ignored.
+                - Currently, this component doesn't support streaming for structured outputs.
                 - Older models only support basic version of structured outputs through `{"type": "json_object"}`.
                     For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
             - `reasoning`: A dictionary of parameters for reasoning. For example:
@@ -218,7 +218,7 @@ class OpenAIResponsesChatGenerator:
         """
         callback_name = serialize_callable(self.streaming_callback) if self.streaming_callback else None
         generation_kwargs = self.generation_kwargs.copy()
-        text_format = generation_kwargs.pop("text_format")
+        text_format = generation_kwargs.pop("text_format", None)
 
         # If the response format is a Pydantic model, it's converted to openai's json schema format
         # If it's already a json schema, it's left as is
@@ -438,9 +438,6 @@ class OpenAIResponsesChatGenerator:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
 
-        text_format = generation_kwargs.pop("text_format", None)  # for pyndantic models
-        text = generation_kwargs.pop("text", None)  # for json schemas
-
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages: list[dict[str, Any]] = []
         for message in messages:
@@ -475,20 +472,10 @@ class OpenAIResponsesChatGenerator:
 
         # if both text_format and text are provided, text_format takes precedence
         # and json chema passed to text is ignored
-        if text_format:
-            if isinstance(text_format, type) and issubclass(text_format, BaseModel):
-                return {
-                    **base_args,
-                    "stream": streaming_callback is not None,
-                    "text_format": text_format,
-                    "openai_endpoint": "parse",
-                }
-        # json_schema needs to be passed to text parameter instead of text_format
-        elif text:
-            return {**base_args, "stream": streaming_callback is not None, "text": text, "openai_endpoint": "parse"}
+        if generation_kwargs.get("text_format") or generation_kwargs.get("text"):
+            return {**base_args, "stream": streaming_callback is not None, "openai_endpoint": "parse"}
         # we pass a key `openai_endpoint` as a hint to the run method to use the create or parse endpoint
         # this key will be removed before the API call is made
-
         return {**base_args, "stream": streaming_callback is not None, "openai_endpoint": "create"}
 
     def _handle_stream_response(self, responses: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:

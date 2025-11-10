@@ -74,7 +74,7 @@ def tools():
     return [weather_tool, message_extractor_tool]
 
 
-class TestAzureOpenAIChatGenerator:
+class TestAzureOpenAIResponsesChatGenerator:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -161,7 +161,7 @@ class TestAzureOpenAIChatGenerator:
                 "generation_kwargs": {
                     "max_completion_tokens": 10,
                     "some_test_param": "test-params",
-                    "text_format": {
+                    "text": {
                         "format": {
                             "type": "json_schema",
                             "name": "CalendarEvent",
@@ -393,17 +393,19 @@ class TestAzureOpenAIChatGenerator:
         reason="Export an env var called AZURE_OPENAI_API_KEY containing the Azure OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_text_format(self):
+    def test_live_run_with_text_format(self, calendar_event_model):
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
         component = AzureOpenAIResponsesChatGenerator(
-            azure_deployment="gpt-4o-mini", generation_kwargs={"text_format": CalendarEvent}
+            azure_deployment="gpt-4o-mini", generation_kwargs={"text_format": calendar_event_model}
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        print(message.text)
         msg = json.loads(message.text)
+        print(msg)
         assert "Marketing Summit" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)

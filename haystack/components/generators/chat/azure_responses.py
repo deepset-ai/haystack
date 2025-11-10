@@ -106,8 +106,8 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
                 format (unless the model returns a tool call).
                 Notes:
                 - Both JSON Schema and Pydantic models are supported for latest models starting from GPT-4o.
-                - If both are provided, text_format takes precedence and json schema passed to text is ignored.
-                - Currently, the generator doesn't support streaming for structured outputs.
+                - If both are provided, `text_format` takes precedence and json schema passed to `text` is ignored.
+                - Currently, this component doesn't support streaming for structured outputs.
                 - Older models only support basic version of structured outputs through `{"type": "json_object"}`.
                     For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
             - `reasoning`: A dictionary of parameters for reasoning. For example:
@@ -167,8 +167,8 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         # If the text format is a Pydantic model, it's converted to openai's json schema format
         # If it's already a json schema, it's left as is
         generation_kwargs = self.generation_kwargs.copy()
-        text_format = generation_kwargs.pop("text_format")
-        if text_format and issubclass(text_format, BaseModel):
+        text_format = generation_kwargs.pop("text_format", None)
+        if text_format and isinstance(text_format, type) and issubclass(text_format, BaseModel):
             json_schema = {
                 "format": {
                     "type": "json_schema",
