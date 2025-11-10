@@ -488,9 +488,8 @@ class OpenAIResponsesChatGenerator:
             chunk_delta = _convert_response_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
-            if chunk_delta:
-                chunks.append(chunk_delta)
-                callback(chunk_delta)
+            chunks.append(chunk_delta)
+            callback(chunk_delta)
         chat_message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
         return [chat_message]
 
@@ -503,9 +502,8 @@ class OpenAIResponsesChatGenerator:
             chunk_delta = _convert_response_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
-            if chunk_delta:
-                chunks.append(chunk_delta)
-                await callback(chunk_delta)
+            chunks.append(chunk_delta)
+            await callback(chunk_delta)
         chat_message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
         return [chat_message]
 
@@ -581,19 +579,28 @@ def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-retu
     if chunk.type == "response.output_item.added":
         # Responses API always returns reasoning chunks even if there is no summary
         if chunk.item.type == "reasoning":
-            extra = chunk.item.to_dict()
-            reasoning = ReasoningContent(reasoning_text="", extra=extra)
+            reasoning = ReasoningContent(reasoning_text="", extra=chunk.item.to_dict())
             return StreamingChunk(
-                content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, start=True
+                content="",
+                component_info=component_info,
+                index=chunk.output_index,
+                reasoning=reasoning,
+                start=True,
+                meta={"received_at": datetime.now().isoformat()},
             )
 
         # the function name is only streamed at the start and end of the function call
         if chunk.item.type == "function_call":
-            function = chunk.item.name
-            extra = {"type": "function_call", "call_id": chunk.item.call_id, "status": chunk.item.status}
-            tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item.id, tool_name=function, extra=extra)
+            tool_call = ToolCallDelta(
+                index=chunk.output_index, id=chunk.item.id, tool_name=chunk.item.name, extra=chunk.item.to_dict()
+            )
             return StreamingChunk(
-                content="", component_info=component_info, index=chunk.output_index, tool_calls=[tool_call], start=True
+                content="",
+                component_info=component_info,
+                index=chunk.output_index,
+                tool_calls=[tool_call],
+                start=True,
+                meta={"received_at": datetime.now().isoformat()},
             )
 
     elif chunk.type == "response.completed":
@@ -604,14 +611,10 @@ def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-retu
             content="",
             component_info=component_info,
             finish_reason="tool_calls" if any(o.type == "function_call" for o in chunk.response.output) else "stop",
-            meta=chunk.to_dict(),
+            meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
         )
 
     elif chunk.type == "response.output_text.delta":
-        # if item is a ResponseTextDeltaEvent
-        meta = chunk.to_dict()
-        meta["received_at"] = datetime.now().isoformat()
-
         # Start is determined by checking if this is the first text delta event of a new output_index
         # 1) Check if all previous chunks have different output_index
         # 2) If any chunks do have the same output_index, check if they have content
@@ -620,17 +623,25 @@ def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-retu
             c.content == "" for c in previous_chunks if c.index == chunk.output_index
         )
         return StreamingChunk(
-            content=chunk.delta, component_info=component_info, index=chunk.output_index, meta=meta, start=start
+            content=chunk.delta,
+            component_info=component_info,
+            index=chunk.output_index,
+            start=start,
+            meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
         )
 
     elif chunk.type == "response.reasoning_summary_text.delta":
-        # we remove the delta from the extra because it is already in the reasoning_text
-        # rest of the information needs to be saved for chat message
+        # We remove the delta from the extra because it is already in the reasoning_text
+        # Remaining information needs to be saved for chat message
         extra = chunk.to_dict()
         extra.pop("delta")
         reasoning = ReasoningContent(reasoning_text=chunk.delta, extra=extra)
         return StreamingChunk(
-            content="", component_info=component_info, index=chunk.output_index, reasoning=reasoning, start=False
+            content="",
+            component_info=component_info,
+            index=chunk.output_index,
+            reasoning=reasoning,
+            meta={"received_at": datetime.now().isoformat()},
         )
 
     # the function arguments are streamed in parts
@@ -639,16 +650,22 @@ def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-retu
         arguments = chunk.delta
         extra = chunk.to_dict()
         extra.pop("delta")
-        # in delta of tool calls there is no call_id
-        # so we use the item_id which is the function call id
+        # in delta of tool calls there is no call_id so we use the item_id which is the function call id
         tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item_id, arguments=arguments, extra=extra)
         return StreamingChunk(
-            content="", component_info=component_info, index=chunk.output_index, tool_calls=[tool_call], start=False
+            content="",
+            component_info=component_info,
+            index=chunk.output_index,
+            tool_calls=[tool_call],
+            meta={"received_at": datetime.now().isoformat()},
         )
 
     # we return rest of the chunk as is
     chunk_message = StreamingChunk(
-        content="", component_info=component_info, index=getattr(chunk, "output_index", None), meta=chunk.to_dict()
+        content="",
+        component_info=component_info,
+        index=getattr(chunk, "output_index", None),
+        meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
     )
     return chunk_message
 
@@ -661,9 +678,18 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
     :returns: The ChatMessage.
     """
+    # Get the full text by concatenating all text chunks
     text = "".join([chunk.content for chunk in chunks])
-    reasoning = None
-    tool_calls = []
+
+    # Gather reasoning information if present
+    reasoning_id = None
+    reasoning_text = ""
+    for chunk in chunks:
+        if not chunk.reasoning:
+            continue
+        reasoning_text += chunk.reasoning.reasoning_text
+        if chunk.reasoning.extra.get("id"):
+            reasoning_id = chunk.reasoning.extra.get("id")
 
     # Process tool calls if present in any chunk
     tool_call_data: dict[str, dict[str, Any]] = {}  # Track tool calls by id
@@ -676,18 +702,19 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                 if tool_call.id not in tool_call_data:
                     tool_call_data[tool_call.id] = {"name": "", "arguments": ""}
 
-                if tool_call.tool_name is not None:
-                    # we dont need to append the tool name as it is passed once in the start of the function call
-                    tool_call_data[tool_call.id]["name"] = tool_call.tool_name
                 if tool_call.arguments is not None:
                     tool_call_data[tool_call.id]["arguments"] += tool_call.arguments
-                if tool_call.extra is not None and tool_call.extra.get("type") == "function_call":
-                    tool_call_data[tool_call.id]["extra"] = tool_call.extra
 
-        if chunk.reasoning:
-            reasoning = chunk.reasoning
+                # We capture the tool name from one of the chunks
+                if tool_call.tool_name is not None:
+                    tool_call_data[tool_call.id]["name"] = tool_call.tool_name
+
+                # We capture the call_id from one of the chunks
+                if tool_call.extra and "call_id" in tool_call.extra:
+                    tool_call_data[tool_call.id]["extra"] = {"call_id": tool_call.extra["call_id"]}
 
     # Convert accumulated tool call data into ToolCall objects
+    tool_calls = []
     sorted_keys = sorted(tool_call_data.keys())
     for key in sorted_keys:
         tool_call_dict = tool_call_data[key]
@@ -705,16 +732,17 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                 _arguments=tool_call_dict["arguments"],
             )
 
-    # the final response is the last chunk with the response metadata
+    # We dump the entire final response into meta to be consistent with non-streaming response
     final_response = chunks[-1].meta.get("response")
-    meta: dict[str, Any] = {
-        "model": final_response.get("model") if final_response else None,
-        "index": 0,
-        "response_start_time": final_response.get("created_at") if final_response else None,
-        "usage": final_response.get("usage") if final_response else None,
-    }
 
-    return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta, reasoning=reasoning)
+    # Add reasoning content if both id and text are available
+    reasoning = None
+    if reasoning_id and reasoning_text:
+        reasoning = ReasoningContent(reasoning_text=reasoning_text, extra={"id": reasoning_id, "type": "reasoning"})
+
+    return ChatMessage.from_assistant(
+        text=text or None, tool_calls=tool_calls, meta=final_response, reasoning=reasoning
+    )
 
 
 def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[dict[str, Any]]:

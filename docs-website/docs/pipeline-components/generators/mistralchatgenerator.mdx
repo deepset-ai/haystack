@@ -97,6 +97,26 @@ message = ChatMessage.from_user("What's Natural Language Processing? Be brief.")
 print(generator.run([message]))
 ```
 
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.mistral import MistralChatGenerator
+
+llm = MistralChatGenerator(model="pixtral-12b-2409")
+
+image = ImageContent.from_file_path("apple.jpg")
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
+
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+# Red apple on straw.
+```
+
 #### In a Pipeline
 
 Below is an example RAG Pipeline where we answer questions based on the URL contents. We add the contents of the URL into our `messages` in the `ChatPromptBuilder` and generate an answer with the `MistralChatGenerator`.
