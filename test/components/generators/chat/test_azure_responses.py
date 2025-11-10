@@ -433,7 +433,9 @@ class TestAzureOpenAIResponsesChatGenerator:
             }
         }
         chat_messages = [ChatMessage.from_user("Jane 54 years old")]
-        component = AzureOpenAIResponsesChatGenerator(generation_kwargs={"text": json_schema})
+        component = AzureOpenAIResponsesChatGenerator(
+            azure_deployment="gpt-4o-mini", generation_kwargs={"text": json_schema}
+        )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -566,7 +568,7 @@ class TestAzureOpenAIResponsesChatGenerator:
         assert len(warm_up_calls) == initial_count
 
 
-class TestAzureOpenAIChatGeneratorAsync:
+class TestAzureOpenAIResponsesChatGeneratorAsync:
     def test_init_should_also_create_async_client_with_same_args(self, tools):
         component = AzureOpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"),
