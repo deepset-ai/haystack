@@ -1164,6 +1164,7 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "response": {
                         "id": "resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
                         "created_at": 1762418678.0,
@@ -1193,6 +1194,7 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "response": {
                         "id": "resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
                         "created_at": 1762418678.0,
@@ -1221,7 +1223,7 @@ class TestConvertResponseChunkToStreamingChunk:
             ),
             StreamingChunk(
                 content="",
-                meta={},
+                meta={"received_at": ANY},
                 index=0,
                 start=True,
                 reasoning=ReasoningContent(
@@ -1236,6 +1238,7 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "item": {
                         "id": "rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b",
                         "summary": [],
@@ -1250,6 +1253,7 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "item": {
                         "id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
                         "content": [],
@@ -1266,6 +1270,7 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "content_index": 0,
                     "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
                     "output_index": 1,
@@ -1384,6 +1389,7 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "content_index": 0,
                     "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
                     "logprobs": [],
@@ -1397,6 +1403,7 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "content_index": 0,
                     "item_id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
                     "output_index": 1,
@@ -1414,6 +1421,7 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "item": {
                         "id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
                         "content": [
@@ -1437,6 +1445,7 @@ class TestConvertResponseChunkToStreamingChunk:
             StreamingChunk(
                 content="",
                 meta={
+                    "received_at": ANY,
                     "response": {
                         "id": "resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
                         "created_at": 1762418678.0,
@@ -1451,9 +1460,6 @@ class TestConvertResponseChunkToStreamingChunk:
                                 "id": "rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b",
                                 "summary": [],
                                 "type": "reasoning",
-                                "content": None,
-                                "encrypted_content": None,
-                                "status": None,
                             },
                             {
                                 "id": "msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -1476,12 +1482,6 @@ class TestConvertResponseChunkToStreamingChunk:
                         "tools": [],
                         "top_p": 1.0,
                         "background": False,
-                        "conversation": None,
-                        "max_output_tokens": None,
-                        "max_tool_calls": None,
-                        "previous_response_id": None,
-                        "prompt": None,
-                        "prompt_cache_key": None,
                         "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
                         "safety_identifier": None,
                         "service_tier": "default",
@@ -1496,7 +1496,6 @@ class TestConvertResponseChunkToStreamingChunk:
                             "output_tokens_details": {"reasoning_tokens": 64},
                             "total_tokens": 92,
                         },
-                        "user": None,
                         "prompt_cache_retention": None,
                         "store": True,
                     },
