@@ -161,7 +161,6 @@ result = generator.run(messages)
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack_integrations.components.generators.llama_cpp import LlamaCppChatGenerator
 
-# Create an image from file path or base64
 image = ImageContent.from_file_path("path/to/your/image.jpg")
 
 # Create a multimodal message with both text and image
