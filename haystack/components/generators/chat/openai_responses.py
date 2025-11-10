@@ -470,8 +470,8 @@ class OpenAIResponsesChatGenerator:
 
         base_args = {"model": self.model, "input": openai_formatted_messages, **openai_tools, **generation_kwargs}
 
-        # if both text_format and text are provided, text_format takes precedence
-        # and json chema passed to text is ignored
+        # if both `text_format` and `text` are provided, `text_format` takes precedence
+        # and json schema passed to `text` is ignored
         if generation_kwargs.get("text_format") or generation_kwargs.get("text"):
             return {**base_args, "stream": streaming_callback is not None, "openai_endpoint": "parse"}
         # we pass a key `openai_endpoint` as a hint to the run method to use the create or parse endpoint
