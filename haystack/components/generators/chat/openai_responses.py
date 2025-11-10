@@ -561,6 +561,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
     # we save the response as dict because it contains resp_id etc.
     meta = responses.to_dict()
+
     # remove output from meta because it contains toolcalls, reasoning, text etc.
     meta.pop("output")
 
@@ -693,13 +694,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     :returns: The ChatMessage.
     """
     reasoning = None
-    tool_calls = []
     text = "".join([chunk.content for chunk in chunks])
-    logprobs: list[dict] = []
-    for chunk in chunks:
-        logprobs_value = chunk.meta.get("logprobs")
-        if logprobs_value is not None:
-            logprobs.append(logprobs_value)
 
     # Get the full text by concatenating all text chunks
     text = "".join([chunk.content for chunk in chunks])
@@ -712,9 +707,6 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
             reasoning_text += chunk.reasoning.reasoning_text
             if chunk.reasoning.extra.get("id"):
                 reasoning_id = chunk.reasoning.extra.get("id")
-        logprobs_value = chunk.meta.get("logprobs")
-        if logprobs_value is not None:
-            logprobs.append(logprobs_value)
 
     # Process tool calls if present in any chunk
     tool_call_data: dict[str, dict[str, Any]] = {}  # Track tool calls by id
@@ -759,9 +751,6 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
     # We dump the entire final response into meta to be consistent with non-streaming response
     final_response = chunks[-1].meta.get("response")
-
-    if logprobs:
-        final_response["logprobs"] = logprobs
 
     # Add reasoning content if both id and text are available
     reasoning = None
