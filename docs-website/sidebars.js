@@ -158,9 +158,9 @@ export default {
             id: 'pipeline-components/audio'
           },
           items: [
-            'pipeline-components/audio/external-integrations-audio',
             'pipeline-components/audio/localwhispertranscriber',
             'pipeline-components/audio/remotewhispertranscriber',
+            'pipeline-components/audio/external-integrations-audio',
           ],
         },
         {
@@ -203,7 +203,6 @@ export default {
             id: 'pipeline-components/connectors'
           },
           items: [
-            'pipeline-components/connectors/external-integrations-connectors',
             'pipeline-components/connectors/githubfileeditor',
             'pipeline-components/connectors/githubissuecommenter',
             'pipeline-components/connectors/githubissueviewer',
@@ -215,6 +214,7 @@ export default {
             'pipeline-components/connectors/openapiconnector',
             'pipeline-components/connectors/openapiserviceconnector',
             'pipeline-components/connectors/weaveconnector',
+            'pipeline-components/connectors/external-integrations-connectors',
           ],
         },
         {
@@ -229,7 +229,6 @@ export default {
             'pipeline-components/converters/csvtodocument',
             'pipeline-components/converters/documenttoimagecontent',
             'pipeline-components/converters/docxtodocument',
-            'pipeline-components/converters/external-integrations-converters',
             'pipeline-components/converters/htmltodocument',
             'pipeline-components/converters/imagefiletodocument',
             'pipeline-components/converters/imagefiletoimagecontent',
@@ -248,6 +247,7 @@ export default {
             'pipeline-components/converters/tikadocumentconverter',
             'pipeline-components/converters/unstructuredfileconverter',
             'pipeline-components/converters/xlsxtodocument',
+            'pipeline-components/converters/external-integrations-converters',
           ],
         },
         {
@@ -274,7 +274,6 @@ export default {
             'pipeline-components/embedders/coheredocumentembedder',
             'pipeline-components/embedders/coheredocumentimageembedder',
             'pipeline-components/embedders/coheretextembedder',
-            'pipeline-components/embedders/external-integrations-embedders',
             'pipeline-components/embedders/fastembeddocumentembedder',
             'pipeline-components/embedders/fastembedsparsedocumentembedder',
             'pipeline-components/embedders/fastembedsparsetextembedder',
@@ -307,6 +306,7 @@ export default {
             'pipeline-components/embedders/vertexaitextembedder',
             'pipeline-components/embedders/watsonxdocumentembedder',
             'pipeline-components/embedders/watsonxtextembedder',
+            'pipeline-components/embedders/external-integrations-embedders',
           ],
         },
         {
@@ -324,11 +324,11 @@ export default {
             'pipeline-components/evaluators/documentmrrevaluator',
             'pipeline-components/evaluators/documentndcgevaluator',
             'pipeline-components/evaluators/documentrecallevaluator',
-            'pipeline-components/evaluators/external-integrations-evaluators',
             'pipeline-components/evaluators/faithfulnessevaluator',
             'pipeline-components/evaluators/llmevaluator',
             'pipeline-components/evaluators/ragasevaluator',
             'pipeline-components/evaluators/sasevaluator',
+            'pipeline-components/evaluators/external-integrations-evaluators',
           ],
         },
         {
@@ -352,8 +352,8 @@ export default {
             id: 'pipeline-components/fetchers'
           },
           items: [
-            'pipeline-components/fetchers/external-integrations-fetchers',
             'pipeline-components/fetchers/linkcontentfetcher',
+            'pipeline-components/fetchers/external-integrations-fetchers',
           ],
         },
         {
@@ -383,7 +383,6 @@ export default {
             'pipeline-components/generators/coherechatgenerator',
             'pipeline-components/generators/coheregenerator',
             'pipeline-components/generators/dalleimagegenerator',
-            'pipeline-components/generators/external-integrations-generators',
             'pipeline-components/generators/fallbackchatgenerator',
             'pipeline-components/generators/googleaigeminichatgenerator',
             'pipeline-components/generators/googleaigeminigenerator',
@@ -417,6 +416,7 @@ export default {
             'pipeline-components/generators/vertexaitextgenerator',
             'pipeline-components/generators/watsonxchatgenerator',
             'pipeline-components/generators/watsonxgenerator',
+            'pipeline-components/generators/external-integrations-generators',
           ],
         },
         {
@@ -464,7 +464,6 @@ export default {
             'pipeline-components/rankers/choosing-the-right-ranker',
             'pipeline-components/rankers/amazonbedrockranker',
             'pipeline-components/rankers/cohereranker',
-            'pipeline-components/rankers/external-integrations-rankers',
             'pipeline-components/rankers/fastembedranker',
             'pipeline-components/rankers/huggingfaceteiranker',
             'pipeline-components/rankers/jinaranker',
@@ -475,6 +474,7 @@ export default {
             'pipeline-components/rankers/sentencetransformersdiversityranker',
             'pipeline-components/rankers/sentencetransformerssimilarityranker',
             'pipeline-components/rankers/transformerssimilarityranker',
+            'pipeline-components/rankers/external-integrations-rankers',
           ],
         },
         {
@@ -574,9 +574,9 @@ export default {
             id: 'pipeline-components/websearch'
           },
           items: [
-            'pipeline-components/websearch/external-integrations-websearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
+            'pipeline-components/websearch/external-integrations-websearch',
           ],
         },
         {
@@ -646,7 +646,6 @@ export default {
       items: [
         'development/logging',
         'development/tracing',
-        'development/external-integrations-development',
         'development/enabling-gpu-acceleration',
         'development/hayhooks',
         {
@@ -662,6 +661,7 @@ export default {
             'development/deployment/openshift',
           ],
         },
+        'development/external-integrations-development',
       ],
     },
   ],
