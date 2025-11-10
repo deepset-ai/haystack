@@ -403,9 +403,7 @@ class TestAzureOpenAIResponsesChatGenerator:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        print(message.text)
         msg = json.loads(message.text)
-        print(msg)
         assert "Marketing Summit" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
