@@ -813,9 +813,12 @@ class TestOpenAIResponsesChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_tools_streaming_and_reasoning(self, tools):
-        chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
+        chat_messages = [
+            ChatMessage.from_user("What's the weather like in Paris and Berlin? Make sure to use the provided tool.")
+        ]
 
         component = OpenAIResponsesChatGenerator(
+            model="gpt-5",
             tools=tools,
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}},
