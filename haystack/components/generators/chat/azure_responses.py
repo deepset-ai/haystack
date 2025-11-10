@@ -97,16 +97,19 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
                 comprising the top 10% probability mass are considered.
             - `previous_response_id`: The ID of the previous response.
                 Use this to create multi-turn conversations.
-            - `text_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+            - `text_format`: A Pydantic model that enforces the structure of the model's response.
                 If provided, the output will always be validated against this
                 format (unless the model returns a tool call).
                 For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+            - `text`: A JSON schema that enforces the structure of the model's response.
+                If provided, the output will always be validated against this
+                format (unless the model returns a tool call).
                 Notes:
-                - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
-                  Older models only support basic version of structured outputs through `{"type": "json_object"}`.
-                  For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
-                - For structured outputs with streaming,
-                  the `text_format` must be a JSON schema and not a Pydantic model.
+                - Both JSON Schema and Pydantic models are supported for latest models starting from GPT-4o.
+                - If both are provided, text_format takes precedence and json schema passed to text is ignored.
+                - Currently, the generator doesn't support streaming for structured outputs.
+                - Older models only support basic version of structured outputs through `{"type": "json_object"}`.
+                    For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
             - `reasoning`: A dictionary of parameters for reasoning. For example:
                 - `summary`: The summary of the reasoning.
                 - `effort`: The level of effort to put into the reasoning. Can be `low`, `medium` or `high`.
@@ -161,20 +164,21 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             else None
         )
 
-        # If the response format is a Pydantic model, it's converted to openai's json schema format
+        # If the text format is a Pydantic model, it's converted to openai's json schema format
         # If it's already a json schema, it's left as is
         generation_kwargs = self.generation_kwargs.copy()
-        response_format = generation_kwargs.get("response_format")
-        if response_format and issubclass(response_format, BaseModel):
+        text_format = generation_kwargs.pop("text_format")
+        if text_format and issubclass(text_format, BaseModel):
             json_schema = {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": response_format.__name__,
+                "format": {
+                    "type": "json_schema",
+                    "name": text_format.__name__,
                     "strict": True,
-                    "schema": to_strict_json_schema(response_format),
-                },
+                    "schema": to_strict_json_schema(text_format),
+                }
             }
-            generation_kwargs["response_format"] = json_schema
+            # json schema needs to be passed to text parameter instead of text_format
+            generation_kwargs["text"] = json_schema
 
         # OpenAI/MCP tools are passed as list of dictionaries
         serialized_tools: Union[dict[str, Any], list[dict[str, Any]], None]

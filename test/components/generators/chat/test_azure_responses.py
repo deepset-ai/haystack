@@ -143,7 +143,7 @@ class TestAzureOpenAIChatGenerator:
             generation_kwargs={
                 "max_completion_tokens": 10,
                 "some_test_param": "test-params",
-                "response_format": calendar_event_model,
+                "text_format": calendar_event_model,
             },
             http_client_kwargs={"proxy": "http://localhost:8080"},
         )
@@ -161,9 +161,9 @@ class TestAzureOpenAIChatGenerator:
                 "generation_kwargs": {
                     "max_completion_tokens": 10,
                     "some_test_param": "test-params",
-                    "response_format": {
-                        "type": "json_schema",
-                        "json_schema": {
+                    "text_format": {
+                        "format": {
+                            "type": "json_schema",
                             "name": "CalendarEvent",
                             "strict": True,
                             "schema": {
@@ -177,7 +177,7 @@ class TestAzureOpenAIChatGenerator:
                                 "type": "object",
                                 "additionalProperties": False,
                             },
-                        },
+                        }
                     },
                 },
                 "tools": None,

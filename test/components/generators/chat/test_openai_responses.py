@@ -240,9 +240,9 @@ class TestOpenAIResponsesChatGenerator:
                 "generation_kwargs": {
                     "max_tokens": 10,
                     "some_test_param": "test-params",
-                    "text_format": {
-                        "type": "json_schema",
-                        "json_schema": {
+                    "text": {
+                        "format": {
+                            "type": "json_schema",
                             "name": "CalendarEvent",
                             "strict": True,
                             "schema": {
@@ -256,7 +256,7 @@ class TestOpenAIResponsesChatGenerator:
                                 "type": "object",
                                 "additionalProperties": False,
                             },
-                        },
+                        }
                     },
                 },
                 "tools": [
