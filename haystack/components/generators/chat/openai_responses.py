@@ -696,6 +696,10 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
     # Get the full text by concatenating all text chunks
     text = "".join([chunk.content for chunk in chunks])
+    logprobs = []
+    for chunk in chunks:
+        if chunk.meta.get("logprobs"):
+            logprobs.append(chunk.meta.get("logprobs"))
 
     # Gather reasoning information if present
     reasoning_id = None
@@ -749,6 +753,9 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
     # We dump the entire final response into meta to be consistent with non-streaming response
     final_response = chunks[-1].meta.get("response")
+    final_response.pop("output")
+    if logprobs:
+        final_response["logprobs"] = logprobs
 
     # Add reasoning content if both id and text are available
     reasoning = None
