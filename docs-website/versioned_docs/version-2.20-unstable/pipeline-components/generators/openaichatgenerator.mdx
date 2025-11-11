@@ -1,0 +1,236 @@
+---
+title: "OpenAIChatGenerator"
+id: openaichatgenerator
+slug: "/openaichatgenerator"
+description: "`OpenAIChatGenerator` enables chat completion using OpenAI’s large language models (LLMs)."
+---
+
+# OpenAIChatGenerator
+
+`OpenAIChatGenerator` enables chat completion using OpenAI's large language models (LLMs).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
+| **Mandatory init variables**           | `api_key`: An OpenAI API key. Can be set with `OPENAI_API_KEY` env var.                              |
+| **Mandatory run variables**            | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
+| **Output variables**                   | `replies`: A list of alternative replies of the LLM to the input chat                                |
+| **API reference**                      | [Generators](/reference/generators-api)                                                                     |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/openai.py     |
+
+</div>
+
+## Overview
+
+`OpenAIChatGenerator` supports OpenAI models starting from gpt-3.5-turbo and later (gpt-4, gpt-4-turbo, and so on).
+
+`OpenAIChatGenerator` needs an OpenAI key to work. It uses an ` OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+
+```python
+generator = OpenAIChatGenerator(model="gpt-4o-mini")
+```
+
+Then, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. See the [usage](#usage) section for an example.
+
+You can pass any chat completion parameters valid for the `openai.ChatCompletion.create` method directly to `OpenAIChatGenerator` using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the parameters supported by the OpenAI API, refer to the [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
+
+`OpenAIChatGenerator` can support custom deployments of your OpenAI models through the `api_base_url` init parameter.
+
+### Structured Output
+
+`OpenAIChatGenerator` supports structured output generation, allowing you to receive responses in a predictable format. You can use Pydantic models or JSON schemas to define the structure of the output through the `response_format` parameter in `generation_kwargs`.
+
+This is useful when you need to extract structured data from text or generate responses that match a specific format.
+
+```python
+from pydantic import BaseModel
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+class NobelPrizeInfo(BaseModel):
+    recipient_name: str
+    award_year: int
+    category: str
+    achievement_description: str
+    nationality: str
+
+client = OpenAIChatGenerator(
+    model="gpt-4o-2024-08-06",
+    generation_kwargs={"response_format": NobelPrizeInfo}
+)
+
+response = client.run(messages=[
+    ChatMessage.from_user(
+        "In 2021, American scientist David Julius received the Nobel Prize in"
+        " Physiology or Medicine for his groundbreaking discoveries on how the human body"
+        " senses temperature and touch."
+    )
+])
+print(response["replies"][0].text)
+
+>> {"recipient_name":"David Julius","award_year":2021,"category":"Physiology or Medicine",
+>> "achievement_description":"David Julius was awarded for his transformative findings
+>> regarding the molecular mechanisms underlying the human body's sense of temperature
+>> and touch. Through innovative experiments, he identified specific receptors responsible
+>> for detecting heat and mechanical stimuli, ranging from gentle touch to pain-inducing
+>> pressure.","nationality":"American"}
+```
+
+:::info Model Compatibility and Limitations
+
+- Pydantic models and JSON schemas are supported for latest models starting from `gpt-4o-2024-08-06`.
+- Older models only support basic JSON mode through `{"type": "json_object"}`. For details, see [OpenAI JSON mode documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
+- Streaming limitation: When using streaming with structured outputs, you must provide a JSON schema instead of a Pydantic model for `response_format`.
+- For complete information, check the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+:::
+
+### Streaming
+
+You can stream output as it’s generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+
+## Configure any `Generator` or `ChatGenerator` with a streaming callback
+component = SomeGeneratorOrChatGenerator(streaming_callback=print_streaming_chunk)
+
+## If this is a `ChatGenerator`, pass a list of messages:
+## from haystack.dataclasses import ChatMessage
+## component.run([ChatMessage.from_user("Your question here")])
+
+## If this is a (non-chat) `Generator`, pass a prompt:
+## component.run({"prompt": "Your prompt here"})
+```
+
+:::info
+Streaming works only with a single response. If a provider supports multiple candidates, set `n=1`.
+:::
+
+See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+
+Give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+
+## Usage
+
+### On its own
+
+Basic usage:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+client = OpenAIChatGenerator()
+response = client.run(
+	  [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+)
+print(response)
+
+>> {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=
+>> [TextContent(text='Natural Language Processing (NLP) is a field of artificial
+>> intelligence that focuses on the interaction between computers and humans through
+>> natural language. It involves enabling machines to understand, interpret, and
+>> generate human language in a meaningful way, facilitating tasks such as
+>> language translation, sentiment analysis, and text summarization.')],
+>> _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0,
+>> 'finish_reason': 'stop', 'usage': {'completion_tokens': 59, 'prompt_tokens': 15,
+>>  'total_tokens': 74, 'completion_tokens_details': {'accepted_prediction_tokens':
+>>  0, 'audio_tokens': 0, 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0},
+>>  'prompt_tokens_details': {'audio_tokens': 0, 'cached_tokens': 0}}})]}
+```
+
+With streaming:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+client = OpenAIChatGenerator(streaming_callback=lambda chunk: print(chunk.content, end="", flush=True))
+response = client.run(
+	  [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+)
+print(response)
+
+>> Natural Language Processing (NLP) is a field of artificial intelligence that
+>> focuses on the interaction between computers and humans through natural language.
+>> It involves enabling machines to understand, interpret, and generate human
+>> language in a way that is both meaningful and useful. NLP encompasses various
+>> tasks, including speech recognition, language translation, sentiment analysis,
+>> and text summarization.{'replies': [ChatMessage(_role=<ChatRole.ASSISTANT:
+>> 'assistant'>, _content=[TextContent(text='Natural Language Processing (NLP) is a
+>> field of artificial intelligence that focuses on the interaction between computers
+>> and humans through natural language. It involves enabling machines to understand,
+>> interpret, and generate human language in a way that is both meaningful and
+>> useful. NLP encompasses various tasks, including speech recognition, language
+>> translation, sentiment analysis, and text summarization.')], _name=None, _meta={'
+>> model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop',
+>> 'completion_start_time': '2025-05-15T13:32:16.572912', 'usage': None})]}
+```
+
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+llm = OpenAIChatGenerator(model="gpt-4o-mini")
+
+image = ImageContent.from_file_path("apple.jpg", detail="low")
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
+
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+>>> Red apple on straw.
+```
+
+### In a Pipeline
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+from haystack.utils import Secret
+
+## no parameter init, we don't use any runtime template variables
+prompt_builder = ChatPromptBuilder()
+llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="gpt-4o-mini")
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+location = "Berlin"
+messages = [ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+            ChatMessage.from_user("Tell me about {{location}}")]
+pipe.run(data={"prompt_builder": {"template_variables":{"location": location}, "template": messages}})
+
+>> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+>> _content=[TextContent(text='Berlin ist die Hauptstadt Deutschlands und eine der
+>> bedeutendsten Städte Europas. Es ist bekannt für ihre reiche Geschichte,
+>> kulturelle Vielfalt und kreative Scene. \n\nDie Stadt hat eine bewegte
+>> Vergangenheit, die stark von der Teilung zwischen Ost- und Westberlin während
+>> des Kalten Krieges geprägt war. Die Berliner Mauer, die von 1961 bis 1989 die
+>> Stadt teilte, ist heute ein Symbol für die Wiedervereinigung und die Freiheit.
+>> \n\nBerlin bietet eine Fülle von Sehenswürdigkeiten, darunter das Brandenburger
+>> Tor, den Reichstag, die Museumsinsel und den Alexanderplatz. Die Stadt ist auch
+>> für ihre lebendige Kunst- und Musikszene bekannt, mit zahlreichen Galerien,
+>> Theatern und Clubs. ')], _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18',
+>> 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 260,
+>> 'prompt_tokens': 29, 'total_tokens': 289, 'completion_tokens_details':
+>> {'accepted_prediction_tokens': 0, 'audio_tokens': 0, 'reasoning_tokens': 0,
+>> 'rejected_prediction_tokens': 0}, 'prompt_tokens_details': {'audio_tokens': 0,
+>> 'cached_tokens': 0}}})]}}
+```
+
+## Additional References
+
+:notebook: Tutorial: [Building a Chat Application with Function Calling](https://haystack.deepset.ai/tutorials/40_building_chat_application_with_function_calling)
+
+🧑‍🍳 Cookbook: [Function Calling with OpenAIChatGenerator](https://haystack.deepset.ai/cookbook/function_calling_with_openaichatgenerator)

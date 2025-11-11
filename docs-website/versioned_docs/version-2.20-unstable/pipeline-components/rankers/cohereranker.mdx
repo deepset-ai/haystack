@@ -1,0 +1,98 @@
+---
+title: "CohereRanker"
+id: cohereranker
+slug: "/cohereranker"
+description: "Use this component to rank documents based on their similarity to the query using Cohere rerank models."
+---
+
+# CohereRanker
+
+Use this component to rank documents based on their similarity to the query using Cohere rerank models.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
+| **Mandatory init variables** | `api_key`: The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of document objects  <br /> <br />`query`: A query string  <br /> <br />`top_k`: The maximum number of documents to return |
+| **Output variables** | `documents`: A list of document objects |
+| **API reference** | [Cohere](/reference/integrations-cohere) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cohere |
+
+</div>
+
+## Overview
+
+`CohereRanker` ranks `Documents` based on semantic relevance to a specified query. It uses Cohere rerank models for ranking. This list of all supported models can be found in Cohere’s [documentation](https://docs.cohere.com/docs/rerank-2). The default model for this Ranker is `rerank-english-v2.0`.
+
+You can also specify the `top_k` parameter to set the maximum number of documents to return.
+
+To start using this integration with Haystack, install it with:
+
+```shell
+pip install cohere-haystack
+```
+
+The component uses a `COHERE_API_KEY` or `CO_API_KEY` environment variable by default. Otherwise, you can pass a Cohere API key at initialization with `api_key` like this:
+
+```python
+ranker = CohereRanker(api_key=Secret.from_token("<your-api-key>"))
+```
+
+## Usage
+
+### On its own
+
+This example uses `CohereRanker` to rank two simple documents. To run the Ranker, pass a `query`, provide the `documents`, and set the number of documents to return in the `top_k` parameter.
+
+```python
+from haystack import Document
+from haystack_integrations.components.rankers.cohere import CohereRanker
+
+docs = [Document(content="Paris"), Document(content="Berlin")]
+
+ranker = CohereRanker()
+
+ranker.run(query="City in France", documents=docs, top_k=1)
+```
+
+### In a pipeline
+
+Below is an example of a pipeline that retrieves documents from an `InMemoryDocumentStore` based on keyword search (using `InMemoryBM25Retriever`). It then uses the `CohereRanker` to rank the retrieved documents according to their similarity to the query. The pipeline uses the default settings of the Ranker.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.rankers.cohere import CohereRanker
+
+docs = [
+    Document(content="Paris is in France"),
+    Document(content="Berlin is in Germany"),
+    Document(content="Lyon is in France"),
+]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+ranker = CohereRanker()
+
+document_ranker_pipeline = Pipeline()
+document_ranker_pipeline.add_component(instance=retriever, name="retriever")
+document_ranker_pipeline.add_component(instance=ranker, name="ranker")
+
+document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "Cities in France"
+res = document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
+```
+
+:::note `top_k` parameter
+
+In the example above, the `top_k` values for the Retriever and the Ranker are different. The Retriever's `top_k` specifies how many documents it returns. The Ranker then orders these documents.
+
+You can set the same or a smaller `top_k` value for the Ranker. The Ranker's `top_k` is the number of documents it returns (if it's the last component in the pipeline) or forwards to the next component. In the pipeline example above, the Ranker is the last component, so the output you get when you run the pipeline are the top two documents, as per the Ranker's `top_k`.
+
+Adjusting the `top_k` values can help you optimize performance. In this case, a smaller `top_k` value of the Retriever means fewer documents to process for the Ranker, which can speed up the pipeline.
+:::

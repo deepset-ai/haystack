@@ -1,0 +1,38 @@
+---
+title: "FAQ"
+id: faq
+slug: "/faq"
+description: "Here are the answers to the questions people frequently ask about Haystack."
+---
+
+# FAQ
+
+Here are the answers to the questions people frequently ask about Haystack.
+
+### How can I make sure that my GPU is being engaged when I use Haystack?
+
+You will want to ensure that a CUDA enabled GPU is being engaged when Haystack is running (you can check by running `nvidia-smi -l` on your command line). Components which can be sped up by GPU have a `device` argument in their constructor. For more details, check the [Device Management](../concepts/device-management.mdx) page.
+
+### Are you tracking my Haystack usage?
+
+We only collect _anonymous_ usage statistics of Haystack pipeline components. Read more about telemetry in Haystack or how you can opt out on the [Telemetry](telemetry.mdx) page.
+
+### How can I ask my questions around Haystack?
+
+For general questions, we recommend joining the [Haystack Discord ](https://discord.com/invite/xYvH6drSmA)or using [GitHub discussions](https://github.com/deepset-ai/haystack/discussions), where the community and maintainers can help. You can also explore [tutorials](https://haystack.deepset.ai/tutorials/40_building_chat_application_with_function_calling) and [examples](https://haystack.deepset.ai/cookbook/tools_support) on our website to find more info.
+
+### How can I get expert support for Haystack?
+
+If you’re a team running Haystack in production or want to move faster and scale with confidence, we recommend [Haystack Enterprise](https://haystack.deepset.ai/blog/announcing-haystack-enterprise). It gives you direct access to the Haystack team, proven best practices, and hands-on support to help you go from prototype to production smoothly.
+
+👉 [Get in touch with our team to explore Haystack Enterprise](https://www.deepset.ai/products-and-services/haystack-enterprise)
+
+### Where can I find tutorials and documentation for Haystack 1.x?
+
+You can access old tutorials in the [GitHub history](https://github.com/deepset-ai/haystack-tutorials/tree/5917718cbfbb61410aab4121ee6fe754040a5dc7) and download the Haystack 1.x documentation as a [ZIP file](https://core-engineering.s3.eu-central-1.amazonaws.com/public/docs/haystack-v1-docs.zip).
+
+The ZIP file contains documentation for all minor releases from version 1.0 to 1.26.
+
+To download documentation for a specific release, replace the version number in the following URL: `https://core-engineering.s3.eu-central-1.amazonaws.com/public/docs/v1.26.zip`.
+
+Learn how to migrate to Haystack version 2.x with our [migration guide](migration.mdx).

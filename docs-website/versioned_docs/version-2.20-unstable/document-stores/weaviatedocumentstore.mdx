@@ -1,0 +1,148 @@
+---
+title: "WeaviateDocumentStore"
+id: weaviatedocumentstore
+slug: "/weaviatedocumentstore"
+---
+
+# WeaviateDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [Weaviate](/reference/integrations-weaviate)                                                      |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weaviate |
+
+</div>
+
+Weaviate is a multi-purpose vector DB that can store both embeddings and data objects, making it a good choice for multi-modality.
+
+The `WeaviateDocumentStore` can connect to any Weaviate instance, whether it's running on Weaviate Cloud Services, Kubernetes, or a local Docker container.
+
+## Installation
+
+You can simply install the Weaviate Haystack integration with:
+
+```shell
+pip install weaviate-haystack
+```
+
+## Initialization
+
+### Weaviate Embedded
+
+To use `WeaviateDocumentStore` as a temporary instance, initialize it as ["Embedded"](https://weaviate.io/developers/weaviate/installation/embedded):
+
+```python
+from haystack_integrations.document_stores.weaviate import WeaviateDocumentStore
+from weaviate.embedded import EmbeddedOptions
+
+document_store = WeaviateDocumentStore(embedded_options=EmbeddedOptions())
+```
+
+### Docker
+
+You can use `WeaviateDocumentStore` in a local Docker container. This is what a minimal `docker-compose.yml` could look like:
+
+```yaml
+---
+version: '3.4'
+services:
+  weaviate:
+    command:
+    - --host
+    - 0.0.0.0
+    - --port
+    - '8080'
+    - --scheme
+    - http
+    image: semitechnologies/weaviate:1.30.17
+    ports:
+    - 8080:8080
+    - 50051:50051
+    volumes:
+    - weaviate_data:/var/lib/weaviate
+    restart: 'no'
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      ENABLE_MODULES: ''
+      CLUSTER_HOSTNAME: 'node1'
+volumes:
+  weaviate_data:
+...
+```
+
+:::warning
+With this example, we explicitly enable access without authentication, so you don't need to set any username, password, or API key to connect to our local instance. That is strongly discouraged for production use. See the [authorization](#authorization) section for detailed information.
+
+:::
+
+Start your container with `docker compose up -d` and then initialize the Document Store with:
+
+```python
+from haystack_integrations.document_stores.weaviate.document_store import WeaviateDocumentStore
+from haystack import Document
+
+document_store = WeaviateDocumentStore(url="http://localhost:8080")
+document_store.write_documents([
+    Document(content="This is first"),
+    Document(content="This is second")
+])
+print(document_store.count_documents())
+```
+
+### Weaviate Cloud Service
+
+To use the [Weaviate managed cloud service](https://weaviate.io/developers/wcs), first, create your Weaviate cluster.
+
+Then, initialize the `WeaviateDocumentStore` using the API Key and URL found in your [Weaviate account](https://console.weaviate.cloud/):
+
+```python
+from haystack_integrations.document_stores.weaviate import WeaviateDocumentStore, AuthApiKey
+from haystack import Document
+
+import os
+os.environ["WEAVIATE_API_KEY"] = "YOUR-API-KEY"
+
+auth_client_secret = AuthApiKey()
+
+document_store = WeaviateDocumentStore(url="YOUR-WEAVIATE-URL",
+    auth_client_secret=auth_client_secret)
+```
+
+## Authorization
+
+We provide some utility classes in the `auth` package to handle authorization using different credentials. Every class stores distinct [secrets](../concepts/secret-management.mdx) and retrieves them from the environment variables when required.
+
+The default environment variables for the classes are:
+
+- **`AuthApiKey`**
+  - `WEAVIATE_API_KEY`
+- **`AuthBearerToken`**
+  - `WEAVIATE_ACCESS_TOKEN`
+  - `WEAVIATE_REFRESH_TOKEN`
+- **`AuthClientCredentials`**
+  - `WEAVIATE_CLIENT_SECRET`
+  - `WEAVIATE_SCOPE`
+- **`AuthClientPassword`**
+  - `WEAVIATE_USERNAME`
+  - `WEAVIATE_PASSWORD`
+  - `WEAVIATE_SCOPE`
+
+You can easily change environment variables if needed. In the following snippet, we instruct `AuthApiKey` to look for `MY_ENV_VAR`.
+
+```python
+from haystack_integrations.document_stores.weaviate.auth import AuthApiKey
+from haystack.utils.auth import Secret
+
+AuthApiKey(api_key=Secret.from_env_var("MY_ENV_VAR"))
+```
+
+## Supported Retrievers
+
+[`WeaviateBM25Retriever`](../pipeline-components/retrievers/weaviatebm25retriever.mdx): A keyword-based Retriever that fetches documents matching a query from the Document Store.
+
+[`WeaviateEmbeddingRetriever`](../pipeline-components/retrievers/weaviateembeddingretriever.mdx): Compares the query and document embeddings and fetches the documents most relevant to the query.
