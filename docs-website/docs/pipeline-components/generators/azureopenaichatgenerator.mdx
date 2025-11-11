@@ -149,6 +149,29 @@ response = client.run(
 print(response)
 ```
 
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack.components.generators.chat import AzureOpenAIChatGenerator
+
+llm = AzureOpenAIChatGenerator(
+    azure_endpoint="<Your Azure endpoint>",
+    azure_deployment="gpt-4o-mini",
+)
+
+image = ImageContent.from_file_path("apple.jpg", detail="low")
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
+
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+# Fresh red apple on straw.
+```
+
 ### In a pipeline
 
 ```python
