@@ -760,7 +760,7 @@ class TestOpenAIResponsesChatGenerator:
     def test_live_run_with_tools_streaming(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
 
-        component = OpenAIResponsesChatGenerator(tools=tools, streaming_callback=print_streaming_chunk)
+        component = OpenAIResponsesChatGenerator(model="gpt-5", tools=tools, streaming_callback=print_streaming_chunk)
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message = results["replies"][0]
@@ -769,11 +769,17 @@ class TestOpenAIResponsesChatGenerator:
         assert not message.text
         assert message.tool_calls
         tool_calls = message.tool_calls
-        assert len(tool_calls) > 0
+        assert len(tool_calls) == 2
 
         for tool_call in tool_calls:
             assert isinstance(tool_call, ToolCall)
             assert tool_call.tool_name == "weather"
+
+        arguments = [tool_call.arguments for tool_call in tool_calls]
+        # Extract city names (handle cases like "Berlin, Germany" -> "Berlin")
+        city_values = [arg["city"].split(",")[0].strip().lower() for arg in arguments]
+        assert "berlin" in city_values and "paris" in city_values
+        assert len(city_values) == 2
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
