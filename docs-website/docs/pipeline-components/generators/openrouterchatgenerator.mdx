@@ -108,6 +108,26 @@ response = client.run(
 print("\n\n Model used: ", response["replies"][0].meta["model"])
 ```
 
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.openrouter import OpenRouterChatGenerator
+
+llm = OpenRouterChatGenerator(model="anthropic/claude-3-5-sonnet")
+
+image = ImageContent.from_file_path("apple.jpg")
+user_message = ChatMessage.from_user(content_parts=[
+	"What does the image show? Max 5 words.",
+	image
+	])
+
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+# Red apple on straw.
+```
+
 ### In a pipeline
 
 ```python
