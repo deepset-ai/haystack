@@ -11,9 +11,9 @@ Haystack relies on anonymous usage statistics to continuously improve. That's wh
 
 ## What Information Is Shared?
 
-Telemetry in Haystack comprises anonymous usage statistics of base components, such as `DocumentStore`, `Retriever`, `Reader`, or any other pipeline component. We receive an event every time these components are initialized. This way, we know which components are most relevant to our community. For the same reason, an event is also sent when one of the tutorials is executed. 
+Telemetry in Haystack comprises anonymous usage statistics of base components, such as `DocumentStore`, `Retriever`, `Reader`, or any other pipeline component. We receive an event every time these components are initialized. This way, we know which components are most relevant to our community. For the same reason, an event is also sent when one of the tutorials is executed.
 
-Each event contains an anonymous, randomly generated user ID (`uuid`)  and a collection of properties about your execution environment. They **never ** contain properties that can be used to identify you, such as:
+Each event contains an anonymous, randomly generated user ID (`uuid`)  and a collection of properties about your execution environment. They **never** contain properties that can be used to identify you, such as:
 
 - IP addresses
 - Hostnames
@@ -43,11 +43,11 @@ Here is an exemplary event that is sent when tutorial 1 is executed by running `
 }
 ```
 
-Our telemetry code can be directly inspected on [GitHub](https://github.com/deepset-ai/haystack/blob/5d66d040cc303ab49225587cd61290f1987a5d1f/haystack/telemetry/_telemetry.py). 
+Our telemetry code can be directly inspected on [GitHub](https://github.com/deepset-ai/haystack/blob/5d66d040cc303ab49225587cd61290f1987a5d1f/haystack/telemetry/_telemetry.py).
 
 ## How Does Telemetry Help?
 
-Thanks to telemetry, we can understand the needs of the community: _"What pipeline nodes are most popular?", "Should we focus on supporting one specific Document Store?", "How many people use Haystack on Windows?"_ are some of the questions telemetry helps us answer. Metadata about the operating system and installed dependencies allows us to quickly identify and address issues caused by specific setups. 
+Thanks to telemetry, we can understand the needs of the community: _"What pipeline nodes are most popular?", "Should we focus on supporting one specific Document Store?", "How many people use Haystack on Windows?"_ are some of the questions telemetry helps us answer. Metadata about the operating system and installed dependencies allows us to quickly identify and address issues caused by specific setups.
 
 In short, by sharing this information, you enable us to continuously improve Haystack for everyone.
 
@@ -61,7 +61,7 @@ You can disable telemetry by setting the environment variable `HAYSTACK_TELEMETR
 
 ### Using a Bash Shell
 
-If you are using a bash shell, add the following line to the file `~/.bashrc` to disable telemetry: `export HAYSTACK_TELEMETRY_ENABLED=False`. 
+If you are using a bash shell, add the following line to the file `~/.bashrc` to disable telemetry: `export HAYSTACK_TELEMETRY_ENABLED=False`.
 
 ### Using zsh
 
@@ -69,7 +69,7 @@ If you are using zsh as your shell, for example, on macOS, add  the following li
 
 ### On Windows
 
-To disable telemetry on Windows, set a user-level environment variable by running this command in the standard command prompt: `setx HAYSTACK_TELEMETRY_ENABLED "False"`. 
+To disable telemetry on Windows, set a user-level environment variable by running this command in the standard command prompt: `setx HAYSTACK_TELEMETRY_ENABLED "False"`.
 
 Alternatively, run the following command in Windows PowerShell: `[Environment]::SetEnvironmentVariable("HAYSTACK_TELEMETRY_ENABLED","False","User")`.
 
