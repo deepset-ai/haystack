@@ -13,6 +13,7 @@ from openai.types.responses import ParsedResponse, Response, ResponseOutputRefus
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.utils import _serialize_object
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -516,10 +517,17 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
     tool_calls = []
     reasoning = None
+    logprobs: list[dict] = []
     for output in responses.output:
         if isinstance(output, ResponseOutputRefusal):
             logger.warning("OpenAI returned a refusal output: {output}", output=output)
             continue
+
+        if output.type == "message":
+            for content in output.content:
+                if hasattr(content, "logprobs") and content.logprobs is not None:
+                    logprobs.append(_serialize_object(content.logprobs))
+
         if output.type == "reasoning":
             # openai doesn't return the reasoning tokens, but we can view summary if its enabled
             # https://platform.openai.com/docs/guides/reasoning#reasoning-summaries
@@ -547,11 +555,17 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
                     _name=output.name,
                     _arguments=output.arguments,
                 )
+                arguments = {}
 
     # we save the response as dict because it contains resp_id etc.
     meta = responses.to_dict()
+
     # remove output from meta because it contains toolcalls, reasoning, text etc.
     meta.pop("output")
+
+    if logprobs:
+        meta["logprobs"] = logprobs
+
     chat_message = ChatMessage.from_assistant(
         text=responses.output_text if responses.output_text else None,
         reasoning=reasoning,
@@ -569,6 +583,7 @@ def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-retu
     Converts the streaming response chunk from the OpenAI Responses API to a StreamingChunk.
 
     :param chunk: The chunk returned by the OpenAI Responses API.
+    :param previous_chunks: A list of previously received StreamingChunks.
     :param component_info: An optional `ComponentInfo` object containing information about the component that
         generated the chunk, such as the component name and type.
     :returns:
@@ -676,18 +691,22 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
     :returns: The ChatMessage.
     """
+
     # Get the full text by concatenating all text chunks
     text = "".join([chunk.content for chunk in chunks])
+    logprobs = []
+    for chunk in chunks:
+        if chunk.meta.get("logprobs"):
+            logprobs.append(chunk.meta.get("logprobs"))
 
     # Gather reasoning information if present
     reasoning_id = None
     reasoning_text = ""
     for chunk in chunks:
-        if not chunk.reasoning:
-            continue
-        reasoning_text += chunk.reasoning.reasoning_text
-        if chunk.reasoning.extra.get("id"):
-            reasoning_id = chunk.reasoning.extra.get("id")
+        if chunk.reasoning:
+            reasoning_text += chunk.reasoning.reasoning_text
+            if chunk.reasoning.extra.get("id"):
+                reasoning_id = chunk.reasoning.extra.get("id")
 
     # Process tool calls if present in any chunk
     tool_call_data: dict[str, dict[str, Any]] = {}  # Track tool calls by id
@@ -731,7 +750,10 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
             )
 
     # We dump the entire final response into meta to be consistent with non-streaming response
-    final_response = chunks[-1].meta.get("response")
+    final_response = chunks[-1].meta.get("response") or {}
+    final_response.pop("output", None)
+    if logprobs:
+        final_response["logprobs"] = logprobs
 
     # Add reasoning content if both id and text are available
     reasoning = None
