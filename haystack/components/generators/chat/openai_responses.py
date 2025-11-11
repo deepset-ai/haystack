@@ -693,8 +693,6 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
     :returns: The ChatMessage.
     """
-    reasoning = None
-    text = "".join([chunk.content for chunk in chunks])
 
     # Get the full text by concatenating all text chunks
     text = "".join([chunk.content for chunk in chunks])
