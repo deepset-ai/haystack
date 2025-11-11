@@ -353,6 +353,8 @@ async def connect() -> list[types.Tool]
 
 Connect to an MCP server using SSE transport.
 
+Note: If both custom headers and token are provided, custom headers take precedence.
+
 **Raises**:
 
 - `MCPConnectionError`: If connection to the server fails
@@ -395,6 +397,8 @@ async def connect() -> list[types.Tool]
 ```
 
 Connect to an MCP server using streamable HTTP transport.
+
+Note: If both custom headers and token are provided, custom headers take precedence.
 
 **Raises**:
 
@@ -476,11 +480,31 @@ server_info = SSEServerInfo(
 )
 ```
 
+For custom headers (e.g., non-standard authentication):
+
+```python
+# Single custom header with Secret
+server_info = SSEServerInfo(
+    url="https://my-mcp-server.com",
+    headers={"X-API-Key": Secret.from_env_var("API_KEY")},
+)
+
+# Multiple headers (mix of Secret and plain strings)
+server_info = SSEServerInfo(
+    url="https://my-mcp-server.com",
+    headers={
+        "X-API-Key": Secret.from_env_var("API_KEY"),
+        "X-Client-ID": "my-client-id",
+    },
+)
+```
+
 **Arguments**:
 
 - `url`: Full URL of the MCP server (including /sse endpoint)
 - `base_url`: Base URL of the MCP server (deprecated, use url instead)
-- `token`: Authentication token for the server (optional)
+- `token`: Authentication token for the server (optional, generates "Authorization: Bearer `<token>`" header)
+- `headers`: Custom HTTP headers (optional, takes precedence over token parameter if provided)
 - `timeout`: Connection timeout in seconds
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.SSEServerInfo.base_url"></a>
@@ -529,10 +553,30 @@ server_info = StreamableHttpServerInfo(
 )
 ```
 
+For custom headers (e.g., non-standard authentication):
+
+```python
+# Single custom header with Secret
+server_info = StreamableHttpServerInfo(
+    url="https://my-mcp-server.com",
+    headers={"X-API-Key": Secret.from_env_var("API_KEY")},
+)
+
+# Multiple headers (mix of Secret and plain strings)
+server_info = StreamableHttpServerInfo(
+    url="https://my-mcp-server.com",
+    headers={
+        "X-API-Key": Secret.from_env_var("API_KEY"),
+        "X-Client-ID": "my-client-id",
+    },
+)
+```
+
 **Arguments**:
 
 - `url`: Full URL of the MCP server (streamable HTTP endpoint)
-- `token`: Authentication token for the server (optional)
+- `token`: Authentication token for the server (optional, generates "Authorization: Bearer `<token>`" header)
+- `headers`: Custom HTTP headers (optional, takes precedence over token parameter if provided)
 - `timeout`: Connection timeout in seconds
 
 <a id="haystack_integrations.tools.mcp.mcp_tool.StreamableHttpServerInfo.__post_init__"></a>
@@ -795,27 +839,6 @@ def __del__()
 
 Cleanup resources when the tool is garbage collected.
 
-<a id="haystack_integrations.tools.mcp.mcp_tool.MCPTool.tool_spec"></a>
-
-#### MCPTool.tool\_spec
-
-```python
-@property
-def tool_spec() -> dict[str, Any]
-```
-
-Return the Tool specification to be used by the Language Model.
-
-<a id="haystack_integrations.tools.mcp.mcp_tool.MCPTool.invoke"></a>
-
-#### MCPTool.invoke
-
-```python
-def invoke(**kwargs: Any) -> Any
-```
-
-Invoke the Tool with the provided keyword arguments.
-
 <a id="haystack_integrations.tools.mcp.mcp_tool._MCPClientSessionManager"></a>
 
 ### \_MCPClientSessionManager
@@ -1030,126 +1053,3 @@ def close()
 
 Close the underlying MCP client safely.
 
-<a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.__post_init__"></a>
-
-#### MCPToolset.\_\_post\_init\_\_
-
-```python
-def __post_init__()
-```
-
-Validate and set up the toolset after initialization.
-
-This handles the case when tools are provided during initialization.
-
-<a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.__iter__"></a>
-
-#### MCPToolset.\_\_iter\_\_
-
-```python
-def __iter__() -> Iterator[Tool]
-```
-
-Return an iterator over the Tools in this Toolset.
-
-This allows the Toolset to be used wherever a list of Tools is expected.
-
-**Returns**:
-
-An iterator yielding Tool instances
-
-<a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.__contains__"></a>
-
-#### MCPToolset.\_\_contains\_\_
-
-```python
-def __contains__(item: Any) -> bool
-```
-
-Check if a tool is in this Toolset.
-
-Supports checking by:
-- Tool instance: tool in toolset
-- Tool name: "tool_name" in toolset
-
-**Arguments**:
-
-- `item`: Tool instance or tool name string
-
-**Returns**:
-
-True if contained, False otherwise
-
-<a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.add"></a>
-
-#### MCPToolset.add
-
-```python
-def add(tool: Union[Tool, "Toolset"]) -> None
-```
-
-Add a new Tool or merge another Toolset.
-
-**Arguments**:
-
-- `tool`: A Tool instance or another Toolset to add
-
-**Raises**:
-
-- `ValueError`: If adding the tool would result in duplicate tool names
-- `TypeError`: If the provided object is not a Tool or Toolset
-
-<a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.__add__"></a>
-
-#### MCPToolset.\_\_add\_\_
-
-```python
-def __add__(other: Union[Tool, "Toolset", list[Tool]]) -> "Toolset"
-```
-
-Concatenate this Toolset with another Tool, Toolset, or list of Tools.
-
-**Arguments**:
-
-- `other`: Another Tool, Toolset, or list of Tools to concatenate
-
-**Raises**:
-
-- `TypeError`: If the other parameter is not a Tool, Toolset, or list of Tools
-- `ValueError`: If the combination would result in duplicate tool names
-
-**Returns**:
-
-A new Toolset containing all tools
-
-<a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.__len__"></a>
-
-#### MCPToolset.\_\_len\_\_
-
-```python
-def __len__() -> int
-```
-
-Return the number of Tools in this Toolset.
-
-**Returns**:
-
-Number of Tools
-
-<a id="haystack_integrations.tools.mcp.mcp_toolset.MCPToolset.__getitem__"></a>
-
-#### MCPToolset.\_\_getitem\_\_
-
-```python
-def __getitem__(index)
-```
-
-Get a Tool by index.
-
-**Arguments**:
-
-- `index`: Index of the Tool to get
-
-**Returns**:
-
-The Tool at the specified index
