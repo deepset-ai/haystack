@@ -722,7 +722,10 @@ class TestOpenAIResponsesChatGenerator:
             assert tool_call.tool_name == "weather"
 
         arguments = [tool_call.arguments for tool_call in tool_calls]
-        assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
+        # Extract city names (handle cases like "Berlin, Germany" -> "Berlin")
+        city_values = [arg["city"].split(",")[0].strip().lower() for arg in arguments]
+        assert "berlin" in city_values and "paris" in city_values
+        assert len(city_values) == 2
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
