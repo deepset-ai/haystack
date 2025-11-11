@@ -1108,16 +1108,19 @@ See OpenAI [documentation](https://platform.openai.com/docs/api-reference/respon
      comprising the top 10% probability mass are considered.
  - `previous_response_id`: The ID of the previous response.
      Use this to create multi-turn conversations.
- - `text_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+ - `text_format`: A Pydantic model that enforces the structure of the model's response.
      If provided, the output will always be validated against this
      format (unless the model returns a tool call).
      For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+ - `text`: A JSON schema that enforces the structure of the model's response.
+     If provided, the output will always be validated against this
+     format (unless the model returns a tool call).
      Notes:
-     - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
-       Older models only support basic version of structured outputs through `{"type": "json_object"}`.
-       For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
-     - For structured outputs with streaming,
-       the `text_format` must be a JSON schema and not a Pydantic model.
+     - Both JSON Schema and Pydantic models are supported for latest models starting from GPT-4o.
+     - If both are provided, `text_format` takes precedence and json schema passed to `text` is ignored.
+     - Currently, this component doesn't support streaming for structured outputs.
+     - Older models only support basic version of structured outputs through `{"type": "json_object"}`.
+         For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
  - `reasoning`: A dictionary of parameters for reasoning. For example:
      - `summary`: The summary of the reasoning.
      - `effort`: The level of effort to put into the reasoning. Can be `low`, `medium` or `high`.
@@ -2104,16 +2107,19 @@ See OpenAI [documentation](https://platform.openai.com/docs/api-reference/respon
      comprising the top 10% probability mass are considered.
  - `previous_response_id`: The ID of the previous response.
      Use this to create multi-turn conversations.
- - `text_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+ - `text_format`: A Pydantic model that enforces the structure of the model's response.
      If provided, the output will always be validated against this
      format (unless the model returns a tool call).
      For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+ - `text`: A JSON schema that enforces the structure of the model's response.
+     If provided, the output will always be validated against this
+     format (unless the model returns a tool call).
      Notes:
-     - This parameter accepts Pydantic models and JSON schemas for latest models starting from GPT-4o.
-       Older models only support basic version of structured outputs through `{"type": "json_object"}`.
-       For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
-     - For structured outputs with streaming,
-       the `text_format` must be a JSON schema and not a Pydantic model.
+     - Both JSON Schema and Pydantic models are supported for latest models starting from GPT-4o.
+     - If both are provided, `text_format` takes precedence and json schema passed to `text` is ignored.
+     - Currently, this component doesn't support streaming for structured outputs.
+     - Older models only support basic version of structured outputs through `{"type": "json_object"}`.
+         For detailed information on JSON mode, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs#json-mode).
  - `reasoning`: A dictionary of parameters for reasoning. For example:
      - `summary`: The summary of the reasoning.
      - `effort`: The level of effort to put into the reasoning. Can be `low`, `medium` or `high`.
