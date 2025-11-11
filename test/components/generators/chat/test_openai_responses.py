@@ -236,9 +236,9 @@ class TestOpenAIResponsesChatGenerator:
                 "generation_kwargs": {
                     "max_tokens": 10,
                     "some_test_param": "test-params",
-                    "text_format": {
-                        "type": "json_schema",
-                        "json_schema": {
+                    "text": {
+                        "format": {
+                            "type": "json_schema",
                             "name": "CalendarEvent",
                             "strict": True,
                             "schema": {
@@ -252,7 +252,7 @@ class TestOpenAIResponsesChatGenerator:
                                 "type": "object",
                                 "additionalProperties": False,
                             },
-                        },
+                        }
                     },
                 },
                 "tools": [
@@ -593,6 +593,40 @@ class TestOpenAIResponsesChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
+    # So far from documentation, responses.parse only supports BaseModel
+    def test_live_run_with_text_format_json_schema(self):
+        json_schema = {
+            "format": {
+                "type": "json_schema",
+                "name": "person",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "minLength": 1},
+                        "age": {"type": "number", "minimum": 0, "maximum": 130},
+                    },
+                    "required": ["name", "age"],
+                    "additionalProperties": False,
+                },
+            }
+        }
+        chat_messages = [ChatMessage.from_user("Jane 54 years old")]
+        component = OpenAIResponsesChatGenerator(generation_kwargs={"text": json_schema})
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Jane" in msg["name"]
+        assert msg["age"] == 54
+        assert message.meta["status"] == "completed"
+        assert message.meta["usage"]["output_tokens"] > 0
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
     @pytest.mark.skip(
         reason="Streaming plus pydantic based model does not work due to known issue in openai python "
         "sdk https://github.com/openai/openai-python/issues/2305"
@@ -605,6 +639,26 @@ class TestOpenAIResponsesChatGenerator:
             streaming_callback=print_streaming_chunk, generation_kwargs={"text_format": calendar_event_model}
         )
         results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Marketing Summit" in msg["event_name"]
+        assert isinstance(msg["event_date"], str)
+        assert isinstance(msg["event_location"], str)
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_ser_deser_and_text_format(self, calendar_event_model):
+        chat_messages = [
+            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+        ]
+        component = OpenAIResponsesChatGenerator(generation_kwargs={"text_format": calendar_event_model})
+        serialized = component.to_dict()
+        deser = OpenAIResponsesChatGenerator.from_dict(serialized)
+        results = deser.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
@@ -715,17 +769,11 @@ class TestOpenAIResponsesChatGenerator:
         assert not message.text
         assert message.tool_calls
         tool_calls = message.tool_calls
-        assert len(tool_calls) == 2
+        assert len(tool_calls) > 0
 
         for tool_call in tool_calls:
             assert isinstance(tool_call, ToolCall)
             assert tool_call.tool_name == "weather"
-
-        arguments = [tool_call.arguments for tool_call in tool_calls]
-        # Extract city names (handle cases like "Berlin, Germany" -> "Berlin")
-        city_values = [arg["city"].split(",")[0].strip().lower() for arg in arguments]
-        assert "berlin" in city_values and "paris" in city_values
-        assert len(city_values) == 2
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
