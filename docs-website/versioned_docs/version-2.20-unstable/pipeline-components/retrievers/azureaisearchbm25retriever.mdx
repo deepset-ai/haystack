@@ -1,0 +1,130 @@
+---
+title: "AzureAISearchBM25Retriever"
+id: azureaisearchbm25retriever
+slug: "/azureaisearchbm25retriever"
+description: "A keyword-based Retriever that fetches Documents matching a query from the Azure AI Search Document Store."
+---
+
+# AzureAISearchBM25Retriever
+
+A keyword-based Retriever that fetches Documents matching a query from the Azure AI Search Document Store.
+
+A keyword-based Retriever that fetches documents matching a query from the Azure AI Search Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of [`AzureAISearchDocumentStore`](../../document-stores/azureaisearchdocumentstore.mdx)                                                                                                                   |
+| **Mandatory run variables**            | `query`: A string                                                                                                                                                                                                 |
+| **Output variables**                   | `documents`: A list of documents (matching the query)                                                                                                                                                             |
+| **API reference**                      | [Azure AI Search](/reference/integrations-azure_ai_search)                                                                                                                                                               |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_ai_search                                                                                                                 |
+
+</div>
+
+## Overview
+
+The `AzureAISearchBM25Retriever` is a keyword-based Retriever designed to fetch documents that match a query from an `AzureAISearchDocumentStore`. It uses the BM25 algorithm which calculates a weighted word overlap between the query and the documents to determine their similarity. The Retriever accepts textual query but you can also provide a combination of terms with boolean operators. Some examples of valid queries could be `"pool"`, `"pool spa"`, and `"pool spa +airport"`.
+
+In addition to the `query`, the `AzureAISearchBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
+
+If your search index includes a [semantic configuration](https://learn.microsoft.com/en-us/azure/search/semantic-how-to-query-request), you can enable semantic ranking to apply it to the Retriever's results. For more details, refer to the [Azure AI documentation](https://learn.microsoft.com/en-us/azure/search/hybrid-search-how-to-query#semantic-hybrid-search).
+
+If you want a combination of BM25 and vector retrieval, use the `AzureAISearchHybridRetriever`, which uses both vector search and BM25 search to match documents and query.
+
+## Usage
+
+### Installation
+
+This integration requires you to have an active Azure subscription with a deployed [Azure AI Search](https://azure.microsoft.com/en-us/products/ai-services/ai-search) service.
+
+To start using Azure AI search with Haystack, install the package with:
+
+```shell
+pip install azure-ai-search-haystack
+```
+
+### On its own
+
+This Retriever needs `AzureAISearchDocumentStore` and indexed documents to run.
+
+```python
+from haystack import Document
+from haystack_integrations.components.retrievers.azure_ai_search import AzureAISearchBM25Retriever
+from haystack_integrations.document_stores.azure_ai_search import AzureAISearchDocumentStore
+
+document_store = AzureAISearchDocumentStore(index_name="haystack_docs")
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+			       Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+			       Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+document_store.write_documents(documents=documents)
+
+retriever = AzureAISearchBM25Retriever(document_store=document_store)
+retriever.run(query="How many languages are spoken around the world today?")
+```
+
+### In a RAG pipeline
+
+The below example shows how to use the `AzureAISearchBM25Retriever` in a RAG pipeline. Set your `OPENAI_API_KEY` as an environment variable and then run the following code:
+
+```python
+
+from haystack_integrations.components.retrievers.azure_ai_search import AzureAISearchBM25Retriever
+from haystack_integrations.document_stores.azure_ai_search import AzureAISearchDocumentStore
+
+from haystack import Document
+from haystack import Pipeline
+from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.generators import OpenAIGenerator
+from haystack.document_stores.types import DuplicatePolicy
+
+import os
+api_key = os.environ['OPENAI_API_KEY']
+
+## Create a RAG query pipeline
+prompt_template = """
+    Given these documents, answer the question.\nDocuments:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    \nQuestion: {{question}}
+    \nAnswer:
+    """
+
+document_store = AzureAISearchDocumentStore(index_name="haystack-docs")
+
+## Add Documents
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+			       Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+			       Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+
+## policy param is optional, as AzureAISearchDocumentStore has a default policy of DuplicatePolicy.OVERWRITE
+document_store.write_documents(documents=documents, policy=DuplicatePolicy.OVERWRITE)
+
+retriever = AzureAISearchBM25Retriever(document_store=document_store)
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(name="retriever", instance=retriever)
+rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
+rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
+rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder", "llm")
+rag_pipeline.connect("llm.replies", "answer_builder.replies")
+rag_pipeline.connect("llm.meta", "answer_builder.meta")
+rag_pipeline.connect("retriever", "answer_builder.documents")
+
+question = "Tell me something about languages?"
+result = rag_pipeline.run(
+            {
+                "retriever": {"query": question},
+                "prompt_builder": {"question": question},
+                "answer_builder": {"query": question},
+            }
+        )
+print(result['answer_builder']['answers'][0])
+
+```

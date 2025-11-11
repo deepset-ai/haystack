@@ -1,0 +1,125 @@
+---
+title: "AzureAISearchEmbeddingRetriever"
+id: azureaisearchembeddingretriever
+slug: "/azureaisearchembeddingretriever"
+description: "An embedding Retriever compatible with the Azure AI Search Document Store."
+---
+
+# AzureAISearchEmbeddingRetriever
+
+An embedding Retriever compatible with the Azure AI Search Document Store.
+
+This Retriever accepts the embeddings of a single query as input and returns a list of matching documents.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the embedding retrieval pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of [`AzureAISearchDocumentStore`](../../document-stores/azureaisearchdocumentstore.mdx)                                                                                                                                                                           |
+| **Mandatory run variables**            | `query_embedding`: A list of floats                                                                                                                                                                                                                                       |
+| **Output variables**                   | `documents`: A list of documents                                                                                                                                                                                                                                          |
+| **API reference**                      | [Azure AI Search](/reference/integrations-azure_ai_search)                                                                                                                                                                                                                       |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_ai_search                                                                                                                                                                         |
+
+</div>
+
+## Overview
+
+The `AzureAISearchEmbeddingRetriever` is an embedding-based Retriever compatible with the `AzureAISearchDocumentStore`. It compares the query and document embeddings and fetches the most relevant documents from the `AzureAISearchDocumentStore` based on the outcome.
+
+The query needs to be embedded before being passed to this component. For example, you could use a Text [Embedder](../embedders.mdx) component.
+
+By default, the `AzureAISearchDocumentStore` uses the [HNSW algorithm](https://learn.microsoft.com/en-us/azure/search/vector-search-overview#nearest-neighbors-search) with cosine similarity to handle vector searches. The vector configuration is set during the initialization of the document store and can be customized by providing the `vector_search_configuration` parameter.
+
+In addition to the `query_embedding`, the `AzureAISearchEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
+
+:::info Semantic Ranking
+
+The semantic ranking capability of Azure AI Search is not available for vector retrieval. To include semantic ranking in your retrieval process, use the [`AzureAISearchBM25Retriever`](azureaisearchbm25retriever.mdx) or [`AzureAISearchHybridRetriever`](azureaisearchhybridretriever.mdx). For more details, see [Azure AI documentation](https://learn.microsoft.com/en-us/azure/search/semantic-how-to-query-request?tabs=portal-query#set-up-the-query).
+:::
+
+## Usage
+
+### Installation
+
+This integration requires you to have an active Azure subscription with a deployed [Azure AI Search](https://azure.microsoft.com/en-us/products/ai-services/ai-search) service.
+
+To start using Azure AI search with Haystack, install the package with:
+
+```shell
+pip install azure-ai-search-haystack
+```
+
+### On its own
+
+This Retriever needs `AzureAISearchDocumentStore` and indexed documents to run.
+
+```python
+from haystack_integrations.document_stores.azure_ai_search import AzureAISearchDocumentStore
+from haystack_integrations.components.retrievers.azure_ai_search import AzureAISearchEmbeddingRetriever
+
+document_store = AzureAISearchDocumentStore()
+
+retriever = AzureAISearchEmbeddingRetriever(document_store=document_store)
+
+## example run query
+retriever.run(query_embedding=[0.1]*384)
+```
+
+### In a pipeline
+
+Here is how you could use the `AzureAISearchEmbeddingRetriever` in a pipeline. In this example, you would create two pipelines: an indexing one and a querying one.
+
+In the indexing pipeline, the documents are passed to the Document Embedder and then written into the Document Store.
+
+Then, in the querying pipeline, we use a Text Embedder to get the vector representation of the input query that will be then passed to the `AzureAISearchEmbeddingRetriever` to get the results.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.writers import DocumentWriter
+
+from haystack_integrations.components.retrievers.azure_ai_search import AzureAISearchEmbeddingRetriever
+from haystack_integrations.document_stores.azure_ai_search import AzureAISearchDocumentStore
+
+document_store = AzureAISearchDocumentStore(index_name="retrieval-example")
+
+model = "sentence-transformers/all-mpnet-base-v2"
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="""Elephants have been observed to behave in a way that indicates a
+         high level of self-awareness, such as recognizing themselves in mirrors."""
+    ),
+    Document(
+        content="""In certain parts of the world, like the Maldives, Puerto Rico, and
+          San Diego, you can witness the phenomenon of bioluminescent waves."""
+    ),
+]
+
+document_embedder = SentenceTransformersDocumentEmbedder(model=model)
+document_embedder.warm_up()
+
+## Indexing Pipeline
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(instance=document_embedder, name="doc_embedder")
+indexing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="doc_writer")
+indexing_pipeline.connect("doc_embedder", "doc_writer")
+
+indexing_pipeline.run({"doc_embedder": {"documents": documents}})
+
+## Query Pipeline
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder(model=model))
+query_pipeline.add_component("retriever", AzureAISearchEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result["retriever"]["documents"][0])
+
+```

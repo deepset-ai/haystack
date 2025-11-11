@@ -1,0 +1,106 @@
+---
+title: "LostInTheMiddleRanker"
+id: lostinthemiddleranker
+slug: "/lostinthemiddleranker"
+description: "This Ranker positions the most relevant documents at the beginning and at the end of the resulting list while placing the least relevant Documents in the middle."
+---
+
+# LostInTheMiddleRanker
+
+This Ranker positions the most relevant documents at the beginning and at the end of the resulting list while placing the least relevant Documents in the middle.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents (such as a [Retriever](../retrievers.mdx) ) |
+| **Mandatory run variables**            | `documents`: A list of documents                                                                                   |
+| **Output variables**                   | `documents`: A list of documents                                                                                   |
+| **API reference**                      | [Rankers](/reference/rankers-api)                                                                                         |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/lost_in_the_middle.py               |
+
+</div>
+
+## Overview
+
+The `LostInTheMiddleRanker` reorders the documents based on the "Lost in the Middle" order, described in the ["Lost in the Middle: How Language Models Use Long Contexts"](https://arxiv.org/abs/2307.03172) research paper. It aims to lay out paragraphs into LLM context so that the relevant paragraphs are at the beginning or end of the input context, while the least relevant information is in the middle of the context. This reordering is helpful when very long contexts are sent to an LLM, as current models pay more attention to the start and end of long input contexts.
+
+In contrast to other rankers, `LostInTheMiddleRanker` assumes that the input documents are already sorted by relevance, and it doesn’t require a query as input. It is typically used as the last component before building a prompt for an LLM to prepare the input context for the LLM.
+
+### Parameters
+
+If you specify the `word_count_threshold` when running the component, the Ranker includes all documents up until the point where adding another document would exceed the given threshold. The last document that exceeds the threshold will be included in the resulting list of Documents, but all following documents will be discarded.
+
+You can also specify the `top_k` parameter to set the maximum number of documents to return.
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.rankers import LostInTheMiddleRanker
+
+ranker = LostInTheMiddleRanker()
+docs = [Document(content="Paris"),
+		Document(content="Berlin"),
+		Document(content="Madrid")]
+result = ranker.run(documents=docs)
+
+for doc in result["documents"]:
+    print(doc.content)
+```
+
+### In a pipeline
+
+Note that this example requires an OpenAI key to run.
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.rankers import LostInTheMiddleRanker
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+
+## Define prompt template
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given these documents, answer the question.\nDocuments:\n"
+        "{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
+        "Question: {{query}}\nAnswer:"
+    )
+]
+
+## Define documents
+docs = [
+    Document(content="Paris is in France..."),
+    Document(content="Berlin is in Germany..."),
+    Document(content="Lyon is in France...")
+]
+
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+ranker = LostInTheMiddleRanker(word_count_threshold=1024)
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"})
+generator = OpenAIChatGenerator()
+
+p = Pipeline()
+p.add_component(instance=retriever, name="retriever")
+p.add_component(instance=ranker, name="ranker")
+p.add_component(instance=prompt_builder, name="prompt_builder")
+p.add_component(instance=generator, name="llm")
+
+p.connect("retriever.documents", "ranker.documents")
+p.connect("ranker.documents", "prompt_builder.documents")
+p.connect("prompt_builder.messages", "llm.messages")
+
+p.run({
+    "retriever": {"query": "What cities are in France?", "top_k": 3},
+    "prompt_builder": {"query": "What cities are in France?"}
+})
+```
