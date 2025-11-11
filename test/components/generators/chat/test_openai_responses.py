@@ -647,6 +647,26 @@ class TestOpenAIResponsesChatGenerator:
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    def test_live_run_with_ser_deser_and_text_format(self, calendar_event_model):
+        chat_messages = [
+            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+        ]
+        component = OpenAIResponsesChatGenerator(generation_kwargs={"text_format": calendar_event_model})
+        serialized = component.to_dict()
+        deser = OpenAIResponsesChatGenerator.from_dict(serialized)
+        results = deser.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Marketing Summit" in msg["event_name"]
+        assert isinstance(msg["event_date"], str)
+        assert isinstance(msg["event_location"], str)
+
     def test_run_with_wrong_model(self):
         mock_client = MagicMock()
         mock_client.responses.create.side_effect = OpenAIError("Invalid model name")
