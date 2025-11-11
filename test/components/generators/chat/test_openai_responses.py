@@ -656,7 +656,7 @@ class TestOpenAIResponsesChatGenerator:
         # Metadata checks
         metadata = message.meta
         assert "gpt-4" in metadata["model"]
-        assert metadata["logprobs"] is not None
+        assert metadata["output"][0]["content"][0]["logprobs"] is not None
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
         usage = metadata["usage"]
