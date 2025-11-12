@@ -660,6 +660,11 @@ Response handling:
 - The JSON contains the structured response from the MCP server
 - Use json.loads() to parse the response into a dictionary
 
+State-mapping support:
+- MCPTool supports state-mapping parameters (`outputs_to_string`, `inputs_from_state`, `outputs_to_state`)
+- These enable integration with Agent state for automatic parameter injection and output handling
+- See the `__init__` method documentation for details on each parameter
+
 Example using Streamable HTTP:
 ```python
 import json
@@ -718,7 +723,10 @@ def __init__(name: str,
              description: str | None = None,
              connection_timeout: int = 30,
              invocation_timeout: int = 30,
-             eager_connect: bool = False)
+             eager_connect: bool = False,
+             outputs_to_string: dict[str, Any] | None = None,
+             inputs_from_state: dict[str, str] | None = None,
+             outputs_to_state: dict[str, dict[str, Any]] | None = None)
 ```
 
 Initialize the MCP tool.
@@ -733,6 +741,17 @@ Initialize the MCP tool.
 - `eager_connect`: If True, connect to server during initialization.
 If False (default), defer connection until warm_up or first tool use,
 whichever comes first.
+- `outputs_to_string`: Optional dictionary defining how tool outputs should be converted into a string.
+If the source is provided only the specified output key is sent to the handler.
+If the source is omitted the whole tool result is sent to the handler.
+Example: `{"source": "docs", "handler": my_custom_function}`
+- `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
+Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
+- `outputs_to_state`: Optional dictionary defining how tool outputs map to keys within state as well as
+optional handlers. If the source is provided only the specified output key is sent
+to the handler.
+Example with source: `{"documents": {"source": "docs", "handler": custom_handler}}`
+Example without source: `{"documents": {"handler": custom_handler}}`
 
 **Raises**:
 
@@ -784,8 +803,8 @@ def to_dict() -> dict[str, Any]
 Serializes the MCPTool to a dictionary.
 
 The serialization preserves all information needed to recreate the tool,
-including server connection parameters and timeout settings. Note that the
-active connection is not maintained.
+including server connection parameters, timeout settings, and state-mapping parameters.
+Note that the active connection is not maintained.
 
 **Returns**:
 
@@ -804,8 +823,8 @@ def from_dict(cls, data: dict[str, Any]) -> "Tool"
 Deserializes the MCPTool from a dictionary.
 
 This method reconstructs an MCPTool instance from a serialized dictionary,
-including recreating the server_info object. A new connection will be established
-to the MCP server during initialization.
+including recreating the server_info object and state-mapping parameters.
+A new connection will be established to the MCP server during initialization.
 
 **Arguments**:
 
