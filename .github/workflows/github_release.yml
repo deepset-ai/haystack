@@ -7,7 +7,6 @@ on:
       - "v2.[0-9]+.[0-9]+*"
       # Ignore release versions tagged with -rc0 suffix
       - "!v2.[0-9]+.[0-9]-rc0"
-
 jobs:
   generate-notes:
     runs-on: ubuntu-latest
@@ -59,16 +58,44 @@ jobs:
           reno report --no-show-source --ignore-cache --version v${{ steps.version.outputs.current_release }} -o relnotes.rst
 
       - name: Convert to Markdown
-        uses: docker://pandoc/core:3.1
+        uses: docker://pandoc/core:3.8
         with:
-          args: "--from rst --to markdown_github --no-highlight relnotes.rst -o relnotes.md --wrap=none"
+          args: "--from rst --to gfm --syntax-highlighting=none --wrap=none relnotes.rst -o relnotes.md"
+
+      - name: Copy relnotes file
+        run: |
+          cat relnotes.md > enhanced_relnotes.md
+
+      - name: Add contributor list
+          # only for minor releases and minor release candidates (not bugfix releases)
+        if: endsWith(steps.version.outputs.current_release, '.0')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          START: v${{ steps.version.outputs.current_release }}-rc0
+          END: ${{ github.ref_name }}
+        run: |
+          JQ_EXPR='[.commits[].author.login]
+            | map(select(. != null and . != "HaystackBot" and . != "dependabot[bot]"))
+            | unique
+            | sort_by(ascii_downcase)
+            | map("@\(.)")
+            | join(", ")'
+          CONTRIBUTORS=$(gh api "repos/deepset-ai/haystack/compare/$START...$END" \
+            --jq "$JQ_EXPR")
+
+          {
+            echo ""
+            echo "## 💙 Big thank you to everyone who contributed to this release!"
+            echo ""
+            echo "$CONTRIBUTORS"
+          } >> enhanced_relnotes.md
 
       - name: Debug
         run: |
-          cat relnotes.md
+          cat enhanced_relnotes.md
 
       - uses: ncipollo/release-action@v1
         with:
-          bodyFile: "relnotes.md"
-          prerelease: ${{ steps.version.outputs.current_pre_release }}
+          bodyFile: "enhanced_relnotes.md"
+          prerelease: ${{ steps.version.outputs.current_pre_release != '' }}
           allowUpdates: true
