@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 
 import pytest
 
@@ -126,7 +127,6 @@ class TestPipeline:
 
     def test_component_with_all_outputs_consumed_appears_in_results(self):
         """Test that components with all outputs consumed by downstream components appear in results with empty dict"""
-        from typing import Optional
 
         @component
         class Producer:
