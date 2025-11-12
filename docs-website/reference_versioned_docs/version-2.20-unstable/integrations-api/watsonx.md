@@ -18,11 +18,8 @@ Enables text completions using IBM's watsonx.ai foundation models.
 This component extends WatsonxChatGenerator to provide the standard Generator interface that works with prompt
 strings instead of ChatMessage objects.
 
-The generator works with IBM's foundation models including:
-- granite-13b-chat-v2
-- llama-2-70b-chat
-- llama-3-70b-instruct
-- Other watsonx.ai chat models
+The generator works with IBM's foundation models that are listed
+[here](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx&audience=wdp).
 
 You can customize the generation behavior by passing parameters to the watsonx.ai API through the
 `generation_kwargs` argument. These parameters are passed directly to the watsonx.ai inference endpoint.
@@ -73,7 +70,7 @@ Output:
 ```python
 def __init__(*,
              api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
-             model: str = "ibm/granite-3-2b-instruct",
+             model: str = "ibm/granite-3-3-8b-instruct",
              project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
              api_base_url: str = "https://us-south.ml.cloud.ibm.com",
              system_prompt: str | None = None,
@@ -233,14 +230,8 @@ This component interacts with IBM's watsonx.ai platform to generate chat respons
 models. It supports the [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage) format for both input
 and output, including multimodal inputs with text and images.
 
-The generator works with IBM's foundation models including:
-- granite-13b-chat-v2
-- llama-2-70b-chat
-- llama-3-70b-instruct
-- llama-3-2-11b-vision-instruct (multimodal)
-- llama-3-2-90b-vision-instruct (multimodal)
-- pixtral-12b (multimodal)
-- Other watsonx.ai chat models
+The generator works with IBM's foundation models that are listed
+[here](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models.html?context=wx&audience=wdp).
 
 You can customize the generation behavior by passing parameters to the watsonx.ai API through the
 `generation_kwargs` argument. These parameters are passed directly to the watsonx.ai inference endpoint.
@@ -294,7 +285,7 @@ print(response)
 ```python
 def __init__(*,
              api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
-             model: str = "ibm/granite-3-2b-instruct",
+             model: str = "ibm/granite-3-3-8b-instruct",
              project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
              api_base_url: str = "https://us-south.ml.cloud.ibm.com",
              generation_kwargs: dict[str, Any] | None = None,
@@ -454,7 +445,7 @@ documents = [
 ]
 
 document_embedder = WatsonxDocumentEmbedder(
-    model="ibm/slate-30m-english-rtrvr",
+    model="ibm/slate-30m-english-rtrvr-v2",
     api_key=Secret.from_env_var("WATSONX_API_KEY"),
     api_base_url="https://us-south.ml.cloud.ibm.com",
     project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
@@ -472,7 +463,7 @@ print(result["documents"][0].embedding)
 
 ```python
 def __init__(*,
-             model: str = "ibm/slate-30m-english-rtrvr",
+             model: str = "ibm/slate-30m-english-rtrvr-v2",
              api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
              api_base_url: str = "https://us-south.ml.cloud.ibm.com",
              project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
@@ -492,7 +483,7 @@ Creates a WatsonxDocumentEmbedder component.
 **Arguments**:
 
 - `model`: The name of the model to use for calculating embeddings.
-Default is "ibm/slate-30m-english-rtrvr".
+Default is "ibm/slate-30m-english-rtrvr-v2".
 - `api_key`: The WATSONX API key. Can be set via environment variable WATSONX_API_KEY.
 - `api_base_url`: The WATSONX URL for the watsonx.ai service.
 Default is "https://us-south.ml.cloud.ibm.com".
@@ -582,7 +573,7 @@ from haystack_integrations.components.embedders.watsonx.text_embedder import Wat
 text_to_embed = "I love pizza!"
 
 text_embedder = WatsonxTextEmbedder(
-    model="ibm/slate-30m-english-rtrvr",
+    model="ibm/slate-30m-english-rtrvr-v2",
     api_key=Secret.from_env_var("WATSONX_API_KEY"),
     api_base_url="https://us-south.ml.cloud.ibm.com",
     project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
@@ -591,7 +582,7 @@ text_embedder = WatsonxTextEmbedder(
 print(text_embedder.run(text_to_embed))
 
 # {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-#  'meta': {'model': 'ibm/slate-30m-english-rtrvr',
+#  'meta': {'model': 'ibm/slate-30m-english-rtrvr-v2',
 #           'truncated_input_tokens': 3}}
 ```
 
@@ -601,7 +592,7 @@ print(text_embedder.run(text_to_embed))
 
 ```python
 def __init__(*,
-             model: str = "ibm/slate-30m-english-rtrvr",
+             model: str = "ibm/slate-30m-english-rtrvr-v2",
              api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
              api_base_url: str = "https://us-south.ml.cloud.ibm.com",
              project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
@@ -617,7 +608,7 @@ Creates an WatsonxTextEmbedder component.
 **Arguments**:
 
 - `model`: The name of the IBM watsonx model to use for calculating embeddings.
-Default is "ibm/slate-30m-english-rtrvr".
+Default is "ibm/slate-30m-english-rtrvr-v2".
 - `api_key`: The WATSONX API key. Can be set via environment variable WATSONX_API_KEY.
 - `api_base_url`: The WATSONX URL for the watsonx.ai service.
 Default is "https://us-south.ml.cloud.ibm.com".
@@ -683,3 +674,4 @@ Embeds a single string.
 A dictionary with:
 - 'embedding': The embedding of the input text
 - 'meta': Information about the model usage
+
