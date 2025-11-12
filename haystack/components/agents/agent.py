@@ -70,8 +70,9 @@ class Agent:
     """
     A tool-using Agent powered by a large language model.
 
-    The Agent processes messages and calls tools until it meets an exit condition. 
-    You can set one or more exit conditions to control when it stops. For example, it can stop after generating a response or after calling a tool. 
+    The Agent processes messages and calls tools until it meets an exit condition.
+    You can set one or more exit conditions to control when it stops. 
+    For example, it can stop after generating a response or after calling a tool.
 
     Without tools, the Agent works like a standard LLM that generates text. It produces one response and then stops.
 
@@ -82,7 +83,6 @@ class Agent:
     2. Uses a calculator to compute tips based on its findings.
     3. Returns the final answer with its context.
 
-    
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
@@ -174,7 +174,10 @@ class Agent:
                 name: deepwiki
                 description:
                 tool_id:
-            system_prompt: "You are a deep research assistant. You create comprehensive research reports to answer to user's questions. You have deepwiki at your disposal. Use deepwiki to undersand, navigate, and explore software projects. "
+            system_prompt: "You are a deep research assistant. 
+            You create comprehensive research reports to answer to user's questions. 
+            You have deepwiki at your disposal. 
+            Use deepwiki to undersand, navigate, and explore software projects. "
             exit_conditions:
             state_schema: {}
             max_agent_steps: 100
