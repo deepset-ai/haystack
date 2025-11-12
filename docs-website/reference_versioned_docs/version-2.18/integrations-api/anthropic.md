@@ -463,3 +463,4 @@ Deserialize this component from a dictionary.
 **Returns**:
 
 The deserialized component instance.
+
