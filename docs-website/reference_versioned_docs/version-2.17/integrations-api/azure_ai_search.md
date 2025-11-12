@@ -262,6 +262,21 @@ Deletes all documents with a matching document_ids from the search index.
 
 - `document_ids`: ids of the documents to be deleted.
 
+<a id="haystack_integrations.document_stores.azure_ai_search.document_store.AzureAISearchDocumentStore.delete_all_documents"></a>
+
+#### AzureAISearchDocumentStore.delete\_all\_documents
+
+```python
+def delete_all_documents(recreate_index: bool = False) -> None
+```
+
+Deletes all documents in the document store.
+
+**Arguments**:
+
+- `recreate_index`: If True, the index will be deleted and recreated with the original schema.
+If False, all documents will be deleted while preserving the index.
+
 <a id="haystack_integrations.document_stores.azure_ai_search.document_store.AzureAISearchDocumentStore.search_documents"></a>
 
 #### AzureAISearchDocumentStore.search\_documents
@@ -305,3 +320,4 @@ filters, see the [metadata filtering documentation](https://docs.haystack.deepse
 **Returns**:
 
 A list of Documents that match the given filters.
+
