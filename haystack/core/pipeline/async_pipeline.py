@@ -329,7 +329,7 @@ class AsyncPipeline(PipelineBase):
                         receivers=cached_receivers[component_name],
                         include_outputs_from=include_outputs_from,
                     )
-                    if pruned:
+                    if pruned or component_name in include_outputs_from:
                         pipeline_outputs[component_name] = pruned
 
                     scheduled_components.remove(component_name)

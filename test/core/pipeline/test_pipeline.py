@@ -123,3 +123,32 @@ class TestPipeline:
                 component_visits={"erroring_component": 0},
             )
         assert "Component name: 'erroring_component'" in str(exc_info.value)
+
+    def test_component_with_all_outputs_consumed_appears_in_results(self):
+        """Test that components with all outputs consumed by downstream components appear in results with empty dict"""
+
+        @component
+        class ComponentA:
+            @component.output_types(output=str)
+            def run(self, value: str):
+                return {"output": value}
+
+        @component
+        class ComponentB:
+            @component.output_types(result=str)
+            def run(self, input_value: str):
+                return {"result": input_value.upper()}
+
+        pp = Pipeline()
+        pp.add_component("component_a", ComponentA())
+        pp.add_component("component_b", ComponentB())
+        pp.connect("component_a.output", "component_b.input_value")
+
+        result = pp.run({"component_a": {"value": "test"}})
+
+        # Component A should NOT appear in results since all its outputs were consumed
+        # and it's not in include_outputs_from
+        assert "component_a" not in result
+        # Component B should have its output since it's a leaf component
+        assert "component_b" in result
+        assert result["component_b"] == {"result": "TEST"}
