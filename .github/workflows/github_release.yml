@@ -7,8 +7,6 @@ on:
       - "v2.[0-9]+.[0-9]+*"
       # Ignore release versions tagged with -rc0 suffix
       - "!v2.[0-9]+.[0-9]-rc0"
-
-  pull_request:
 jobs:
   generate-notes:
     runs-on: ubuntu-latest
@@ -64,14 +62,18 @@ jobs:
         with:
           args: "--from rst --to gfm --syntax-highlighting=none --wrap=none relnotes.rst -o relnotes.md"
 
+      - name: Copy relnotes file
+        run: |
+          cat relnotes.md > enhanced_relnotes.md
+
       - name: Add contributor list
-        # only for minor releases and minor release candidates (not bugfix releases)
+          # only for minor releases and minor release candidates (not bugfix releases)
         if: endsWith(steps.version.outputs.current_release, '.0')
         env:
           GH_TOKEN: ${{ github.token }}
           START: v${{ steps.version.outputs.current_release }}-rc0
-          END: "v2.20.0-rc1"
           # END: ${{ github.ref_name }}
+          END: v2.20.0-rc1
         run: |
           JQ_EXPR='[.commits[].author.login]
             | map(select(. != null and . != "HaystackBot" and . != "dependabot[bot]"))
@@ -82,7 +84,6 @@ jobs:
           CONTRIBUTORS=$(gh api "repos/deepset-ai/haystack/compare/$START...$END" \
             --jq "$JQ_EXPR")
 
-          cat relnotes.md > enhanced_relnotes.md
           {
             echo ""
             echo "## 💙 Big thank you to everyone who contributed to this release!"
@@ -94,8 +95,8 @@ jobs:
         run: |
           cat enhanced_relnotes.md
 
-      # - uses: ncipollo/release-action@v1
-      #   with:
-      #     bodyFile: "relnotes.md"
-      #     prerelease: ${{ steps.version.outputs.current_pre_release != '' }}
-      #     allowUpdates: true
+      - uses: ncipollo/release-action@v1
+        with:
+          bodyFile: "enhanced_relnotes.md"
+          prerelease: ${{ steps.version.outputs.current_pre_release != '' }}
+          allowUpdates: true
