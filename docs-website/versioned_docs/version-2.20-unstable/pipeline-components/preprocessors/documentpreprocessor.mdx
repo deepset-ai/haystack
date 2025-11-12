@@ -1,0 +1,79 @@
+---
+title: "DocumentPreprocessor"
+id: documentpreprocessor
+slug: "/documentpreprocessor"
+description: "Divides a list of text documents into a list of shorter text documents and then makes them more readable by cleaning."
+---
+
+# DocumentPreprocessor
+
+Divides a list of text documents into a list of shorter text documents and then makes them more readable by cleaning.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx)                                                    |
+| **Mandatory run variables**            | `documents`: A list of documents                                                                              |
+| **Output variables**                   | `documents`: A list of split and cleaned documents                                                            |
+| **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                        |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/document_preprocessor.py |
+
+</div>
+
+## Overview
+
+`DocumentPreprocessor` first splits and then cleans documents.
+
+It is a SuperComponent that combines a `DocumentSplitter` and a `DocumentCleaner` into a single component.
+
+### Parameters
+
+The `DocumentPreprocessor` exposes all initialization parameters of the underlying `DocumentSplitter` and `DocumentCleaner`, and they are all optional. A detailed description of their parameters is in the respective documentation pages:
+
+- [DocumentSplitter](documentsplitter.mdx)
+- [DocumentCleaner](documentcleaner.mdx)
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import DocumentPreprocessor
+
+doc = Document(content="I love pizza!")
+preprocessor = DocumentPreprocessor()
+
+result = preprocessor.run(documents=[doc])
+print(result["documents"])
+```
+
+### In a pipeline
+
+You can use the `DocumentPreprocessor` in your indexing pipeline. The example below requires installing additional dependencies for the `MultiFileConverter`:
+
+```shell
+pip install pypdf markdown-it-py  mdit_plain trafilatura python-pptx python-docx jq openpyxl tabulate pandas
+```
+
+```python
+from haystack import Pipeline
+from haystack.components.converters import MultiFileConverter
+from haystack.components.preprocessors import DocumentPreprocessor
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", MultiFileConverter())
+pipeline.add_component("preprocessor", DocumentPreprocessor())
+pipeline.add_component("writer", DocumentWriter(document_store = document_store))
+pipeline.connect("converter", "preprocessor")
+pipeline.connect("preprocessor", "writer")
+
+result = pipeline.run(data={"sources": ["test.txt", "test.pdf"]})
+print(result)
+## {'writer': {'documents_written': 3}}
+```

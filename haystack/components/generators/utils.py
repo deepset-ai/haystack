@@ -84,6 +84,10 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     :returns: The ChatMessage.
     """
     text = "".join([chunk.content for chunk in chunks])
+    logprobs = []
+    for chunk in chunks:
+        if chunk.meta.get("logprobs"):
+            logprobs.append(chunk.meta.get("logprobs"))
     tool_calls = []
 
     # Process tool calls if present in any chunk
@@ -134,4 +138,21 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
         "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
     }
 
+    if logprobs:
+        meta["logprobs"] = logprobs
+
     return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
+
+
+def _serialize_object(obj):
+    """Convert an object to a serializable dict recursively"""
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    elif hasattr(obj, "__dict__"):
+        return {k: _serialize_object(v) for k, v in obj.__dict__.items() if not k.startswith("_")}
+    elif isinstance(obj, dict):
+        return {k: _serialize_object(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_serialize_object(item) for item in obj]
+    else:
+        return obj

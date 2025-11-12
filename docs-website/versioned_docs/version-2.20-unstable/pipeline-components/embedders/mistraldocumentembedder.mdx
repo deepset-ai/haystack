@@ -1,0 +1,100 @@
+---
+title: "MistralDocumentEmbedder"
+id: mistraldocumentembedder
+slug: "/mistraldocumentembedder"
+description: "This component computes the embeddings of a list of documents using the Mistral API and models."
+---
+
+# MistralDocumentEmbedder
+
+This component computes the embeddings of a list of documents using the Mistral API and models.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
+| **Mandatory init variables** | `api_key`: The Mistral API key. Can be set with `MISTRAL_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of documents to be embedded |
+| **Output variables** | `documents`: A list of documents (enriched with embeddings)  <br /> <br />`meta`: A dictionary of metadata strings |
+| **API reference** | [Mistral](/reference/integrations-mistral) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mistral |
+
+</div>
+
+This component should be used to embed a list of Documents. To embed a string, use the [`MistralTextEmbedder`](mistraltextembedder.mdx).
+
+## Overview
+
+`MistralDocumentEmbedder` computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses the Mistral API and its embedding models.
+
+The component currently supports the `mistral-embed` embedding model. The list of all supported models can be found in Mistral’s [embedding models documentation](https://docs.mistral.ai/platform/endpoints/#embedding-models).
+
+To start using this integration with Haystack, install it with:
+
+```shell
+pip install mistral-haystack
+```
+
+`MistralDocumentEmbedder` needs a Mistral API key to work. It uses an `MISTRAL_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+
+```python
+embedder = MistralDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"), model="mistral-embed")
+```
+
+## Usage
+
+### On its own
+
+Remember first to set the`MISTRAL_API_KEY` as an environment variable or pass it in directly.
+
+Here is how you can use the component on its own:
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.mistral.document_embedder import MistralDocumentEmbedder
+
+doc = Document(content="I love pizza!")
+
+embedder = MistralDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"), model="mistral-embed")
+
+result = embedder.run([doc])
+print(result['documents'][0].embedding)
+## [-0.453125, 1.2236328, 2.0058594, 0.67871094...]
+```
+
+### In a pipeline
+
+Below is an example of the `MistralDocumentEmbedder` in an indexing pipeline. We are indexing the contents of a webpage into an `InMemoryDocumentStore`.
+
+```python
+from haystack import Pipeline
+from haystack.components.converters import HTMLToDocument
+from haystack.components.fetchers import LinkContentFetcher
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.mistral.document_embedder import MistralDocumentEmbedder
+
+document_store = InMemoryDocumentStore()
+fetcher = LinkContentFetcher()
+converter = HTMLToDocument()
+chunker = DocumentSplitter()
+embedder = MistralDocumentEmbedder()
+writer = DocumentWriter(document_store=document_store)
+
+indexing = Pipeline()
+
+indexing.add_component(name="fetcher", instance=fetcher)
+indexing.add_component(name="converter", instance=converter)
+indexing.add_component(name="chunker", instance=chunker)
+indexing.add_component(name="embedder", instance=embedder)
+indexing.add_component(name="writer", instance=writer)
+
+indexing.connect("fetcher", "converter")
+indexing.connect("converter", "chunker")
+indexing.connect("chunker", "embedder")
+indexing.connect("embedder", "writer")
+
+indexing.run(data={"fetcher": {"urls": ["https://mistral.ai/news/la-plateforme/"]}})
+```

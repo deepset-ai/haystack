@@ -117,13 +117,12 @@ print(user_message.texts)
 ```python
 from haystack.dataclasses import ChatMessage, ImageContent
 
-capybara_image_url = (
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/"
-    "Cattle_tyrant_%28Machetornis_rixosa%29_on_Capybara.jpg/"
-    "960px-Cattle_tyrant_%28Machetornis_rixosa%29_on_Capybara.jpg?download"
+lion_image_url = (
+    "https://images.unsplash.com/photo-1546182990-dffeafbe841d?"
+	"ixlib=rb-4.0&q=80&w=1080&fit=max"
 )
 
-image_content = ImageContent.from_url(capybara_image_url, detail="low")
+image_content = ImageContent.from_url(lion_image_url, detail="low")
 
 user_message = ChatMessage.from_user(
 	content_parts=[

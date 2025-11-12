@@ -584,9 +584,8 @@ Batch elements of an iterable into fixed-length chunks or blocks.
 
 ### QdrantDocumentStore
 
-A QdrantDocumentStore implementation that you
-can use with any Qdrant instance: in-memory, disk-persisted, Docker-based,
-and Qdrant Cloud Cluster deployments.
+A QdrantDocumentStore implementation that you can use with any Qdrant instance: in-memory, disk-persisted,
+Docker-based, and Qdrant Cloud Cluster deployments.
 
 Usage example by creating an in-memory instance:
 
@@ -596,7 +595,8 @@ from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 
 document_store = QdrantDocumentStore(
     ":memory:",
-    recreate_index=True
+    recreate_index=True,
+    embedding_dim=5
 )
 document_store.write_documents([
     Document(content="This is first", embedding=[0.0]*5),
@@ -661,6 +661,8 @@ def __init__(location: Optional[str] = None,
              scroll_size: int = 10_000,
              payload_fields_to_index: Optional[List[dict]] = None) -> None
 ```
+
+Initializes a QdrantDocumentStore.
 
 **Arguments**:
 
@@ -849,6 +851,34 @@ Asynchronously deletes documents that match the provided `document_ids` from the
 **Arguments**:
 
 - `document_ids`: the document ids to delete
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.delete_all_documents"></a>
+
+#### QdrantDocumentStore.delete\_all\_documents
+
+```python
+def delete_all_documents(recreate_index: bool = False) -> None
+```
+
+Deletes all documents from the document store.
+
+**Arguments**:
+
+- `recreate_index`: Whether to recreate the index after deleting all documents.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.delete_all_documents_async"></a>
+
+#### QdrantDocumentStore.delete\_all\_documents\_async
+
+```python
+async def delete_all_documents_async(recreate_index: bool = False) -> None
+```
+
+Asynchronously deletes all documents from the document store.
+
+**Arguments**:
+
+- `recreate_index`: Whether to recreate the index after deleting all documents.
 
 <a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.from_dict"></a>
 

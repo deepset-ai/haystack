@@ -1,0 +1,128 @@
+---
+title: "ComponentTool"
+id: componenttool
+slug: "/componenttool"
+description: "This wrapper allows using Haystack components to be used as tools by LLMs."
+---
+
+# ComponentTool
+
+This wrapper allows using Haystack components to be used as tools by LLMs.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `component`: The Haystack component to wrap                                         |
+| **API reference**            | [Tools](/reference/tools-api)                       |
+| **GitHub link**              | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/component_tool.py |
+
+</div>
+
+## Overview
+
+`ComponentTool` is a Tool that wraps Haystack components, allowing them to be used as tools by LLMs. ComponentTool automatically generates LLM-compatible tool schemas from component input sockets, which are derived from the component's `run` method signature and type hints.
+
+It does input type conversion and offers support for components with run methods that have the following input types:
+
+- Basic types (str, int, float, bool, dict)
+- Dataclasses (both simple and nested structures)
+- Lists of basic types (such as List[str])
+- Lists of dataclasses (such as List[Document])
+- Parameters with mixed types (such as List[Document], str...)
+
+### Parameters
+
+- `component` is mandatory and needs to be a Haystack component, either an existing one or a custom component.
+- `name` is optional and defaults to the name of the component written in snake case, for example, "serper_dev_web_search" for SerperDevWebSearch.
+- `description` is optional and defaults to the component’s docstring. It’s the description that explains to the LLM what the tool can be used for.
+
+## Usage
+
+Install the additional dependencies `docstring-parser` and `jsonschema` package to use the `ComponentTool`:
+
+```shell
+pip install docstring-parser jsonschema
+```
+
+### In a pipeline
+
+You can create a `ComponentTool` from an existing `SerperDevWebSearch` component and let an `OpenAIChatGenerator` use it as a tool in a pipeline.
+
+```python
+from haystack import component, Pipeline
+from haystack.tools import ComponentTool
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.utils import Secret
+from haystack.components.tools.tool_invoker import ToolInvoker
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+## Create a SerperDev search component
+search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
+
+## Create a tool from the component
+tool = ComponentTool(
+    component=search,
+    name="web_search",  # Optional: defaults to "serper_dev_web_search"
+    description="Search the web for current information on any topic"  # Optional: defaults to component docstring
+)
+
+## Create pipeline with OpenAIChatGenerator and ToolInvoker
+pipeline = Pipeline()
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
+
+## Connect components
+pipeline.connect("llm.replies", "tool_invoker.messages")
+
+message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
+
+## Run pipeline
+result = pipeline.run({"llm": {"messages": [message]}})
+
+print(result)
+```
+
+### With the Agent Component
+
+You can  use `ComponentTool` with the [Agent](../pipeline-components/agents-1/agent.mdx) component. Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool
+from haystack.components.agents import Agent
+from haystack.components.websearch import SerperDevWebSearch
+from typing import List
+
+## Create a SerperDev search component
+search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
+
+## Create a tool from the component
+search_tool = ComponentTool(
+    component=search,
+    name="web_search",  # Optional: defaults to "serper_dev_web_search"
+    description="Search the web for current information on any topic"  # Optional: defaults to component docstring
+)
+
+## Agent Setup
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[search_tool],
+    exit_conditions=["text"]
+)
+
+## Run the Agent
+agent.warm_up()
+response = agent.run(messages=[ChatMessage.from_user("Find information about Nikola Tesla")])
+
+## Output
+print(response["messages"][-1].text)
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
+
+📓 Tutorial: [Build a Tool-Calling Agent](https://haystack.deepset.ai/tutorials/43_building_a_tool_calling_agent)
