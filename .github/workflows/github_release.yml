@@ -76,18 +76,17 @@ jobs:
           CONTRIBUTORS=$(gh api "repos/deepset-ai/haystack/compare/$START...$END" \
             --jq '[.commits[].author.login] | map(select(. != null)) | unique | map("@\(.)") | join(", ")')
 
-          chmod 777 relnotes.md
-
+          cat relnotes.md > enhanced_relnotes.md
           {
             echo ""
             echo "## 💙 Big thank you to everyone who contributed to this release!"
             echo ""
             echo "$CONTRIBUTORS"
-          } >> relnotes.md
+          } >> enhanced_relnotes.md
 
       - name: Debug
         run: |
-          cat relnotes.md
+          cat enhanced_relnotes.md
 
       # - uses: ncipollo/release-action@v1
       #   with:
