@@ -7,6 +7,8 @@ on:
       - "v2.[0-9]+.[0-9]+*"
       # Ignore release versions tagged with -rc0 suffix
       - "!v2.[0-9]+.[0-9]-rc0"
+
+  pull_request:
 jobs:
   generate-notes:
     runs-on: ubuntu-latest
@@ -95,8 +97,8 @@ jobs:
         run: |
           cat enhanced_relnotes.md
 
-      - uses: ncipollo/release-action@v1
-        with:
-          bodyFile: "enhanced_relnotes.md"
-          prerelease: ${{ steps.version.outputs.current_pre_release != '' }}
-          allowUpdates: true
+      # - uses: ncipollo/release-action@v1
+      #   with:
+      #     bodyFile: "enhanced_relnotes.md"
+      #     prerelease: ${{ steps.version.outputs.current_pre_release != '' }}
+      #     allowUpdates: true
