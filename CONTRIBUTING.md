@@ -291,6 +291,23 @@ enhancements:
     Upgrade transformers to the latest version 4.31.0 so that Haystack can support the new LLama2 models.
 ```
 
+Each section of the YAML file must follow [reStructuredText formatting](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html).
+
+For inline code, use double backticks to wrap the code.
+```
+``OpenAIChatGenerator``
+```
+
+For code blocks, use the [code block directive](https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-code-block).
+
+```
+.. code:: python
+  from haystack.dataclasses import ChatMessage
+
+  message = ChatMessage.from_user("Hello!")
+  print(message.text)
+```
+
 You can now add the file to the same branch containing the code changes. Your release note will be part of your pull
 request and reviewed along with any code you changed.
 
