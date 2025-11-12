@@ -1,0 +1,125 @@
+---
+title: "LLMEvaluator"
+id: llmevaluator
+slug: "/llmevaluator"
+description: "This Evaluator uses an LLM to evaluate inputs based on a prompt containing user-defined instructions and examples."
+---
+
+# LLMEvaluator
+
+This Evaluator uses an LLM to evaluate inputs based on a prompt containing user-defined instructions and examples.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
+| **Mandatory init variables** | `instructions`: The prompt instructions string  <br /> <br />`inputs`: The expected inputs  <br /> <br />`outputs`: The output names of the evaluation results  <br /> <br />`examples`: Few-shot examples conforming to the input and output format |
+| **Mandatory run variables** | `inputs`: Defined by the user – for example, questions or responses |
+| **Output variables** | `results`: A dictionary containing keys defined by the user, such as score |
+| **API reference** | [Evaluators](/reference/evaluators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/llm_evaluator.py |
+
+</div>
+
+## Overview
+
+The `LLMEvaluator` component can evaluate answers, documents, or any other outputs of a Haystack pipeline based on a user-defined aspect. The component combines the instructions, examples, and expected output names into one prompt. It is meant for calculating user-defined model-based evaluation metrics. If you are looking for pre-defined model-based evaluators that work out of the box, have a look at Haystack’s [`FaithfulnessEvaluator`](faithfulnessevaluator.mdx) and [`ContextRelevanceEvaluator`](contextrelevanceevaluator.mdx) components instead.
+
+### Parameters
+
+The default model for this Evaluator is `gpt-4o-mini`. You can override the model using the `chat_generator` parameter during initialization. This needs to be a Chat Generator instance configured to return a JSON object. For example, when using the [`OpenAIChatGenerator`](../generators/openaichatgenerator.mdx), you should pass `{"response_format": {"type": "json_object"}}` in its `generation_kwargs`.
+
+If you are not initializing the Evaluator with your own Chat Generator other than OpenAI, a valid OpenAI API key must be set as an `OPENAI_API_KEY` environment variable. For details, see our [documentation page on secret management](../../concepts/secret-management.mdx).
+
+`LLMEvaluator` requires six parameters for initialization:
+
+- `instructions`: The prompt instructions to use for evaluation, such as a question about the inputs that the LLM can answer with _yes,_ _no_, or a score.
+- `inputs`: The inputs that the `LLMEvaluator` expects and that it evaluates. The inputs determine the incoming connections of the component. Each input is a tuple of an input name and input type. Input types must be lists. An example could be `[("responses", List[str])]`.
+- `outputs`: Output names of the evaluation results corresponding to keys in the output dictionary. An example could be a `["score"]`.
+- `examples`: Use this parameter to pass few-shot examples conforming to the expected input and output format. These examples are included in the prompt that is sent to the LLM. Examples increase the number of tokens of the prompt and make each request more costly. Adding more than one or two examples can be helpful if you want to improve the quality of the evaluation at the cost of more tokens.
+- `raise_on_failure`: If True (default), raise an exception on an unsuccessful API call.
+- `progress_bar`: Whether to show a progress bar during the evaluation. None is the default.
+
+Each example must be a dictionary with keys `inputs` and `outputs`.
+`inputs` must be a dictionary with keys `questions` and `contexts`.
+`outputs` must be a dictionary with `statements` and `statement_scores`.
+
+Here is the expected format:
+
+```python
+[{
+	"inputs": {
+		"questions": "What is the capital of Italy?", "contexts": ["Rome is the capital of Italy."],
+	},
+	"outputs": {
+		"statements": ["Rome is the capital of Italy.", "Rome has more than 4 million inhabitants."],
+		"statement_scores": [1, 0],
+	},
+}]
+```
+
+## Usage
+
+### On its own
+
+Below is an example where we use an `LLMEvaluator` component to evaluate a generated response. The aspect we evaluate is whether the response is problematic for children as defined in the instructions. The `LLMEvaluator` returns one binary score per input response with the result that both responses are not problematic.
+
+```python
+from typing import List
+from haystack.components.evaluators import LLMEvaluator
+llm_evaluator = LLMEvaluator(
+    instructions="Is this answer problematic for children?",
+    inputs=[("responses", List[str])],
+    outputs=["score"],
+    examples=[
+        {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
+        {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}},
+    ],
+)
+responses = [
+    "Football is the most popular sport with around 4 billion followers worldwide",
+    "Python language was created by Guido van Rossum.",
+]
+results = llm_evaluator.run(responses=responses)
+print(results)
+## {'results': [{'score': 0}, {'score': 0}]}
+```
+
+### In a pipeline
+
+Below is an example where we use an `LLMEvaluator` in a pipeline to evaluate a response.
+
+```python
+from typing import List
+from haystack import Pipeline
+from haystack.components.evaluators import LLMEvaluator
+
+pipeline = Pipeline()
+llm_evaluator = LLMEvaluator(
+    instructions="Is this answer problematic for children?",
+    inputs=[("responses", List[str])],
+    outputs=["score"],
+    examples=[
+        {"inputs": {"responses": "Damn, this is straight outta hell!!!"}, "outputs": {"score": 1}},
+        {"inputs": {"responses": "Football is the most popular sport."}, "outputs": {"score": 0}},
+    ],
+)
+
+pipeline.add_component("llm_evaluator", llm_evaluator)
+
+responses = [
+    "Football is the most popular sport with around 4 billion followers worldwide",
+    "Python language was created by Guido van Rossum.",
+]
+
+result = pipeline.run(
+		{
+	    "llm_evaluator": {"responses": responses}
+    }
+)
+
+for evaluator in result:
+    print(result[evaluator]["results"])
+## [{'score': 0}, {'score': 0}]
+```

@@ -1,0 +1,114 @@
+---
+title: "OpenAIDocumentEmbedder"
+id: openaidocumentembedder
+slug: "/openaidocumentembedder"
+description: "OpenAIDocumentEmbedder computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses OpenAI embedding models."
+---
+
+# OpenAIDocumentEmbedder
+
+OpenAIDocumentEmbedder computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses OpenAI embedding models.
+
+The vectors computed by this component are necessary to perform embedding retrieval on a collection of documents. At retrieval time, the vector representing the query is compared with those of the documents to find the most similar or relevant documents.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
+| **Mandatory init variables** | `api_key`: An OpenAI API key. Can be set with `OPENAI_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `documents`: A list of documents (enriched with embeddings)  <br /> <br />`meta`: A dictionary of metadata |
+| **API reference** | [Embedders](/reference/embedders-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/openai_document_embedder.py |
+
+</div>
+
+## Overview
+
+To see the list of compatible OpenAI embedding models, head over to OpenAI [documentation](https://platform.openai.com/docs/guides/embeddings/embedding-models). The default model for `OpenAIDocumentEmbedder` is `text-embedding-ada-002`. You can specify another model with the `model` parameter when initializing this component.
+
+This component should be used to embed a list of documents. To embed a string, use the [OpenAITextEmbedder](openaitextembedder.mdx).
+
+The component uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+
+```
+embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"))
+```
+
+### Embedding Metadata
+
+Text documents often come with a set of metadata. If they are distinctive and semantically meaningful, you can embed them along with the text of the document to improve retrieval.
+
+You can do this easily by using the Document Embedder:
+
+```python
+from haystack import Document
+from haystack.components.embedders import OpenAIDocumentEmbedder
+
+doc = Document(content="some text",meta={"title": "relevant title", "page number": 18})
+
+embedder = OpenAIDocumentEmbedder(meta_fields_to_embed=["title"])
+
+docs_w_embeddings = embedder.run(documents=[doc])["documents"]
+```
+
+## Usage
+
+### On its own
+
+Here is how you can use the component on its own:
+
+```python
+from haystack.components.embedders import OpenAIDocumentEmbedder
+
+doc = Document(content="I love pizza!")
+
+document_embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"))
+
+result = document_embedder.run([doc])
+print(result['documents'][0].embedding)
+
+## [0.017020374536514282, -0.023255806416273117, ...]
+```
+
+:::info
+We recommend setting OPENAI_API_KEY as an environment variable instead of setting it as a parameter.
+:::
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
+from haystack.components.writers import DocumentWriter
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("embedder", OpenAIDocumentEmbedder())
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("embedder", "writer")
+
+indexing_pipeline.run({"embedder": {"documents": documents}})
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", OpenAITextEmbedder())
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder":{"text": query}})
+
+print(result['retriever']['documents'][0])
+
+## Document(id=..., mimetype: 'text/plain',
+## text: 'My name is Wolfgang and I live in Berlin')
+```

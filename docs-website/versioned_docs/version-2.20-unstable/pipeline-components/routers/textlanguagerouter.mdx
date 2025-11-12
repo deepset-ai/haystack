@@ -1,0 +1,62 @@
+---
+title: "TextLanguageRouter"
+id: textlanguagerouter
+slug: "/textlanguagerouter"
+description: "Use this component in pipelines to route a query based on its language."
+---
+
+# TextLanguageRouter
+
+Use this component in pipelines to route a query based on its language.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | As the first component to route a query to different [Retrievers](../retrievers.mdx) , based on its language |
+| **Mandatory init variables** | `languages`: A list of ISO language codes |
+| **Mandatory run variables** | `text`: A string |
+| **Output variables** | `unmatched`: A string  <br /> <br />`<language>`: A string (where `<language>` is defined during initialization). For example: `fr`: French language string. |
+| **API reference** | [Routers](/reference/routers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/text_language_router.py |
+
+</div>
+
+## Overview
+
+`TextLanguageRouter` detects the language of an input string and routes it to an output named after the language if it's in the set of languages the component was initialized with. By default, only English is in this set. If the detected language of the input text is not in the component’s `languages` , it's routed to an output named `unmatched`.
+
+In pipelines, it's used as the first component to route a query based on its language and filter out queries in unsupported languages.
+
+The components parameter `languages` must be a list of languages in ISO code, such as en, de, fr, es, it, each corresponding to a different output connection (see [langdetect documentation](https://github.com/Mimino666/langdetect#languages))).
+
+## Usage
+
+### On its own
+
+Below is an example where using the `TextLanguageRouter` to route only French texts to an output connection named `fr`. Other texts, such as the English text below, are routed to an output named `unmatched`.
+
+```python
+from haystack.components.routers import TextLanguageRouter
+
+router = TextLanguageRouter(languages=["fr"])
+router.run(text="What's your query?")
+```
+
+### In a pipeline
+
+Below is an example of a query pipeline that uses a `TextLanguageRouter` to forward only English language queries to the Retriever.
+
+```python
+from haystack import Pipeline
+from haystack.components.routers import TextLanguageRouter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+
+document_store = InMemoryDocumentStore()
+p = Pipeline()
+p.add_component(instance=TextLanguageRouter(), name="text_language_router")
+p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
+p.connect("text_language_router.en", "retriever.query")
+p.run({"text_language_router": {"text": "What's your query?"}})
+```

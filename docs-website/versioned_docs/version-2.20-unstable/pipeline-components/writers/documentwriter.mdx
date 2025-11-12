@@ -1,0 +1,87 @@
+---
+title: "DocumentWriter"
+id: documentwriter
+slug: "/documentwriter"
+description: "Use this component to write documents into a Document Store of your choice."
+---
+
+# DocumentWriter
+
+Use this component to write documents into a Document Store of your choice.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | As the last component in an indexing pipeline                                                     |
+| **Mandatory init variables**           | `document_store`: A Document Store instance                                                       |
+| **Mandatory run variables**            | `documents`: A list of documents                                                                  |
+| **Output variables**                   | `documents_written`: The number of documents written (integer)                                    |
+| **API reference**                      | [Document Writers](/reference/document-writers-api)                                                      |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/writers/document_writer.py |
+
+</div>
+
+## Overview
+
+`DocumentWriter` writes a list of documents into a Document Store of your choice. It’s typically used in an indexing pipeline as the final step after preprocessing documents and creating their embeddings.
+
+To use this component with a specific file type, make sure you use the correct [Converter](../converters.mdx) before it. For example, to use `DocumentWriter` with Markdown files, use the `MarkdownToDocument` component before `DocumentWriter` in your indexing pipeline.
+
+### DuplicatePolicy
+
+The `DuplicatePolicy` is a class that defines the different options for handling documents with the same ID in a `DocumentStore`. It has four possible values:
+
+- **NONE**: The default policy that relies on Document Store settings.
+- **OVERWRITE**: Indicates that if a document with the same ID already exists in the `DocumentStore`, it should be overwritten with the new document.
+- **SKIP**: If a document with the same ID already exists, the new document will be skipped and not added to the `DocumentStore`.
+- **FAIL**: Raises an error if a document with the same ID already exists in the `DocumentStore`. It prevents duplicate documents from being added.
+
+## Usage
+
+### On its own
+
+Below is an example of how to write two documents into an `InMemoryDocumentStore`:
+
+```python
+from haystack import Document
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.writers import DocumentWriter
+
+documents = [
+    Document(content="This is document 1"),
+    Document(content="This is document 2")
+]
+
+document_store = InMemoryDocumentStore()
+document_writer = DocumentWriter(document_store = document_store)
+document_writer.run(documents=documents)
+```
+
+### In a pipeline
+
+Below is an example of an indexing pipeline that first uses the `SentenceTransformersDocumentEmbedder` to create embeddings of documents and then use the `DocumentWriter` to write the documents to an `InMemoryDocumentStore`:
+
+```python
+from haystack.pipeline import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.writers import DocumentWriter
+
+documents = [
+    Document(content="This is document 1"),
+    Document(content="This is document 2")
+]
+
+document_store = InMemoryDocumentStore()
+embedder = SentenceTransformersDocumentEmbedder()
+document_writer = DocumentWriter(document_store = document_store, policy=DuplicatePolicy.NONE)
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(instance=embedder, name="embedder")
+indexing_pipeline.add_component(instance=document_writer, name="writer")
+
+indexing_pipeline.connect("embedder", "writer")
+indexing_pipeline.run({"embedder": {"documents": documents}})
+```
