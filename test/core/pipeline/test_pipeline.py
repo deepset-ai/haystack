@@ -126,29 +126,57 @@ class TestPipeline:
 
     def test_component_with_all_outputs_consumed_appears_in_results(self):
         """Test that components with all outputs consumed by downstream components appear in results with empty dict"""
+        from typing import Optional
 
         @component
-        class ComponentA:
-            @component.output_types(output=str)
-            def run(self, value: str):
-                return {"output": value}
+        class Producer:
+            def __init__(self, prefix: str):
+                self.prefix = prefix
+
+            @component.output_types(value=Optional[str])
+            def run(self, text: Optional[str]):
+                return {"value": f"{self.prefix}: {text}"}
 
         @component
-        class ComponentB:
-            @component.output_types(result=str)
-            def run(self, input_value: str):
-                return {"result": input_value.upper()}
+        class EmptyProcessor:
+            @component.output_types()
+            def run(self, sources: list[str]):
+                # Returns empty dict when sources is empty
+                return {}
+
+        @component
+        class Combiner:
+            @component.output_types(combined=str)
+            def run(self, input_a: Optional[str], input_b: Optional[str]):
+                if input_a is None:
+                    input_a = ""
+                if input_b is None:
+                    input_b = ""
+                return {"combined": f"{input_a} | {input_b}"}
 
         pp = Pipeline()
-        pp.add_component("component_a", ComponentA())
-        pp.add_component("component_b", ComponentB())
-        pp.connect("component_a.output", "component_b.input_value")
+        pp.add_component("producer_a", Producer("A"))
+        pp.add_component("producer_b", Producer("B"))
+        pp.add_component("empty_processor", EmptyProcessor())
+        pp.add_component("combiner", Combiner())
 
-        result = pp.run({"component_a": {"value": "test"}})
+        pp.connect("producer_a.value", "combiner.input_a")
+        pp.connect("producer_b.value", "combiner.input_b")
 
-        # Component A should NOT appear in results since all its outputs were consumed
-        # and it's not in include_outputs_from
-        assert "component_a" not in result
-        # Component B should have its output since it's a leaf component
-        assert "component_b" in result
-        assert result["component_b"] == {"result": "TEST"}
+        result = pp.run(
+            {"producer_a": {"text": "hello"}, "producer_b": {"text": "world"}, "empty_processor": {"sources": []}},
+            include_outputs_from={"producer_a", "empty_processor", "combiner"},
+        )
+
+        # Producer A should appear in results because it's in include_outputs_from
+        assert "producer_a" in result
+        assert result["producer_a"] == {"value": "A: hello"}
+        # Producer B should NOT appear since it's not in include_outputs_from
+        assert "producer_b" not in result
+        # Combiner should appear in results
+        assert "combiner" in result
+        assert result["combiner"] == {"combined": "A: hello | B: world"}
+        # Empty processor should appear in results even though it returns an empty dict
+        # because it's in include_outputs_from
+        assert "empty_processor" in result
+        assert result["empty_processor"] == {}
