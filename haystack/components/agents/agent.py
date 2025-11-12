@@ -68,15 +68,21 @@ class _ExecutionContext:
 @component
 class Agent:
     """
-    A Haystack component that implements a tool-using agent with provider-agnostic chat model support.
+    A tool-using Agent powered by a large language model.
 
-    The component processes messages and executes tools until an exit condition is met.
-    The exit condition can be triggered either by a direct text response or by invoking a specific designated tool.
-    Multiple exit conditions can be specified.
+    The Agent processes messages and calls tools until it meets an exit condition. 
+    You can set one or more exit conditions to control when it stops. For example, it can stop after generating a response or after calling a tool. 
 
-    When you call an Agent without tools, it acts as a ChatGenerator, produces one response, then exits.
+    Without tools, the Agent works like a standard LLM that generates text. It produces one response and then stops.
 
-    ### Usage example
+    ### Usage examples
+
+    This is an example agent that:
+    1. Searches for tipping customs in France.
+    2. Uses a calculator to compute tips based on its findings.
+    3. Returns the final answer with its context.
+
+    
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
@@ -137,11 +143,72 @@ class Agent:
         messages=[ChatMessage.from_user("Calculate the appropriate tip for an €85 meal in France")]
     )
 
-    # The agent will:
-    # 1. Search for tipping customs in France
-    # 2. Use calculator to compute tip based on findings
-    # 3. Return the final answer with context
     print(result["messages"][-1].text)
+    ```
+
+    This is a minimal Agent that has deepwiki's MCP server configured as its tool:
+
+    ```yaml
+    components:
+        Agent:
+            type: haystack.components.agents.agent.Agent
+            init_parameters:
+            chat_generator:
+                init_parameters:
+                model: gpt-5
+                type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+            tools:
+            - type: haystack_integrations.tools.mcp.MCPToolset
+                data:
+                server_info:
+                    type: haystack_integrations.tools.mcp.mcp_tool.StreamableHttpServerInfo
+                    url: https://mcp.deepwiki.com/mcp
+                    timeout: 900
+                    token:
+                tool_names:
+                - read_wiki_structure
+                - read_wiki_contents
+                - ask_question
+                eager_connect: false
+                _meta:
+                name: deepwiki
+                description:
+                tool_id:
+            system_prompt: "You are a deep research assistant. You create comprehensive research reports to answer to user's questions. You have deepwiki at your disposal. Use deepwiki to undersand, navigate, and explore software projects. "
+            exit_conditions:
+            state_schema: {}
+            max_agent_steps: 100
+            streaming_callback:
+            raise_on_tool_invocation_failure: false
+            tool_invoker_kwargs:
+        DeepsetChatHistoryParser:
+            type: deepset_cloud_custom_nodes.parsers.chat_history_parser.DeepsetChatHistoryParser
+            init_parameters: {}
+        AnswerBuilder:
+            type: haystack.components.builders.answer_builder.AnswerBuilder
+            init_parameters:
+            pattern:
+            reference_pattern:
+            last_message_only: false
+
+        connections:
+        - sender: DeepsetChatHistoryParser.messages
+        receiver: Agent.messages
+        - sender: Agent.messages
+        receiver: AnswerBuilder.replies
+
+        max_runs_per_component: 100
+
+        metadata: {}
+
+        inputs:
+        query:
+        - DeepsetChatHistoryParser.history_and_query
+        - AnswerBuilder.query
+
+        outputs:
+        answers: AnswerBuilder.answers
+
     ```
 
     """
