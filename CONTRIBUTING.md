@@ -302,7 +302,7 @@ For code blocks, use the [code block directive](https://www.sphinx-doc.org/en/ma
 
 ```
 .. code:: python
-	from haystack.dataclasses import ChatMessage
+  from haystack.dataclasses import ChatMessage
 
   message = ChatMessage.from_user("Hello!")
   print(message.text)
