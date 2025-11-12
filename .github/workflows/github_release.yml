@@ -74,7 +74,12 @@ jobs:
           # END: ${{ github.ref_name }}
         run: |
           CONTRIBUTORS=$(gh api "repos/deepset-ai/haystack/compare/$START...$END" \
-            --jq '[.commits[].author.login] | map(select(. != null)) | unique | map("@\(.)") | join(", ")')
+            --jq '[.commits[].author.login] \
+            | map(select(. != null and . != "HaystackBot" and . != "dependabot[bot]")) \
+            | unique \
+            | sort_by(ascii_downcase) \
+            | map("@\(.)") \
+            | join(", ")')
 
           cat relnotes.md > enhanced_relnotes.md
           {
