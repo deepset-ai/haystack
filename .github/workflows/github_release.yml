@@ -68,6 +68,7 @@ jobs:
         # only for minor releases and minor release candidates (not bugfix releases)
         if: endsWith(steps.version.outputs.current_release, '.0')
         env:
+          GH_TOKEN: ${{ github.token }}
           START: v${{ steps.version.outputs.current_release }}-rc0
           END: "v2.20.x"
           # END: ${{ github.ref_name }}
