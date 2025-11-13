@@ -145,39 +145,9 @@ from haystack.dataclasses import ChatMessage
 from haystack.tools import Tool, ComponentTool
 from haystack.components.agents import Agent
 
-## Define a tool for the specialist agent
-def search_knowledge_base(query: str) -> dict:
-    """Search internal knowledge base for information."""
-    ## In a real application, this would query a document store
-    knowledge = {
-        "Haystack": "Haystack is an open-source framework for building AI applications."
-    }
-    return {"result": knowledge.get(query, f"No information found for: {query}")}
-
-search_tool = Tool(
-    name="search_knowledge_base",
-    description="Search the internal knowledge base for information",
-    parameters={
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "The topic to search for"}
-        },
-        "required": ["query"]
-    },
-    function=search_knowledge_base
-)
-
-## Create a specialist research agent
-research_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
-    tools=[search_tool],
-    system_prompt="You are a research specialist. Use the search tool to find information and provide concise answers.",
-    exit_conditions=["text"]
-)
-
 ## Wrap the agent as a ComponentTool with outputs_to_string
 research_tool = ComponentTool(
-    component=research_agent,
+    component=research_agent, # another agent component
     name="research_specialist",
     description="A specialist that can research topics from the knowledge base",
     outputs_to_string={"source": "last_message"}  ## Extract only the final response
