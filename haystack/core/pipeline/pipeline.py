@@ -434,7 +434,7 @@ class Pipeline(PipelineBase):
                     include_outputs_from=include_outputs_from,
                 )
 
-                if component_pipeline_outputs:
+                if component_pipeline_outputs or component_name in include_outputs_from:
                     pipeline_outputs[component_name] = deepcopy(component_pipeline_outputs)
                 if self._is_queue_stale(priority_queue):
                     priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
