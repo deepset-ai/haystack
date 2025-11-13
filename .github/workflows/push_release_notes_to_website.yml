@@ -1,0 +1,69 @@
+name: Push release notes to website
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Haystack version (vX.Y.Z)'
+        required: true
+        type: string
+
+  pull_request:
+
+env:
+  PYTHON_VERSION: "3.9"
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Haystack home repository
+        uses: actions/checkout@v5
+        with:
+          repository: haystack-home
+
+      - name: Get release notes and add frontmatter
+        id: release_notes
+        run: |
+          # VERSION=${{ inputs.version }}
+          VERSION=2.19.0
+          RELEASE_DATE=$(gh release view $VERSION --json publishedAt --jq '.publishedAt')
+          RELEASE_NOTES_PATH=content/release-notes/$VERSION.md
+
+          {
+            echo "---"
+            echo "title: Haystack $VERSION"
+            echo "description: Release notes for Haystack $VERSION"
+            echo "toc: True"
+            echo "date: $RELEASE_DATE"
+            echo "last_updated: $RELEASE_DATE"
+            echo "tags: [\Release Notes]"
+            echo "link: https://github.com/deepset-ai/haystack/releases/tag/v$VERSION"
+            echo ""
+            echo "---"
+          } > $RELEASE_NOTES_PATH
+
+          gh release view ${{ inputs.version }} --json body --jq '.body' >> $RELEASE_NOTES_PATH
+
+          cat $RELEASE_NOTES_PATH
+
+      - name: print git status
+        run: |
+          git status
+          git diff
+
+      # - name: Create Pull Request with Docusaurus docs updates
+      #   uses: peter-evans/create-pull-request@v7
+      #   with:
+      #     token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+      #     commit-message: "Promote unstable docs for Haystack ${{ steps.version.outputs.version }}"
+      #     branch: promote-unstable-docs-${{ steps.version.outputs.version }}
+      #     base: main
+      #     title: "docs: promote unstable docs for Haystack ${{ steps.version.outputs.version }}"
+      #     add-paths: |
+      #       docs-website
+      #     body: |
+      #       This PR promotes the unstable docs for Haystack ${{ steps.version.outputs.version }} to stable.
+      #       It is expected to run at the time of the release.
+      #       You can inspect the docs preview and merge it. There should now be only one unstable version representing the next (main) branch.
