@@ -28,19 +28,19 @@ jobs:
         run: |
           # VERSION=${{ inputs.version }}
           VERSION=v2.19.0
-          RELEASE_DATE=$(gh release view $VERSION --repo deepset-ai/haystack --json publishedAt --jq '.publishedAt')
+          VERSION_NUMBER=${VERSION:1}
+          RELEASE_DATE=$(gh release view $VERSION --repo deepset-ai/haystack --json publishedAt --jq '.publishedAt | split("T")[0]')
           RELEASE_NOTES_PATH=content/release-notes/$VERSION.md
 
           {
             echo "---"
-            echo "title: Haystack $VERSION"
-            echo "description: Release notes for Haystack $VERSION"
+            echo "title: Haystack $VERSION_NUMBER"
+            echo "description: Release notes for Haystack $VERSION_NUMBER"
             echo "toc: True"
             echo "date: $RELEASE_DATE"
             echo "last_updated: $RELEASE_DATE"
-            echo "tags: [\Release Notes]"
-            echo "link: https://github.com/deepset-ai/haystack/releases/tag/v$VERSION"
-            echo ""
+            echo 'tags: ["Release Notes"]'
+            echo "link: https://github.com/deepset-ai/haystack/releases/tag/$VERSION"
             echo "---"
           } > $RELEASE_NOTES_PATH
 
