@@ -8,7 +8,6 @@ on:
       # Exclude 1.x tags
       - "!v1.[0-9]+.[0-9]+"
 
-  pull_request:
 env:
   PYTHON_VERSION: "3.9"
 
@@ -23,6 +22,7 @@ jobs:
         id: version
         shell: bash
         # We only need `major.minor`. At this point, VERSION.txt contains the next version.
+        # For example, if we are releasing 2.20.0, VERSION.txt contains 2.21.0-rc0.
         run: |
           MAJOR=$(cut -d "." -f 1 < VERSION.txt)
           MINOR=$(cut -d "." -f 2 < VERSION.txt)
