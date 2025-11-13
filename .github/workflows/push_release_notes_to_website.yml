@@ -27,7 +27,7 @@ jobs:
         id: release_notes
         run: |
           # VERSION=${{ inputs.version }}
-          VERSION=v2.19.0
+          VERSION=v2.20.0-rc1
           VERSION_NUMBER=${VERSION:1}
           RELEASE_DATE=$(gh release view $VERSION --repo deepset-ai/haystack --json publishedAt --jq '.publishedAt | split("T")[0]')
           RELEASE_NOTES_PATH=content/release-notes/$VERSION.md
@@ -42,28 +42,23 @@ jobs:
             echo 'tags: ["Release Notes"]'
             echo "link: https://github.com/deepset-ai/haystack/releases/tag/$VERSION"
             echo "---"
+            echo ""
           } > $RELEASE_NOTES_PATH
 
           gh release view $VERSION --repo deepset-ai/haystack --json body --jq '.body' >> $RELEASE_NOTES_PATH
 
           cat $RELEASE_NOTES_PATH
 
-      - name: print git status
-        run: |
-          git status
-          git diff
-
-      # - name: Create Pull Request with Docusaurus docs updates
-      #   uses: peter-evans/create-pull-request@v7
-      #   with:
-      #     token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-      #     commit-message: "Promote unstable docs for Haystack ${{ steps.version.outputs.version }}"
-      #     branch: promote-unstable-docs-${{ steps.version.outputs.version }}
-      #     base: main
-      #     title: "docs: promote unstable docs for Haystack ${{ steps.version.outputs.version }}"
-      #     add-paths: |
-      #       docs-website
-      #     body: |
-      #       This PR promotes the unstable docs for Haystack ${{ steps.version.outputs.version }} to stable.
-      #       It is expected to run at the time of the release.
-      #       You can inspect the docs preview and merge it. There should now be only one unstable version representing the next (main) branch.
+      - name: Create Pull Request to Haystack Home
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          commit-message: "Add release notes for Haystack $VERSION"
+          branch: add-release-notes-for-haystack-$VERSION
+          base: main
+          title: "docs: add release notes for Haystack $VERSION"
+          add-paths: |
+            content/release-notes
+          body: |
+            This PR adds the release notes for Haystack $VERSION to the website.
+          draft: true
