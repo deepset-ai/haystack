@@ -27,7 +27,7 @@ jobs:
         id: release_notes
         run: |
           # VERSION=${{ inputs.version }}
-          VERSION=2.19.0
+          VERSION=v2.19.0
           RELEASE_DATE=$(gh release view $VERSION --repo deepset-ai/haystack --json publishedAt --jq '.publishedAt')
           RELEASE_NOTES_PATH=content/release-notes/$VERSION.md
 
