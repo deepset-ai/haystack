@@ -8,12 +8,9 @@ on:
         required: true
         type: string
 
-  pull_request:
-
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  # VERSION: ${{ inputs.version }}
-  VERSION: v2.20.0-rc1
+  VERSION: ${{ inputs.version }}
 
 jobs:
   push-release-notes-to-website:
@@ -62,4 +59,3 @@ jobs:
             content/release-notes
           body: |
             This PR adds the release notes for Haystack ${{ env.VERSION }} to the website.
-          draft: true
