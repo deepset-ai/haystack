@@ -62,6 +62,7 @@ jobs:
         with:
           args: "--from rst --to gfm --syntax-highlighting=none --wrap=none relnotes.rst -o relnotes.md"
 
+      # We copy the relnotes file since the original one cannot be modified due to permissions
       - name: Copy relnotes file
         run: |
           cat relnotes.md > enhanced_relnotes.md
