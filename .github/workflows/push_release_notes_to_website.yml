@@ -11,11 +11,13 @@ on:
   pull_request:
 
 env:
-  PYTHON_VERSION: "3.9"
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # VERSION: ${{ inputs.version }}
+  VERSION: v2.20.0-rc1
 
 jobs:
   push-release-notes-to-website:
+
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Haystack home repository
@@ -27,11 +29,9 @@ jobs:
         id: release_notes
 
         run: |
-          # VERSION=${{ inputs.version }}
-          VERSION=v2.20.0-rc1
-          VERSION_NUMBER=${VERSION:1}
-          RELEASE_DATE=$(gh release view $VERSION --repo deepset-ai/haystack --json publishedAt --jq '.publishedAt | split("T")[0]')
-          RELEASE_NOTES_PATH=content/release-notes/$VERSION.md
+          VERSION_NUMBER="${VERSION:1}"
+          RELEASE_DATE=$(gh release view "$VERSION" --repo deepset-ai/haystack --json publishedAt --jq '.publishedAt | split("T")[0]')
+          RELEASE_NOTES_PATH="content/release-notes/$VERSION.md"
 
           {
             echo "---"
@@ -44,16 +44,14 @@ jobs:
             echo "link: https://github.com/deepset-ai/haystack/releases/tag/$VERSION"
             echo "---"
             echo ""
-          } > $RELEASE_NOTES_PATH
+          } > "$RELEASE_NOTES_PATH"
 
-          gh release view $VERSION --repo deepset-ai/haystack --json body --jq '.body' >> $RELEASE_NOTES_PATH
+          gh release view "$VERSION" --repo deepset-ai/haystack --json body --jq '.body' >> "$RELEASE_NOTES_PATH"
 
-          cat $RELEASE_NOTES_PATH
+          cat "$RELEASE_NOTES_PATH"
 
       - name: Create Pull Request to Haystack Home
         uses: peter-evans/create-pull-request@v7
-        env:
-          VERSION: v2.20.0-rc1
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Add release notes for Haystack ${{ env.VERSION }}"
