@@ -25,6 +25,7 @@ jobs:
 
       - name: Get release notes and add frontmatter
         id: release_notes
+
         run: |
           # VERSION=${{ inputs.version }}
           VERSION=v2.20.0-rc1
@@ -51,6 +52,8 @@ jobs:
 
       - name: Create Pull Request to Haystack Home
         uses: peter-evans/create-pull-request@v7
+        env:
+          VERSION: v2.20.0-rc1
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Add release notes for Haystack $VERSION"
