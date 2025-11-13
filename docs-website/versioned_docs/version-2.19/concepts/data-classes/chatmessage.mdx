@@ -238,17 +238,3 @@ print(message.content)
 ## Use the appropriate property instead
 print(message.text)
 ```
-
-<br />
-
-```python
-from haystack.dataclasses import ChatMessage
-
-message = ChatMessage.from_user("Hello!")
-
-## LEGACY - DOES NOT WORK IN 2.9.0
-print(message.content)
-
-## Use the appropriate property instead
-print(message.text)
-```

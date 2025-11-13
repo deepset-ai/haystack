@@ -1,0 +1,258 @@
+---
+title: "PromptBuilder"
+id: promptbuilder
+slug: "/promptbuilder"
+description: "Use this component in pipelines before a Generator to render a prompt template and fill in variable values."
+---
+
+# PromptBuilder
+
+Use this component in pipelines before a Generator to render a prompt template and fill in variable values.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a querying pipeline, before a [Generator](../generators.mdx)                                                                      |
+| **Mandatory init variables**           | `template`: A prompt template string that uses Jinja2 syntax                                                                        |
+| **Mandatory run variables**            | `**kwargs`: Any strings that should be used to render the prompt template. See [Variables](#variables)  section for more details. |
+| **Output variables**                   | `prompt`: A string that represents the rendered prompt template                                                                     |
+| **API reference**                      | [Builders](/reference/builders-api)                                                                                                        |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/builders/prompt_builder.py                                   |
+
+</div>
+
+## Overview
+
+`PromptBuilder` is initialized with a prompt template and renders it by filling in parameters passed through keyword arguments, `kwargs`. With `kwargs`, you can pass a variable number of keyword arguments so that any variable used in the prompt template can be specified with the desired value. Values for all variables appearing in the prompt template need to be provided through the `kwargs`.
+
+The template that is provided to the `PromptBuilder` during initialization needs to conform to the [Jinja2](https://palletsprojects.com/p/jinja/) template language.
+
+### Variables
+
+The template variables found in the init template are used as input types for the component. If there are no `required_variables` set, all variables are considered optional by default. In this case, any missing variables are replaced with empty strings, which can lead to unintended behavior, especially in complex pipelines.
+
+Use `required_variables` and `variables` to specify the input types and required variables:
+
+- `required_variables`
+  - Defines which template variables must be provided when the component runs.
+  - If any required variable is missing, the component raises an error and halts execution.
+  - You can:
+    - Pass a list of required variable names (such as `["query"]`), or
+    - Use `"*"` to mark all variables in the template as required.
+
+- `variables`
+  - Lists all variables that can appear in the template, whether required or optional.
+  - Optional variables that aren't provided are replaced with an empty string in the rendered prompt.
+  - This allows partial prompts to be constructed without errors, unless a variable is marked as required.
+
+```python
+from haystack.components.builders import PromptBuilder
+
+## All variables optional (default to empty string)
+builder = PromptBuilder(
+    template="Hello {{name}}! {{greeting}}",
+    required_variables=[]  # or omit this parameter entirely
+)
+
+## Some variables required
+builder = PromptBuilder(
+    template="Hello {{name}}! {{greeting}}",
+    required_variables=["name"]  # 'greeting' remains optional
+)
+```
+
+The component only waits for the required inputs before running.
+
+### Jinja2 Time Extension
+
+`PromptBuilder` supports the Jinja2 TimeExtension, which allows you to work with datetime formats.
+
+The Time Extension provides two main features:
+
+1. A `now` tag that gives you access to the current time,
+2. Date/time formatting capabilities through Python's datetime module.
+
+To use the Jinja2 TimeExtension, you need to install a dependency with:
+
+```shell
+pip install arrow>=1.3.0
+```
+
+#### The `now` Tag
+
+The `now` tag creates a datetime object representing the current time, which you can then store in a variable:
+
+```jinja2
+{% now 'utc' as current_time %}
+The current UTC time is: {{ current_time }}
+```
+
+You can specify different timezones:
+
+```jinja2
+{% now 'America/New_York' as ny_time %}
+The time in New York is: {{ ny_time }}
+```
+
+If you don't specify a timezone, your system's local timezone will be used:
+
+```jinja2
+{% now as local_time %}
+Local time: {{ local_time }}
+```
+
+#### Date Formatting
+
+You can format the datetime objects using Python's `strftime` syntax:
+
+```jinja2
+{% now as current_time %}
+Formatted date: {{ current_time.strftime('%Y-%m-%d %H:%M:%S') }}
+```
+
+The common format codes are:
+
+- `%Y`: 4-digit year (for example, 2025)
+- `%m`: Month as a zero-padded number (01-12)
+- `%d`: Day as a zero-padded number (01-31)
+- `%H`: Hour (24-hour clock) as a zero-padded number (00-23)
+- `%M`: Minute as a zero-padded number (00-59)
+- `%S`: Second as a zero-padded number (00-59)
+
+#### Example
+
+```python
+from haystack.components.builders import PromptBuilder
+
+## Define template using Jinja-style formatting
+template = """
+Current date is: {% now 'UTC' %}
+Thank you for providing the date
+Yesterday was: {% now 'UTC' - 'days=1' %}
+"""
+
+builder = PromptBuilder(template=template)
+
+result = builder.run()["prompt"]
+
+now = f"Current date is: {arrow.now('UTC').strftime('%Y-%m-%d %H:%M:%S')}"
+yesterday = f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
+```
+
+## Usage
+
+### On its own
+
+Below is an example of using the `PromptBuilder` to render a prompt template and fill it with `target_language` and `snippet`. The PromptBuilder returns a prompt with the string `Translate the following context to spanish. Context: I can't speak spanish.; Translation:`.
+
+```python
+from haystack.components.builders import PromptBuilder
+
+template = "Translate the following context to {{ target_language }}. Context: {{ snippet }}; Translation:"
+builder = PromptBuilder(template=template)
+builder.run(target_language="spanish", snippet="I can't speak spanish.")
+```
+
+### In a pipeline
+
+Below is an example of a RAG pipeline where we use a `PromptBuilder` to render a custom prompt template and fill it with the contents of retrieved documents and a query. The rendered prompt is then sent to a Generator.
+
+```python
+from haystack import Pipeline, Document
+from haystack.utils import Secret
+from haystack.components.generators import OpenAIGenerator
+from haystack.components.builders.prompt_builder import PromptBuilder
+
+## in a real world use case documents could come from a retriever, web, or any other source
+documents = [Document(content="Joe lives in Berlin"), Document(content="Joe is a software engineer")]
+prompt_template = """
+    Given these documents, answer the question.\nDocuments:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    \nQuestion: {{query}}
+    \nAnswer:
+    """
+p = Pipeline()
+p.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
+p.add_component(instance=OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
+p.connect("prompt_builder", "llm")
+
+question = "Where does Joe live?"
+result = p.run({"prompt_builder": {"documents": documents, "query": question}})
+print(result)
+```
+
+#### Changing the template at runtime (Prompt Engineering)
+
+`PromptBuilder` allows you to switch the prompt template of an existing pipeline. The example below builds on top of the existing pipeline in the previous section. We are invoking the existing pipeline with a new prompt template:
+
+```python
+documents = [
+    Document(content="Joe lives in Berlin", meta={"name": "doc1"}),
+    Document(content="Joe is a software engineer", meta={"name": "doc1"}),
+]
+new_template = """
+    You are a helpful assistant.
+    Given these documents, answer the question.
+    Documents:
+    {% for doc in documents %}
+        Document {{ loop.index }}:
+        Document name: {{ doc.meta['name'] }}
+        {{ doc.content }}
+    {% endfor %}
+
+    Question: {{ query }}
+    Answer:
+    """
+p.run({
+      "prompt_builder": {
+          "documents": documents,
+          "query": question,
+          "template": new_template,
+      },
+  })
+```
+
+If you want to use different variables during prompt engineering than in the default template, you can do so by setting `PromptBuilder`'s variables init parameter accordingly.
+
+#### Overwriting variables at runtime
+
+In case you want to overwrite the values of variables, you can use `template_variables` during runtime, as shown below:
+
+```python
+language_template = """
+    You are a helpful assistant.
+    Given these documents, answer the question.
+    Documents:
+    {% for doc in documents %}
+        Document {{ loop.index }}:
+        Document name: {{ doc.meta['name'] }}
+        {{ doc.content }}
+    {% endfor %}
+
+    Question: {{ query }}
+    Please provide your answer in {{ answer_language | default('English') }}
+    Answer:
+    """
+p.run({
+      "prompt_builder": {
+          "documents": documents,
+          "query": question,
+          "template": language_template,
+          "template_variables": {"answer_language": "German"},
+      },
+  })
+```
+
+Note that `language_template` introduces `answer_language` variable which is not bound to any pipeline variable. If not set otherwise, it would use its default value, "English". In this example, we overwrite its value to "German".
+The `template_variables` allows you to overwrite pipeline variables (such as documents) as well.
+
+## Additional References
+
+🧑‍🍳 Cookbooks:
+
+- [Advanced Prompt Customization for Anthropic](https://haystack.deepset.ai/cookbook/prompt_customization_for_anthropic)
+- [Prompt Optimization with DSPy](https://haystack.deepset.ai/cookbook/prompt_optimization_with_dspy)

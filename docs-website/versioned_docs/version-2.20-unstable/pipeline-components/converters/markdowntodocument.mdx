@@ -1,0 +1,74 @@
+---
+title: "MarkdownToDocument"
+id: markdowntodocument
+slug: "/markdowntodocument"
+description: "A component that converts Markdown files to documents."
+---
+
+# MarkdownToDocument
+
+A component that converts Markdown files to documents.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx) , or right at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | `sources`: Markdown file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects        |
+| **Output variables**                   | `documents`: A list of documents                                                                |
+| **API reference**                      | [Converters](/reference/converters-api)                                                                |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/markdown.py   |
+
+</div>
+
+## Overview
+
+The `MarkdownToDocument` component converts Markdown files into documents. You can use it in an indexing pipeline to index the contents of a Markdown file into a Document Store. It takes a list of file paths or [ByteStream](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+
+When you initialize the component, you can optionally turn off progress bars by setting `progress_bar` to `False`. If you want to convert the contents of tables into a single line, you can enable that through the `table_to_single_line` parameter.
+
+## Usage
+
+You need to install `markdown-it-py` and `mdit_plain packages` to use the `MarkdownToDocument` component:
+
+```shell
+pip install markdown-it-py mdit_plain
+```
+
+### On its own
+
+```python
+from haystack.components.converters import MarkdownToDocument
+
+converter = MarkdownToDocument()
+
+docs = converter.run(sources=Path("my_file.md"))
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import MarkdownToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", MarkdownToDocument())
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": file_names}})
+```
+
+## Additional References
+
+:notebook: Tutorial: [Preprocessing Different File Types](https://haystack.deepset.ai/tutorials/30_file_type_preprocessing_index_pipeline)

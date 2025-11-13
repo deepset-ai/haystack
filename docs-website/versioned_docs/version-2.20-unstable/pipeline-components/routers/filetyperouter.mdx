@@ -1,0 +1,67 @@
+---
+title: "FileTypeRouter"
+id: filetyperouter
+slug: "/filetyperouter"
+description: "Use this Router in indexing pipelines to route file paths or byte streams based on their type to different outputs for further processing."
+---
+
+# FileTypeRouter
+
+Use this Router in indexing pipelines to route file paths or byte streams based on their type to different outputs for further processing.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | As the first component preprocessing data followed by [Converters](../converters.mdx) |
+| **Mandatory init variables** | `mime_types`: A list of MIME types or regex patterns for classification |
+| **Mandatory run variables** | `sources`: A list of file paths or byte streams to categorize |
+| **Output variables** | `unclassified`: A list of uncategorized file paths or [byte streams](../../concepts/data-classes.mdx#bytestream)  <br /> <br />`mime_types`: For example "text/plain", "text/html", "application/pdf", "text/markdown", "audio/x-wav", "image/jpeg": List of categorized file paths or byte streams |
+| **API reference** | [Routers](/reference/routers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/file_type_router.py |
+
+</div>
+
+## Overview
+
+`FileTypeRouter` routes file paths or byte streams based on their type, for example, plain text, jpeg image, or audio wave. For file paths, it infers MIME types from their extensions, while for byte streams, it determines MIME types based on the provided metadata.
+
+When initializing the component, you specify the set of MIME types to route to separate outputs. To do this, set the `mime_types` parameter to a list of types, for example: `["text/plain", "audio/x-wav", "image/jpeg"]`. Types that are not listed are routed to an output named “unclassified”.
+
+## Usage
+
+### On its own
+
+Below is an example that uses the `FileTypeRouter` to rank two simple documents:
+
+```python
+from haystack import Document
+from haystack.components.routers import FileTypeRouter
+
+router = FileTypeRouter(mime_types=["text/plain"])
+router.run(sources=["text-file-will-be-added.txt", "pdf-will-not-ne-added.pdf"])
+```
+
+### In a pipeline
+
+Below is an example of a pipeline that uses a `FileTypeRouter` to forward only plain text files to a `DocumentSplitter` and then a `DocumentWriter`. Only the content of plain text files gets added to the `InMemoryDocumentStore`, but not the content of files of any other type. As an alternative, you could add a `PyPDFConverter` to the pipeline and use the `FileTypeRouter` to route PDFs to it so that it converts them to documents.
+
+```python
+from haystack import Pipeline
+from haystack.components.routers import FileTypeRouter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import TextFileToDocument
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+p = Pipeline()
+p.add_component(instance=FileTypeRouter(mime_types=["text/plain"]), name="file_type_router")
+p.add_component(instance=TextFileToDocument(), name="text_file_converter")
+p.add_component(instance=DocumentSplitter(), name="splitter")
+p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+p.connect("file_type_router.text/plain", "text_file_converter.sources")
+p.connect("text_file_converter.documents", "splitter.documents")
+p.connect("splitter.documents", "writer.documents")
+p.run({"file_type_router": {"sources":["text-file-will-be-added.txt", "pdf-will-not-be-added.pdf"]}})
+```

@@ -1,0 +1,106 @@
+---
+title: "JinaTextEmbedder"
+id: jinatextembedder
+slug: "/jinatextembedder"
+description: "This component transforms a string into a vector that captures its semantics using a Jina Embeddings model. When you perform embedding retrieval, you use this component to transform your query into a vector. Then, the embedding Retriever looks for similar or relevant documents."
+---
+
+# JinaTextEmbedder
+
+This component transforms a string into a vector that captures its semantics using a Jina Embeddings model. When you perform embedding retrieval, you use this component to transform your query into a vector. Then, the embedding Retriever looks for similar or relevant documents.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
+| **Mandatory init variables** | `api_key`: The Jina API key. Can be set with `JINA_API_KEY` env var. |
+| **Mandatory run variables** | `text`: A string |
+| **Output variables** | `embedding`: A list of float numbers  <br /> <br />`meta`: A dictionary of metadata |
+| **API reference** | [Jina](/reference/integrations-jina) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/jina |
+
+</div>
+
+## Overview
+
+`JinaTextEmbedder` embeds a simple string (such as a query) into a vector. For embedding lists of documents, use the use the [`JinaDocumentEmbedder`](jinadocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector. To see the list of compatible Jina Embeddings models, head to Jina AI’s [website](https://jina.ai/embeddings/). The default model for `JinaTextEmbedder` is `jina-embeddings-v2-base-en`.
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install jina-haystack
+```
+
+The component uses a `JINA_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+
+```python
+embedder = JinaTextEmbedder(api_key=Secret.from_token("<your-api-key>"))
+```
+
+To get a Jina Embeddings API key, head to https://jina.ai/embeddings/.
+
+## Usage
+
+### On its own
+
+Here is how you can use the component on its own:
+
+```python
+from haystack_integrations.components.embedders.jina import JinaTextEmbedder
+
+text_to_embed = "I love pizza!"
+
+text_embedder = JinaTextEmbedder(api_key=Secret.from_token("<your-api-key>"))
+
+print(text_embedder.run(text_to_embed))
+
+## {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
+## 'meta': {'model': 'text-embedding-ada-002-v2',
+## 'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}
+
+```
+
+:::info
+We recommend setting JINA_API_KEY as an environment variable instead of setting it as a parameter.
+:::
+
+### In a pipeline
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.jina import JinaDocumentEmbedder
+from haystack_integrations.components.embedders.jina import JinaTextEmbedder
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
+
+document_embedder = JinaDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"))
+documents_with_embeddings = document_embedder.run(documents)['documents']
+document_store.write_documents(documents_with_embeddings)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", JinaTextEmbedder(api_key=Secret.from_token("<your-api-key>")))
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder":{"text": query}})
+
+print(result['retriever']['documents'][0])
+
+## Document(id=..., mimetype: 'text/plain',
+## text: 'My name is Wolfgang and I live in Berlin')
+
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Using the Jina-embeddings-v2-base-en model in a Haystack RAG pipeline for legal document analysis](https://haystack.deepset.ai/cookbook/jina-embeddings-v2-legal-analysis-rag)

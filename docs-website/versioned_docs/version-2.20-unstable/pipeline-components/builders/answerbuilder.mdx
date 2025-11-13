@@ -1,0 +1,90 @@
+---
+title: "AnswerBuilder"
+id: answerbuilder
+slug: "/answerbuilder"
+description: "Use this component in pipelines that contain a Generator to parse its replies."
+---
+
+# AnswerBuilder
+
+Use this component in pipelines that contain a Generator to parse its replies.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Use in pipelines (such as a RAG pipeline) after a [Generator](../generators.mdx)  component to create [`GeneratedAnswer`](../../concepts/data-classes.mdx#generatedanswer)   objects from its replies. |
+| **Mandatory run variables** | `query`: A query string  <br /> <br />`replies`: A list of strings, or a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)   objects that are replies from a Generator |
+| **Output variables** | `answers`:  A list of `GeneratedAnswer` objects |
+| **API reference** | [Builders](/reference/builders-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/builders/answer_builder.py |
+
+</div>
+
+## Overview
+
+`AnswerBuilder` takes a query and the replies a Generator returns as input and parses them into `GeneratedAnswer` objects. Optionally, it also takes documents and metadata from the Generator as inputs to enrich the `GeneratedAnswer` objects.
+
+The `AnswerBuilder` works with both Chat and non-Chat Generators.
+
+The optional `pattern` parameter defines how to extract answer texts from replies. It needs to be a regular expression with a maximum of one capture group. If a capture group is present, the text matched by the capture group is used as the answer. If no capture group is present, the whole match is used as the answer. If no `pattern` is set, the whole reply is used as the answer text.
+
+The optional `reference_pattern` parameter can be set to a regular expression that parses referenced documents from the replies so that only those referenced documents are listed in the `GeneratedAnswer` objects. Haystack assumes that documents are referenced by their index in the list of input documents and that indices start at 1. For example, if you set the `reference_pattern` to _`\\[(\\d+)\\]`,_ it finds “1” in a string "This is an answer[1]". If `reference_pattern` is not set, all input documents are listed in the `GeneratedAnswer` objects.
+
+## Usage
+
+### On its own
+
+Below is an example where we’re using the `AnswerBuilder` to parse a string that could be the reply received from a Generator using a custom regular expression. Any text other than the answer will not be included in the `GeneratedAnswer` object constructed by the builder.
+
+```python
+from haystack.components.builders import AnswerBuilder
+
+builder = AnswerBuilder(pattern="Answer: (.*)")
+builder.run(query="What's the answer?", replies=["This is an argument. Answer: This is the answer."])
+```
+
+### In a pipeline
+
+Below is an example of a RAG pipeline where we use an `AnswerBuilder` to create `GeneratedAnswer` objects from the replies returned by a Generator. In addition to the text of the reply, these objects also hold the query, the referenced docs, and metadata returned by the Generator.
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.utils import Secret
+from haystack.dataclasses import ChatMessage
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given these documents, answer the question.\nDocuments:\n"
+        "{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
+        "Question: {{query}}\nAnswer:"
+    )
+]
+
+p = Pipeline()
+p.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
+p.add_component(instance=ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"}), name="prompt_builder")
+p.add_component(instance=OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
+p.add_component(instance=AnswerBuilder(), name="answer_builder")
+p.connect("retriever", "prompt_builder.documents")
+p.connect("prompt_builder", "llm.messages")
+p.connect("llm.replies", "answer_builder.replies")
+p.connect("retriever", "answer_builder.documents")
+
+query = "What is the capital of France?"
+result = p.run(
+    {
+        "retriever": {"query": query},
+        "prompt_builder": {"query": query},
+        "answer_builder": {"query": query},
+    }
+)
+
+print(result)
+```

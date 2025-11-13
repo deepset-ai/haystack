@@ -281,6 +281,7 @@ class TestOpenAIChatGenerator:
                 "max_completion_tokens": 10,
                 "some_test_param": "test-params",
                 "response_format": calendar_event_model,
+                "logprobs": True,
             },
             tools=[tool],
             tools_strict=True,
@@ -303,6 +304,7 @@ class TestOpenAIChatGenerator:
                 "generation_kwargs": {
                     "max_completion_tokens": 10,
                     "some_test_param": "test-params",
+                    "logprobs": True,
                     "response_format": {
                         "type": "json_schema",
                         "json_schema": {
@@ -804,7 +806,7 @@ class TestOpenAIChatGenerator:
     @pytest.mark.integration
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = OpenAIChatGenerator(generation_kwargs={"n": 1})
+        component = OpenAIChatGenerator(generation_kwargs={"n": 1, "logprobs": True})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -812,6 +814,7 @@ class TestOpenAIChatGenerator:
         assert "gpt-4o" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
+        assert message.meta["logprobs"] is not None
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -987,7 +990,7 @@ class TestOpenAIChatGenerator:
 
         callback = Callback()
         component = OpenAIChatGenerator(
-            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
+            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}, "logprobs": True}
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -1002,6 +1005,7 @@ class TestOpenAIChatGenerator:
         metadata = message.meta
         assert "gpt-4o" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
+        assert metadata["logprobs"] is not None
 
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
