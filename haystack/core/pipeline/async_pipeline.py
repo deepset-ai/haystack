@@ -281,11 +281,11 @@ class AsyncPipeline(PipelineBase):
                     receivers=cached_receivers[component_name],
                     include_outputs_from=include_outputs_from,
                 )
-                if pruned:
+                if pruned or component_name in include_outputs_from:
                     pipeline_outputs[component_name] = pruned
 
                 scheduled_components.remove(component_name)
-                if pruned:
+                if pruned or component_name in include_outputs_from:
                     yield {component_name: _deepcopy_with_exceptions(pruned)}
 
             async def _schedule_task(component_name: str) -> None:

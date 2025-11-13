@@ -125,8 +125,8 @@ class TestPipeline:
             )
         assert "Component name: 'erroring_component'" in str(exc_info.value)
 
-    def test_component_with_all_outputs_consumed_appears_in_results(self):
-        """Test that components with all outputs consumed by downstream components appear in results with empty dict"""
+    def test_component_with_empty_dict_as_output_appears_in_results(self):
+        """Test that components that return an empty dict as output appear in results as an empty dict"""
 
         @component
         class Producer:
