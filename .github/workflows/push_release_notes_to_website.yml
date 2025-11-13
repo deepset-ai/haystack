@@ -56,12 +56,12 @@ jobs:
           VERSION: v2.20.0-rc1
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-          commit-message: "Add release notes for Haystack $VERSION"
-          branch: add-release-notes-for-haystack-$VERSION
+          commit-message: "Add release notes for Haystack ${{ env.VERSION }}"
+          branch: add-release-notes-for-haystack-${{ env.VERSION }}
           base: main
-          title: "docs: add release notes for Haystack $VERSION"
+          title: "docs: add release notes for Haystack ${{ env.VERSION }}"
           add-paths: |
             content/release-notes
           body: |
-            This PR adds the release notes for Haystack $VERSION to the website.
+            This PR adds the release notes for Haystack ${{ env.VERSION }} to the website.
           draft: true
