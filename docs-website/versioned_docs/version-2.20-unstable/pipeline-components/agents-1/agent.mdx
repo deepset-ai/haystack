@@ -54,6 +54,40 @@ You can additionally configure:
 For a complete list of available parameters, refer to the [Agents API Documentation](/reference/agents-api).
 :::
 
+### Agents as Tools
+
+You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to create multi-agent systems where specialized agents act as tools for a coordinator agent.
+
+When wrapping an `Agent` as a `ComponentTool`, use the `outputs_to_string` parameter with `{"source": "last_message"}` to extract only the agent's final response text, rather than the execution trace with tool calls to keep the coordinator agent's context clean and focused.
+
+```python
+## Wrap the agent as a ComponentTool with outputs_to_string
+research_tool = ComponentTool(
+    component=research_agent, # another agent component
+    name="research_specialist",
+    description="A specialist that can research topics from the knowledge base",
+    outputs_to_string={"source": "last_message"}  ## Extract only the final response
+)
+
+## Create a coordinator agent that uses the specialist
+coordinator_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=[research_tool],
+    system_prompt="You are a coordinator that delegates research tasks to a specialist.",
+    exit_conditions=["text"]
+)
+
+## Warm up and run
+research_agent.warm_up()
+coordinator_agent.warm_up()
+
+result = coordinator_agent.run(
+    messages=[ChatMessage.from_user("Tell me about Haystack")]
+)
+
+print(result["last_message"].text)
+```
+
 ### Streaming
 
 You can stream output as it’s generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
@@ -197,4 +231,6 @@ print(agent_output["database_agent"]["messages"][-1].text)
 
 🧑‍🍳 Cookbook: [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
 
-📓 Tutorial: [Build a Tool-Calling Agent](https://haystack.deepset.ai/tutorials/43_building_a_tool_calling_agent)
+📓 Tutorials:
+- [Build a Tool-Calling Agent](https://haystack.deepset.ai/tutorials/43_building_a_tool_calling_agent)
+- [Creating a Multi-Agent System](https://haystack.deepset.ai/tutorials/45_creating_a_multi_agent_system)
