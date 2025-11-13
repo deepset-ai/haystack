@@ -28,8 +28,7 @@ jobs:
         run: |
           # VERSION=${{ inputs.version }}
           VERSION=2.19.0
-          gh repo set-default deepset-ai/haystack
-          RELEASE_DATE=$(gh release view $VERSION --json publishedAt --jq '.publishedAt')
+          RELEASE_DATE=$(gh release view $VERSION --repo deepset-ai/haystack --json publishedAt --jq '.publishedAt')
           RELEASE_NOTES_PATH=content/release-notes/$VERSION.md
 
           {
@@ -45,7 +44,7 @@ jobs:
             echo "---"
           } > $RELEASE_NOTES_PATH
 
-          gh release view ${{ inputs.version }} --json body --jq '.body' >> $RELEASE_NOTES_PATH
+          gh release view $VERSION --repo deepset-ai/haystack --json body --jq '.body' >> $RELEASE_NOTES_PATH
 
           cat $RELEASE_NOTES_PATH
 
