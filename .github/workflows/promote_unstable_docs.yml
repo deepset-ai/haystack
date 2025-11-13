@@ -22,9 +22,12 @@ jobs:
       - name: Get version to release
         id: version
         shell: bash
-        # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
+        # We only need `major.minor`. At this point, VERSION.txt contains the next version.
         run: |
-          echo "version=$(cut -d "." -f 1,2 < VERSION.txt)" >> "$GITHUB_OUTPUT"
+          MAJOR=$(cut -d "." -f 1 < VERSION.txt)
+          MINOR=$(cut -d "." -f 2 < VERSION.txt)
+          MINOR=$((MINOR - 1))
+          echo "version=${MAJOR}.${MINOR}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v6
         with:
