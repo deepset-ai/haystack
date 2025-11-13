@@ -15,13 +15,13 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  promote:
+  push-release-notes-to-website:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Haystack home repository
         uses: actions/checkout@v5
         with:
-          repository: haystack-home
+          repository: deepset-ai/haystack-home
 
       - name: Get release notes and add frontmatter
         id: release_notes
