@@ -81,7 +81,7 @@ jobs:
             | map("@\(.)")
             | join(", ")'
           CONTRIBUTORS=$(gh api "repos/deepset-ai/haystack/compare/$START...$END" \
-            --jq "$JQ_EXPR")
+            --jq "$JQ_EXPR") || { echo "Unable to fetch contributors"; exit 1; }
 
           {
             echo ""
