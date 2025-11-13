@@ -1,0 +1,61 @@
+name: Push release notes to website
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Haystack version (vX.Y.Z)'
+        required: true
+        type: string
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  VERSION: ${{ inputs.version }}
+
+jobs:
+  push-release-notes-to-website:
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Haystack home repository
+        uses: actions/checkout@v5
+        with:
+          repository: deepset-ai/haystack-home
+
+      - name: Get release notes and add frontmatter
+        id: release_notes
+
+        run: |
+          VERSION_NUMBER="${VERSION:1}"
+          RELEASE_DATE=$(gh release view "$VERSION" --repo deepset-ai/haystack --json publishedAt --jq '.publishedAt | split("T")[0]')
+          RELEASE_NOTES_PATH="content/release-notes/$VERSION.md"
+
+          {
+            echo "---"
+            echo "title: Haystack $VERSION_NUMBER"
+            echo "description: Release notes for Haystack $VERSION_NUMBER"
+            echo "toc: True"
+            echo "date: $RELEASE_DATE"
+            echo "last_updated: $RELEASE_DATE"
+            echo 'tags: ["Release Notes"]'
+            echo "link: https://github.com/deepset-ai/haystack/releases/tag/$VERSION"
+            echo "---"
+            echo ""
+          } > "$RELEASE_NOTES_PATH"
+
+          gh release view "$VERSION" --repo deepset-ai/haystack --json body --jq '.body' >> "$RELEASE_NOTES_PATH"
+
+          cat "$RELEASE_NOTES_PATH"
+
+      - name: Create Pull Request to Haystack Home
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          commit-message: "Add release notes for Haystack ${{ env.VERSION }}"
+          branch: add-release-notes-for-haystack-${{ env.VERSION }}
+          base: main
+          title: "docs: add release notes for Haystack ${{ env.VERSION }}"
+          add-paths: |
+            content/release-notes
+          body: |
+            This PR adds the release notes for Haystack ${{ env.VERSION }} to the website.
