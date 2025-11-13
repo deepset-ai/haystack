@@ -137,7 +137,7 @@ print("Calc Result:", response.get("calc_result"))
 
 You can wrap an `Agent` using [`ComponentTool`](../../tools/componenttool.mdx) to create multi-agent systems where specialized agents act as tools for a coordinator agent.
 
-When wrapping an `Agent` as a `ComponentTool`, use the `outputs_to_string` parameter with `{"source": "last_message"}` to extract only the agent's final response text, rather than the entire conversation history with tool calls to keep the coordinator agent's context clean and focused.
+When wrapping an `Agent` as a `ComponentTool`, use the `outputs_to_string` parameter with `{"source": "last_message"}` to extract only the agent's final response text, rather than the execution trace with tool calls to keep the coordinator agent's context clean and focused.
 
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator
