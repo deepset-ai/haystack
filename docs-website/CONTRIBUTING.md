@@ -58,15 +58,11 @@ Optional:
   - [Python Snippet Testing](#python-snippet-testing)
   - [Prose and Style Linting with Vale](#prose-and-style-linting-with-vale)
 - [API Reference Contributions](#api-reference-contributions)
-- [Versioning](#versioning)
-  - [Creating a New Version](#creating-a-new-version)
-  - [Version Management](#version-management)
-  - [Understanding Documentation Versions and Where to Make Changes](#understanding-documentation-versions-and-where-to-make-changes)
+- [Understanding Documentation Versions and Where to Make Changes](#understanding-documentation-versions-and-where-to-make-changes)
 - [CI/CD Workflows](#cicd-workflows)
   - [Vale Linting](#vale-linting)
   - [Python Snippet Testing](#python-snippet-testing-1)
   - [API Reference Sync](#api-reference-sync)
-  - [Version Promotion](#version-promotion)
 - [Preview Deployments](#preview-deployments)
 - [Troubleshooting](#troubleshooting)
   - [Blank Page on npm start](#blank-page-on-npm-start)
@@ -88,7 +84,7 @@ Optional:
 | Your change | Edit here | Also edit here |
 |---|---|---|
 | New feature on Haystack `main` | `docs/` | — |
-| Fix in current stable docs | `docs/` | `versioned_docs/version-<current>/` |
+| Fix in current stable docs | `docs/` | `versioned_docs/version-<highest>/` (e.g., `version-2.20`) |
 | API reference content | Edit Python docstrings in main repo | — |
 
 ### Page Frontmatter
@@ -333,66 +329,15 @@ The API reference documentation is automatically generated from Python docstring
 - Commit changes to auto-generated API documentation
 - Any manual changes will be overwritten by the next sync
 
-## Versioning
+## Understanding Documentation Versions and Where to Make Changes
 
-Documentation versions correspond to Haystack releases. Use the Docusaurus CLI to manage versions.
-
-### Creating a New Version
-
-**Step 1: Create a version for main docs**
-
-```bash
-npm run docusaurus -- docs:version 2.20.0
-```
-
-This command:
-- Creates `versioned_docs/version-2.20.0/`
-- Creates `versioned_sidebars/version-2.20.0-sidebars.json`
-- Updates `versions.json`
-
-**Step 2: Create a version for API reference**
-
-```bash
-npm run docusaurus -- docs:version 2.20.0 -- --id reference
-```
-
-This command:
-- Creates `reference_versioned_docs/version-2.20.0/`
-- Creates `reference_versioned_sidebars/version-2.20.0-sidebars.json`
-- Updates `reference_versions.json`
-
-**Note:** The actual versioning workflow is typically handled by maintainers through automated CI/CD scripts during release.
-
-### Version Management
-
-Version configuration in `docusaurus.config.js`:
-
-```javascript
-versions: {
-  current: {
-    label: '2.20-unstable',  // Label for the "next" version
-    path: 'next',             // URL path
-    banner: 'unreleased',     // Shows banner
-  },
-},
-lastVersion: '2.19',          // Default version shown
-```
-
-**Available versions:**
-- `current` (or `next`): Development version from `docs/` and `reference/`
-- Stable versions: Listed in `versions.json` and `reference_versions.json`
-
-See the [Docusaurus versioning documentation](https://docusaurus.io/docs/versioning) for more details.
-
-### Understanding Documentation Versions and Where to Make Changes
-
-The documentation structure supports multiple Haystack versions. Understanding where to make your changes is crucial:
+The documentation structure supports multiple Haystack versions. Haystack releases new versions monthly, and documentation versioning is handled automatically through GitHub workflows during the release process.
 
 **Documentation directories:**
 - `docs/` - Unstable/next version (corresponds to Haystack's `main` branch)
-- `versioned_docs/version-2.19/` - Current stable release documentation
-- `versioned_docs/version-2.18/` - Previous release documentation
-- And so on for older versions
+- `versioned_docs/version-X.Y/` - Stable release documentation for version X.Y
+
+**Note:** The highest version number in `versioned_docs/` represents the current stable release. For example, if you see `version-2.20`, `version-2.19`, and `version-2.18`, then version 2.20 is the current stable release, and older versions are for reference.
 
 **When to edit which version:**
 
@@ -410,22 +355,11 @@ If you're fixing an error in the current release documentation (for example, inc
 
 ✅ Edit files in BOTH locations:
 1. `docs/` (so the fix persists in future versions)
-2. `versioned_docs/version-2.19/` (or whichever version is current)
+2. `versioned_docs/version-<highest>/` (the highest-numbered version directory)
 
-Example: A code example has a bug in the Pipelines guide → fix it in both `docs/concepts/pipelines.mdx` AND `versioned_docs/version-2.19/concepts/pipelines.mdx`
+Example: A code example has a bug in the Pipelines guide → fix it in both `docs/concepts/pipelines.mdx` AND `versioned_docs/version-2.20/concepts/pipelines.mdx` (if 2.20 is the current stable release)
 
-**How to check the current version:**
-
-Look at `versions.json` - the first version listed is the current stable release:
-
-```json
-[
-  "2.19",  // Current release
-  "2.18"   // Previous release
-]
-```
-
-**Pro tip:** When fixing bugs in current release docs, make the change in `docs/` first, then copy it to the versioned directory to ensure consistency.
+**Pro tip:** When fixing bugs in current release docs, make the change in `docs/` first, then copy it to the highest-numbered versioned directory to ensure consistency.
 
 ## CI/CD Workflows
 
@@ -479,18 +413,6 @@ The documentation site includes several GitHub Actions workflows (located in `.g
 - Generates API reference from docstrings
 - Syncs to `docs-website/reference/haystack-api`
 - Creates a pull request with changes
-
-### Version Promotion
-
-**Workflows:** `promote_unstable_docs.yml`, `minor_version_release.yml`
-
-**Actions:**
-- Automated during Haystack releases
-- Creates new version directories
-- Updates version configuration
-- Creates pull requests with version changes
-
-These workflows are typically triggered by maintainers during the release process.
 
 ## Preview Deployments
 

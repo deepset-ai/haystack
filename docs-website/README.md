@@ -128,13 +128,22 @@ We welcome contributions to improve the documentation! See [CONTRIBUTING.md](./C
 - Setting up your development environment
 - Testing requirements
 - Pull request process
-- Versioning workflow
 
 For code contributions to Haystack itself, see the [main repository's contribution guide](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md).
 
 ## CI/CD and Automation
 
-This site uses automated workflows for prose linting, Python snippet tests, API reference sync, versioning, and preview deployments. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+This site uses automated workflows for prose linting, Python snippet tests, API reference sync, and preview deployments. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+
+### Versioning
+
+Documentation versions are released monthly alongside Haystack releases and are fully automated through GitHub workflows. Contributors do not need to manually create or manage versions.
+
+**Automated Workflows:**
+- `promote_unstable_docs.yml` - Automatically triggered during Haystack releases
+- `minor_version_release.yml` - Creates new version directories and updates version configuration
+
+These workflows automatically create versioned documentation snapshots and pull requests during the release process.
 
 ## Deployment
 
