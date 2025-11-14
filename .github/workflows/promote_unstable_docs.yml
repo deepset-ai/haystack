@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v5
+        # use VERSION.txt file from main branch
+        with:
+          ref: main
 
       - name: Get version to release
         id: version
