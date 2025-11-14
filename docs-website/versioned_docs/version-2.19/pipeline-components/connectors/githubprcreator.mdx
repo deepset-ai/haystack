@@ -1,0 +1,78 @@
+---
+title: "GitHubPRCreator"
+id: githubprcreator
+slug: "/githubprcreator"
+description: "This component creates pull requests from a fork back to the original repository through the GitHub API."
+---
+
+# GitHubPRCreator
+
+This component creates pull requests from a fork back to the original repository through the GitHub API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | At the end of a pipeline, after [GitHubRepoForker](githubrepoforker.mdx), [GitHubFileEditor](githubfileeditor.mdx) and other components that prepare changes for submission |
+| **Mandatory init variables** | `github_token`: GitHub personal access token. Can be set with `GITHUB_TOKEN` env var. |
+| **Mandatory run variables** | `issue_url`: GitHub issue URL  <br /> <br />`title`: PR title  <br /> <br />`branch`: Source branch  <br /> <br />`base`: Target branch |
+| **Output variables** | `result`: String indicating the pull request creation result |
+| **API reference** | [GitHub](/reference/integrations-github) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+</div>
+
+## Overview
+
+`GitHubPRCreator` takes a GitHub issue URL and creates a pull request from your fork to the original repository, automatically linking it to the specified issue. It's designed to work with existing forks and assumes you have already made changes in a branch.
+
+Key features:
+
+- **Cross-repository PRs**: Creates pull requests from your fork to the original repository
+- **Issue linking**: Automatically links the PR to the specified GitHub issue
+- **Draft support**: Option to create draft pull requests
+- **Fork validation**: Checks that the required fork exists before creating the PR
+
+As optional parameters, you can set `body` to provide a pull request description and the boolean parameter `draft` to open a draft pull request.
+
+### Authorization
+
+This component requires GitHub authentication with a personal access token from the fork owner. You can set the token using the `GITHUB_TOKEN` environment variable, or pass it directly during initialization via the `github_token` parameter.
+
+To create a personal access token, visit [GitHub's token settings page](https://github.com/settings/tokens). Make sure to grant the appropriate permissions for repository access and pull request creation.
+
+### Installation
+
+Install the GitHub integration with pip:
+
+```shell
+pip install github-haystack
+```
+
+## Usage
+
+:::note Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+```python
+from haystack_integrations.components.connectors.github import GitHubPRCreator
+
+pr_creator = GitHubPRCreator()
+result = pr_creator.run(
+    issue_url="https://github.com/owner/repo/issues/123",
+    title="Fix issue #123",
+    body="This PR addresses issue #123 by implementing the requested changes.",
+    branch="fix-123",  # Branch in your fork with the changes
+    base="main"        # Branch in original repo to merge into
+)
+
+print(result)
+```
+
+```bash
+{'result': 'Pull request #456 created successfully and linked to issue #123'}
+```

@@ -15,16 +15,16 @@ const config = {
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
+  url: 'https://docs.haystack.deepset.ai',
   baseUrl: '/',
 
-  onBrokenLinks: 'warn',
-  onBrokenAnchors: 'warn',
-  onDuplicateRoutes: 'warn',
+  onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
+  onDuplicateRoutes: 'throw',
 
   markdown: {
     hooks: {
-      onBrokenMarkdownLinks: 'warn',
+      onBrokenMarkdownLinks: 'throw',
     },
   },
 
@@ -44,14 +44,16 @@ const config = {
            exclude: ['**/_templates/**'],
           editUrl:
             'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
+          // Use beforeDefaultRemarkPlugins to ensure our plugin runs before Webpack processes links
+          beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.19-unstable',
+              label: '2.21-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.18',
+          lastVersion: '2.20',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -79,17 +81,19 @@ const config = {
         routeBasePath: 'reference',
         sidebarPath: './reference-sidebars.js',
         editUrl: 'https://github.com/deepset-ai/haystack/tree/main/docs-website/',
+        // Use beforeDefaultRemarkPlugins to ensure our plugin runs before Webpack processes links
+        beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
         showLastUpdateAuthor: false,
         showLastUpdateTime: false,
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.19-unstable',
+            label: '2.21-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.18',
+        lastVersion: '2.20',
       },
     ],
   ],
@@ -97,6 +101,11 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      docs: {
+        sidebar: {
+          autoCollapseCategories: true,
+        },
+      },
       navbar: {
         title: 'Haystack Documentation',
         logo: {
@@ -107,12 +116,11 @@ const config = {
           {
             type: 'docsVersionDropdown',
             position: 'left',
-            dropdownItemsAfter: [{to: '/versions', label: 'All versions'}],
             dropdownActiveClassDisabled: true,
           },
           {
             type: 'doc',
-            docId: 'overview/intro',
+            docId: 'intro',
             label: 'Docs',
             position: 'left',
           },

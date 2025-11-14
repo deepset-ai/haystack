@@ -1,0 +1,196 @@
+---
+title: "PipelineTool"
+id: pipelinetool
+slug: "/pipelinetool"
+description: "Wraps a Haystack pipeline so an LLM can call it as a tool."
+---
+
+# PipelineTool
+
+Wraps a Haystack pipeline so an LLM can call it as a tool.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `pipeline`: The Haystack pipeline to wrap  <br /> <br />`name`: The name of the tool  <br /> <br />`description`: Description of the tool |
+| **API reference** | [Tools](/reference/tools-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/pipeline_tool.py |
+
+</div>
+
+## Overview
+
+`PipelineTool` lets you wrap a whole Haystack pipeline and expose it as a tool that an LLM can call.
+It replaces the older workflow of first wrapping a pipeline in a `SuperComponent` and then passing that to
+`ComponentTool`.
+
+`PipelineTool` builds the tool parameter schema from the pipeline’s input sockets and uses the underlying components’ docstrings for input descriptions. You can choose which pipeline inputs and outputs to expose with
+`input_mapping` and `output_mapping`. It works with both `Pipeline` and `AsyncPipeline` and can be used in a pipeline with `ToolInvoker` or directly with the `Agent` component.
+
+### Parameters
+
+- `pipeline` is mandatory and must be a `Pipeline` or `AsyncPipeline` instance.
+- `name` is mandatory and specifies the tool name.
+- `description` is mandatory and explains what the tool does.
+- `input_mapping` is optional. It maps tool input names to pipeline input socket paths. If omitted, a default
+  mapping is created from all pipeline inputs.
+- `output_mapping` is optional. It maps pipeline output socket paths to tool output names. If omitted, a default
+  mapping is created from all pipeline outputs.
+
+## Usage
+
+### Basic Usage
+
+You can create a `PipelineTool` from any existing Haystack pipeline:
+
+```python
+from haystack import Document, Pipeline
+from haystack.tools import PipelineTool
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.rankers.sentence_transformers_similarity import SentenceTransformersSimilarityRanker
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+## Create your pipeline
+document_store = InMemoryDocumentStore()
+## Add some example documents
+document_store.write_documents([
+    Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
+    Document(content="Alternating current (AC) is an electric current which periodically reverses direction."),
+    Document(content="Thomas Edison promoted direct current (DC) and competed with AC in the War of Currents."),
+])
+retrieval_pipeline = Pipeline()
+retrieval_pipeline.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=document_store))
+retrieval_pipeline.add_component("ranker", SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2"))
+retrieval_pipeline.connect("bm25_retriever.documents", "ranker.documents")
+
+## Wrap the pipeline as a tool
+retrieval_tool = PipelineTool(
+    pipeline=retrieval_pipeline,
+    input_mapping={"query": ["bm25_retriever.query", "ranker.query"]},
+    output_mapping={"ranker.documents": "documents"},
+    name="retrieval_tool",
+    description="Search short articles about Nikola Tesla, AC electricity, and related inventors",
+)
+```
+
+### In a pipeline
+
+Create a `PipelineTool` from a retrieval pipeline and let an `OpenAIChatGenerator` use it as a tool in a pipeline.
+
+```python
+from haystack import Document, Pipeline
+from haystack.tools import PipelineTool
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
+from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
+from haystack.components.retrievers import InMemoryEmbeddingRetriever
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.tools.tool_invoker import ToolInvoker
+from haystack.dataclasses import ChatMessage
+
+## Initialize a document store and add some documents
+document_store = InMemoryDocumentStore()
+document_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+documents = [
+    Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
+    Document(content="He is best known for his contributions to the design of the modern alternating current (AC) electricity supply system."),
+]
+document_embedder.warm_up()
+docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
+document_store.write_documents(docs_with_embeddings)
+
+## Build a simple retrieval pipeline
+retrieval_pipeline = Pipeline()
+retrieval_pipeline.add_component(
+    "embedder", SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+)
+retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
+
+## Wrap the pipeline as a tool
+retriever_tool = PipelineTool(
+    pipeline=retrieval_pipeline,
+    input_mapping={"query": ["embedder.text"]},
+    output_mapping={"retriever.documents": "documents"},
+    name="document_retriever",
+    description="For any questions about Nikola Tesla, always use this tool",
+)
+
+## Create pipeline with OpenAIChatGenerator and ToolInvoker
+pipeline = Pipeline()
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[retriever_tool]))
+pipeline.add_component("tool_invoker", ToolInvoker(tools=[retriever_tool]))
+
+## Connect components
+pipeline.connect("llm.replies", "tool_invoker.messages")
+
+message = ChatMessage.from_user("Use the document retriever tool to find information about Nikola Tesla")
+
+## Run pipeline
+result = pipeline.run({"llm": {"messages": [message]}})
+
+print(result)
+```
+
+### With the Agent Component
+
+Use `PipelineTool` with the [Agent](../pipeline-components/agents-1/agent.mdx) component. The `Agent` includes a `ToolInvoker` and your chosen ChatGenerator to execute tool calls and process tool results.
+
+```python
+from haystack import Document, Pipeline
+from haystack.tools import PipelineTool
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
+from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
+from haystack.components.retrievers import InMemoryEmbeddingRetriever
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.agents import Agent
+from haystack.dataclasses import ChatMessage
+
+## Initialize a document store and add some documents
+document_store = InMemoryDocumentStore()
+document_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+documents = [
+    Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
+    Document(content="He is best known for his contributions to the design of the modern alternating current (AC) electricity supply system."),
+]
+document_embedder.warm_up()
+docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
+document_store.write_documents(docs_with_embeddings)
+
+## Build a simple retrieval pipeline
+retrieval_pipeline = Pipeline()
+retrieval_pipeline.add_component(
+    "embedder", SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+)
+retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
+
+## Wrap the pipeline as a tool
+retriever_tool = PipelineTool(
+    pipeline=retrieval_pipeline,
+    input_mapping={"query": ["embedder.text"]},
+    output_mapping={"retriever.documents": "documents"},
+    name="document_retriever",
+    description="For any questions about Nikola Tesla, always use this tool",
+)
+
+## Create an Agent with the tool
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+    tools=[retriever_tool]
+)
+
+## Let the Agent handle a query
+result = agent.run([ChatMessage.from_user("Who was Nikola Tesla?")])
+
+## Print result of the tool call
+print("Tool Call Result:")
+print(result["messages"][2].tool_call_result.result)
+print("")
+
+## Print answer
+print("Answer:")
+print(result["messages"][-1].text)
+```

@@ -1,0 +1,79 @@
+---
+title: "DocumentNDCGEvaluator"
+id: documentndcgevaluator
+slug: "/documentndcgevaluator"
+description: "The `DocumentNDCGEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks at what rank ground truth documents appear in the list of retrieved documents. This metric is called normalized discounted cumulative gain (NDCG)."
+---
+
+# DocumentNDCGEvaluator
+
+The `DocumentNDCGEvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks at what rank ground truth documents appear in the list of retrieved documents. This metric is called normalized discounted cumulative gain (NDCG).
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
+| **Mandatory run variables** | "ground_truth_documents": A list containing another list of ground truth documents, one list per question  <br /> <br />"retrieved_documents": A list containing another list of retrieved documents, one list per question |
+| **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 that represents the NDCG  <br /> <br />- `individual_scores`: A list of individual NDCG values ranging from 0.0 to 1.0 for each input pair of a list of retrieved documents and a list of ground truth documents |
+| **API reference** | [Evaluators](/reference/evaluators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/document_ndcg.py |
+
+## Overview
+
+You can use the `DocumentNDCGEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, against ground truth labels. A higher NDCG is better and indicates that relevant documents appear at an earlier position in the list of retrieved documents.
+
+If the ground truth documents have scores, a higher NDCG indicates that documents with a higher score appear at an earlier position in the list of retrieved documents. If the ground truth documents have no scores, binary relevance is assumed, meaning that all ground truth documents are equally relevant, and the order in which they are in the list of retrieved documents does not matter for the NDCG.
+
+No parameters are required to initialize a `DocumentNDCGEvaluator`.
+
+## Usage
+
+### On its own
+
+Below is an example where we use the `DocumentNDCGEvaluator` to evaluate documents retrieved for a query. There are two ground truth documents and three retrieved documents. All ground truth documents are retrieved, but one non-relevant document is ranked higher than one of the ground truth documents, which lowers the NDCG score.
+
+```python
+from haystack import Document
+from haystack.components.evaluators import DocumentNDCGEvaluator
+
+evaluator = DocumentNDCGEvaluator()
+result = evaluator.run(
+    ground_truth_documents=[[Document(content="France", score=1.0), Document(content="Paris", score=0.5)]],
+    retrieved_documents=[[Document(content="France"), Document(content="Germany"), Document(content="Paris")]],
+)
+print(result["individual_scores"])
+## [0.8869]
+print(result["score"])
+## 0.8869
+```
+
+### In a pipeline
+
+Below is an example of using a `DocumentNDCGEvaluator` and `DocumentMRREvaluator` in a pipeline to evaluate retrieved documents and compare them to ground truth documents. Running a pipeline instead of the individual components simplifies calculating more than one metric.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.evaluators import DocumentMRREvaluator, DocumentNDCGEvaluator
+
+pipeline = Pipeline()
+pipeline.add_component("ndcg_evaluator", DocumentNDCGEvaluator())
+pipeline.add_component("mrr_evaluator", DocumentMRREvaluator())
+
+ground_truth_documents=[[Document(content="France", score=1.0), Document(content="Paris", score=0.5)]]
+retrieved_documents=[[Document(content="France"), Document(content="Germany"), Document(content="Paris")]]
+
+result = pipeline.run({
+  "ndcg_evaluator": {
+    "ground_truth_documents": ground_truth_documents,
+    "retrieved_documents": retrieved_documents
+  },
+  "mrr_evaluator": {
+    "ground_truth_documents": ground_truth_documents,
+	  "retrieved_documents": retrieved_documents
+	},
+})
+
+for evaluator in result:
+    print(result[evaluator]["score"])
+## 0.9502
+## 1.0
+```

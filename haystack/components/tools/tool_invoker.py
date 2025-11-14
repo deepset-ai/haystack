@@ -8,7 +8,7 @@ import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
 from haystack.components.agents import State
 from haystack.core.component.component import component
@@ -19,10 +19,12 @@ from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingCh
 from haystack.tools import (
     ComponentTool,
     Tool,
-    Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
 from haystack.tools.errors import ToolInvocationError
 from haystack.tracing.utils import _serializable_value
@@ -171,7 +173,7 @@ class ToolInvoker:
 
     def __init__(
         self,
-        tools: Union[list[Tool], Toolset],
+        tools: ToolsType,
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
         streaming_callback: Optional[StreamingCallbackT] = None,
@@ -183,7 +185,7 @@ class ToolInvoker:
         Initialize the ToolInvoker component.
 
         :param tools:
-            A list of tools that can be invoked or a Toolset instance that can resolve tools.
+            A list of Tool and/or Toolset objects, or a Toolset instance that can resolve tools.
         :param raise_on_failure:
             If True, the component will raise an exception in case of errors
             (tool not found, tool invocation errors, tool result conversion errors).
@@ -215,6 +217,7 @@ class ToolInvoker:
         self.convert_result_to_json_string = convert_result_to_json_string
 
         self._tools_with_names = self._validate_and_prepare_tools(tools)
+        self._is_warmed_up = False
 
     @staticmethod
     def _make_context_bound_invoke(tool_to_invoke: Tool, final_args: dict[str, Any]) -> Callable[[], Any]:
@@ -240,21 +243,19 @@ class ToolInvoker:
         return _runner
 
     @staticmethod
-    def _validate_and_prepare_tools(tools: Union[list[Tool], Toolset]) -> dict[str, Tool]:
+    def _validate_and_prepare_tools(tools: ToolsType) -> dict[str, Tool]:
         """
         Validates and prepares tools for use by the ToolInvoker.
 
-        :param tools: A list of tools or a Toolset instance.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+
         :returns: A dictionary mapping tool names to Tool instances.
         :raises ValueError: If no tools are provided or if duplicate tool names are found.
         """
         if not tools:
             raise ValueError("ToolInvoker requires at least one tool.")
 
-        if isinstance(tools, Toolset):
-            converted_tools = list(tools)
-        else:
-            converted_tools = tools
+        converted_tools = flatten_tools_or_toolsets(tools)
 
         _check_duplicate_tool_names(converted_tools)
         tool_names = [tool.name for tool in converted_tools]
@@ -486,6 +487,17 @@ class ToolInvoker:
 
         return tool_calls, tool_call_params, error_messages
 
+    def warm_up(self):
+        """
+        Warm up the tool invoker.
+
+        This will warm up the tools registered in the tool invoker.
+        This method is idempotent and will only warm up the tools once.
+        """
+        if not self._is_warmed_up:
+            warm_up_tools(self.tools)
+            self._is_warmed_up = True
+
     @component.output_types(tool_messages=list[ChatMessage], state=State)
     def run(
         self,
@@ -494,7 +506,7 @@ class ToolInvoker:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ) -> dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
@@ -511,8 +523,8 @@ class ToolInvoker:
             Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
             If False, the `streaming_callback` will not be passed to the tool invocation.
             If None, the value from the constructor will be used.
-        :param tools:
-            A list of tools to use for the tool invoker. If set, overrides the tools set in the constructor.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :returns:
             A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
             Each ChatMessage objects wraps the result of a tool invocation.
@@ -625,7 +637,7 @@ class ToolInvoker:
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
         enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
     ) -> dict[str, Any]:
         """
         Asynchronously processes ChatMessage objects containing tool calls.
@@ -643,8 +655,8 @@ class ToolInvoker:
             Note that this requires the tool to have a `streaming_callback` parameter in its `invoke` method signature.
             If False, the `streaming_callback` will not be passed to the tool invocation.
             If None, the value from the constructor will be used.
-        :param tools:
-            A list of tools to use for the tool invoker. If set, overrides the tools set in the constructor.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :returns:
             A dictionary with the key `tool_messages` containing a list of ChatMessage objects with tool role.
             Each ChatMessage objects wraps the result of a tool invocation.

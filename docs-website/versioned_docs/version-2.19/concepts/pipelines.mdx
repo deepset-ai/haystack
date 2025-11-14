@@ -1,0 +1,106 @@
+---
+title: "Pipelines"
+id: pipelines
+slug: "/pipelines"
+description: "To build modern search pipelines with LLMs, you need two things: powerful components and an easy way to put them together. The Haystack pipeline is built for this purpose and enables you to design and scale your interactions with LLMs."
+---
+
+import ClickableImage from "@site/src/components/ClickableImage";
+
+# Pipelines
+
+To build modern search pipelines with LLMs, you need two things: powerful components and an easy way to put them together. The Haystack pipeline is built for this purpose and enables you to design and scale your interactions with LLMs.
+
+The pipelines in Haystack are directed multigraphs of different Haystack components and integrations. They give you the freedom to connect these components in various ways. This means that the pipeline doesn't need to be a continuous stream of information. With the flexibility of Haystack pipelines, you can have simultaneous flows, standalone components, loops, and other types of connections.
+
+## Flexibility
+
+Haystack pipelines are much more than just query and indexing pipelines. What a pipeline does, whether that be indexing, querying, fetching from an API, preprocessing or more, completely depends on how you design your pipeline and what components you use. While you can still create single-function pipelines, like indexing pipelines using ready-made components to clean up, split, and write the documents into a Document Store, or query pipelines that just take a query and return an answer, Haystack allows you to combine multiple use cases into one pipeline with decision components (like the `ConditionalRouter`) as well.
+
+### Agentic Pipelines
+
+Haystack loops and branches enable the creation of complex applications like agents. Here are a few examples on how to create them:
+
+- [Tutorial: Building a Chat Agent with Function Calling](https://haystack.deepset.ai/tutorials/40_building_chat_application_with_function_calling)
+- [Tutorial: Building an Agentic RAG with Fallback to Websearch](https://haystack.deepset.ai/tutorials/36_building_fallbacks_with_conditional_routing)
+- [Tutorial: Generating Structured Output with Loop-Based Auto-Correction](https://haystack.deepset.ai/tutorials/28_structured_output_with_loop)
+- [Cookbook: Define & Run Tools](https://haystack.deepset.ai/cookbook/tools_support)
+- [Cookbook: Conversational RAG using Memory](https://haystack.deepset.ai/cookbook/conversational_rag_using_memory)
+- [Cookbook: Newsletter Sending Agent with Experimental Haystack Tools](https://haystack.deepset.ai/cookbook/newsletter-agent)
+
+### Branching
+
+A pipeline can have multiple branches that process data concurrently. For example, to process different file types, you can have a pipeline with a bunch of converters, each handling a specific file type. You then feed all your files to the pipeline and it smartly divides and routes them to appropriate converters all at once, saving you the effort of sending your files one by one for processing.
+
+<ClickableImage src="/img/83f686b-Pipeline_Illustrations_1_1.png" alt="Pipeline architecture diagram showing components arranged in parallel branches that converge into a single pipeline flow" size="large" />
+
+### Loops
+
+Components in a pipeline can work in iterative loops, which you can cap at a desired number. This can be handy for scenarios like self-correcting loops, where you have a generator producing some output and then a validator component to check if the output is correct. If the generator's output has errors, the validator component can loop back to the generator for a corrected output. The loop goes on until the output passes the validation and can be sent further down the pipeline.
+
+<ClickableImage src="/img/2390eea-Pipeline_Illustrations_1_2.png" alt="Pipeline architecture diagram illustrating a feedback loop where output from later components loops back to earlier components" size="large" />
+
+### Async Pipelines
+
+The AsyncPipeline enables parallel execution of Haystack components when their dependencies allow it. This improves performance in complex pipelines with independent operations. For example, it can run multiple Retrievers or LLM calls simultaneously, execute independent pipeline branches in parallel, and efficiently handle I/O-bound operations that would otherwise cause delays. Through concurrent execution, the AsyncPipeline significantly reduces total processing time compared to sequential execution.
+
+Find out more in our [AsyncPipeline](pipelines/asyncpipeline.mdx) documentation.
+
+## SuperComponents
+
+To simplify your code, we have introduced [SuperComponents](components/supercomponents.mdx) that allow you to wrap complete pipelines and reuse them as a single component. Check out their documentation page for the details and examples.
+
+## Data Flow
+
+While the data (the initial query) flows through the entire pipeline, individual values are only passed from one component to another when they are connected. Therefore, not all components have access to all the data. This approach offers the benefits of speed and ease of debugging.
+
+To connect components and integrations in a pipeline, you must know the names of their inputs and outputs. The output of one component must be accepted as input by the following component. When you connect components in a pipeline with `Pipeline.connect()`, it validates if the input and output types match.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/SxAwyeCkguc"
+title="YouTube video player" frameBorder="0"
+allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+allowFullScreen></iframe>
+
+## Steps to Create a Pipeline Explained
+
+Once all your components are created and ready to be combined in a pipeline, there are four steps to make it work:
+
+1. Create the pipeline with `Pipeline()`.
+   This creates the Pipeline object.
+2. Add components to the pipeline, one by one, with `.add_component(name, component)`.
+   This just adds components to the pipeline without connecting them yet. It's especially useful for loops as it allows the smooth connection of the components in the next step because they all already exist in the pipeline.
+3. Connect components with `.connect("producer_component.output_name", "consumer_component.input_name")`.
+   At this step, you explicitly connect one of the outputs of a component to one of the inputs of the next component. This is also when the pipeline validates the connection without running the components. It makes the validation fast.
+4. Run the pipeline with `.run({"component_1": {"mandatory_inputs": value}})`.
+   Finally, you run the Pipeline by specifying the first component in the pipeline and passing its mandatory inputs. Optionally, you can pass inputs to other components, for example: `.run({"component_1": {"mandatory_inputs": value}, "component_2": {"inputs": value}})`.
+
+The full pipeline [example](pipelines/creating-pipelines.mdx#example) in [Creating Pipelines](pipelines/creating-pipelines.mdx) shows how all the elements come together to create a working RAG pipeline.
+
+Once you create your pipeline, you can [visualize it in a graph](pipelines/visualizing-pipelines.mdx) to understand how the components are connected and make sure that's how you want them. You can use Mermaid graphs to do that.
+
+## Validation
+
+Validation happens when you connect pipeline components with `.connect()`, but before running the components to make it faster. The pipeline validates that:
+
+- The components exist in the pipeline.
+- The components' outputs and inputs match and are explicitly indicated. For example, if a component produces two outputs, when connecting it to another component, you must indicate which output connects to which input.
+- The components' types match.
+- For input types other than `Variadic`, checks if the input is already occupied by another connection.
+
+All of these checks produce detailed errors to help you quickly fix any issues identified.
+
+## Serialization
+
+Thanks to serialization, you can save and then load your pipelines. Serialization is converting a Haystack pipeline into a format you can store on disk or send over the wire. It's particularly useful for:
+
+- Editing, storing, and sharing pipelines.
+- Modifying existing pipelines in a format different than Python.
+
+Haystack pipelines delegate the serialization to its components, so serializing a pipeline simply means serializing each component in the pipeline one after the other, along with their connections. The pipeline is serialized into a dictionary format, which acts as an intermediate format that you can then convert into the final format you want.
+
+:::note Serialization formats
+
+Haystack only supports YAML format at this time. We'll be rolling out more formats gradually.
+:::
+
+For serialization to be possible, components must support conversion from and to Python dictionaries. All Haystack components have two methods that make them serializable: `from_dict` and `to_dict`. The `Pipeline` class, in turn, has its own `from_dict` and `to_dict` methods that take care of serializing components and connections.

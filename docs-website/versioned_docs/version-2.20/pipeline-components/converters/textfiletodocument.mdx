@@ -1,0 +1,69 @@
+---
+title: "TextFileToDocument"
+id: textfiletodocument
+slug: "/textfiletodocument"
+description: "Converts text files to documents."
+---
+
+# TextFileToDocument
+
+Converts text files to documents.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx)  or right at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | `sources`: A list of paths to text files you want to convert                                   |
+| **Output variables**                   | `documents`: A list of documents                                                               |
+| **API reference**                      | [Converters](/reference/converters-api)                                                               |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/txt.py       |
+
+</div>
+
+## Overview
+
+The `TextFileToDocument` component converts text files into documents. You can use it in an indexing pipeline to index the contents of text files into a Document Store. It takes a list of file paths or [ByteStream](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+
+When you initialize the component, you can optionally set the default encoding of the text files through the `encoding` parameter. If you don't provide any value, the component uses `"utf-8"` by default. Note that if the encoding is specified in the metadata of an input ByteStream, it will override this parameter's setting.
+
+## Usage
+
+### On its own
+
+```python
+from pathlib import Path
+from haystack.components.converters import TextFileToDocument
+
+converter = TextFileToDocument()
+
+docs = converter.run(sources=[Path("my_file.txt")])
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import TextFileToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", TextFileToDocument())
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": file_names}})
+```
+
+## Additional References
+
+:notebook: Tutorial: [Preprocessing Different File Types](https://haystack.deepset.ai/tutorials/30_file_type_preprocessing_index_pipeline)

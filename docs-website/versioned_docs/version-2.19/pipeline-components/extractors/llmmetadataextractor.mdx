@@ -1,0 +1,145 @@
+---
+title: "LLMMetadataExtractor"
+id: llmmetadataextractor
+slug: "/llmmetadataextractor"
+description: "Extracts metadata from documents using a Large Language Model. The metadata is extracted by providing a prompt to a LLM that generates it."
+---
+
+# LLMMetadataExtractor
+
+Extracts metadata from documents using a Large Language Model. The metadata is extracted by providing a prompt to a LLM that generates it.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After [PreProcessors](../preprocessors.mdx) in an indexing pipeline |
+| **Mandatory init variables** | `prompt`: The prompt to instruct the LLM on how to extract metadata from the document  <br /> <br />`chat_generator`: A Chat Generator instance which represents the LLM configured to return a JSON object |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [Extractors](/reference/extractors-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/extractors/llm_metadata_extractor.py |
+
+</div>
+
+## Overview
+
+The `LLMMetadataExtractor` extraction relies on an LLM and a prompt to perform the metadata extraction. At initialization time, it expects an LLM, a Haystack Generator, and a prompt describing the metadata extraction process.
+
+The prompt should have a variable called `document` that will point to a single document in the list of documents. So, to access the content of the document, you can use `{{ document.content }}` in the prompt.
+
+At runtime, it expects a list of documents and will run the LLM on each document in the list, extracting metadata from the document. The metadata will be added to the document's metadata field.
+
+If the LLM fails to extract metadata from a document, it will be added to the `failed_documents` list. The failed documents' metadata will contain the keys `metadata_extraction_error` and `metadata_extraction_response`.
+
+These documents can be re-run with another extractor to extract metadata using the `metadata_extraction_response` and `metadata_extraction_error` in the prompt.
+
+The current implementation supports the following Haystack Generators:
+
+- [OpenAIChatGenerator](../generators/openaichatgenerator.mdx)
+- [AzureOpenAIChatGenerator](../generators/azureopenaichatgenerator.mdx)
+- [AmazonBedrockChatGenerator](../generators/amazonbedrockchatgenerator.mdx)
+- [VertexAIGeminiChatGenerator](../generators/vertexaigeminichatgenerator.mdx)
+
+## Usage
+
+Here's an example of using the `LLMMetadataExtractor` to extract named entities and add them to the document's metadata.
+
+First, the mandatory imports:
+
+```python
+from haystack import Document
+from haystack.components.extractors.llm_metadata_extractor import LLMMetadataExtractor
+from haystack.components.generators.chat import OpenAIChatGenerator
+```
+
+Then, define some documents:
+
+```python
+docs = [
+    Document(content="deepset was founded in 2018 in Berlin, and is known for its Haystack framework"),
+    Document(content="Hugging Face is a company founded in New York, USA and is known for its Transformers library"
+    )
+]
+
+```
+
+And now, a prompt that extracts named entities from the documents:
+
+```python
+NER_PROMPT = '''
+    -Goal-
+    Given text and a list of entity types, identify all entities of those types from the text.
+
+    -Steps-
+    1. Identify all entities. For each identified entity, extract the following information:
+    - entity_name: Name of the entity, capitalized
+    - entity_type: One of the following types: [organization, product, service, industry]
+    Format each entity as a JSON like: {"entity": <entity_name>, "entity_type": <entity_type>}
+
+    2. Return output in a single list with all the entities identified in steps 1.
+
+    -Examples-
+    ######################
+    Example 1:
+    entity_types: [organization, person, partnership, financial metric, product, service, industry, investment strategy, market trend]
+    text: Another area of strength is our co-brand issuance. Visa is the primary network partner for eight of the top
+    10 co-brand partnerships in the US today and we are pleased that Visa has finalized a multi-year extension of
+    our successful credit co-branded partnership with Alaska Airlines, a portfolio that benefits from a loyal customer
+    base and high cross-border usage.
+    We have also had significant co-brand momentum in CEMEA. First, we launched a new co-brand card in partnership
+    with Qatar Airways, British Airways and the National Bank of Kuwait. Second, we expanded our strong global
+    Marriott relationship to launch Qatar's first hospitality co-branded card with Qatar Islamic Bank. Across the
+    United Arab Emirates, we now have exclusive agreements with all the leading airlines marked by a recent
+    agreement with Emirates Skywards.
+    And we also signed an inaugural Airline co-brand agreement in Morocco with Royal Air Maroc. Now newer digital
+    issuers are equally
+    ------------------------
+    output:
+    {"entities": [{"entity": "Visa", "entity_type": "company"}, {"entity": "Alaska Airlines", "entity_type": "company"}, {"entity": "Qatar Airways", "entity_type": "company"}, {"entity": "British Airways", "entity_type": "company"}, {"entity": "National Bank of Kuwait", "entity_type": "company"}, {"entity": "Marriott", "entity_type": "company"}, {"entity": "Qatar Islamic Bank", "entity_type": "company"}, {"entity": "Emirates Skywards", "entity_type": "company"}, {"entity": "Royal Air Maroc", "entity_type": "company"}]}
+    #############################
+    -Real Data-
+    ######################
+    entity_types: [company, organization, person, country, product, service]
+    text: {{ document.content }}
+    ######################
+    output:
+    '''
+```
+
+Now, define a simple indexing pipeline that uses the `LLMMetadataExtractor` to extract named entities from the documents:
+
+```python
+chat_generator = OpenAIChatGenerator(
+  generation_kwargs={
+    "max_tokens": 500,
+    "temperature": 0.0,
+    "seed": 0,
+    "response_format": {"type": "json_object"},
+  },
+  max_retries=1,
+  timeout=60.0,
+)
+
+extractor = LLMMetadataExtractor(
+  prompt=NER_PROMPT,
+  chat_generator=generator,
+  expected_keys=["entities"],
+  raise_on_failure=False,
+)
+
+extractor.warm_up()
+extractor.run(documents=docs)
+
+  Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
+           meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
+                               {'entity': 'Haystack', 'entity_type': 'product'}]}),
+  Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
+           meta: {'entities': [
+             {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
+             {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
+           ]})
+]
+    'failed_documents': []
+   }
+```

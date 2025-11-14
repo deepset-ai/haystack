@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +12,7 @@ from networkx import MultiDiGraph
 
 from haystack import logging
 from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError
+from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import (
     AgentBreakpoint,
@@ -27,8 +27,7 @@ from haystack.utils.misc import _get_output_dir
 
 if TYPE_CHECKING:
     from haystack.components.agents.agent import _ExecutionContext
-    from haystack.tools.tool import Tool
-    from haystack.tools.toolset import Toolset
+    from haystack.tools import Tool, Toolset, ToolsType
 
 logger = logging.getLogger(__name__)
 
@@ -339,8 +338,10 @@ def _create_agent_snapshot(
     """
     return AgentSnapshot(
         component_inputs={
-            "chat_generator": _serialize_value_with_schema(deepcopy(component_inputs["chat_generator"])),
-            "tool_invoker": _serialize_value_with_schema(deepcopy(component_inputs["tool_invoker"])),
+            "chat_generator": _serialize_value_with_schema(
+                _deepcopy_with_exceptions(component_inputs["chat_generator"])
+            ),
+            "tool_invoker": _serialize_value_with_schema(_deepcopy_with_exceptions(component_inputs["tool_invoker"])),
         },
         component_visits=component_visits,
         break_point=agent_breakpoint,
@@ -348,20 +349,19 @@ def _create_agent_snapshot(
     )
 
 
-def _validate_tool_breakpoint_is_valid(
-    agent_breakpoint: AgentBreakpoint, tools: Union[list["Tool"], "Toolset"]
-) -> None:
+def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools: "ToolsType") -> None:
     """
     Validates the AgentBreakpoint passed to the agent.
 
     Validates that the tool name in ToolBreakpoints correspond to a tool available in the agent.
 
     :param agent_breakpoint: AgentBreakpoint object containing breakpoints for the agent components.
-    :param tools: List of Tool objects or a Toolset that the agent can use.
+    :param tools: A list of Tool and/or Toolset objects, or a Toolset that the agent can use.
     :raises ValueError: If any tool name in ToolBreakpoints is not available in the agent's tools.
     """
+    from haystack.tools.utils import flatten_tools_or_toolsets  # avoid circular import
 
-    available_tool_names = {tool.name for tool in tools}
+    available_tool_names = {tool.name for tool in flatten_tools_or_toolsets(tools)}
     tool_breakpoint = agent_breakpoint.break_point
     # Assert added for mypy to pass, but this is already checked before this function is called
     assert isinstance(tool_breakpoint, ToolBreakpoint)

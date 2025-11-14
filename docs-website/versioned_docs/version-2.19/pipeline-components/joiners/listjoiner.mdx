@@ -1,0 +1,94 @@
+---
+title: "ListJoiner"
+id: listjoiner
+slug: "/listjoiner"
+description: "A component that joins multiple lists into a single flat list."
+---
+
+# ListJoiner
+
+A component that joins multiple lists into a single flat list.
+
+<div className="key-value-table">
+
+|                                        |                                                                                                                                                                             |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | In indexing and query pipelines, after components that return lists of documents such as multiple [Retrievers](../retrievers.mdx) or multiple [Converters](../converters.mdx) |
+| **Mandatory run variables**            | `values`: The dictionary of lists to be joined                                                                                                                              |
+| **Output variables**                   | `values`: A dictionary with a `values` key containing the joined list                                                                                                       |
+| **API reference**                      | [Joiners](/reference/joiners-api)                                                                                                                                                  |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/joiners/list_joiner.py                                                                               |
+
+</div>
+
+## Overview
+
+The `ListJoiner` component combines multiple lists into one list. It is useful for combining multiple lists from different pipeline components, merging LLM responses, handling multi-step data processing, and gathering data from different sources into one list.
+
+The items stay in order based on when each input list was processed in a pipeline.
+
+You can optionally specify a `list_type_` parameter to set the expected type of the lists being joined (for example, `List[ChatMessage]`). If not set, `ListJoiner` will accept lists containing mixed data types.
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.joiners import ListJoiner
+
+list1 = ["Hello", "world"]
+list2 = ["This", "is", "Haystack"]
+list3 = ["ListJoiner", "Example"]
+
+joiner = ListJoiner()
+
+result = joiner.run(values=[list1, list2, list3])
+
+print(result["values"])
+```
+
+### In a pipeline
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+from haystack.components.joiners import ListJoiner
+from typing import List
+
+user_message = [ChatMessage.from_user("Give a brief answer the following question: {{query}}")]
+
+feedback_prompt = """
+    You are given a question and an answer.
+    Your task is to provide a score and a brief feedback on the answer.
+    Question: {{query}}
+    Answer: {{response}}
+    """
+feedback_message = [ChatMessage.from_system(feedback_prompt)]
+
+prompt_builder = ChatPromptBuilder(template=user_message)
+feedback_prompt_builder = ChatPromptBuilder(template=feedback_message)
+llm = OpenAIChatGenerator(model="gpt-4o-mini")
+feedback_llm = OpenAIChatGenerator(model="gpt-4o-mini")
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.add_component("feedback_prompt_builder", feedback_prompt_builder)
+pipe.add_component("feedback_llm", feedback_llm)
+pipe.add_component("list_joiner", ListJoiner(List[ChatMessage]))
+
+pipe.connect("prompt_builder.prompt", "llm.messages")
+pipe.connect("prompt_builder.prompt", "list_joiner")
+pipe.connect("llm.replies", "list_joiner")
+pipe.connect("llm.replies", "feedback_prompt_builder.response")
+pipe.connect("feedback_prompt_builder.prompt", "feedback_llm.messages")
+pipe.connect("feedback_llm.replies", "list_joiner")
+
+query = "What is nuclear physics?"
+ans = pipe.run(data={"prompt_builder": {"template_variables":{"query": query}},
+    "feedback_prompt_builder": {"template_variables":{"query": query}}})
+
+print(ans["list_joiner"]["values"])
+```

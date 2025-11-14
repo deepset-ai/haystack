@@ -1,0 +1,321 @@
+---
+title: "ChatMessage"
+id: chatmessage
+slug: "/chatmessage"
+description: "`ChatMessage` is the central abstraction to represent a message for a LLM. It contains role, metadata and several types of content, including text, images, tool calls and tool calls results."
+---
+
+# ChatMessage
+
+`ChatMessage` is the central abstraction to represent a message for a LLM. It contains role, metadata and several types of content, including text, images, tool calls and tool calls results.
+
+To create a `ChatMessage` instance, use `from_user`, `from_system`, `from_assistant`, and `from_tool` class methods.
+
+The [content](#types-of-content) of the `ChatMessage` can then be inspected using the `text`, `texts`, `image`, `images`, `tool_call`, `tool_calls`, `tool_call_result`, and `tool_call_results` properties.
+
+If you are looking for the details of this data class methods and parameters, head over to our [API documentation](/reference/data-classes-api#chatmessage).
+
+## Types of Content
+
+`ChatMessage` currently supports `TextContent`, `ImageContent`, `ToolCall` and `ToolCallResult` types of content:
+
+```python
+@dataclass
+class TextContent:
+    """
+    The textual content of a chat message.
+
+    :param text: The text content of the message.
+    """
+
+    text: str
+
+@dataclass
+class ToolCall:
+    """
+    Represents a Tool call prepared by the model, usually contained in an assistant message.
+
+    :param tool_name: The name of the Tool to call.
+    :param arguments: The arguments to call the Tool with.
+    :param id: The ID of the Tool call.
+    """
+
+    tool_name: str
+    arguments: Dict[str, Any]
+    id: Optional[str] = None  # noqa: A003
+
+@dataclass
+class ToolCallResult:
+    """
+    Represents the result of a Tool invocation.
+
+    :param result: The result of the Tool invocation.
+    :param origin: The Tool call that produced this result.
+    :param error: Whether the Tool invocation resulted in an error.
+    """
+
+    result: str
+    origin: ToolCall
+    error: bool
+
+@dataclass
+class ImageContent:
+    """
+    The image content of a chat message.
+
+    :param base64_image: A base64 string representing the image.
+    :param mime_type: The MIME type of the image (e.g. "image/png", "image/jpeg").
+        Providing this value is recommended, as most LLM providers require it.
+        If not provided, the MIME type is guessed from the base64 string, which can be slow and not always reliable.
+    :param detail: Optional detail level of the image (only supported by OpenAI). One of "auto", "high", or "low".
+    :param meta: Optional metadata for the image.
+    :param validation: If True (default), a validation process is performed:
+        - Check whether the base64 string is valid;
+        - Guess the MIME type if not provided;
+        - Check if the MIME type is a valid image MIME type.
+        Set to False to skip validation and speed up initialization.
+    """
+
+    base64_image: str
+    mime_type: Optional[str] = None
+    detail: Optional[Literal["auto", "high", "low"]] = None
+    meta: Dict[str, Any] = field(default_factory=dict)
+    validation: bool = True
+
+```
+
+The `ImageContent` dataclass also provides two convenience class methods: `from_file_path` and `from_url`. For more details, refer to our [API documentation](/reference/data-classes-api#imagecontent).
+
+## Working with a ChatMessage
+
+The following examples demonstrate how to create a `ChatMessage` and inspect its properties.
+
+### from_user with TextContent
+
+```python
+from haystack.dataclasses import ChatMessage
+
+user_message = ChatMessage.from_user("What is the capital of Australia?")
+
+print(user_message)
+>>> ChatMessage(
+>>>    _role=<ChatRole.USER: 'user'>,
+>>>    _content=[TextContent(text='What is the capital of Australia?')],
+>>>    _name=None,
+>>>    _meta={}
+>>>)
+
+print(user_message.text)
+>>> What is the capital of Australia?
+
+print(user_message.texts)
+>>> ['What is the capital of Australia?']
+```
+
+### from_user with TextContent and ImageContent
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+
+lion_image_url = (
+    "https://images.unsplash.com/photo-1546182990-dffeafbe841d?"
+	"ixlib=rb-4.0&q=80&w=1080&fit=max"
+)
+
+image_content = ImageContent.from_url(lion_image_url, detail="low")
+
+user_message = ChatMessage.from_user(
+	content_parts=[
+		"What does the image show?",
+		image_content
+		])
+
+print(user_message)
+>>> ChatMessage(
+>>>     _role=<ChatRole.USER: 'user'>,
+>>>     _content=[
+>>>         TextContent(text='What does the image show?'),
+>>>         ImageContent(
+>>>             base64_image='/9j/4...',
+>>>             mime_type='image/jpeg',
+>>>             detail='low',
+>>>             meta={
+>>>                 'content_type': 'image/jpeg',
+>>>                 'url': '...'
+>>>             }
+>>>         )
+>>>     ],
+>>>     _name=None,
+>>>     _meta={}
+>>> )
+
+print(user_message.text)
+>>> What does the image show?
+
+print(user_message.texts)
+>>> ['What does the image show?']
+
+print(user_message.image)
+>>> ImageContent(
+>>>     base64_image='/9j/4...',
+>>>     mime_type='image/jpeg',
+>>>     detail='low',
+>>>     meta={
+>>>         'content_type': 'image/jpeg',
+>>>         'url': '...'
+>>>     }
+>>> )
+```
+
+### from_assistant with TextContent
+
+```python
+from haystack.dataclasses import ChatMessage
+
+assistant_message = ChatMessage.from_assistant("How can I assist you today?")
+
+print(assistant_message)
+>>> ChatMessage(
+>>>    _role=<ChatRole.ASSISTANT: 'assistant'>,
+>>>    _content=[TextContent(text='How can I assist you today?')],
+>>>    _name=None,
+>>>    _meta={}
+>>>)
+
+print(assistant_message.text)
+>>> How can I assist you today?
+
+print(assistant_message.texts)
+>>> ['How can I assist you today?']
+```
+
+### from_assistant with ToolCall
+
+```python
+from haystack.dataclasses import ChatMessage, ToolCall
+
+tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Rome"})
+
+assistant_message_w_tool_call = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+print(assistant_message_w_tool_call)
+>>> ChatMessage(
+>>>    _role=<ChatRole.ASSISTANT: 'assistant'>,
+>>>    _content=[ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None)],
+>>>    _name=None,
+>>>    _meta={}
+>>>)
+
+print(assistant_message_w_tool_call.text)
+>>> None
+
+print(assistant_message_w_tool_call.texts)
+>>> []
+
+print(assistant_message_w_tool_call.tool_call)
+>>> ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None)
+
+print(assistant_message_w_tool_call.tool_calls)
+>>> [ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None)]
+
+print(assistant_message_w_tool_call.tool_call_result)
+>>> None
+
+print(assistant_message_w_tool_call.tool_call_results)
+>>> []
+```
+
+### from_tool
+
+```python
+from haystack.dataclasses import ChatMessage
+
+tool_message = ChatMessage.from_tool(tool_result="temperature: 25°C", origin=tool_call, error=False)
+
+print(tool_message)
+>>> ChatMessage(
+>>>    _role=<ChatRole.TOOL: 'tool'>,
+>>>    _content=[ToolCallResult(
+>>>							   result='temperature: 25°C',
+>>>                origin=ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None),
+>>>                error=False
+>>>                )],
+>>>    _name=None,
+>>>    _meta={}
+>>>)
+
+print(tool_message.text)
+>>> None
+
+print(tool_message.texts)
+>>> []
+
+print(tool_message.tool_call)
+>>> None
+
+print(tool_message.tool_calls)
+>>> []
+
+print(tool_message.tool_call_result)
+>>> ToolCallResult(
+>>>     result='temperature: 25°C',
+>>>     origin=ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None),
+>>>     error=False
+>>> )
+
+print(tool_message.tool_call_results)
+>>> [
+>>>     ToolCallResult(
+>>>         result='temperature: 25°C',
+>>>         origin=ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None),
+>>>         error=False
+>>>     )
+>>> ]
+```
+
+## Migrating from Legacy ChatMessage (before v2.9)
+
+In Haystack 2.9, we updated the `ChatMessage` data class for greater flexibility and support for multiple content types: text, tool calls, and tool call results.
+
+There are some breaking changes involved, so we recommend reviewing this guide to migrate smoothly.
+
+### Creating a ChatMessage
+
+You can no longer directly initialize `ChatMessage` using `role`, `content`, and `meta`.
+
+- Use the following class methods instead: `from_assistant`, `from_user`, `from_system`, and `from_tool`.
+- Replace the `content` parameter with `text`.
+
+```python
+from haystack.dataclasses import ChatMessage
+
+## LEGACY - DOES NOT WORK IN 2.9.0
+message = ChatMessage(role=ChatRole.USER, content="Hello!")
+
+## Use the class method instead
+message = ChatMessage.from_user("Hello!")
+```
+
+### Accessing ChatMessage Attributes
+
+- The legacy `content` attribute is now internal (`_content`).
+- Inspect `ChatMessage` attributes using the following properties:
+  - `role`
+  - `meta`
+  - `name`
+  - `text` and `texts`
+  - `image` and `images`
+  - `tool_call` and `tool_calls`
+  - `tool_call_result` and `tool_calls_results`
+
+```python
+from haystack.dataclasses import ChatMessage
+
+message = ChatMessage.from_user("Hello!")
+
+## LEGACY - DOES NOT WORK IN 2.9.0
+print(message.content)
+
+## Use the appropriate property instead
+print(message.text)
+```

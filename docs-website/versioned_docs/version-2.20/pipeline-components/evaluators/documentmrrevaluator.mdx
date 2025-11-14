@@ -1,0 +1,97 @@
+---
+title: "DocumentMRREvaluator"
+id: documentmrrevaluator
+slug: "/documentmrrevaluator"
+description: "The `DocumentMRREvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks at what rank ground truth documents appear in the list of retrieved documents. This metric is called mean reciprocal rank (MRR)."
+---
+
+# DocumentMRREvaluator
+
+The `DocumentMRREvaluator` evaluates documents retrieved by Haystack pipelines using ground truth labels. It checks at what rank ground truth documents appear in the list of retrieved documents. This metric is called mean reciprocal rank (MRR).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
+| **Mandatory run variables** | `ground_truth_documents`: A list containing another list of ground truth documents. This accounts for one list of ground truth documents per question.  <br /> <br />`retrieved_documents`: A list containing another list of retrieved documents. This accounts for one list of retrieved documents per question. |
+| **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 that represents the mean reciprocal rank  <br /> <br />- `individual_scores`: A list of the individual reciprocal ranks ranging from 0.0 to 1.0 for each input pair of a list of retrieved documents and a list of ground truth documents |
+| **API reference** | [Evaluators](/reference/evaluators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/document_mrr.py |
+
+</div>
+
+## Overview
+
+You can use the `DocumentMRREvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, against ground truth labels. A higher mean reciprocal rank is better and indicates that relevant documents appear at an earlier position in the list of retrieved documents.
+
+To initialize a `DocumentMRREvaluator`, there are no parameters required.
+
+## Usage
+
+### On its own
+
+Below is an example where we use a `DocumentMRREvaluator` component to evaluate documents retrieved for two queries. For the first query, there is one ground truth document and one retrieved document. For the second query, there are two ground truth documents and three retrieved documents.
+
+```python
+from haystack import Document
+from haystack.components.evaluators import DocumentMRREvaluator
+
+evaluator = DocumentMRREvaluator()
+result = evaluator.run(
+    ground_truth_documents=[
+        [Document(content="France")],
+        [Document(content="9th century"), Document(content="9th")],
+    ],
+    retrieved_documents=[
+        [Document(content="France")],
+        [Document(content="9th century"), Document(content="10th century"), Document(content="9th")],
+    ],
+)
+print(result["individual_scores"])
+## [1.0, 1.0]
+print(result["score"])
+## 1.0
+```
+
+### In a pipeline
+
+Below is an example where we use a `DocumentRecallEvaluator` and a `DocumentMRREvaluator` in a pipeline to evaluate two answers and compare them to ground truth answers. Running a pipeline instead of the individual components simplifies calculating more than one metric.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.evaluators import DocumentMRREvaluator, DocumentRecallEvaluator
+
+pipeline = Pipeline()
+mrr_evaluator = DocumentMRREvaluator()
+recall_evaluator = DocumentRecallEvaluator()
+pipeline.add_component("mrr_evaluator", mrr_evaluator)
+pipeline.add_component("recall_evaluator", recall_evaluator)
+
+ground_truth_documents=[
+    [Document(content="France")],
+    [Document(content="9th century"), Document(content="9th")],
+]
+retrieved_documents=[
+    [Document(content="France")],
+    [Document(content="9th century"), Document(content="10th century"), Document(content="9th")],
+]
+
+result = pipeline.run(
+		{
+			"mrr_evaluator": {"ground_truth_documents": ground_truth_documents,
+	    "retrieved_documents": retrieved_documents},
+	    "recall_evaluator": {"ground_truth_documents": ground_truth_documents,
+	    "retrieved_documents": retrieved_documents}
+    }
+)
+
+for evaluator in result:
+    print(result[evaluator]["individual_scores"])
+## [1.0, 1.0]
+## [1.0, 1.0]
+for evaluator in result:
+    print(result[evaluator]["score"])
+## 1.0
+## 1.0
+```

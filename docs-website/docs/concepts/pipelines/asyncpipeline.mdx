@@ -1,0 +1,136 @@
+---
+title: "AsyncPipeline"
+id: asyncpipeline
+slug: "/asyncpipeline"
+description: "Use AsyncPipeline to run multiple Haystack components at the same time for faster processing."
+---
+
+# AsyncPipeline
+
+Use AsyncPipeline to run multiple Haystack components at the same time for faster processing.
+
+The `AsyncPipeline` in Haystack introduces asynchronous execution capabilities, enabling concurrent component execution when dependencies allow. This optimizes performance, particularly in complex pipelines where multiple independent components can run in parallel.
+
+The `AsyncPipeline` provides significant performance improvements in scenarios such as:
+
+- Hybrid retrieval pipelines, where multiple Retrievers can run in parallel,
+- Multiple LLM calls that can be executed concurrently,
+- Complex pipelines with independent branches of execution,
+- I/O-bound operations that benefit from asynchronous execution.
+
+## Key Features
+
+### Concurrent Execution
+
+The `AsyncPipeline` schedules components based on input readiness and dependency resolution, ensuring efficient parallel execution when possible. For example, in a hybrid retrieval scenario, multiple Retrievers can run simultaneously if they do not depend on each other.
+
+### Execution Methods
+
+The `AsyncPipeline` offers three ways to run your pipeline:
+
+#### Synchronous Run (`run`)
+
+Executes the pipeline synchronously with the provided input data. This method is blocking, making it suitable for environments where asynchronous execution is not possible or desired. Although components execute concurrently internally, the method blocks until the pipeline completes.
+
+#### Asynchronous Run (`run_async`)
+
+Executes the pipeline in an asynchronous manner, allowing non-blocking execution. This method is ideal when integrating the pipeline into an async workflow, enabling smooth operation within larger async applications or services.
+
+#### Asynchronous Generator (`run_async_generator`)
+
+Allows step-by-step execution by yielding partial outputs as components complete their tasks. This is particularly useful for monitoring progress, debugging, and handling outputs incrementally. It differs from `run_async`, which executes the pipeline in a single async call.
+
+In an `AsyncPipeline`, components such as A and B will run in parallel _only if they have no shared dependencies_ and can process inputs independently.
+
+### Concurrency Control
+
+You can control the maximum number of components that run simultaneously using the `concurrency_limit` parameter to ensure controlled resource usage.
+
+You can find more details in our [API Reference](/reference/pipeline-api#asyncpipeline), or directly in the pipeline's [GitHub code](https://github.com/deepset-ai/haystack/blob/main/haystack/core/pipeline/async_pipeline.py).
+
+## Example
+
+```python
+import asyncio
+
+from haystack import AsyncPipeline, Document
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.joiners import DocumentJoiner
+from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+documents = [
+    Document(content="Khufu is the largest pyramid."),
+    Document(content="Khafre is the middle pyramid."),
+    Document(content="Menkaure is the smallest pyramid."),
+]
+
+docs_embedder = SentenceTransformersDocumentEmbedder()
+docs_embedder.warm_up()
+
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs_embedder.run(documents=documents)["documents"])
+
+prompt_template = [
+    ChatMessage.from_system(
+        """
+        You are a precise, factual QA assistant.
+        According to the following documents:
+        {% for document in documents %}
+        {{document.content}}
+        {% endfor %}
+
+        If an answer cannot be deduced from the documents, say "I don't know based on these documents".
+
+        When answering:
+        - be concise
+        - list the documents that support your answer
+
+        Answer the given question.
+        """
+    ),
+    ChatMessage.from_user("{{query}}"),
+    ChatMessage.from_system("Answer:"),
+]
+
+hybrid_rag_retrieval = AsyncPipeline()
+hybrid_rag_retrieval.add_component("text_embedder", SentenceTransformersTextEmbedder())
+hybrid_rag_retrieval.add_component(
+    "embedding_retriever", InMemoryEmbeddingRetriever(document_store=document_store, top_k=3)
+)
+hybrid_rag_retrieval.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=document_store, top_k=3))
+hybrid_rag_retrieval.add_component("document_joiner", DocumentJoiner())
+hybrid_rag_retrieval.add_component("prompt_builder", ChatPromptBuilder(template=prompt_template))
+hybrid_rag_retrieval.add_component("llm", OpenAIChatGenerator())
+
+hybrid_rag_retrieval.connect("text_embedder.embedding", "embedding_retriever.query_embedding")
+hybrid_rag_retrieval.connect("bm25_retriever.documents", "document_joiner.documents")
+hybrid_rag_retrieval.connect("embedding_retriever.documents", "document_joiner.documents")
+hybrid_rag_retrieval.connect("document_joiner.documents", "prompt_builder.documents")
+hybrid_rag_retrieval.connect("prompt_builder.prompt", "llm.messages")
+
+question = "Which pyramid is neither the smallest nor the biggest?"
+
+data = {
+    "prompt_builder": {"query": question},
+    "text_embedder": {"text": question},
+    "bm25_retriever": {"query": question},
+}
+
+async def process_results():
+    async for partial_output in hybrid_rag_retrieval.run_async_generator(
+        data=data, include_outputs_from={"document_joiner", "llm"}
+    ):
+        if "document_joiner" in partial_output:
+            print("Retrieved documents:", len(partial_output["document_joiner"]["documents"]))
+        if "llm" in partial_output:
+            print("Generated answer:", partial_output["llm"]["replies"][0])
+
+asyncio.run(process_results())
+```

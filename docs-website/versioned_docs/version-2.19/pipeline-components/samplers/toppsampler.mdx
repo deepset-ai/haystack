@@ -1,0 +1,124 @@
+---
+title: "TopPSampler"
+id: toppsampler
+slug: "/toppsampler"
+description: "Uses nucleus sampling to filter documents."
+---
+
+# TopPSampler
+
+Uses nucleus sampling to filter documents.
+
+<div className="key-value-table">
+
+|                                        |                                                                                                           |
+| :------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | After a [Ranker](../rankers.mdx)                                                                           |
+| **Mandatory init variables**           | `top_p`: A float between 0 and 1 representing the cumulative probability threshold for document selection |
+| **Mandatory run variables**            | `documents`: A list of documents                                                                          |
+| **Output variables**                   | `documents`: A list of documents                                                                          |
+| **API reference**                      | [Samplers](/reference/samplers-api)                                                                              |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/samplers/top_p.py                  |
+
+</div>
+
+## Overview
+
+Top-P (nucleus) sampling is a method that helps identify and select a subset of documents based on their cumulative probabilities. Instead of choosing a fixed number of documents, this method focuses on a specified percentage of the highest cumulative probabilities within a list of documents. To put it simply, `TopPSampler` provides a way to efficiently select the most relevant documents based on their similarity to a given query.
+
+The practical goal of the `TopPSampler` is to return a list of documents that, in sum, have a score larger than the `top_p` value. So, for example, when `top_p` is set to a high value, more documents will be returned, which can result in more varied outputs. The value is typically set between 0 and 1. By default, the component uses documents' `score` fields to look at the similarity scores.
+
+The component’s `run()` method takes in a set of documents, calculates the similarity scores between the query and the documents, and then filters the documents based on the cumulative probability of these scores.
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.samplers import TopPSampler
+
+sampler = TopPSampler(top_p=0.99, score_field="similarity_score")
+docs = [
+    Document(content="Berlin", meta={"similarity_score": -10.6}),
+    Document(content="Belgrade", meta={"similarity_score": -8.9}),
+    Document(content="Sarajevo", meta={"similarity_score": -4.6}),
+]
+output = sampler.run(documents=docs)
+docs = output["documents"]
+print(docs)
+```
+
+### In a pipeline
+
+To best understand how can you use a `TopPSampler` and which components to pair it with, explore the following example.
+
+```python
+# import necessary dependencies
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.fetchers import LinkContentFetcher
+from haystack.components.converters import HTMLToDocument
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.rankers import SentenceTransformersSimilarityRanker
+from haystack.components.routers.file_type_router import FileTypeRouter
+from haystack.components.samplers import TopPSampler
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.utils import Secret
+from haystack.dataclasses import ChatMessage
+
+# initialize the components
+web_search = SerperDevWebSearch(
+    api_key=Secret.from_token("<your-api-key>"),
+    top_k=10
+)
+
+lcf = LinkContentFetcher()
+html_converter = HTMLToDocument()
+router = FileTypeRouter(["text/html", "application/pdf", "application/octet-stream"])
+
+# ChatPromptBuilder uses a different template format with ChatMessage
+template = [
+    ChatMessage.from_user("Given these paragraphs below: \n {% for doc in documents %}{{ doc.content }}{% endfor %}\n\nAnswer the question: {{ query }}")
+]
+# set required_variables to avoid warnings in multi-branch pipelines
+prompt_builder = ChatPromptBuilder(template=template, required_variables=["documents", "query"])
+
+# The Ranker plays an important role, as it will assign the scores to the top 10 found documents based on our query. We will need these scores to work with the TopPSampler.
+similarity_ranker = SentenceTransformersSimilarityRanker(top_k=10)
+splitter = DocumentSplitter()
+# We are setting the top_p parameter to 0.95. This will help identify the most relevant documents to our query.
+top_p_sampler = TopPSampler(top_p=0.95)
+
+llm = OpenAIChatGenerator(api_key=Secret.from_token("<your-api-key>"))
+
+# create the pipeline and add the components to it
+pipe = Pipeline()
+pipe.add_component("search", web_search)
+pipe.add_component("fetcher", lcf)
+pipe.add_component("router", router)
+pipe.add_component("converter", html_converter)
+pipe.add_component("splitter", splitter)
+pipe.add_component("ranker", similarity_ranker)
+pipe.add_component("sampler", top_p_sampler)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+# Arrange pipeline components in the order you need them. If a component has more than one inputs or outputs, indicate which input you want to connect to which output using the format ("component_name.output_name", "component_name, input_name").
+pipe.connect("search.links", "fetcher.urls")
+pipe.connect("fetcher.streams", "router.sources")
+pipe.connect("router.text/html", "converter.sources")
+pipe.connect("converter.documents", "splitter.documents")
+pipe.connect("splitter.documents", "ranker.documents")
+pipe.connect("ranker.documents", "sampler.documents")
+pipe.connect("sampler.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+# run the pipeline
+question = "Why are cats afraid of cucumbers?"
+query_dict = {"query": question}
+
+result = pipe.run(data={"search": query_dict, "prompt_builder": query_dict, "ranker": query_dict})
+print(result)
+```

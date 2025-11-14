@@ -1,0 +1,355 @@
+---
+title: "ChatPromptBuilder"
+id: chatpromptbuilder
+slug: "/chatpromptbuilder"
+description: "This component constructs prompts dynamically by processing chat messages."
+---
+
+# ChatPromptBuilder
+
+This component constructs prompts dynamically by processing chat messages.
+
+|                                        |                                                                                                                                                |
+| :------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | Before a [Generator](../generators.mdx)                                                                                                         |
+| **Mandatory init variables**           | "template": A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects or a special string template. Needs to be provided either during init or run. |
+| **Mandatory run variables**            | “\*\*kwargs”: Any strings that should be used to render the prompt template. See [Variables](#variables) section for more details.             |
+| **Output variables**                   | “prompt”: A dynamically constructed prompt                                                                                                     |
+| **API reference**                      | [Builders](/reference/builders-api)                                                                                                                   |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/builders/chat_prompt_builder.py                                         |
+
+## Overview
+
+The `ChatPromptBuilder` component creates prompts using static or dynamic templates written in [Jinja2](https://palletsprojects.com/p/jinja/) syntax, by processing a list of chat messages or a special string template. The templates contain placeholders like `{{ variable }}` that are filled with values provided during runtime. You can use it for static prompts set at initialization or change the templates and variables dynamically while running.
+
+To use it, start by providing a list of `ChatMessage` objects or a special string as the template.
+
+[`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) is a data class that includes message content, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
+
+The builder looks for placeholders in the template and identifies the required variables. You can also list these variables manually. During runtime, the `run` method takes the template and the variables, fills in the placeholders, and returns the completed prompt. If required variables are missing. If the template is invalid, the builder raises an error.
+
+For example, you can create a simple translation prompt:
+
+```python
+template = [ChatMessage.from_user("Translate to {{ target_language }}: {{ text }}")]
+builder = ChatPromptBuilder(template=template)
+result = builder.run(target_language="French", text="Hello, how are you?")
+```
+
+Or you can also replace the template at runtime with a new one:
+
+```python
+new_template = [ChatMessage.from_user("Summarize in {{ target_language }}: {{ content }}")]
+result = builder.run(template=new_template, target_language="English", content="A detailed paragraph.")
+```
+
+### Variables
+
+The template variables found in the init template are used as input types for the component. If there are no `required_vairables` set, all variables are considered optional by default. In this case, any missing variables are replaced with empty strings, which can lead to unintended behavior, especially in complex pipelines.
+
+Use `required_variables` and `variables` to specify the input types and required variables:
+
+- `required_variables`
+  - Defines which template variables must be provided when the component runs.
+  - If any required variable is missing, the component raises an error and halts execution.
+  - You can:
+    - Pass a list of required variable names (such as `["name"]`), or
+    - Use `"*"` to mark all variables in the template as required.
+
+- `variables`
+  - Lists all variables that can appear in the template, whether required or optional.
+  - Optional variables that aren't provided are replaced with an empty string in the rendered prompt.
+  - This allows partial prompts to be constructed without errors, unless a variable is marked as required.
+
+In the example below, only _name_ is required to run the component, while _topic_ is only an optional variable:
+
+```python
+template = [ChatMessage.from_user("Hello, {{ name }}. How can I assist you with {{ topic }}?")]
+
+builder = ChatPromptBuilder(template=template, required_variables=["name"], variables=["name", "topic"])
+
+result = builder.run(name="Alice")
+## Output: "Hello, Alice. How can I assist you with ?"
+```
+
+The components only waits for the required inputs before running.
+
+### Roles
+
+A [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) represents a single message in the conversation and can have one of three class methods that build the chat messages: `from_user`, `from_system`, or `from_assistant`. `from_user` messages are inputs provided by the user, such as a query or request. `from_system` messages provide context or instructions to guide the LLM’s behavior, such as setting a tone or purpose for the conversation. `from_assistant` defines the expected or actual response from the LLM.
+
+Here’s how the roles work together in a `ChatPromptBuilder`:
+
+```python
+system_message = ChatMessage.from_system("You are an assistant helping tourists in {{ language }}.")
+
+user_message = ChatMessage.from_user("What are the best places to visit in {{ city }}?")
+
+assistant_message = ChatMessage.from_assistant("The best places to visit in {{ city }} include the Eiffel Tower, Louvre Museum, and Montmartre.")
+```
+
+### String Templates
+
+Instead of a list of `ChatMessage` objects, you can also express the template as a special string.
+
+This template format allows you to define `ChatMessage` sequences using Jinja2 syntax. Each `{% message %}` block defines a single message with a specific role, and you can insert dynamic content using `{{ variables }}`.
+
+Compared to using a list of `ChatMessage`s, this format is more flexible and allows including structured parts like images in the templatized `ChatMessage`; to better understand this use case, check out the [multimodal example](#multimodal) in the Usage section below.
+
+### Jinja2 Time Extension
+
+`PromptBuilder` supports the Jinja2 TimeExtension, which allows you to work with datetime formats.
+
+The Time Extension provides two main features:
+
+1. A `now` tag that gives you access to the current time,
+2. Date/time formatting capabilities through Python's datetime module.
+
+To use the Jinja2 TimeExtension, you need to install a dependency with:
+
+```shell
+pip install arrow>=1.3.0
+```
+
+#### The `now` Tag
+
+The `now` tag creates a datetime object representing the current time, which you can then store in a variable:
+
+```jinja2
+{% now 'utc' as current_time %}
+The current UTC time is: {{ current_time }}
+```
+
+You can specify different timezones:
+
+```jinja2
+{% now 'America/New_York' as ny_time %}
+The time in New York is: {{ ny_time }}
+```
+
+If you don't specify a timezone, your system's local timezone will be used:
+
+```jinja2
+{% now as local_time %}
+Local time: {{ local_time }}
+```
+
+#### Date Formatting
+
+You can format the datetime objects using Python's `strftime` syntax:
+
+```jinja2
+{% now as current_time %}
+Formatted date: {{ current_time.strftime('%Y-%m-%d %H:%M:%S') }}
+```
+
+The common format codes are:
+
+- `%Y`: 4-digit year (for example, 2025)
+- `%m`: Month as a zero-padded number (01-12)
+- `%d`: Day as a zero-padded number (01-31)
+- `%H`: Hour (24-hour clock) as a zero-padded number (00-23)
+- `%M`: Minute as a zero-padded number (00-59)
+- `%S`: Second as a zero-padded number (00-59)
+
+#### Example
+
+```python
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+
+template = [
+    ChatMessage.from_user("Current date is: {% now 'UTC' %}"),
+    ChatMessage.from_assistant("Thank you for providing the date"),
+    ChatMessage.from_user("Yesterday was: {% now 'UTC' - 'days=1' %}"),
+]
+builder = ChatPromptBuilder(template=template)
+
+result = builder.run()["prompt"]
+
+now = f"Current date is: {arrow.now('UTC').strftime('%Y-%m-%d %H:%M:%S')}"
+yesterday = f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
+```
+
+## Usage
+
+### On its own
+
+#### With static template
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+
+template = [ChatMessage.from_user("Translate to {{ target_language }}. Context: {{ snippet }}; Translation:")]
+builder = ChatPromptBuilder(template=template)
+builder.run(target_language="spanish", snippet="I can't speak spanish.")
+```
+
+#### With special string template
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+
+template = """
+{% message role="user" %}
+Hello, my name is {{name}}!
+{% endmessage %}
+"""
+
+builder = ChatPromptBuilder(template=template)
+result = builder.run(name="John")
+
+assert result["prompt"] == [ChatMessage.from_user("Hello, my name is John!")]
+```
+
+#### Specifying name and meta in a ChatMessage
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+
+template = """
+{% message role="user" name="John" meta={"key": "value"} %}
+Hello from {{country}}!
+{% endmessage %}
+"""
+
+builder = ChatPromptBuilder(template=template)
+result = builder.run(country="Italy")
+assert result["prompt"] == [ChatMessage.from_user("Hello from Italy!", name="John", meta={"key": "value"})]
+```
+
+#### Multiple ChatMessages with different roles
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+
+template = """
+{% message role="system" %}
+You are a {{adjective}} assistant.
+{% endmessage %}
+
+{% message role="user" %}
+Hello, my name is {{name}}!
+{% endmessage %}
+
+{% message role="assistant" %}
+Hello, {{name}}! How can I help you today?
+{% endmessage %}
+"""
+
+builder = ChatPromptBuilder(template=template)
+result = builder.run(name="John", adjective="helpful")
+assert result["prompt"] == [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user("Hello, my name is John!"),
+    ChatMessage.from_assistant("Hello, John! How can I help you today?"),
+]
+```
+
+#### Overriding static template at runtime
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+
+template = [ChatMessage.from_user("Translate to {{ target_language }}. Context: {{ snippet }}; Translation:")]
+builder = ChatPromptBuilder(template=template)
+builder.run(target_language="spanish", snippet="I can't speak spanish.")
+
+summary_template = [ChatMessage.from_user("Translate to {{ target_language }} and summarize. Context: {{ snippet }}; Summary:")]
+builder.run(target_language="spanish", snippet="I can't speak spanish.", template=summary_template)
+```
+
+#### Multimodal
+
+The `| templatize_part` filter in the example below tells the template engine to insert structured (non-text) objects, such as images, into the message content. These are treated differently from plain text and are rendered as special content parts in the final `ChatMessage`.
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage, ImageContent
+
+template = """
+{% message role="user" %}
+Hello! I am {{user_name}}. What's the difference between the following images?
+{% for image in images %}
+{{ image | templatize_part }}
+{% endfor %}
+{% endmessage %}
+"""
+builder = ChatPromptBuilder(template=template)
+images = [
+    ImageContent.from_file_path("apple.jpg"),
+    ImageContent.from_file_path("kiwi.jpg"),
+]
+result = builder.run(user_name="John", images=images)
+
+assert result["prompt"] == [
+    ChatMessage.from_user(
+        content_parts=["Hello! I am John. What's the difference between the following images?",
+        *images]
+    )
+]
+```
+
+### In a pipeline
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+from haystack.utils import Secret
+
+## no parameter init, we don't use any runtime template variables
+prompt_builder = ChatPromptBuilder()
+llm = OpenAIChatGenerator()
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+location = "Berlin"
+language = "English"
+system_message = ChatMessage.from_system("You are an assistant giving information to tourists in {{language}}")
+messages = [system_message, ChatMessage.from_user("Tell me about {{location}}")]
+
+res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "language": language},
+                                    "template": messages}})
+print(res)
+```
+
+Then, you could ask about the weather forecast for the said location. The `ChatPromptBuilder` fills in the template with the new `day_count` variable and passes it to an LLM once again:
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+from haystack.utils import Secret
+
+## no parameter init, we don't use any runtime template variables
+prompt_builder = ChatPromptBuilder()
+llm = OpenAIChatGenerator()
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+location = "Berlin"
+
+messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next {{day_count}} days?")]
+res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "day_count": "5"},
+                                    "template": messages}})
+
+print(res)
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Advanced Prompt Customization for Anthropic](https://haystack.deepset.ai/cookbook/prompt_customization_for_anthropic)

@@ -2,7 +2,6 @@ name: Minor Version Release
 
 on:
   workflow_dispatch:
-
 env:
   PYTHON_VERSION: "3.9"
 
@@ -71,9 +70,30 @@ jobs:
       - name: Install create_unstable_docs.py dependencies
         run: pip install requests
 
-      - name: Release Readme version
-        env:
-          RDME_API_KEY: ${{ secrets.README_API_KEY }}
+      # TODO: remove this once migration to Docusaurus is complete
+      # - name: Release Readme version
+      #   env:
+      #     RDME_API_KEY: ${{ secrets.README_API_KEY }}
+      #   run: |
+      #     git checkout main
+      #     python ./.github/utils/create_unstable_docs.py --new-version ${{ steps.versions.outputs.current_release_minor }}
+
+      - name: Generate unstable docs for Docusaurus
         run: |
           git checkout main
-          python ./.github/utils/create_unstable_docs.py --new-version ${{ steps.versions.outputs.current_release_minor }}
+          python ./.github/utils/create_unstable_docs_docusaurus.py --new-version ${{ steps.versions.outputs.current_release_minor }}
+
+      - name: Create Pull Request with Docusaurus docs updates
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          commit-message: "Create unstable docs for Haystack ${{ steps.versions.outputs.current_release_minor }}"
+          branch: create-unstable-docs-${{ steps.versions.outputs.current_release_minor }}
+          base: main
+          title: "docs: create unstable docs for Haystack ${{ steps.versions.outputs.current_release_minor }}"
+          add-paths: |
+            docs-website
+          body: |
+            This PR creates the unstable docs for Haystack ${{ steps.versions.outputs.current_release_minor }}.
+            It is expected to run during the branch-off process.
+            You can inspect the docs preview (two unstable versions will be available) and merge it.

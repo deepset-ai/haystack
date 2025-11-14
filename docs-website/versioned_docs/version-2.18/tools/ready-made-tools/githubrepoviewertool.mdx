@@ -1,0 +1,130 @@
+---
+title: "GitHubRepoViewerTool"
+id: githubrepoviewertool
+slug: "/githubrepoviewertool"
+description: "A Tool that allows Agents and ToolInvokers to navigate and fetch content from GitHub repositories."
+---
+
+# GitHubRepoViewerTool
+
+A Tool that allows Agents and ToolInvokers to navigate and fetch content from GitHub repositories.
+
+|                   |                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| **API reference** | [Tools](/reference/tools-api)                                                            |
+| **GitHub link**   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+## Overview
+
+`GitHubRepoViewerTool` wraps the [`GitHubRepoViewer`](../../pipeline-components/connectors/githubrepoviewer.mdx) component, providing a tool interface for use in agent workflows and tool-based pipelines.
+
+The tool provides different behavior based on the path type:
+
+- **For directories**: Returns a list of documents, one for each item (files and subdirectories),
+- **For files**: Returns a single document containing the file content.
+
+Each document includes rich metadata such as the path, type, size, and URL.
+
+### Parameters
+
+- `name` is _optional_ and defaults to "repo_viewer". Specifies the name of the tool.
+- `description` is _optional_ and provides context to the LLM about what the tool does.
+- `github_token` is _optional_ but recommended for private repositories or to avoid rate limiting.
+- `repo` is _optional_ and sets a default repository in owner/repo format.
+- `branch` is _optional_ and defaults to "main". Sets the default branch to work with.
+- `raise_on_failure` is _optional_ and defaults to `True`. If False, errors are returned as documents instead of raising exceptions.
+- `max_file_size` is _optional_ and defaults to `1,000,000` bytes (1MB). Maximum file size to fetch.
+
+## Usage
+
+Install the GitHub integration to use the `GitHubRepoViewerTool`:
+
+```shell
+pip install github-haystack
+```
+
+:::note
+Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+Basic usage to view repository contents:
+
+```python
+from haystack_integrations.tools.github import GitHubRepoViewerTool
+
+tool = GitHubRepoViewerTool()
+result = tool.invoke(
+    repo="deepset-ai/haystack",
+    path="haystack/components",
+    branch="main"
+)
+
+print(result)
+```
+
+```bash
+{'documents': [Document(id=..., content: 'agents', meta: {'path': 'haystack/components/agents', 'type': 'dir', 'size': 0, 'url': 'https://github.com/deepset-ai/haystack/tree/main/haystack/components/agents'}), Document(id=..., content: 'audio', meta: {'path': 'haystack/components/audio', 'type': 'dir', 'size': 0, 'url': 'https://github.com/deepset-ai/haystack/tree/main/haystack/components/audio'}),...]}
+```
+
+### With an Agent
+
+You can use `GitHubRepoViewerTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically invoke the tool when needed to explore repository structure and read files.
+
+Note that we set the Agent's `state_schema` parameter in this code example so that the GitHubRepoViewerTool can write documents to the state.
+
+```python
+from typing import List
+
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage, Document
+from haystack.components.agents import Agent
+from haystack_integrations.tools.github import GitHubRepoViewerTool
+
+repo_tool = GitHubRepoViewerTool(name="github_repo_viewer")
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[repo_tool],
+    exit_conditions=["text"],
+    state_schema={"documents": {"type": List[Document]}},
+)
+
+agent.warm_up()
+response = agent.run(messages=[
+    ChatMessage.from_user("Can you analyze the structure of the deepset-ai/haystack repository and tell me about the main components?")
+])
+
+print(response["last_message"].text)
+```
+
+```bash
+The `deepset-ai/haystack` repository has a structured layout that includes several important components. Here's an overview of its main parts:
+
+1. **Directories**:
+   - **`.github`**: Contains GitHub-specific configuration files and workflows.
+   - **`docker`**: Likely includes Docker-related files for containerization of the Haystack application.
+   - **`docs`**: Contains documentation for the Haystack project. This could include guides, API documentation, and other related resources.
+   - **`e2e`**: This likely stands for "end-to-end", possibly containing tests or examples related to end-to-end functionality of the Haystack framework.
+   - **`examples`**: Includes example scripts or notebooks demonstrating how to use Haystack.
+   - **`haystack`**: This is likely the core source code of the Haystack framework itself, containing the main functionality and classes.
+   - **`proposals`**: A directory that may contain proposals for new features or changes to the Haystack project.
+   - **`releasenotes`**: Contains notes about various releases, including changes and improvements.
+   - **`test`**: This directory likely contains unit tests and other testing utilities to ensure code quality and functionality.
+
+2. **Files**:
+   - **`.gitignore`**: Specifies files and directories that should be ignored by Git.
+   - **`.pre-commit-config.yaml`**: Configuration file for pre-commit hooks to automate code quality checks.
+   - **`CITATION.cff`**: Might include information on how to cite the repository in academic work.
+   - **`code_of_conduct.txt`**: Contains the code of conduct for contributors and users of the repository.
+   - **`CONTRIBUTING.md`**: Guidelines for contributing to the repository.
+   - **`LICENSE`**: The license under which the project is distributed.
+   - **`VERSION.txt`**: Contains versioning information for the project.
+   - **`README.md`**: A markdown file that usually provides an overview of the project, installation instructions, and usage examples.
+   - **`SECURITY.md`**: Contains information about the security policy of the repository.
+
+This structure indicates a well-organized repository that follows common conventions in open-source projects, with a focus on documentation, contribution guidelines, and testing. The core functionalities are likely housed in the `haystack` directory, with additional resources provided in the other directories.
+```

@@ -1,0 +1,67 @@
+---
+title: "HTMLToDocument"
+id: htmltodocument
+slug: "/htmltodocument"
+description: "A component that converts HTML files to documents."
+---
+
+# HTMLToDocument
+
+A component that converts HTML files to documents.
+
+<div className="key-value-table">
+
+|                                        |                                                                                                 |
+| :------------------------------------- | :---------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx) , or right at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | `sources`: A list of HTML file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects  |
+| **Output variables**                   | `documents`: A list of documents                                                                |
+| **API reference**                      | [Converters](/reference/converters-api)                                                                |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/html.py       |
+
+</div>
+
+## Overview
+
+The `HTMLToDocument` component converts HTML files into documents. It can be used in an indexing pipeline to index the contents of an HTML file into a Document Store or even in a querying pipeline after the [`LinkContentFetcher`](../fetchers/linkcontentfetcher.mdx).  The `HTMLToDocument` component takes a list of HTML file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and converts the files to a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+
+When you initialize the component, you can optionally set  `extraction_kwargs`,  a dictionary containing keyword arguments to customize the extraction process. These are passed to the underlying Trafilatura `extract` function. For the full list of available arguments, see the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
+
+## Usage
+
+### On its own
+
+```python
+from pathlib import Path
+from haystack.components.converters import HTMLToDocument
+
+converter = HTMLToDocument()
+
+docs = converter.run(sources=[Path("saved_page.html")])
+```
+
+### In a pipeline
+
+Here's an example of an indexing pipeline that writes the contents of an HTML file into an `InMemoryDocumentStore`:
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import HTMLToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", HTMLToDocument())
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": file_names}})
+```

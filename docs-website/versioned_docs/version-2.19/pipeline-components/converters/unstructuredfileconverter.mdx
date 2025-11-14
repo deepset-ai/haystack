@@ -1,0 +1,110 @@
+---
+title: "UnstructuredFileConverter"
+id: unstructuredfileconverter
+slug: "/unstructuredfileconverter"
+description: "Use this component to convert text files and directories to a document."
+---
+
+# UnstructuredFileConverter
+
+Use this component to convert text files and directories to a document.
+
+<div className="key-value-table">
+
+|                                        |                                                                                                |
+| :------------------------------------- | :--------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx)  or right at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | `paths`: A union of lists of paths                                                             |
+| **Output variables**                   | `documents`: A list of documents                                                                |
+| **API reference**                      | [Unstructured](/reference/integrations-unstructured)                                                  |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/unstructured |
+
+</div>
+
+## Overview
+
+`UnstructuredFileConverter` converts files and directories into documents using the Unstructured API.
+
+[Unstructured](https://docs.unstructured.io/) provides a series of tools to do ETL for LLMs. The `UnstructuredFileConverter` calls the Unstructured API that extracts text and other information from a vast range of file [formats](https://docs.unstructured.io/api-reference/api-services/overview#supported-file-types).
+
+This Converter supports different modes for creating documents from the elements returned by Unstructured:
+
+- `"one-doc-per-file"`: One Haystack document per file. All elements are concatenated into one text field.
+- `"one-doc-per-page"`: One Haystack document per page. All elements on a page are concatenated into one text field.
+- `"one-doc-per-element"`: One Haystack document per element. Each element is converted to a Haystack document.
+
+## Usage
+
+Install the Unstructured integration to use `UnstructuredFileConverter`component:
+
+```shell
+pip install unstructured-fileconverter-haystack
+```
+
+There are free and paid versions of Unstructured API: **Free Unstructured API** and **Unstructured Serverless API**.
+
+1. **Free Unstructured API**:
+   - API URL: `https://api.unstructured.io/general/v0/general`
+   - This version is free, but comes with certain limitations.
+
+2. **Unstructured Serverless API**:
+   - You'll find your unique API URL in your Unstructured account after signing up for the paid version.
+   - This is a full-tier paid version of Unstructured.
+
+ For more details about the two tiers refer to Unstructured [FAQ](https://docs.unstructured.io/faq/faq).
+
+:::note
+❗The API keys for the free and paid versions are different and cannot be used interchangeably.
+
+:::
+
+Regardless of the chosen tier, we recommend to set the Unstructured API key as an environment variable `UNSTRUCTURED_API_KEY`:
+
+```shell
+export UNSTRUCTURED_API_KEY=your_api_key
+```
+
+### On its own
+
+```python
+import os
+from haystack_integrations.components.converters.unstructured import UnstructuredFileConverter
+
+converter = UnstructuredFileConverter()
+documents = converter.run(paths = ["a/file/path.pdf", "a/directory/path"])["documents"]
+```
+
+### In a pipeline
+
+```python
+import os
+from haystack import Pipeline
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.converters.unstructured import UnstructuredFileConverter
+
+document_store = InMemoryDocumentStore()
+
+indexing = Pipeline()
+indexing.add_component("converter", UnstructuredFileConverter())
+indexing.add_component("writer", DocumentWriter(document_store))
+indexing.connect("converter", "writer")
+
+indexing.run({"converter": {"paths": ["a/file/path.pdf", "a/directory/path"]}})
+```
+
+### With Docker
+
+To use `UnstructuredFileConverter` through Docker, first, set up an Unstructured Docker container:
+
+```
+docker run -p 8000:8000 -d --rm --name unstructured-api quay.io/unstructured-io/unstructured-api:latest --port 8000 --host 0.0.0.0
+```
+
+When initializing the component, specify the localhost URL:
+
+```python
+from haystack_integrations.components.converters.unstructured import UnstructuredFileConverter
+
+converter = UnstructuredFileConverter(api_url="http://localhost:8000/general/v0/general")
+```

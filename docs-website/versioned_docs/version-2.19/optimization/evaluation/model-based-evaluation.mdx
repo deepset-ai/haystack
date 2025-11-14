@@ -1,0 +1,124 @@
+---
+title: "Model-Based Evaluation"
+id: model-based-evaluation
+slug: "/model-based-evaluation"
+description: "Haystack supports various kinds of model-based evaluation. This page explains what model-based evaluation is and discusses the various options available with Haystack."
+---
+
+# Model-Based Evaluation
+
+Haystack supports various kinds of model-based evaluation. This page explains what model-based evaluation is and discusses the various options available with Haystack.
+
+## What is Model-Based Evaluation
+
+Model-based evaluation in Haystack uses a language model to check the results of a Pipeline. This method is easy to use because it usually doesn't need labels for the outputs. It's often used with Retrieval-Augmented Generative (RAG) Pipelines, but can work with any Pipeline.
+
+Currently, Haystack supports the end-to-end, model-based evaluation of a complete RAG Pipeline.
+
+### Using LLMs for Evaluation
+
+A common strategy for model-based evaluation involves using a Language Model (LLM), such as OpenAI's GPT models, as the evaluator model, often referred to as the _golden_ model. The most frequently used golden model is GPT-4. We utilize this model to evaluate a RAG Pipeline by providing it with the Pipeline's results and sometimes additional information, along with a prompt that outlines the evaluation criteria.
+
+This method of using an LLM as the evaluator is very flexible as it exposes a number of metrics to you. Each of these metrics is ultimately a well-crafted prompt describing to the LLM how to evaluate and score results. Common metrics are faithfulness, context relevance, and so on.
+
+### Using Local LLMs
+
+To use the model-based Evaluators with a local model, you need to pass the `api_base_url` and `model` in the `api_params` parameter when initializing the Evaluator.
+
+The following example shows how this would work with an Ollama model.
+
+First, make sure that Ollama is running locally:
+
+```curl
+curl http://localhost:11434/api/generate -d '{
+  "model": "llama3",
+  "prompt":"Why is the sky blue?"
+}'
+```
+
+Then, your pipeline would look like this:
+
+```python
+from haystack.components.evaluators import FaithfulnessEvaluator
+from haystack.utils import Secret
+
+questions = ["Who created the Python language?"]
+contexts = [
+    [(
+        "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming "
+        "language. Its design philosophy emphasizes code readability, and its language constructs aim to help "
+        "programmers write clear, logical code for both small and large-scale software projects."
+    )],
+]
+predicted_answers = [
+    "Python is a high-level general-purpose programming language that was created by George Lucas."
+]
+local_endpoint = "http://localhost:11434/v1"
+
+evaluator = FaithfulnessEvaluator(
+  api_key=Secret.from_token("just-a-placeholder"),
+  api_params={"api_base_url": local_endpoint, "model": "llama3"}
+)
+
+result = evaluator.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+```
+
+### Using Small Cross-Encoder Models for Evaluation
+
+Alongside LLMs for evaluation, we can also use small cross-encoder models. These models can calculate, for example, semantic answer similarity. In contrast to metrics based on LLMs, the metrics based on smaller models don’t require an API key of a model provider.
+
+This method of using small cross-encoder models as evaluators is faster and cheaper to run but is less flexible in terms of what aspect you can evaluate. You can only evaluate what the small model was trained to evaluate.
+
+## Model-Based Evaluation Pipelines in Haystack
+
+There are two ways of performing model-based evaluation in Haystack, both of which leverage [Pipelines](../../concepts/pipelines.mdx) and [Evaluator](../../pipeline-components/evaluators.mdx) components.
+
+- You can create and run an evaluation Pipeline independently. This means you’ll have to provide the required inputs to the evaluation Pipeline manually. We recommend this way because the separation of your RAG Pipeline and your evaluation Pipeline allows you to store the results of your RAG Pipeline and try out different evaluation metrics afterward without needing to re-run your RAG Pipeline every time.
+- As another option, you can add an evaluator component to the end of a RAG Pipeline. This means you run both a RAG Pipeline and evaluation on top of it in a single `pipeline.run()`  call.
+
+### Model-based Evaluation of Retrieved Documents
+
+#### [ContextRelevanceEvaluator](../../pipeline-components/evaluators/contextrelevanceevaluator.mdx)
+
+Context relevance refers to how relevant the retrieved documents are to the query. An LLM is used to judge that aspect. It first extracts statements from the documents and then checks how many of them are relevant for answering the query.
+
+### Model-based Evaluation of Generated or Extracted Answers
+
+#### [FaithfulnessEvaluator](../../pipeline-components/evaluators/faithfulnessevaluator.mdx)
+
+Faithfulness, also called groundedness, evaluates to what extent a generated answer is based on retrieved documents. An LLM is used to extract statements from the answer and check the faithfulness for each separately. If the answer is not based on the documents, the answer, or at least parts of it, is called a hallucination.
+
+#### [SASEvaluator](../../pipeline-components/evaluators/sasevaluator.mdx) (Semantic Answer Similarity)
+
+Semantic answer similarity uses a transformer-based, cross-encoder architecture to evaluate the semantic similarity of two answers rather than their lexical overlap. While F1 and EM would both score _one hundred percent_ as sharing zero similarity with _100 %_, SAS is trained to assign a high score to such cases. SAS is particularly useful for seeking out cases where F1 doesn't give a good indication of the validity of a predicted answer. You can read more about SAS in [Semantic Answer Similarity for Evaluating Question-Answering Models paper](https://arxiv.org/abs/2108.06130).
+
+### Evaluation Framework Integrations
+
+Currently, Haystack has integrations with [DeepEval](https://docs.confident-ai.com/docs/metrics-introduction) and [Ragas](https://docs.ragas.io/en/stable/index.html). There is an Evaluator component available for each of these frameworks:
+
+- [RagasEvaluator](../../pipeline-components/evaluators/ragasevaluator.mdx)
+- [DeepEvalEvaluator](../../pipeline-components/evaluators/deepevalevaluator.mdx)
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| Evaluator Models | All GPT models from OpenAI   Google VertexAI Models   Azure OpenAI Models   Amazon Bedrock Models |
+| Supported metrics | ANSWER_CORRECTNESS, FAITHFULNESS, ANSWER_SIMILARITY, CONTEXT_PRECISION, CONTEXT_UTILIZATION,CONTEXT_RECALL, ASPECT_CRITIQUE, CONTEXT_RELEVANCY, ANSWER_RELEVANCY |
+| Customizable prompt for response evaluation | ✅, with ASPECT_CRITIQUE metric |
+| Explanations of scores | ❌ |
+| Monitoring dashboard | ❌ |
+
+</div>
+
+:::note Framework Documentation
+
+You can find more information about the metrics in the documentation of the respective evaluation frameworks:
+
+- Ragas metrics: https://docs.ragas.io/en/latest/concepts/metrics/index.html
+- DeepEval metrics: https://docs.confident-ai.com/docs/metrics-introduction
+:::
+
+## Additional References
+
+:notebook: Tutorial: [Evaluating RAG Pipelines](https://haystack.deepset.ai/tutorials/35_evaluating_rag_pipelines)

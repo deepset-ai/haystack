@@ -3,46 +3,80 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-@font-face {
-  font-display: swap;
-  font-family: "Haffer";
-  font-weight: 400;
-  src: url("/fonts/HafferRegular/font.woff2") format("woff2"),
-       url("/fonts/HafferRegular/font.woff") format("woff");
-}
-
-@font-face {
-  font-display: swap;
-  font-family: "Haffer";
-  font-weight: 600;
-  src: url("/fonts/HafferBold/font.woff2") format("woff2"),
-       url("/fonts/HafferBold/font.woff") format("woff");
-}
+/* Import Inter font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  --ifm-color-primary: #23A193;
-  --ifm-color-primary-dark: #1C877C;
-  --ifm-color-primary-darker: #176D64;
-  --ifm-color-primary-darkest: #12524D;
-  --ifm-color-primary-light: #A0F4EB;
-  --ifm-color-primary-lighter: #C7F5F1;
-  --ifm-color-primary-lightest: #E5FCFA;
+  /* Primary Color Scale (Teal) - Light Mode */
+  --ifm-color-primary: #2A9383;
+  --ifm-color-primary-dark: #23867A;
+  --ifm-color-primary-darker: #1C6E65;
+  --ifm-color-primary-darkest: #155650;
+  --ifm-color-primary-light: #68E5E9;
+  --ifm-color-primary-lighter: #A0F4EB;
+  --ifm-color-primary-lightest: #C7F9F1;
+
+  /* Secondary Color Scale (Lilac) - Light Mode */
+  --ifm-color-secondary: #8BA5FF;
+  --ifm-color-secondary-dark: #6A8BFF;
+  --ifm-color-secondary-darker: #5077FF;
+  --ifm-color-secondary-darkest: #3562FF;
+  --ifm-color-secondary-light: #B5C8FF;
+  --ifm-color-secondary-lighter: #D5E9FF;
+  --ifm-color-secondary-lightest: #EBF3FF;
+
+  /* Brand Colors for Reference */
+  --haystack-teal-main: #C7F9F1;
+  --haystack-teal-soft: #A0F4EB;
+  --haystack-teal-medium: #68E5E9;
+  --haystack-teal-strong: #2A9383;
+  --haystack-lilac: #D5E9FF;
+
+  /* Code and Typography */
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
-  --ifm-font-family-base:    "Haffer", "GreycliffCF", sans-serif;
-  --ifm-font-family-heading: "Haffer", "GreycliffCF", sans-serif;
+  --docusaurus-highlighted-code-line-bg: rgba(104, 229, 233, 0.15);
+  --ifm-font-family-base:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ifm-font-family-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Admonition Custom Colors */
+  --docusaurus-admonition-tip-bg: rgba(104, 229, 233, 0.15);
+  --docusaurus-admonition-tip-border: var(--ifm-color-primary);
+  --docusaurus-admonition-note-bg: rgba(213, 233, 255, 0.15);
+  --docusaurus-admonition-note-border: #8BA5FF;
+  --docusaurus-admonition-info-bg: rgba(160, 244, 235, 0.1);
+  --docusaurus-admonition-info-border: #A0F4EB;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #A0F4EB;
-  --ifm-color-primary-dark: #7EE1D9;
-  --ifm-color-primary-darker: #5DCFC7;
-  --ifm-color-primary-darkest: #3CBDB5;
-  --ifm-color-primary-light: #C7F9F3;
-  --ifm-color-primary-lighter: #DBFCF8;
-  --ifm-color-primary-lightest: #EFFDFC;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  /* Primary Color Scale (Teal) - Dark Mode */
+  --ifm-color-primary: #68E5E9;
+  --ifm-color-primary-dark: #4DD3D8;
+  --ifm-color-primary-darker: #3CBDB5;
+  --ifm-color-primary-darkest: #2A9383;
+  --ifm-color-primary-light: #A0F4EB;
+  --ifm-color-primary-lighter: #C7F9F1;
+  --ifm-color-primary-lightest: #E0F9F6;
+
+  /* Secondary Color Scale (Lilac) - Dark Mode */
+  --ifm-color-secondary: #A5B8FF;
+  --ifm-color-secondary-dark: #8BA5FF;
+  --ifm-color-secondary-darker: #6A8BFF;
+  --ifm-color-secondary-darkest: #5077FF;
+  --ifm-color-secondary-light: #C5D5FF;
+  --ifm-color-secondary-lighter: #D5E9FF;
+  --ifm-color-secondary-lightest: #E8EFFF;
+
+  /* Code and Typography */
+  --docusaurus-highlighted-code-line-bg: rgba(104, 229, 233, 0.2);
+
+  /* Admonition Custom Colors - Dark Mode */
+  --docusaurus-admonition-tip-bg: rgba(104, 229, 233, 0.15);
+  --docusaurus-admonition-tip-border: #68E5E9;
+  --docusaurus-admonition-note-bg: rgba(165, 184, 255, 0.15);
+  --docusaurus-admonition-note-border: #A5B8FF;
+  --docusaurus-admonition-info-bg: rgba(160, 244, 235, 0.12);
+  --docusaurus-admonition-info-border: #A0F4EB;
 }
 
 body {
@@ -64,22 +98,6 @@ button, .button {
   max-width: 1200px;
 }
 
-.theme-code-block-with-lang {
-  position: relative;
-}
-.code-block-language-badge {
-  position: absolute;
-  top: var(--ifm-pre-padding);
-  right: var(--ifm-pre-padding);
-  background: rgba(0, 0, 0, 0.1);
-  color: var(--ifm-color-primary);
-  font-size: 0.75em;
-  text-transform: uppercase;
-  padding: 0.15em 0.5em;
-  border-radius: 0.25rem;
-  pointer-events: none;
-  z-index: 1;
-}
 
 .pagination-nav {
   display: none;
@@ -110,10 +128,36 @@ button, .button {
   font-weight: 600;
 }
 
-/* Highlight Docs section when on docs pages */
-.navbar__item[href="/docs/overview/intro"] {
+/* ========================================
+   BREADCRUMBS - Neutral Grey with Teal Active
+   ======================================== */
+
+/* Breadcrumb links - grey for non-active items */
+.breadcrumbs__link {
+  color: #6B7280;
+}
+
+.breadcrumbs__link:hover {
   color: var(--ifm-color-primary);
-  font-weight: 600;
+  background: transparent;
+}
+
+/* Active breadcrumb item - teal */
+.breadcrumbs__item--active .breadcrumbs__link {
+  color: var(--ifm-color-primary);
+  font-weight: 500;
+}
+
+[data-theme='dark'] .breadcrumbs__link {
+  color: #9CA3AF;
+}
+
+[data-theme='dark'] .breadcrumbs__link:hover {
+  color: var(--ifm-color-primary-light);
+}
+
+[data-theme='dark'] .breadcrumbs__item--active .breadcrumbs__link {
+  color: var(--ifm-color-primary);
 }
 
 /* Footer section titles - make them bold and prominent */
@@ -126,4 +170,467 @@ button, .button {
   font-size: 1.1em !important;
   text-transform: uppercase !important;
   letter-spacing: 0.5px !important;
+}
+
+/* Footer links - use teal colors, no lilac */
+.footer__link-item {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.footer__link-item:hover {
+  color: var(--ifm-color-primary-light);
+  text-decoration: underline;
+}
+
+/* Remove any secondary/lilac color from footer */
+.footer a {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.footer a:hover {
+  color: var(--ifm-color-primary-light);
+}
+
+/* Footer copyright - same color as other footer text */
+.footer__copyright {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Sidebar navigation - top-level items bold */
+.menu__list > .menu__list-item > .menu__link {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Sidebar navigation - sub-items normal weight */
+.menu__list .menu__list .menu__link {
+  font-weight: 400;
+  font-size: 0.925rem;
+  padding-left: 1.25rem;
+}
+
+/* Highlight all items in the active path (breadcrumb trail) */
+.menu__link--active {
+  color: var(--ifm-color-primary-dark) !important;
+  font-weight: 600;
+}
+
+/* Add background highlight only to the actual page (leaf node) */
+.theme-doc-sidebar-item-link .menu__link--active {
+  background-color: rgba(104, 229, 233, 0.15);
+  border-left: 3px solid var(--ifm-color-primary);
+  padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 3px);
+}
+
+/* Hover state for sidebar links */
+.menu__link:hover {
+  background-color: rgba(104, 229, 233, 0.08);
+  transition: background-color 0.2s ease;
+}
+
+/* Active link hover - keep stronger background */
+.theme-doc-sidebar-item-link .menu__link--active:hover {
+  background-color: rgba(104, 229, 233, 0.15);
+}
+
+/* Dark mode adjustments for sidebar */
+[data-theme='dark'] .theme-doc-sidebar-item-link .menu__link--active {
+  background-color: rgba(104, 229, 233, 0.2);
+  border-left: 3px solid var(--ifm-color-primary);
+  color: var(--ifm-color-primary-light) !important;
+}
+
+[data-theme='dark'] .menu__link:hover {
+  background-color: rgba(104, 229, 233, 0.1);
+}
+
+[data-theme='dark'] .menu__link--active {
+  color: var(--ifm-color-primary-light) !important;
+}
+
+/* ========================================
+   ADMONITION STYLING - Brand Colors
+   ======================================== */
+
+/* Tip Admonitions - Match sidebar navigation color */
+.theme-admonition.alert.alert--success {
+  background-color: rgba(104, 229, 233, 0.15);
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+.theme-admonition.alert.alert--success .admonition-icon svg {
+  fill: var(--ifm-color-primary);
+}
+
+.theme-admonition.alert.alert--success .admonition-heading {
+  color: var(--ifm-color-primary-dark);
+}
+
+/* Note Admonitions - Lilac */
+.theme-admonition.alert.alert--secondary {
+  background-color: var(--docusaurus-admonition-note-bg);
+  border-left: 4px solid var(--docusaurus-admonition-note-border);
+}
+
+.theme-admonition.alert.alert--secondary .admonition-icon svg {
+  fill: var(--ifm-color-secondary);
+}
+
+.theme-admonition.alert.alert--secondary .admonition-heading {
+  color: var(--ifm-color-secondary-dark);
+}
+
+/* Info Admonitions - Teal Soft */
+.theme-admonition.alert.alert--info {
+  background-color: var(--docusaurus-admonition-info-bg);
+  border-left: 4px solid var(--docusaurus-admonition-info-border);
+}
+
+.theme-admonition.alert.alert--info .admonition-icon svg {
+  fill: var(--ifm-color-primary-light);
+}
+
+.theme-admonition.alert.alert--info .admonition-heading {
+  color: var(--ifm-color-primary);
+}
+
+/* ========================================
+   INTERACTIVE ELEMENTS - Enhanced Colors
+   ======================================== */
+
+/* Primary Links */
+a {
+  color: var(--ifm-color-primary);
+  transition: text-decoration 0.2s ease;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Inline Code - Neutral Grey Background */
+code:not([class*="language-"]) {
+  background-color: #F5F5F7;
+  border: 1px solid #E5E5E7;
+  color: #1D1D1F;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+}
+
+[data-theme='dark'] code:not([class*="language-"]) {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #E8E8E8;
+}
+
+/* Links inside inline code - use teal for distinction */
+a code:not([class*="language-"]),
+code:not([class*="language-"]) a {
+  color: var(--ifm-color-primary-dark);
+  font-weight: 600;
+}
+
+[data-theme='dark'] a code:not([class*="language-"]),
+[data-theme='dark'] code:not([class*="language-"]) a {
+  color: var(--ifm-color-primary);
+}
+
+/* Hover state for code links */
+a:hover code:not([class*="language-"]),
+code:not([class*="language-"]) a:hover {
+  text-decoration: underline;
+}
+
+/* Primary Buttons */
+.button--primary {
+  background-color: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+  color: #ffffff;
+}
+
+.button--primary:hover {
+  background-color: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
+  color: #ffffff;
+}
+
+/* Secondary Buttons - Teal Outline */
+.button--secondary {
+  background-color: transparent;
+  border: 2px solid var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
+.button--secondary:hover {
+  background-color: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+  color: #ffffff;
+}
+
+/* ========================================
+   CODE BLOCKS - Enhanced Styling
+   ======================================== */
+
+/* Code Block Container */
+.theme-code-block {
+  position: relative;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Language Badge - Positioned at top-right corner */
+.theme-code-block-with-lang {
+  position: relative;
+}
+
+.code-block-language-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #E0F2F1;
+  color: #1C6E65;
+  font-weight: 600;
+  font-size: 0.6em;
+  text-transform: uppercase;
+  padding: 0.15em 0.5em;
+  border-radius: 0.25rem;
+  letter-spacing: 0.3px;
+  z-index: 1;
+  pointer-events: none;
+  line-height: 1.2;
+}
+
+/* Push action buttons below the language badge */
+.theme-code-block div[class*="buttonGroup"] {
+  margin-top: 1.5rem;
+}
+
+[data-theme='dark'] .code-block-language-badge {
+  background: rgba(96, 125, 139, 0.3);
+  color: #B2DFDB;
+  border: 1px solid rgba(96, 125, 139, 0.4);
+}
+
+/* Copy Button Styling */
+.clean-btn.copy-button {
+  border-radius: 0.25rem;
+  transition: background-color 0.2s ease;
+}
+
+.clean-btn.copy-button:hover {
+  background-color: var(--ifm-color-primary-lightest);
+}
+
+[data-theme='dark'] .clean-btn.copy-button:hover {
+  background-color: rgba(104, 229, 233, 0.2);
+}
+
+/* Hide language badge for single-line code blocks */
+.hide-language-badge .code-block-language-badge {
+  display: none;
+}
+
+/* Hide action buttons for two-line code blocks */
+.hide-action-buttons div[class*="buttonGroup"] {
+  display: none;
+}
+
+/* ========================================
+   VERSION BADGE & BANNER - Brand Colors
+   ======================================== */
+
+/* Version Badge - Neutral grey (metadata, not interactive) */
+.badge--secondary,
+.theme-doc-version-badge {
+  background-color: #6B7280 !important;
+  border-color: #6B7280 !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .badge--secondary,
+[data-theme='dark'] .theme-doc-version-badge {
+  background-color: #4B5563 !important;
+  border-color: #4B5563 !important;
+  color: #E5E7EB !important;
+}
+
+/* Unreleased Version Banner */
+.theme-doc-version-banner.alert--warning {
+  background: linear-gradient(135deg,
+    rgba(42, 147, 131, 0.1) 0%,
+    rgba(104, 229, 233, 0.1) 100%);
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .theme-doc-version-banner.alert--warning {
+  background: linear-gradient(135deg,
+    rgba(104, 229, 233, 0.15) 0%,
+    rgba(160, 244, 235, 0.1) 100%);
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+/* ========================================
+   TABLE OF CONTENTS - Enhanced Styling
+   ======================================== */
+
+.table-of-contents__link--active {
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+.table-of-contents__link--active code {
+  color: var(--ifm-color-primary);
+}
+
+.table-of-contents__link:hover {
+  color: var(--ifm-color-primary-light);
+}
+
+/* ========================================
+   DROPDOWN MENUS - Enhanced Colors
+   ======================================== */
+
+.dropdown__menu {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown__link--active {
+  background-color: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary);
+}
+
+.dropdown__link:hover {
+  background-color: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .dropdown__link--active {
+  background-color: rgba(104, 229, 233, 0.15);
+  color: var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .dropdown__link:hover {
+  background-color: rgba(104, 229, 233, 0.1);
+  color: var(--ifm-color-primary);
+}
+
+/* ========================================
+   PAGINATION - Brand Colors
+   ======================================== */
+
+.pagination-nav__link:hover {
+  border-color: var(--ifm-color-primary);
+}
+
+.pagination-nav__link:hover .pagination-nav__label {
+  color: var(--ifm-color-primary);
+}
+
+/* ========================================
+   SEARCH BAR - Enhanced Styling
+   ======================================== */
+
+.navbar__search-input:focus {
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 0 0 0.2rem rgba(104, 229, 233, 0.25);
+}
+
+/* ========================================
+   TABS - Brand Colors
+   ======================================== */
+
+.tabs__item--active {
+  border-bottom-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
+.tabs__item:hover {
+  color: var(--ifm-color-primary-light);
+}
+
+/* ========================================
+   IMAGES - Dark Mode White Background
+   ======================================== */
+
+/* Add white background to images with transparent PNGs in dark mode */
+[data-theme='dark'] .img-white-bg img,
+[data-theme='dark'] .img-white-bg picture img {
+  background-color: #ffffff;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+/* Alternative: light grey background (less harsh) */
+[data-theme='dark'] .img-light-bg img,
+[data-theme='dark'] .img-light-bg picture img {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+/* ========================================
+   KEY-VALUE TABLE STYLING - Headerless Tables
+   ======================================== */
+
+/* Hide header visually in key-value tables */
+.key-value-table thead {
+  display: none;
+}
+
+/* Ensure wrapper doesn't overflow */
+.key-value-table {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Force table to use full width and fixed layout */
+.key-value-table table {
+  table-layout: fixed !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Style the first column (keys) as bold and nowrap */
+.key-value-table td:first-child {
+  font-weight: 600;
+  white-space: nowrap;
+  padding-right: 1rem;
+  width: 30% !important;
+  min-width: 200px;
+}
+
+/* Style the second column (values) to wrap text properly */
+.key-value-table td:last-child {
+  width: 70% !important;
+  max-width: 0 !important; /* Force wrapping */
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+}
+
+/* Ensure content inside cells wraps properly */
+.key-value-table td:last-child * {
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+}
+
+/* Ensure links wrap properly */
+.key-value-table td:last-child a {
+  white-space: normal !important;
+  word-break: break-all !important;
+  overflow-wrap: break-word !important;
+}
+
+/* General cell styling */
+.key-value-table td {
+  vertical-align: top;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Add subtle spacing between rows for readability */
+.key-value-table tr + tr td {
+  padding-top: 0.4rem;
 }

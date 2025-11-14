@@ -1,0 +1,129 @@
+---
+title: "ImageFileToImageContent"
+id: imagefiletoimagecontent
+slug: "/imagefiletoimagecontent"
+description: "`ImageFileToImageContent` reads local image files and converts them into `ImageContent` objects. These are ready for multimodal AI pipelines, including tasks like image captioning, visual QA, or prompt-based generation."
+---
+
+# ImageFileToImageContent
+
+`ImageFileToImageContent` reads local image files and converts them into `ImageContent` objects. These are ready for multimodal AI pipelines, including tasks like image captioning, visual QA, or prompt-based generation.
+
+<div className="key-value-table">
+
+|                                        |                                                                                                          |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | Before a `ChatPromptBuilder` in a query pipeline                                                         |
+| **Mandatory run variables**            | `sources`: A list of image file paths or ByteStreams                                                     |
+| **Output variables**                   | `image_contents`: A list of ImageContent objects                                                         |
+| **API reference**                      | [Image Converters](/reference/image-converters-api)                                                |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/image/file_to_image.py |
+
+</div>
+
+## Overview
+
+`ImageFileToImageContent` processes a list of image sources and converts them into `ImageContent` objects. These can be used in multimodal pipelines that require base64-encoded image input.
+
+Each source can be:
+
+- A file path (string or `Path`), or
+- A `ByteStream` object.
+
+Optionally, you can provide metadata using the `meta` parameter. This can be a single dictionary (applied to all images) or a list matching the length of `sources`.
+
+Use the `size` parameter to resize images while preserving aspect ratio. This reduces memory usage and transmission size, which is helpful when working with remote models or limited-resource environments.
+
+This component is often used in query pipelines just before a `ChatPromptBuilder`.
+
+## Usage
+
+### On its own
+
+```python
+
+from haystack.components.converters.image import ImageFileToImageContent
+
+converter = ImageFileToImageContent(detail="high", size=(800, 600))
+
+sources = ["cat.jpg", "scenery.png"]
+
+result = converter.run(sources=sources)
+image_contents = result["image_contents"]
+print(image_contents)
+
+## [
+##     ImageContent(
+##         base64_image="/9j/4A...", mime_type="image/jpeg", detail="high",
+##         meta={"file_path": "cat.jpg"}
+##     ),
+##     ImageContent(
+##         base64_image="/9j/4A...", mime_type="image/png", detail="high",
+##         meta={"file_path": "scenery.png"}
+##     )
+## ]
+```
+
+### In a pipeline
+
+Use `ImageFileToImageContent` to supply image data to a `ChatPromptBuilder` for multimodal QA or captioning with an LLM.
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.converters.image import ImageFileToImageContent
+
+## Query pipeline
+pipeline = Pipeline()
+pipeline.add_component("image_converter", ImageFileToImageContent(detail="auto"))
+pipeline.add_component(
+    "chat_prompt_builder",
+    ChatPromptBuilder(
+        required_variables=["question"],
+        template="""{% message role="system" %}
+You are a helpful assistant that answers questions using the provided images.
+{% endmessage %}
+
+{% message role="user" %}
+Question: {{ question }}
+
+{% for img in image_contents %}
+{{ img | templatize_part }}
+{% endfor %}
+{% endmessage %}
+"""
+    )
+)
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+
+pipeline.connect("image_converter", "chat_prompt_builder.image_contents")
+pipeline.connect("chat_prompt_builder", "llm")
+
+sources = ["apple.jpg", "haystack-logo.png"]
+
+result = pipeline.run(
+    data={
+        "image_converter": {"sources": sources},
+        "chat_prompt_builder": {"question": "Describe the Haystack logo."}
+    }
+)
+print(result)
+
+## {
+## "llm": {
+##     "replies": [
+##         ChatMessage(
+##             _role=<ChatRole.ASSISTANT: 'assistant'>,
+##             _content=[TextContent(text="The Haystack logo features...")],
+##             ...
+##         )
+##     ]
+## }
+## }
+
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Introduction to Multimodality](https://haystack.deepset.ai/cookbook/multimodal_intro)

@@ -1,0 +1,101 @@
+---
+title: "STACKITDocumentEmbedder"
+id: stackitdocumentembedder
+slug: "/stackitdocumentembedder"
+description: "This component enables document embedding using the STACKIT API."
+---
+
+# STACKITDocumentEmbedder
+
+This component enables document embedding using the STACKIT API.
+
+<div className="key-value-table">
+
+|                                        |                                                                                           |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | Before a [DocumentWriter](../writers/documentwriter.mdx) in an indexing pipeline                   |
+| **Mandatory init variables**           | `model`: The model used through the STACKIT API                                           |
+| **Mandatory run variables**            | `documents`: A list of documents to be embedded                                           |
+| **Output variables**                   | `documents`: A list of documents enriched with embeddings                                 |
+| **API reference**                      | [STACKIT](/reference/integrations-stackit)                                                       |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/stackit |
+
+</div>
+
+## Overview
+
+`STACKITDocumentEmbedder` enables document embedding models served by STACKIT through their API.
+
+### Parameters
+
+To use the `STACKITDocumentEmbedder`, ensure you have set a `STACKIT_API_KEY` as an environment variable. Alternatively, provide the API key as an environment variable with a different name or a token by setting `api_key` and using Haystack’s [secret management](../../concepts/secret-management.mdx).
+
+Set your preferred supported model with the `model` parameter when initializing the component. See the full list of all supported models on the [STACKIT website](https://docs.stackit.cloud/stackit/en/models-licenses-319914532.html).
+
+Optionally, you can change the default `api_base_url`, which is `"https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1"`.
+
+You can pass any text generation parameters valid for the STACKIT Chat Completion API directly to this component with the `generation_kwargs` parameter in the init or run methods.
+
+Then component needs a list of documents as input to operate.
+
+## Usage
+
+Install the `stackit-haystack` package to use the `STACKITDocumentEmbedder` and set an environment variable called `STACKIT_API_KEY` to your API key.
+
+```shell
+pip install stackit-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.embedders.stackit import STACKITDocumentEmbedder
+
+doc = Document(content="I love pizza!")
+
+document_embedder = STACKITDocumentEmbedder(model="intfloat/e5-mistral-7b-instruct")
+
+result = document_embedder.run([doc])
+print(result["documents"][0].embedding)
+
+## [0.0215301513671875, 0.01499176025390625, ...]
+```
+
+### In a pipeline
+
+You can also use `STACKITDocumentEmbedder` in your pipeline in a following way.
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.stackit import STACKITTextEmbedder, STACKITDocumentEmbedder
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore()
+
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
+
+document_embedder = STACKITDocumentEmbedder(model="intfloat/e5-mistral-7b-instruct")
+documents_with_embeddings = document_embedder.run(documents)['documents']
+document_store.write_documents(documents_with_embeddings)
+
+text_embedder = STACKITTextEmbedder(model="intfloat/e5-mistral-7b-instruct")
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", text_embedder)
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Where does Wolfgang live?"
+
+result = query_pipeline.run({"text_embedder":{"text": query}})
+
+print(result['retriever']['documents'][0])
+
+## Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
+```
+
+You can find more usage examples in the STACKIT integration [repository](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/stackit/examples) and its [integration page](https://haystack.deepset.ai/integrations/stackit).

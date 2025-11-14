@@ -5,12 +5,12 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
-from haystack.tools import Tool, Toolset
+from haystack.tools import ToolsType
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
@@ -81,12 +81,22 @@ class FallbackChatGenerator:
         data["init_parameters"] = init_params
         return default_from_dict(cls, data)
 
+    def warm_up(self) -> None:
+        """
+        Warm up all underlying chat generators.
+
+        This method calls warm_up() on each underlying generator that supports it.
+        """
+        for gen in self.chat_generators:
+            if hasattr(gen, "warm_up") and callable(gen.warm_up):
+                gen.warm_up()
+
     def _run_single_sync(  # pylint: disable=too-many-positional-arguments
         self,
         gen: Any,
         messages: list[ChatMessage],
         generation_kwargs: Union[dict[str, Any], None],
-        tools: Union[list[Tool], Toolset, None],
+        tools: Optional[ToolsType],
         streaming_callback: Union[StreamingCallbackT, None],
     ) -> dict[str, Any]:
         return gen.run(
@@ -98,7 +108,7 @@ class FallbackChatGenerator:
         gen: Any,
         messages: list[ChatMessage],
         generation_kwargs: Union[dict[str, Any], None],
-        tools: Union[list[Tool], Toolset, None],
+        tools: Optional[ToolsType],
         streaming_callback: Union[StreamingCallbackT, None],
     ) -> dict[str, Any]:
         if hasattr(gen, "run_async") and callable(gen.run_async):
@@ -121,7 +131,7 @@ class FallbackChatGenerator:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Union[dict[str, Any], None] = None,
-        tools: Union[list[Tool], Toolset, None] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Union[StreamingCallbackT, None] = None,
     ) -> dict[str, Any]:
         """
@@ -129,7 +139,7 @@ class FallbackChatGenerator:
 
         :param messages: The conversation history as a list of ChatMessage instances.
         :param generation_kwargs: Optional parameters for the chat generator (e.g., temperature, max_tokens).
-        :param tools: Optional Tool instances or Toolset for function calling capabilities.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
         :param streaming_callback: Optional callable for handling streaming responses.
         :returns: A dictionary with:
             - "replies": Generated ChatMessage instances from the first successful generator.
@@ -174,7 +184,7 @@ class FallbackChatGenerator:
         self,
         messages: list[ChatMessage],
         generation_kwargs: Union[dict[str, Any], None] = None,
-        tools: Union[list[Tool], Toolset, None] = None,
+        tools: Optional[ToolsType] = None,
         streaming_callback: Union[StreamingCallbackT, None] = None,
     ) -> dict[str, Any]:
         """
@@ -182,7 +192,7 @@ class FallbackChatGenerator:
 
         :param messages: The conversation history as a list of ChatMessage instances.
         :param generation_kwargs: Optional parameters for the chat generator (e.g., temperature, max_tokens).
-        :param tools: Optional Tool instances or Toolset for function calling capabilities.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
         :param streaming_callback: Optional callable for handling streaming responses.
         :returns: A dictionary with:
             - "replies": Generated ChatMessage instances from the first successful generator.

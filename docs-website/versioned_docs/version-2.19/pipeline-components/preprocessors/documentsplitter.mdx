@@ -1,0 +1,92 @@
+---
+title: "DocumentSplitter"
+id: documentsplitter
+slug: "/documentsplitter"
+description: "`DocumentSplitter` divides a list of text documents into a list of shorter text documents. This is useful for long texts that otherwise wouldn't fit into the maximum text length of language models and can also speed up question answering."
+---
+
+# DocumentSplitter
+
+`DocumentSplitter` divides a list of text documents into a list of shorter text documents. This is useful for long texts that otherwise wouldn't fit into the maximum text length of language models and can also speed up question answering.
+
+<div className="key-value-table">
+
+|                                        |                                                                                                                                                      |
+| :------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx)  and [`DocumentCleaner`](documentcleaner.mdx) , before [Classifiers](../classifiers.mdx) |
+| **Mandatory run variables**            | `documents`: A list of documents                                                                                                                     |
+| **Output variables**                   | `documents`: A list of documents                                                                                                                     |
+| **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                                                               |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/document_splitter.py                                            |
+
+</div>
+
+## Overview
+
+`DocumentSplitter` expects a list of documents as input and returns a list of documents with split texts. It splits each input document by `split_by` after `split_length` units with an overlap of `split_overlap` units. These additional parameters can be set when the component is initialized:
+
+- `split_by` can be `"word"`, `"sentence"`, `"passage"` (paragraph), `"page"`, `"line"` or `"function"`.
+- `split_length` is an integer indicating the chunk size, which is the number of words, sentences, or passages.
+- `split_overlap` is an integer indicating the number of overlapping words, sentences, or passages between chunks.
+- `split_threshold` is an integer indicating the minimum number of words, sentences, or passages that the document fragment should have. If the fragment is below the threshold, it will be attached to the previous one.
+
+A field `"source_id"` is added to each document's `meta` data to keep track of the original document that was split. Another meta field `"page_number"` is added to each document to keep track of the page it belonged to in the original document. Other metadata are copied from the original document.
+
+The DocumentSplitter is compatible with the following DocumentStores:
+
+- [AstraDocumentStore](../../document-stores/astradocumentstore.mdx)
+- [ChromaDocumentStore](../../document-stores/chromadocumentstore.mdx) – limited support, overlapping information is not stored.
+- [ElasticsearchDocumentStore](../../document-stores/elasticsearch-document-store.mdx)
+- [OpenSearchDocumentStore](../../document-stores/opensearch-document-store.mdx)
+- [PgvectorDocumentStore](../../document-stores/pgvectordocumentstore.mdx)
+- [PineconeDocumentStore](../../document-stores/pinecone-document-store.mdx) – limited support, overlapping information is not stored.
+- [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx)
+- [WeaviateDocumentStore](../../document-stores/weaviatedocumentstore.mdx)
+- [MilvusDocumentStore](https://haystack.deepset.ai/integrations/milvus-document-store)
+- [Neo4jDocumentStore](https://haystack.deepset.ai/integrations/neo4j-document-store)
+
+## Usage
+
+### On its own
+
+You can use this component outside of a pipeline to shorten your documents like this:
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import DocumentSplitter
+
+doc = Document(content="Moonlight shimmered softly, wolves howled nearby, night enveloped everything.")
+
+splitter = DocumentSplitter(split_by="word", split_length=3, split_overlap=0)
+result = splitter.run(documents=[doc])
+```
+
+### In a pipeline
+
+Here's how you can use `DocumentSplitter` in an indexing pipeline:
+
+```python
+from pathlib import Path
+
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters.txt import TextFileToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+p = Pipeline()
+p.add_component(instance=TextFileToDocument(), name="text_file_converter")
+p.add_component(instance=DocumentCleaner(), name="cleaner")
+p.add_component(instance=DocumentSplitter(split_by="sentence", split_length=1), name="splitter")
+p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+p.connect("text_file_converter.documents", "cleaner.documents")
+p.connect("cleaner.documents", "splitter.documents")
+p.connect("splitter.documents", "writer.documents")
+
+path = "path/to/your/files"
+files = list(Path(path).glob("*.md"))
+p.run({"text_file_converter": {"sources": files}})
+```

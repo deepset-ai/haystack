@@ -281,6 +281,7 @@ class TestOpenAIChatGenerator:
                 "max_completion_tokens": 10,
                 "some_test_param": "test-params",
                 "response_format": calendar_event_model,
+                "logprobs": True,
             },
             tools=[tool],
             tools_strict=True,
@@ -303,6 +304,7 @@ class TestOpenAIChatGenerator:
                 "generation_kwargs": {
                     "max_completion_tokens": 10,
                     "some_test_param": "test-params",
+                    "logprobs": True,
                     "response_format": {
                         "type": "json_schema",
                         "json_schema": {
@@ -804,7 +806,7 @@ class TestOpenAIChatGenerator:
     @pytest.mark.integration
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = OpenAIChatGenerator(generation_kwargs={"n": 1})
+        component = OpenAIChatGenerator(generation_kwargs={"n": 1, "logprobs": True})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
@@ -812,6 +814,7 @@ class TestOpenAIChatGenerator:
         assert "gpt-4o" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
+        assert message.meta["logprobs"] is not None
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -987,7 +990,7 @@ class TestOpenAIChatGenerator:
 
         callback = Callback()
         component = OpenAIChatGenerator(
-            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
+            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}, "logprobs": True}
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -1002,6 +1005,7 @@ class TestOpenAIChatGenerator:
         metadata = message.meta
         assert "gpt-4o" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
+        assert metadata["logprobs"] is not None
 
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
@@ -1114,6 +1118,150 @@ class TestOpenAIChatGenerator:
         assert message.is_from(ChatRole.ASSISTANT)
         assert not message.tool_calls
         assert not message.tool_call_results
+
+    def test_init_with_list_of_toolsets(self, monkeypatch, tools):
+        """Test initialization with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        toolset1 = Toolset([tools[0]])
+        toolset2 = Toolset([tools[1]])
+
+        component = OpenAIChatGenerator(tools=[toolset1, toolset2])
+
+        assert component.tools == [toolset1, toolset2]
+        assert isinstance(component.tools, list)
+        assert len(component.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in component.tools)
+
+    def test_serde_with_list_of_toolsets(self, monkeypatch, tools):
+        """Test serialization and deserialization with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        toolset1 = Toolset([tools[0]])
+        toolset2 = Toolset([tools[1]])
+
+        component = OpenAIChatGenerator(tools=[toolset1, toolset2])
+        data = component.to_dict()
+
+        # Verify serialization preserves list[Toolset] structure
+        tools_data = data["init_parameters"]["tools"]
+        assert isinstance(tools_data, list)
+        assert len(tools_data) == 2
+        assert all(isinstance(ts, dict) for ts in tools_data)
+        assert tools_data[0]["type"] == "haystack.tools.toolset.Toolset"
+        assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
+
+        # Deserialize and verify
+        deserialized = OpenAIChatGenerator.from_dict(data)
+        assert isinstance(deserialized.tools, list)
+        assert len(deserialized.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in deserialized.tools)
+
+    def test_warm_up_with_tools(self, monkeypatch):
+        """Test that warm_up() calls warm_up on tools and is idempotent."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        # Create a mock tool that tracks if warm_up() was called
+        class MockTool(Tool):
+            warm_up_call_count = 0  # Class variable to track calls
+
+            def __init__(self):
+                super().__init__(
+                    name="mock_tool",
+                    description="A mock tool for testing",
+                    parameters={"x": {"type": "string"}},
+                    function=lambda x: x,
+                )
+
+            def warm_up(self):
+                MockTool.warm_up_call_count += 1
+
+        # Reset the class variable before test
+        MockTool.warm_up_call_count = 0
+        mock_tool = MockTool()
+
+        # Create OpenAIChatGenerator with the mock tool
+        component = OpenAIChatGenerator(tools=[mock_tool])
+
+        # Verify initial state - warm_up not called yet
+        assert MockTool.warm_up_call_count == 0
+        assert not component._is_warmed_up
+
+        # Call warm_up() on the generator
+        component.warm_up()
+
+        # Assert that the tool's warm_up() was called
+        assert MockTool.warm_up_call_count == 1
+        assert component._is_warmed_up
+
+        # Call warm_up() again and verify it's idempotent (only warms up once)
+        component.warm_up()
+
+        # The tool's warm_up should still only have been called once
+        assert MockTool.warm_up_call_count == 1
+        assert component._is_warmed_up
+
+    def test_warm_up_with_no_tools(self, monkeypatch):
+        """Test that warm_up() works when no tools are provided."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        component = OpenAIChatGenerator()
+
+        # Verify initial state
+        assert not component._is_warmed_up
+        assert component.tools is None
+
+        # Call warm_up() - should not raise an error
+        component.warm_up()
+
+        # Verify the component is warmed up
+        assert component._is_warmed_up
+
+        # Call warm_up() again - should be idempotent
+        component.warm_up()
+        assert component._is_warmed_up
+
+    def test_warm_up_with_multiple_tools(self, monkeypatch):
+        """Test that warm_up() works with multiple tools."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        from haystack.tools import Tool
+
+        # Track warm_up calls
+        warm_up_calls = []
+
+        class MockTool(Tool):
+            def __init__(self, tool_name):
+                super().__init__(
+                    name=tool_name,
+                    description=f"Mock tool {tool_name}",
+                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
+                    function=lambda x: f"{tool_name} result: {x}",
+                )
+
+            def warm_up(self):
+                warm_up_calls.append(self.name)
+
+        mock_tool1 = MockTool("tool1")
+        mock_tool2 = MockTool("tool2")
+
+        # Use a LIST of tools, not a Toolset
+        component = OpenAIChatGenerator(tools=[mock_tool1, mock_tool2])
+
+        # Call warm_up()
+        component.warm_up()
+
+        # Assert that both tools' warm_up() were called
+        assert "tool1" in warm_up_calls
+        assert "tool2" in warm_up_calls
+        assert component._is_warmed_up
+
+        # Track count
+        call_count = len(warm_up_calls)
+
+        # Verify idempotency
+        component.warm_up()
+        assert len(warm_up_calls) == call_count
 
 
 @pytest.fixture

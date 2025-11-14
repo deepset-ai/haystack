@@ -1,0 +1,94 @@
+---
+title: "GitHubIssueCommenterTool"
+id: githubissuecommentertool
+slug: "/githubissuecommentertool"
+description: "A Tool that allows Agents and ToolInvokers to post comments to GitHub issues."
+---
+
+# GitHubIssueCommenterTool
+
+A Tool that allows Agents and ToolInvokers to post comments to GitHub issues.
+
+|                              |                                                                                          |
+| ---------------------------- | ---------------------------------------------------------------------------------------- |
+| **Mandatory init variables** | "github_token": GitHub personal access token. Can be set with `GITHUB_TOKEN` env var.    |
+| **API reference**            | [Tools](/reference/tools-api)                                                            |
+| **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+## Overview
+
+`GitHubIssueCommenterTool` wraps the [`GitHubIssueCommenter`](../../pipeline-components/connectors/githubissuecommenter.mdx) component, providing a tool interface for use in agent workflows and tool-based pipelines.
+
+The tool takes a GitHub issue URL and comment text, then posts the comment to the specified issue using the GitHub API. This requires authentication since posting comments is an authenticated operation.
+
+### Parameters
+
+- `name` is _optional_ and defaults to "issue_commenter". Specifies the name of the tool.
+- `description` is _optional_ and provides context to the LLM about what the tool does.
+- `github_token` is _mandatory_ and must be a GitHub personal access token for API authentication. The default setting uses the environment variable `GITHUB_TOKEN`.
+- `raise_on_failure` is _optional_ and defaults to `True`. If False, errors are returned instead of raising exceptions.
+- `retry_attempts` is _optional_ and defaults to `2`. Number of retry attempts for failed requests.
+
+## Usage
+
+Install the GitHub integration to use the `GitHubIssueCommenterTool`:
+
+```shell
+pip install github-haystack
+```
+
+:::note
+Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+Basic usage to comment on an issue:
+
+```python
+from haystack_integrations.tools.github import GitHubIssueCommenterTool
+
+tool = GitHubIssueCommenterTool()
+result = tool.invoke(
+    url="https://github.com/owner/repo/issues/123",
+    comment="Thanks for reporting this issue! We'll look into it."
+)
+
+print(result)
+```
+
+```bash
+{'success': True}
+```
+
+### With an Agent
+
+You can use `GitHubIssueCommenterTool` with the [Agent](../../pipeline-components/agents-1/agent.mdx) component. The Agent will automatically invoke the tool when needed to post comments on GitHub issues.
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.components.agents import Agent
+from haystack_integrations.tools.github import GitHubIssueCommenterTool
+
+comment_tool = GitHubIssueCommenterTool(name="github_issue_commenter")
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[comment_tool],
+    exit_conditions=["text"]
+)
+
+agent.warm_up()
+response = agent.run(messages=[
+    ChatMessage.from_user("Please post a helpful comment on this GitHub issue: https://github.com/owner/repo/issues/123 acknowledging the bug report and mentioning that we're investigating")
+])
+
+print(response["last_message"].text)
+```
+
+```bash
+I have posted the comment on the GitHub issue, acknowledging the bug report and mentioning that the team is investigating the problem. If you need anything else, feel free to ask!
+```

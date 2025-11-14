@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    When creating a pipeline snapshot we make sure to use _deepcopy_with_exceptions when copying component inputs to avoid deep copies of items like components and tools since they often contain attributes that are not deep-copyable. For example, the LinkContentFetcher has httpx.Client as an attribute which throws an error if we try to deep copy it.

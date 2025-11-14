@@ -1,0 +1,214 @@
+---
+title: "FallbackChatGenerator"
+id: fallbackchatgenerator
+slug: "/fallbackchatgenerator"
+description: "A ChatGenerator wrapper that tries multiple Chat Generators sequentially until one succeeds."
+---
+
+# FallbackChatGenerator
+
+A ChatGenerator wrapper that tries multiple Chat Generators sequentially until one succeeds.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `chat_generators`: A non-empty list of Chat Generator components to try in order |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects representing the chat |
+| **Output variables** | `replies`: Generated ChatMessage instances from the first successful generator  <br /> <br />`meta`: Execution metadata including successful generator details |
+| **API reference** | [Generators](/reference/generators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/fallback.py |
+
+</div>
+
+## Overview
+
+`FallbackChatGenerator` is a wrapper component that tries multiple Chat Generators sequentially until one succeeds. If a Generator fails, the component tries the next one in the list. This handles provider outages, rate limits, and other transient failures.
+
+The component forwards all parameters to the underlying Chat Generators and returns the first successful result. When a Generator raises any exception, the component tries the next Generator. This includes timeout errors, rate limit errors (429), authentication errors (401), context length errors (400), server errors (500+), and any other exception.
+
+The component returns execution metadata including which Generator succeeded, how many attempts were made, and which Generators failed. All parameters (`messages`, `generation_kwargs`, `tools`, `streaming_callback`) are forwarded to the underlying Generators.
+
+Timeout enforcement is delegated to the underlying Chat Generators. To control latency, configure your Chat Generators with a `timeout` parameter. Chat Generators like OpenAI, Anthropic, and Cohere support timeout parameters that raise exceptions when exceeded.
+
+### Monitoring and Telemetry
+
+The `meta` dictionary in the output contains useful information for monitoring:
+
+```python
+from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+## Set up generators
+primary = OpenAIChatGenerator(model="gpt-4o")
+backup = OpenAIChatGenerator(model="gpt-4o-mini")
+generator = FallbackChatGenerator(chat_generators=[primary, backup])
+
+## Run and inspect metadata
+result = generator.run(messages=[ChatMessage.from_user("Hello")])
+
+meta = result["meta"]
+print(f"Successful generator index: {meta['successful_chat_generator_index']}")  # 0 for first, 1 for second, etc.
+print(f"Successful generator class: {meta['successful_chat_generator_class']}")  # e.g., "OpenAIChatGenerator"
+print(f"Total attempts made: {meta['total_attempts']}")  # How many Generators were tried
+print(f"Failed generators: {meta['failed_chat_generators']}")  # List of failed Generator names
+```
+
+You can use this metadata to:
+
+- Track which Generators are being used most frequently
+- Monitor failure rates for each Generator
+- Set up alerts when fallbacks occur
+- Adjust Generator ordering based on success rates
+
+### Streaming
+
+`FallbackChatGenerator` supports streaming through the `streaming_callback` parameter. The callback is passed directly to the underlying Generators.
+
+## Usage
+
+### On its own
+
+Basic usage with fallback from a primary to a backup model:
+
+```python
+from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+## Create primary and backup generators
+primary = OpenAIChatGenerator(model="gpt-4o", timeout=30)
+backup = OpenAIChatGenerator(model="gpt-4o-mini", timeout=30)
+
+## Wrap them in a FallbackChatGenerator
+generator = FallbackChatGenerator(chat_generators=[primary, backup])
+
+## Use it like any other Chat Generator
+messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+result = generator.run(messages=messages)
+
+print(result["replies"][0].text)
+print(f"Successful generator: {result['meta']['successful_chat_generator_class']}")
+print(f"Total attempts: {result['meta']['total_attempts']}")
+
+```
+
+With multiple providers:
+
+```python
+from haystack.components.generators.chat import (
+    FallbackChatGenerator,
+    OpenAIChatGenerator,
+    AzureOpenAIChatGenerator
+)
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+## Create generators from different providers
+openai_gen = OpenAIChatGenerator(
+    model="gpt-4o-mini",
+    api_key=Secret.from_env_var("OPENAI_API_KEY"),
+    timeout=30
+)
+
+azure_gen = AzureOpenAIChatGenerator(
+    azure_endpoint="<Your Azure endpoint>",
+    api_key=Secret.from_env_var("AZURE_OPENAI_API_KEY"),
+    azure_deployment="gpt-4o-mini",
+    timeout=30
+)
+
+## Fallback will try OpenAI first, then Azure
+generator = FallbackChatGenerator(chat_generators=[openai_gen, azure_gen])
+
+messages = [ChatMessage.from_user("Explain quantum computing briefly.")]
+result = generator.run(messages=messages)
+
+print(result["replies"][0].text)
+```
+
+With streaming:
+
+```python
+from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+primary = OpenAIChatGenerator(model="gpt-4o")
+backup = OpenAIChatGenerator(model="gpt-4o-mini")
+
+generator = FallbackChatGenerator(
+    chat_generators=[primary, backup]
+)
+
+messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+result = generator.run(
+    messages=messages,
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True)
+)
+
+print("\n", result["meta"])
+```
+
+### In a Pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+## Create primary and backup generators with timeouts
+primary = OpenAIChatGenerator(model="gpt-4o", timeout=30)
+backup = OpenAIChatGenerator(model="gpt-4o-mini", timeout=30)
+
+## Wrap in fallback
+fallback_generator = FallbackChatGenerator(chat_generators=[primary, backup])
+
+## Build pipeline
+prompt_builder = ChatPromptBuilder()
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", fallback_generator)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+## Run pipeline
+messages = [
+    ChatMessage.from_system("You are a helpful assistant that provides concise answers."),
+    ChatMessage.from_user("Tell me about {{location}}")
+]
+
+result = pipe.run(
+    data={
+        "prompt_builder": {
+            "template": messages,
+            "template_variables": {"location": "Paris"}
+        }
+    }
+)
+
+print(result["llm"]["replies"][0].text)
+print(f"Generator used: {result['llm']['meta']['successful_chat_generator_class']}")
+```
+
+## Error Handling
+
+If all Generators fail, `FallbackChatGenerator` raises a `RuntimeError` with details about which Generators failed and the last error encountered:
+
+```python
+from haystack.components.generators.chat import FallbackChatGenerator, OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+## Create generators with invalid credentials to demonstrate error handling
+primary = OpenAIChatGenerator(api_key=Secret.from_token("invalid-key-1"))
+backup = OpenAIChatGenerator(api_key=Secret.from_token("invalid-key-2"))
+
+generator = FallbackChatGenerator(chat_generators=[primary, backup])
+
+try:
+    result = generator.run(messages=[ChatMessage.from_user("Hello")])
+except RuntimeError as e:
+    print(f"All generators failed: {e}")
+    # Output: All 2 chat generators failed. Last error: ... Failed chat generators: [OpenAIChatGenerator, OpenAIChatGenerator]
+```

@@ -1,0 +1,125 @@
+---
+title: "Function Calling"
+id: function-calling
+slug: "/function-calling"
+description: "Learn about function calling and how to use it as a tool in Haystack."
+---
+
+# Function Calling
+
+Learn about function calling and how to use it as a tool in Haystack.
+
+Function calling is a powerful feature that significantly enhances the capabilities of Large Language Models (LLMs). It enables better functionality, immediate data access, and interaction, and sets up for integration with external APIs and services. Function calling turns LLMs into adaptable tools for various use case scenarios.
+
+## Use Cases
+
+Function calling is useful for a variety of purposes, but two main points are particularly notable:
+
+1. **Enhanced LLM Functionality**: Function calling enhances the capabilities of LLMs beyond just text generation. It allows to convert human-generated prompts into precise function invocation descriptors. These descriptors can then be used by connected LLM frameworks to perform computations, manipulate data, and interact with external APIs. This expansion of functionality makes LLMs adaptable tools for a wide array of tasks and industries.
+2. **Real-Time Data Access and Interaction**: Function calling lets LLMs create function calls that access and interact with real-time data. This is necessary for apps that need current data, like news, weather, or financial market updates. By giving access to the latest information, this feature greatly improves the usefulness and trustworthiness of LLMs in changing and time-critical situations.
+
+:::warning Important to Note
+
+The model doesn't actually call the function. Function calling returns JSON with the name of a function and the arguments to invoke it.
+:::
+
+## Example
+
+In the most simple form, Haystack users can invoke function calling by interacting directly with ChatGenerators. In this example, the human prompt “What's the weather like in Berlin?” is converted into a method parameter invocation descriptor that can, in turn, be passed off to some hypothetical weather service:
+
+```python
+import json
+
+from typing import Dict, Any, List
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_weather",
+            "description": "Get the current weather",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city and state, e.g. San Francisco, CA",
+                    },
+                    "format": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                        "description": "The temperature unit to use. Infer this from the users location.",
+                    },
+                },
+                "required": ["location", "format"],
+            },
+        }
+    }
+]
+messages = [ChatMessage.from_user("What's the weather like in Berlin?")]
+generator = OpenAIChatGenerator()
+response = generator.run(messages=messages, generation_kwargs= {"tools": tools})
+response_msg = response["replies"][0]
+
+messages.append(response_msg)
+print(response_msg)
+
+```
+
+Let’s pretend that the hypothetical weather service responded with some JSON response of the current weather data in Berlin:
+
+```python
+weather_response = [{
+  "id": "response_uhGNifLfopt5JrCUxXw1L3zo",
+  "status": "success",
+  "function": {
+    "name": "get_current_weather",
+    "arguments": {
+      "location": "Berlin",
+      "format": "celsius"
+    }
+  },
+  "data": {
+    "location": "Berlin",
+    "temperature": 18,
+    "weather_condition": "Partly Cloudy",
+    "humidity": "60%",
+    "wind_speed": "15 km/h",
+    "observation_time": "2024-03-05T14:00:00Z"
+  }
+}]
+```
+
+We would normally pack the response back into [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) and add it to a list of messages:
+
+```python
+fcm = ChatMessage.from_function(content=json.dumps(weather_response), name="get_current_weather")
+messages.append(fcm)
+```
+
+Sending these messages back to LLM enables the model to understand the context of the ongoing LLM interaction through `ChatMessage` list and respond back with a human-readable weather report for Berlin:
+
+```python
+response = generator.run(messages=messages)
+response_msg = response["replies"][0]
+
+print(response_msg.content)
+
+```
+
+## Additional References
+
+Haystack 2.0 introduces a better way to call functions using pipelines.
+
+For example, you can easily connect an LLM with a ChatGenerator to an external service using an OpenAPI specification. This lets you resolve service parameters with function calls and then use those parameters to invoke the external service. The service's response is added back into the LLM's context window. This method supports real-time, retriever-augmented generation that works with any OpenAPI-compliant service. It's a big improvement in how LLMs can use external structured data and functionalities.
+
+For more information and examples, see the documentation on [`OpenAPIServiceToFunctions`](../../converters/openapiservicetofunctions.mdx) and [`OpenAPIServiceConnector`](../../connectors/openapiserviceconnector.mdx).
+
+:notebook: **Tutorial:** [Building a Chat Application with Function Calling](https://haystack.deepset.ai/tutorials/40_building_chat_application_with_function_calling)
+
+🧑‍🍳 **Cookbooks:**
+
+- [Function Calling with OpenAIChatGenerator](https://haystack.deepset.ai/cookbook/function_calling_with_openaichatgenerator)
+- [Information Extraction with Gorilla](https://haystack.deepset.ai/cookbook/information-extraction-gorilla)

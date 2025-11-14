@@ -1,0 +1,63 @@
+---
+title: "AnswerJoiner"
+id: answerjoiner
+slug: "/answerjoiner"
+description: "Merges multiple answers from different Generators into a single list."
+---
+
+# AnswerJoiner
+
+Merges multiple answers from different Generators into a single list.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In query pipelines, after [Generators](../generators.mdx)  and, subsequently, components that return a list of answers such as [`AnswerBuilder`](../builders/answerbuilder.mdx)    |
+| **Mandatory run variables**            | `answers`: A nested list of answers to be merged, received from the Generator. This input is `variadic`, meaning you can connect a variable number of components to it. |
+| **Output variables**                   | `answers`: A merged list of answers                                                                                                                                     |
+| **API reference**                      | [Joiners](/reference/joiners-api)                                                                                                                                              |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/joiners/answer_joiner.py                                                                         |
+
+</div>
+
+## Overvew
+
+`AnswerJoiner` joins input lists of [`Answer`](../../concepts/data-classes.mdx#answer) objects from multiple connections and returns them as one list.
+
+You can optionally set the `top_k` parameter, which specifies the maximum number of answers to return. If you don’t set this parameter, the component returns all answers it receives.
+
+## Usage
+
+In this simple example pipeline, the `AnswerJoiner` merges answers from two instances of Generators:
+
+```python
+from haystack.components.builders import AnswerBuilder
+from haystack.components.joiners import AnswerJoiner
+
+from haystack.core.pipeline import Pipeline
+
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+query = "What's Natural Language Processing?"
+messages = [ChatMessage.from_system("You are a helpful, respectful and honest assistant. Be super concise."),
+            ChatMessage.from_user(query)]
+
+pipe = Pipeline()
+pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
+pipe.add_component("llama", OpenAIChatGenerator(model="gpt-3.5-turbo"))
+pipe.add_component("aba", AnswerBuilder())
+pipe.add_component("abb", AnswerBuilder())
+pipe.add_component("joiner", AnswerJoiner())
+
+pipe.connect("gpt-4o.replies", "aba")
+pipe.connect("llama.replies", "abb")
+pipe.connect("aba.answers", "joiner")
+pipe.connect("abb.answers", "joiner")
+
+results = pipe.run(data={"gpt-4o": {"messages": messages},
+                            "llama": {"messages": messages},
+                            "aba": {"query": query},
+                            "abb": {"query": query}})
+```

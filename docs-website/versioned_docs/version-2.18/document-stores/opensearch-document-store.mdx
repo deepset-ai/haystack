@@ -1,0 +1,69 @@
+---
+title: "OpenSearchDocumentStore"
+id: opensearch-document-store
+slug: "/opensearch-document-store"
+description: "A Document Store for storing and retrieval from OpenSearch."
+---
+
+# OpenSearchDocumentStore
+
+A Document Store for storing and retrieval from OpenSearch.
+
+|               |                                                                                              |
+| :------------ | :------------------------------------------------------------------------------------------- |
+| API reference | [OpenSearch](/reference/integrations-opensearch)                                                    |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch |
+
+OpenSearch is a fully open source search and analytics engine for use cases such as log analytics, real-time application monitoring, and clickstream analysis. For more information, see the [OpenSearch documentation](https://opensearch.org/docs/).
+
+This Document Store is great if you want to evaluate the performance of different retrieval options (dense vs. sparse). It’s compatible with the Amazon OpenSearch Service.
+
+OpenSearch provides support for vector similarity comparisons and approximate nearest neighbors algorithms.
+
+### Initialization
+
+[Install](https://opensearch.org/docs/latest/install-and-configure/install-opensearch/index/) and run an OpenSearch instance.
+
+If you have Docker set up, we recommend pulling the Docker image and running it.
+
+```shell
+docker pull opensearchproject/opensearch:2.11.0
+docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" opensearchproject/opensearch:2.11.0
+```
+
+As an alternative, you can go to [OpenSearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch) and start a Docker container running OpenSearch using the provided `docker-compose.yml`:
+
+```shell
+docker compose up
+```
+
+Once you have a running OpenSearch instance, install the `opensearch-haystack` integration:
+
+```shell
+pip install opensearch-haystack
+```
+
+Then, initialize an `OpenSearchDocumentStore` object that’s connected to the OpenSearch instance and writes documents to it:
+
+```python
+from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
+from haystack import Document
+
+document_store = OpenSearchDocumentStore(hosts="http://localhost:9200", use_ssl=True,
+verify_certs=False, http_auth=("admin", "admin"))
+document_store.write_documents([
+    Document(content="This is first"),
+    Document(content="This is second")
+    ])
+print(document_store.count_documents())
+```
+
+### Supported Retrievers
+
+[`OpenSearchBM25Retriever`](../pipeline-components/retrievers/opensearchbm25retriever.mdx): A keyword-based Retriever that fetches documents matching a query from the Document Store.
+
+[`OpenSearchEmbeddingRetriever`](../pipeline-components/retrievers/opensearchembeddingretriever.mdx): Compares the query and document embeddings and fetches the documents most relevant to the query.
+
+## Additional References
+
+🧑‍🍳 Cookbook: [PDF-Based Question Answering with Amazon Bedrock and Haystack](https://haystack.deepset.ai/cookbook/amazon_bedrock_for_documentation_qa)

@@ -55,7 +55,7 @@ class Jinja2TimeExtension(Extension):
         if offset and operator:
             try:
                 # Parse the offset and apply it to the datetime object
-                replace_params = {
+                replace_params: dict[str, Any] = {
                     interval.strip(): float(operator + value.strip())
                     for param in offset.split(",")
                     for interval, value in [param.split("=")]

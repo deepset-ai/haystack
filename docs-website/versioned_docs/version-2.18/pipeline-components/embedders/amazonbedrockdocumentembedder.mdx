@@ -1,0 +1,150 @@
+---
+title: "AmazonBedrockDocumentEmbedder"
+id: amazonbedrockdocumentembedder
+slug: "/amazonbedrockdocumentembedder"
+description: "This component computes embeddings for documents using models through Amazon Bedrock API."
+---
+
+# AmazonBedrockDocumentEmbedder
+
+This component computes embeddings for documents using models through Amazon Bedrock API.
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
+| **Mandatory init variables** | "model": The embedding model to use  <br /> <br />"aws_access_key_id": AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />"aws_secret_access_key": AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />"aws_region_name": AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
+| **Mandatory run variables** | “documents”: A list of documents to be embedded |
+| **Output variables** | “documents”: A list of documents (enriched with embeddings) |
+| **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/amazon_bedrock |
+
+## Overview
+
+[Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) is a fully managed service that makes language models from leading AI startups and Amazon available for your use through a unified API.
+
+Supported models are `amazon.titan-embed-text-v1`, `cohere.embed-english-v3`,  `cohere.embed-multilingual-v3`, and `amazon.titan-embed-text-v2:0`.
+
+:::note
+Batch Inference
+
+Note that only Cohere models support batch inference – computing embeddings for more documents with the same request.
+:::
+
+This component should be used to embed a list of documents. To embed a string, you should use the [`AmazonBedrockTextEmbedder`](amazonbedrocktextembedder.mdx).
+
+### Authentication
+
+`AmazonBedrockDocumentEmbedder` uses AWS for authentication. You can either provide credentials as parameters directly to the component or use the AWS CLI and authenticate through your IAM. For more information on how to set up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
+To initialize `AmazonBedrockDocumentEmbedder` and authenticate by providing credentials, provide the `model_name`, as well as `aws_access_key_id`, `aws_secret_access_key` and `aws_region_name`. Other parameters are optional. You can check them out in our [API reference](/reference/integrations-amazon-bedrock#amazonbedrockdocumentembedder).
+
+### Model-specific parameters
+
+Even if Haystack provides a unified interface, each model offered by Bedrock can accept specific parameters. You can pass these parameters at initialization.
+
+For example, Cohere models support `input_type` and `truncate`, as seen in [Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html).
+
+```python
+from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockDocumentEmbedder
+
+embedder = AmazonBedrockDocumentEmbedder(model="cohere.embed-english-v3",
+                                         input_type="search_document",
+                                         truncate="LEFT")
+```
+
+### Embedding Metadata
+
+Text documents often come with a set of metadata. If they are distinctive and semantically meaningful, you can embed them along with the text of the document to improve retrieval.
+
+You can do this easily by using the Document Embedder:
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockDocumentEmbedder
+
+doc = Document(content="some text",meta={"title": "relevant title", "page number": 18})
+
+embedder = AmazonBedrockDocumentEmbedder(model="cohere.embed-english-v3",
+																					meta_fields_to_embed=["title"])
+
+docs_w_embeddings = embedder.run(documents=[doc])["documents"]
+```
+
+## Usage
+
+### Installation
+
+You need to install `amazon-bedrock-haystack` package to use the  `AmazonBedrockTextEmbedder`:
+
+```shell
+pip install amazon-bedrock-haystack
+```
+
+### On its own
+
+Basic usage:
+
+```python
+import os
+from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockDocumentEmbedder
+from haystack.dataclasses import DOcument
+
+os.environ["AWS_ACCESS_KEY_ID"] = "..."
+os.environ["AWS_SECRET_ACCESS_KEY"] = "..."
+os.environ["AWS_DEFAULT_REGION"] = "us-east-1" # just an example
+
+doc = Document(content="I love pizza!")
+
+embedder = AmazonBedrockDocumentEmbedder(model="cohere.embed-english-v3",
+																					input_type="search_document"
+
+result = document_embedder.run([doc])
+print(result['documents'][0].embedding)
+
+## [0.017020374536514282, -0.023255806416273117, ...]
+```
+
+### In a pipeline
+
+In a RAG pipeline:
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.amazon_bedrock import (
+    AmazonBedrockDocumentEmbedder,
+    AmazonBedrockTextEmbedder,
+)
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [Document(content="My name is Wolfgang and I live in Berlin"),
+             Document(content="I saw a black horse running"),
+             Document(content="Germany has many big cities")]
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("embedder", AmazonBedrockDocumentEmbedder(
+	model="cohere.embed-english-v3"))
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("embedder", "writer")
+
+indexing_pipeline.run({"embedder": {"documents": documents}})
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", AmazonBedrockTextEmbedder(model="cohere.embed-english-v3"))
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder":{"text": query}})
+
+print(result['retriever']['documents'][0])
+
+## Document(id=..., content: 'My name is Wolfgang and I live in Berlin')
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [PDF-Based Question Answering with Amazon Bedrock and Haystack](https://haystack.deepset.ai/cookbook/amazon_bedrock_for_documentation_qa)

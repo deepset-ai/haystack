@@ -8,13 +8,14 @@ import pytest
 
 from haystack import Document, Pipeline, component
 from haystack.components.agents import Agent
+from haystack.components.fetchers import LinkContentFetcher
 from haystack.components.tools import ToolInvoker
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import PipelineRuntimeError
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.tools import Tool, Toolset, create_tool_from_function
+from haystack.tools import ComponentTool, Tool, Toolset, create_tool_from_function
 
 
 def calculate(expression: str) -> dict:
@@ -39,9 +40,11 @@ calculator_tool = create_tool_from_function(
     function=calculate, name="calculator", outputs_to_state={"calc_result": {"source": "result"}}
 )
 
+link_fetcher_tool = ComponentTool(component=LinkContentFetcher())
+
 
 @component
-class TestChatGenerator:
+class MockChatGenerator:
     def __init__(self, fail_on_call: bool):
         self.fail_on_call = fail_on_call
 
@@ -85,7 +88,9 @@ def test_pipeline_with_chat_generator_crash():
     """Test pipeline crash handling when chat generator fails."""
     pipe = build_pipeline(
         agent=Agent(
-            chat_generator=TestChatGenerator(True), tools=[calculator_tool], state_schema={"calc_result": {"type": int}}
+            chat_generator=MockChatGenerator(True),
+            tools=[calculator_tool, link_fetcher_tool],
+            state_schema={"calc_result": {"type": int}},
         )
     )
 
@@ -96,7 +101,7 @@ def test_pipeline_with_chat_generator_crash():
 
     assert "Error in chat generator component" in str(exception_info.value)
     assert exception_info.value.component_name == "chat_generator"
-    assert exception_info.value.component_type == TestChatGenerator
+    assert exception_info.value.component_type == MockChatGenerator
     assert "math_agent_chat_generator" in exception_info.value.pipeline_snapshot_file_path
 
     pipeline_snapshot = exception_info.value.pipeline_snapshot
@@ -131,7 +136,7 @@ def test_pipeline_with_tool_call_crash():
     """Test pipeline crash handling when a tool call fails."""
     pipe = build_pipeline(
         agent=Agent(
-            chat_generator=TestChatGenerator(False),
+            chat_generator=MockChatGenerator(False),
             tools=[calculator_tool, failing_factorial_tool],
             state_schema={"calc_result": {"type": int}, "factorial_result": {"type": int}},
             raise_on_tool_invocation_failure=True,

@@ -1,0 +1,128 @@
+---
+title: "GitHubIssueCommenter"
+id: githubissuecommenter
+slug: "/githubissuecommenter"
+description: "This component posts comments to GitHub issues using the GitHub API."
+---
+
+# GitHubIssueCommenter
+
+This component posts comments to GitHub issues using the GitHub API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a Chat Generator that provides the comment text to post or right at the beginning of a pipeline |
+| **Mandatory init variables** | `github_token`: GitHub personal access token. Can be set with `GITHUB_TOKEN` env var. |
+| **Mandatory run variables** | `url`: A GitHub issue URL  <br /> <br />`comment`: Comment text to post |
+| **Output variables** | `success`: Boolean indicating whether the comment was posted successfully |
+| **API reference** | [GitHub](/reference/integrations-github) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+</div>
+
+## Overview
+
+`GitHubIssueCommenter` takes a GitHub issue URL and comment text, then posts the comment to the specified issue.
+
+The component requires authentication with a GitHub personal access token since posting comments is an authenticated operation.
+
+### Authorization
+
+This component requires GitHub authentication with a personal access token. You can set the token using the `GITHUB_TOKEN` environment variable, or pass it directly during initialization via the `github_token` parameter.
+
+To create a personal access token, visit [GitHub's token settings page](https://github.com/settings/tokens). Make sure to grant the appropriate permissions for repository access and issue management.
+
+### Installation
+
+Install the GitHub integration with pip:
+
+```shell
+pip install github-haystack
+```
+
+## Usage
+
+:::note Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+Basic usage with environment variable authentication:
+
+```python
+from haystack_integrations.components.connectors.github import GitHubIssueCommenter
+
+commenter = GitHubIssueCommenter()
+result = commenter.run(
+    url="https://github.com/owner/repo/issues/123",
+    comment="Thanks for reporting this issue! We'll look into it."
+)
+
+print(result)
+```
+
+```bash
+{'success': True}
+```
+
+### In a pipeline
+
+The following pipeline analyzes a GitHub issue and automatically posts a response:
+
+```python
+from haystack import Pipeline
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.converters import OutputAdapter
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.connectors.github import GitHubIssueViewer, GitHubIssueCommenter
+
+issue_viewer = GitHubIssueViewer()
+issue_commenter = GitHubIssueCommenter()
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant that analyzes GitHub issues and creates appropriate responses."),
+    ChatMessage.from_user(
+        "Based on the following GitHub issue:\n"
+        "{% for document in documents %}"
+        "{% if document.meta.type == 'issue' %}"
+        "**Issue Title:** {{ document.meta.title }}\n"
+        "**Issue Description:** {{ document.content }}\n"
+        "{% endif %}"
+        "{% endfor %}\n"
+        "Generate a helpful response comment for this issue. Keep it professional and concise."
+    )
+]
+
+prompt_builder = ChatPromptBuilder(template=prompt_template, required_variables="*")
+llm = OpenAIChatGenerator(model="gpt-4o-mini")
+adapter = OutputAdapter(template="{{ replies[-1].text }}", output_type=str)
+
+pipeline = Pipeline()
+pipeline.add_component("issue_viewer", issue_viewer)
+pipeline.add_component("prompt_builder", prompt_builder)
+pipeline.add_component("llm", llm)
+pipeline.add_component("adapter", adapter)
+pipeline.add_component("issue_commenter", issue_commenter)
+
+pipeline.connect("issue_viewer.documents", "prompt_builder.documents")
+pipeline.connect("prompt_builder.prompt", "llm.messages")
+pipeline.connect("llm.replies", "adapter.replies")
+pipeline.connect("adapter", "issue_commenter.comment")
+
+issue_url = "https://github.com/owner/repo/issues/123"
+result = pipeline.run(data={
+    "issue_viewer": {"url": issue_url},
+    "issue_commenter": {"url": issue_url}
+})
+
+print(f"Comment posted successfully: {result['issue_commenter']['success']}")
+```
+
+```
+Comment posted successfully: True
+```

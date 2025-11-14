@@ -1,0 +1,97 @@
+---
+title: "ChromaEmbeddingRetriever"
+id: chromaembeddingretriever
+slug: "/chromaembeddingretriever"
+description: "This is an embedding Retriever compatible with the Chroma Document Store."
+---
+
+# ChromaEmbeddingRetriever
+
+This is an embedding Retriever compatible with the Chroma Document Store.
+
+|                                        |                                                                                                                                                                                                                                                                             |
+| :------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline  2. The last component in the semantic search pipeline  3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Mandatory init variables**           | "document_store": An instance of a [ChromaDocumentStore](../../document-stores/chromadocumentstore.mdx)                                                                                                                                                                                         |
+| **Mandatory run variables**            | "query_embedding": A list of floats                                                                                                                                                                                                                                         |
+| **Output variables**                   | “documents”: A list of documents                                                                                                                                                                                                                                            |
+| **API reference**                      | [Chroma](/reference/integrations-chroma)                                                                                                                                                                                                                                           |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/chroma                                                                                                                                                                                    |
+
+## Overview
+
+The `ChromaEmbeddingRetriever` is an embedding-based Retriever compatible with the `ChromaDocumentStore`. It compares the query and document embeddings and fetches the documents most relevant to the query from the `ChromaDocumentStore` based on the outcome.
+
+The query needs to be embedded before being passed to this component. For example, you could use a text [embedder](../embedders.mdx) component.
+
+In addition to the `query_embedding`, the `ChromaEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
+
+### Usage
+
+#### On its own
+
+This Retriever needs the `ChromaDocumentStore` and indexed documents to run.
+
+```python
+from haystack_integrations.document_stores.chroma import ChromaDocumentStore
+from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever
+
+document_store = ChromaDocumentStore()
+
+retriever = ChromaEmbeddingRetriever(document_store=document_store)
+
+## example run query
+retriever.run(query_embedding=[0.1]*384)
+```
+
+#### In a pipeline
+
+Here is how you could use the `ChromaEmbeddingRetriever` in a pipeline. In this example, you would create two pipelines: an indexing one and a querying one.
+
+In the indexing pipeline, the documents are passed to the Document Embedder and then written into the document Store.
+
+Then, in the querying pipeline, we use a text embedder to get the vector representation of the input query that will be then passed to the  `ChromaEmbeddingRetriever` to get the results.
+
+```python
+import os
+from pathlib import Path
+
+from haystack import Pipeline
+from haystack.dataclasses import Document
+from haystack.components.writers import DocumentWriter
+## Note: the following requires a "pip install sentence-transformers"
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+
+from haystack_integrations.document_stores.chroma import ChromaDocumentStore
+from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever
+from sentence_transformers import SentenceTransformer
+
+## Chroma is used in-memory so we use the same instances in the two pipelines below
+document_store = ChromaDocumentStore()
+
+documents = [
+    Document(content="This contains variable declarations", meta={"title": "one"}),
+    Document(content="This contains another sort of variable declarations", meta={"title": "two"}),
+    Document(content="This has nothing to do with variable declarations", meta={"title": "three"}),
+    Document(content="A random doc", meta={"title": "four"}),
+]
+
+indexing = Pipeline()
+indexing.add_component("embedder", SentenceTransformersDocumentEmbedder())
+indexing.add_component("writer", DocumentWriter(document_store))
+indexing.connect("embedder.documents", "writer.documents")
+indexing.run({"embedder": {"documents": documents}})
+
+querying = Pipeline()
+querying.add_component("query_embedder", SentenceTransformersTextEmbedder())
+querying.add_component("retriever", ChromaEmbeddingRetriever(document_store))
+querying.connect("query_embedder.embedding", "retriever.query_embedding")
+results = querying.run({"query_embedder": {"text": "Variable declarations"}})
+
+for d in results["retriever"]["documents"]:
+    print(d.meta, d.score)
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Use Chroma for RAG and Indexing](https://haystack.deepset.ai/cookbook/chroma-indexing-and-rag-examples)

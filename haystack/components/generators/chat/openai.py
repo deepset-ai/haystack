@@ -22,7 +22,7 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, _serialize_object
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -36,11 +36,12 @@ from haystack.dataclasses import (
     select_streaming_callback,
 )
 from haystack.tools import (
-    Tool,
-    Toolset,
+    ToolsType,
     _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -102,7 +103,7 @@ class OpenAIChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: bool = False,
         http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
@@ -160,8 +161,7 @@ class OpenAIChatGenerator:
             Maximum number of retries to contact OpenAI after an internal error.
             If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
-            list of `Tool` objects or a `Toolset` instance.
+            A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -182,7 +182,7 @@ class OpenAIChatGenerator:
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
         # Check for duplicate tool names
-        _check_duplicate_tool_names(list(self.tools or []))
+        _check_duplicate_tool_names(flatten_tools_or_toolsets(self.tools))
 
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
@@ -201,6 +201,18 @@ class OpenAIChatGenerator:
         self.async_client = AsyncOpenAI(
             http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
         )
+        self._is_warmed_up = False
+
+    def warm_up(self):
+        """
+        Warm up the OpenAI chat generator.
+
+        This will warm up the tools registered in the chat generator.
+        This method is idempotent and will only warm up the tools once.
+        """
+        if not self._is_warmed_up:
+            warm_up_tools(self.tools)
+            self._is_warmed_up = True
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -272,7 +284,7 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -287,9 +299,8 @@ class OpenAIChatGenerator:
             override the parameters passed during component initialization.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-            `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects or a `Toolset` instance.
+            A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -345,7 +356,7 @@ class OpenAIChatGenerator:
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ):
         """
@@ -363,10 +374,8 @@ class OpenAIChatGenerator:
             Additional keyword arguments for text generation. These parameters will
             override the parameters passed during component initialization.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-        :param tools:
-            A list of tools or a Toolset for which the model can prepare calls. If set, it will override the
-            `tools` parameter set during component initialization. This parameter can accept either a list of
-            `Tool` objects or a `Toolset` instance.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+            If set, it will override the `tools` parameter provided during initialization.
         :param tools_strict:
             Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
             the schema provided in the `parameters` field of the tool definition, but this may increase latency.
@@ -423,7 +432,7 @@ class OpenAIChatGenerator:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
@@ -439,16 +448,14 @@ class OpenAIChatGenerator:
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
 
-        tools = tools or self.tools
-        if isinstance(tools, Toolset):
-            tools = list(tools)
+        flattened_tools = flatten_tools_or_toolsets(tools or self.tools)
         tools_strict = tools_strict if tools_strict is not None else self.tools_strict
-        _check_duplicate_tool_names(tools)
+        _check_duplicate_tool_names(flattened_tools)
 
         openai_tools = {}
-        if tools:
+        if flattened_tools:
             tool_definitions = []
-            for t in tools:
+            for t in flattened_tools:
                 function_spec = {**t.tool_spec}
                 if tools_strict:
                     function_spec["strict"] = True
@@ -556,16 +563,17 @@ def _convert_chat_completion_to_chat_message(
                     _arguments=arguments_str,
                 )
 
-    chat_message = ChatMessage.from_assistant(
-        text=text,
-        tool_calls=tool_calls,
-        meta={
-            "model": completion.model,
-            "index": choice.index,
-            "finish_reason": choice.finish_reason,
-            "usage": _serialize_usage(completion.usage),
-        },
-    )
+    logprobs = _serialize_object(choice.logprobs) if choice.logprobs else None
+    meta = {
+        "model": completion.model,
+        "index": choice.index,
+        "finish_reason": choice.finish_reason,
+        "usage": _serialize_object(completion.usage),
+    }
+    if logprobs:
+        meta["logprobs"] = logprobs
+
+    chat_message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
 
     return chat_message
 
@@ -603,7 +611,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
             meta={
                 "model": chunk.model,
                 "received_at": datetime.now().isoformat(),
-                "usage": _serialize_usage(chunk.usage),
+                "usage": _serialize_object(chunk.usage),
             },
         )
 
@@ -636,7 +644,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                 "tool_calls": choice.delta.tool_calls,
                 "finish_reason": choice.finish_reason,
                 "received_at": datetime.now().isoformat(),
-                "usage": _serialize_usage(chunk.usage),
+                "usage": _serialize_object(chunk.usage),
             },
         )
         return chunk_message
@@ -651,6 +659,23 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
         #       Anthropic Claude
         resolved_index = 0
+
+    # Initialize meta dictionary
+    meta = {
+        "model": chunk.model,
+        "index": choice.index,
+        "tool_calls": choice.delta.tool_calls,
+        "finish_reason": choice.finish_reason,
+        "received_at": datetime.now().isoformat(),
+        "usage": _serialize_object(chunk.usage),
+    }
+
+    # check if logprobs are present
+    # logprobs are returned only for text content
+    logprobs = _serialize_object(choice.logprobs) if choice.logprobs else None
+    if logprobs:
+        meta["logprobs"] = logprobs
+
     chunk_message = StreamingChunk(
         content=choice.delta.content or "",
         component_info=component_info,
@@ -659,27 +684,6 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # and previous_chunks is length 1 then this is the start of text content.
         start=len(previous_chunks) == 1,
         finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
-        meta={
-            "model": chunk.model,
-            "index": choice.index,
-            "tool_calls": choice.delta.tool_calls,
-            "finish_reason": choice.finish_reason,
-            "received_at": datetime.now().isoformat(),
-            "usage": _serialize_usage(chunk.usage),
-        },
+        meta=meta,
     )
     return chunk_message
-
-
-def _serialize_usage(usage):
-    """Convert OpenAI usage object to serializable dict recursively"""
-    if hasattr(usage, "model_dump"):
-        return usage.model_dump()
-    elif hasattr(usage, "__dict__"):
-        return {k: _serialize_usage(v) for k, v in usage.__dict__.items() if not k.startswith("_")}
-    elif isinstance(usage, dict):
-        return {k: _serialize_usage(v) for k, v in usage.items()}
-    elif isinstance(usage, list):
-        return [_serialize_usage(item) for item in usage]
-    else:
-        return usage

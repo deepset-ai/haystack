@@ -1,0 +1,70 @@
+---
+title: "GitHubRepoForker"
+id: githubrepoforker
+slug: "/githubrepoforker"
+description: "This component forks a GitHub repository from an issue URL through the GitHub API."
+---
+
+# GitHubRepoForker
+
+This component forks a GitHub repository from an issue URL through the GitHub API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Right at the beginning of a pipeline and before an [Agent](../agents-1/agent.mdx) component that expects the name of a GitHub branch as input |
+| **Mandatory init variables** | `github_token`: GitHub personal access token. Can be set with `GITHUB_TOKEN` env var. |
+| **Mandatory run variables** | `url`: The URL of a GitHub issue in the repository that should be forked |
+| **Output variables** | `repo`: Fork repository path  <br /> <br />`issue_branch`: Issue-specific branch name (if created) |
+| **API reference** | [GitHub](/reference/integrations-github) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+</div>
+
+## Overview
+
+`GitHubRepoForker` takes a GitHub issue URL, extracts the repository information, creates or syncs a fork of that repository, and optionally creates an issue-specific branch. It's particularly useful for automated workflows that need to create pull requests or work with repository forks.
+
+Key features:
+
+- **Auto-sync**: Automatically syncs existing forks with the upstream repository
+- **Branch creation**: Creates issue-specific branches (e.g., "fix-123" for issue #123)
+- **Completion waiting**: Optionally waits for fork creation to complete
+- **Fork management**: Handles existing forks intelligently
+
+### Authorization
+
+This component requires GitHub authentication with a personal access token. You can set the token using the `GITHUB_TOKEN` environment variable, or pass it directly during initialization via the `github_token` parameter.
+
+To create a personal access token, visit [GitHub's token settings page](https://github.com/settings/tokens). Make sure to grant the appropriate permissions for repository forking and management.
+
+### Installation
+
+Install the GitHub integration with pip:
+
+```shell
+pip install github-haystack
+```
+
+## Usage
+
+:::info Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+```python
+from haystack_integrations.components.connectors.github import GitHubRepoForker
+
+forker = GitHubRepoForker()
+result = forker.run(url="https://github.com/owner/repo/issues/123")
+
+print(result)
+```
+
+```bash
+{'repo': 'owner/repo', 'issue_branch': 'fix-123'}
+```

@@ -4,7 +4,7 @@
 
 import inspect
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
@@ -25,7 +25,14 @@ from haystack.core.serialization import component_to_dict, default_from_dict, de
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, PipelineSnapshot, ToolBreakpoint
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
-from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
+from haystack.tools import (
+    Tool,
+    Toolset,
+    ToolsType,
+    deserialize_tools_or_toolset_inplace,
+    flatten_tools_or_toolsets,
+    serialize_tools_or_toolset,
+)
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_chatgenerator_inplace
@@ -74,30 +81,76 @@ class Agent:
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
-    from haystack.tools.tool import Tool
+    from haystack.tools import Tool
 
-    tools = [Tool(name="calculator", description="..."), Tool(name="search", description="...")]
+    # Tool functions - in practice, these would have real implementations
+    def search(query: str) -> str:
+        '''Search for information on the web.'''
+        # Placeholder: would call actual search API
+        return "In France, a 15% service charge is typically included, but leaving 5-10% extra is appreciated."
 
+    def calculator(operation: str, a: float, b: float) -> float:
+        '''Perform mathematical calculations.'''
+        if operation == "multiply":
+            return a * b
+        elif operation == "percentage":
+            return (a / 100) * b
+        return 0
+
+    # Define tools with JSON Schema
+    tools = [
+        Tool(
+            name="search",
+            description="Searches for information on the web",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "The search query"}
+                },
+                "required": ["query"]
+            },
+            function=search
+        ),
+        Tool(
+            name="calculator",
+            description="Performs mathematical calculations",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "operation": {"type": "string", "description": "Operation: multiply, percentage"},
+                    "a": {"type": "number", "description": "First number"},
+                    "b": {"type": "number", "description": "Second number"}
+                },
+                "required": ["operation", "a", "b"]
+            },
+            function=calculator
+        )
+    ]
+
+    # Create and run the agent
     agent = Agent(
         chat_generator=OpenAIChatGenerator(),
-        tools=tools,
-        exit_conditions=["search"],
+        tools=tools
     )
 
-    # Run the agent
     result = agent.run(
-        messages=[ChatMessage.from_user("Find information about Haystack")]
+        messages=[ChatMessage.from_user("Calculate the appropriate tip for an €85 meal in France")]
     )
 
-    assert "messages" in result  # Contains conversation history
+    # The agent will:
+    # 1. Search for tipping customs in France
+    # 2. Use calculator to compute tip based on findings
+    # 3. Return the final answer with context
+    print(result["messages"][-1].text)
     ```
+
     """
 
     def __init__(
         self,
         *,
         chat_generator: ChatGenerator,
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        tools: Optional[ToolsType] = None,
         system_prompt: Optional[str] = None,
         exit_conditions: Optional[list[str]] = None,
         state_schema: Optional[dict[str, Any]] = None,
@@ -110,7 +163,7 @@ class Agent:
         Initialize the agent component.
 
         :param chat_generator: An instance of the chat generator that your agent should use. It must support tools.
-        :param tools: List of Tool objects or a Toolset that the agent can use.
+        :param tools: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
         :param system_prompt: System prompt for the agent.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
@@ -134,7 +187,7 @@ class Agent:
                 "The Agent component requires a chat generator that supports tools."
             )
 
-        valid_exits = ["text"] + [tool.name for tool in tools or []]
+        valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
         if exit_conditions is None:
             exit_conditions = ["text"]
         if not all(condition in valid_exits for condition in exit_conditions):
@@ -196,6 +249,8 @@ class Agent:
         if not self._is_warmed_up:
             if hasattr(self.chat_generator, "warm_up"):
                 self.chat_generator.warm_up()
+            if hasattr(self._tool_invoker, "warm_up") and self._tool_invoker is not None:
+                self._tool_invoker.warm_up()
             self._is_warmed_up = True
 
     def to_dict(self) -> dict[str, Any]:
@@ -230,7 +285,7 @@ class Agent:
 
         deserialize_chatgenerator_inplace(init_params, key="chat_generator")
 
-        if "state_schema" in init_params:
+        if init_params.get("state_schema") is not None:
             init_params["state_schema"] = _schema_from_dict(init_params["state_schema"])
 
         if init_params.get("streaming_callback") is not None:
@@ -259,7 +314,8 @@ class Agent:
         requires_async: bool,
         *,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs,
     ) -> _ExecutionContext:
         """
@@ -269,6 +325,8 @@ class Agent:
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
+        :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
+            override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param kwargs: Additional data to pass to the State used by the Agent.
@@ -293,6 +351,8 @@ class Agent:
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
+        if generation_kwargs is not None:
+            generator_inputs["generation_kwargs"] = generation_kwargs
 
         return _ExecutionContext(
             state=state,
@@ -301,9 +361,7 @@ class Agent:
             tool_invoker_inputs=tool_invoker_inputs,
         )
 
-    def _select_tools(
-        self, tools: Optional[Union[list[Tool], Toolset, list[str]]] = None
-    ) -> Union[list[Tool], Toolset]:
+    def _select_tools(self, tools: Optional[Union[ToolsType, list[str]]] = None) -> ToolsType:
         """
         Select tools for the current run based on the provided tools parameter.
 
@@ -314,24 +372,32 @@ class Agent:
             or if any provided tool name is not valid.
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
-        selected_tools: Union[list[Tool], Toolset] = self.tools
-        if isinstance(tools, Toolset) or isinstance(tools, list) and all(isinstance(t, Tool) for t in tools):
-            selected_tools = tools  # type: ignore[assignment] # mypy thinks this could still be list[str]
-        elif isinstance(tools, list) and all(isinstance(t, str) for t in tools):
+        if tools is None:
+            return self.tools
+
+        if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             if not self.tools:
                 raise ValueError("No tools were configured for the Agent at initialization.")
-            selected_tool_names: list[str] = tools  # type: ignore[assignment] # mypy thinks this could still be list[Tool] or Toolset
-            valid_tool_names = {tool.name for tool in self.tools}
+            available_tools = flatten_tools_or_toolsets(self.tools)
+            selected_tool_names = cast(list[str], tools)  # mypy thinks this could still be list[Tool] or Toolset
+            valid_tool_names = {tool.name for tool in available_tools}
             invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
             if invalid_tool_names:
                 raise ValueError(
                     f"The following tool names are not valid: {invalid_tool_names}. "
                     f"Valid tool names are: {valid_tool_names}."
                 )
-            selected_tools = [tool for tool in self.tools if tool.name in selected_tool_names]
-        elif tools is not None:
-            raise TypeError("tools must be a list of Tool objects, a Toolset, or a list of tool names (strings).")
-        return selected_tools
+            return [tool for tool in available_tools if tool.name in selected_tool_names]
+
+        if isinstance(tools, Toolset):
+            return tools
+
+        if isinstance(tools, list):
+            return cast(list[Union[Tool, Toolset]], tools)  # mypy can't narrow the Union type from isinstance check
+
+        raise TypeError(
+            "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
+        )
 
     def _initialize_from_snapshot(
         self,
@@ -339,7 +405,8 @@ class Agent:
         streaming_callback: Optional[StreamingCallbackT],
         requires_async: bool,
         *,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
     ) -> _ExecutionContext:
         """
         Initialize execution context from an AgentSnapshot.
@@ -347,6 +414,8 @@ class Agent:
         :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
+        :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
+            override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         """
@@ -371,6 +440,8 @@ class Agent:
         if streaming_callback is not None:
             tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
+        if generation_kwargs is not None:
+            generator_inputs["generation_kwargs"] = generation_kwargs
 
         return _ExecutionContext(
             state=state,
@@ -381,18 +452,16 @@ class Agent:
             skip_chat_generator=skip_chat_generator,
         )
 
-    def _runtime_checks(self, break_point: Optional[AgentBreakpoint], snapshot: Optional[AgentSnapshot]) -> None:
+    def _runtime_checks(self, break_point: Optional[AgentBreakpoint]) -> None:
         """
         Perform runtime checks before running the agent.
 
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
-        :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
-        :raises RuntimeError: If the Agent component wasn't warmed up before calling `run()`.
         :raises ValueError: If the break_point is invalid.
         """
-        if not self._is_warmed_up and hasattr(self.chat_generator, "warm_up"):
-            raise RuntimeError("The component Agent wasn't warmed up. Run 'warm_up()' before calling 'run()'.")
+        if not self._is_warmed_up:
+            self.warm_up()
 
         if break_point and isinstance(break_point.break_point, ToolBreakpoint):
             _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
@@ -456,10 +525,11 @@ class Agent:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -468,6 +538,8 @@ class Agent:
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
+        :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
+            override the parameters passed during component initialization.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
         :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
@@ -494,11 +566,15 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point, snapshot=snapshot)
+        self._runtime_checks(break_point=break_point)
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=False, tools=tools
+                snapshot=snapshot,
+                streaming_callback=streaming_callback,
+                requires_async=False,
+                tools=tools,
+                generation_kwargs=generation_kwargs,
             )
         else:
             exe_context = self._initialize_fresh_execution(
@@ -507,6 +583,7 @@ class Agent:
                 requires_async=False,
                 system_prompt=system_prompt,
                 tools=tools,
+                generation_kwargs=generation_kwargs,
                 **kwargs,
             )
 
@@ -613,10 +690,11 @@ class Agent:
         messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         break_point: Optional[AgentBreakpoint] = None,
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
-        tools: Optional[Union[list[Tool], Toolset, list[str]]] = None,
+        tools: Optional[Union[ToolsType, list[str]]] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -629,6 +707,8 @@ class Agent:
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: An asynchronous callback that will be invoked when a response is streamed from the
             LLM. The same callback can be configured to emit tool results when a tool is called.
+        :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
+            override the parameters passed during component initialization.
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
         :param snapshot: A dictionary containing a snapshot of a previously saved agent execution. The snapshot contains
@@ -654,11 +734,15 @@ class Agent:
             "snapshot": snapshot,
             **kwargs,
         }
-        self._runtime_checks(break_point=break_point, snapshot=snapshot)
+        self._runtime_checks(break_point=break_point)
 
         if snapshot:
             exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot, streaming_callback=streaming_callback, requires_async=True, tools=tools
+                snapshot=snapshot,
+                streaming_callback=streaming_callback,
+                requires_async=True,
+                tools=tools,
+                generation_kwargs=generation_kwargs,
             )
         else:
             exe_context = self._initialize_fresh_execution(
@@ -667,6 +751,7 @@ class Agent:
                 requires_async=True,
                 system_prompt=system_prompt,
                 tools=tools,
+                generation_kwargs=generation_kwargs,
                 **kwargs,
             )
 

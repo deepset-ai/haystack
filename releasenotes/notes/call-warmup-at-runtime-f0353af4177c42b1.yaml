@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Updated the components `Agent`, `LLMMetadataExtractor`, `LLMMessagesRouter`, and `LLMDocumentContentExtractor` to
+    automatically call `self.warm_up()` at runtime if they have not been warmed up yet.
+    This ensures that the components are ready for use without requiring an explicit warm-up call.
+    This differs from previous behavior where the warm-up had to be manually invoked before using these components
+    otherwise they would raise a `RuntimeError`.

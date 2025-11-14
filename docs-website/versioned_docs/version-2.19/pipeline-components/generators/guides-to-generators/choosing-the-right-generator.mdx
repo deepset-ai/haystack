@@ -1,0 +1,181 @@
+---
+title: "Choosing the Right Generator"
+id: choosing-the-right-generator
+slug: "/choosing-the-right-generator"
+description: "This page provides information on choosing the right Generator for interacting with Generative Language Models in Haystack. It explains the distinction between Generators and ChatGenerators, discusses using proprietary and open models from various providers, and explores options for using open models on-premise."
+---
+
+# Choosing the Right Generator
+
+This page provides information on choosing the right Generator for interacting with Generative Language Models in Haystack. It explains the distinction between Generators and ChatGenerators, discusses using proprietary and open models from various providers, and explores options for using open models on-premise.
+
+In Haystack, Generators are the main interface for interacting with Generative Language Models.
+This guide aims to simplify the process of choosing the right Generator based on your preferences and computing resources. This guide does not focus on selecting a specific model itself but rather a model type and a Haystack Generator: as you will see, in several cases, you have different options to use the same model.
+
+## Generators vs ChatGenerators
+
+The first distinction we are talking about is between Generators and ChatGenerators, for example, OpenAIGenerator and OpenAIChatGenerator, HuggingFaceAPIGenerator and HuggingFaceAPIChatGenerator, and so on.
+
+- **Generators** are components that expect a prompt (a string) and return the generated text in “replies”.
+- **ChatGenerators** support the [ChatMessage data class](../../../concepts/data-classes/chatmessage.mdx) out of the box. They expect a list of Chat Messages and return a Chat Message in “replies”.
+
+The choice between Generators and ChatGenerators depends on your use case and the underlying model. If you anticipate a multi-turn interaction with the Language Model in a chat scenario, opting for a ChatGenerator is generally better.
+
+:::tip
+To learn more about this comparison, check out our [Generators vs Chat Generators](generators-vs-chat-generators.mdx) guide.
+
+:::
+
+## Streaming Support
+
+Streaming refers to outputting LLM responses word by word rather than waiting for the entire response to be generated before outputting everything at once.
+
+You can check which Generators have streaming support on the [Generators overview page](../../generators.mdx).
+
+When you enable streaming, the generator calls your `streaming_callback` for every `StreamingChunk`. Each chunk represents exactly one of the following:
+
+- **Tool calls**: The model is building a tool/function call. Read `chunk.tool_calls`.
+- **Tool result**: A tool finished and returned output. Read `chunk.tool_call_result`.
+- **Text tokens**: Normal assistant text. Read `chunk.content`.
+
+Only one of these fields appears per chunk. Use `chunk.start` and `chunk.finish_reason` to detect boundaries. Use `chunk.index` and `chunk.component_info` for tracing.
+
+For providers that support multiple candidates, set `n=1` to stream.
+
+:::note Parameter Details
+
+Check out the parameter details in our [API Reference for StreamingChunk](/reference/data-classes-api#streamingchunk).
+:::
+
+The simplest way is to use the built-in `print_streaming_chunk` function. It handles tool calls, tool results, and text tokens.
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+
+generator = SomeGenerator(streaming_callback=print_streaming_chunk)
+## For ChatGenerators, pass a list[ChatMessage]. For text generators, pass a prompt string.
+```
+
+### Custom Callback
+
+If you need custom rendering, you can create your own callback.
+
+Handle the three chunk types in this order: tool calls, tool result, and text.
+
+```python
+from haystack.dataclasses import StreamingChunk
+
+def my_stream(chunk: StreamingChunk):
+    if chunk.start:
+        on_start()  # e.g., open an SSE stream
+
+    # 1) Tool calls: name and JSON args arrive as deltas
+    if chunk.tool_calls:
+        for t in chunk.tool_calls:
+            on_tool_call_delta(index=t.index, name=t.tool_name, args_delta=t.arguments)
+
+    # 2) Tool result: final output from the tool
+    if chunk.tool_call_result is not None:
+        on_tool_result(chunk.tool_call_result)
+
+    # 3) Text tokens
+    if chunk.content:
+        on_text_delta(chunk.content)
+
+    if chunk.finish_reason:
+        on_finish(chunk.finish_reason)
+```
+
+### Agents and Tools
+
+Agents and `ToolInvoker` forward your `streaming_callback`. They also emit a final tool-result chunk with a `finish_reason` so UIs can close the “tool phase” cleanly before assistant text resumes. The default `print_streaming_chunk` formats this for you.
+
+## Proprietary Models
+
+Using proprietary models is a quick way to start with Generative Language Models. The typical approach involves calling these hosted models using an API Key. You are paying based on the number of tokens, both sent and generated.
+You don’t need significant resources on your local machine, as the computation is executed on the provider’s infrastructure. When using these models, your data exits your machine and is transmitted to the model provider.
+
+Haystack supports the models offered by a variety of providers: OpenAI, Azure, Google VertexAI and Makersuite, Cohere, and Mistral, with more being added constantly.
+
+We also support [Amazon Bedrock](../amazonbedrockgenerator.mdx): it provides access to proprietary models from Amazon Titan family, AI21 Labs, Anthropic, Cohere, and several open source models, such as Llama from Meta.
+
+## Open Models
+
+When discussing open (weights) models, we're referring to models with public weights that anyone can deploy on their infrastructure. The datasets used for training are shared less frequently. One could choose to use an open model for several reasons, including more transparency and control of the model.
+
+:::note Commercial Use
+
+Not all open models are suitable for commercial use. We advise thoroughly reviewing the license, typically available on Hugging Face, before considering their adoption.
+:::
+
+Even if the model is open, you might still want to rely on model providers to use it, mostly because you want someone else to host the model and take care of the infrastructural aspects. In these scenarios, your data transitions from your machine to the provider facilitating the model.
+
+The costs associated with these solutions can vary. Depending on the solution you choose, you pay for the tokens consumed, both sent and generated or for the hosting of the mode, often billed per hour.
+
+In Haystack, several Generators support these solutions through privately hosted or shared hosted models.
+
+### Shared Hosted Models
+
+With this type, you leverage an instance of the model shared with other users, with payment typically based on consumed tokens, both sent and generated.
+
+Here are the components that support shared hosted models in Haystack:
+
+- Hugging Face API Generators, when querying the [free Hugging Face Inference API](https://huggingface.co/inference-api). The free Inference API provides access to some popular models for quick experimentation, although it comes with rate limitations and is not intended for production use.
+- Various cloud providers offer interfaces compatible with OpenAI Generators. These include Anyscale, Deep Infra, Fireworks, Lemonfox.ai, OctoAI, Together AI, and many others.
+  Here is an example using OctoAI and [`OpenAIChatGenerator`](../openaichatgenerator.mdx):
+
+```python
+
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.utils import Secret
+from haystack.dataclasses import ChatMessage
+
+generator = OpenAIChatGenerator(api_key=Secret.from_env_var("ENVVAR_WITH_API_KEY"),
+		api_base_url="https://text.octoai.run/v1",
+		model="mixtral-8x7b-instruct-fp16")
+
+generator.run(messages=[ChatMessage.from_user("What is the best French cheese?")])
+```
+
+### Privately Hosted Models
+
+In this case, a private instance of the model is deployed by the provider, and you typically pay per hour.
+
+Here are the components that support privately hosted models in Haystack:
+
+- Amazon [SagemakerGenerator](../sagemakergenerator.mdx)
+- HuggingFace API Generators, when used to query [HuggingFace Inference endpoints](https://huggingface.co/inference-endpoints).
+
+### Shared Hosted Model vs Privately Hosted Model
+
+**Why choose a shared hosted model:**
+
+- Cost Savings: Access cost-effective solutions especially suitable for users with varying usage patterns or limited budgets.
+- Ease of Use: Setup and maintenance are simplified as the provider manages the infrastructure and updates, making it user-friendly.
+
+**Why choose a privately hosted model:**
+
+- Dedicated Resources: Ensure consistent performance with dedicated resources for your instance and avoid any impact from other users.
+- Scalability: Scale resources based on requirements while ensuring optimal performance during peak times and cost savings during off-peak hours.
+- Predictable Costs: Billing per hour leads to more predictable costs, especially when there is a clear understanding of usage patterns.
+
+## Open Models On-Premise
+
+On-premise models mean that you host open models on your machine/infrastructure.
+
+This choice is ideal for local experimentation.
+
+It is suitable in production scenarios where data privacy concerns drive the decision not to transmit data to external providers and you have ample computational resources.
+
+### Local Experimentation
+
+- GPU: [`HuggingFaceLocalGenerator`](../huggingfacelocalgenerator.mdx) is based on the Hugging Face Transformers library. This is good for experimentation when you have some GPU resources (for example, in Colab). If GPU resources are limited, alternative quantization options like bitsandbytes, GPTQ, and AWQ are supported. For more performant solutions in production use cases, refer to the options below.
+- CPU (+ GPU if available): [`LlamaCppGenerator`](../llamacppgenerator.mdx) uses the Llama.cpp library –  a project written in C/C++ for efficient inference of LLMs. In particular, it employs the quantized GGUF format, suitable for running these models on standard machines (even without GPUs). If GPU resources are available, some model layers can be offloaded to GPU for enhanced speed.
+- CPU (+ GPU if available): [`OllamaGenerator`](../ollamagenerator.mdx) is based on the Ollama project, acting like Docker for LLMs. It provides a simple way to package and deploy these models. Internally based on the Llama.cpp library, it offers a more streamlined process for running on various platforms.
+
+### Serving LLMs in Production
+
+The following solutions are suitable if you want to run Language Models in production and have GPU resources available. They use innovative techniques for fast inference and efficient handling of numerous concurrent requests.
+
+- vLLM is a high-throughput and memory-efficient inference and serving engine for LLMs. Haystack supports vLLM through the OpenAI Generators.
+- Hugging Face API Generators, when used to query a TGI instance deployed on-premise. Hugging Face Text Generation Inference is a toolkit for efficiently deploying and serving LLMs.

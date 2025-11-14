@@ -1,0 +1,118 @@
+---
+title: "NvidiaChatGenerator"
+id: nvidiachatgenerator
+slug: "/nvidiachatgenerator"
+description: "This Generator enables chat completion using Nvidia-hosted models."
+---
+
+# NvidiaChatGenerator
+
+This Generator enables chat completion using Nvidia-hosted models.
+
+<div className="key-value-table">
+
+|                                        |                                                                                          |
+| -------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                     |
+| **Mandatory init variables**           | `api_key`: API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var.         |
+| **Mandatory run variables**            | `messages`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                           |
+| **Output variables**                   | `replies`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                            |
+| **API reference**                      | [NVIDIA API](https://build.nvidia.com/models)                                            |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/nvidia |
+
+</div>
+
+## Overview
+
+`NvidiaChatGenerator` enables chat completions using NVIDIA's generative models via the NVIDIA API. It is compatible with the [ChatMessage](../../concepts/data-classes/chatmessage.mdx) format for both input and output, ensuring seamless integration in chat-based pipelines.
+
+You can use LLMs self-hosted with NVIDIA NIM or models hosted on the [NVIDIA API catalog](https://build.nvidia.com/explore/discover). The default model for this component is `meta/llama-3.1-8b-instruct`.
+
+To use this integration, you must have a NVIDIA API key. You can provide it with the `NVIDIA_API_KEY` environment variable or by using a [Secret](../../concepts/secret-management.mdx).
+
+### Tool Support
+
+`NvidiaChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = NvidiaChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
+
+This generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
+
+## Usage
+
+To start using `NvidiaChatGenerator`, first, install the `nvidia-haystack` package:
+
+```shell
+pip install nvidia-haystack
+```
+
+You can use the `NvidiaChatGenerator` with all the LLMs available in the [NVIDIA API catalog](https://docs.api.nvidia.com/nim/reference) or a model deployed with NVIDIA NIM. Follow the [NVIDIA NIM for LLMs Playbook](https://developer.nvidia.com/docs/nemo-microservices/inference/playbooks/nmi_playbook.html) to learn how to deploy your desired model on your infrastructure.
+
+### On its own
+
+ To use LLMs from the NVIDIA API catalog, you need to specify the correct `api_url` if needed (the default one is `https://integrate.api.nvidia.com/v1`), and your API key. You can get your API key directly from the [catalog website](https://build.nvidia.com/explore/discover).
+
+```python
+from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
+from haystack.dataclasses import ChatMessage
+
+generator = NvidiaChatGenerator(
+    model="meta/llama-3.1-8b-instruct",  # or any supported NVIDIA model
+    api_key=Secret.from_env_var("NVIDIA_API_KEY")
+)
+
+messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+result = generator.run(messages)
+print(result["replies"])
+print(result["meta"])
+```
+
+### In a Pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
+from haystack.utils import Secret
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", NvidiaChatGenerator(
+    model="meta/llama-3.1-8b-instruct",
+    api_key=Secret.from_env_var("NVIDIA_API_KEY")
+))
+pipe.connect("prompt_builder", "llm")
+
+country = "Germany"
+system_message = ChatMessage.from_system("You are an assistant giving out valuable information to language learners.")
+messages = [system_message, ChatMessage.from_user("What's the official language of {{ country }}?")]
+
+res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
+print(res)
+```

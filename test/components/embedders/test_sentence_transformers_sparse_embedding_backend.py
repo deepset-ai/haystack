@@ -49,6 +49,7 @@ def test_sparse_model_initialization(mock_sparse_encoder):
         device="cpu",
         token="fake-api-token",
         trust_remote_code=True,
+        revision=None,
         local_files_only=True,
         model_kwargs=None,
         tokenizer_kwargs=None,
