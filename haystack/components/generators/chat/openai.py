@@ -22,7 +22,7 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, _serialize_object
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -563,16 +563,17 @@ def _convert_chat_completion_to_chat_message(
                     _arguments=arguments_str,
                 )
 
-    chat_message = ChatMessage.from_assistant(
-        text=text,
-        tool_calls=tool_calls,
-        meta={
-            "model": completion.model,
-            "index": choice.index,
-            "finish_reason": choice.finish_reason,
-            "usage": _serialize_usage(completion.usage),
-        },
-    )
+    logprobs = _serialize_object(choice.logprobs) if choice.logprobs else None
+    meta = {
+        "model": completion.model,
+        "index": choice.index,
+        "finish_reason": choice.finish_reason,
+        "usage": _serialize_object(completion.usage),
+    }
+    if logprobs:
+        meta["logprobs"] = logprobs
+
+    chat_message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
 
     return chat_message
 
@@ -610,7 +611,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
             meta={
                 "model": chunk.model,
                 "received_at": datetime.now().isoformat(),
-                "usage": _serialize_usage(chunk.usage),
+                "usage": _serialize_object(chunk.usage),
             },
         )
 
@@ -643,7 +644,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                 "tool_calls": choice.delta.tool_calls,
                 "finish_reason": choice.finish_reason,
                 "received_at": datetime.now().isoformat(),
-                "usage": _serialize_usage(chunk.usage),
+                "usage": _serialize_object(chunk.usage),
             },
         )
         return chunk_message
@@ -658,6 +659,23 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
         #       Anthropic Claude
         resolved_index = 0
+
+    # Initialize meta dictionary
+    meta = {
+        "model": chunk.model,
+        "index": choice.index,
+        "tool_calls": choice.delta.tool_calls,
+        "finish_reason": choice.finish_reason,
+        "received_at": datetime.now().isoformat(),
+        "usage": _serialize_object(chunk.usage),
+    }
+
+    # check if logprobs are present
+    # logprobs are returned only for text content
+    logprobs = _serialize_object(choice.logprobs) if choice.logprobs else None
+    if logprobs:
+        meta["logprobs"] = logprobs
+
     chunk_message = StreamingChunk(
         content=choice.delta.content or "",
         component_info=component_info,
@@ -666,27 +684,6 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         # and previous_chunks is length 1 then this is the start of text content.
         start=len(previous_chunks) == 1,
         finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
-        meta={
-            "model": chunk.model,
-            "index": choice.index,
-            "tool_calls": choice.delta.tool_calls,
-            "finish_reason": choice.finish_reason,
-            "received_at": datetime.now().isoformat(),
-            "usage": _serialize_usage(chunk.usage),
-        },
+        meta=meta,
     )
     return chunk_message
-
-
-def _serialize_usage(usage):
-    """Convert OpenAI usage object to serializable dict recursively"""
-    if hasattr(usage, "model_dump"):
-        return usage.model_dump()
-    elif hasattr(usage, "__dict__"):
-        return {k: _serialize_usage(v) for k, v in usage.__dict__.items() if not k.startswith("_")}
-    elif isinstance(usage, dict):
-        return {k: _serialize_usage(v) for k, v in usage.items()}
-    elif isinstance(usage, list):
-        return [_serialize_usage(item) for item in usage]
-    else:
-        return usage

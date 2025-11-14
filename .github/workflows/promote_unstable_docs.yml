@@ -7,6 +7,7 @@ on:
       - "v[0-9]+.[0-9]+.0"
       # Exclude 1.x tags
       - "!v1.[0-9]+.[0-9]+"
+
 env:
   PYTHON_VERSION: "3.9"
 
@@ -20,9 +21,13 @@ jobs:
       - name: Get version to release
         id: version
         shell: bash
-        # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
+        # We only need `major.minor`. At this point, VERSION.txt contains the next version.
+        # For example, if we are releasing 2.20.0, VERSION.txt contains 2.21.0-rc0.
         run: |
-          echo "version=$(cut -d "." -f 1,2 < VERSION.txt)" >> "$GITHUB_OUTPUT"
+          MAJOR=$(cut -d "." -f 1 < VERSION.txt)
+          MINOR=$(cut -d "." -f 2 < VERSION.txt)
+          MINOR=$((MINOR - 1))
+          echo "version=${MAJOR}.${MINOR}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v6
         with:
@@ -31,15 +36,15 @@ jobs:
       - name: Install promote_unstable_docs.py dependencies
         run: pip install requests
 
-      - name: Release Readme version
-        env:
-          RDME_API_KEY: ${{ secrets.README_API_KEY }}
-        run: |
-          python ./.github/utils/promote_unstable_docs.py --version ${{ steps.version.outputs.version }}
+      # TODO: remove this once migration to Docusaurus is complete
+      # - name: Release Readme version
+      #   env:
+      #     RDME_API_KEY: ${{ secrets.README_API_KEY }}
+      #   run: |
+      #     python ./.github/utils/promote_unstable_docs.py --version ${{ steps.version.outputs.version }}
 
       - name: Promote unstable docs for Docusaurus
         run: |
-          git checkout main
           python ./.github/utils/promote_unstable_docs_docusaurus.py --version ${{ steps.version.outputs.version }}
 
       - name: Create Pull Request with Docusaurus docs updates

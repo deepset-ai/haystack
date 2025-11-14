@@ -48,12 +48,12 @@ const config = {
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.20-unstable',
+              label: '2.21-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.19',
+          lastVersion: '2.20',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -88,12 +88,12 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.20-unstable',
+            label: '2.21-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.19',
+        lastVersion: '2.20',
       },
     ],
   ],

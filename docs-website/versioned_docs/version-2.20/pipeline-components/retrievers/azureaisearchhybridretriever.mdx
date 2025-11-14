@@ -1,0 +1,120 @@
+---
+title: "AzureAISearchHybridRetriever"
+id: azureaisearchhybridretriever
+slug: "/azureaisearchhybridretriever"
+description: "A Retriever based both on dense and sparse embeddings, compatible with the Azure AI Search Document Store."
+---
+
+# AzureAISearchHybridRetriever
+
+A Retriever based both on dense and sparse embeddings, compatible with the Azure AI Search Document Store.
+
+This Retriever combines embedding-based retrieval and BM25 text search search to find matching documents in the search index to get more relevant results.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a TextEmbedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a hybrid search pipeline 3. After a TextEmbedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Mandatory init variables** | `document_store`: An instance of [`AzureAISearchDocumentStore`](../../document-stores/azureaisearchdocumentstore.mdx) |
+| **Mandatory run variables** | `query`: A string  <br /> <br />`query_embedding`: A list of floats |
+| **Output variables** | `documents`: A list of documents (matching the query) |
+| **API reference** | [Azure AI Search](/reference/integrations-azure_ai_search) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_ai_search |
+
+</div>
+
+## Overview
+
+The `AzureAISearchHybridRetriever` combines vector retrieval and BM25 text search to fetch relevant documents from the `AzureAISearchDocumentStore`. It processes both textual (keyword) queries and query embeddings in a single request, executing all subqueries in parallel. The results are merged and reordered using [Reciprocal Rank Fusion (RRF)](https://learn.microsoft.com/en-us/azure/search/hybrid-search-ranking) to create a unified result set.
+
+Besides the `query` and `query_embedding`, the `AzureAISearchHybridRetriever` accepts optional parameters such as `top_k` (the maximum number of documents to retrieve) and `filters` to refine the search. Additional keyword arguments can also be passed during initialization for further customization.
+
+If your search index includes a [semantic configuration](https://learn.microsoft.com/en-us/azure/search/semantic-how-to-query-request), you can enable semantic ranking to apply it to the Retriever's results. For more details, refer to the [Azure AI documentation](https://learn.microsoft.com/en-us/azure/search/hybrid-search-how-to-query#semantic-hybrid-search).
+
+For purely keyword-based retrieval, you can use `AzureAISearchBM25Retriever`, and for embedding-based retrieval, `AzureAISearchEmbeddingRetriever` is available.
+
+## Usage
+
+### Installation
+
+This integration requires you to have an active Azure subscription with a deployed [Azure AI Search](https://azure.microsoft.com/en-us/products/ai-services/ai-search) service.
+
+To start using Azure AI search with Haystack, install the package with:
+
+```shell
+pip install azure-ai-search-haystack
+```
+
+### On its own
+
+This Retriever needs `AzureAISearchDocumentStore` and indexed documents to run.
+
+```python
+from haystack import Document
+from haystack_integrations.components.retrievers.azure_ai_search import AzureAISearchHybridRetriever
+from haystack_integrations.document_stores.azure_ai_search import AzureAISearchDocumentStore
+
+document_store = AzureAISearchDocumentStore(index_name="haystack_docs")
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+			       Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+			       Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+document_store.write_documents(documents=documents)
+
+retriever = AzureAISearchHybridRetriever(document_store=document_store)
+## fake embeddings to keep the example simple
+retriever.run(query="How many languages are spoken around the world today?", query_embedding=[0.1]*384)
+```
+
+### In a RAG pipeline
+
+The following example demonstrates using the `AzureAISearchHybridRetriever` in a pipeline. An indexing pipeline is responsible for indexing and storing documents with embeddings in the `AzureAISearchDocumentStore`, while the query pipeline uses hybrid retrieval to fetch relevant documents based on a given query.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.writers import DocumentWriter
+
+from haystack_integrations.components.retrievers.azure_ai_search import AzureAISearchHybridRetriever
+from haystack_integrations.document_stores.azure_ai_search import AzureAISearchDocumentStore
+
+document_store = AzureAISearchDocumentStore(index_name="hybrid-retrieval-example")
+
+model = "sentence-transformers/all-mpnet-base-v2"
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="""Elephants have been observed to behave in a way that indicates a
+         high level of self-awareness, such as recognizing themselves in mirrors."""
+    ),
+    Document(
+        content="""In certain parts of the world, like the Maldives, Puerto Rico, and
+          San Diego, you can witness the phenomenon of bioluminescent waves."""
+    ),
+]
+
+document_embedder = SentenceTransformersDocumentEmbedder(model=model)
+document_embedder.warm_up()
+
+## Indexing Pipeline
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(instance=document_embedder, name="doc_embedder")
+indexing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="doc_writer")
+indexing_pipeline.connect("doc_embedder", "doc_writer")
+
+indexing_pipeline.run({"doc_embedder": {"documents": documents}})
+
+## Query Pipeline
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder(model=model))
+query_pipeline.add_component("retriever", AzureAISearchHybridRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}, "retriever": {"query": query}})
+
+print(result["retriever"]["documents"][0])
+
+```

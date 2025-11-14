@@ -1,0 +1,72 @@
+---
+title: "PPTXToDocument"
+id: pptxtodocument
+slug: "/pptxtodocument"
+description: "Convert PPTX files to documents."
+---
+
+# PPTXToDocument
+
+Convert PPTX files to documents.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx)  or right at the beginning of an indexing pipeline |
+| **Mandatory run variables**            | `sources`: PPTX file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects           |
+| **Output variables**                   | `documents`: A list of documents                                                               |
+| **API reference**                      | [Converters](/reference/converters-api)                                                               |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/pptx.py      |
+
+</div>
+
+## Overview
+
+The `PPTXToDocument` component converts PPTX files into documents. It takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
+
+## Usage
+
+First, install the`python-pptx` package to start using this converter:
+
+```shell
+pip install python-pptx
+```
+
+### On its own
+
+```python
+from haystack.components.converters import PPTXToDocument
+
+converter = PPTXToDocument()
+results = converter.run(sources=["sample.pptx"], meta={"date_added": datetime.now().isoformat()})
+documents = results["documents"]
+
+print(documents[0].content)
+
+## 'This is the text from the PPTX file.'
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import PPTXToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", PPTXToDocument())
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": file_names}})
+```

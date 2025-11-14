@@ -1,0 +1,69 @@
+---
+title: "InMemoryEmbeddingRetriever"
+id: inmemoryembeddingretriever
+slug: "/inmemoryembeddingretriever"
+description: "Use this Retriever with the InMemoryDocumentStore if you're looking for embedding-based retrieval."
+---
+
+# InMemoryEmbeddingRetriever
+
+Use this Retriever with the InMemoryDocumentStore if you're looking for embedding-based retrieval.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In query pipelines:  <br />In a RAG pipeline, before a [`PromptBuilder`](../builders/promptbuilder.mdx)  <br />In a semantic search pipeline, as the last component  <br />In an extractive QA pipeline, after a Tex tEmbedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) |
+| **Mandatory init variables** | `document_store`: An instance of [InMemoryDocumentStore](../../document-stores/inmemorydocumentstore.mdx) |
+| **Mandatory run variables** | `query_embedding`: A list of floating point numbers |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [Retrievers](/reference/retrievers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/retrievers/in_memory/embedding_retriever.py |
+
+</div>
+
+## Overview
+
+The `InMemoryEmbeddingRetriever` is an embedding-based Retriever compatible with the `InMemoryDocumentStore`. It compares the query and Document embeddings and fetches the Documents most relevant to the query from the `InMemoryDocumentStore` based on the outcome.
+
+When using the `InMemoryEmbeddingRetriever` in your NLP system, make sure it has the query and Document embeddings available. You can do so by adding a DocumentEmbedder to your indexing pipeline and a Text Embedder to your query pipeline. For details, see [Embedders](../embedders.mdx).
+
+In addition to the `query_embedding`, the `InMemoryEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
+
+The `embedding_similarity_function`  to use for embedding retrieval must be defined when the corresponding`InMemoryDocumentStore` is initialized.
+
+## Usage
+
+### In a pipeline
+
+Use this Retriever in a query pipeline like this:
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+from haystack.components.retrievers import InMemoryEmbeddingRetriever
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+						Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+						Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+
+document_embedder = SentenceTransformersDocumentEmbedder()
+document_embedder.warm_up()
+
+documents_with_embeddings = document_embedder.run(documents)["documents"]
+document_store.write_documents(documents_with_embeddings)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result['retriever']['documents'][0])
+```
