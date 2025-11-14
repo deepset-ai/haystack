@@ -8,7 +8,6 @@ This directory contains the Docusaurus-powered documentation website for [Haysta
 **Table of Contents**
 
 - [About](#about)
-- [Key Features](#key-features)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Common tasks](#common-tasks)
@@ -19,31 +18,20 @@ This directory contains the Docusaurus-powered documentation website for [Haysta
 - [CI/CD and Automation](#cicd-and-automation)
   - [Versioning](#versioning)
 - [Deployment](#deployment)
-- [Related Links](#related-links)
-- [License](#license)
-- [Support](#support)
 
 ## About
 
 This documentation site is built with Docusaurus 3 and provides comprehensive guides, tutorials, API references, and best practices for using Haystack. The site supports multiple versions and automated API reference generation.
 
-## Key Features
-
-- **Versioned Documentation**: Multiple Haystack versions with dropdown navigation
-- **Dual Documentation Plugins**: Separate sections for narrative docs (`docs/`) and API reference (`reference/`)
-- **Automated API Generation**: Python docstrings automatically synced from the main Haystack codebase
-- **Live Reload**: Vercel development server with instant preview of changes
-- **Optimized Images**: Responsive image processing for faster page loads
-
 ## Prerequisites
 
 - **Node.js** 18 or higher
 - **npm** (included with Node.js) or Yarn
-- Optional: [Vale](https://vale.sh/) (for local prose linting)
 
 ## Quick Start
 
-**Important:** All commands must be run from the `haystack/docs-website` directory.
+> [!NOTE]
+> All commands must be run from the `haystack/docs-website` directory.
 
 ```bash
 # Clone the repository and navigate to docs-website
@@ -155,25 +143,3 @@ These workflows automatically create versioned documentation snapshots and pull 
 ## Deployment
 
 The documentation site is automatically deployed to **https://haystack-docs.vercel.app/docs/intro** (in future https://docs.haystack.deepset.ai) when changes are merged to the `main` branch.
-
-## Related Links
-
-- **Main Haystack Repository**: https://github.com/deepset-ai/haystack
-- **Haystack Documentation**: https://docs.haystack.deepset.ai
-- **Discord Community**: https://discord.com/invite/haystack
-- **Twitter**: https://twitter.com/haystack_ai
-- **Tutorials**: https://haystack.deepset.ai/tutorials
-- **Code of Conduct**: https://github.com/deepset-ai/haystack/blob/main/code_of_conduct.txt
-
-## License
-
-This project is licensed under the Apache License 2.0. See the [LICENSE](https://github.com/deepset-ai/haystack/blob/main/LICENSE) file in the main Haystack repository for details.
-
-© 2025 deepset GmbH. All rights reserved.
-
-## Support
-
-- **Questions**: Join our [Discord community](https://discord.com/invite/haystack)
-- **Bug Reports**: [Open an issue](https://github.com/deepset-ai/haystack/issues/new?template=bug_report.md)
-- **Feature Requests**: [Start a discussion](https://github.com/deepset-ai/haystack/discussions)
-- **Documentation Issues**: [Open an issue](https://github.com/deepset-ai/haystack/issues/new) with the `documentation` label

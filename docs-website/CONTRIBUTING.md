@@ -56,9 +56,6 @@ git push -u origin HEAD
   - [Prose and Style Linting with Vale](#prose-and-style-linting-with-vale)
 - [API Reference Contributions](#api-reference-contributions)
 - [Understanding Documentation Versions and Where to Make Changes](#understanding-documentation-versions-and-where-to-make-changes)
-- [CI/CD Workflows](#cicd-workflows)
-  - [Vale Linting](#vale-linting)
-  - [API Reference Sync](#api-reference-sync)
 - [Preview Deployments](#preview-deployments)
 - [Troubleshooting](#troubleshooting)
   - [Blank Page on npm start](#blank-page-on-npm-start)
@@ -300,41 +297,6 @@ Example: A code example has a bug in the Pipelines guide → fix it in both `doc
 
 **Pro tip:** When fixing bugs in current release docs, make the change in `docs/` first, then copy it to the highest-numbered versioned directory to ensure consistency.
 
-## CI/CD Workflows
-
-The documentation site includes several GitHub Actions workflows (located in `.github/workflows/` at the repository root).
-
-### Vale Linting
-
-**Workflow:** `docs-website-vale.yml`
-
-**Triggers:**
-- Pull requests that modify `docs-website/**`
-- Pushes to `main` branch
-
-**Actions:**
-- Checks out repository
-- Sets up Node.js 20
-- Installs `mdx2vast` for MDX support
-- Runs Vale on `docs/` and `versioned_docs/`
-- Posts review comments on the PR
-- Does not fail on errors (set to `continue-on-error: true`)
-
-### API Reference Sync
-
-**Workflow:** `docusaurus_sync.yml`
-
-**Triggers:**
-- Workflow dispatch (manual)
-- Pushes to `main` that modify Python code or docstring configs
-
-**Actions:**
-- Checks out Haystack repository
-- Sets up Python and Hatch
-- Generates API reference from docstrings
-- Syncs to `docs-website/reference/haystack-api`
-- Creates a pull request with changes
-
 ## Preview Deployments
 
 Pull requests that modify documentation may automatically generate preview deployments. Check your PR for a preview link, which allows reviewers to see your changes in a live environment before merging.
@@ -510,14 +472,6 @@ Include:
 4. Address any requested changes
 5. Once approved and checks pass, a maintainer will merge
 6. Your changes will be deployed automatically
-
-**What reviewers check:**
-- Technical accuracy
-- Writing style and clarity
-- Completeness
-- Link validity
-- Code correctness
-- Adherence to guidelines
 
 ## Accessibility and Inclusivity
 
