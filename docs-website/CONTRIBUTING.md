@@ -39,9 +39,6 @@ git push -u origin HEAD
 
 6. Open a PR and review the [Pull Request Checklist](#pull-request-checklist).
 
-Optional:
-- Prose lint: `vale --config .vale.ini "docs/**/*.{md,mdx}"`
-
 **Table of Contents**
 
 - [TL;DR — Your first docs PR in 10 minutes](#tldr--your-first-docs-pr-in-10-minutes)
@@ -226,25 +223,11 @@ This command:
 
 ### Prose and Style Linting with Vale
 
-Vale runs automatically in CI on pull requests. Run it locally to catch issues early:
-
-```bash
-# From repository root
-vale --config .vale.ini "**/*.{md,mdx}"
-
-# Or from docs-website directory
-vale --config .vale.ini "docs/**/*.{md,mdx}"
-```
-
-**Vale configuration:**
-
-- Config file: `.vale.ini`
-- Styles: `.vale/styles/` (Google + custom Haystack rules)
-- Minimum alert level: suggestion
+Vale is a prose linter that checks documentation for style consistency. It runs automatically in CI on all pull requests - you don't need to run it locally.
 
 **CI behavior:**
 
-- Runs on all PRs and pushes to `main`
+- Runs automatically on all PRs and pushes to `main`
 - Creates GitHub PR review comments on issues
 - Does not fail the build
 - Shows errors, warnings, and suggestions as annotations
@@ -257,7 +240,16 @@ vale --config .vale.ini "docs/**/*.{md,mdx}"
 - MyStyle.Branding (capitalize product names correctly)
 - MyStyle.WeakWords (avoid "just", "simply", etc.)
 
-If you encounter a StylesPath error, ensure the path in `.vale.ini` matches the repository layout.
+**Running Vale locally (optional):**
+
+If you want to check your prose before pushing, you can run Vale locally:
+
+1. Install Vale CLI: https://vale.sh/docs/vale-cli/installation/
+2. Navigate to the `docs-website/` directory
+3. Download Vale styles: `vale sync`
+4. Run Vale: `vale --config .vale.ini "docs/**/*.{md,mdx}"`
+
+The GitHub Action will provide the final validation on your PR, so running Vale locally is completely optional.
 
 ## API Reference Contributions
 
@@ -400,13 +392,9 @@ This removes:
 - Check that images exist in `static/img/` or local `assets/` directories
 - Use relative paths from the markdown file location
 
-### Vale StylesPath Error
+### Vale Errors
 
-If Vale reports a StylesPath error:
-
-1. Ensure `.vale/styles/` directory exists
-2. Check the path in `.vale.ini` matches your directory structure
-3. Verify Vale style packages are present in `.vale/styles/`
+If you see Vale-related errors when running locally, ensure you've run `vale sync` from the `docs-website/` directory to download the required style packages. The Vale GitHub Action in CI automatically handles this, so local setup issues won't affect your PR validation.
 
 ## Moving or Removing Pages
 
