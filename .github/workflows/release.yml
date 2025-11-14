@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  pull_request:
+
+jobs:
+  test-wf:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Checkout release branch
+        run: |
+          git checkout v2.20.x
+          git pull origin v2.20.x
+
+      - name: Create tag
+        run: |
+          TAG="random-test-tag"
+          git tag -m "$TAG" "$TAG"
+          git push origin "$TAG"
