@@ -20,7 +20,7 @@ npm install
 npm start
 ```
 
-3. Edit under `docs/`. If you add a new page, include its ID in `sidebars.js`.
+3. Edit under `docs/` for the unstable version, and under `versioned_docs/version-<highest>/` for the latest stable release. If you add a new page, include its ID in `sidebars.js` or the appropriate versioned sidebar.
 
 4. Optional production check:
 
@@ -41,7 +41,6 @@ git push -u origin HEAD
 
 Optional:
 - Prose lint: `vale --config .vale.ini "docs/**/*.{md,mdx}"`
-- Snippet tests: `./scripts/setup-dev.sh main && python scripts/test_python_snippets.py --verbose`
 
 **Table of Contents**
 
@@ -55,13 +54,11 @@ Optional:
 - [Working with Templates](#working-with-templates)
 - [Testing](#testing)
   - [Build Testing](#build-testing)
-  - [Python Snippet Testing](#python-snippet-testing)
   - [Prose and Style Linting with Vale](#prose-and-style-linting-with-vale)
 - [API Reference Contributions](#api-reference-contributions)
 - [Understanding Documentation Versions and Where to Make Changes](#understanding-documentation-versions-and-where-to-make-changes)
 - [CI/CD Workflows](#cicd-workflows)
   - [Vale Linting](#vale-linting)
-  - [Python Snippet Testing](#python-snippet-testing-1)
   - [API Reference Sync](#api-reference-sync)
 - [Preview Deployments](#preview-deployments)
 - [Troubleshooting](#troubleshooting)
@@ -212,73 +209,6 @@ This command:
 
 **Fix all warnings before submitting your PR.**
 
-### Python Snippet Testing
-
-Python code snippets in the docs are automatically tested in CI. Test them locally:
-
-**Step 1: Set up the development environment**
-
-```bash
-# From docs-website directory
-./scripts/setup-dev.sh 2.19.0  # or 'main' for latest
-```
-
-This script:
-- Installs base dependencies (requests, toml)
-- Generates `requirements.txt` for the specified Haystack version
-- Installs all Haystack dependencies
-
-**Step 2: Run snippet tests**
-
-```bash
-python scripts/test_python_snippets.py --verbose
-```
-
-**Optional flags:**
-- `--paths docs versioned_docs` - Test specific directories
-- `--timeout-seconds 30` - Set execution timeout
-- `--allow-unsafe` - Allow potentially unsafe patterns
-
-**Snippet markers:**
-
-Control how snippets are tested using HTML comments:
-
-````markdown
-<!-- test-ignore -->
-```python
-# This snippet will be skipped
-```
-
-<!-- test-run -->
-```python
-# Force run even without imports
-print("hello")
-```
-
-<!-- test-concept -->
-```python
-# Skip this conceptual example
-@dataclass
-class Example:
-    ...
-```
-
-<!-- test-require-files: assets/data.json -->
-```python
-# Skip if required file is missing
-with open("assets/data.json") as f:
-    data = json.load(f)
-```
-````
-
-**How it works:**
-- Extracts all Python code blocks from `.md` and `.mdx` files
-- Runs each snippet in isolation via subprocess
-- Heuristically skips conceptual snippets (no imports)
-- Reports failures with file and line information
-
-See `scripts/test_python_snippets.py` docstring for detailed usage.
-
 ### Prose and Style Linting with Vale
 
 Vale runs automatically in CI on pull requests. Run it locally to catch issues early:
@@ -380,24 +310,6 @@ The documentation site includes several GitHub Actions workflows (located in `.g
 - Runs Vale on `docs/` and `versioned_docs/`
 - Posts review comments on the PR
 - Does not fail on errors (set to `continue-on-error: true`)
-
-### Python Snippet Testing
-
-**Workflow:** `docs-website-test-docs-snippets.yml`
-
-**Triggers:**
-- Daily scheduled run (03:17 UTC)
-- Manual workflow dispatch with version input
-
-**Actions:**
-- Sets up Python 3.11
-- Installs base dependencies (requests, toml)
-- Generates `requirements.txt` for specified Haystack version
-- Installs all dependencies
-- Runs `test_python_snippets.py` with specified paths
-- Reports failures as GitHub annotations
-
-**Note:** Currently configured to test a limited set of files. Full testing will be enabled after migration.
 
 ### API Reference Sync
 
@@ -538,7 +450,6 @@ Before submitting your PR, verify:
 - [ ] Images optimized and include alt text
 - [ ] Local build passes (`npm run build`)
 - [ ] Vale checks pass or issues are addressed
-- [ ] Python snippets are tested (if applicable)
 - [ ] Conventional commit message format used in PR title
 - [ ] PR description includes context and related issues
 
@@ -575,7 +486,7 @@ Include:
 - Writing style and clarity
 - Completeness
 - Link validity
-- Code snippet correctness
+- Code correctness
 - Adherence to guidelines
 
 ## Accessibility and Inclusivity

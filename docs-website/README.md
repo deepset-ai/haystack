@@ -9,14 +9,13 @@ This directory contains the Docusaurus-powered documentation website for [Haysta
 
 ## About
 
-This documentation site is built with Docusaurus 3 and provides comprehensive guides, tutorials, API references, and best practices for using Haystack. The site supports multiple versions, automated API reference generation, and includes quality assurance through prose linting and Python code snippet testing.
+This documentation site is built with Docusaurus 3 and provides comprehensive guides, tutorials, API references, and best practices for using Haystack. The site supports multiple versions, automated API reference generation, and includes quality assurance through prose linting.
 
 ## Key Features
 
 - **Versioned Documentation**: Multiple Haystack versions with dropdown navigation
 - **Dual Documentation Plugins**: Separate sections for narrative docs (`docs/`) and API reference (`reference/`)
 - **Automated API Generation**: Python docstrings automatically synced from the main Haystack codebase
-- **Python Snippet Testing**: All code examples are automatically tested for accuracy
 - **Prose Linting**: Vale integration ensures consistent writing style (Google Developer Documentation Style Guide)
 - **Live Reload**: Development server with instant preview of changes
 - **Optimized Images**: Responsive image processing for faster page loads
@@ -25,7 +24,6 @@ This documentation site is built with Docusaurus 3 and provides comprehensive gu
 
 - **Node.js** 18 or higher
 - **npm** (included with Node.js) or Yarn
-- Optional: Python 3.11+ (for testing documentation code snippets)
 - Optional: [Vale](https://vale.sh/) (for local prose linting)
 
 ## Quick Start
@@ -46,11 +44,6 @@ npm start
 - Add to sidebar: update `sidebars.js` with your doc ID
 - Production check: `npm run build && npm run serve`
 - Prose lint (optional): `vale --config .vale.ini "docs/**/*.{md,mdx}"`
-- Test Python snippets (optional):
-  ```bash
-  ./scripts/setup-dev.sh main
-  python scripts/test_python_snippets.py --verbose
-  ```
 - Full guidance: see `CONTRIBUTING.md`
 
 ## Project Structure
@@ -94,7 +87,6 @@ docs-website/
 | [MDX](https://mdxjs.com/) | 3.0.0 | Markdown with JSX |
 | [Node.js](https://nodejs.org/) | ≥18.0 | Runtime environment |
 | [Vale](https://vale.sh/) | Latest | Prose linting |
-| [Python](https://www.python.org/) | 3.11+ | Snippet testing |
 
 **Key Docusaurus Plugins:**
 - `@docusaurus/plugin-content-docs` (dual instances for docs and API reference)
@@ -115,10 +107,6 @@ Run these commands from the `docs-website` directory:
 | `npm run docusaurus` | Run Docusaurus CLI commands directly |
 | `npm run swizzle` | Eject and customize Docusaurus theme components |
 
-**Additional Scripts:**
-- `scripts/setup-dev.sh <version>`: Set up Python environment for snippet testing
-- `scripts/test_python_snippets.py`: Test all Python code snippets in documentation
-
 ## Contributing
 
 We welcome contributions to improve the documentation! See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
@@ -133,7 +121,7 @@ For code contributions to Haystack itself, see the [main repository's contributi
 
 ## CI/CD and Automation
 
-This site uses automated workflows for prose linting, Python snippet tests, API reference sync, and preview deployments. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
+This site uses automated workflows for prose linting, API reference sync, and preview deployments. See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 
 ### Versioning
 
