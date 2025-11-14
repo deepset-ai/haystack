@@ -15,7 +15,7 @@ class Jinja2TemplateVariableExtractor:
     def __init__(self, env: Optional[Environment] = None):
         self.env = env or Environment()
 
-    def _extract_from_text(self, template_str: Optional[str], role: Optional[str] = None) -> set[str]:
+    def _extract_from_text(self, template_str: str, role: Optional[str] = None) -> set[str]:
         """
         Extract declared variables from a Jinja2 template string.
 
