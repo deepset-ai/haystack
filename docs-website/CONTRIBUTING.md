@@ -37,7 +37,7 @@ git commit -m "docs: fix <desc>"
 git push -u origin HEAD
 ```
 
-6. Open a PR and use the checklist below.
+6. Open a PR and review the [Pull Request Checklist](#pull-request-checklist).
 
 Optional:
 - Prose lint: `vale --config .vale.ini "docs/**/*.{md,mdx}"`
@@ -125,17 +125,32 @@ Edit `sidebars.js` and add your page to the appropriate category:
 
 **For API reference (`reference/`):**
 
-Edit `reference-sidebars.js` if needed (some sections are auto-generated).
+Edit `reference-sidebars.js` if needed (however, most sections are auto-generated).
 
 ### Linking and Anchors
 
-**Internal links:**
+**Links within `docs/`:**
 
-Use relative paths:
+Use relative paths for links within the same documentation section:
 
 ```md
 See the [Pipeline Guide](../concepts/pipelines.mdx)
+See the [Components Overview](./components-overview.mdx)
 ```
+
+**Links between `docs/` and `reference/`:**
+
+Because `docs/` and `reference/` are separate Docusaurus plugin instances, you must use absolute paths when linking between them:
+
+```md
+<!-- From docs/ to reference/ -->
+See the [Pipeline API Reference](/reference/haystack-api/pipelines/pipeline)
+
+<!-- From reference/ to docs/ -->
+See the [Pipeline Concepts Guide](/docs/concepts/pipelines)
+```
+
+**Note:** Always use `/docs/` or `/reference/` as the path prefix when linking across sections, not relative paths like `../../reference/`.
 
 **Explicit anchors:**
 
@@ -145,7 +160,7 @@ For stable cross-links, use explicit heading IDs:
 ## Installation {#install-guide}
 ```
 
-Link to it: `[Install](./page.mdx#install-guide)`
+Link to it: `[Install](./page.mdx#install-guide)` or `[Install](/docs/overview/quick-start#install-guide)` from `reference/`
 
 ### Admonitions (Callouts)
 
@@ -231,7 +246,7 @@ vale --config .vale.ini "docs/**/*.{md,mdx}"
 
 - Runs on all PRs and pushes to `main`
 - Creates GitHub PR review comments on issues
-- Does not fail the build (set to `fail_on_error: false`)
+- Does not fail the build
 - Shows errors, warnings, and suggestions as annotations
 
 **Common Vale rules:**
@@ -333,7 +348,6 @@ Pull requests that modify documentation may automatically generate preview deplo
 Preview deployments include:
 - Full site build with your changes
 - All versions and navigation
-- Search functionality
 - Identical to production except for the URL
 
 ## Troubleshooting
@@ -415,26 +429,51 @@ If Vale reports a StylesPath error:
 
 ## Images and Assets
 
-**Placement:**
-- Shared images: `static/img/`
-- Per-section assets: `docs/<section>/assets/`
+Shared images are stored in `static/img/`.
 
 **Best practices:**
 - Use descriptive filenames (for example, `pipeline-architecture.png`)
-- Always include alt text: `![Pipeline architecture diagram](./assets/pipeline.png)`
 - Optimize images before committing (use tools like ImageOptim, TinyPNG)
 - Prefer modern formats (WebP, optimized PNG/JPEG)
-- Docusaurus uses `@docusaurus/plugin-ideal-image` for responsive optimization
+- Always include alt text for accessibility
 
-**Responsive images:**
+**Adding images:**
 
-Use the Image component for automatic optimization:
+Use the `ClickableImage` component for all images. Import it at the top of your MDX file:
 
-```jsx
-import Image from '@theme/IdealImage';
-import thumbnail from './assets/thumbnail.png';
+```mdx
+import ClickableImage from "@site/src/components/ClickableImage";
 
-<Image img={thumbnail} />
+<ClickableImage
+  src="/img/pipeline-architecture.png"
+  alt="Pipeline architecture diagram"
+/>
+```
+
+**For zoomable images** (diagrams, screenshots that users may want to see in detail), use `size="large"`:
+
+```mdx
+<ClickableImage
+  src="/img/detailed-architecture.png"
+  alt="Detailed architecture diagram"
+  size="large"
+/>
+```
+
+**Images with transparent backgrounds:**
+
+For transparent PNGs that need better visibility in dark mode, add a background class:
+
+```mdx
+<!-- White background in dark mode -->
+<div className="img-white-bg">
+  <ClickableImage src="/img/logo.png" alt="Logo" />
+</div>
+
+<!-- Light grey background (softer) -->
+<div className="img-light-bg">
+  <ClickableImage src="/img/diagram.png" alt="Diagram" />
+</div>
 ```
 
 ## Pull Request Process
@@ -449,6 +488,7 @@ Before submitting your PR, verify:
 - [ ] Code samples tested and include language tags
 - [ ] Images optimized and include alt text
 - [ ] Local build passes (`npm run build`)
+- [ ] Vercel preview deployment succeeds (fix any deployment errors)
 - [ ] Vale checks pass or issues are addressed
 - [ ] Conventional commit message format used in PR title
 - [ ] PR description includes context and related issues

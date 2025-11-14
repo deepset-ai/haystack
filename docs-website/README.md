@@ -1,23 +1,20 @@
 # Haystack Documentation Website
 
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0-brightgreen)](https://nodejs.org/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
-
 This directory contains the Docusaurus-powered documentation website for [Haystack](https://github.com/deepset-ai/haystack), an open-source framework for building production-ready applications with Large Language Models (LLMs).
 
-**Live site:** https://docs.haystack.deepset.ai
+- **Vercel production deployment:** https://haystack-docs.vercel.app/docs/intro
+- **Live site:** https://docs.haystack.deepset.ai
 
 ## About
 
-This documentation site is built with Docusaurus 3 and provides comprehensive guides, tutorials, API references, and best practices for using Haystack. The site supports multiple versions, automated API reference generation, and includes quality assurance through prose linting.
+This documentation site is built with Docusaurus 3 and provides comprehensive guides, tutorials, API references, and best practices for using Haystack. The site supports multiple versions and automated API reference generation.
 
 ## Key Features
 
 - **Versioned Documentation**: Multiple Haystack versions with dropdown navigation
 - **Dual Documentation Plugins**: Separate sections for narrative docs (`docs/`) and API reference (`reference/`)
 - **Automated API Generation**: Python docstrings automatically synced from the main Haystack codebase
-- **Prose Linting**: Vale integration ensures consistent writing style (Google Developer Documentation Style Guide)
-- **Live Reload**: Development server with instant preview of changes
+- **Live Reload**: Vercel development server with instant preview of changes
 - **Optimized Images**: Responsive image processing for faster page loads
 
 ## Prerequisites
@@ -40,7 +37,7 @@ npm start
 
 ## Common tasks
 
-- Edit a page: update files under `docs/` and preview at http://localhost:3000
+- Edit a page: update files under `docs/` or `versioned_docs/` and preview at http://localhost:3000
 - Add to sidebar: update `sidebars.js` with your doc ID
 - Production check: `npm run build && npm run serve`
 - Prose lint (optional): `vale --config .vale.ini "docs/**/*.{md,mdx}"`
@@ -66,10 +63,9 @@ docs-website/
 │   └── theme/                   # Docusaurus theme customizations
 ├── static/                       # Static assets (images, files)
 ├── scripts/                      # Build and test scripts
-│   ├── test_python_snippets.py  # Tests Python code in docs
 │   ├── generate_requirements.py # Generates Python dependencies
-│   └── setup-dev.sh             # Development environment setup
-├── .vale/                        # Vale prose linting configuration
+│   ├── setup-dev.sh             # Development environment setup
+│   └── test_python_snippets.py  # Tests Python code in docs
 ├── sidebars.js                   # Navigation for docs/
 ├── reference-sidebars.js         # Navigation for reference/
 ├── docusaurus.config.js          # Main Docusaurus configuration
@@ -90,7 +86,6 @@ docs-website/
 
 **Key Docusaurus Plugins:**
 - `@docusaurus/plugin-content-docs` (dual instances for docs and API reference)
-- `@docusaurus/plugin-ideal-image` (responsive image optimization)
 - Custom remark plugins for versioned reference links
 
 ## Available Scripts
@@ -125,7 +120,7 @@ This site uses automated workflows for prose linting, API reference sync, and pr
 
 ### Versioning
 
-Documentation versions are released monthly alongside Haystack releases and are fully automated through GitHub workflows. Contributors do not need to manually create or manage versions.
+Documentation versions are released alongside Haystack releases and are fully automated through GitHub workflows. Contributors do not need to manually create or manage versions.
 
 **Automated Workflows:**
 - `promote_unstable_docs.yml` - Automatically triggered during Haystack releases
@@ -135,14 +130,7 @@ These workflows automatically create versioned documentation snapshots and pull 
 
 ## Deployment
 
-The documentation site is automatically deployed to **https://docs.haystack.deepset.ai** when changes are merged to the `main` branch. The deployment infrastructure handles:
-
-- Building static assets
-- Hosting on a CDN
-- SSL/TLS certificates
-- Version routing
-
-No manual deployment steps are required for contributors.
+The documentation site is automatically deployed to **https://haystack-docs.vercel.app/docs/intro** (in future https://docs.haystack.deepset.ai) when changes are merged to the `main` branch.
 
 ## Related Links
 
