@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to the Haystack documentation! This guide provides everything you need to write, review, and maintain high-quality documentation for the Haystack project.
 
-This guide focuses specifically on documentation contributions. For code contributions, tests, or integrations in the main Haystack codebase, please see the [main Haystack contribution guide](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md).
+This guide focuses specifically on documentation contributions. For code contributions, tests, or integrations in the main Haystack codebase, see the [main Haystack contribution guide](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md).
 
 ## TL;DR — Your first docs PR in 10 minutes
 
@@ -80,7 +80,7 @@ git push -u origin HEAD
 | Your change | Edit here | Also edit here |
 |---|---|---|
 | New feature on Haystack `main` | `docs/` | — |
-| Fix in current stable docs | `docs/` | `versioned_docs/version-<highest>/` (e.g., `version-2.20`) |
+| Fix in current stable docs | `docs/` | `versioned_docs/version-<highest>/` (for example, `version-2.20`) |
 | API reference content | Edit Python docstrings in main repo | — |
 
 ### Page Frontmatter
@@ -240,7 +240,7 @@ Vale is a prose linter that checks documentation for style consistency. It runs 
 - Google.Passive (prefer active voice)
 - Google.WordList (use recommended terminology)
 - MyStyle.Branding (capitalize product names correctly)
-- MyStyle.WeakWords (avoid "just", "simply", etc.)
+- MyStyle.WeakWords (avoid "just", "simply", and similar words)
 
 **Running Vale locally (optional):**
 
@@ -261,7 +261,7 @@ The API reference documentation is automatically generated from Python docstring
 
 1. Edit docstrings in the [Haystack repository](https://github.com/deepset-ai/haystack)
 2. Open a PR in the main Haystack repo
-3. After merge, the API reference will be automatically synced via CI
+3. After merge, the API reference will be automatically synced through CI
 
 **Do not:**
 - Manually edit files in `reference/` or `reference_versioned_docs/`
