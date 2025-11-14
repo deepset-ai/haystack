@@ -74,7 +74,7 @@ def tools():
     return [weather_tool, message_extractor_tool]
 
 
-class TestAzureOpenAIChatGenerator:
+class TestAzureOpenAIResponsesChatGenerator:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -143,7 +143,7 @@ class TestAzureOpenAIChatGenerator:
             generation_kwargs={
                 "max_completion_tokens": 10,
                 "some_test_param": "test-params",
-                "response_format": calendar_event_model,
+                "text_format": calendar_event_model,
             },
             http_client_kwargs={"proxy": "http://localhost:8080"},
         )
@@ -161,9 +161,9 @@ class TestAzureOpenAIChatGenerator:
                 "generation_kwargs": {
                     "max_completion_tokens": 10,
                     "some_test_param": "test-params",
-                    "response_format": {
-                        "type": "json_schema",
-                        "json_schema": {
+                    "text": {
+                        "format": {
+                            "type": "json_schema",
                             "name": "CalendarEvent",
                             "strict": True,
                             "schema": {
@@ -177,7 +177,7 @@ class TestAzureOpenAIChatGenerator:
                                 "type": "object",
                                 "additionalProperties": False,
                             },
-                        },
+                        }
                     },
                 },
                 "tools": None,
@@ -393,12 +393,12 @@ class TestAzureOpenAIChatGenerator:
         reason="Export an env var called AZURE_OPENAI_API_KEY containing the Azure OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format(self):
+    def test_live_run_with_text_format(self, calendar_event_model):
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
         component = AzureOpenAIResponsesChatGenerator(
-            azure_deployment="gpt-4o-mini", generation_kwargs={"text_format": CalendarEvent}
+            azure_deployment="gpt-4o-mini", generation_kwargs={"text_format": calendar_event_model}
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
@@ -408,6 +408,42 @@ class TestAzureOpenAIChatGenerator:
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
         assert message.meta["status"] == "completed"
+
+    @pytest.mark.skipif(
+        not os.environ.get("AZURE_OPENAI_API_KEY", None),
+        reason="Export an env var called AZURE_OPENAI_API_KEY containing the Azure OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    # So far from documentation, responses.parse only supports BaseModel
+    def test_live_run_with_text_format_json_schema(self):
+        json_schema = {
+            "format": {
+                "type": "json_schema",
+                "name": "person",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "minLength": 1},
+                        "age": {"type": "number", "minimum": 0, "maximum": 130},
+                    },
+                    "required": ["name", "age"],
+                    "additionalProperties": False,
+                },
+            }
+        }
+        chat_messages = [ChatMessage.from_user("Jane 54 years old")]
+        component = AzureOpenAIResponsesChatGenerator(
+            azure_deployment="gpt-4o-mini", generation_kwargs={"text": json_schema}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Jane" in msg["name"]
+        assert msg["age"] == 54
+        assert message.meta["status"] == "completed"
+        assert message.meta["usage"]["output_tokens"] > 0
 
     def test_to_dict_with_toolset(self, tools, monkeypatch):
         """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""
@@ -532,7 +568,7 @@ class TestAzureOpenAIChatGenerator:
         assert len(warm_up_calls) == initial_count
 
 
-class TestAzureOpenAIChatGeneratorAsync:
+class TestAzureOpenAIResponsesChatGeneratorAsync:
     def test_init_should_also_create_async_client_with_same_args(self, tools):
         component = AzureOpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"),

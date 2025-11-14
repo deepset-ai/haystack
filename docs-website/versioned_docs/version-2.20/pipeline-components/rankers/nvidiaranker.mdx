@@ -1,0 +1,111 @@
+---
+title: "NvidiaRanker"
+id: nvidiaranker
+slug: "/nvidiaranker"
+description: "Use this component to rank documents based on their similarity to the query using Nvidia-hosted models."
+---
+
+# NvidiaRanker
+
+Use this component to rank documents based on their similarity to the query using Nvidia-hosted models.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
+| **Mandatory init variables** | `api_key`: API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var. |
+| **Mandatory run variables** | `query`: A query string  <br /> <br />`documents`: A list of document objects |
+| **Output variables** | `documents`: A list of document objects |
+| **API reference** | [Nvidia](/reference/integrations-nvidia) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/nvidia |
+
+</div>
+
+## Overview
+
+`NvidiaRanker` ranks `Documents` based on semantic relevance to a specified query. It uses ranking models provided by [NVIDIA NIMs](https://ai.nvidia.com). The default model for this Ranker is `nvidia/nv-rerankqa-mistral-4b-v3`.
+
+You can also specify the `top_k` parameter to set the maximum number of documents to return.
+
+See the rest of the customizable parameters you can set for `NvidiaRanker` in our [API reference](/reference/integrations-nvidia).
+
+To start using this integration with Haystack, install it with:
+
+```shell
+pip install nvidia-haystack
+```
+
+The component uses an `NVIDIA_API_KEY` environment variable by default. Otherwise, you can pass an Nvidia API key at initialization with `api_key` like this:
+
+```python
+ranker = NvidiaRanker(api_key=Secret.from_token("<your-api-key>"))
+```
+
+## Usage
+
+### On its own
+
+This example uses `NvidiaRanker` to rank two simple documents. To run the Ranker, pass a `query`, provide the `documents`, and set the number of documents to return in the `top_k` parameter.
+
+```python
+    from haystack_integrations.components.rankers.nvidia import NvidiaRanker
+    from haystack import Document
+    from haystack.utils import Secret
+
+    ranker = NvidiaRanker(
+        model="nvidia/nv-rerankqa-mistral-4b-v3",
+        api_key=Secret.from_env_var("NVIDIA_API_KEY"),
+    )
+    ranker.warm_up()
+
+    query = "What is the capital of Germany?"
+    documents = [
+        Document(content="Berlin is the capital of Germany."),
+        Document(content="The capital of Germany is Berlin."),
+        Document(content="Germany's capital is Berlin."),
+    ]
+
+    result = ranker.run(query, documents, top_k=2)
+    print(result["documents"])
+```
+
+### In a pipeline
+
+Below is an example of a pipeline that retrieves documents from an `InMemoryDocumentStore` based on keyword search (using `InMemoryBM25Retriever`). It then uses the `NvidiaRanker` to rank the retrieved documents according to their similarity to the query. The pipeline uses the default settings of the Ranker.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.rankers.nvidia import NvidiaRanker
+
+docs = [
+    Document(content="Paris is in France"),
+    Document(content="Berlin is in Germany"),
+    Document(content="Lyon is in France"),
+]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+ranker = NvidiaRanker()
+
+document_ranker_pipeline = Pipeline()
+document_ranker_pipeline.add_component(instance=retriever, name="retriever")
+document_ranker_pipeline.add_component(instance=ranker, name="ranker")
+
+document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "Cities in France"
+res = document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3}, "ranker": {"query": query, "top_k": 2}})
+```
+
+:::note `top_k` parameter
+
+In the example above, the `top_k` values for the Retriever and the Ranker are different. The Retriever's `top_k` specifies how many documents it returns. The Ranker then orders these documents.
+
+You can set the same or a smaller `top_k` value for the Ranker. The Ranker's `top_k` is the number of documents it returns (if it's the last component in the pipeline) or forwards to the next component. In the pipeline example above, the Ranker is the last component, so the output you get when you run the pipeline are the top two documents, as per the Ranker's `top_k`.
+
+Adjusting the `top_k` values can help you optimize performance. In this case, a smaller `top_k` value of the Retriever means fewer documents to process for the Ranker, which can speed up the pipeline.
+:::

@@ -386,3 +386,4 @@ Raised when an invalid filter is passed to AstraDocumentStore.
 ### AstraDocumentStoreConfigError
 
 Raised when an invalid configuration is passed to AstraDocumentStore.
+

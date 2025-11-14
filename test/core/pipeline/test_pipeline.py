@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 
 import pytest
 
@@ -123,3 +124,59 @@ class TestPipeline:
                 component_visits={"erroring_component": 0},
             )
         assert "Component name: 'erroring_component'" in str(exc_info.value)
+
+    def test_component_with_empty_dict_as_output_appears_in_results(self):
+        """Test that components that return an empty dict as output appear in results as an empty dict"""
+
+        @component
+        class Producer:
+            def __init__(self, prefix: str):
+                self.prefix = prefix
+
+            @component.output_types(value=Optional[str])
+            def run(self, text: Optional[str]):
+                return {"value": f"{self.prefix}: {text}"}
+
+        @component
+        class EmptyProcessor:
+            @component.output_types()
+            def run(self, sources: list[str]):
+                # Returns empty dict when sources is empty
+                return {}
+
+        @component
+        class Combiner:
+            @component.output_types(combined=str)
+            def run(self, input_a: Optional[str], input_b: Optional[str]):
+                if input_a is None:
+                    input_a = ""
+                if input_b is None:
+                    input_b = ""
+                return {"combined": f"{input_a} | {input_b}"}
+
+        pp = Pipeline()
+        pp.add_component("producer_a", Producer("A"))
+        pp.add_component("producer_b", Producer("B"))
+        pp.add_component("empty_processor", EmptyProcessor())
+        pp.add_component("combiner", Combiner())
+
+        pp.connect("producer_a.value", "combiner.input_a")
+        pp.connect("producer_b.value", "combiner.input_b")
+
+        result = pp.run(
+            {"producer_a": {"text": "hello"}, "producer_b": {"text": "world"}, "empty_processor": {"sources": []}},
+            include_outputs_from={"producer_a", "empty_processor", "combiner"},
+        )
+
+        # Producer A should appear in results because it's in include_outputs_from
+        assert "producer_a" in result
+        assert result["producer_a"] == {"value": "A: hello"}
+        # Producer B should NOT appear since it's not in include_outputs_from
+        assert "producer_b" not in result
+        # Combiner should appear in results
+        assert "combiner" in result
+        assert result["combiner"] == {"combined": "A: hello | B: world"}
+        # Empty processor should appear in results even though it returns an empty dict
+        # because it's in include_outputs_from
+        assert "empty_processor" in result
+        assert result["empty_processor"] == {}

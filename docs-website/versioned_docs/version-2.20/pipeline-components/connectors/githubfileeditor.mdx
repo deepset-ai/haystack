@@ -1,0 +1,104 @@
+---
+title: "GitHubFileEditor"
+id: githubfileeditor
+slug: "/githubfileeditor"
+description: "This is a component for editing files in GitHub repositories through the GitHub API."
+---
+
+# GitHubFileEditor
+
+This is a component for editing files in GitHub repositories through the GitHub API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a Chat Generator, or right at the beginning of a pipeline |
+| **Mandatory init variables** | `github_token`: GitHub personal access token. Can be set with `GITHUB_TOKEN` env var. |
+| **Mandatory run variables** | `command`: Operation type (edit, create, delete, undo)  <br /> <br />`payload`: Command-specific parameters |
+| **Output variables** | `result`: String that indicates the operation result |
+| **API reference** | [GitHub](/reference/integrations-github) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/github |
+
+</div>
+
+## Overview
+
+`GitHubFileEditor` supports multiple file operations, including editing existing files, creating new files, deleting files, and undoing recent changes.
+
+There are four main commands:
+
+- **EDIT**: Edit an existing file by replacing specific content
+- **CREATE**: Create a new file with specified content
+- **DELETE**: Delete an existing file
+- **UNDO**: Revert the last commit if made by the same user
+
+### Authorization
+
+This component requires GitHub authentication with a personal access token. You can set the token using the `GITHUB_TOKEN` environment variable, or pass it directly during initialization via the `github_token` parameter.
+
+To create a personal access token, visit [GitHub's token settings page](https://github.com/settings/tokens). Make sure to grant the appropriate permissions for repository access and content management.
+
+### Installation
+
+Install the GitHub integration with pip:
+
+```shell
+pip install github-haystack
+```
+
+## Usage
+
+:::info Repository Placeholder
+
+To run the following code snippets, you need to replace the `owner/repo` with your own GitHub repository name.
+:::
+
+### On its own
+
+Editing an existing file:
+
+```python
+from haystack_integrations.components.connectors.github import GitHubFileEditor, Command
+
+editor = GitHubFileEditor(repo="owner/repo", branch="main")
+
+result = editor.run(
+    command=Command.EDIT,
+    payload={
+        "path": "src/example.py",
+        "original": "def old_function():",
+        "replacement": "def new_function():",
+        "message": "Renamed function for clarity"
+    }
+)
+
+print(result)
+```
+
+```bash
+{'result': 'Edit successful'}
+```
+
+Creating a new file:
+
+```python
+from haystack_integrations.components.connectors.github import GitHubFileEditor, Command
+
+editor = GitHubFileEditor(repo="owner/repo")
+
+result = editor.run(
+    command=Command.CREATE,
+    payload={
+        "path": "docs/new_file.md",
+        "content": "# New Documentation\n\nThis is a new file.",
+        "message": "Add new documentation file"
+    }
+)
+
+print(result)
+```
+
+```bash
+{'result': 'File created successfully'}
+```
