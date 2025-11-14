@@ -5,6 +5,24 @@ This directory contains the Docusaurus-powered documentation website for [Haysta
 - **Vercel production deployment:** https://haystack-docs.vercel.app/docs/intro
 - **Live site:** https://docs.haystack.deepset.ai
 
+**Table of Contents**
+
+- [About](#about)
+- [Key Features](#key-features)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Common tasks](#common-tasks)
+- [Project Structure](#project-structure)
+- [Technology Stack](#technology-stack)
+- [Available Scripts](#available-scripts)
+- [Contributing](#contributing)
+- [CI/CD and Automation](#cicd-and-automation)
+  - [Versioning](#versioning)
+- [Deployment](#deployment)
+- [Related Links](#related-links)
+- [License](#license)
+- [Support](#support)
+
 ## About
 
 This documentation site is built with Docusaurus 3 and provides comprehensive guides, tutorials, API references, and best practices for using Haystack. The site supports multiple versions and automated API reference generation.
@@ -25,7 +43,13 @@ This documentation site is built with Docusaurus 3 and provides comprehensive gu
 
 ## Quick Start
 
+**Important:** All commands must be run from the `haystack/docs-website` directory.
+
 ```bash
+# Clone the repository and navigate to docs-website
+git clone https://github.com/deepset-ai/haystack.git
+cd haystack/docs-website
+
 # Install dependencies
 npm install
 
@@ -90,7 +114,7 @@ docs-website/
 
 ## Available Scripts
 
-Run these commands from the `docs-website` directory:
+**Important:** Run these commands from the `haystack/docs-website` directory:
 
 | Command | Description |
 |---------|-------------|

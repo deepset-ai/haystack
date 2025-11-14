@@ -20,6 +20,8 @@ npm install
 npm start
 ```
 
+**Note:** All subsequent commands in this guide should be run from the `haystack/docs-website` directory unless otherwise specified.
+
 3. Edit under `docs/` for the unstable version, and under `versioned_docs/version-<highest>/` for the latest stable release. If you add a new page, include its ID in `sidebars.js` or the appropriate versioned sidebar.
 
 4. Optional production check:
@@ -62,7 +64,7 @@ git push -u origin HEAD
   - [Blank Page on npm start](#blank-page-on-npm-start)
   - [Cache Issues](#cache-issues)
   - [Build Errors](#build-errors)
-  - [Vale StylesPath Error](#vale-stylespath-error)
+  - [Vale Errors](#vale-errors)
 - [Moving or Removing Pages](#moving-or-removing-pages)
 - [Images and Assets](#images-and-assets)
 - [Pull Request Process](#pull-request-process)
