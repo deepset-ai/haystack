@@ -1,0 +1,3 @@
+enhancements:
+  - |
+    Add run_async method to FilterRetriever and AutoMergingRetriever components to support asynchronous execution.
