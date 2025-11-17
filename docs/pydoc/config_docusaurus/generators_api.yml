@@ -15,6 +15,7 @@ loaders:
         "chat/openai",
         "chat/openai_responses",
         "chat/fallback",
+        "utils",
       ]
     ignore_when_discovered: ["__init__"]
 processors:
