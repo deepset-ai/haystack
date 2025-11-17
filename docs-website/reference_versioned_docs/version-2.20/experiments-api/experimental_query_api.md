@@ -52,7 +52,7 @@ def __init__(*,
              chat_generator: Optional[ChatGenerator] = None,
              prompt_template: Optional[str] = None,
              n_expansions: int = 4,
-             include_original_query: bool = True)
+             include_original_query: bool = True) -> None
 ```
 
 Initialize the QueryExpander component.
@@ -73,7 +73,7 @@ structure: `{"queries": ["query1", "query2", "query3"]}`. The template should in
 #### QueryExpander.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -88,7 +88,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "QueryExpander"
+def from_dict(cls, data: dict[str, Any]) -> "QueryExpander"
 ```
 
 Deserializes the component from a dictionary.
@@ -106,9 +106,9 @@ Deserialized component.
 #### QueryExpander.run
 
 ```python
-@component.output_types(queries=List[str])
+@component.output_types(queries=list[str])
 def run(query: str,
-        n_expansions: Optional[int] = None) -> Dict[str, List[str]]
+        n_expansions: Optional[int] = None) -> dict[str, list[str]]
 ```
 
 Expand the input query into multiple semantically similar queries.
@@ -124,7 +124,6 @@ If None, uses the value from initialization. Can be 0 to generate no additional 
 **Raises**:
 
 - `ValueError`: If n_expansions is not positive (less than or equal to 0).
-- `RuntimeError`: If the component is not warmed up and the chat generator does not support warm up.
 
 **Returns**:
 
@@ -140,5 +139,5 @@ to the n_expansions alternative queries.
 def warm_up()
 ```
 
-Warm up the underlying LLM if it supports it.
+Warm up the LLM provider component.
 
