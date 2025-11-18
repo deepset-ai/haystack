@@ -960,15 +960,19 @@ Third line.
 
     def test_variables_correct_with_assignment(self):
         template = """{% message role="user" %}
-{% set x = name %}
-Hello, my name is {{ x }}!
+{% if existing_documents is not none -%}
+{% set x = existing_documents|length -%}
+{% else -%}
+{% set x = 0 -%}
+{% endif -%}
+The number is {{ x }}!
 {% endmessage %}
 """
         builder = ChatPromptBuilder(template=template, required_variables="*")
-        assert builder.variables == ["name"]
+        assert builder.variables == ["existing_documents"]
         assert builder.required_variables == "*"
-        res = builder.run(name="John")
-        assert res["prompt"][0].text == "Hello, my name is John!"
+        res = builder.run(existing_documents=None)
+        assert res["prompt"][0].text == "The number is 0!"
 
     def test_variables_correct_with_tuple_assignment(self):
         template = """{% message role="user" %}

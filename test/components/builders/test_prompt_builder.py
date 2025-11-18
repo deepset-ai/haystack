@@ -338,7 +338,7 @@ class TestPromptBuilder:
             _ = PromptBuilder(template="This is a {{ variable }}")
             assert "but `required_variables` is not set." in caplog.text
 
-    def test_template_assigned_variables_from_required_inputs(self) -> None:
+    def test_variables_correct_with_assignment(self) -> None:
         template = """{% if existing_documents is not none %}
 {% set existing_doc_len = existing_documents|length %}
 {% else %}
