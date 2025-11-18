@@ -14,6 +14,7 @@ from typing_extensions import TypeAlias
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
+from haystack.utils.jinja2 import _collect_assigned_variables
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class OutputAdapter:
         output_type: TypeAlias,
         custom_filters: Optional[dict[str, Callable]] = None,
         unsafe: bool = False,
-    ):
+    ) -> None:
         """
         Create an OutputAdapter component.
 
@@ -179,7 +180,9 @@ class OutputAdapter:
         Extracts all variables from a list of Jinja template strings.
 
         :param env: A Jinja environment.
-        :return: A set of variable names extracted from the template strings.
+        :returns: A set of variable names extracted from the template strings.
         """
-        ast = env.parse(self.template)
-        return meta.find_undeclared_variables(ast)
+        jinja2_ast = env.parse(self.template)
+        template_variables = meta.find_undeclared_variables(jinja2_ast)
+        assigned_variables = _collect_assigned_variables(jinja2_ast)
+        return template_variables - assigned_variables

@@ -9,6 +9,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_to_dict, logging
 from haystack.utils import Jinja2TimeExtension
+from haystack.utils.jinja2 import _collect_assigned_variables
 
 logger = logging.getLogger(__name__)
 
@@ -174,11 +175,13 @@ class PromptBuilder:
             self._env = SandboxedEnvironment()
 
         self.template = self._env.from_string(template)
+
         if not variables:
-            # infer variables from template
-            ast = self._env.parse(template)
-            template_variables = meta.find_undeclared_variables(ast)
-            variables = list(template_variables)
+            jinja2_ast = self._env.parse(template)
+            template_variables = meta.find_undeclared_variables(jinja2_ast)
+            assigned_variables = _collect_assigned_variables(jinja2_ast)
+            variables = list(template_variables - assigned_variables)
+
         variables = variables or []
         self.variables = variables
 
