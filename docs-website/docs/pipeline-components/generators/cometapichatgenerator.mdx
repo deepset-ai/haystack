@@ -1,0 +1,300 @@
+---
+title: "CometAPIChatGenerator"
+id: cometapichatgenerator
+slug: "/cometapichatgenerator"
+description: "CometAPIChatGenerator enables chat completion using AI models through the Comet API."
+---
+
+# CometAPIChatGenerator
+
+CometAPIChatGenerator enables chat completion using AI models through the Comet API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: The Comet API key. Can be set with `COMET_API_KEY` env var. |
+| **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **API reference** | [Comet API](/reference/integrations-cometapi) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cometapi |
+
+</div>
+
+## Overview
+
+`CometAPIChatGenerator` provides access to over 500 AI models through the Comet API, a unified API gateway for models from providers like OpenAI, Anthropic, Google, Meta, Mistral, and many more. You can use different models from different providers within a single pipeline with a consistent interface.
+
+Comet API uses a single API key for all providers, which allows you to switch between or combine different models without managing multiple credentials.
+
+The range of models supported by Comet API include:
+
+- OpenAI models: `gpt-4o`, `gpt-4o-mini` (default), `gpt-4-turbo`, and more
+- Anthropic models: `claude-3-5-sonnet`, `claude-3-opus`, and more
+- Google models: `gemini-1.5-pro`, `gemini-1.5-flash`, and more
+- Meta models: `llama-3.3-70b`, `llama-3.1-405b`, and more
+- Mistral models: `mistral-large-latest`, `mistral-small`, and more
+
+For a complete list of available models, check the [Comet API documentation](https://apidoc.cometapi.com/).
+
+The component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+
+You can pass any chat completion parameters valid for the underlying model directly to `CometAPIChatGenerator` using the `generation_kwargs` parameter, both at initialization and to the `run()` method.
+
+### Authentication
+
+`CometAPIChatGenerator` needs a Comet API key to work. You can set this key in:
+
+- The `api_key` init parameter using [Secret API](../../concepts/secret-management.mdx)
+- The `COMET_API_KEY` environment variable (recommended)
+
+### Structured Output
+
+`CometAPIChatGenerator` supports structured output generation for compatible models, allowing you to receive responses in a predictable format. You can use Pydantic models or JSON schemas to define the structure of the output through the `response_format` parameter in `generation_kwargs`.
+
+This is useful when you need to extract structured data from text or generate responses that match a specific format.
+
+```python
+from pydantic import BaseModel
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
+
+class CityInfo(BaseModel):
+    city_name: str
+    country: str
+    population: int
+    famous_for: str
+
+client = CometAPIChatGenerator(
+    model="gpt-4o-2024-08-06",
+    generation_kwargs={"response_format": CityInfo}
+)
+
+response = client.run(messages=[
+    ChatMessage.from_user(
+        "Berlin is the capital and largest city of Germany with a population of "
+        "approximately 3.7 million. It's famous for its history, culture, and nightlife."
+    )
+])
+print(response["replies"][0].text)
+
+>> {"city_name":"Berlin","country":"Germany","population":3700000,
+>> "famous_for":"history, culture, and nightlife"}
+```
+
+:::info Model Compatibility
+Structured output support depends on the underlying model. OpenAI models starting from `gpt-4o-2024-08-06` support Pydantic models and JSON schemas. For details on which models support this feature, refer to the respective model provider's documentation.
+:::
+
+### Tool Support
+
+`CometAPIChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = CometAPIChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
+
+`CometAPIChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+
+# Configure the generator with a streaming callback
+component = CometAPIChatGenerator(streaming_callback=print_streaming_chunk)
+
+# Pass a list of messages
+from haystack.dataclasses import ChatMessage
+component.run([ChatMessage.from_user("Your question here")])
+```
+
+:::info
+Streaming works only with a single response. If a provider supports multiple candidates, set `n=1`.
+:::
+
+See our [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+
+We recommend to give preference to `print_streaming_chunk` by default. Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+
+## Usage
+
+Install the `cometapi-haystack` package to use the `CometAPIChatGenerator`:
+
+```shell
+pip install cometapi-haystack
+```
+
+### On its own
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
+
+client = CometAPIChatGenerator(model="gpt-4o-mini", streaming_callback=print_streaming_chunk)
+
+response = client.run([ChatMessage.from_user("What's Natural Language Processing? Be brief.")])
+
+>> Natural Language Processing (NLP) is a field of artificial intelligence that
+>> focuses on the interaction between computers and humans through natural language.
+>> It involves enabling machines to understand, interpret, and generate human
+>> language in a meaningful way, facilitating tasks such as language translation,
+>> sentiment analysis, and text summarization.
+
+print(response)
+
+>> {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=
+>> [TextContent(text='Natural Language Processing (NLP) is a field of artificial
+>> intelligence that focuses on the interaction between computers and humans through
+>> natural language...')], _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18',
+>> 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 59,
+>> 'prompt_tokens': 15, 'total_tokens': 74}})]}
+```
+
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
+
+# Use a multimodal model like GPT-4o
+llm = CometAPIChatGenerator(model="gpt-4o")
+
+image = ImageContent.from_file_path("apple.jpg", detail="low")
+user_message = ChatMessage.from_user(content_parts=[
+    "What does the image show? Max 5 words.",
+    image
+])
+
+response = llm.run([user_message])["replies"][0].text
+print(response)
+
+>>> Red apple on straw.
+```
+
+### In a pipeline
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+from haystack.utils import Secret
+
+# No parameter init, we don't use any runtime template variables
+prompt_builder = ChatPromptBuilder()
+llm = CometAPIChatGenerator()
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+location = "Berlin"
+messages = [
+    ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
+    ChatMessage.from_user("Tell me about {{location}}")
+]
+pipe.run(data={"prompt_builder": {"template_variables": {"location": location}, "template": messages}})
+
+>> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+>> _content=[TextContent(text='Berlin ist die Hauptstadt Deutschlands und eine der
+>> bedeutendsten Städte Europas. Es ist bekannt für ihre reiche Geschichte,
+>> kulturelle Vielfalt und kreative Scene. \n\nDie Stadt hat eine bewegte
+>> Vergangenheit, die stark von der Teilung zwischen Ost- und Westberlin während
+>> des Kalten Krieges geprägt war. Die Berliner Mauer, die von 1961 bis 1989 die
+>> Stadt teilte, ist heute ein Symbol für die Wiedervereinigung und die Freiheit.')],
+>> _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0,
+>> 'finish_reason': 'stop', 'usage': {'completion_tokens': 260,
+>> 'prompt_tokens': 29, 'total_tokens': 289}})]}
+```
+
+Using multiple models in one pipeline:
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack import Pipeline
+
+# Create a pipeline that uses different models for different tasks
+prompt_builder = ChatPromptBuilder()
+# Use Claude for complex reasoning
+claude_llm = CometAPIChatGenerator(model="claude-3-5-sonnet-20241022")
+# Use GPT-4o-mini for simple tasks
+gpt_llm = CometAPIChatGenerator(model="gpt-4o-mini")
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("claude", claude_llm)
+
+pipe.connect("prompt_builder.prompt", "claude.messages")
+
+messages = [ChatMessage.from_user("Explain quantum computing in simple terms.")]
+result = pipe.run(data={"prompt_builder": {"template": messages}})
+print(result["claude"]["replies"][0].text)
+```
+
+With tool calling:
+
+```python
+from haystack import Pipeline
+from haystack.components.tools import ToolInvoker
+from haystack.dataclasses import ChatMessage
+from haystack.tools import Tool
+from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
+
+def weather(city: str) -> str:
+    """Get weather for a given city."""
+    return f"The weather in {city} is sunny and 32°C"
+
+tool = Tool(
+    name="weather",
+    description="Get weather for a given city",
+    parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+    function=weather,
+)
+
+pipeline = Pipeline()
+pipeline.add_component("generator", CometAPIChatGenerator(tools=[tool]))
+pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
+
+pipeline.connect("generator", "tool_invoker")
+
+results = pipeline.run(
+    data={
+        "generator": {
+            "messages": [ChatMessage.from_user("What's the weather like in Paris?")],
+            "generation_kwargs": {"tool_choice": "auto"},
+        }
+    }
+)
+
+print(results["tool_invoker"]["tool_messages"][0].tool_call_result.result)
+>> The weather in Paris is sunny and 32°C
+```
