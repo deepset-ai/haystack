@@ -340,44 +340,44 @@ class TestPromptBuilder:
 
     def test_template_assigned_variables_from_required_inputs(self) -> None:
         template = """{% if existing_documents is not none %}
-                   {% set existing_doc_len = existing_documents|length %}
-                   {% else %}
-                   {% set existing_doc_len = 0 %}
-                   {% endif %}
-                   {% for doc in docs %}
-                   <document reference="{{loop.index + existing_doc_len}}">
-                    {{ doc.content }}
-                    </document>
-                   {% endfor %}
-                   """
-
-        builder = PromptBuilder(template=template, required_variables="*")
-
+{% set existing_doc_len = existing_documents|length %}
+{% else %}
+{% set existing_doc_len = 0 %}
+{% endif %}
+{% for doc in docs %}
+<document reference="{{loop.index + existing_doc_len}}">
+{{ doc.content }}
+</document>
+{% endfor %}
+"""
         builder = PromptBuilder(template=template, required_variables="*")
         assert set(builder.variables) == {"docs", "existing_documents"}
+        assert builder.required_variables == "*"
 
     def test_variables_correct_with_tuple_assignment(self):
-        template = """{% if existing_documents is not none %}
-{% set x, y = (existing_documents|length, 1) %}
-{% else %}
-{% set x, y = (0, 1) %}
-{% endif %}
+        template = """{% if existing_documents is not none -%}
+{% set x, y = (existing_documents|length, 1) -%}
+{% else -%}
+{% set x, y = (0, 1) -%}
+{% endif -%}
 x={{ x }}, y={{ y }}
 """
         builder = PromptBuilder(template=template, required_variables="*")
-        assert set(builder.variables) == {"existing_documents"}
+        assert builder.variables == ["existing_documents"]
+        assert builder.required_variables == "*"
         res = builder.run(existing_documents=None)
-        assert "x=0, y=1" in res["prompt"]
+        assert res["prompt"] == "x=0, y=1"
 
     def test_variables_correct_with_list_assignment(self):
-        template = """{% if existing_documents is not none %}
-{% set x, y = [existing_documents|length, 1] %}
-{% else %}
-{% set x, y = [0, 1] %}
-{% endif %}
+        template = """{% if existing_documents is not none -%}
+{% set x, y = [existing_documents|length, 1] -%}
+{% else -%}
+{% set x, y = [0, 1] -%}
+{% endif -%}
 x={{ x }}, y={{ y }}
 """
         builder = PromptBuilder(template=template, required_variables="*")
-        assert set(builder.variables) == {"existing_documents"}
+        assert builder.variables == ["existing_documents"]
+        assert builder.required_variables == "*"
         res = builder.run(existing_documents=None)
-        assert "x=0, y=1" in res["prompt"]
+        assert res["prompt"] == "x=0, y=1"

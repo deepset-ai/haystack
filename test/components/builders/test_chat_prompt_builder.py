@@ -958,31 +958,40 @@ Third line.
         assert builder.variables == ["name", "assistant_name"]
         assert builder.required_variables == ["name"]
 
-    def test_variables_correct_with_tuple_assignment(self):
-        template = """{% if existing_documents is not none %}
-{% set x, y = (existing_documents|length, 1) %}
-{% else %}
-{% set x, y = (0, 1) %}
-{% endif %}
-{% message role="user" %}x={{ x }}, y={{ y }}{% endmessage %}
-{% set x = 0 %}
+    def test_variables_correct_with_assignment(self):
+        template = """{% message role="user" %}
+{% set x = name %}
+Hello, my name is {{ x }}!
+{% endmessage %}
 """
         builder = ChatPromptBuilder(template=template, required_variables="*")
-        assert set(builder.variables) == {"existing_documents"}
-        res = builder.run(existing_documents=None)
-        prompt = res["prompt"]
-        assert any("x=0, y=1" in msg.text for msg in prompt)
+        assert builder.variables == ["name"]
+        assert builder.required_variables == "*"
+        res = builder.run(name="John")
+        assert res["prompt"][0].text == "Hello, my name is John!"
+
+    def test_variables_correct_with_tuple_assignment(self):
+        template = """{% message role="user" %}
+{% set x, y = (0, 1) %}
+x={{ x }}, y={{ y }}
+Hello, my name is {{name}}!
+{% endmessage %}
+"""
+        builder = ChatPromptBuilder(template=template, required_variables="*")
+        assert builder.variables == ["name"]
+        assert builder.required_variables == "*"
+        res = builder.run(name="John")
+        assert res["prompt"][0].text == "x=0, y=1\nHello, my name is John!"
 
     def test_variables_correct_with_list_assignment(self):
-        template = """{% if existing_documents is not none %}
-{% set x, y = [existing_documents|length, 1] %}
-{% else %}
+        template = """{% message role="user" %}
 {% set x, y = [0, 1] %}
-{% endif %}
-{% message role="user" %}x={{ x }}, y={{ y }}{% endmessage %}
+x={{ x }}, y={{ y }}
+Hello, my name is {{name}}!
+{% endmessage %}
 """
         builder = ChatPromptBuilder(template=template, required_variables="*")
-        assert set(builder.variables) == {"existing_documents"}
-        res = builder.run(existing_documents=None)
-        prompt = res["prompt"]
-        assert any("x=0, y=1" in msg.text for msg in prompt)
+        assert builder.variables == ["name"]
+        assert builder.required_variables == "*"
+        res = builder.run(name="John")
+        assert res["prompt"][0].text == "x=0, y=1\nHello, my name is John!"
