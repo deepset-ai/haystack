@@ -960,12 +960,13 @@ Third line.
 
     def test_variables_correct_with_tuple_assignment(self):
         template = """{% if existing_documents is not none %}
-    {% set x, y = (existing_documents|length, 1) %}
-    {% else %}
-    {% set x, y = (0, 1) %}
-    {% endif %}
-    {% message role="user" %}x={{ x }}, y={{ y }}{% endmessage %}
-    """
+{% set x, y = (existing_documents|length, 1) %}
+{% else %}
+{% set x, y = (0, 1) %}
+{% endif %}
+{% message role="user" %}x={{ x }}, y={{ y }}{% endmessage %}
+{% set x = 0 %}
+"""
         builder = ChatPromptBuilder(template=template, required_variables="*")
         assert set(builder.variables) == {"existing_documents"}
         res = builder.run(existing_documents=None)
@@ -974,12 +975,12 @@ Third line.
 
     def test_variables_correct_with_list_assignment(self):
         template = """{% if existing_documents is not none %}
-    {% set x, y = [existing_documents|length, 1] %}
-    {% else %}
-    {% set x, y = [0, 1] %}
-    {% endif %}
-    {% message role="user" %}x={{ x }}, y={{ y }}{% endmessage %}
-    """
+{% set x, y = [existing_documents|length, 1] %}
+{% else %}
+{% set x, y = [0, 1] %}
+{% endif %}
+{% message role="user" %}x={{ x }}, y={{ y }}{% endmessage %}
+"""
         builder = ChatPromptBuilder(template=template, required_variables="*")
         assert set(builder.variables) == {"existing_documents"}
         res = builder.run(existing_documents=None)
