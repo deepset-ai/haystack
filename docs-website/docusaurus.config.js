@@ -117,6 +117,20 @@ const config = {
             type: 'docsVersionDropdown',
             position: 'left',
             dropdownActiveClassDisabled: true,
+            dropdownItemsAfter: [
+              {
+                type: 'html',
+                value: '<hr style="margin: 0.3rem 0;">',
+              },
+              {
+                href: '/docs/faq#where-can-i-find-tutorials-and-documentation-for-haystack-1x',
+                label: '1.x archived documentation',
+              },
+              {
+                href: '/docs/faq#where-is-the-documentation-for-haystack-217-and-older',
+                label: '2.x archived documentation',
+              },
+            ],
           },
           {
             type: 'doc',
@@ -124,13 +138,13 @@ const config = {
             label: 'Docs',
             position: 'left',
           },
-            {
-              type: 'doc',
-              docsPluginId: 'reference',
-              docId: 'api-index',
-              label: 'API Reference',
-              position: 'left',
-            },
+          {
+            type: 'doc',
+            docsPluginId: 'reference',
+            docId: 'api-index',
+            label: 'API Reference',
+            position: 'left',
+          },
           {
             href: 'https://github.com/deepset-ai/haystack/tree/main/docs-website',
             label: 'GitHub',
