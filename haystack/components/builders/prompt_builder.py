@@ -9,7 +9,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_to_dict, logging
 from haystack.utils import Jinja2TimeExtension
-from haystack.utils.jinja2 import _collect_assigned_variables
+from haystack.utils.jinja2_extensions import _collect_assigned_variables
 
 logger = logging.getLogger(__name__)
 

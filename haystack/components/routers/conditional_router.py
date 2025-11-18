@@ -12,7 +12,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
-from haystack.utils.jinja2 import _collect_assigned_variables
+from haystack.utils.jinja2_extensions import _collect_assigned_variables
 
 logger = logging.getLogger(__name__)
 

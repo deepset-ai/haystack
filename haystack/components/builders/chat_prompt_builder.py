@@ -13,8 +13,8 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
-from haystack.utils.jinja2 import _collect_assigned_variables
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
+from haystack.utils.jinja2_extensions import _collect_assigned_variables
 
 logger = logging.getLogger(__name__)
 
