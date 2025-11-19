@@ -12,8 +12,6 @@
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
-    "update-next-version": "node scripts/update-next-version.js",
-    "create-version": "node scripts/create-new-version.js",
     "generate-llms-txt": "docusaurus generate-llms-txt"
   },
   "dependencies": {
