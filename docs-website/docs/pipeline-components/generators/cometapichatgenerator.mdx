@@ -252,12 +252,17 @@ gpt_llm = CometAPIChatGenerator(model="gpt-4o-mini")
 pipe = Pipeline()
 pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("claude", claude_llm)
+pipe.add_component("gpt", gpt_llm)
 
+# Feed the same prompt to both models
 pipe.connect("prompt_builder.prompt", "claude.messages")
+pipe.connect("prompt_builder.prompt", "gpt.messages")
 
 messages = [ChatMessage.from_user("Explain quantum computing in simple terms.")]
 result = pipe.run(data={"prompt_builder": {"template": messages}})
-print(result["claude"]["replies"][0].text)
+
+print("Claude:", result["claude"]["replies"][0].text)
+print("GPT-4o-mini:", result["gpt"]["replies"][0].text)
 ```
 
 With tool calling:
