@@ -28,7 +28,7 @@ The `Answer` class serves as the base for responses generated within Haystack, c
 #### Attributes
 
 ```python
-@dataclass(frozen=True)
+@dataclass
 class Answer:
     data: Any
     query: str
@@ -99,10 +99,10 @@ class GeneratedAnswer:
 #### Attributes
 
 ```python
-@dataclass(frozen=True)
+@dataclass(repr=False)
 class ByteStream:
     data: bytes
-    metadata: Dict[str, Any] = field(default_factory=dict, hash=False)
+    meta: Dict[str, Any] = field(default_factory=dict, hash=False)
     mime_type: Optional[str] = field(default=None)
 ```
 
@@ -182,12 +182,13 @@ class StreamingChunk:
     tool_call_result: Optional[ToolCallResult] = field(default=None)
     start: bool = field(default=False)
     finish_reason: Optional[FinishReason] = field(default=None)
+    reasoning: Optional[ReasoningContent] = field(default=None)
 ```
 
 #### Example
 
 ```python
-from haystack.dataclasses.streaming_chunk import StreamingChunk, ComponentInfo
+from haystack.dataclasses.streaming_chunk import StreamingChunk, ToolCallDelta
 
 ## Basic text chunk
 chunk = StreamingChunk(
@@ -198,6 +199,7 @@ chunk = StreamingChunk(
 
 ## Tool call chunk
 tool_chunk = StreamingChunk(
+    content="",
     tool_calls=[ToolCallDelta(index=0, tool_name="calculator", arguments='{"operation": "add", "a": 2, "b": 3}')],
     index=0,
     start=False,
@@ -220,6 +222,7 @@ class ToolCallDelta:
     tool_name: Optional[str] = field(default=None)
     arguments: Optional[str] = field(default=None)
     id: Optional[str] = field(default=None)
+    extra: Optional[Dict[str, Any]] = field(default=None)
 ```
 
 ### ComponentInfo
