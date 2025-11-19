@@ -96,6 +96,15 @@ const config = {
         lastVersion: '2.20',
       },
     ],
+    [
+      'docusaurus-plugin-generate-llms-txt',
+      {
+        // defaults to "llms.txt", but set explicitly for clarity
+        outputFile: 'llms.txt',
+      },
+    ],
+    // Local plugin to teach Webpack how to handle `.txt` files like `llms.txt`
+    require.resolve('./plugins/txtLoaderPlugin'),
   ],
 
   themeConfig:
