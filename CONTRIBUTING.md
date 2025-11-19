@@ -25,6 +25,7 @@ and smooth out the experience for all involved. The community looks forward to y
   - [Suggesting Enhancements](#suggesting-enhancements)
     - [Before Submitting an Enhancement](#before-submitting-an-enhancement)
     - [How Do I Submit a Good Enhancement Suggestion?](#how-do-i-submit-a-good-enhancement-suggestion)
+  - [Contributing to Documentation](#contributing-to-documentation)
   - [Contribute code](#contribute-code)
     - [Where to start](#where-to-start)
     - [Setting up your development environment](#setting-up-your-development-environment)
@@ -128,6 +129,10 @@ Enhancement suggestions are tracked as GitHub issues of type [Feature request fo
 
 - Use a **clear and descriptive title** for the issue to identify the suggestion.
 - Fill the issue following the template
+
+## Contributing to Documentation
+
+If you'd like to improve the documentation by fixing errors, clarifying explanations, adding examples, or creating new guides, see the [Documentation Contributing Guide](docs-website/CONTRIBUTING.md).
 
 ## Contribute code
 
