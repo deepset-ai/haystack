@@ -66,8 +66,8 @@ def __init__(*,
              api_key: Secret = Secret.from_env_var("GOOGLE_API_KEY"),
              model: str = "gemini-2.0-flash",
              generation_config: Optional[Union[GenerationConfig,
-                                               Dict[str, Any]]] = None,
-             safety_settings: Optional[Dict[HarmCategory,
+                                               dict[str, Any]]] = None,
+             safety_settings: Optional[dict[HarmCategory,
                                             HarmBlockThreshold]] = None,
              streaming_callback: Optional[Callable[[StreamingChunk],
                                                    None]] = None)
@@ -96,7 +96,7 @@ The callback function accepts StreamingChunk as an argument.
 #### GoogleAIGeminiGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -111,7 +111,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GoogleAIGeminiGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "GoogleAIGeminiGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -129,7 +129,7 @@ Deserialized component.
 #### GoogleAIGeminiGenerator.run
 
 ```python
-@component.output_types(replies=List[str])
+@component.output_types(replies=list[str])
 def run(parts: Variadic[Union[str, ByteStream, Part]],
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None)
 ```
@@ -229,10 +229,10 @@ def __init__(*,
              api_key: Secret = Secret.from_env_var("GOOGLE_API_KEY"),
              model: str = "gemini-2.0-flash",
              generation_config: Optional[Union[GenerationConfig,
-                                               Dict[str, Any]]] = None,
-             safety_settings: Optional[Dict[HarmCategory,
+                                               dict[str, Any]]] = None,
+             safety_settings: Optional[dict[HarmCategory,
                                             HarmBlockThreshold]] = None,
-             tools: Optional[List[Tool]] = None,
+             tools: Optional[list[Tool]] = None,
              tool_config: Optional[content_types.ToolConfigDict] = None,
              streaming_callback: Optional[StreamingCallbackT] = None)
 ```
@@ -264,7 +264,7 @@ The callback function accepts StreamingChunk as an argument.
 #### GoogleAIGeminiChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -279,7 +279,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GoogleAIGeminiChatGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "GoogleAIGeminiChatGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -297,11 +297,11 @@ Deserialized component.
 #### GoogleAIGeminiChatGenerator.run
 
 ```python
-@component.output_types(replies=List[ChatMessage])
-def run(messages: List[ChatMessage],
+@component.output_types(replies=list[ChatMessage])
+def run(messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
-        tools: Optional[List[Tool]] = None)
+        tools: Optional[list[Tool]] = None)
 ```
 
 Generates text based on the provided messages.
@@ -323,11 +323,11 @@ A dictionary containing the following key:
 #### GoogleAIGeminiChatGenerator.run\_async
 
 ```python
-@component.output_types(replies=List[ChatMessage])
-async def run_async(messages: List[ChatMessage],
+@component.output_types(replies=list[ChatMessage])
+async def run_async(messages: list[ChatMessage],
                     streaming_callback: Optional[StreamingCallbackT] = None,
                     *,
-                    tools: Optional[List[Tool]] = None)
+                    tools: Optional[list[Tool]] = None)
 ```
 
 Async version of the run method. Generates text based on the provided messages.
@@ -343,3 +343,4 @@ during component initialization.
 
 A dictionary containing the following key:
 - `replies`:  A list containing the generated responses as `ChatMessage` instances.
+
