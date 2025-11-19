@@ -47,8 +47,8 @@ def __init__(*,
              project_id: Optional[str] = None,
              location: Optional[str] = None,
              generation_config: Optional[Union[GenerationConfig,
-                                               Dict[str, Any]]] = None,
-             safety_settings: Optional[Dict[HarmCategory,
+                                               dict[str, Any]]] = None,
+             safety_settings: Optional[dict[HarmCategory,
                                             HarmBlockThreshold]] = None,
              system_instruction: Optional[Union[str, ByteStream, Part]] = None,
              streaming_callback: Optional[Callable[[StreamingChunk],
@@ -88,7 +88,7 @@ The callback function accepts StreamingChunk as an argument.
 #### VertexAIGeminiGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -103,7 +103,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "VertexAIGeminiGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "VertexAIGeminiGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -121,7 +121,7 @@ Deserialized component.
 #### VertexAIGeminiGenerator.run
 
 ```python
-@component.output_types(replies=List[str])
+@component.output_types(replies=list[str])
 def run(parts: Variadic[Union[str, ByteStream, Part]],
         streaming_callback: Optional[Callable[[StreamingChunk], None]] = None)
 ```
@@ -204,7 +204,7 @@ For a list of supported arguments see the `ImageTextModel.get_captions()` docume
 #### VertexAIImageCaptioner.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -219,7 +219,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "VertexAIImageCaptioner"
+def from_dict(cls, data: dict[str, Any]) -> "VertexAIImageCaptioner"
 ```
 
 Deserializes the component from a dictionary.
@@ -237,7 +237,7 @@ Deserialized component.
 #### VertexAIImageCaptioner.run
 
 ```python
-@component.output_types(captions=List[str])
+@component.output_types(captions=list[str])
 def run(image: ByteStream)
 ```
 
@@ -322,7 +322,7 @@ For a list of supported arguments see the `TextGenerationModel.predict()` docume
 #### VertexAICodeGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -337,7 +337,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "VertexAICodeGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "VertexAICodeGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -355,7 +355,7 @@ Deserialized component.
 #### VertexAICodeGenerator.run
 
 ```python
-@component.output_types(replies=List[str])
+@component.output_types(replies=list[str])
 def run(prefix: str, suffix: Optional[str] = None)
 ```
 
@@ -425,7 +425,7 @@ For a list of supported arguments see the `ImageGenerationModel.generate_images(
 #### VertexAIImageGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -440,7 +440,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "VertexAIImageGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "VertexAIImageGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -458,7 +458,7 @@ Deserialized component.
 #### VertexAIImageGenerator.run
 
 ```python
-@component.output_types(images=List[ByteStream])
+@component.output_types(images=list[ByteStream])
 def run(prompt: str, negative_prompt: Optional[str] = None)
 ```
 
@@ -534,7 +534,7 @@ For a list of supported arguments see the `ImageTextModel.ask_question()` docume
 #### VertexAIImageQA.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -549,7 +549,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "VertexAIImageQA"
+def from_dict(cls, data: dict[str, Any]) -> "VertexAIImageQA"
 ```
 
 Deserializes the component from a dictionary.
@@ -567,7 +567,7 @@ Deserialized component.
 #### VertexAIImageQA.run
 
 ```python
-@component.output_types(replies=List[str])
+@component.output_types(replies=list[str])
 def run(image: ByteStream, question: str)
 ```
 
@@ -651,7 +651,7 @@ For a list of supported arguments see the `TextGenerationModel.predict()` docume
 #### VertexAITextGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -666,7 +666,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "VertexAITextGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "VertexAITextGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -684,9 +684,9 @@ Deserialized component.
 #### VertexAITextGenerator.run
 
 ```python
-@component.output_types(replies=List[str],
-                        safety_attributes=Dict[str, float],
-                        citations=List[Dict[str, Any]])
+@component.output_types(replies=list[str],
+                        safety_attributes=dict[str, float],
+                        citations=list[dict[str, Any]])
 def run(prompt: str)
 ```
 
@@ -781,10 +781,10 @@ def __init__(*,
              project_id: Optional[str] = None,
              location: Optional[str] = None,
              generation_config: Optional[Union[GenerationConfig,
-                                               Dict[str, Any]]] = None,
-             safety_settings: Optional[Dict[HarmCategory,
+                                               dict[str, Any]]] = None,
+             safety_settings: Optional[dict[HarmCategory,
                                             HarmBlockThreshold]] = None,
-             tools: Optional[List[Tool]] = None,
+             tools: Optional[list[Tool]] = None,
              tool_config: Optional[ToolConfig] = None,
              streaming_callback: Optional[StreamingCallbackT] = None)
 ```
@@ -818,7 +818,7 @@ the stream. The callback function accepts StreamingChunk as an argument.
 #### VertexAIGeminiChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -833,7 +833,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "VertexAIGeminiChatGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "VertexAIGeminiChatGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -851,11 +851,11 @@ Deserialized component.
 #### VertexAIGeminiChatGenerator.run
 
 ```python
-@component.output_types(replies=List[ChatMessage])
-def run(messages: List[ChatMessage],
+@component.output_types(replies=list[ChatMessage])
+def run(messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         *,
-        tools: Optional[List[Tool]] = None)
+        tools: Optional[list[Tool]] = None)
 ```
 
 **Arguments**:
@@ -875,11 +875,11 @@ A dictionary containing the following key:
 #### VertexAIGeminiChatGenerator.run\_async
 
 ```python
-@component.output_types(replies=List[ChatMessage])
-async def run_async(messages: List[ChatMessage],
+@component.output_types(replies=list[ChatMessage])
+async def run_async(messages: list[ChatMessage],
                     streaming_callback: Optional[StreamingCallbackT] = None,
                     *,
-                    tools: Optional[List[Tool]] = None)
+                    tools: Optional[list[Tool]] = None)
 ```
 
 Async version of the run method. Generates text based on the provided messages.
@@ -955,7 +955,7 @@ def __init__(model: Literal[
              retries: int = 3,
              progress_bar: bool = True,
              truncate_dim: Optional[int] = None,
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: Optional[list[str]] = None,
              embedding_separator: str = "\n") -> None
 ```
 
@@ -990,7 +990,7 @@ For more information see the official [Google documentation](https://cloud.googl
 
 ```python
 def get_text_embedding_input(
-        batch: List[Document]) -> List[TextEmbeddingInput]
+        batch: list[Document]) -> list[TextEmbeddingInput]
 ```
 
 Converts a batch of Document objects into a list of TextEmbeddingInput objects.
@@ -998,7 +998,7 @@ Converts a batch of Document objects into a list of TextEmbeddingInput objects.
 **Arguments**:
 
 - `batch` _List[Document]_ - A list of Document objects to be converted.
-
+  
 
 **Returns**:
 
@@ -1009,8 +1009,8 @@ Converts a batch of Document objects into a list of TextEmbeddingInput objects.
 #### VertexAIDocumentEmbedder.embed\_batch\_by\_smaller\_batches
 
 ```python
-def embed_batch_by_smaller_batches(batch: List[str],
-                                   subbatch=1) -> List[List[float]]
+def embed_batch_by_smaller_batches(batch: list[str],
+                                   subbatch=1) -> list[list[float]]
 ```
 
 Embeds a batch of text strings by dividing them into smaller sub-batches.
@@ -1033,7 +1033,7 @@ Embeds a batch of text strings by dividing them into smaller sub-batches.
 #### VertexAIDocumentEmbedder.embed\_batch
 
 ```python
-def embed_batch(batch: List[str]) -> List[List[float]]
+def embed_batch(batch: list[str]) -> list[list[float]]
 ```
 
 Generate embeddings for a batch of text strings.
@@ -1041,7 +1041,7 @@ Generate embeddings for a batch of text strings.
 **Arguments**:
 
 - `batch` _List[str]_ - A list of text strings to be embedded.
-
+  
 
 **Returns**:
 
@@ -1052,8 +1052,8 @@ Generate embeddings for a batch of text strings.
 #### VertexAIDocumentEmbedder.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(documents: List[Document])
+@component.output_types(documents=list[Document])
+def run(documents: list[Document])
 ```
 
 Processes all documents in batches while adhering to the API's token limit per request.
@@ -1072,7 +1072,7 @@ A dictionary with the following keys:
 #### VertexAIDocumentEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -1087,7 +1087,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "VertexAIDocumentEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "VertexAIDocumentEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -1172,8 +1172,8 @@ For more information see the official [Google documentation](https://cloud.googl
 #### VertexAITextEmbedder.run
 
 ```python
-@component.output_types(embedding=List[float])
-def run(text: Union[List[Document], List[str], str])
+@component.output_types(embedding=list[float])
+def run(text: Union[list[Document], list[str], str])
 ```
 
 Processes text in batches while adhering to the API's token limit per request.
@@ -1192,7 +1192,7 @@ A dictionary with the following keys:
 #### VertexAITextEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -1207,7 +1207,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "VertexAITextEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "VertexAITextEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -1219,3 +1219,4 @@ Deserializes the component from a dictionary.
 **Returns**:
 
 Deserialized component.
+

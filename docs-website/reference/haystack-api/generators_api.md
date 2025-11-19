@@ -2417,3 +2417,30 @@ A dictionary with:
 - "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
   total_attempts, failed_chat_generators, plus any metadata from the successful generator.
 
+<a id="utils"></a>
+
+## Module utils
+
+<a id="utils.print_streaming_chunk"></a>
+
+#### print\_streaming\_chunk
+
+```python
+def print_streaming_chunk(chunk: StreamingChunk) -> None
+```
+
+Callback function to handle and display streaming output chunks.
+
+This function processes a `StreamingChunk` object by:
+- Printing tool call metadata (if any), including function names and arguments, as they arrive.
+- Printing tool call results when available.
+- Printing the main content (e.g., text tokens) of the chunk as it is received.
+
+The function outputs data directly to stdout and flushes output buffers to ensure immediate display during
+streaming.
+
+**Arguments**:
+
+- `chunk`: A chunk of streaming data containing content and optional metadata, such as tool calls and
+tool results.
+
