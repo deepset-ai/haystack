@@ -6,14 +6,16 @@ This guide focuses specifically on documentation contributions. For code contrib
 
 ## TL;DR — Your first docs PR in 10 minutes
 
-1. Clone and enter the docs site:
+1. You won't be able to make changes directly to this repo, so the first step is to [create a fork](../CONTRIBUTING.md#clone-the-git-repository).
+
+2. Once your fork is ready, you can clone a local copy with:
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/haystack.git
 cd haystack/docs-website
 ```
 
-2. Install and start:
+3. Install and start:
 
 ```bash
 npm install
@@ -22,15 +24,15 @@ npm start
 
 **Note:** All subsequent commands in this guide should be run from the `haystack/docs-website` directory unless otherwise specified.
 
-3. Edit under `docs/` for the unstable version, and under `versioned_docs/version-<highest>/` for the latest stable release. If you add a new page, include its ID in `sidebars.js` or the appropriate versioned sidebar.
+4. Edit under `docs/` for the unstable version, and under `versioned_docs/version-<highest>/` for the latest stable release. If you add a new page, include its ID in `sidebars.js` or the appropriate versioned sidebar.
 
-4. Optional production check:
+5. Optional production check:
 
 ```bash
 npm run build && npm run serve
 ```
 
-5. Commit and push:
+6. Commit and push:
 
 ```bash
 git checkout -b docs/your-branch
@@ -39,7 +41,7 @@ git commit -m "docs: fix <desc>"
 git push -u origin HEAD
 ```
 
-6. Open a PR and review the [Pull Request Checklist](#pull-request-checklist).
+7. Open a PR and review the [Pull Request Checklist](#pull-request-checklist).
 
 **Table of Contents**
 
@@ -207,7 +209,7 @@ Starter templates are available in `docs/_templates/`:
 
 ### Build Testing
 
-Before opening a PR, ensure the site builds cleanly:
+We strongly recommend building the site locally before opening a PR:
 
 ```bash
 npm run build
@@ -218,7 +220,7 @@ This command:
 - Validates all links and anchors
 - Reports broken links, duplicate routes, and errors
 
-**Fix all warnings before submitting your PR.**
+**Fix all warnings before submitting your PR.** For minor changes like typo fixes, you may skip the local build and rely on CI feedback, but for substantial changes (new pages, restructuring, multiple edits), a local build helps catch issues early and saves CI time.
 
 ### Prose and Style Linting with Vale
 
@@ -299,7 +301,7 @@ Example: A code example has a bug in the Pipelines guide → fix it in both `doc
 
 ## Preview Deployments
 
-Pull requests that modify documentation may automatically generate preview deployments. Check your PR for a preview link, which allows reviewers to see your changes in a live environment before merging.
+Pull requests that modify documentation will generate preview deployments once authorized by a maintainer. Once authorized, check your PR for a preview link, which allows you and reviewers to see the changes in a live environment before merging.
 
 Preview deployments include:
 - Full site build with your changes
@@ -439,7 +441,7 @@ Before submitting your PR, verify:
 - [ ] Internal links verified (no broken anchors)
 - [ ] Code samples tested and include language tags
 - [ ] Images optimized and include alt text
-- [ ] Local build passes (`npm run build`)
+- [ ] Local build passes (`npm run build`) - recommended for substantial changes
 - [ ] Vercel preview deployment succeeds (fix any deployment errors)
 - [ ] Vale checks pass or issues are addressed
 - [ ] Conventional commit message format used in PR title
@@ -487,7 +489,8 @@ Ensure your documentation is accessible to all users:
 ## Getting Help
 
 **Questions about contributing:**
-- Review this guide and the [README](./README.md)
+- Review this guide and the [main Haystack contribution guide](../CONTRIBUTING.md)
+- Check the [README](./README.md) for documentation site specifics
 - Check existing [issues](https://github.com/deepset-ai/haystack/issues) and [discussions](https://github.com/deepset-ai/haystack/discussions)
 - Ask in the [Discord community](https://discord.com/invite/haystack)
 
