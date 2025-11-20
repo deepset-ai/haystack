@@ -384,6 +384,7 @@ export default {
             'pipeline-components/generators/azureopenaigenerator',
             'pipeline-components/generators/coherechatgenerator',
             'pipeline-components/generators/coheregenerator',
+            'pipeline-components/generators/cometapichatgenerator',
             'pipeline-components/generators/dalleimagegenerator',
             'pipeline-components/generators/fallbackchatgenerator',
             'pipeline-components/generators/googleaigeminichatgenerator',
