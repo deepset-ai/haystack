@@ -188,7 +188,7 @@ class StreamingChunk:
 #### Example
 
 ```python
-from haystack.dataclasses.streaming_chunk import StreamingChunk, ToolCallDelta
+from haystack.dataclasses import StreamingChunk, ToolCallDelta, ReasoningContent
 
 ## Basic text chunk
 chunk = StreamingChunk(
@@ -204,6 +204,15 @@ tool_chunk = StreamingChunk(
     index=0,
     start=False,
     finish_reason="tool_calls"
+)
+
+## Reasoning chunk
+reasoning_chunk = StreamingChunk(
+    content="",
+    reasoning=ReasoningContent(reasoning_text="Thinking step by step about the answer."),
+    index=0,
+    start=True,
+    meta={"model": "gpt-4.1-mini"}
 )
 ```
 
