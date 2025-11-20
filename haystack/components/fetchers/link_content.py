@@ -22,7 +22,6 @@ with LazyImport("Run 'pip install httpx[http2]' to use HTTP/2 support") as h2_im
 
 logger = logging.getLogger(__name__)
 
-
 DEFAULT_USER_AGENT = f"haystack/LinkContentFetcher/{__version__}"
 
 REQUEST_HEADERS = {
@@ -31,6 +30,25 @@ REQUEST_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
     "referer": "https://www.google.com/",
 }
+
+
+def _merge_headers(*headers: dict[str, str]) -> dict[str, str]:
+    """
+    Merge a list of dict using case-insensitively
+
+    :param headers: a list of dict to merge
+    :returns: The merged dict
+    """
+    merged = {}
+    keymap = {}
+
+    for d in headers:
+        for k, v in d.items():
+            kl = k.lower()
+            keymap[kl] = k
+            merged[kl] = v
+
+    return {keymap[kl]: v for kl, v in merged.items()}
 
 
 def _text_content_handler(response: httpx.Response) -> ByteStream:
@@ -169,16 +187,23 @@ class LinkContentFetcher:
             after=self._switch_user_agent,
         )
         def get_response(url):
-            # Build headers with precedence:
-            # client defaults -> component defaults -> user-provided -> rotating UA
-            base = dict(self._client.headers)
-            headers = {**base, **REQUEST_HEADERS, **self.request_headers}
-            headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]  # rotation wins
-            response = self._client.get(url, headers=headers)
+            response = self._client.get(url, headers=self._get_headers())
             response.raise_for_status()
             return response
 
         self._get_response: Callable = get_response
+
+    def _get_headers(self):
+        """
+        Build headers with precedence
+
+        client defaults -> component defaults -> user-provided -> rotating UA
+        """
+        base = dict(self._client.headers)
+        headers = _merge_headers(
+            base, REQUEST_HEADERS, self.request_headers, {"User-Agent": self.user_agents[self.current_user_agent_idx]}
+        )
+        return headers
 
     def __del__(self):
         """
@@ -378,10 +403,7 @@ class LinkContentFetcher:
 
         while attempt <= self.retry_attempts:
             try:
-                base = dict(client.headers)
-                headers = {**base, **REQUEST_HEADERS, **self.request_headers}
-                headers["User-Agent"] = self.user_agents[self.current_user_agent_idx]
-                response = await client.get(url, headers=headers)
+                response = await client.get(url, headers=self._get_headers())
                 response.raise_for_status()
                 return response
             except (httpx.HTTPStatusError, httpx.RequestError) as e:
