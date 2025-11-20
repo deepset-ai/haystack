@@ -375,6 +375,7 @@ export default {
             },
             'pipeline-components/generators/amazonbedrockchatgenerator',
             'pipeline-components/generators/amazonbedrockgenerator',
+            'pipeline-components/generators/aimllapichatgenerator',
             'pipeline-components/generators/anthropicchatgenerator',
             'pipeline-components/generators/anthropicgenerator',
             'pipeline-components/generators/anthropicvertexchatgenerator',
