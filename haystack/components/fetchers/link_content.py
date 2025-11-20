@@ -32,17 +32,17 @@ REQUEST_HEADERS = {
 }
 
 
-def _merge_headers(*headers: dict[str, str]) -> dict[str, str]:
+def _merge_headers(*args: dict[str, str]) -> dict[str, str]:
     """
     Merge a list of dict using case-insensitively
 
-    :param headers: a list of dict to merge
+    :param args: a list of dict to merge
     :returns: The merged dict
     """
     merged = {}
     keymap = {}
 
-    for d in headers:
+    for d in args:
         for k, v in d.items():
             kl = k.lower()
             keymap[kl] = k
