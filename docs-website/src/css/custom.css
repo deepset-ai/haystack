@@ -659,3 +659,29 @@ code:not([class*="language-"]) a:hover {
 .key-value-table tr + tr td {
   padding-top: 0.4rem;
 }
+
+/* ========================================
+   SIDE-BY-SIDE CODE COMPARISON
+   ======================================== */
+
+.code-comparison {
+  display: flex;
+  gap: 1.5rem;
+  align-items: stretch;
+  margin: 1rem 0 2rem;
+}
+
+.code-comparison__column {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.code-comparison .theme-code-block {
+  height: 100%;
+}
+
+@media (max-width: 996px) {
+  .code-comparison {
+    flex-direction: column;
+  }
+}
