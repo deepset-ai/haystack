@@ -169,6 +169,7 @@ class MarkdownHeaderSplitter:
         Ensures page counting is maintained across splits.
         """
         result_docs = []
+        current_split_id = 0  # track split_id across all secondary splits from the same parent
 
         for doc in documents:
             if doc.content is None:
@@ -186,8 +187,11 @@ class MarkdownHeaderSplitter:
             # track page from meta
             current_page = doc.meta.get("page_number", 1)
 
+            # create a clean meta dict without split_id for secondary splitting
+            clean_meta = {k: v for k, v in doc.meta.items() if k != "split_id"}
+
             secondary_splits = self.secondary_splitter.run(
-                documents=[Document(content=content_for_splitting, meta=doc.meta)]
+                documents=[Document(content=content_for_splitting, meta=clean_meta)]
             )["documents"]
 
             # split processing
@@ -196,8 +200,13 @@ class MarkdownHeaderSplitter:
                 if i > 0 and secondary_splits[i - 1].content:
                     current_page = self._update_page_number_with_breaks(secondary_splits[i - 1].content, current_page)
 
-                # set page number to meta
+                # set page number and split_id to meta
                 split.meta["page_number"] = current_page
+                split.meta["split_id"] = current_split_id
+                # ensure source_id is preserved from the original document
+                if "source_id" in doc.meta:
+                    split.meta["source_id"] = doc.meta["source_id"]
+                current_split_id += 1
 
                 # preserve header metadata if we're not keeping headers in content
                 if not self.keep_headers:
@@ -255,11 +264,11 @@ class MarkdownHeaderSplitter:
                 current_page=current_page,
                 total_pages=total_pages,
             )
-            for split in splits:
+            for split_idx, split in enumerate(splits):
                 meta = {}
                 if doc.meta:
                     meta = doc.meta.copy()
-                meta.update({"source_id": doc.id, "page_number": current_page})
+                meta.update({"source_id": doc.id, "page_number": current_page, "split_id": split_idx})
                 if split.get("meta"):
                     meta.update(split["meta"])
                 current_page = self._update_page_number_with_breaks(split["content"], current_page)
@@ -284,7 +293,7 @@ class MarkdownHeaderSplitter:
             - `documents`: List of documents with the split texts. Each document includes:
                 - A metadata field `source_id` to track the original document.
                 - A metadata field `page_number` to track the original page number.
-                - A metadata field `split_id` to uniquely identify each split chunk.
+                - A metadata field `split_id` to identify the split chunk index within its parent document.
                 - All other metadata copied from the original document.
         """
         # validate input documents
@@ -324,9 +333,5 @@ class MarkdownHeaderSplitter:
                 doc_splits = header_split_docs
 
             final_docs.extend(doc_splits)
-
-        # assign split_id to all output documents
-        for idx, doc in enumerate(final_docs):
-            doc.meta["split_id"] = idx
 
         return {"documents": final_docs}

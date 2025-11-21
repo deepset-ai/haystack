@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections import defaultdict
 from unittest.mock import ANY
 
 import pytest
@@ -181,10 +182,14 @@ def test_split_multiple_documents(sample_text):
     headers = {doc.meta["header"] for doc in split_docs}
     assert {"Another Header", "H1", "H2"}.issubset(headers)
 
-    # Verify that all documents have a split_id and they're sequential
-    split_ids = [doc.meta.get("split_id") for doc in split_docs]
-    assert all(split_id is not None for split_id in split_ids)
-    assert split_ids == list(range(len(split_ids)))
+    # Verify that split_ids are per-parent-document
+    splits_by_source = defaultdict(list)
+    for doc in split_docs:
+        splits_by_source[doc.meta["source_id"]].append(doc.meta["split_id"])
+
+    # Each parent document should have split_ids starting from 0
+    for source_id, split_ids in splits_by_source.items():
+        assert split_ids == list(range(len(split_ids))), f"Split IDs for {source_id} should be sequential from 0"
 
 
 def test_split_only_headers():
@@ -268,7 +273,7 @@ def test_empty_content_handling():
 
 
 def test_split_id_sequentiality_primary_and_secondary(sample_text):
-    # Test primary splitting
+    # Test primary splitting with single document
     splitter = MarkdownHeaderSplitter()
     docs = [Document(content=sample_text)]
     result = splitter.run(documents=docs)
@@ -277,11 +282,11 @@ def test_split_id_sequentiality_primary_and_secondary(sample_text):
     # Test number of documents
     assert len(split_docs) == 5
 
-    # Check that split_ids are sequential
+    # Check that split_ids are sequential from 0 for this single parent document
     split_ids = [doc.meta["split_id"] for doc in split_docs]
     assert split_ids == list(range(len(split_ids)))
 
-    # Test secondary splitting
+    # Test secondary splitting with single document
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3)
     docs = [Document(content=sample_text)]
     result = splitter.run(documents=docs)
@@ -290,10 +295,12 @@ def test_split_id_sequentiality_primary_and_secondary(sample_text):
     # Test number of documents
     assert len(split_docs) == 12
 
+    # Check that split_ids are sequential from 0 for this single parent document
     split_ids = [doc.meta["split_id"] for doc in split_docs]
     assert split_ids == list(range(len(split_ids)))
 
-    # Test with multiple input documents
+    # Test with multiple input documents - each should have its own split_id sequence
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3)  # Use fresh instance
     docs = [Document(content=sample_text), Document(content="# Another Header\nSome more content here.")]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
@@ -301,8 +308,14 @@ def test_split_id_sequentiality_primary_and_secondary(sample_text):
     # Test number of documents
     assert len(split_docs) == 14
 
-    split_ids = [doc.meta["split_id"] for doc in split_docs]
-    assert split_ids == list(range(len(split_ids)))
+    # Verify split_ids are per-parent-document
+    splits_by_source = defaultdict(list)
+    for doc in split_docs:
+        splits_by_source[doc.meta["source_id"]].append(doc.meta["split_id"])
+
+    # Each parent document should have split_ids starting from 0
+    for source_id, split_ids in splits_by_source.items():
+        assert split_ids == list(range(len(split_ids))), f"Split IDs for {source_id} should be sequential from 0"
 
 
 def test_secondary_split_with_overlap():
