@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
         with:
           # With the default value of 1, there are corner cases where tj-actions/changed-files
           # fails with a `no merge base` error

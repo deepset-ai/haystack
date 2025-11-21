@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Haystack home repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
         with:
           repository: deepset-ai/haystack-home
 
