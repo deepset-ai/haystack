@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'docs/**'
+      - 'docs-website/**'
     tags:
       - "v2.[0-9]+.[0-9]+*"
 
