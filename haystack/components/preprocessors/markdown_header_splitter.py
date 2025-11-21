@@ -183,10 +183,6 @@ class MarkdownHeaderSplitter:
                 if header_match:
                     content_for_splitting = doc.content[header_match.end() :]
 
-            if not content_for_splitting or not content_for_splitting.strip():  # skip empty content
-                result_docs.append(doc)
-                continue
-
             # track page from meta
             current_page = doc.meta.get("page_number", 1)
 
@@ -303,7 +299,7 @@ class MarkdownHeaderSplitter:
             if not isinstance(doc.content, str):
                 raise ValueError("MarkdownHeaderSplitter only works with text documents (str content).")
 
-        processed_documents = []
+        final_docs = []
         for doc in documents:
             # handle empty documents
             if not doc.content or not doc.content.strip():
@@ -311,22 +307,23 @@ class MarkdownHeaderSplitter:
                     logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                     continue
                 # keep empty documents
-                processed_documents.append(doc)
+                final_docs.append(doc)
                 logger.warning(
                     "Document ID {doc_id} has an empty content. Keeping this document as per configuration.",
                     doc_id=doc.id,
                 )
                 continue
 
-            processed_documents.append(doc)
+            # split this document by headers
+            header_split_docs = self._split_documents_by_markdown_headers([doc])
 
-        if not processed_documents:
-            return {"documents": []}
+            # apply secondary splitting if configured
+            if self.secondary_split:
+                doc_splits = self._apply_secondary_splitting(header_split_docs)
+            else:
+                doc_splits = header_split_docs
 
-        header_split_docs = self._split_documents_by_markdown_headers(processed_documents)
-
-        # secondary splitting if configured
-        final_docs = self._apply_secondary_splitting(header_split_docs) if self.secondary_split else header_split_docs
+            final_docs.extend(doc_splits)
 
         # assign split_id to all output documents
         for idx, doc in enumerate(final_docs):
