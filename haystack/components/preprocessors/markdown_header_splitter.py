@@ -46,8 +46,9 @@ class MarkdownHeaderSplitter:
         :param split_overlap: The number of overlapping units for each split when using secondary splitting.
             Defaults to 0.
         :param split_threshold: The minimum number of units per split when using secondary splitting. Defaults to 0.
-        :param skip_empty_documents: If True, skip documents with empty content. If False, process empty documents.
-            Defaults to True.
+        :param skip_empty_documents: Choose whether to skip documents with empty content. Default is True.
+            Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
+            from non-textual documents.
         """
         self.page_break_character = page_break_character
         self.secondary_split = secondary_split
