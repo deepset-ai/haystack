@@ -108,6 +108,8 @@ class MarkdownHeaderSplitter:
             start = match.end()
             end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
             content = text[start:end]
+            if not self.keep_headers and content.startswith("\n"):
+                content = content[1:]
 
             # update header stack to track nesting
             header_stack[level - 1] = header_text
