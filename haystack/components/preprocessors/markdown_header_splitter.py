@@ -101,7 +101,7 @@ class MarkdownHeaderSplitter:
         for i, match in enumerate(matches):
             # extract header info
             header_prefix = match.group(1)
-            header_text = match.group(2).strip()
+            header_text = match.group(2)
             level = len(header_prefix)
 
             # get content
@@ -109,22 +109,20 @@ class MarkdownHeaderSplitter:
             end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
             content = text[start:end]
             if not self.keep_headers and content.startswith("\n"):
-                content = content[1:]
+                content = content[1:]  # remove leading newline if headers not kept
 
             # update header stack to track nesting
             header_stack[level - 1] = header_text
             for j in range(level, 6):
                 header_stack[j] = None
 
-            # prepare header_line if keep_headers
-            header_line = f"{header_prefix} {header_text}"
-
             # skip splits w/o content
-            if not content.strip():
+            if not content.strip():  # this strip is needed to avoid counting whitespace as content
                 # add as parent for subsequent headers
                 active_parents = [h for h in header_stack[: level - 1] if h is not None]
                 active_parents.append(header_text)
                 if self.keep_headers:
+                    header_line = f"{header_prefix} {header_text}"
                     pending_headers.append(header_line)
                 continue
 
@@ -136,6 +134,7 @@ class MarkdownHeaderSplitter:
             )
 
             if self.keep_headers:
+                header_line = f"{header_prefix} {header_text}"
                 # add pending & current header to content
                 chunk_content = ""
                 if pending_headers:
