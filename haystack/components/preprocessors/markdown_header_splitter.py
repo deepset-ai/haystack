@@ -57,6 +57,7 @@ class MarkdownHeaderSplitter:
         self.skip_empty_documents = skip_empty_documents
         self.keep_headers = keep_headers
         self._header_pattern = re.compile(r"(?m)^(#{1,6}) (.+)$")  # ATX-style .md-headers
+        self._is_warmed_up = False
 
         # initialize secondary_splitter only if needed
         if self.secondary_split:
@@ -66,6 +67,14 @@ class MarkdownHeaderSplitter:
                 split_overlap=self.split_overlap,
                 split_threshold=self.split_threshold,
             )
+
+    def warm_up(self):
+        """
+        Warm up the MarkdownHeaderSplitter.
+        """
+        if self.secondary_split and not self._is_warmed_up:
+            self.secondary_splitter.warm_up()
+            self._is_warmed_up = True
 
     def _split_text_by_markdown_headers(self, text: str, doc_id: str) -> list[dict]:
         """Split text by ATX-style headers (#) and create chunks with appropriate metadata."""
@@ -97,7 +106,7 @@ class MarkdownHeaderSplitter:
             # get content
             start = match.end()
             end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-            content = text[start:end].strip()
+            content = text[start:end]
 
             # update header stack to track nesting
             header_stack[level - 1] = header_text
