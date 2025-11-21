@@ -31,7 +31,9 @@ class DatadogSpan(Span):
         :param value: the value of the tag.
         """
         coerced_value = tracing_utils.coerce_tag_value(value)
-        self._span.set_tag(key, coerced_value)
+        # Although set_tag declares value: Optional[str], its implementation accepts other types.
+        # https://github.com/DataDog/dd-trace-py/blob/200b33c5221db1af975f6f7017738cd99a2da4a4/ddtrace/_trace/span.py
+        self._span.set_tag(key, coerced_value)  # type: ignore[arg-type]
 
     def raw_span(self) -> Any:
         """
