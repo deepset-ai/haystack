@@ -47,3 +47,6 @@ build/
 # Auto-generated requirements files
 requirements.txt
 requirements-*.txt
+
+# Auto-generated llms.txt
+llms.txt
