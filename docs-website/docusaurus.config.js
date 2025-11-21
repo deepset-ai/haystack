@@ -22,6 +22,11 @@ const config = {
   onBrokenAnchors: 'throw',
   onDuplicateRoutes: 'throw',
 
+  future: {
+    experimental_faster: true,
+    v4: true,
+  },
+
   markdown: {
     hooks: {
       onBrokenMarkdownLinks: 'throw',
