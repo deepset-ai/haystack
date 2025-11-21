@@ -15,6 +15,7 @@
     "generate-llms-txt": "docusaurus generate-llms-txt"
   },
   "dependencies": {
+    "@cmfcmf/docusaurus-search-local": "^2.0.1",
     "@docusaurus/core": "^3.8.1",
     "@docusaurus/plugin-content-docs": "^3.8.1",
     "@docusaurus/plugin-ideal-image": "^3.8.1",

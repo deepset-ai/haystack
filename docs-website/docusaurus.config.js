@@ -105,6 +105,17 @@ const config = {
     ],
     // Local plugin to teach Webpack how to handle `.txt` files like `llms.txt`
     require.resolve('./plugins/txtLoaderPlugin'),
+    ['@cmfcmf/docusaurus-search-local',      {
+      includeParentCategoriesInPageTitle: true,
+      indexDocSidebarParentCategories: 1,
+      lunr: {
+        titleBoost: 1,
+        contentBoost: 1,
+        tagsBoost: 3,
+        parentCategoriesBoost: 5,
+      },
+    },
+    ]
   ],
 
   themeConfig:
