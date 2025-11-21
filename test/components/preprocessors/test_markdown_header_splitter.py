@@ -205,7 +205,7 @@ def test_split_only_headers():
 # Metadata preservation
 def test_preserve_document_metadata():
     """Test that document metadata is preserved through splitting."""
-    splitter = MarkdownHeaderSplitter(keep_headers=False)
+    splitter = MarkdownHeaderSplitter(keep_headers=False)  # keep_headers=True case is covered by this test too
     docs = [Document(content="# Header\nContent", meta={"source": "test", "importance": "high", "custom_field": 123})]
 
     result = splitter.run(documents=docs)
@@ -273,7 +273,7 @@ def test_empty_content_handling():
 
 def test_split_id_sequentiality_primary_and_secondary(sample_text):
     # Test primary splitting
-    splitter = MarkdownHeaderSplitter(keep_headers=False)
+    splitter = MarkdownHeaderSplitter()
     docs = [Document(content=sample_text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
@@ -320,6 +320,7 @@ def test_secondary_split_with_overlap():
         "### Subsection\n"
         "This subsection contains additional information and should also be split with overlap."
     )
+    # keep_headers=False
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=4, split_overlap=2, keep_headers=False)
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
@@ -333,10 +334,38 @@ def test_secondary_split_with_overlap():
             prev_words = prev_doc.content.split()
             curr_words = curr_doc.content.split()
             assert prev_words[-2:] == curr_words[:2]
+    # keep_headers=True
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=4, split_overlap=2)
+    docs = [Document(content=text)]
+    result = splitter.run(documents=docs)
+    split_docs = result["documents"]
+    assert len(split_docs) == 24
+
+    assert split_docs[0].content.startswith("# Introduction")
+    assert all("header" not in doc.meta for doc in split_docs)
 
 
 def test_secondary_split_with_threshold():
     text = "# Header\n" + " ".join([f"word{i}" for i in range(1, 11)])
+    # keep_headers=True
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3, split_threshold=2, keep_headers=True)
+    docs = [Document(content=text)]
+    result = splitter.run(documents=docs)
+    split_docs = result["documents"]
+    for i, doc in enumerate(split_docs):
+        words = doc.content.split()
+        if i == 0:
+            # First chunk includes header-hashtag plus split_length words
+            assert words[:2] == ["#", "Header"]
+            assert len(words) == 4
+        elif i < len(split_docs) - 1:
+            # Subsequent chunks should have split_length words
+            assert len(words) == 3
+        else:
+            # Last chunk should have at least split_threshold words
+            assert len(words) >= 2
+
+    # keep_headers=False
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3, split_threshold=2, keep_headers=False)
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
@@ -361,7 +390,7 @@ def test_page_break_handling_in_secondary_split():
 
 def test_page_break_handling_with_multiple_headers():
     text = "# Header\nFirst page\f Second page\f Third page"
-    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=1, keep_headers=True)
+    splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=1)
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
