@@ -188,8 +188,8 @@ def test_split_multiple_documents(sample_text):
         splits_by_source[doc.meta["source_id"]].append(doc.meta["split_id"])
 
     # Each parent document should have split_ids starting from 0
-    for source_id, split_ids in splits_by_source.items():
-        assert split_ids == list(range(len(split_ids))), f"Split IDs for {source_id} should be sequential from 0"
+    for split_ids in splits_by_source.values():
+        assert split_ids == list(range(len(split_ids)))
 
 
 def test_split_only_headers():
@@ -314,8 +314,8 @@ def test_split_id_sequentiality_primary_and_secondary(sample_text):
         splits_by_source[doc.meta["source_id"]].append(doc.meta["split_id"])
 
     # Each parent document should have split_ids starting from 0
-    for source_id, split_ids in splits_by_source.items():
-        assert split_ids == list(range(len(split_ids))), f"Split IDs for {source_id} should be sequential from 0"
+    for split_ids in splits_by_source.values():
+        assert split_ids == list(range(len(split_ids)))
 
 
 def test_secondary_split_with_overlap():
