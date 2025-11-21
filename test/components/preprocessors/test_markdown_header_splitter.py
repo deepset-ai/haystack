@@ -361,28 +361,25 @@ def test_secondary_split_with_threshold():
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    for i, doc in enumerate(split_docs):
-        words = doc.content.split()
-        if i == 0:
-            # First chunk includes header-hashtag plus split_length words
-            assert words[:2] == ["#", "Header"]
-            assert len(words) == 4
-        elif i < len(split_docs) - 1:
-            # Subsequent chunks should have split_length words
-            assert len(words) == 3
-        else:
-            # Last chunk should have at least split_threshold words
-            assert len(words) >= 2
+
+    # Explicitly test each split
+    assert len(split_docs) == 4
+    assert len(split_docs[0].content.split()) == 4  # "# Header" + 2 words
+    assert len(split_docs[1].content.split()) == 3  # 3 words (split_length)
+    assert len(split_docs[2].content.split()) == 3  # 3 words (split_length)
+    assert len(split_docs[3].content.split()) == 2  # 2 words (meets threshold)
 
     # keep_headers=False
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3, split_threshold=2, keep_headers=False)
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    for doc in split_docs[:-1]:
-        assert len(doc.content.split()) == 3
-    # The last chunk should have at least 2 words (threshold)
-    assert len(split_docs[-1].content.split()) >= 2
+
+    # Explicitly test each split
+    assert len(split_docs) == 3
+    assert len(split_docs[0].content.split()) == 3  # 3 words
+    assert len(split_docs[1].content.split()) == 3  # 3 words
+    assert len(split_docs[2].content.split()) == 4  # 4 words (due to threshold, not possible to split 3-1)
 
 
 def test_page_break_handling_in_secondary_split():
@@ -391,10 +388,10 @@ def test_page_break_handling_in_secondary_split():
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    page_numbers = [doc.meta.get("page_number") for doc in split_docs]
-    # Should start at 1 and increment at each \f
-    assert page_numbers[0] == 1
-    assert max(page_numbers) == 3
+    # Explicitly check the page number of each split
+    expected_page_numbers = [1, 1, 1, 2, 3]
+    actual_page_numbers = [doc.meta.get("page_number") for doc in split_docs]
+    assert actual_page_numbers == expected_page_numbers
 
 
 def test_page_break_handling_with_multiple_headers():
