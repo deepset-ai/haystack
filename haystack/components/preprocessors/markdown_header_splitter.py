@@ -118,7 +118,7 @@ class MarkdownHeaderSplitter:
             header_line = f"{header_prefix} {header_text}"
 
             # skip splits w/o content
-            if not content:
+            if not content.strip():
                 # add as parent for subsequent headers
                 active_parents = [h for h in header_stack[: level - 1] if h is not None]
                 active_parents.append(header_text)
@@ -138,7 +138,7 @@ class MarkdownHeaderSplitter:
                 chunk_content = ""
                 if pending_headers:
                     chunk_content += "\n".join(pending_headers) + "\n"
-                chunk_content += f"{header_line}\n{content}"
+                chunk_content += f"{header_line}{content}"
                 chunks.append(
                     {
                         "content": chunk_content,
