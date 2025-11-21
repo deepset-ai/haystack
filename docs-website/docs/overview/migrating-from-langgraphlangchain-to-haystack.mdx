@@ -1,0 +1,315 @@
+---
+title: "Migrating from LangGraph/LangChain to Haystack"
+id: migrating-from-langgraphlangchain-to-haystack
+slug: "/migrating-from-langgraphlangchain-to-haystack"
+description: "Whether you're planning to migrate to Haystack or just comparing LangChain/LangGraph and Haystack to choose the proper framework for your AI application, this guide will help you map common patterns between frameworks."
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+# Migrating from LangGraph/LangChain to Haystack
+
+Whether you're planning to migrate to Haystack or just comparing **LangChain/LangGraph** and **Haystack** to choose the proper framework for your AI application, this guide will help you map common patterns between frameworks.
+
+In this guide, you'll learn how to translate core LangGraph concepts, like nodes, edges, and state, into Haystack components, pipelines, and agents. The goal is to preserve your existing logic while leveraging Haystack's flexible, modular ecosystem.
+
+It's most accurate to think of Haystack as covering both **LangChain** and **LangGraph** territory: Haystack provides the building blocks for everything from simple sequential flows to fully agentic workflows with custom logic.
+
+## Why you might explore or migrate to Haystack
+
+You might consider Haystack if you want to build your AI applications on a **stable, actively maintained foundation** with an intuitive developer experience.
+
+* **Unified orchestration framework.** Haystack supports both deterministic pipelines and adaptive agentic flows, letting you combine them with the right level of autonomy in a single system.
+* **High-quality codebase and design.** Haystack is engineered for clarity and reliability with well-tested components, predictable APIs, and a modular architecture that simply works.
+* **Ease of customization.** Extend core components, add your own logic, or integrate custom tools with minimal friction.
+* **Reduced cognitive overhead.** Haystack extends familiar ideas rather than introducing new abstractions, helping you stay focused on applying concepts, not learning them.
+* **Comprehensive documentation and learning resources.** Every concept, from components and pipelines to agents and tools, is supported by detailed and well-maintained docs, tutorials, and educational content.
+* **Frequent release cycles.** New features, improvements, and bug fixes are shipped regularly, ensuring that the framework evolves quickly while maintaining backward compatibility.
+* **Scalable from prototype to production.** Start small and expand easily. The same code you use for a proof of concept can power enterprise-grade deployments through the whole Haystack ecosystem.
+
+## Concept mapping: LangGraph/LangChain → Haystack
+
+Here's a table of key concepts and their approximate equivalents between the two frameworks. Use this when auditing your LangGraph/Langchain architecture and planning the migration.
+
+| LangGraph/LangChain concept | Haystack equivalent | Notes |
+| --- | --- | --- |
+| Node | Component | A unit of logic in both frameworks. In Haystack, a [Component](../concepts/components.mdx) can run standalone, in a pipeline, or as a tool with agent. You can [create custom components](../concepts/components/custom-components.mdx) or use built-in ones like Generators and Retrievers. |
+| Edge / routing logic | Connection / Branching / Looping | [Pipelines](../concepts/pipelines.mdx) connect component inputs and outputs with type-checked links. They support branching, routing, and loops for flexible flow control. |
+| Graph / Workflow (nodes + edges) | Pipeline or Agent | LangGraph explicitly defines graphs; Haystack achieves similar orchestration through pipelines or [Agents](../concepts/agents.mdx) when adaptive logic is needed. |
+| Subgraphs | SuperComponent | A [SuperComponent](../concepts/components/supercomponents.mdx) wraps a full pipeline and exposes it as a single reusable component |
+| Models / LLMs | ChatGenerator Components | Haystack's [ChatGenerators](../pipeline-components/generators.mdx) unify access to open and proprietary models, with support for streaming, structured outputs, and multimodal data. |
+| Agent Creation (`create_agent`, multi-agent from LangChain) | Agent Component | Haystack provides a simple, pipeline-based [Agent](../concepts/agents.mdx) abstraction that handles reasoning, tool use, and multi-step execution. |
+| Tool (Langchain) | [Tool](../tools/tool.mdx) / [PipelineTool](../tools/pipelinetool.mdx) / [ComponentTool](../tools/componenttool.mdx) / [MCPTool](../tools/mcptool.mdx) | Haystack exposes Python functions, pipelines, components,  external APIs and MCP servers as agent tools. |
+| Multi-Agent Collaboration (LangChain) | Multi-Agent System | Using [`ComponentTool`](../tools/componenttool.mdx), agents can use other agents as tools, enabling [multi-agent architectures](https://haystack.deepset.ai/tutorials/45_creating_a_multi_agent_system) within one framework. |
+| Model Context Protocol `load_mcp_tools` `MultiServerMCPClient` | Model Context Protocol - `MCPTool`, `MCPToolset`, `StdioServerInfo`, `StreamableHttpServerInfo` | Haystack provides [various MCP primitives](https://haystack.deepset.ai/integrations/mcp) for connecting multiple MCP servers and organizing MCP toolsets. |
+| Memory (State, short-term, long-term) | Memory (Agent State, short-term, long-term) | Agent [State](../concepts/agents/state.mdx) provides a structured way to share data between tools, and store intermediate results in an agent execution. More memory options are coming soon. |
+| Time travel (Checkpoints) | Breakpoints (Breakpoint, AgentBreakpoint, ToolBreakpoint, Snapshot) | [Breakpoints](../concepts/pipelines/pipeline-breakpoints.mdx) let you pause, inspect, modify, and resume a pipeline, agent, or tool for debugging or iterative development. |
+| Human-in-the-Loop (Interrupts / Commands) | Human-in-the-loop ( ConfirmationStrategy / ConfirmationPolicy) | (Experimental) Haystack uses [confirmation strategies](https://haystack.deepset.ai/tutorials/47_human_in_the_loop_agent) to pause or block the execution to gather user feedback |
+
+## Ecosystem and Tooling Mapping: LangChain → Haystack
+
+At deepset, we're building the tools to make LLMs truly usable in production, open source and beyond.
+
+* [Haystack, AI Orchestration Framework](https://github.com/deepset-ai/haystack) → Open Source AI framework for building production-ready, AI-powered agents and applications, on your own or with community support.
+* [Haystack Enterprise](https://www.deepset.ai/products-and-services/haystack-enterprise) → Private and secure engineering support, advanced pipeline templates, deployment guides, and early access features for teams needing more support and guidance.
+* [deepset AI Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform) → An enterprise-ready platform for teams running Gen AI apps in production, with security, governance, and scalability built in with [a free version](https://www.deepset.ai/deepset-studio).
+
+Here's the product equivalent of two ecosystems:
+
+| **LangChain Ecosystem** | **Haystack Ecosystem** | **Notes** |
+| --- | --- | --- |
+| **LangChain, LangGraph, Deep Agents** | **Haystack** | **Core AI orchestration framework for components, pipelines, and agents**. Supports deterministic workflows and agentic execution with explicit, modular building blocks. |
+| **LangSmith (Observability)** | **deepset AI Platform** | **Integrated tooling for building, debugging and iterating.** Assemble agents and pipelines visually with the **Builder**, which includes component validation, testing and debugging. The **Prompt Explorer** is used to iterate and evaluate models and prompts. Built-in chat interfaces to enable fast SME and stakeholder feedback. Collaborative building environment for engineers and business. |
+| **LangSmith (Deployment)** | **Hayhooks** **Haystack Enterprise** (deployment guides + advanced best practice templates) **deepset AI Platform** (1-click deployment, on-prem/VPC options) | Multiple deployment paths: lightweight API exposure via [Hayhooks](https://github.com/deepset-ai/hayhooks), structured enterprise deployment patterns through Haystack Enterprise, and full managed or self-hosted deployment through the deepset AI Platform. |
+
+## Code Comparison
+
+### Agentic Flows with Haystack vs LangGraph
+
+Here's an example **graph-based agent** with access to a list of tools, comparing the LangGraph and Haystack APIs.
+
+<div className="code-comparison">
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="Haystack">{`# pip install haystack-ai anthropic-haystack
+from typing import Any, Dict, List
+
+from haystack.tools import tool
+from haystack import Pipeline,component
+from haystack.core.component.types import Variadic
+from haystack.dataclasses import ChatMessage
+from haystack.components.tools import ToolInvoker
+from haystack.components.routers import ConditionalRouter
+
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
+
+# Define tools
+@tool
+def multiply(a: int, b: int) -> int:
+    """Multiply \`a\` and \`b\`.
+
+    Args:
+        a: First int
+        b: Second int
+    """
+    return a * b
+
+@tool
+def add(a: int, b: int) -> int:
+    """Adds \`a\` and \`b\`.
+
+    Args:
+        a: First int
+        b: Second int
+    """
+    return a + b
+
+@tool
+def divide(a: int, b: int) -> float:
+    """Divide \`a\` and \`b\`.
+
+    Args:
+        a: First int
+        b: Second int
+    """
+    return a / b
+
+# Augment the LLM with tools
+tools = [add, multiply, divide]
+model = AnthropicChatGenerator(
+        model="claude-sonnet-4-5-20250929",
+        generation_kwargs={"temperature":0},
+        tools = tools
+)
+
+# Components
+
+# Custom component to temporarily store the messages
+@component()
+class MessageCollector:
+    def __init__(self):
+        self._messages = []
+
+    @component.output_types(messages=List[ChatMessage])
+    def run(self, messages: Variadic[List[ChatMessage]]) -> Dict[str, Any]:
+
+        self._messages.extend([msg for inner in messages for msg in inner])
+        return {"messages": self._messages}
+
+    def clear(self):
+        self._messages = []
+
+message_collector = MessageCollector()
+
+# ConditionalRouter component to route to the tool invoker or end user based upon whether the LLM made a tool call
+routes = [
+    {
+        "condition": "{{replies[0].tool_calls | length > 0}}",
+        "output": "{{replies}}",
+        "output_name": "there_are_tool_calls",
+        "output_type": List[ChatMessage],
+    },
+    {
+        "condition": "{{replies[0].tool_calls | length == 0}}",
+        "output": "{{replies}}",
+        "output_name": "final_replies",
+        "output_type": List[ChatMessage],
+    },
+]
+router = ConditionalRouter(routes, unsafe=True)
+
+# Tool invoker component to execute a tool call
+tool_invoker = ToolInvoker(tools=tools)
+
+# Build pipeline
+agent_pipe = Pipeline()
+
+# Add components
+agent_pipe.add_component("message_collector", message_collector)
+agent_pipe.add_component("llm", model)
+agent_pipe.add_component("router", router)
+agent_pipe.add_component("tool_invoker", tool_invoker)
+
+# Add connections
+agent_pipe.connect("message_collector", "llm.messages")
+agent_pipe.connect("llm.replies", "router")
+agent_pipe.connect("router.there_are_tool_calls", "tool_invoker") # If there are tool calls, send them to the ToolInvoker
+agent_pipe.connect("router.there_are_tool_calls", "message_collector")
+agent_pipe.connect("tool_invoker.tool_messages", "message_collector")
+
+# Run the pipeline
+message_collector.clear()
+messages = [
+    ChatMessage.from_system(text="You are a helpful assistant tasked with performing arithmetic on a set of inputs."),
+    ChatMessage.from_user(text="Add 3 and 4.")
+]
+result = agent_pipe.run({"messages": messages})`}</CodeBlock>
+  </div>
+  <div className="code-comparison__column">
+    <CodeBlock language="python" title="LangGraph + LangChain">{`# pip install langchain-anthropic langgraph langchain
+from langgraph.graph import MessagesState
+from langchain.messages import SystemMessage, HumanMessage, ToolMessage
+from typing import Literal
+from langgraph.graph import StateGraph, START, END
+from langchain.tools import tool
+from langchain.chat_models import init_chat_model
+
+# Define tools
+@tool
+def multiply(a: int, b: int) -> int:
+    # Multiply \`a\` and \`b\`.
+    # Args:
+    #     a: First int
+    #     b: Second int
+    return a * b
+
+@tool
+def add(a: int, b: int) -> int:
+    # Adds \`a\` and \`b\`.
+    # Args:
+    #     a: First int
+    #     b: Second int
+    return a + b
+
+@tool
+def divide(a: int, b: int) -> float:
+    # Divide \`a\` and \`b\`.
+    # Args:
+    #     a: First int
+    #     b: Second int
+    return a / b
+
+# Augment the LLM with tools
+model = init_chat_model(
+    "claude-sonnet-4-5-20250929",
+    temperature=0,
+)
+tools = [add, multiply, divide]
+tools_by_name = {tool.name: tool for tool in tools}
+llm_with_tools = model.bind_tools(tools)
+
+# Nodes
+def llm_call(state: MessagesState):
+    # LLM decides whether to call a tool or not
+
+    return {
+        "messages": [
+            llm_with_tools.invoke(
+                [
+                    SystemMessage(
+                        content="You are a helpful assistant tasked with performing arithmetic on a set of inputs."
+                    )
+                ]
+                + state["messages"]
+            )
+        ]
+    }
+
+def tool_node(state: dict):
+    # Performs the tool call
+
+    result = []
+    for tool_call in state["messages"][-1].tool_calls:
+        tool = tools_by_name[tool_call["name"]]
+        observation = tool.invoke(tool_call["args"])
+        result.append(ToolMessage(content=observation, tool_call_id=tool_call["id"]))
+    return {"messages": result}
+
+# Conditional edge function to route to the tool node or end based upon whether the LLM made a tool call
+def should_continue(state: MessagesState) -> Literal["tool_node", END]:
+    # Decide if we should continue the loop or stop based upon whether the LLM made a tool call
+
+    messages = state["messages"]
+    last_message = messages[-1]
+
+    # If the LLM makes a tool call, then perform an action
+    if last_message.tool_calls:
+        return "tool_node"
+
+    # Otherwise, we stop (reply to the user)
+    return END
+
+# Build workflow
+agent_builder = StateGraph(MessagesState)
+
+# Add nodes
+agent_builder.add_node("llm_call", llm_call)
+agent_builder.add_node("tool_node", tool_node)
+
+# Add edges to connect nodes
+agent_builder.add_edge(START, "llm_call")
+agent_builder.add_conditional_edges(
+    "llm_call",
+    should_continue,
+    ["tool_node", END]
+)
+agent_builder.add_edge("tool_node", "llm_call")
+
+# Compile the agent
+agent = agent_builder.compile()
+
+# Invoke
+messages = [HumanMessage(content="Add 3 and 4.")]
+messages = agent.invoke({"messages": messages})
+for m in messages["messages"]:
+    m.pretty_print()`}</CodeBlock>
+  </div>
+</div>
+
+## Hear from Haystack Users
+
+See how teams across industries use Haystack to power their production AI systems, from RAG applications to agentic workflows.
+
+> "_Haystack allows its users a production ready, easy to use framework that covers just about all of your needs, and allows you to write integrations easily for those it doesn't._"
+> **- Josh Longenecker, GenAI Specialist at AWS**
+>
+> _"Haystack's design philosophy significantly accelerates development and improves the robustness of AI applications, especially when heading towards production. The emphasis on explicit, modular components truly pays off in the long run."_
+> **- Rima Hajou, Data & AI Technical Lead at Accenture**
+
+### Featured Stories
+
+* [TELUS Agriculture & Consumer Goods Built an Agentic Chatbot with Haystack to Transform Trade Promotions Workflows](https://haystack.deepset.ai/blog/telus-user-story)
+* [Lufthansa Industry Solutions Uses Haystack to Power Enterprise RAG](https://haystack.deepset.ai/blog/lufthansa-user-story)
+
+## Start Building with Haystack
+
+**👉 Thinking about migrating or evaluating Haystack?** Jump right in with the [Haystack Get Started guide](https://haystack.deepset.ai/overview/quick-start) or [contact our team](https://www.deepset.ai/products-and-services/haystack-enterprise), we'd love to support you.

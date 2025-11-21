@@ -19,6 +19,7 @@ export default {
         'overview/telemetry',
         'overview/breaking-change-policy',
         'overview/migration',
+        'overview/migrating-from-langgraphlangchain-to-haystack',
       ],
     },
     {

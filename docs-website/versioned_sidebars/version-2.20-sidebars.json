@@ -14,7 +14,8 @@
         "overview/faq",
         "overview/telemetry",
         "overview/breaking-change-policy",
-        "overview/migration"
+        "overview/migration",
+        "overview/migrating-from-langgraphlangchain-to-haystack"
       ]
     },
     {
