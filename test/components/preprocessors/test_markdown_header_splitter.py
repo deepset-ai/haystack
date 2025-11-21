@@ -40,45 +40,35 @@ def test_basic_split(sample_text):
     # Check that content is present and correct
     # Test first split
     header1_doc = split_docs[0]
-    # assert header1_doc.meta["header"] == "Header 1"
     assert header1_doc.meta["split_id"] == 0
     assert header1_doc.meta["page_number"] == 1
-    # assert header1_doc.meta["parent_headers"] == []
     assert header1_doc.content == "# Header 1\nContent under header 1.\n"
 
     # Test second split
     subheader111_doc = split_docs[1]
-    # assert subheader111_doc.meta["header"] == "Subheader 1.1.1"
     assert subheader111_doc.meta["split_id"] == 1
     assert subheader111_doc.meta["page_number"] == 1
-    # assert subheader111_doc.meta["parent_headers"] == ["Header 1", "Header 1.1"]
     assert subheader111_doc.content == "## Header 1.1\n### Subheader 1.1.1\nContent under sub-header 1.1.1\n"
 
     # Test third split
     subheader121_doc = split_docs[2]
-    # assert subheader121_doc.meta["header"] == "Subheader 1.2.1"
     assert subheader121_doc.meta["split_id"] == 2
     assert subheader121_doc.meta["page_number"] == 1
-    # assert subheader121_doc.meta["parent_headers"] == ["Header 1", "Header 1.2"]
     assert subheader121_doc.content == "## Header 1.2\n### Subheader 1.2.1\nContent under header 1.2.1.\n"
 
     # Test fourth split
     subheader122_doc = split_docs[3]
-    # assert subheader122_doc.meta["header"] == "Subheader 1.2.2"
     assert subheader122_doc.meta["split_id"] == 3
     assert subheader122_doc.meta["page_number"] == 1
-    # assert subheader122_doc.meta["parent_headers"] == ["Header 1", "Header 1.2"]
     assert subheader122_doc.content == "### Subheader 1.2.2\nContent under header 1.2.2.\n"
 
     # Test fifth split
     subheader123_doc = split_docs[4]
-    # assert subheader123_doc.meta["header"] == "Subheader 1.2.3"
     assert subheader123_doc.meta["split_id"] == 4
     assert subheader123_doc.meta["page_number"] == 1
-    # assert subheader123_doc.meta["parent_headers"] == ["Header 1", "Header 1.2"]
     assert subheader123_doc.content == "### Subheader 1.2.3\nContent under header 1.2.3."
 
-    # Sanity check: reconstruct original text
+    # Reconstruct original text
     reconstructed_doc = "".join([doc.content for doc in split_docs])
     assert reconstructed_doc == sample_text
 
@@ -299,7 +289,7 @@ def test_split_id_sequentiality_primary_and_secondary(sample_text):
     split_ids = [doc.meta["split_id"] for doc in split_docs]
     assert split_ids == list(range(len(split_ids)))
 
-    # Test with multiple input documents - each should have its own split_id sequence
+    # Test with multiple input documents; each should have its own split_id sequence
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=3)  # Use fresh instance
     docs = [Document(content=sample_text), Document(content="# Another Header\nSome more content here.")]
     result = splitter.run(documents=docs)
@@ -383,13 +373,13 @@ def test_secondary_split_with_threshold():
 
 
 def test_page_break_handling_in_secondary_split():
-    text = "# Header\nFirst page\fSecond page\fThird page"
+    text = "# Header\nFirst page\f Second page\f Third page"
     splitter = MarkdownHeaderSplitter(secondary_split="word", split_length=1)
     docs = [Document(content=text)]
     result = splitter.run(documents=docs)
     split_docs = result["documents"]
-    # Explicitly check the page number of each split
-    expected_page_numbers = [1, 1, 1, 2, 3]
+
+    expected_page_numbers = [1, 1, 1, 2, 2, 3, 3]
     actual_page_numbers = [doc.meta.get("page_number") for doc in split_docs]
     assert actual_page_numbers == expected_page_numbers
 
@@ -430,6 +420,6 @@ def test_page_break_handling_with_multiple_headers():
     assert split_docs[6].content == "page"
     assert split_docs[6].meta == {"source_id": ANY, "page_number": 3, "split_id": 6, "split_idx_start": 40}
 
-    # Check reconstruction
+    # Reconstruct original text
     reconstructed_text = "".join(doc.content for doc in split_docs)
     assert reconstructed_text == text

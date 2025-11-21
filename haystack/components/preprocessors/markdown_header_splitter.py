@@ -311,7 +311,7 @@ class MarkdownHeaderSplitter:
         final_docs = []
         for doc in documents:
             # handle empty documents
-            if not doc.content or not doc.content.strip():
+            if not doc.content or not doc.content.strip():  # avoid counting whitespace as content
                 if self.skip_empty_documents:
                     logger.warning("Document ID {doc_id} has an empty content. Skipping this document.", doc_id=doc.id)
                     continue
