@@ -31,7 +31,7 @@ class DatadogSpan(Span):
         :param value: the value of the tag.
         """
         coerced_value = tracing_utils.coerce_tag_value(value)
-        self._span.set_tag(key, coerced_value)
+        self._span.set_tag(key, str(coerced_value))
 
     def raw_span(self) -> Any:
         """
