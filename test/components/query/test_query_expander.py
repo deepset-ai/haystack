@@ -7,9 +7,9 @@ import os
 from unittest.mock import Mock
 
 import pytest
-from haystack_experimental.components.query.query_expander import DEFAULT_PROMPT_TEMPLATE, QueryExpander
 
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.query.query_expander import DEFAULT_PROMPT_TEMPLATE, QueryExpander
 from haystack.dataclasses.chat_message import ChatMessage
 
 
@@ -53,9 +53,18 @@ class TestQueryExpander:
         assert expander._is_warmed_up is True
         assert expander.run("test query") == {"queries": ["test query"]}
 
+    def test_warm_up(self, mock_chat_generator):
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        expander.warm_up()
+        assert expander._is_warmed_up is True
+
     def test_init_negative_expansions_raises_error(self):
         with pytest.raises(ValueError, match="n_expansions must be positive"):
             QueryExpander(n_expansions=-1)
+
+    def test_init_zero_expansions_raises_error(self):
+        with pytest.raises(ValueError, match="n_expansions must be positive"):
+            QueryExpander(n_expansions=0)
 
     def test_init_custom_prompt_template(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
@@ -70,6 +79,28 @@ class TestQueryExpander:
         expander.warm_up()
         with pytest.raises(ValueError, match="n_expansions must be positive"):
             expander.run("test query", n_expansions=-1)
+
+    def test_run_zero_expansions_raises_error(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
+        expander = QueryExpander(n_expansions=4)
+        expander.warm_up()
+        with pytest.raises(ValueError, match="n_expansions must be positive"):
+            expander.run("test query", n_expansions=0)
+
+    def test_run_with_runtime_n_expansions_override(self, mock_chat_generator):
+        mock_chat_generator.run.return_value = {
+            "replies": [ChatMessage.from_assistant('{"queries": ["alt1", "alt2"]}')]
+        }
+
+        expander = QueryExpander(chat_generator=mock_chat_generator, n_expansions=4, include_original_query=False)
+        expander.warm_up()
+        result = expander.run("test query", n_expansions=2)
+
+        # should request 2 expansions
+        call_args = mock_chat_generator.run.call_args[1]["messages"][0].text
+        assert "2" in call_args
+        assert len(result["queries"]) == 2
+        assert result["queries"] == ["alt1", "alt2"]
 
     def test_run_successful_expansion(self, mock_chat_generator):
         mock_chat_generator.run.return_value = {
@@ -118,6 +149,15 @@ class TestQueryExpander:
         result = expander.run("   ")
 
         assert result["queries"] == []
+
+    def test_run_whitespace_only_query(self, monkeypatch, caplog):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
+        expander = QueryExpander()
+        expander.warm_up()
+        with caplog.at_level(logging.WARNING):
+            result = expander.run("\t\n  \r")
+        assert result["queries"] == ["\t\n  \r"]
+        assert "Empty query provided" in caplog.text
 
     def test_run_generator_no_replies(self, mock_chat_generator):
         mock_chat_generator.run.return_value = {"replies": []}
@@ -186,6 +226,21 @@ class TestQueryExpander:
         assert result["queries"] == ["original query", "alt1", "alt2"]
         assert len(result["queries"]) == 3
 
+    def test_run_truncates_excess_queries(self, mock_chat_generator, caplog):
+        mock_chat_generator.run.return_value = {
+            "replies": [ChatMessage.from_assistant('{"queries": ["q1", "q2", "q3", "q4", "q5"]}')]
+        }
+        expander = QueryExpander(chat_generator=mock_chat_generator, n_expansions=3, include_original_query=False)
+        expander.warm_up()
+
+        with caplog.at_level(logging.WARNING):
+            result = expander.run("test query")
+
+        assert len(result["queries"]) == 3
+        assert result["queries"] == ["q1", "q2", "q3"]
+        assert "Generated 5 queries but only 3 were requested" in caplog.text
+        assert "Truncating" in caplog.text
+
     def test_run_with_custom_template(self, mock_chat_generator):
         custom_template = """
         Create {{ n_expansions }} alternative search queries for: {{ query }}
@@ -249,7 +304,7 @@ class TestQueryExpander:
         serialized_query_expander = expander.to_dict()
 
         assert serialized_query_expander == {
-            "type": "haystack_experimental.components.query.query_expander.QueryExpander",
+            "type": "haystack.components.query.query_expander.QueryExpander",
             "init_parameters": {
                 "chat_generator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
@@ -277,7 +332,7 @@ class TestQueryExpander:
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
 
         data = {
-            "type": "haystack_experimental.components.query.query_expander.QueryExpander",
+            "type": "haystack.components.query.query_expander.QueryExpander",
             "init_parameters": {
                 "chat_generator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
