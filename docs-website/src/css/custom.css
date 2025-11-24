@@ -273,11 +273,15 @@ button, .button {
 .menu__link {
   color: #4B5563;
   transition: color 0.2s ease, background-color 0.2s ease;
-  /* Truncation styles only - no spacing modifications */
+  position: relative;
+}
+
+/* Truncate only single-word items (like class names: SentenceTransformersDocumentImageEmbedder) */
+/* Multi-word phrases (like "Migrating from LangGraph to Haystack") will wrap normally */
+.menu__link--single-word {
   white-space: nowrap !important;
   overflow: hidden;
   text-overflow: ellipsis;
-  position: relative;
 }
 
 [data-theme='dark'] .menu__link {
