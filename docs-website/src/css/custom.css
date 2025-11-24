@@ -192,13 +192,13 @@ button, .button {
   letter-spacing: 0.5px !important;
 }
 
-/* Footer links - use teal colors, no lilac */
+/* Footer links - white on hover for better contrast on green background */
 .footer__link-item {
   color: rgba(255, 255, 255, 0.7);
 }
 
 .footer__link-item:hover {
-  color: var(--ifm-color-primary-light);
+  color: #ffffff !important;
   text-decoration: underline;
 }
 
@@ -208,7 +208,7 @@ button, .button {
 }
 
 .footer a:hover {
-  color: var(--ifm-color-primary-light);
+  color: #ffffff !important;
 }
 
 /* Footer copyright - same color as other footer text */
