@@ -45,6 +45,9 @@
   --docusaurus-admonition-note-border: #8BA5FF;
   --docusaurus-admonition-info-bg: rgba(160, 244, 235, 0.1);
   --docusaurus-admonition-info-border: #A0F4EB;
+
+  /* Content Width - wider for long class names */
+  --ifm-container-width: 1024px;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
@@ -92,10 +95,6 @@ h1, h2, h3, h4, h5, h6 {
 /* 6) Buttons, spacing, etc. (optional) */
 button, .button {
   border-radius: 8px;
-}
-
-.container {
-  max-width: 1200px;
 }
 
 
@@ -253,6 +252,11 @@ button, .button {
 .menu__link {
   color: #4B5563;
   transition: color 0.2s ease, background-color 0.2s ease;
+  /* Truncation styles only - no spacing modifications */
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
 }
 
 [data-theme='dark'] .menu__link {
