@@ -727,12 +727,20 @@ code:not([class*="language-"]) a:hover {
   color: #E5E7EB;
 }
 
+/* Active state - keep the color highlight */
 .dropdown__link--active {
   background-color: var(--ifm-color-primary-lightest);
   color: var(--ifm-color-primary);
 }
 
+/* Hover state - gray background only, no color */
 .dropdown__link:hover {
+  background-color: #F3F4F6;
+  color: #374151;
+}
+
+/* Active item on hover - keep the active color */
+.dropdown__link--active:hover {
   background-color: var(--ifm-color-primary-lightest);
   color: var(--ifm-color-primary);
 }
@@ -742,8 +750,15 @@ code:not([class*="language-"]) a:hover {
   color: var(--ifm-color-primary);
 }
 
+/* Dark mode hover - neutral gray */
 [data-theme='dark'] .dropdown__link:hover {
-  background-color: rgba(104, 229, 233, 0.1);
+  background-color: #374151;
+  color: #E5E7EB;
+}
+
+/* Dark mode active item on hover - keep the active color */
+[data-theme='dark'] .dropdown__link--active:hover {
+  background-color: rgba(104, 229, 233, 0.15);
   color: var(--ifm-color-primary);
 }
 
