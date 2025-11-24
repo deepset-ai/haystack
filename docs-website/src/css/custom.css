@@ -202,6 +202,15 @@ button, .button {
   font-size: 0.95rem;
 }
 
+.menu__link {
+  color: #4B5563;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+[data-theme='dark'] .menu__link {
+  color: #E5E7EB;
+}
+
 /* Sidebar navigation - sub-items normal weight */
 .menu__list .menu__list .menu__link {
   font-weight: 400;
@@ -225,6 +234,7 @@ button, .button {
 /* Hover state for sidebar links */
 .menu__link:hover {
   background-color: rgba(104, 229, 233, 0.08);
+  color: var(--ifm-color-primary);
   transition: background-color 0.2s ease;
 }
 
@@ -242,6 +252,7 @@ button, .button {
 
 [data-theme='dark'] .menu__link:hover {
   background-color: rgba(104, 229, 233, 0.1);
+  color: var(--ifm-color-primary-light);
 }
 
 [data-theme='dark'] .menu__link--active {
@@ -298,14 +309,57 @@ button, .button {
    INTERACTIVE ELEMENTS - Enhanced Colors
    ======================================== */
 
-/* Primary Links */
-a {
+/* Primary Links - only underline content links, not navigation */
+article a {
   color: var(--ifm-color-primary);
   transition: text-decoration 0.2s ease;
 }
 
-a:hover {
+article a:hover {
   text-decoration: underline;
+}
+
+/* Reset general link behavior - no underline by default */
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* Navbar links - keep neutral color until hovered/active */
+.navbar__link {
+  color: var(--ifm-navbar-link-color) !important;
+}
+
+.navbar__link:hover,
+.navbar__link:focus-visible {
+  color: var(--ifm-navbar-link-hover-color, var(--ifm-color-primary)) !important;
+}
+
+.navbar__link:active {
+  color: var(--ifm-navbar-link-active-color, var(--ifm-color-primary)) !important;
+}
+
+/* Navbar logo title - default to neutral, teal on hover */
+.navbar__title {
+  color: var(--ifm-navbar-link-color) !important;
+}
+
+.navbar__title:hover {
+  color: var(--ifm-navbar-link-hover-color, var(--ifm-color-primary)) !important;
+}
+
+/* Remove underline from navbar logo link */
+.navbar__logo,
+.navbar__brand {
+  text-decoration: none !important;
+}
+
+.navbar__logo:hover,
+.navbar__brand:hover {
+  text-decoration: none !important;
 }
 
 /* Inline Code - Neutral Grey Background */
@@ -474,8 +528,21 @@ code:not([class*="language-"]) a:hover {
    TABLE OF CONTENTS - Enhanced Styling
    ======================================== */
 
+.table-of-contents__link {
+  color: #4B5563;
+}
+
+[data-theme='dark'] .table-of-contents__link {
+  color: #E5E7EB;
+}
+
 .table-of-contents__link--active {
   color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+[data-theme='dark'] .table-of-contents__link--active {
+  color: var(--ifm-color-primary) !important;
   font-weight: 600;
 }
 
@@ -483,8 +550,16 @@ code:not([class*="language-"]) a:hover {
   color: var(--ifm-color-primary);
 }
 
+[data-theme='dark'] .table-of-contents__link--active code {
+  color: var(--ifm-color-primary) !important;
+}
+
 .table-of-contents__link:hover {
-  color: var(--ifm-color-primary-light);
+  color: var(--ifm-color-primary) !important;
+}
+
+[data-theme='dark'] .table-of-contents__link:hover {
+  color: var(--ifm-color-primary) !important;
 }
 
 /* ========================================
@@ -494,6 +569,14 @@ code:not([class*="language-"]) a:hover {
 .dropdown__menu {
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown__link {
+  color: #374151;
+}
+
+[data-theme='dark'] .dropdown__link {
+  color: #E5E7EB;
 }
 
 .dropdown__link--active {

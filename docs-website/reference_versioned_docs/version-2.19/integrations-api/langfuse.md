@@ -123,7 +123,7 @@ def __init__(name: str,
              span_handler: Optional[SpanHandler] = None,
              *,
              host: Optional[str] = None,
-             langfuse_client_kwargs: Optional[Dict[str, Any]] = None) -> None
+             langfuse_client_kwargs: Optional[dict[str, Any]] = None) -> None
 ```
 
 Initialize the LangfuseConnector component.
@@ -156,7 +156,7 @@ for more details on available configuration options.
 
 ```python
 @component.output_types(name=str, trace_url=str, trace_id=str)
-def run(invocation_context: Optional[Dict[str, Any]] = None) -> Dict[str, str]
+def run(invocation_context: Optional[dict[str, Any]] = None) -> dict[str, str]
 ```
 
 Runs the LangfuseConnector component.
@@ -180,7 +180,7 @@ A dictionary with the following keys:
 #### LangfuseConnector.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
@@ -195,7 +195,7 @@ The serialized component as a dictionary.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "LangfuseConnector"
+def from_dict(cls, data: dict[str, Any]) -> "LangfuseConnector"
 ```
 
 Deserialize this component from a dictionary.
@@ -283,7 +283,7 @@ The Langfuse span instance.
 #### LangfuseSpan.get\_data
 
 ```python
-def get_data() -> Dict[str, Any]
+def get_data() -> dict[str, Any]
 ```
 
 Return the data associated with the span.
