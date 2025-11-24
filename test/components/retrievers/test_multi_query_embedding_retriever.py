@@ -150,7 +150,7 @@ class TestMultiQueryEmbeddingRetriever:
 
     def test_from_dict(self):
         data = {
-            "type": "haystack_experimental.components.retrievers.multi_query_embedding_retriever.MultiQueryEmbeddingRetriever",  # noqa E501
+            "type": "haystack.components.retrievers.multi_query_embedding_retriever.MultiQueryEmbeddingRetriever",  # noqa E501
             "init_parameters": {
                 "retriever": {
                     "type": "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever",

@@ -97,7 +97,7 @@ class TestMultiQueryTextRetriever:
 
     def test_from_dict(self):
         data = {
-            "type": "haystack_experimental.components.retrievers.multi_query_text_retriever.MultiQueryTextRetriever",
+            "type": "haystack.components.retrievers.multi_query_text_retriever.MultiQueryTextRetriever",
             "init_parameters": {
                 "retriever": {
                     "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
