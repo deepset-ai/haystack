@@ -318,6 +318,7 @@ class TestQueryExpanderIntegration:
     )
     def test_query_expansion(self):
         expander = QueryExpander(n_expansions=3)
+        expander.warm_up()
         result = expander.run("renewable energy sources")
 
         assert len(result["queries"]) == 4
@@ -332,6 +333,7 @@ class TestQueryExpanderIntegration:
         test_queries = ["machine learning algorithms", "climate change effects", "quantum computing applications"]
 
         expander = QueryExpander(n_expansions=2, include_original_query=False)
+        expander.warm_up()
 
         for query in test_queries:
             result = expander.run(query)
