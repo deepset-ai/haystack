@@ -29,8 +29,8 @@ class MultiQueryTextRetriever:
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.document_stores.types import DuplicatePolicy
     from haystack.components.retrievers import InMemoryBM25Retriever
-    from haystack_experimental.components.query import QueryExpander
-    from haystack_experimental.components.retrievers.multi_query_text_retriever import MultiQueryTextRetriever
+    from haystack.components.query import QueryExpander
+    from haystack.components.retrievers.multi_query_text_retriever import MultiQueryTextRetriever
 
     documents = [
         Document(content="Renewable energy is energy that is collected from renewable resources."),

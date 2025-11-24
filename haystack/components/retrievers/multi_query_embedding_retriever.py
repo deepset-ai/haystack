@@ -31,7 +31,7 @@ class MultiQueryEmbeddingRetriever:
     from haystack.components.embedders import SentenceTransformersDocumentEmbedder
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
     from haystack.components.writers import DocumentWriter
-    from haystack_experimental.components.retrievers import MultiQueryEmbeddingRetriever
+    from haystack.components.retrievers import MultiQueryEmbeddingRetriever
 
     documents = [
         Document(content="Renewable energy is energy that is collected from renewable resources."),
