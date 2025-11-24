@@ -202,6 +202,40 @@ class TestMultiQueryEmbeddingRetriever:
         assert isinstance(result, MultiQueryEmbeddingRetriever)
         assert result.max_workers == 2
 
+    def test_deduplication_with_overlapping_results(self, mock_query_embedder):
+        doc1 = Document(content="Solar energy is renewable", id="doc1")
+        doc1.score = 0.9
+        doc2 = Document(content="Wind energy is clean", id="doc2")
+        doc2.score = 0.8
+        # same content as doc1 w/ different score
+        doc3 = Document(content="Solar energy is renewable", id="doc3")
+        doc3.score = 0.7
+
+        # mocked retriever
+        mock_retriever = MagicMock()
+        call_count = 0
+
+        def mock_retriever_run(query_embedding, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return {"documents": [doc1, doc2]}
+            else:
+                return {"documents": [doc3, doc2]}
+
+        mock_retriever.run = mock_retriever_run
+        multi_retriever = MultiQueryEmbeddingRetriever(
+            retriever=mock_retriever, query_embedder=mock_query_embedder, max_workers=1
+        )
+        result = multi_retriever.run(queries=["query1", "query2"])
+
+        assert "documents" in result
+        assert len(result["documents"]) == 2  # Only 2 unique documents (doc1/doc3 and doc2)
+
+        contents = [doc.content for doc in result["documents"]]
+        assert contents.count("Solar energy is renewable") == 1
+        assert contents.count("Wind energy is clean") == 1
+
     @pytest.mark.integration
     def test_run_with_filters(self, document_store_with_embeddings):
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings)

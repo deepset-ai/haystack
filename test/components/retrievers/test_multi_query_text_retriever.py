@@ -73,6 +73,7 @@ class TestMultiQueryTextRetriever:
         in_memory_retriever = InMemoryBM25Retriever(document_store=document_store_with_docs)
         multi_retriever = MultiQueryTextRetriever(retriever=in_memory_retriever)
         queries = ["renewable energy", "solar power", "wind turbines"]
+        multi_retriever.warm_up()
         result = multi_retriever.run(queries=queries)
 
         assert "documents" in result
