@@ -92,6 +92,27 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
+/* Heading sizes */
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+h4 {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
 /* 6) Buttons, spacing, etc. (optional) */
 button, .button {
   border-radius: 8px;
