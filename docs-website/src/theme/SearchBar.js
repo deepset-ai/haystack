@@ -89,10 +89,16 @@ const toDocUrl = (url) => {
   p = p.replace(/\/index\.html?$/i, "/");
   p = p.replace(/\.html?$/i, "");
 
+  // Handle reference URLs
+  if (p.includes("/reference")) {
+    p = p.split("/reference").pop();
+    if (!p.startsWith("/")) p = "/" + p;
+    return "/reference" + p;
+  }
+
+  // Handle docs URLs
   p = p.split("/docs").pop();
-
   if (!p.startsWith("/")) p = "/" + p;
-
   return "/docs" + p;
 };
 
