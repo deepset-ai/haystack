@@ -1,0 +1,28 @@
+loaders:
+- ignore_when_discovered:
+  - __init__
+  modules:
+  - haystack.components.query.query_expander
+  search_path:
+  - ../../../
+  type: haystack_pydoc_tools.loaders.CustomPythonLoader
+processors:
+- do_not_filter_modules: false
+  documented_only: true
+  expression: null
+  skip_empty_modules: true
+  type: filter
+- type: smart
+- type: crossref
+renderer:
+  description: Components for query processing and expansion.
+  id: experimental-query-api
+  markdown:
+    add_member_class_prefix: false
+    add_method_class_prefix: true
+    classdef_code_block: false
+    descriptive_class_title: false
+    descriptive_module_title: true
+    filename: experimental_query_api.md
+  title: Query
+  type: haystack_pydoc_tools.renderers.DocusaurusRenderer
