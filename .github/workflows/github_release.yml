@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-tags: true
           fetch-depth: 0  # slow but needed by reno
@@ -29,33 +29,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install "reno<5"
 
-      - name: Generate release notes for release candidates - minor releases
-        if: steps.version.outputs.current_pre_release != '' && endsWith(steps.version.outputs.current_release, '.0')
-        env:
-          # When generating notes for release candidates of minor versions, pick every vX.Y.Z-rcN but
-          # stop when encounter vX.Y.Z-rc0. The -rc0 tag is added automatically when
-          # we create the release branch, so we can assume it's always there.
-          EARLIEST_VERSION: v${{ steps.version.outputs.current_release }}-rc0
+      # Remove next version rc0 tag in the CI environment to prevent reno from assigning notes to future releases.
+      # This ensures release notes are correctly aggregated for the current version.
+      # This is a workaround. Can be removed if the release process is fully aligned with reno.
+      - name: Delete next version rc0 tag in the CI environment
         run: |
-          reno report --no-show-source --ignore-cache --earliest-version "$EARLIEST_VERSION" -o relnotes.rst
+          # Parse version X.Y.Z and increment Y for next minor version
+          IFS='.' read -r MAJOR MINOR _ <<< "${{ steps.version.outputs.current_release }}"
+          NEXT_MINOR=$((MINOR + 1))
+          NEXT_TAG="v${MAJOR}.${NEXT_MINOR}.0-rc0"
 
-      - name: Generate release notes for release candidates - bugfix releases
-        if: steps.version.outputs.current_pre_release != '' && !endsWith(steps.version.outputs.current_release, '.0')
+          if git rev-parse --verify "$NEXT_TAG" >/dev/null 2>&1; then
+            git tag -d "$NEXT_TAG"
+            echo "Deleted local tag $NEXT_TAG"
+          else
+            echo "Tag $NEXT_TAG does not exist locally"
+          fi
+
+      - name: Generate release notes
         env:
-          # When generating notes for release candidates of bugfix releases, pick every vX.Y.Z-rcN but
-          # stop when encounter vX.Y.Z-rc1.
-          # In this case, we don't have the -rc0 tag, because we don't need to go through commits on main,
-          # as we cherry-pick them into the release branch.
+
           EARLIEST_VERSION: v${{ steps.version.outputs.current_release }}-rc1
         run: |
           reno report --no-show-source --ignore-cache --earliest-version "$EARLIEST_VERSION" -o relnotes.rst
-
-      - name: Generate release notes for the final release
-        if: steps.version.outputs.current_pre_release == ''
-        # When generating notes for the final release vX.Y.Z, we just pass --version and reno
-        # will automatically collapse all the vX.Y.Z-rcN.
-        run: |
-          reno report --no-show-source --ignore-cache --version v${{ steps.version.outputs.current_release }} -o relnotes.rst
 
       - name: Convert to Markdown
         uses: docker://pandoc/core:3.8
