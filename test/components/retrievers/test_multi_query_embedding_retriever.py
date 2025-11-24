@@ -13,8 +13,7 @@ from haystack.components.embedders import SentenceTransformersTextEmbedder
 from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.query import QueryExpander
-from haystack.components.retrievers import InMemoryEmbeddingRetriever
-from haystack.components.retrievers.multi_query_embedding_retriever import MultiQueryEmbeddingRetriever
+from haystack.components.retrievers import InMemoryEmbeddingRetriever, MultiQueryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy

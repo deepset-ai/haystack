@@ -9,8 +9,7 @@ import pytest
 from haystack import Document, Pipeline
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.query import QueryExpander
-from haystack.components.retrievers import InMemoryBM25Retriever
-from haystack.components.retrievers.multi_query_text_retriever import MultiQueryTextRetriever
+from haystack.components.retrievers import InMemoryBM25Retriever, MultiQueryTextRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
