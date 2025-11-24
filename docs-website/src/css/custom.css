@@ -567,24 +567,24 @@ code:not([class*="language-"]) a:hover {
    VERSION BADGE & BANNER - Brand Colors
    ======================================== */
 
-/* Version Badge - Neutral grey (metadata, not interactive) */
+/* Version Badge - Lighter grey for better teal contrast */
 .badge--secondary,
 .theme-doc-version-badge {
-  background-color: #6B7280 !important;
-  border-color: #6B7280 !important;
+  background-color: #9CA3AF !important;
+  border-color: #9CA3AF !important;
   color: #ffffff !important;
 }
 
 [data-theme='dark'] .badge--secondary,
 [data-theme='dark'] .theme-doc-version-badge {
-  background-color: #4B5563 !important;
-  border-color: #4B5563 !important;
-  color: #E5E7EB !important;
+  background-color: #6B7280 !important;
+  border-color: #6B7280 !important;
+  color: #ffffff !important;
 }
 
-/* Navbar Version Dropdown - Badge Style */
+/* Navbar Version Dropdown - Badge Style with lighter grey */
 .navbar-version-badge-dropdown {
-  background-color: #6B7280 !important;
+  background-color: #9CA3AF !important;
   border-radius: 12px !important;
   padding: 3px 10px !important;
   font-size: 13px !important;
@@ -601,28 +601,37 @@ code:not([class*="language-"]) a:hover {
   color: #ffffff !important;
   font-weight: 500 !important;
   padding: 0 !important;
+  transition: color 0.2s ease !important;
 }
 
+/* Light mode: teal TEXT color on hover */
+.navbar-version-badge-dropdown:hover .navbar__link,
+.navbar-version-badge-dropdown:hover .navbar__link *,
+.navbar-version-badge-dropdown:hover button,
+.navbar-version-badge-dropdown:hover a,
+.navbar-version-badge-dropdown:hover span,
 .navbar-version-badge-dropdown .navbar__link:hover,
-.navbar-version-badge-dropdown button:hover,
-.navbar-version-badge-dropdown a:hover {
-  color: #ffffff !important;
+.navbar-version-badge-dropdown .navbar__link:hover * {
+  color: var(--ifm-color-primary-dark) !important;
   background-color: transparent !important;
-}
-
-.navbar-version-badge-dropdown:hover {
-  background-color: #6B7280 !important;
 }
 
 /* Force white color on the dropdown caret/arrow */
 .navbar-version-badge-dropdown::after,
 .navbar-version-badge-dropdown .navbar__link::after {
   filter: brightness(0) invert(1) !important;
+  transition: filter 0.2s ease !important;
+}
+
+/* Teal arrow on hover */
+.navbar-version-badge-dropdown:hover::after,
+.navbar-version-badge-dropdown:hover .navbar__link::after {
+  filter: none !important;
 }
 
 [data-theme='dark'] .navbar-version-badge-dropdown {
-  background-color: #4B5563 !important;
-  color: #E5E7EB !important;
+  background-color: #6B7280 !important;
+  color: #ffffff !important;
 }
 
 [data-theme='dark'] .navbar-version-badge-dropdown .navbar__link,
@@ -631,17 +640,19 @@ code:not([class*="language-"]) a:hover {
 [data-theme='dark'] .navbar-version-badge-dropdown a,
 [data-theme='dark'] .navbar-version-badge-dropdown span,
 [data-theme='dark'] .navbar__item.navbar-version-badge-dropdown > .navbar__link {
-  color: #E5E7EB !important;
+  color: #ffffff !important;
 }
 
-[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link:hover,
-[data-theme='dark'] .navbar-version-badge-dropdown button:hover,
-[data-theme='dark'] .navbar-version-badge-dropdown a:hover {
-  color: #E5E7EB !important;
-}
-
-[data-theme='dark'] .navbar-version-badge-dropdown:hover {
-  background-color: #4B5563 !important;
+/* Dark mode: teal TEXT color on hover - higher specificity */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link *,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover button,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover a,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover span,
+html[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link:hover *,
+html[data-theme='dark'] .navbar__item.navbar-version-badge-dropdown:hover > .navbar__link {
+  color: #68E5E9 !important;
 }
 
 /* Unreleased Version Banner */
@@ -905,4 +916,27 @@ code:not([class*="language-"]) a:hover {
   .code-comparison {
     flex-direction: column;
   }
+}
+
+/* ========================================= */
+/* CRITICAL: Version badge hover color fix  */
+/* These rules MUST be at the end to ensure */
+/* they override all other hover styles     */
+/* ========================================= */
+
+/* Dark mode version badge - teal text on hover */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a.navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown > a:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown > a.navbar__link:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown a.navbar__link:hover {
+  color: #68E5E9 !important;
+}
+
+/* Also target the dropdown arrow/caret in dark mode on hover */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover::after,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
+  filter: none !important;
 }
