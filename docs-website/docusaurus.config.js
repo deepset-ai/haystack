@@ -171,6 +171,11 @@ const config = {
             position: 'left',
           },
           {
+            href: 'https://github.com/deepset-ai/haystack/blob/main/docs-website/CONTRIBUTING.md',
+            label: 'Contribute',
+            position: 'right',
+          },
+          {
             href: 'https://github.com/deepset-ai/haystack/tree/main/docs-website',
             label: 'GitHub',
             position: 'right',
@@ -183,9 +188,9 @@ const config = {
           {
             title: 'Community',
             items: [
-              { label: 'Discord',   href: 'https://discord.com/invite/haystack' },
-              { label: 'GitHub',    href: 'https://github.com/deepset-ai/haystack' },
-              { label: 'Twitter',   href: 'https://twitter.com/haystack_ai' },
+              {
+                html: '<div class="footer-social-icons-container"><div class="footer-social-row"><a href="https://discord.com/invite/haystack" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="Discord"><img src="/img/discord.svg" alt="Discord" class="footer-social-icon" /></a><a href="https://github.com/deepset-ai/haystack" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="GitHub"><img src="/img/github.svg" alt="GitHub" class="footer-social-icon" /></a><a href="https://x.com/haystack_ai" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="X"><img src="/img/x.svg" alt="X" class="footer-social-icon" /></a></div><div class="footer-social-row"><a href="https://www.linkedin.com/company/deepset-ai/" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="LinkedIn"><img src="/img/linkedin.svg" alt="LinkedIn" class="footer-social-icon" /></a><a href="https://www.youtube.com/channel/UC5dfn9m310oyt-cbeegfvZw" target="_blank" rel="noopener noreferrer" class="footer__link-item" aria-label="YouTube"><img src="/img/youtube.svg" alt="YouTube" class="footer-social-icon" /></a></div></div>'
+              },
             ],
           },
           {
@@ -208,6 +213,13 @@ const config = {
               { label: 'About',   href: 'https://deepset.ai/about' },
               { label: 'Careers', href: 'https://deepset.ai/careers' },
               { label: 'Blog',    href: 'https://deepset.ai/blog' },
+            ],
+          },
+          {
+            title: 'Legal',
+            items: [
+              { label: 'Privacy Policy', href: 'https://www.deepset.ai/privacy-policy' },
+              { label: 'Imprint', href: 'https://www.deepset.ai/imprint' },
             ],
           },
         ],
