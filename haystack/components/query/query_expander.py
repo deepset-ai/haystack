@@ -65,7 +65,7 @@ class QueryExpander:
 
     ```python
     from haystack.components.generators.chat.openai import OpenAIChatGenerator
-    from haystack_experimental.components.query import QueryExpander
+    from haystack.components.query import QueryExpander
 
     expander = QueryExpander(
         chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
