@@ -126,6 +126,7 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      image: 'img/haystack-ogimage.png',
       docs: {
         sidebar: {
           autoCollapseCategories: true,
