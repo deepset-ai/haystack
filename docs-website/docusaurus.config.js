@@ -112,7 +112,7 @@ const config = {
     require.resolve('./plugins/txtLoaderPlugin'),
     ['@cmfcmf/docusaurus-search-local',      {
       includeParentCategoriesInPageTitle: true,
-      indexDocSidebarParentCategories: 2,
+      indexDocSidebarParentCategories: 3,
       lunr: {
         titleBoost: 1,
         contentBoost: 1,
