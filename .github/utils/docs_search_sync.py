@@ -9,7 +9,9 @@ def transform_filename(filepath: Path) -> str:
     - Use parent directory name + .html instead of index.html
     - For other HTML files, use parent_dir_filename.html
     """
-    base_dir = Path(__file__).parent
+    repo_root = Path(__file__).parent.parent.parent
+
+    base_dir = repo_root / "docs-website" / "build"
     # print(base_dir)
     # Get relative path from base directory
     rel_path = filepath.relative_to(base_dir)
@@ -30,8 +32,7 @@ def transform_filename(filepath: Path) -> str:
 if __name__ == "__main__":
     files = []
 
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent.parent
+    repo_root = Path(__file__).parent.parent.parent
 
     dirs = [repo_root / "docs-website" / "build" / "docs", repo_root / "docs-website" / "build" / "reference"]
     for dir_path in dirs:
