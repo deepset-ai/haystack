@@ -20,7 +20,7 @@ jobs:
 
 
       - name: Install Docusaurus and build docs-website
-        working-directory: haystack/docs-website
+        working-directory: docs-website
         run: |
           npm install
           npm run build
