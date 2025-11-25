@@ -27,10 +27,10 @@ jobs:
         working-directory: docs-website
         run: |
           npm install
-          npm run build --no-minify # try to speed up
+          npm run build
 
       - name: Install script dependencies
-        run: pip install deepset-cloud-sdk
+        run: pip install deepset-cloud-sdk requests
 
       - name: Update new docs to Search pipeline and remove outdated docs
         env:
