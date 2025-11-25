@@ -1,0 +1,24 @@
+name: Docs Search Feed
+
+on:
+  pull_request:
+
+
+jobs:
+  docs-search-feed:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install deepset-cloud-sdk
+
+      - name: Generate docs search feed
+        env:
+          WORKSPACE: "haystack-docs-bilge"
+          API_KEY: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
+        run: python .github/utils/feed.py
