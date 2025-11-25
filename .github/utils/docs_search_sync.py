@@ -7,8 +7,8 @@ It is used in the docs_search_sync.yml workflow.
 2. Uploads the HTML files to the deepset workspace.
     - A timestamp-based metadata field is used to track document versions in the workspace.
 3. Deletes the old HTML files from the deepset workspace.
-  - Since most files are overwritten during upload, only a small number of deletions is expected.
-  - In case MAX_DELETIONS_SAFETY_LIMIT is exceeded, we block the deletion.
+    - Since most files are overwritten during upload, only a small number of deletions is expected.
+    - In case MAX_DELETIONS_SAFETY_LIMIT is exceeded, we block the deletion.
 """
 
 import os
