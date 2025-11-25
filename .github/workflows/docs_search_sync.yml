@@ -1,7 +1,9 @@
 name: Docs Search Sync
 
 on:
-  pull_request:
+  workflow_dispatch: # Activate this workflow manually
+  schedule:
+    - cron: "0 1 * * *"
 
 # Running this workflow multiple times in parallel can cause issues with files uploads and deletions.
 concurrency:
