@@ -45,6 +45,40 @@ export default function RootWrapper(props) {
     };
   }, []);
 
+  // Mark single-word sidebar items for truncation styling
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const markSingleWordLinks = () => {
+      const menuLinks = document.querySelectorAll('.menu__link');
+      menuLinks.forEach(link => {
+        // Get the text content, trimmed
+        const text = link.textContent?.trim() || '';
+        // Check if it's a single word (no spaces)
+        const isSingleWord = text.length > 0 && !text.includes(' ');
+
+        if (isSingleWord) {
+          link.classList.add('menu__link--single-word');
+        } else {
+          link.classList.remove('menu__link--single-word');
+        }
+      });
+    };
+
+    // Run initially
+    markSingleWordLinks();
+
+    // Re-run when DOM changes (sidebar updates, navigation, etc.)
+    const observer = new MutationObserver(markSingleWordLinks);
+    observer.observe(document.body, {childList: true, subtree: true});
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     console.log('[Root.js] Current product:', product);
     console.log('[Root.js] Current path:', typeof window !== 'undefined' ? window.location.pathname : 'N/A');

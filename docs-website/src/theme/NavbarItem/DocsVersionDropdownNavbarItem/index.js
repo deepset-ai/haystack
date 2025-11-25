@@ -231,6 +231,7 @@ export default function DocsVersionDropdownNavbarItem({
       to={dropdownTo}
       items={items}
       isActive={resolvedIsActive}
+      className="navbar-version-badge-dropdown"
     />
   );
 }

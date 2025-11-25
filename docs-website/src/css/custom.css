@@ -45,6 +45,9 @@
   --docusaurus-admonition-note-border: #8BA5FF;
   --docusaurus-admonition-info-bg: rgba(160, 244, 235, 0.1);
   --docusaurus-admonition-info-border: #A0F4EB;
+
+  /* Content Width - wider for long class names */
+  --ifm-container-width: 1024px;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
@@ -89,13 +92,30 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
+/* Heading sizes */
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+h4 {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
 /* 6) Buttons, spacing, etc. (optional) */
 button, .button {
   border-radius: 8px;
-}
-
-.container {
-  max-width: 1200px;
 }
 
 
@@ -172,13 +192,13 @@ button, .button {
   letter-spacing: 0.5px !important;
 }
 
-/* Footer links - use teal colors, no lilac */
+/* Footer links - white on hover for better contrast on green background */
 .footer__link-item {
   color: rgba(255, 255, 255, 0.7);
 }
 
 .footer__link-item:hover {
-  color: var(--ifm-color-primary-light);
+  color: #ffffff !important;
   text-decoration: underline;
 }
 
@@ -188,12 +208,60 @@ button, .button {
 }
 
 .footer a:hover {
-  color: var(--ifm-color-primary-light);
+  color: #ffffff !important;
 }
 
 /* Footer copyright - same color as other footer text */
 .footer__copyright {
   color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Footer - Haystack Green Background */
+.footer.footer--dark {
+  background-color: #1d6b5e !important;
+}
+
+[data-theme='dark'] .footer.footer--dark {
+  background-color: #155650 !important;
+}
+
+/* Footer Social Media Icons */
+.footer-social-icons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-left: -0.25rem;
+}
+
+.footer-social-row {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-start;
+}
+
+.footer-social-icon {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
+  opacity: 0.7;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.footer-social-icon:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.footer__link-item:has(.footer-social-icon) {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem;
+}
+
+.footer__link-item:has(.footer-social-icon):hover {
+  text-decoration: none;
 }
 
 /* Sidebar navigation - top-level items bold */
@@ -205,6 +273,15 @@ button, .button {
 .menu__link {
   color: #4B5563;
   transition: color 0.2s ease, background-color 0.2s ease;
+  position: relative;
+}
+
+/* Truncate only single-word items (like class names: SentenceTransformersDocumentImageEmbedder) */
+/* Multi-word phrases (like "Migrating from LangGraph to Haystack") will wrap normally */
+.menu__link--single-word {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 [data-theme='dark'] .menu__link {
@@ -494,19 +571,92 @@ code:not([class*="language-"]) a:hover {
    VERSION BADGE & BANNER - Brand Colors
    ======================================== */
 
-/* Version Badge - Neutral grey (metadata, not interactive) */
+/* Version Badge - Lighter grey for better teal contrast */
 .badge--secondary,
 .theme-doc-version-badge {
-  background-color: #6B7280 !important;
-  border-color: #6B7280 !important;
+  background-color: #9CA3AF !important;
+  border-color: #9CA3AF !important;
   color: #ffffff !important;
 }
 
 [data-theme='dark'] .badge--secondary,
 [data-theme='dark'] .theme-doc-version-badge {
-  background-color: #4B5563 !important;
-  border-color: #4B5563 !important;
-  color: #E5E7EB !important;
+  background-color: #6B7280 !important;
+  border-color: #6B7280 !important;
+  color: #ffffff !important;
+}
+
+/* Navbar Version Dropdown - Badge Style with lighter grey */
+.navbar-version-badge-dropdown {
+  background-color: #9CA3AF !important;
+  border-radius: 12px !important;
+  padding: 3px 10px !important;
+  font-size: 13px !important;
+  margin-right: 10px !important;
+  color: #ffffff !important;
+}
+
+.navbar-version-badge-dropdown .navbar__link,
+.navbar-version-badge-dropdown .navbar__link *,
+.navbar-version-badge-dropdown button,
+.navbar-version-badge-dropdown a,
+.navbar-version-badge-dropdown span,
+.navbar__item.navbar-version-badge-dropdown > .navbar__link {
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+  transition: color 0.2s ease !important;
+}
+
+/* Light mode: teal TEXT color on hover */
+.navbar-version-badge-dropdown:hover .navbar__link,
+.navbar-version-badge-dropdown:hover .navbar__link *,
+.navbar-version-badge-dropdown:hover button,
+.navbar-version-badge-dropdown:hover a,
+.navbar-version-badge-dropdown:hover span,
+.navbar-version-badge-dropdown .navbar__link:hover,
+.navbar-version-badge-dropdown .navbar__link:hover * {
+  color: var(--ifm-color-primary-dark) !important;
+  background-color: transparent !important;
+}
+
+/* Force white color on the dropdown caret/arrow */
+.navbar-version-badge-dropdown::after,
+.navbar-version-badge-dropdown .navbar__link::after {
+  filter: brightness(0) invert(1) !important;
+  transition: filter 0.2s ease !important;
+}
+
+/* Teal arrow on hover */
+.navbar-version-badge-dropdown:hover::after,
+.navbar-version-badge-dropdown:hover .navbar__link::after {
+  filter: none !important;
+}
+
+[data-theme='dark'] .navbar-version-badge-dropdown {
+  background-color: #6B7280 !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link,
+[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link *,
+[data-theme='dark'] .navbar-version-badge-dropdown button,
+[data-theme='dark'] .navbar-version-badge-dropdown a,
+[data-theme='dark'] .navbar-version-badge-dropdown span,
+[data-theme='dark'] .navbar__item.navbar-version-badge-dropdown > .navbar__link {
+  color: #ffffff !important;
+}
+
+/* Dark mode: teal TEXT color on hover - higher specificity */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link *,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover button,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover a,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover span,
+html[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link:hover *,
+html[data-theme='dark'] .navbar__item.navbar-version-badge-dropdown:hover > .navbar__link {
+  color: #68E5E9 !important;
 }
 
 /* Unreleased Version Banner */
@@ -530,6 +680,7 @@ code:not([class*="language-"]) a:hover {
 
 .table-of-contents__link {
   color: #4B5563;
+  position: relative;
 }
 
 [data-theme='dark'] .table-of-contents__link {
@@ -539,6 +690,18 @@ code:not([class*="language-"]) a:hover {
 .table-of-contents__link--active {
   color: var(--ifm-color-primary);
   font-weight: 600;
+}
+
+/* Active indicator line */
+.table-of-contents__link--active::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--ifm-color-primary);
+  border-radius: 2px;
 }
 
 [data-theme='dark'] .table-of-contents__link--active {
@@ -579,12 +742,20 @@ code:not([class*="language-"]) a:hover {
   color: #E5E7EB;
 }
 
+/* Active state - keep the color highlight */
 .dropdown__link--active {
   background-color: var(--ifm-color-primary-lightest);
   color: var(--ifm-color-primary);
 }
 
+/* Hover state - gray background only, no color */
 .dropdown__link:hover {
+  background-color: #F3F4F6;
+  color: #374151;
+}
+
+/* Active item on hover - keep the active color */
+.dropdown__link--active:hover {
   background-color: var(--ifm-color-primary-lightest);
   color: var(--ifm-color-primary);
 }
@@ -594,8 +765,15 @@ code:not([class*="language-"]) a:hover {
   color: var(--ifm-color-primary);
 }
 
+/* Dark mode hover - neutral gray */
 [data-theme='dark'] .dropdown__link:hover {
-  background-color: rgba(104, 229, 233, 0.1);
+  background-color: #374151;
+  color: #E5E7EB;
+}
+
+/* Dark mode active item on hover - keep the active color */
+[data-theme='dark'] .dropdown__link--active:hover {
+  background-color: rgba(104, 229, 233, 0.15);
   color: var(--ifm-color-primary);
 }
 
@@ -742,4 +920,27 @@ code:not([class*="language-"]) a:hover {
   .code-comparison {
     flex-direction: column;
   }
+}
+
+/* ========================================= */
+/* CRITICAL: Version badge hover color fix  */
+/* These rules MUST be at the end to ensure */
+/* they override all other hover styles     */
+/* ========================================= */
+
+/* Dark mode version badge - teal text on hover */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a.navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown > a:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown > a.navbar__link:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown a.navbar__link:hover {
+  color: #68E5E9 !important;
+}
+
+/* Also target the dropdown arrow/caret in dark mode on hover */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover::after,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
+  filter: none !important;
 }
