@@ -29,11 +29,11 @@ jobs:
           npm install
           npm run build
 
-      - name: Install dependencies
+      - name: Install script dependencies
         run: pip install deepset-cloud-sdk
 
-      - name: Generate docs search feed
+      - name: Update new docs to Search pipeline and remove outdated docs
         env:
           WORKSPACE: ${{ secrets.DEEPSET_WORKSPACE_DOCS_SEARCH }}
           API_KEY: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
-        run: python ./.github/utils/feed.py
+        run: python ./.github/utils/docs_search_sync.py
