@@ -30,7 +30,10 @@ def transform_filename(filepath: Path) -> str:
 if __name__ == "__main__":
     files = []
 
-    dirs = ["../docs-website/build/docs", "../docs-website/build/reference"]
+    script_dir = Path(__file__).parent
+    repo_root = script_dir.parent.parent
+
+    dirs = [repo_root / "docs-website" / "build" / "docs", repo_root / "docs-website" / "build" / "reference"]
     for dir_path in dirs:
         # we want to exclude previous versions (2.x) and next version (next)
         # also excluding unstable version when manually running the script
