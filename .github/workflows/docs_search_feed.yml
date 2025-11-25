@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v6
+
       - name: Install python
         uses: actions/setup-python@v6
         with:
