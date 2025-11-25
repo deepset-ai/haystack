@@ -30,7 +30,7 @@ jobs:
       - name: Install Docusaurus and build docs-website
         working-directory: docs-website
         run: |
-          npm ci
+          npm install
           npm run build
 
       - name: Install script dependencies
