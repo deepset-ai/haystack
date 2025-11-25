@@ -38,6 +38,6 @@ jobs:
 
       - name: Update new docs to Search pipeline and remove outdated docs
         env:
-          WORKSPACE: ${{ secrets.DEEPSET_WORKSPACE_DOCS_SEARCH }}
-          API_KEY: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
+          DEEPSET_WORKSPACE_DOCS_SEARCH: ${{ secrets.DEEPSET_WORKSPACE_DOCS_SEARCH }}
+          DEEPSET_API_KEY_DOCS_SEARCH: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
         run: python ./.github/utils/docs_search_sync.py

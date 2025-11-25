@@ -1,3 +1,16 @@
+"""
+This script syncs the Haystack docs HTML files to the deepset workspace for search indexing.
+
+It is used in the docs_search_sync.yml workflow.
+
+1. Collects all HTML files from the docs and reference directories for the stable Haystack version.
+2. Uploads the HTML files to the deepset workspace.
+    - A timestamp-based metadata field is used to track document versions in the workspace.
+3. Deletes the old HTML files from the deepset workspace.
+  - Since most files are overwritten during upload, only a small number of deletions is expected.
+  - In case MAX_DELETIONS_SAFETY_LIMIT is exceeded, we block the deletion.
+"""
+
 import os
 import sys
 import time
@@ -6,8 +19,8 @@ from pathlib import Path
 import requests
 from deepset_cloud_sdk.workflows.sync_client.files import DeepsetCloudFile, WriteMode, list_files, upload_texts
 
-WORKSPACE = os.environ["WORKSPACE"]
-API_KEY = os.environ["API_KEY"]
+DEEPSET_WORKSPACE_DOCS_SEARCH = os.environ["DEEPSET_WORKSPACE_DOCS_SEARCH"]
+DEEPSET_API_KEY_DOCS_SEARCH = os.environ["DEEPSET_API_KEY_DOCS_SEARCH"]
 
 # If there are more files to delete than this limit, it's likely that something went wrong in the upload process.
 MAX_DELETIONS_SAFETY_LIMIT = 20
@@ -48,9 +61,9 @@ def delete_files(file_names: list[str]) -> None:
     """
     Delete files from the deepset workspace.
     """
-    url = f"https://api.cloud.deepset.ai/api/v1/workspaces/{WORKSPACE}/files"
+    url = f"https://api.cloud.deepset.ai/api/v1/workspaces/{DEEPSET_WORKSPACE_DOCS_SEARCH}/files"
     payload = {"names": file_names}
-    headers = {"Accept": "application/json", "Authorization": f"Bearer {API_KEY}"}
+    headers = {"Accept": "application/json", "Authorization": f"Bearer {DEEPSET_API_KEY_DOCS_SEARCH}"}
     response = requests.delete(url, json=payload, headers=headers, timeout=300)
     response.raise_for_status()
 
@@ -69,9 +82,9 @@ if __name__ == "__main__":
 
     print("Uploading docs files to deepset")
     summary = upload_texts(
-        workspace_name=WORKSPACE,
+        workspace_name=DEEPSET_WORKSPACE_DOCS_SEARCH,
         files=dc_files,
-        api_key=API_KEY,
+        api_key=DEEPSET_API_KEY_DOCS_SEARCH,
         blocking=True,  # Very important to ensure that DC is up to date when we query for deletion
         timeout_s=300,
         show_progress=True,
@@ -87,7 +100,9 @@ if __name__ == "__main__":
     odata_filter = f"version lt '{version}'"
     old_files_names = [
         f.name
-        for batch in list_files(workspace_name=WORKSPACE, api_key=API_KEY, odata_filter=odata_filter)
+        for batch in list_files(
+            workspace_name=DEEPSET_WORKSPACE_DOCS_SEARCH, api_key=DEEPSET_API_KEY_DOCS_SEARCH, odata_filter=odata_filter
+        )
         for f in batch
     ]
 
