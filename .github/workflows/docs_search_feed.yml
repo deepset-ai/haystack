@@ -21,4 +21,4 @@ jobs:
         env:
           WORKSPACE: "haystack-docs-bilge"
           API_KEY: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
-        run: python .github/utils/feed.py
+        run: python ./.github/utils/feed.py
