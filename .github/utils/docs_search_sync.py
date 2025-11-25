@@ -9,6 +9,9 @@ from deepset_cloud_sdk.workflows.sync_client.files import DeepsetCloudFile, Writ
 WORKSPACE = os.environ["WORKSPACE"]
 API_KEY = os.environ["API_KEY"]
 
+# If there are more files to delete than this limit, it's likely that something went wrong in the upload process.
+MAX_DELETIONS_SAFETY_LIMIT = 20
+
 
 def collect_docs_files(version: int) -> list[DeepsetCloudFile]:
     """
@@ -41,7 +44,7 @@ def collect_docs_files(version: int) -> list[DeepsetCloudFile]:
     return files
 
 
-def delete_files(file_names: list[str]):
+def delete_files(file_names: list[str]) -> None:
     """
     Delete files from the deepset workspace.
     """
@@ -49,7 +52,7 @@ def delete_files(file_names: list[str]):
     payload = {"names": file_names}
     headers = {"Accept": "application/json", "Authorization": f"Bearer {API_KEY}"}
     response = requests.delete(url, json=payload, headers=headers, timeout=300)
-    return response.json()
+    response.raise_for_status()
 
 
 if __name__ == "__main__":
@@ -59,6 +62,10 @@ if __name__ == "__main__":
     print("Collecting docs files from build directory")
     dc_files = collect_docs_files(version)
     print(f"Collected {len(dc_files)} docs files")
+
+    if len(dc_files) == 0:
+        print("No docs files found. Something is wrong. Exiting.")
+        sys.exit(1)
 
     print("Uploading docs files to deepset")
     summary = upload_texts(
@@ -77,7 +84,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print("Listing old docs files from deepset")
-    old_files_names = []
     odata_filter = f"version lt '{version}'"
     old_files_names = [
         f.name
@@ -86,10 +92,14 @@ if __name__ == "__main__":
     ]
 
     print(f"Found {len(old_files_names)} old files to delete")
-    if len(old_files_names) > 20:
-        print("Found >20 old files to delete. Stopping because something could have gone wrong in the upload process.")
+    if len(old_files_names) > MAX_DELETIONS_SAFETY_LIMIT:
+        print(
+            f"Found >{MAX_DELETIONS_SAFETY_LIMIT} old files to delete. "
+            "Stopping because something could have gone wrong in the upload process."
+        )
         sys.exit(1)
 
-    print("Deleting old docs files from deepset")
-    result = delete_files(old_files_names)
-    print(f"Deleted old docs files from deepset\n{result}")
+    if len(old_files_names) > 0:
+        print("Deleting old docs files from deepset")
+        delete_files(old_files_names)
+        print("Deleted old docs files from deepset")

@@ -3,6 +3,10 @@ name: Docs Search Sync
 on:
   pull_request:
 
+# Running this workflow multiple times in parallel can cause issues with files uploads and deletions.
+concurrency:
+  group: docs-search-sync
+  cancel-in-progress: false
 
 jobs:
   docs-search-sync:
@@ -16,17 +20,17 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Install Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.12"
 
       - name: Install Docusaurus and build docs-website
         working-directory: docs-website
         run: |
-          npm install
+          npm ci
           npm run build
 
       - name: Install script dependencies
