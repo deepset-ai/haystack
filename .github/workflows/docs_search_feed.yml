@@ -22,6 +22,6 @@ jobs:
 
       - name: Generate docs search feed
         env:
-          WORKSPACE: "haystack-docs-bilge"
+          WORKSPACE: ${{ secrets.DEEPSET_WORKSPACE_DOCS_SEARCH }}
           API_KEY: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
         run: python ./.github/utils/feed.py
