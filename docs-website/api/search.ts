@@ -43,7 +43,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
     }
 
-    //TODO: Change with Haystack endpoint
     const apiResponse = await fetch(
       `https://api.cloud.deepset.ai/api/v1/workspaces/${SEARCH_API_WORKSPACE}/pipelines/${SEARCH_API_PIPELINE}/search`,
       {

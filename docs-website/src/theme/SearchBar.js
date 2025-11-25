@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// TODO: Polish after having the Haystack API endpoint
 import React, {
   useCallback,
   useEffect,
@@ -120,7 +119,6 @@ const groupByPage = (documents) => {
   return groups;
 };
 
-// TODO: Update this after having the Haystack API endpoint
 const categorizeDocument = (doc, path) => {
   // First, try to use the navigation metadata from the document
   const navigation = doc?.meta?.type;
@@ -144,8 +142,8 @@ const categorizeDocument = (doc, path) => {
     return "api-reference";
   }
 
-  // Guides (how-tos, tutorials, learn) - default for most docs
-  return "guides";
+  // Default for most docs
+  return "documentation";
 };
 
 const toResults = (documents, query) => {
@@ -222,7 +220,6 @@ export default function SearchBar() {
       } finally {
         if (!requestAbortRef.current?.signal.aborted) {
           setIsSearching(false);
-          // setShowResults(true);
         }
       }
     },
@@ -320,7 +317,6 @@ export default function SearchBar() {
     [debouncedSearch, performSearch, query]
   );
 
-  // TODO: Update this after having the Haystack API endpoint
   const filters = [
     { id: "all", label: "All" },
     { id: "api-reference", label: "API Reference" },
