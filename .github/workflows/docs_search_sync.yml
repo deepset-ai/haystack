@@ -13,11 +13,15 @@ jobs:
       - name: Checkout Haystack repo
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
+      - name: Install Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '22'
 
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
 
       - name: Install Docusaurus and build docs-website
         working-directory: docs-website
@@ -25,18 +29,11 @@ jobs:
           npm install
           npm run build
 
+      - name: Install dependencies
+        run: pip install deepset-cloud-sdk
 
-
-      # - name: Install python
-      #   uses: actions/setup-python@v6
-      #   with:
-      #     python-version: "3.11"
-
-      # - name: Install dependencies
-      #   run: pip install deepset-cloud-sdk
-
-      # - name: Generate docs search feed
-      #   env:
-      #     WORKSPACE: ${{ secrets.DEEPSET_WORKSPACE_DOCS_SEARCH }}
-      #     API_KEY: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
-      #   run: python ./.github/utils/feed.py
+      - name: Generate docs search feed
+        env:
+          WORKSPACE: ${{ secrets.DEEPSET_WORKSPACE_DOCS_SEARCH }}
+          API_KEY: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
+        run: python ./.github/utils/feed.py
