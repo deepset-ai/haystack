@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Three new components added ``QueryExpander``, ``MultiQueryEmbeddingRetriever``, ``MultiQueryTextRetriever``. When used together, they allow a query to be expanded and each expansion is used to retrieve a potentially different set of documents.

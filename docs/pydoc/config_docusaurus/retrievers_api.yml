@@ -4,9 +4,11 @@ loaders:
     modules:
       [
         "auto_merging_retriever",
+        "filter_retriever",
         "in_memory/bm25_retriever",
         "in_memory/embedding_retriever",
-        "filter_retriever",
+        "multi_query_embedding_retriever",
+        "multi_query_text_retriever",
         "sentence_window_retriever",
       ]
     ignore_when_discovered: ["__init__"]
