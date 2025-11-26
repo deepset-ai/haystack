@@ -47,7 +47,8 @@ def _serializable_value(value: Any, use_placeholders: bool = True) -> Any:
         The value to serialize.
     :param use_placeholders:
         Whether to use string placeholders for large objects like ByteStream and ImageContent.
-    :returns: The serialized value.
+    :returns:
+        The serialized value.
     """
     if isinstance(value, list):
         return [_serializable_value(value=v, use_placeholders=use_placeholders) for v in value]
