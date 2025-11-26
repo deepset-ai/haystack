@@ -7,7 +7,6 @@ from typing import Any, Union
 import pytest
 
 from haystack import Document
-from haystack.dataclasses import ByteStream, ChatMessage
 from haystack.tracing import utils
 from haystack.tracing.utils import _serializable_value
 
