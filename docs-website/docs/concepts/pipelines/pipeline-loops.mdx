@@ -13,28 +13,15 @@ Haystack pipelines support **loops**: cycles in the component graph where the ou
 This enables feedback flows such as self-correction, validation, or iterative refinement, as well as more advanced [agentic behavior](../pipelines.mdx#agentic-pipelines).
 
 At runtime, the pipeline re-runs a component whenever all of its required inputs are ready again.
-You control **when loops stop** either by designing your graph and routing logic carefully or by using built-in safety limits.
+You control when loops stop either by designing your graph and routing logic carefully or by using built-in [safety limits](#loop-termination-and-safety-limits).
 
-## How Loop Execution Works
+## Multiple Runs of the Same Component
 
-Conceptually, a pipeline run works like this:
-
-- **Graph of components**: A pipeline is a directed multigraph of components and their input/output sockets.
-- **Inputs state**: The pipeline maintains an internal state of inputs for each component.
-- **Ready components**: Components become runnable when all mandatory inputs are available.
-- **Queue of work**: Runnable components are scheduled from a priority queue and executed one by one.
-- **Outputs are fanned out**: A component’s outputs are written into the inputs of downstream components.
-
-When your pipeline graph contains a cycle (for example, `validator` feeding back into `prompt_builder`), each new output that flows back into an upstream component can make that component runnable again.
-This is how loops emerge naturally from the graph: the pipeline detects that the upstream component has new inputs available and runs it again.
-
-### Multiple Runs of the Same Component
-
-If a component participates in a loop, it can be run **multiple times** within a single `Pipeline.run()` call.
-The pipeline keeps an internal **visit counter** for each component:
+If a component participates in a loop, it can be run multiple times within a single `Pipeline.run()` call.
+The pipeline keeps an internal visit counter for each component:
 
 - Each time the component runs, its visit count increases by 1.
-- You can use this visit count in debugging tools like **breakpoints** to inspect specific iterations of a loop.
+- You can use this visit count in debugging tools like [breakpoints](./pipeline-breakpoints.mdx) to inspect specific iterations of a loop.
 
 In the final pipeline result:
 
@@ -50,8 +37,10 @@ There are two main ways a loop ends:
    The pipeline finishes when the work queue is empty and no component can run again (for example, the router stops feeding inputs back into the loop).
 
 2. **Reaching the maximum run count**
-   Every pipeline has a **per-component run limit**, controlled by the `max_runs_per_component` parameter of the `Pipeline` (or `AsyncPipeline`) constructor.
+   Every pipeline has a per-component run limit, controlled by the `max_runs_per_component` parameter of the `Pipeline` (or `AsyncPipeline`) constructor.
    By default this is `100`. If any component exceeds this limit, Haystack raises a `PipelineMaxComponentRuns` error.
+
+   You can set this limit to a lower value:
 
    ```python
    from haystack import Pipeline
@@ -66,7 +55,7 @@ There are two main ways a loop ends:
 
 ## Example: Feedback Loop for Self-Correction
 
-The following example shows a simple **feedback loop** where:
+The following example shows a simple feedback loop where:
 
 - A `ChatPromptBuilder` creates a prompt that includes previous incorrect replies.
 - An `OpenAIChatGenerator` produces an answer.
@@ -92,7 +81,7 @@ template = [
 ]
 
 prompt_builder = ChatPromptBuilder(template=template, required_variables=["query"])
-generator = OpenAIChatGenerator(model="gpt-4o-mini")
+generator = OpenAIChatGenerator()
 
 router = ConditionalRouter(
     routes=[
@@ -161,13 +150,11 @@ Two components are particularly useful for building loops:
 
 - **[`ConditionalRouter`](../../pipeline-components/routers/conditionalrouter.mdx)**: Routes data to different outputs based on conditions. Use it to decide whether to exit the loop or continue iterating. The example above uses this pattern.
 
-- **[`BranchJoiner`](../../pipeline-components/joiners/branchjoiner.mdx)**: Merges inputs from multiple sources into a single output. Use it when a component inside the loop needs to receive both the initial input (on the first iteration) and looped-back values (on subsequent iterations). For example, you might use `BranchJoiner` to feed both user input and validation errors into the same Generator.
-
-These components are often used together: `BranchJoiner` at the entry point of the loop to merge inputs, and `ConditionalRouter` at the exit point to decide when to stop.
+- **[`BranchJoiner`](../../pipeline-components/joiners/branchjoiner.mdx)**: Merges inputs from multiple sources into a single output. Use it when a component inside the loop needs to receive both the initial input (on the first iteration) and looped-back values (on subsequent iterations). For example, you might use `BranchJoiner` to feed both user input and validation errors into the same Generator. See the [BranchJoiner documentation](../../pipeline-components/joiners/branchjoiner.mdx#enabling-loops) for a complete loop example.
 
 ## Greedy vs. Lazy Variadic Sockets in Loops
 
-Some components support **variadic inputs** that can receive multiple values on a single socket.
+Some components support variadic inputs that can receive multiple values on a single socket.
 In loops, variadic behavior controls how inputs are consumed across iterations.
 
 - **Greedy variadic sockets**
@@ -179,7 +166,7 @@ In loops, variadic behavior controls how inputs are consumed across iterations.
   Accumulate all values received from predecessors across iterations.
   Useful when you need to collect multiple partial results over time (for example, gathering outputs from several loop iterations before proceeding).
 
-For most loop scenarios, you don't need to think about these details – just connect components as usual and use `max_runs_per_component` to protect against mistakes.
+For most loop scenarios it's sufficient to just connect components as usual and use `max_runs_per_component` to protect against mistakes.
 
 ## Troubleshooting Loops
 
@@ -206,7 +193,7 @@ If your pipeline seems stuck or runs longer than expected, here are common cause
 
    If you connect `invalid` back to an upstream component for retry, but also have other connections that keep the loop alive, you might get unexpected behavior.
 
-   **Recommended:** Use a `ConditionalRouter` with explicit, mutually exclusive conditions instead:
+   Instead, use a `ConditionalRouter` with explicit, mutually exclusive conditions:
 
    ```python
    router = ConditionalRouter(
@@ -217,9 +204,31 @@ If your pipeline seems stuck or runs longer than expected, here are common cause
    )
    ```
 
-3. **User inputs retriggering the loop**: If a user-provided input is connected to a socket inside the loop, it might cause the loop to restart unexpectedly. See [Greedy vs. Lazy Variadic Sockets](#greedy-vs-lazy-variadic-sockets-in-loops).
+3. **User inputs retriggering the loop**: If a user-provided input is connected to a socket inside the loop, it might cause the loop to restart unexpectedly.
 
-4. **Multiple paths feeding the same component**: If a component inside the loop receives inputs from multiple sources, ensure you understand when it becomes runnable again.
+   ```python
+   # Problematic: user input goes directly to a component inside the loop
+   result = pipe.run({
+       "generator": {"prompt": query},  # This input persists and may retrigger the loop
+   })
+
+   # Better: use an entry-point component outside the loop
+   result = pipe.run({
+       "prompt_builder": {"query": query},  # Entry point feeds into the loop once
+   })
+   ```
+
+   See [Greedy vs. Lazy Variadic Sockets](#greedy-vs-lazy-variadic-sockets-in-loops) for details on how inputs are consumed.
+
+4. **Multiple paths feeding the same component**: If a component inside the loop receives inputs from multiple sources, it runs whenever *any* path provides input.
+
+   ```python
+   # Component receives from two sources – runs when either provides input
+   pipe.connect("source_a.output", "processor.input")
+   pipe.connect("source_b.output", "processor.input")  # Variadic input
+   ```
+
+   Ensure you understand when each path produces output, or use `BranchJoiner` to explicitly control the merge point.
 
 ### Debugging Tips
 
@@ -230,7 +239,7 @@ If your pipeline seems stuck or runs longer than expected, here are common cause
    result = pipe.run(data, include_outputs_from={"router", "validator"})
    ```
 
-3. **Visualize the pipeline**: Use `pipe.draw()` or `pipe.show()` to see the graph structure and verify your connections are correct.
+3. **Visualize the pipeline**: Use `pipe.draw()` or `pipe.show()` to see the graph structure and verify your connections are correct. See the [Pipeline Visualization](./visualizing-pipelines.mdx) documentation for details.
 
 4. **Use breakpoints**: Set a `Breakpoint` on a specific component and visit count to inspect the state at that iteration. See [Pipeline Breakpoints](./pipeline-breakpoints.mdx) for details.
 
