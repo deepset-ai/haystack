@@ -277,7 +277,7 @@ class ToolInvoker:
         # - If using convert_result_to_json_string we'd rather convert Haystack objects to JSON serializable dicts
         # - If using default str() we prefer converting Haystack objects to dicts rather than relying on the
         #   __repr__ method
-        serializable = _serializable_value(result)
+        serializable = _serializable_value(value=result, use_placeholders=False)
 
         if self.convert_result_to_json_string:
             try:

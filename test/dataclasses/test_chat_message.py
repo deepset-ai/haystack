@@ -335,6 +335,17 @@ class TestChatMessage:
         with pytest.raises(AttributeError):
             ChatMessage.from_function("Result of function invocation", "my_function")
 
+    def test_chat_message_content_attribute_removed(self):
+        message = ChatMessage.from_user(text="This is a message")
+        with pytest.raises(AttributeError):
+            message.content
+
+    def test_chat_message_init_parameters_removed(self):
+        with pytest.raises(TypeError):
+            ChatMessage(role="irrelevant", content="This is a message")
+
+
+class TestChatMessageSerde:
     def test_serde(self, base64_image_string):
         # the following message is created just for testing purposes and does not make sense in a real use case
 
@@ -488,14 +499,39 @@ class TestChatMessage:
         with pytest.raises(ValueError):
             ChatMessage.from_dict(serialized_msg)
 
-    def test_chat_message_content_attribute_removed(self):
-        message = ChatMessage.from_user(text="This is a message")
-        with pytest.raises(AttributeError):
-            message.content
+    def test_to_trace_dict(self):
+        message = ChatMessage.from_user(text="This is a message", name="John", meta={"foo": "bar"})
+        trace_dict = message._to_trace_dict()
 
-    def test_chat_message_init_parameters_removed(self):
-        with pytest.raises(TypeError):
-            ChatMessage(role="irrelevant", content="This is a message")
+        assert trace_dict == {
+            "role": "user",
+            "content": [{"text": "This is a message"}],
+            "name": "John",
+            "meta": {"foo": "bar"},
+        }
+
+    def test_to_trace_dict_with_image_content(self, base64_image_string):
+        message = ChatMessage.from_user(
+            content_parts=[ImageContent(base64_image=base64_image_string, detail="auto", meta={"foo": "bar"})]
+        )
+        trace_dict = message._to_trace_dict()
+
+        assert trace_dict == {
+            "role": "user",
+            "content": [
+                {
+                    "image": {
+                        "base64_image": "Base64 string (92 characters)",
+                        "mime_type": "image/png",
+                        "detail": "auto",
+                        "meta": {"foo": "bar"},
+                        "validation": True,
+                    }
+                }
+            ],
+            "name": None,
+            "meta": {},
+        }
 
 
 class TestToOpenaiDictFormat:
