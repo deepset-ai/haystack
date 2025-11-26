@@ -1,0 +1,65 @@
+name: Docs Search Sync
+
+on:
+  workflow_dispatch: # Activate this workflow manually
+  schedule:
+    - cron: "0 1 * * *"
+
+# Running this workflow multiple times in parallel can cause issues with files uploads and deletions.
+concurrency:
+  group: docs-search-sync
+  cancel-in-progress: false
+
+jobs:
+  docs-search-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Haystack repo
+        uses: actions/checkout@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Docusaurus and build docs-website
+        working-directory: docs-website
+        run: |
+          npm install
+          npm run build
+
+      - name: Install script dependencies
+        run: pip install deepset-cloud-sdk requests
+
+      - name: Update new docs to Search pipeline and remove outdated docs
+        env:
+          DEEPSET_WORKSPACE_DOCS_SEARCH: ${{ secrets.DEEPSET_WORKSPACE_DOCS_SEARCH }}
+          DEEPSET_API_KEY_DOCS_SEARCH: ${{ secrets.DEEPSET_API_KEY_DOCS_SEARCH }}
+        run: python ./.github/utils/docs_search_sync.py
+
+      - name: Send event to Datadog for nightly failures
+        if: failure() && github.event_name == 'schedule'
+        uses: masci/datadog@v1
+        with:
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ github.workflow }} workflow"
+              text: "Job ${{ github.job }} in branch ${{ github.ref_name }}"
+              alert_type: "error"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
+                - "branch:${{ github.ref_name }}"
+                - "url:https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
