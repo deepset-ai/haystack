@@ -33,10 +33,10 @@ In the final pipeline result:
 Loops must eventually stop so that a pipeline run can complete.
 There are two main ways a loop ends:
 
-1. **Natural completion**: No more components are runnable
+1. **Natural completion**: No more components are runnable  
    The pipeline finishes when the work queue is empty and no component can run again (for example, the router stops feeding inputs back into the loop).
 
-2. **Reaching the maximum run count**
+2. **Reaching the maximum run count**  
    Every pipeline has a per-component run limit, controlled by the `max_runs_per_component` parameter of the `Pipeline` (or `AsyncPipeline`) constructor.
    By default this is `100`. If any component exceeds this limit, Haystack raises a `PipelineMaxComponentRuns` error.
 
@@ -157,12 +157,12 @@ Two components are particularly useful for building loops:
 Some components support variadic inputs that can receive multiple values on a single socket.
 In loops, variadic behavior controls how inputs are consumed across iterations.
 
-- **Greedy variadic sockets**
+- **Greedy variadic sockets**  
   Consume exactly one value at a time and remove it after the component runs.
   This includes user-provided inputs, which prevents them from retriggering the component indefinitely.
   Most variadic sockets are greedy by default.
 
-- **Lazy variadic sockets**
+- **Lazy variadic sockets**  
   Accumulate all values received from predecessors across iterations.
   Useful when you need to collect multiple partial results over time (for example, gathering outputs from several loop iterations before proceeding).
 
