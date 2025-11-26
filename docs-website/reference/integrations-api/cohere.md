@@ -46,7 +46,7 @@ def __init__(api_key: Secret = Secret.from_env_var(
              timeout: float = 120.0,
              batch_size: int = 32,
              progress_bar: bool = True,
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: Optional[list[str]] = None,
              embedding_separator: str = "\n",
              embedding_type: Optional[EmbeddingTypes] = None)
 ```
@@ -82,7 +82,7 @@ Note that int8, uint8, binary, and ubinary are only valid for v3 models.
 #### CohereDocumentEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -97,7 +97,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "CohereDocumentEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "CohereDocumentEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -115,10 +115,10 @@ Deserialized component.
 #### CohereDocumentEmbedder.run
 
 ```python
-@component.output_types(documents=List[Document], meta=Dict[str, Any])
+@component.output_types(documents=list[Document], meta=dict[str, Any])
 def run(
-    documents: List[Document]
-) -> Dict[str, Union[List[Document], Dict[str, Any]]]
+    documents: list[Document]
+) -> dict[str, Union[list[Document], dict[str, Any]]]
 ```
 
 Embed a list of `Documents`.
@@ -142,10 +142,10 @@ A dictionary with the following keys:
 #### CohereDocumentEmbedder.run\_async
 
 ```python
-@component.output_types(documents=List[Document], meta=Dict[str, Any])
+@component.output_types(documents=list[Document], meta=dict[str, Any])
 async def run_async(
-    documents: List[Document]
-) -> Dict[str, Union[List[Document], Dict[str, Any]]]
+    documents: list[Document]
+) -> dict[str, Union[list[Document], dict[str, Any]]]
 ```
 
 Embed a list of `Documents` asynchronously.
@@ -208,7 +208,7 @@ print(documents_with_embeddings)
 def __init__(*,
              file_path_meta_field: str = "file_path",
              root_path: Optional[str] = None,
-             image_size: Optional[Tuple[int, int]] = None,
+             image_size: Optional[tuple[int, int]] = None,
              api_key: Secret = Secret.from_env_var(
                  ["COHERE_API_KEY", "CO_API_KEY"]),
              model: str = "embed-v4.0",
@@ -380,7 +380,7 @@ Note that int8, uint8, binary, and ubinary are only valid for v3 models.
 #### CohereTextEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -395,7 +395,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "CohereTextEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "CohereTextEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -413,8 +413,8 @@ Deserialized component.
 #### CohereTextEmbedder.run
 
 ```python
-@component.output_types(embedding=List[float], meta=Dict[str, Any])
-def run(text: str) -> Dict[str, Union[List[float], Dict[str, Any]]]
+@component.output_types(embedding=list[float], meta=dict[str, Any])
+def run(text: str) -> dict[str, Union[list[float], dict[str, Any]]]
 ```
 
 Embed text.
@@ -438,9 +438,9 @@ A dictionary with the following keys:
 #### CohereTextEmbedder.run\_async
 
 ```python
-@component.output_types(embedding=List[float], meta=Dict[str, Any])
+@component.output_types(embedding=list[float], meta=dict[str, Any])
 async def run_async(
-        text: str) -> Dict[str, Union[List[float], Dict[str, Any]]]
+        text: str) -> dict[str, Union[list[float], dict[str, Any]]]
 ```
 
 Asynchronously embed text.
@@ -472,12 +472,12 @@ A dictionary with the following keys:
 ```python
 async def get_async_response(
     cohere_async_client: AsyncClientV2,
-    texts: List[str],
+    texts: list[str],
     model_name: str,
     input_type: str,
     truncate: str,
     embedding_type: Optional[EmbeddingTypes] = None
-) -> Tuple[List[List[float]], Dict[str, Any]]
+) -> tuple[list[list[float]], dict[str, Any]]
 ```
 
 Embeds a list of texts asynchronously using the Cohere API.
@@ -507,14 +507,14 @@ A tuple of the embeddings and metadata.
 ```python
 def get_response(
     cohere_client: ClientV2,
-    texts: List[str],
+    texts: list[str],
     model_name: str,
     input_type: str,
     truncate: str,
     batch_size: int = 32,
     progress_bar: bool = False,
     embedding_type: Optional[EmbeddingTypes] = None
-) -> Tuple[List[List[float]], Dict[str, Any]]
+) -> tuple[list[list[float]], dict[str, Any]]
 ```
 
 Embeds a list of texts using the Cohere API.
@@ -592,8 +592,8 @@ You can check them in model's documentation.
 #### CohereGenerator.run
 
 ```python
-@component.output_types(replies=List[str], meta=List[Dict[str, Any]])
-def run(prompt: str) -> Dict[str, Union[List[str], List[Dict[str, Any]]]]
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
+def run(prompt: str) -> dict[str, Union[list[str], list[dict[str, Any]]]]
 ```
 
 Queries the LLM with the prompts to produce replies.
@@ -613,9 +613,9 @@ A dictionary with the following keys:
 #### CohereGenerator.run\_async
 
 ```python
-@component.output_types(replies=List[str], meta=List[Dict[str, Any]])
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
 async def run_async(
-        prompt: str) -> Dict[str, Union[List[str], List[Dict[str, Any]]]]
+        prompt: str) -> dict[str, Union[list[str], list[dict[str, Any]]]]
 ```
 
 Queries the LLM asynchronously with the prompts to produce replies.
@@ -744,7 +744,7 @@ def __init__(api_key: Secret = Secret.from_env_var(
              model: str = "command-r-08-2024",
              streaming_callback: Optional[StreamingCallbackT] = None,
              api_base_url: Optional[str] = None,
-             generation_kwargs: Optional[Dict[str, Any]] = None,
+             generation_kwargs: Optional[dict[str, Any]] = None,
              tools: Optional[ToolsType] = None,
              **kwargs: Any)
 ```
@@ -778,7 +778,7 @@ Each tool should have a unique name.
 #### CohereChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -793,7 +793,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "CohereChatGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "CohereChatGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -811,13 +811,13 @@ Deserialized component.
 #### CohereChatGenerator.run
 
 ```python
-@component.output_types(replies=List[ChatMessage])
+@component.output_types(replies=list[ChatMessage])
 def run(
-    messages: List[ChatMessage],
-    generation_kwargs: Optional[Dict[str, Any]] = None,
+    messages: list[ChatMessage],
+    generation_kwargs: Optional[dict[str, Any]] = None,
     tools: Optional[ToolsType] = None,
     streaming_callback: Optional[StreamingCallbackT] = None
-) -> Dict[str, List[ChatMessage]]
+) -> dict[str, list[ChatMessage]]
 ```
 
 Invoke the chat endpoint based on the provided messages and generation parameters.
@@ -844,13 +844,13 @@ A dictionary with the following keys:
 #### CohereChatGenerator.run\_async
 
 ```python
-@component.output_types(replies=List[ChatMessage])
+@component.output_types(replies=list[ChatMessage])
 async def run_async(
-    messages: List[ChatMessage],
-    generation_kwargs: Optional[Dict[str, Any]] = None,
+    messages: list[ChatMessage],
+    generation_kwargs: Optional[dict[str, Any]] = None,
     tools: Optional[ToolsType] = None,
     streaming_callback: Optional[StreamingCallbackT] = None
-) -> Dict[str, List[ChatMessage]]
+) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invoke the chat endpoint based on the provided messages and generation parameters.
@@ -906,7 +906,7 @@ def __init__(model: str = "rerank-v3.5",
              api_key: Secret = Secret.from_env_var(
                  ["COHERE_API_KEY", "CO_API_KEY"]),
              api_base_url: str = "https://api.cohere.com",
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: Optional[list[str]] = None,
              meta_data_separator: str = "\n",
              max_tokens_per_doc: int = 4096)
 ```
@@ -930,7 +930,7 @@ to the Document content.
 #### CohereRanker.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -945,7 +945,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "CohereRanker"
+def from_dict(cls, data: dict[str, Any]) -> "CohereRanker"
 ```
 
 Deserializes the component from a dictionary.
@@ -963,10 +963,10 @@ The deserialized component.
 #### CohereRanker.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(query: str,
-        documents: List[Document],
-        top_k: Optional[int] = None) -> Dict[str, List[Document]]
+        documents: list[Document],
+        top_k: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Use the Cohere Reranker to re-rank the list of documents based on the query.
@@ -985,3 +985,4 @@ Use the Cohere Reranker to re-rank the list of documents based on the query.
 
 A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given query in descending order of similarity.
+
