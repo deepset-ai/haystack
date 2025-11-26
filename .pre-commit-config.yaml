@@ -14,7 +14,7 @@ repos:
       - id: mixed-line-ending # normalizes line endings
       - id: no-commit-to-branch # prevents committing to main
       - id: trailing-whitespace # trims trailing whitespace
-        args: [--markdown-linebreak-ext=md]
+        args: [--markdown-linebreak-ext=md, --markdown-linebreak-ext=mdx]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.13.0
