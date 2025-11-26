@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Ensure that requests headers keys are unique in link_content
