@@ -37,8 +37,7 @@ There are two main ways a loop ends:
    The pipeline finishes when the work queue is empty and no component can run again (for example, the router stops feeding inputs back into the loop).
 
 2. **Reaching the maximum run count**  
-   Every pipeline has a per-component run limit, controlled by the `max_runs_per_component` parameter of the `Pipeline` (or `AsyncPipeline`) constructor.
-   By default this is `100`. If any component exceeds this limit, Haystack raises a `PipelineMaxComponentRuns` error.
+   Every pipeline has a per-component run limit, controlled by the `max_runs_per_component` parameter of the `Pipeline` (or `AsyncPipeline`) constructor, which is `100` by default. If any component exceeds this limit, Haystack raises a `PipelineMaxComponentRuns` error.
 
    You can set this limit to a lower value:
 
