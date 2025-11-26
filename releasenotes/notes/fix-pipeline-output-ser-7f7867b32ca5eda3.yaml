@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix the serialization/deserialization of `pipeline_outputs` in `pipeline_snapshot` while pipeline with breakpoints.
