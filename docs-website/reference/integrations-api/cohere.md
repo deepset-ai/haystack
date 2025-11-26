@@ -568,7 +568,7 @@ generator.run(prompt="What's the capital of France?")
 ```python
 def __init__(api_key: Secret = Secret.from_env_var(
     ["COHERE_API_KEY", "CO_API_KEY"]),
-             model: str = "command-r-08-2024",
+             model: str = "command-a-03-2025",
              streaming_callback: Optional[Callable] = None,
              api_base_url: Optional[str] = None,
              **kwargs: Any)
@@ -660,7 +660,7 @@ from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 from haystack_integrations.components.generators.cohere import CohereChatGenerator
 
-client = CohereChatGenerator(model="command-r-08-2024", api_key=Secret.from_env_var("COHERE_API_KEY"))
+client = CohereChatGenerator(api_key=Secret.from_env_var("COHERE_API_KEY"))
 messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client.run(messages)
 
@@ -720,7 +720,7 @@ weather_tool = Tool(
 
 # Create and set up the pipeline
 pipeline = Pipeline()
-pipeline.add_component("generator", CohereChatGenerator(model="command-r-08-2024", tools=[weather_tool]))
+pipeline.add_component("generator", CohereChatGenerator(tools=[weather_tool]))
 pipeline.add_component("tool_invoker", ToolInvoker(tools=[weather_tool]))
 pipeline.connect("generator", "tool_invoker")
 
@@ -741,7 +741,7 @@ print(results["tool_invoker"]["tool_messages"][0].tool_call_result.result)
 ```python
 def __init__(api_key: Secret = Secret.from_env_var(
     ["COHERE_API_KEY", "CO_API_KEY"]),
-             model: str = "command-r-08-2024",
+             model: str = "command-a-03-2025",
              streaming_callback: Optional[StreamingCallbackT] = None,
              api_base_url: Optional[str] = None,
              generation_kwargs: Optional[dict[str, Any]] = None,
