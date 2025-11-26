@@ -46,7 +46,7 @@ def __init__(api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
              streaming_callback: Optional[Callable[[StreamingChunk],
                                                    None]] = None,
              system_prompt: Optional[str] = None,
-             generation_kwargs: Optional[Dict[str, Any]] = None,
+             generation_kwargs: Optional[dict[str, Any]] = None,
              *,
              timeout: Optional[float] = None,
              max_retries: Optional[int] = None)
@@ -67,7 +67,7 @@ Initialize the AnthropicGenerator.
 #### AnthropicGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
@@ -82,7 +82,7 @@ The serialized component as a dictionary.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "AnthropicGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "AnthropicGenerator"
 ```
 
 Deserialize this component from a dictionary.
@@ -100,12 +100,12 @@ The deserialized component instance.
 #### AnthropicGenerator.run
 
 ```python
-@component.output_types(replies=List[str], meta=List[Dict[str, Any]])
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
 def run(
     prompt: str,
-    generation_kwargs: Optional[Dict[str, Any]] = None,
+    generation_kwargs: Optional[dict[str, Any]] = None,
     streaming_callback: Optional[Callable[[StreamingChunk], None]] = None
-) -> Dict[str, Union[List[str], List[Dict[str, Any]]]]
+) -> dict[str, Union[list[str], list[dict[str, Any]]]]
 ```
 
 Generate replies using the Anthropic API.
@@ -156,7 +156,6 @@ from haystack_integrations.components.generators.anthropic import (
 from haystack.dataclasses import ChatMessage
 
 generator = AnthropicChatGenerator(
-    model="claude-sonnet-4-20250514",
     generation_kwargs={
         "max_tokens": 1000,
         "temperature": 0.7,
@@ -192,9 +191,9 @@ result = generator.run(messages)
 
 ```python
 def __init__(api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
-             model: str = "claude-sonnet-4-20250514",
+             model: str = "claude-sonnet-4-5",
              streaming_callback: Optional[StreamingCallbackT] = None,
-             generation_kwargs: Optional[Dict[str, Any]] = None,
+             generation_kwargs: Optional[dict[str, Any]] = None,
              ignore_tools_thinking_messages: bool = True,
              tools: Optional[ToolsType] = None,
              *,
@@ -242,7 +241,7 @@ the Anthropic client.
 #### AnthropicChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
@@ -257,7 +256,7 @@ The serialized component as a dictionary.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "AnthropicChatGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "AnthropicChatGenerator"
 ```
 
 Deserialize this component from a dictionary.
@@ -275,11 +274,11 @@ The deserialized component instance.
 #### AnthropicChatGenerator.run
 
 ```python
-@component.output_types(replies=List[ChatMessage])
-def run(messages: List[ChatMessage],
+@component.output_types(replies=list[ChatMessage])
+def run(messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None) -> Dict[str, List[ChatMessage]]
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[ToolsType] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes the Anthropic API with the given messages and generation kwargs.
@@ -303,12 +302,12 @@ A dictionary with the following keys:
 #### AnthropicChatGenerator.run\_async
 
 ```python
-@component.output_types(replies=List[ChatMessage])
+@component.output_types(replies=list[ChatMessage])
 async def run_async(
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None) -> Dict[str, List[ChatMessage]]
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[ToolsType] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Async version of the run method. Invokes the Anthropic API with the given messages and generation kwargs.
@@ -390,7 +389,7 @@ def __init__(region: str,
              model: str = "claude-sonnet-4@20250514",
              streaming_callback: Optional[Callable[[StreamingChunk],
                                                    None]] = None,
-             generation_kwargs: Optional[Dict[str, Any]] = None,
+             generation_kwargs: Optional[dict[str, Any]] = None,
              ignore_tools_thinking_messages: bool = True,
              tools: Optional[ToolsType] = None,
              *,
@@ -436,7 +435,7 @@ the Anthropic client.
 #### AnthropicVertexChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
@@ -451,7 +450,7 @@ The serialized component as a dictionary.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "AnthropicVertexChatGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "AnthropicVertexChatGenerator"
 ```
 
 Deserialize this component from a dictionary.
