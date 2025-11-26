@@ -47,7 +47,7 @@ print(response)
 >>{'replies': [ChatMessage(_content='Natural Language Processing (NLP) is a branch of artificial intelligence
 >>that focuses on enabling computers to understand, interpret, and generate human language in a way that is
 >>meaningful and useful.', _role=<ChatRole.ASSISTANT: 'assistant'>, _name=None,
->>_meta={'model': 'openai/gpt-4o-mini', 'index': 0, 'finish_reason': 'stop',
+>>_meta={'model': 'openai/gpt-5-mini', 'index': 0, 'finish_reason': 'stop',
 >>'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
 ```
 
@@ -58,20 +58,20 @@ print(response)
 ```python
 def __init__(*,
              api_key: Secret = Secret.from_env_var("OPENROUTER_API_KEY"),
-             model: str = "openai/gpt-4o-mini",
+             model: str = "openai/gpt-5-mini",
              streaming_callback: Optional[StreamingCallbackT] = None,
              api_base_url: Optional[str] = "https://openrouter.ai/api/v1",
-             generation_kwargs: Optional[Dict[str, Any]] = None,
+             generation_kwargs: Optional[dict[str, Any]] = None,
              tools: Optional[ToolsType] = None,
              timeout: Optional[float] = None,
-             extra_headers: Optional[Dict[str, Any]] = None,
+             extra_headers: Optional[dict[str, Any]] = None,
              max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[Dict[str, Any]] = None)
+             http_client_kwargs: Optional[dict[str, Any]] = None)
 ```
 
 Creates an instance of OpenRouterChatGenerator. Unless specified otherwise,
 
-the default model is `openai/gpt-4o-mini`.
+the default model is `openai/gpt-5-mini`.
 
 **Arguments**:
 
@@ -118,7 +118,7 @@ For more information, see the [HTTPX documentation](https://www.python-httpx.org
 #### OpenRouterChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
