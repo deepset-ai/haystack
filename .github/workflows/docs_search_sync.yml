@@ -4,8 +4,6 @@ on:
   workflow_dispatch: # Activate this workflow manually
   schedule:
     - cron: "0 1 * * *"
-  # TODO: remove this
-  pull_request:
 
 # Running this workflow multiple times in parallel can cause issues with files uploads and deletions.
 concurrency:
@@ -31,11 +29,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: try failure
-        run: |
-          echo "This is a workflow failure"
-          exit 1
-
       - name: Install Docusaurus and build docs-website
         working-directory: docs-website
         run: |
@@ -52,8 +45,7 @@ jobs:
         run: python ./.github/utils/docs_search_sync.py
 
       - name: Send event to Datadog for nightly failures
-        if: failure()
-        # && github.event_name == 'schedule'
+        if: failure() && github.event_name == 'schedule'
         uses: masci/datadog@v1
         with:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
