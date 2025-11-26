@@ -46,6 +46,9 @@ def _serializable_value(value: Any) -> Any:
     if isinstance(value, dict):
         return {k: _serializable_value(v) for k, v in value.items()}
 
+    if getattr(value, "_to_trace_dict", None):
+        return _serializable_value(value._to_trace_dict())
+
     if getattr(value, "to_dict", None):
         return _serializable_value(value.to_dict())
 

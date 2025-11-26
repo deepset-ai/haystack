@@ -533,6 +533,31 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         serialized["content"] = [_serialize_content_part(part) for part in self._content]
         return serialized
 
+    def _to_trace_dict(self) -> dict[str, Any]:
+        """
+        Convert the ChatMessage to a dictionary representation for tracing.
+
+        For Image Content objects, the base64_image is replaced with a placeholder string to avoid sending large
+        payloads to the tracing backend.
+
+        :returns:
+            Serialized version of the object only for tracing purposes.
+        """
+
+        serialized: dict[str, Any] = {}
+        serialized["role"] = self._role.value
+        serialized["meta"] = self._meta
+        serialized["name"] = self._name
+
+        serialized["content"] = []
+        for part in self._content:
+            serialized_part = _serialize_content_part(part)
+            if isinstance(part, ImageContent):
+                serialized_part["image"]["base64_image"] = f"Base64 string ({len(part.base64_image)} characters)"
+            serialized["content"].append(serialized_part)
+
+        return serialized
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ChatMessage":
         """
