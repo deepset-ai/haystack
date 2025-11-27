@@ -67,7 +67,6 @@ class RegexTextExtractor:
 
         :returns:
           - If match found: `{"captured_text": "matched text"}`
-          - If no match and `return_empty_on_no_match=True`: `{}`
 
         :raises:
             - ValueError: if receiving a list the last element is not a ChatMessage instance.
@@ -83,7 +82,7 @@ class RegexTextExtractor:
     def _build_result(result: Union[str, list[str]]) -> dict:
         """Helper method to build the return dictionary based on configuration."""
         if (isinstance(result, str) and result == "") or (isinstance(result, list) and not result):
-            return {}
+            return {"captured_text": ""}
         return {"captured_text": result}
 
     def _process_last_message(self, messages: list[ChatMessage]) -> dict:

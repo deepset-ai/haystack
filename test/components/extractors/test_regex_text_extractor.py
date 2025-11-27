@@ -39,14 +39,14 @@ class TestRegexTextExtractor:
         extractor = RegexTextExtractor(regex_pattern=pattern)
         text = "This text has no matching pattern"
         result = extractor.run(text_or_messages=text)
-        assert result == {}
+        assert result == {"captured_text": ""}
 
     def test_extract_from_string_empty_input(self):
         pattern = r'<issue url="(.+?)">'
         extractor = RegexTextExtractor(regex_pattern=pattern)
         text = ""
         result = extractor.run(text_or_messages=text)
-        assert result == {}
+        assert result == {"captured_text": ""}
 
     def test_extract_from_chat_messages_single_message(self):
         pattern = r'<issue url="(.+?)">'
@@ -74,7 +74,7 @@ class TestRegexTextExtractor:
             ChatMessage.from_user("Last message with no matching pattern"),
         ]
         result = extractor.run(text_or_messages=messages)
-        assert result == {}
+        assert result == {"captured_text": ""}
 
     def test_extract_from_chat_messages_empty_list(self):
         pattern = r'<issue url="(.+?)">'
