@@ -1042,7 +1042,10 @@ class TestOpenAIChatGenerator:
             assert tool_call.tool_name == "weather"
 
         arguments = [tool_call.arguments for tool_call in tool_calls]
-        assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
+        # Check that both cities are present (case-insensitive, allowing for variations like "Paris, France")
+        city_values = [arg["city"].lower() for arg in arguments]
+        assert any("berlin" in city for city in city_values)
+        assert any("paris" in city for city in city_values)
         assert message.meta["finish_reason"] == "tool_calls"
 
     def test_openai_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
