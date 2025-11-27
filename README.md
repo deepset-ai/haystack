@@ -80,7 +80,7 @@ Some examples of what you can do with Haystack:
 
 Get expert support from the Haystack team, build faster with enterprise-grade templates, and scale securely with deployment guides for cloud and on-prem environments - all with **Haystack Enterprise**. Read more about it our [announcement post](https://haystack.deepset.ai/blog/announcing-haystack-enterprise).
 
-👉 [Get Haystack Enterprise](https://www.deepset.ai/products-and-services/haystack-enterprise?utm_source=github.com&utm_medium=referral&utm_campaign=haystack_enterprise) 
+👉 [Get Haystack Enterprise](https://www.deepset.ai/products-and-services/haystack-enterprise?utm_source=github.com&utm_medium=referral&utm_campaign=haystack_enterprise)
 
 ## deepset Studio: Your Development Environment for Haystack
 
@@ -112,6 +112,7 @@ We are very open to the community's contributions - be it a quick fix of a typo,
 There are several ways you can contribute to Haystack:
 - Contribute to the main Haystack project
 - Contribute an integration on [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations)
+- Contribute to the documentation in [haystack/docs-website](https://github.com/deepset-ai/haystack/tree/main/docs-website)
 
 > [!TIP]
 >👉 **[Check out the full list of issues that are open to contributions](https://github.com/orgs/deepset-ai/projects/14)**
