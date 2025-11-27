@@ -504,7 +504,7 @@ class TestComponentToolInPipeline:
 
         # Create pipeline with OpenAIChatGenerator and ToolInvoker
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
 
         # Connect components
@@ -536,7 +536,7 @@ class TestComponentToolInPipeline:
 
         # Create pipeline with OpenAIChatGenerator and ToolInvoker
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool], tools_strict=True))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool], tools_strict=True))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
 
         # Connect components
@@ -564,7 +564,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
@@ -587,7 +587,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
@@ -612,7 +612,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
@@ -637,7 +637,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool], convert_result_to_json_string=True))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
@@ -672,7 +672,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
@@ -700,7 +700,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
@@ -731,7 +731,7 @@ class TestComponentToolInPipeline:
         # Create and configure the pipeline
         pipeline = Pipeline()
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.connect("tool_invoker.tool_messages", "llm.messages")
 
         # Serialize to dict and verify structure
@@ -830,7 +830,7 @@ class TestComponentToolInPipeline:
 
             tool = ComponentTool(component=PromptBuilder("{{query}}"))
             pipeline = Pipeline()
-            pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+            pipeline.add_component("llm", OpenAIChatGenerator())
             result = pipeline.run({"llm": {"messages": [ChatMessage.from_user(text="Hello")], "tools": [tool]}})
 
         assert result["llm"]["replies"][0].text == "A response from the model"

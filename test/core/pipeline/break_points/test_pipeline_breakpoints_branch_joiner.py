@@ -79,7 +79,8 @@ class TestPipelineBreakpoints:
 
         pipe = Pipeline()
         pipe.add_component("joiner", BranchJoiner(list[ChatMessage]))
-        pipe.add_component("fc_llm", mock_openai_chat_generator("gpt-4o-mini"))
+        # Use default model for mock generator
+        pipe.add_component("fc_llm", mock_openai_chat_generator("gpt-5-mini"))
         pipe.add_component("validator", JsonSchemaValidator(json_schema=person_schema))
         pipe.add_component("adapter", OutputAdapter("{{chat_message}}", list[ChatMessage], unsafe=True))
 
