@@ -510,7 +510,7 @@ class TestComponentToolInPipeline:
         # Connect components
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
-        message = ChatMessage.from_user(text="Vladimir")
+        message = ChatMessage.from_user(text="Using tools, greet Vladimir")
 
         # Run pipeline
         result = pipeline.run({"llm": {"messages": [message]}})
