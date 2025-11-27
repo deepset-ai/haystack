@@ -8,7 +8,7 @@ from typing import Any, Optional
 from unittest.mock import ANY, MagicMock
 
 import pytest
-from openai import OpenAIError
+from openai import AsyncOpenAI, OpenAIError
 from openai.types import Reasoning, ResponseFormatText
 from openai.types.responses import (
     FunctionTool,
@@ -583,6 +583,7 @@ class TestOpenAIResponsesChatGenerator:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        print(message.text)
         msg = json.loads(message.text)
         assert "Marketing Summit" in msg["event_name"]
         assert isinstance(msg["event_date"], str)
@@ -1909,3 +1910,69 @@ class TestConvertResponseChunkToStreamingChunk:
                 finish_reason="tool_calls",
             ),
         ]
+
+
+class TestOpenAIResponsesChatGeneratorAsync:
+    def test_init_should_also_create_async_client_with_same_args(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            api_base_url="test-base-url",
+            organization="test-organization",
+            timeout=30,
+            max_retries=5,
+        )
+
+        assert isinstance(component.async_client, AsyncOpenAI)
+        assert component.async_client.api_key == "test-api-key"
+        assert component.async_client.organization == "test-organization"
+        assert component.async_client.base_url == "test-base-url/"
+        assert component.async_client.timeout == 30
+        assert component.async_client.max_retries == 5
+
+    @pytest.mark.asyncio
+    async def test_run_async(self, openai_mock_async_responses):
+        component = OpenAIResponsesChatGenerator(api_key=Secret.from_token("test-api-key"))
+        response = await component.run_async([ChatMessage.from_user("What's the capital of France")])
+
+        # check that the component returns the correct ChatMessage response
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    @pytest.mark.asyncio
+    def test_run_with_wrong_model_async(self):
+        mock_client = MagicMock()
+        mock_client.responses.create.side_effect = OpenAIError("Invalid model name")
+
+        generator = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong"
+        )
+
+        generator.client = mock_client
+
+        with pytest.raises(OpenAIError):
+            generator.run([ChatMessage.from_user("irrelevant")])
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    async def test_live_run_async(self):
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-4", generation_kwargs={"include": ["message.output_text.logprobs"]}
+        )
+        results = await component.run_async(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        assert "Paris" in message.text
+        assert "gpt-4" in message.meta["model"]
+        assert message.meta["status"] == "completed"
+        assert message.meta["usage"]["total_tokens"] > 0
+        assert message.meta["id"] is not None
+        assert message.meta["logprobs"] is not None
