@@ -46,7 +46,7 @@ class LocalWhisperTranscriber:
 
     whisper = LocalWhisperTranscriber(model="small")
     whisper.warm_up()
-    transcription = whisper.run(sources=["path/to/audio/file"])
+    transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
     ```
     """
 

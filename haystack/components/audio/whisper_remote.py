@@ -30,9 +30,10 @@ class RemoteWhisperTranscriber:
 
     ```python
     from haystack.components.audio import RemoteWhisperTranscriber
+    from haystack.utils import Secret
 
-    whisper = RemoteWhisperTranscriber(api_key=Secret.from_token("<your-api-key>"), model="tiny")
-    transcription = whisper.run(sources=["path/to/audio/file"])
+    whisper = RemoteWhisperTranscriber(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="whisper-1")
+    transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
     ```
     """
 
