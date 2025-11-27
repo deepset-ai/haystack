@@ -138,6 +138,14 @@ def test_to_dict():
     assert d["meta"] == {"foo": "bar"}
 
 
+def test_to_trace_dict():
+    b = ByteStream(data=b"Hello, world!", mime_type="text/plain", meta={"foo": "bar"})
+    d = b._to_trace_dict()
+    assert d["data"] == "Binary data (13 bytes)"
+    assert d["mime_type"] == "text/plain"
+    assert d["meta"] == {"foo": "bar"}
+
+
 def test_from_dict():
     test_str = "Hello, world!"
     b = ByteStream.from_string(test_str, mime_type="text/plain", meta={"foo": "bar"})
