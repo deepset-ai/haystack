@@ -1,0 +1,36 @@
+loaders:
+  - type: haystack_pydoc_tools.loaders.CustomPythonLoader
+    search_path: [../haystack/components/evaluators]
+    modules:
+      [
+        "answer_exact_match",
+        "context_relevance",
+        "document_map",
+        "document_mrr",
+        "document_ndcg",
+        "document_recall",
+        "faithfulness",
+        "llm_evaluator",
+        "sas_evaluator",
+      ]
+    ignore_when_discovered: ["__init__"]
+processors:
+  - type: filter
+    expression:
+    documented_only: true
+    do_not_filter_modules: false
+    skip_empty_modules: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: haystack_pydoc_tools.renderers.DocusaurusRenderer
+  description: Evaluate your pipelines or individual components.
+  title: Evaluators
+  id: evaluators-api
+  markdown:
+    descriptive_class_title: false
+    classdef_code_block: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: evaluators_api.md
