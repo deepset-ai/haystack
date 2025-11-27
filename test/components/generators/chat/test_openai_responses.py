@@ -1224,7 +1224,7 @@ class TestOpenAIResponsesChatGenerator:
         assert response["messages"][-1].text is not None
 
 
-class TestConvertResponses:
+class TestConversionMethods:
     def test_convert_only_text(self):
         openai_chunks = [
             ResponseCreatedEvent(
