@@ -591,7 +591,8 @@ class TestComponentToolInPipeline:
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
-        message = ChatMessage.from_user(text="Can you join these words: hello, beautiful, world")
+        # Be explicit about using tools, otherwise model will ignore the tool call and return the result directly.
+        message = ChatMessage.from_user(text="Using tools, join these words: hello, beautiful, world")
 
         result = pipeline.run({"llm": {"messages": [message]}})
         tool_messages = result["tool_invoker"]["tool_messages"]
