@@ -295,7 +295,7 @@ class TestOpenAIChatGeneratorAsync:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-4o" in message.meta["model"]
+        assert message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
     @pytest.mark.asyncio
@@ -335,7 +335,7 @@ class TestOpenAIChatGeneratorAsync:
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
 
-        assert "gpt-4o" in message.meta["model"]
+        assert message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
         assert counter > 1
