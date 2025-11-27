@@ -291,20 +291,11 @@ class TestToolInvokerSerde:
         pipeline.connect("invoker", "chatgenerator")
 
         pipeline_dict = pipeline.to_dict()
-        # Check structure without hardcoding the model name
-        assert pipeline_dict["metadata"] == {}
-        assert pipeline_dict["connection_type_validation"] is True
-        assert pipeline_dict["max_runs_per_component"] == 100
-        assert "invoker" in pipeline_dict["components"]
-        assert "chatgenerator" in pipeline_dict["components"]
-        assert pipeline_dict["connections"] == [
-            {"sender": "invoker.tool_messages", "receiver": "chatgenerator.messages"}
-        ]
-
         # Verify the chatgenerator component structure (model will be whatever the default is)
         chatgen = pipeline_dict["components"]["chatgenerator"]
         assert chatgen["type"] == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
         assert "model" in chatgen["init_parameters"]
+        model_name = chatgen["init_parameters"]["model"]
 
         # Build expected dict with dynamic model value
         expected = {
@@ -343,7 +334,7 @@ class TestToolInvokerSerde:
                 "chatgenerator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
                     "init_parameters": {
-                        "model": pipeline_dict["components"]["chatgenerator"]["init_parameters"]["model"],
+                        "model": model_name,
                         "streaming_callback": None,
                         "api_base_url": None,
                         "organization": None,

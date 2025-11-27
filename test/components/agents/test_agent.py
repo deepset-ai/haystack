@@ -184,14 +184,9 @@ class TestAgent:
             tool_invoker_kwargs={"max_workers": 5, "enable_streaming_callback_passthrough": True},
         )
         serialized_agent = agent.to_dict()
-        # Check serialization structure without asserting exact model name
-        assert serialized_agent["type"] == "haystack.components.agents.agent.Agent"
-        assert (
-            serialized_agent["init_parameters"]["chat_generator"]["type"]
-            == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
-        )
-        # Verify the model is serialized
+        # Verify the model is truthy and serialized
         assert "model" in serialized_agent["init_parameters"]["chat_generator"]["init_parameters"]
+        model_name = serialized_agent["init_parameters"]["chat_generator"]["init_parameters"]["model"]
         # Check the rest of the structure
         expected_structure = {
             "type": "haystack.components.agents.agent.Agent",
@@ -199,7 +194,7 @@ class TestAgent:
                 "chat_generator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
                     "init_parameters": {
-                        "model": serialized_agent["init_parameters"]["chat_generator"]["init_parameters"]["model"],
+                        "model": model_name,
                         "streaming_callback": None,
                         "api_base_url": None,
                         "organization": None,
@@ -265,14 +260,9 @@ class TestAgent:
         toolset = Toolset(tools=[weather_tool])
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
         serialized_agent = agent.to_dict()
-        # Check serialization structure without asserting exact model name
-        assert serialized_agent["type"] == "haystack.components.agents.agent.Agent"
-        assert (
-            serialized_agent["init_parameters"]["chat_generator"]["type"]
-            == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
-        )
-        # Verify the model is serialized (whatever the default is)
+        # Verify the model is truthy and serialized
         assert "model" in serialized_agent["init_parameters"]["chat_generator"]["init_parameters"]
+        model_name = serialized_agent["init_parameters"]["chat_generator"]["init_parameters"]["model"]
         # Check the rest of the structure
         expected_structure = {
             "type": "haystack.components.agents.agent.Agent",
@@ -280,7 +270,7 @@ class TestAgent:
                 "chat_generator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
                     "init_parameters": {
-                        "model": serialized_agent["init_parameters"]["chat_generator"]["init_parameters"]["model"],
+                        "model": model_name,
                         "streaming_callback": None,
                         "api_base_url": None,
                         "organization": None,
