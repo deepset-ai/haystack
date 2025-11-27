@@ -85,11 +85,12 @@ class RegexTextExtractor:
         """Helper method to build the return dictionary based on configuration."""
         if (isinstance(result, str) and result == "") or (isinstance(result, list) and not result):
             if self.return_empty_on_no_match:
-                warnings.warn(
-                    "In upcoming releases the output when no matches are found will change from "
+                msg = (
+                    "Warning: In an upcoming release, the output when no matches are found will change from "
                     "'{}' to {'captured_text': "
                     "}"
                 )
+                warnings.warn(msg, DeprecationWarning, stacklevel=2)
                 return {}
             return {"captured_text": ""}
         return {"captured_text": result}
