@@ -14,7 +14,7 @@ from haystack.components.fetchers.link_content import (
     _text_content_handler,
 )
 
-HTML_URL = "https://docs.haystack.deepset.ai/docs"
+HTML_URL = "https://docs.haystack.deepset.ai/docs/intro"
 TEXT_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/main/README.md"
 PDF_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/b5987a6d8d0714eb2f3011183ab40093d2e4a41a/e2e/samples/pipelines/sample_pdf_1.pdf"
 
