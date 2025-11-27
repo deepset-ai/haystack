@@ -3,7 +3,7 @@
 # Generate API documentation from pydoc-markdown config files.
 # Run from repo root using hatch run docs
 
-set -e
+set -e  # Fails on any error in the following loop
 
 cd pydoc
 rm -rf temp && mkdir temp
