@@ -22,6 +22,7 @@
     "@docusaurus/faster": "^3.9.2",
     "@docusaurus/plugin-content-docs": "^3.8.1",
     "@docusaurus/plugin-ideal-image": "^3.8.1",
+    "@docusaurus/plugin-client-redirects": "^3.8.1",
     "@docusaurus/preset-classic": "^3.8.1",
     "@mdx-js/react": "^3.0.0",
     "@vercel/node": "^5.5.6",
