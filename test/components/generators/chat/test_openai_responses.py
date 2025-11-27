@@ -40,6 +40,7 @@ from haystack.components.generators.chat.openai_responses import (
     OpenAIResponsesChatGenerator,
     _convert_chat_message_to_responses_api_format,
     _convert_response_chunk_to_streaming_chunk,
+    _convert_streaming_chunks_to_chat_message,
 )
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import (
@@ -48,8 +49,10 @@ from haystack.dataclasses import (
     ImageContent,
     ReasoningContent,
     StreamingChunk,
+    TextContent,
     ToolCall,
     ToolCallDelta,
+    ToolCallResult,
 )
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.utils import Secret
@@ -64,6 +67,181 @@ class CalendarEvent(BaseModel):
 @pytest.fixture
 def calendar_event_model():
     return CalendarEvent
+
+
+@pytest.fixture
+def streaming_chunks_with_tool_call():
+    return [
+        StreamingChunk(
+            content="",
+            meta={
+                "received_at": ANY,
+                "response": {
+                    "id": "resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
+                    "created_at": 1761907188.0,
+                    "model": "gpt-5-mini-2025-08-07",
+                    "object": "response",
+                    "output": [],
+                    "tools": [
+                        {
+                            "name": "weather",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"city": {"type": "string"}},
+                                "required": ["city"],
+                            },
+                            "strict": False,
+                            "type": "function",
+                            "description": "useful to determine the weather in a given location",
+                        }
+                    ],
+                    "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
+                    "usage": None,
+                },
+                "sequence_number": 0,
+                "type": "response.created",
+            },
+        ),
+        StreamingChunk(
+            content="",
+            meta={"received_at": ANY},
+            index=0,
+            start=True,
+            reasoning=ReasoningContent(
+                reasoning_text="",
+                extra={
+                    "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                    "summary": [],
+                    "type": "reasoning",
+                },
+            ),
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "item": {
+                    "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                    "summary": [],
+                    "type": "reasoning",
+                },
+                "output_index": 0,
+                "sequence_number": 3,
+                "type": "response.output_item.done",
+                "received_at": ANY,
+            },
+            index=0,
+        ),
+        StreamingChunk(
+            content="",
+            meta={"received_at": ANY},
+            index=1,
+            tool_calls=[
+                ToolCallDelta(
+                    index=1,
+                    tool_name="weather",
+                    arguments=None,
+                    id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                    extra={
+                        "arguments": "",
+                        "call_id": "call_OZZXFm7SLb4F3Xg8a9XVVCvv",
+                        "id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                        "name": "weather",
+                        "status": "in_progress",
+                        "type": "function_call",
+                    },
+                )
+            ],
+            start=True,
+        ),
+        StreamingChunk(
+            content="",
+            meta={"received_at": ANY},
+            index=1,
+            tool_calls=[
+                ToolCallDelta(
+                    index=1,
+                    tool_name=None,
+                    arguments='{"city":"Paris"}',
+                    id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                    extra={
+                        "item_id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                        "output_index": 1,
+                        "sequence_number": 5,
+                        "type": "response.function_call_arguments.delta",
+                        "obfuscation": "PySUcQ59ZZRkOm",
+                    },
+                )
+            ],
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "received_at": ANY,
+                "arguments": '{"city":"Paris"}',
+                "item_id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                "name": "weather",
+                "output_index": 1,
+                "sequence_number": 10,
+                "type": "response.function_call_arguments.done",
+            },
+            index=1,
+        ),
+        StreamingChunk(
+            content="",
+            meta={
+                "received_at": ANY,
+                "response": {
+                    "id": "resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
+                    "created_at": 1761907188.0,
+                    "metadata": {},
+                    "model": "gpt-5-mini-2025-08-07",
+                    "object": "response",
+                    "output": [
+                        {
+                            "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                            "summary": [],
+                            "type": "reasoning",
+                        },
+                        {
+                            "arguments": '{"city":"Paris"}',
+                            "call_id": "call_OZZXFm7SLb4F3Xg8a9XVVCvv",
+                            "name": "weather",
+                            "type": "function_call",
+                            "id": "fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                            "status": "completed",
+                        },
+                    ],
+                    "tools": [
+                        {
+                            "name": "weather",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"city": {"type": "string"}},
+                                "required": ["city"],
+                                "additionalProperties": False,
+                            },
+                            "strict": False,
+                            "type": "function",
+                            "description": "useful to determine the weather in a given location",
+                        }
+                    ],
+                    "top_p": 1.0,
+                    "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
+                    "usage": {
+                        "input_tokens": 62,
+                        "input_tokens_details": {"cached_tokens": 0},
+                        "output_tokens": 83,
+                        "output_tokens_details": {"reasoning_tokens": 64},
+                        "total_tokens": 145,
+                    },
+                    "store": True,
+                },
+                "sequence_number": 12,
+                "type": "response.completed",
+            },
+            finish_reason="tool_calls",
+        ),
+    ]
 
 
 def callback(chunk: StreamingChunk) -> None: ...
@@ -354,10 +532,59 @@ class TestOpenAIResponsesChatGenerator:
         assert len(deserialized_component.tools) == len(tools)
         assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
 
+    def test_run_with_params_streaming(self, openai_mock_responses_stream_text_delta):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback
+        )
+        response = component.run([ChatMessage.from_user("What's the capital of France")])
+
+        # check we called the streaming callback
+        assert streaming_callback_called
+
+        # check that the component still returns the correct response
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert "The capital of France is Paris." in response["replies"][0].text
+
+    def test_run_with_params_streaming_reasoning_summary_delta(self, openai_mock_responses_reasoning_summary_delta):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback
+        )
+        response = component.run(
+            [ChatMessage.from_user("What's the capital of France")],
+            generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}},
+        )
+
+        # check we called the streaming callback
+        assert streaming_callback_called
+
+        # check that the component still returns the correct response
+        assert isinstance(response, dict)
+        assert "replies" in response
+        print(response["replies"])
+        assert len(response["replies"]) == 1
+        assert "I need to check the capital of France." in response["replies"][0].reasoning.reasoning_text
+
     def test_convert_chat_message_to_responses_api_format(self):
         chat_message = ChatMessage(
             _role=ChatRole.ASSISTANT,
             _content=[
+                TextContent(text="I need to use the functions.weather tool."),
                 ReasoningContent(
                     reasoning_text="I need to use the functions.weather tool.",
                     extra={"id": "rs_0d13efdd", "type": "reasoning"},
@@ -413,6 +640,27 @@ class TestOpenAIResponsesChatGenerator:
                 "id": "fc_0d13efdd",
                 "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
             },
+            {"content": "I need to use the functions.weather tool.", "role": "assistant"},
+        ]
+        # ToolCallResult cannot appear with other content
+        tool_call_result = ChatMessage(
+            _role=ChatRole.TOOL,
+            _content=[
+                ToolCallResult(
+                    result="result",
+                    origin=ToolCall(
+                        id="fc_0d13efdd",
+                        tool_name="weather",
+                        arguments={"location": "Berlin"},
+                        extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"},
+                    ),
+                    error=False,
+                )
+            ],
+        )
+
+        assert _convert_chat_message_to_responses_api_format(tool_call_result) == [
+            {"call_id": "call_a82vwFAIzku9SmBuQuecQSRq", "output": "result", "type": "function_call_output"}
         ]
 
     def test_warm_up_with_tools(self, monkeypatch):
@@ -531,6 +779,21 @@ class TestOpenAIResponsesChatGenerator:
         call_count = len(warm_up_calls)
         component.warm_up()
         assert len(warm_up_calls) == call_count
+
+    def test_run(self, openai_mock_responses):
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-4", generation_kwargs={"include": ["message.output_text.logprobs"]}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        assert "Paris" in message.text
+        assert "gpt-5" in message.meta["model"]
+        assert message.meta["status"] == "completed"
+        assert message.meta["usage"]["total_tokens"] > 0
+        assert message.meta["id"] is not None
+        assert message.meta["logprobs"] is not None
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -963,7 +1226,7 @@ class TestOpenAIResponsesChatGenerator:
         assert response["messages"][-1].text is not None
 
 
-class TestConvertResponseChunkToStreamingChunk:
+class TestConvertResponses:
     def test_convert_only_text(self):
         openai_chunks = [
             ResponseCreatedEvent(
@@ -1910,6 +2173,52 @@ class TestConvertResponseChunkToStreamingChunk:
                 finish_reason="tool_calls",
             ),
         ]
+
+    def test_convert_streaming_chunks_to_chat_message_with_tool_call(self, streaming_chunks_with_tool_call):
+        chat_message = _convert_streaming_chunks_to_chat_message(streaming_chunks_with_tool_call)
+        assert chat_message == ChatMessage(
+            _role="assistant",
+            _content=[
+                ToolCall(
+                    tool_name="weather",
+                    arguments={"city": "Paris"},
+                    id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
+                    extra={"call_id": "call_OZZXFm7SLb4F3Xg8a9XVVCvv"},
+                )
+            ],
+            _name=None,
+            _meta={
+                "id": "resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
+                "created_at": 1761907188.0,
+                "metadata": {},
+                "model": "gpt-5-mini-2025-08-07",
+                "object": "response",
+                "tools": [
+                    {
+                        "name": "weather",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {"city": {"type": "string"}},
+                            "required": ["city"],
+                            "additionalProperties": False,
+                        },
+                        "strict": False,
+                        "type": "function",
+                        "description": "useful to determine the weather in a given location",
+                    }
+                ],
+                "top_p": 1.0,
+                "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
+                "usage": {
+                    "input_tokens": 62,
+                    "input_tokens_details": {"cached_tokens": 0},
+                    "output_tokens": 83,
+                    "output_tokens_details": {"reasoning_tokens": 64},
+                    "total_tokens": 145,
+                },
+                "store": True,
+            },
+        )
 
 
 class TestOpenAIResponsesChatGeneratorAsync:

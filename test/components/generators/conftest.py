@@ -12,6 +12,7 @@ from openai.types import Reasoning
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, chat_completion_chunk
 from openai.types.responses import (
     Response,
+    ResponseOutputItemAddedEvent,
     ResponseOutputMessage,
     ResponseOutputText,
     ResponseReasoningItem,
@@ -228,7 +229,11 @@ def openai_mock_responses():
                     role="assistant",
                     type="message",
                     status="completed",
-                    content=[ResponseOutputText(text="The capital of France is Paris.", type="output_text")],
+                    content=[
+                        ResponseOutputText(
+                            text="The capital of France is Paris.", type="output_text", logprobs=None, annotations=[]
+                        )
+                    ],
                 ),
             ],
             parallel_tool_calls=True,
@@ -330,7 +335,7 @@ def openai_mock_responses_stream_text_delta():
         event = ResponseTextDeltaEvent(
             # required fields in the current SDK
             content_index=0,
-            delta="Hello",
+            delta="The capital of France is Paris.",
             item_id="item_1",
             logprobs=[],
             output_index=0,
@@ -372,8 +377,22 @@ def openai_mock_responses_reasoning_summary_delta():
     """
 
     with patch("openai.resources.responses.Responses.create") as mock_responses_create:
+        start_event = ResponseOutputItemAddedEvent(
+            item=ResponseReasoningItem(
+                id="rs_094e3f8beffcca02006928978067848190b477543eddbf32b3",
+                summary=[],
+                type="reasoning",
+                content=None,
+                encrypted_content=None,
+                status=None,
+            ),
+            output_index=0,
+            sequence_number=2,
+            type="response.output_item.added",
+        )
+
         event = ResponseReasoningSummaryTextDeltaEvent(
-            delta="**Answer",
+            delta="I need to check the capital of France.",
             item_id="rs_01e88f7d57f9a2f70069284d2170c48193918c04f85244cf7c",
             output_index=0,
             sequence_number=4,
@@ -382,12 +401,18 @@ def openai_mock_responses_reasoning_summary_delta():
             obfuscation="cGcv5W5F",
         )
 
-        # If your OpenAIMockStream expects an iterable of events, wrap `[event]`
-        mock_responses_create.return_value = OpenAIMockStream(
-            event,  # or [event] depending on your implementation
-            cast_to=None,
-            response=None,
-            client=None,
+        # Create a custom stream that yields both events sequentially
+        class MultiEventMockStream(OpenAIMockStream):
+            def __init__(self, *events, **kwargs):
+                self.events = events
+                super().__init__(events[0] if events else None, **kwargs)
+
+            def __stream__(self):
+                for event in self.events:
+                    yield event
+
+        mock_responses_create.return_value = MultiEventMockStream(
+            start_event, event, cast_to=None, response=None, client=None
         )
 
         yield mock_responses_create
