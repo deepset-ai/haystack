@@ -110,6 +110,17 @@ const config = {
     ],
     // Local plugin to teach Webpack how to handle `.txt` files like `llms.txt`
     require.resolve('./plugins/txtLoaderPlugin'),
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          {
+            from: '/docs',
+            to: '/docs/intro',
+          },
+        ],
+      },
+    ],
   ],
 
   themeConfig:

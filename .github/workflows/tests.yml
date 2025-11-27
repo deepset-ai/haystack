@@ -227,6 +227,7 @@ jobs:
             python:
               - '**/*.py'
               - '!test/**'
+              - '!.github/**'
             pyproject:
               - 'pyproject.toml'
 
