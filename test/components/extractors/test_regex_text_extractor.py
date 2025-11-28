@@ -41,12 +41,26 @@ class TestRegexTextExtractor:
         result = extractor.run(text_or_messages=text)
         assert result == {}
 
+    def test_extract_from_string_no_match_return_empty_false(self):
+        pattern = r'<issue url="(.+?)">'
+        text = "This text has no matching pattern"
+        extractor = RegexTextExtractor(regex_pattern=pattern, return_empty_on_no_match=False)
+        result = extractor.run(text_or_messages=text)
+        assert result == {"captured_text": ""}
+
     def test_extract_from_string_empty_input(self):
         pattern = r'<issue url="(.+?)">'
         extractor = RegexTextExtractor(regex_pattern=pattern)
         text = ""
         result = extractor.run(text_or_messages=text)
         assert result == {}
+
+    def test_extract_from_string_empty_input_no_match_return_empty_false(self):
+        pattern = r'<issue url="(.+?)">'
+        extractor = RegexTextExtractor(regex_pattern=pattern, return_empty_on_no_match=False)
+        text = ""
+        result = extractor.run(text_or_messages=text)
+        assert result == {"captured_text": ""}
 
     def test_extract_from_chat_messages_single_message(self):
         pattern = r'<issue url="(.+?)">'
