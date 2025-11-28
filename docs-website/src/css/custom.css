@@ -944,3 +944,14 @@ html[data-theme='dark'] .navbar-version-badge-dropdown:hover::after,
 html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
   filter: none !important;
 }
+
+/* ========================================= */
+/* MOBILE: Hide navbar title to prevent     */
+/* clashing with search bar                  */
+/* ========================================= */
+
+@media (max-width: 768px) {
+  .navbar__title {
+    display: none !important;
+  }
+}
