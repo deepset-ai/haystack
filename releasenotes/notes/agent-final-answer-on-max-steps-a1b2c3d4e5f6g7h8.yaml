@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Add `final_answer_on_max_steps` parameter to Agent component. When enabled (default: True),
+    the agent will generate a final natural language response if it reaches max_agent_steps with
+    a tool result as the last message. This ensures the agent always returns a user-friendly text
+    response instead of raw tool output, improving user experience when step limits are reached.
+    The feature adds one additional LLM call that doesn't count toward max_agent_steps.
