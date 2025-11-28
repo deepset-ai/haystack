@@ -484,7 +484,6 @@ class OpenAIResponsesChatGenerator:
         chunks: list[StreamingChunk] = []
 
         for openai_chunk in responses:  # pylint: disable=not-an-iterable
-            print("OPENAI CHUNK:", openai_chunk)
             chunk_delta = _convert_response_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
