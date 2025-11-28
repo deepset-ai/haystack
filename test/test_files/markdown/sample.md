@@ -14,7 +14,7 @@ pip install farm-haystack
 - Leverage existing **knowledge bases** and better handle the long tail of queries that **chatbots** receive.
 - **Automate processes** by automatically applying a list of questions to new documents and using the extracted answers.
 
-![Logo](https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/banner.png)
+![Logo](https://raw.githubusercontent.com/deepset-ai/haystack/main/images/banner.png)
 
 
 ## Core Features

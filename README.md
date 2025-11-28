@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://haystack.deepset.ai/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/banner.png" alt="Green logo of a stylized white 'H' with the text 'Haystack, by deepset.' Abstract green and yellow diagrams in the background."></a>
+  <a href="https://haystack.deepset.ai/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/images/banner.png" alt="Green logo of a stylized white 'H' with the text 'Haystack, by deepset.' Abstract green and yellow diagrams in the background."></a>
 
 |         |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -91,7 +91,7 @@ Use **deepset Studio** to visually create, deploy, and test your Haystack pipeli
 👉 [Sign up](https://landing.deepset.ai/deepset-studio-signup)!
 
 > [!TIP]
-><img src="https://github.com/deepset-ai/haystack/raw/main/docs/img/deepset-platform-logo-alternative.jpeg"  width=20%>
+><img src="https://github.com/deepset-ai/haystack/raw/main/images/deepset-platform-logo-alternative.jpeg"  width=20%>
 >
 > Are you looking for a managed solution that benefits from Haystack? [deepset AI Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
 
