@@ -1,9 +1,0 @@
----
-fixes:
-  - |
-    Fixed pydoc examples in audio and builder components to be valid executable scripts.
-    Added missing ``Secret`` import in ``RemoteWhisperTranscriber`` example, fixed unterminated
-    string literals in ``ChatPromptBuilder`` examples, and updated file paths to use actual test
-    files instead of placeholders. API key examples now use environment variables instead of
-    hardcoded placeholders. This ensures all documentation examples can be tested and executed
-    successfully.
