@@ -16,6 +16,9 @@ import styles from "./styles.module.css";
 const MIN_QUERY_LENGTH = 3;
 const DEBOUNCE_DELAY = 650;
 
+const API_REFERENCE_KEY = "api-reference";
+const DOCUMENTATION_KEY = "documentation";
+
 const titleCase = (s) => {
   return s
     .toLowerCase()
@@ -125,25 +128,25 @@ const categorizeDocument = (doc, path) => {
   if (navigation) {
     // Normalize the navigation value
     const normalized = navigation.toLowerCase().trim();
-    if (normalized === "api-reference") {
-      return "api-reference";
+    if (normalized === API_REFERENCE_KEY) {
+      return API_REFERENCE_KEY;
     }
-    if (normalized === "documentation") {
-      return "documentation";
+    if (normalized === DOCUMENTATION_KEY) {
+      return DOCUMENTATION_KEY;
     }
   }
 
   // Fall back to path-based categorization for documents without metadata
-  if (!path) return "documentation";
+  if (!path) return DOCUMENTATION_KEY;
 
   const lowerPath = path.toLowerCase();
 
   if (lowerPath.includes("/reference/")) {
-    return "api-reference";
+    return API_REFERENCE_KEY;
   }
 
   // Default for most docs
-  return "documentation";
+  return DOCUMENTATION_KEY;
 };
 
 const toResults = (documents, query) => {
@@ -191,7 +194,6 @@ export default function SearchBar() {
       const controller = new AbortController();
       requestAbortRef.current = controller;
 
-      setIsSearching(true);
       setError(null);
 
       try {
@@ -248,6 +250,8 @@ export default function SearchBar() {
 
   const handleInputChange = useCallback(
     (e) => {
+      setIsSearching(true);
+
       const value = e.target.value;
       setQuery(value);
 
@@ -319,9 +323,30 @@ export default function SearchBar() {
 
   const filters = [
     { id: "all", label: "All" },
-    { id: "api-reference", label: "API Reference" },
-    { id: "documentation", label: "Documentation" },
+    { id: DOCUMENTATION_KEY, label: "Documentation" },
+    { id: API_REFERENCE_KEY, label: "API Reference" },
   ];
+
+  // Calculate result counts for each filter
+  const resultCounts = useMemo(() => {
+    return {
+      all: results.length,
+      [DOCUMENTATION_KEY]: results.filter(
+        (r) => r.category === DOCUMENTATION_KEY
+      ).length,
+      [API_REFERENCE_KEY]: results.filter(
+        (r) => r.category === API_REFERENCE_KEY
+      ).length,
+    };
+  }, [results]);
+
+  const getFilterLabel = (filter) => {
+    const count = resultCounts[filter.id];
+    if (count > 0 && query.length >= MIN_QUERY_LENGTH) {
+      return `${filter.label} (${count})`;
+    }
+    return filter.label;
+  };
 
   return (
     <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
@@ -396,7 +421,7 @@ export default function SearchBar() {
                     role="tab"
                     aria-selected={activeFilter === filter.id}
                   >
-                    {filter.label}
+                    {getFilterLabel(filter)}
                   </button>
                 ))}
               </div>
