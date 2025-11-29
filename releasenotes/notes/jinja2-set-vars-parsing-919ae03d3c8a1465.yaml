@@ -1,0 +1,7 @@
+fixes:
+  - |
+    Fixed an issue where Jinja2 variable assignments using the `set` directive
+    were not being parsed correctly in certain contexts. This fix ensures that
+    variables assigned with `{% set var = value %}` are now properly recognized
+    and can be used as expected within templates inside `PromptBuilder` and
+    `ChatPromptBuilder`.
