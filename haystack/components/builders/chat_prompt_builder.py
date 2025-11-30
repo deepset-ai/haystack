@@ -75,7 +75,7 @@ class ChatPromptBuilder:
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = ChatPromptBuilder()
-    llm = OpenAIChatGenerator(api_key=Secret.from_token("<your-api-key>"), model="gpt-4o-mini")
+    llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="gpt-5-mini")
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)
@@ -90,27 +90,17 @@ class ChatPromptBuilder:
     res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "language": language},
                                         "template": messages}})
     print(res)
+    # Output example (truncated):
+    # {'llm': {'replies': [ChatMessage(...)]}}
 
-    >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
-    "Berlin is the capital city of Germany and one of the most vibrant
-    and diverse cities in Europe. Here are some key things to know...Enjoy your time exploring the vibrant and dynamic
-    capital of Germany!")], _name=None, _meta={'model': 'gpt-4o-mini',
-    'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens':
-    708}})]}}
-
-    messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next
-    {{day_count}} days?")]
+    messages = [system_message, ChatMessage.from_user("What's the forecast for {{location}}, next {{day_count}} days?")]
 
     res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "day_count": "5"},
                                         "template": messages}})
 
     print(res)
-    >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
-    "Here is the weather forecast for Berlin in the next 5
-    days:\\n\\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
-    closer to your visit.")], _name=None, _meta={'model': 'gpt-4o-mini',
-    'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201,
-    'total_tokens': 238}})]}}
+    # Output example (truncated):
+    # {'llm': {'replies': [ChatMessage(...)]}}
     ```
 
     #### String prompt template
@@ -131,7 +121,8 @@ class ChatPromptBuilder:
     {% endmessage %}
     \"\"\"
 
-    images = [ImageContent.from_file_path("apple.jpg"), ImageContent.from_file_path("orange.jpg")]
+    images = [ImageContent.from_file_path("test/test_files/images/apple.jpg"),
+              ImageContent.from_file_path("test/test_files/images/haystack-logo.png")]
 
     builder = ChatPromptBuilder(template=template)
     builder.run(user_name="John", images=images)
