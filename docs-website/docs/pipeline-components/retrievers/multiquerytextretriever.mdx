@@ -5,6 +5,9 @@ slug: "/multiquerytextretriever"
 description: "Retrieves documents using multiple queries in parallel with a text-based Retriever."
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # MultiQueryTextRetriever
 
 Retrieves documents using multiple queries in parallel with a text-based Retriever.
@@ -87,6 +90,9 @@ for doc in results["documents"]:
 
 This pipeline takes a single query "sustainable power" and expands it into multiple variations using an LLM (for example: "renewable energy sources", "green electricity", "clean power"). The Retriever then searches for each variation and combines the results. This way, documents about "solar energy" or "hydropower" can be found even though they don't contain the words "sustainable power".
 
+<Tabs>
+<TabItem value="python" label="Python" default>
+
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -120,6 +126,34 @@ for doc in result["retriever"]["documents"]:
     print(f"Score: {doc.score:.3f} | {doc.content}")
 ```
 
+</TabItem>
+<TabItem value="yaml" label="YAML">
+
+```yaml
+components:
+  query_expander:
+    type: haystack.components.query.query_expander.QueryExpander
+    init_parameters:
+      n_expansions: 3
+  retriever:
+    type: haystack.components.retrievers.multi_query_text_retriever.MultiQueryTextRetriever
+    init_parameters:
+      retriever:
+        type: haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever
+        init_parameters:
+          document_store:
+            type: haystack.document_stores.in_memory.document_store.InMemoryDocumentStore
+            init_parameters: {}
+          top_k: 2
+
+connections:
+  - sender: query_expander.queries
+    receiver: retriever.queries
+```
+
+</TabItem>
+</Tabs>
+
 ### In a RAG pipeline
 
 This RAG pipeline answers questions using query expansion. When a user asks "What types of energy come from natural sources?", the pipeline:
@@ -130,6 +164,9 @@ This RAG pipeline answers questions using query expansion. When a user asks "Wha
 4. Sends the prompt to an LLM to generate an answer
 
 The question is sent to both the `query_expander` (for generating search queries) and the `prompt_builder` (for the final prompt to the LLM).
+
+<Tabs>
+<TabItem value="python" label="Python" default>
 
 ```python
 from haystack import Document, Pipeline
@@ -188,3 +225,44 @@ result = rag_pipeline.run({
 
 print(result["llm"]["replies"][0].text)
 ```
+
+</TabItem>
+<TabItem value="yaml" label="YAML">
+
+```yaml
+components:
+  query_expander:
+    type: haystack.components.query.query_expander.QueryExpander
+    init_parameters:
+      n_expansions: 2
+  retriever:
+    type: haystack.components.retrievers.multi_query_text_retriever.MultiQueryTextRetriever
+    init_parameters:
+      retriever:
+        type: haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever
+        init_parameters:
+          document_store:
+            type: haystack.document_stores.in_memory.document_store.InMemoryDocumentStore
+            init_parameters: {}
+          top_k: 2
+  prompt_builder:
+    type: haystack.components.builders.chat_prompt_builder.ChatPromptBuilder
+    init_parameters:
+      required_variables:
+        - documents
+        - question
+  llm:
+    type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+    init_parameters: {}
+
+connections:
+  - sender: query_expander.queries
+    receiver: retriever.queries
+  - sender: retriever.documents
+    receiver: prompt_builder.documents
+  - sender: prompt_builder.prompt
+    receiver: llm.messages
+```
+
+</TabItem>
+</Tabs>

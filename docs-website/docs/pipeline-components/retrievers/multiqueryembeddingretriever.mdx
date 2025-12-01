@@ -5,6 +5,9 @@ slug: "/multiqueryembeddingretriever"
 description: "Retrieves documents using multiple queries in parallel with an embedding-based Retriever."
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # MultiQueryEmbeddingRetriever
 
 Retrieves documents using multiple queries in parallel with an embedding-based Retriever.
@@ -57,6 +60,9 @@ This pipeline takes a single query "sustainable power generation" and expands it
 
 Before running the pipeline, documents must be embedded using a Document Embedder and stored in the Document Store.
 
+<Tabs>
+<TabItem value="python" label="Python" default>
+
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -93,3 +99,35 @@ result = pipeline.run({"query_expander": {"query": "sustainable power generation
 for doc in result["retriever"]["documents"]:
     print(f"Score: {doc.score:.3f} | {doc.content}")
 ```
+
+</TabItem>
+<TabItem value="yaml" label="YAML">
+
+```yaml
+components:
+  query_expander:
+    type: haystack.components.query.query_expander.QueryExpander
+    init_parameters:
+      n_expansions: 3
+  retriever:
+    type: haystack.components.retrievers.multi_query_embedding_retriever.MultiQueryEmbeddingRetriever
+    init_parameters:
+      retriever:
+        type: haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever
+        init_parameters:
+          document_store:
+            type: haystack.document_stores.in_memory.document_store.InMemoryDocumentStore
+            init_parameters: {}
+          top_k: 2
+      query_embedder:
+        type: haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder
+        init_parameters:
+          model: sentence-transformers/all-MiniLM-L6-v2
+
+connections:
+  - sender: query_expander.queries
+    receiver: retriever.queries
+```
+
+</TabItem>
+</Tabs>
