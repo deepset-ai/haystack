@@ -25,7 +25,17 @@ QueryExpander uses an LLM to generate semantically similar queries to improve re
 
 `QueryExpander` takes a user query and generates multiple semantically similar variations of it. This technique improves retrieval recall by allowing your retrieval system to find documents that might not match the original query phrasing but are still relevant.
 
-The component uses a chat-based LLM to generate expanded queries. By default, it uses OpenAI's `gpt-4.1-mini` model, but you can configure it to use any chat generator that follows the `ChatGenerator` protocol.
+The component uses a chat-based LLM to generate expanded queries. By default, it uses OpenAI's `gpt-4.1-mini` model, but you can pass any preferred Chat Generator component (such as `AnthropicChatGenerator` or `AzureOpenAIChatGenerator`) to the `chat_generator` parameter:
+
+```python
+from haystack.components.query import QueryExpander
+from haystack.components.generators.chat import AnthropicChatGenerator
+
+expander = QueryExpander(
+    chat_generator=AnthropicChatGenerator(model="claude-sonnet-4-20250514"),
+    n_expansions=3
+)
+```
 
 The generated queries:
 - Use different words and phrasings while maintaining the same core meaning
