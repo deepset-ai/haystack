@@ -24,8 +24,8 @@ class TestLLMMetadataExtractor:
             prompt="prompt {{document.content}}", expected_keys=["key1", "key2"], chat_generator=chat_generator
         )
         assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
-        # Not testing specific model name, just that it's set
-        assert extractor._chat_generator.model is not None
+        # Not testing specific model name, just that it's set (truthy)
+        assert extractor._chat_generator.model
         assert extractor._chat_generator.generation_kwargs == {"temperature": 0.5}
         assert extractor.expected_keys == ["key1", "key2"]
 

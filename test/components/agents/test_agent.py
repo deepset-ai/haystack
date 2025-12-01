@@ -331,6 +331,7 @@ class TestAgent:
         assert deserialized_agent.exit_conditions == ["text"]
 
     def test_from_dict(self, monkeypatch):
+        model = "gpt-5"
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         data = {
             "type": "haystack.components.agents.agent.Agent",
@@ -338,7 +339,7 @@ class TestAgent:
                 "chat_generator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
                     "init_parameters": {
-                        "model": "gpt-4o-mini",
+                        "model": model,
                         "streaming_callback": None,
                         "api_base_url": None,
                         "organization": None,
@@ -401,7 +402,7 @@ class TestAgent:
         assert isinstance(agent, Agent)
         assert isinstance(agent.chat_generator, OpenAIChatGenerator)
         # from_dict should restore the model from the dict (testing backward compatibility)
-        assert agent.chat_generator.model == "gpt-4o-mini"
+        assert agent.chat_generator.model == model
         assert agent.chat_generator.api_key == Secret.from_env_var("OPENAI_API_KEY")
         assert agent.tools[0].function is weather_function
         assert isinstance(agent.tools[1]._component, PromptBuilder)
