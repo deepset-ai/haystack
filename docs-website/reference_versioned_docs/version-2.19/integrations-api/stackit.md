@@ -47,11 +47,11 @@ def __init__(
         api_base_url:
     Optional[
         str] = "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
-        generation_kwargs: Optional[Dict[str, Any]] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
         *,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None)
+        http_client_kwargs: Optional[dict[str, Any]] = None)
 ```
 
 Creates an instance of STACKITChatGenerator class.
@@ -76,6 +76,13 @@ Some of the supported parameters:
     events as they become available, with the stream terminated by a data: [DONE] message.
 - `safe_prompt`: Whether to inject a safety prompt before all conversations.
 - `random_seed`: The seed to use for random sampling.
+- `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+    If provided, the output will always be validated against this
+    format (unless the model returns a tool call).
+    For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+    Notes:
+    - For structured outputs with streaming,
+      the `response_format` must be a JSON schema and not a Pydantic model.
 - `timeout`: Timeout for STACKIT client calls. If not set, it defaults to either the `OPENAI_TIMEOUT` environment
 variable, or 30 seconds.
 - `max_retries`: Maximum number of retries to contact STACKIT after an internal error.
@@ -88,7 +95,7 @@ For more information, see the [HTTPX documentation](https://www.python-httpx.org
 #### STACKITChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
@@ -96,97 +103,6 @@ Serialize this component to a dictionary.
 **Returns**:
 
 The serialized component as a dictionary.
-
-<a id="haystack_integrations.components.generators.stackit.chat.chat_generator.STACKITChatGenerator.from_dict"></a>
-
-#### STACKITChatGenerator.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAIChatGenerator"
-```
-
-Deserialize this component from a dictionary.
-
-**Arguments**:
-
-- `data`: The dictionary representation of this component.
-
-**Returns**:
-
-The deserialized component instance.
-
-<a id="haystack_integrations.components.generators.stackit.chat.chat_generator.STACKITChatGenerator.run"></a>
-
-#### STACKITChatGenerator.run
-
-```python
-@component.output_types(replies=list[ChatMessage])
-def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        *,
-        tools: Optional[ToolsType] = None,
-        tools_strict: Optional[bool] = None)
-```
-
-Invokes chat completion based on the provided messages and generation parameters.
-
-**Arguments**:
-
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
-override the parameters passed during component initialization.
-For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If set, it will override the `tools` parameter provided during initialization.
-- `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns**:
-
-A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
-
-<a id="haystack_integrations.components.generators.stackit.chat.chat_generator.STACKITChatGenerator.run_async"></a>
-
-#### STACKITChatGenerator.run\_async
-
-```python
-@component.output_types(replies=list[ChatMessage])
-async def run_async(messages: list[ChatMessage],
-                    streaming_callback: Optional[StreamingCallbackT] = None,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    *,
-                    tools: Optional[ToolsType] = None,
-                    tools_strict: Optional[bool] = None)
-```
-
-Asynchronously invokes chat completion based on the provided messages and generation parameters.
-
-This is the asynchronous version of the `run` method. It has the same parameters and return values
-but can be used with `await` in async code.
-
-**Arguments**:
-
-- `messages`: A list of ChatMessage instances representing the input messages.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-Must be a coroutine.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will
-override the parameters passed during component initialization.
-For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-If set, it will override the `tools` parameter provided during initialization.
-- `tools_strict`: Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly
-the schema provided in the `parameters` field of the tool definition, but this may increase latency.
-If set, it will override the `tools_strict` parameter set during component initialization.
-
-**Returns**:
-
-A dictionary with the following key:
-- `replies`: A list containing the generated responses as ChatMessage instances.
 
 <a id="haystack_integrations.components.embedders.stackit.document_embedder"></a>
 
@@ -229,12 +145,12 @@ def __init__(
         suffix: str = "",
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[List[str]] = None,
+        meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
         *,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None)
+        http_client_kwargs: Optional[dict[str, Any]] = None)
 ```
 
 Creates a STACKITDocumentEmbedder component.
@@ -264,7 +180,7 @@ For more information, see the [HTTPX documentation](https://www.python-httpx.org
 #### STACKITDocumentEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -272,67 +188,6 @@ Serializes the component to a dictionary.
 **Returns**:
 
 Dictionary with serialized data.
-
-<a id="haystack_integrations.components.embedders.stackit.document_embedder.STACKITDocumentEmbedder.from_dict"></a>
-
-#### STACKITDocumentEmbedder.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAIDocumentEmbedder"
-```
-
-Deserializes the component from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized component.
-
-<a id="haystack_integrations.components.embedders.stackit.document_embedder.STACKITDocumentEmbedder.run"></a>
-
-#### STACKITDocumentEmbedder.run
-
-```python
-@component.output_types(documents=list[Document], meta=dict[str, Any])
-def run(documents: list[Document])
-```
-
-Embeds a list of documents.
-
-**Arguments**:
-
-- `documents`: A list of documents to embed.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `documents`: A list of documents with embeddings.
-- `meta`: Information about the usage of the model.
-
-<a id="haystack_integrations.components.embedders.stackit.document_embedder.STACKITDocumentEmbedder.run_async"></a>
-
-#### STACKITDocumentEmbedder.run\_async
-
-```python
-@component.output_types(documents=list[Document], meta=dict[str, Any])
-async def run_async(documents: list[Document])
-```
-
-Embeds a list of documents asynchronously.
-
-**Arguments**:
-
-- `documents`: A list of documents to embed.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `documents`: A list of documents with embeddings.
-- `meta`: Information about the usage of the model.
 
 <a id="haystack_integrations.components.embedders.stackit.text_embedder"></a>
 
@@ -369,7 +224,7 @@ def __init__(
         *,
         timeout: Optional[float] = None,
         max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[Dict[str, Any]] = None)
+        http_client_kwargs: Optional[dict[str, Any]] = None)
 ```
 
 Creates a STACKITTextEmbedder component.
@@ -394,7 +249,7 @@ For more information, see the [HTTPX documentation](https://www.python-httpx.org
 #### STACKITTextEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -403,66 +258,3 @@ Serializes the component to a dictionary.
 
 Dictionary with serialized data.
 
-<a id="haystack_integrations.components.embedders.stackit.text_embedder.STACKITTextEmbedder.from_dict"></a>
-
-#### STACKITTextEmbedder.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAITextEmbedder"
-```
-
-Deserializes the component from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized component.
-
-<a id="haystack_integrations.components.embedders.stackit.text_embedder.STACKITTextEmbedder.run"></a>
-
-#### STACKITTextEmbedder.run
-
-```python
-@component.output_types(embedding=list[float], meta=dict[str, Any])
-def run(text: str)
-```
-
-Embeds a single string.
-
-**Arguments**:
-
-- `text`: Text to embed.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `embedding`: The embedding of the input text.
-- `meta`: Information about the usage of the model.
-
-<a id="haystack_integrations.components.embedders.stackit.text_embedder.STACKITTextEmbedder.run_async"></a>
-
-#### STACKITTextEmbedder.run\_async
-
-```python
-@component.output_types(embedding=list[float], meta=dict[str, Any])
-async def run_async(text: str)
-```
-
-Asynchronously embed a single string.
-
-This is the asynchronous version of the `run` method. It has the same parameters and return values
-but can be used with `await` in async code.
-
-**Arguments**:
-
-- `text`: Text to embed.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `embedding`: The embedding of the input text.
-- `meta`: Information about the usage of the model.

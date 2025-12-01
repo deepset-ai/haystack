@@ -84,7 +84,7 @@ instance/
 .scrapy
 
 # documentation
-docs/pydoc/temp/
+pydoc/temp/
 
 # PyBuilder
 target/

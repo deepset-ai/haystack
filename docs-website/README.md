@@ -2,8 +2,7 @@
 
 This directory contains the Docusaurus-powered documentation website for [Haystack](https://github.com/deepset-ai/haystack), an open-source framework for building production-ready applications with Large Language Models (LLMs).
 
-- **Vercel production deployment:** https://haystack-docs.vercel.app/docs/intro
-- **Live site:** https://docs.haystack.deepset.ai
+- **Website URL:** https://docs.haystack.deepset.ai
 
 **Table of Contents**
 
@@ -143,7 +142,7 @@ These workflows automatically create versioned documentation snapshots and pull 
 
 ## Deployment
 
-The documentation site is automatically deployed to **https://haystack-docs.vercel.app/docs/intro** (in future https://docs.haystack.deepset.ai) when changes are merged to the `main` branch.
+The documentation site is automatically deployed to **https://docs.haystack.deepset.ai** when changes are merged to the `main` branch.
 
 ## llms.txt for AI tools
 
