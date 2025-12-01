@@ -36,7 +36,8 @@ jobs:
           npm run build
 
       - name: Install script dependencies
-        run: pip install deepset-cloud-sdk requests
+        # sniffio is needed because of https://github.com/deepset-ai/deepset-cloud-sdk/issues/286
+        run: pip install deepset-cloud-sdk sniffio requests
 
       - name: Update new docs to Search pipeline and remove outdated docs
         env:
