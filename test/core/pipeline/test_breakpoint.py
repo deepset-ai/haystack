@@ -154,6 +154,37 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path):
         assert loaded_snapshot.break_point.visit_count == 0
 
 
+def test_load_pipeline_snapshot_with_old_pipeline_outputs_format(tmp_path):
+    "Test to ensure backwards compatibility with the old pipeline_outputs format"
+    # TODO: remove this test in haystack 2.23.0
+    pipeline_snapshot = {
+        "pipeline_state": {
+            "inputs": {
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {"comp2": {"type": "object", "properties": {}}},
+                },
+                "serialized_data": {"comp2": {}},
+            },
+            "component_visits": {"comp1": 1, "comp2": 0},
+            "pipeline_outputs": {"comp1": {"result": "Answer from comp1"}},
+        },
+        "break_point": {"component_name": "comp2", "visit_count": 0, "snapshot_file_path": "test_breakpoints"},
+        "agent_snapshot": None,
+        "timestamp": "2025-12-01T17:14:24.366124",
+        "original_input_data": {"serialization_schema": {"type": "object", "properties": {}}, "serialized_data": {}},
+        "ordered_component_names": ["comp1", "comp2"],
+        "include_outputs_from": ["comp1"],
+    }
+
+    pipeline_snapshot_file = tmp_path / "old_pipeline_outputs_format.json"
+    with open(pipeline_snapshot_file, "w") as f:
+        json.dump(pipeline_snapshot, f)
+
+    loaded_snapshot = load_pipeline_snapshot(pipeline_snapshot_file)
+    assert loaded_snapshot == PipelineSnapshot.from_dict(pipeline_snapshot)
+
+
 def test_trigger_tool_invoker_breakpoint(make_pipeline_snapshot_with_agent_snapshot):
     pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot_with_agent_snapshot(
         break_point=AgentBreakpoint("agent", ToolBreakpoint(component_name="tool_invoker"))
