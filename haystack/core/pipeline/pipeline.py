@@ -252,7 +252,12 @@ class Pipeline(PipelineBase):
             include_outputs_from = pipeline_snapshot.include_outputs_from
 
             # also intermediate_outputs from the snapshot when resuming
-            pipeline_outputs = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.pipeline_outputs)
+            # keep the deserialization of pipeline_outputs backwards compatible with the old pipeline_outputs format
+            # TODO: remove this in haystack 2.23.0
+            if "serialization_schema" not in pipeline_snapshot.pipeline_state.pipeline_outputs.keys():
+                pipeline_outputs = pipeline_snapshot.pipeline_state.pipeline_outputs
+            else:
+                pipeline_outputs = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.pipeline_outputs)
 
         cached_topological_sort = None
         # We need to access a component's receivers multiple times during a pipeline run.
