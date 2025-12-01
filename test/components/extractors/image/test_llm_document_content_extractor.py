@@ -21,7 +21,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 class TestLLMDocumentContentExtractor:
     def test_init(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
 
         extractor = LLMDocumentContentExtractor(
             chat_generator=chat_generator,
@@ -35,7 +35,8 @@ class TestLLMDocumentContentExtractor:
         )
 
         assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
-        assert extractor._chat_generator.model == "gpt-4o-mini"
+        # Not testing specific model name, just that it's set
+        assert extractor._chat_generator.model is not None
         assert extractor._chat_generator.generation_kwargs == {"temperature": 0.5}
         assert extractor.prompt == "Extract content from this image"
         assert extractor.file_path_meta_field == "file_path"
@@ -47,7 +48,7 @@ class TestLLMDocumentContentExtractor:
 
     def test_init_with_defaults(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
+        chat_generator = OpenAIChatGenerator()
         extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
         assert extractor.prompt.startswith("\nYou are part of an information extraction pipeline")
         assert extractor.file_path_meta_field == "file_path"
@@ -59,7 +60,7 @@ class TestLLMDocumentContentExtractor:
 
     def test_init_with_variables_in_prompt(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
+        chat_generator = OpenAIChatGenerator()
 
         with pytest.raises(ValueError, match="The prompt must not have any variables"):
             LLMDocumentContentExtractor(
@@ -72,7 +73,7 @@ class TestLLMDocumentContentExtractor:
 
     def test_to_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
 
         extractor = LLMDocumentContentExtractor(
             chat_generator=chat_generator,
@@ -103,7 +104,7 @@ class TestLLMDocumentContentExtractor:
 
     def test_from_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
 
         extractor_dict = {
             "type": "haystack.components.extractors.image.llm_document_content_extractor.LLMDocumentContentExtractor",

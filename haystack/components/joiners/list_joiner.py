@@ -39,8 +39,8 @@ class ListJoiner:
 
     prompt_builder = ChatPromptBuilder(template=user_message)
     feedback_prompt_builder = ChatPromptBuilder(template=feedback_message)
-    llm = OpenAIChatGenerator(model="gpt-4o-mini")
-    feedback_llm = OpenAIChatGenerator(model="gpt-4o-mini")
+    llm = OpenAIChatGenerator()
+    feedback_llm = OpenAIChatGenerator()
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)

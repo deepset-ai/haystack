@@ -89,8 +89,9 @@ class TestPipelineBreakpoints:
 
         prompt_builder = ChatPromptBuilder(template=user_message)
         feedback_prompt_builder = ChatPromptBuilder(template=feedback_message)
-        llm = mock_openai_chat_generator("gpt-4o-mini")
-        feedback_llm = mock_openai_chat_generator("gpt-4o-mini")
+        # Use default model for mock generators
+        llm = mock_openai_chat_generator("gpt-5-mini")
+        feedback_llm = mock_openai_chat_generator("gpt-5-mini")
 
         pipe = Pipeline()
         pipe.add_component("prompt_builder", prompt_builder)

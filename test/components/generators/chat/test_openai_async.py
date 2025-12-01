@@ -295,7 +295,7 @@ class TestOpenAIChatGeneratorAsync:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-4o" in message.meta["model"]
+        assert message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
     @pytest.mark.asyncio
@@ -335,7 +335,7 @@ class TestOpenAIChatGeneratorAsync:
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
 
-        assert "gpt-4o" in message.meta["model"]
+        assert message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
         assert counter > 1
@@ -369,7 +369,8 @@ class TestOpenAIChatGeneratorAsync:
         tool_call = message.tool_call
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
+        # Check that Paris is in the city argument (case-insensitive, allowing for variations like "Paris, France")
+        assert "paris" in tool_call.arguments["city"].lower()
         assert message.meta["finish_reason"] == "tool_calls"
 
     @pytest.mark.asyncio

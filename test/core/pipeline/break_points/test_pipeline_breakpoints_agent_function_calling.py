@@ -171,7 +171,15 @@ class TestPipelineBreakpoints:
     @pytest.mark.integration
     def test_agent_pipeline_regular_component_breakpoints(self, agent_pipeline, output_directory, component):
         pipeline, doc_store = agent_pipeline
-        data = {"math_agent": {"messages": [ChatMessage.from_user("Calculate 2 + 2. What is the factorial of 5?")]}}
+        data = {
+            "math_agent": {
+                "messages": [
+                    ChatMessage.from_user(
+                        "Use the calculator tool to calculate 2 + 2, factorial tool for the factorial of 5."
+                    )
+                ]
+            }
+        }
 
         break_point = Breakpoint(component_name=component, visit_count=0, snapshot_file_path=str(output_directory))
 
@@ -229,7 +237,15 @@ class TestPipelineBreakpoints:
         self, agent_breakpoints, agent_pipeline, output_directory, breakpoint_index
     ):
         pipeline, doc_store = agent_pipeline
-        data = {"math_agent": {"messages": [ChatMessage.from_user("What is 7 * (4 + 2)? What is the factorial of 5?")]}}
+        data = {
+            "math_agent": {
+                "messages": [
+                    ChatMessage.from_user(
+                        "Use the calculator tool to calculate 7 * (4 + 2), factorial tool for the factorial of 5."
+                    )
+                ]
+            }
+        }
 
         # Get the specific breakpoint from the fixture list
         agent_breakpoint = agent_breakpoints[breakpoint_index]
