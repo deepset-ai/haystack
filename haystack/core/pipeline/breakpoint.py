@@ -27,7 +27,7 @@ from haystack.utils.misc import _get_output_dir
 
 if TYPE_CHECKING:
     from haystack.components.agents.agent import _ExecutionContext
-    from haystack.tools import Tool, Toolset, ToolsType
+    from haystack.tools import ToolsType
 
 logger = logging.getLogger(__name__)
 
