@@ -1,0 +1,66 @@
+---
+title: "QueryExpander"
+id: queryexpander
+slug: "/queryexpander"
+description: "QueryExpander uses an LLM to generate semantically similar queries to improve retrieval recall."
+---
+
+# QueryExpander
+
+QueryExpander uses an LLM to generate semantically similar queries to improve retrieval recall in RAG systems.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a Retriever component that accepts multiple queries, such as [`MultiQueryTextRetriever`](../retrievers/multiquerytextretriever.mdx) or [`MultiQueryEmbeddingRetriever`](../retrievers/multiqueryembeddingretriever.mdx) |
+| **Mandatory run variables** | `query`: The query string to expand |
+| **Output variables** | `queries`: A list of expanded queries |
+| **API reference** | [Query](/reference/query-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/query/query_expander.py |
+
+</div>
+
+## Overview
+
+`QueryExpander` takes a user query and generates multiple semantically similar variations of it. This technique improves retrieval recall by allowing your retrieval system to find documents that might not match the original query phrasing but are still relevant.
+
+The component uses a chat-based LLM to generate expanded queries. By default, it uses OpenAI's `gpt-4.1-mini` model, but you can configure it to use any chat generator that follows the `ChatGenerator` protocol.
+
+The generated queries:
+- Use different words and phrasings while maintaining the same core meaning
+- Include synonyms and related terms
+- Preserve the original query's language
+- Are designed to work well with both keyword-based and semantic search
+
+You can control the number of query expansions with the `n_expansions` parameter and choose whether to include the original query in the output with the `include_original_query` parameter.
+
+### Custom Prompt Template
+
+You can provide a custom prompt template to control how queries are expanded:
+
+```python
+from haystack.components.query import QueryExpander
+
+custom_template = """
+You are a search query expansion assistant.
+Generate {{ n_expansions }} alternative search queries for: "{{ query }}"
+
+Return a JSON object with a "queries" array containing the expanded queries.
+Focus on technical terminology and domain-specific variations.
+"""
+
+expander = QueryExpander(
+    prompt_template=custom_template,
+    n_expansions=4
+)
+
+result = expander.run(query="machine learning optimization")
+```
+
+## Usage
+
+`QueryExpander` is designed to work with multi-query Retrievers. For complete pipeline examples, see:
+
+- [`MultiQueryTextRetriever`](../retrievers/multiquerytextretriever.mdx) page for keyword-based (BM25) retrieval
+- [`MultiQueryEmbeddingRetriever`](../retrievers/multiqueryembeddingretriever.mdx) page for embedding-based retrieval
