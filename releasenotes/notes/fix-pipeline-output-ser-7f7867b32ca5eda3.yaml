@@ -1,5 +1,5 @@
 ---
 fixes:
   - |
-    Fix the serialization and deserialization of `pipeline_outputs` in `pipeline_snapshot` when running pipelines with breakpoints.
+    Fix the serialization and deserialization of ``pipeline_outputs`` in ``pipeline_snapshot`` when running pipelines with breakpoints.
 
