@@ -138,7 +138,7 @@ class TestAzureOpenAIChatGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "api_version": None,
+                "api_version": "2025-04-14",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "azure_deployment": "gpt-4.1-mini",
                 "organization": None,
@@ -177,7 +177,7 @@ class TestAzureOpenAIChatGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["ENV_VAR1"], "strict": False, "type": "env_var"},
-                "api_version": None,
+                "api_version": "2025-04-14",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "azure_deployment": "gpt-4.1-mini",
                 "organization": None,
@@ -222,7 +222,7 @@ class TestAzureOpenAIChatGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "api_version": None,
+                "api_version": "2025-04-14",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "azure_deployment": "gpt-4.1-mini",
                 "organization": None,
@@ -252,7 +252,7 @@ class TestAzureOpenAIChatGenerator:
 
         assert generator.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
         assert generator.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False)
-        assert generator.api_version is None
+        assert generator.api_version == "2025-04-14"
         assert generator.azure_endpoint == "some-non-existing-endpoint"
         assert generator.azure_deployment == "gpt-4.1-mini"
         assert generator.organization is None
@@ -284,7 +284,7 @@ class TestAzureOpenAIChatGenerator:
                         "azure_endpoint": "some-non-existing-endpoint",
                         "azure_deployment": "gpt-4.1-mini",
                         "organization": None,
-                        "api_version": None,
+                        "api_version": "2025-04-14",
                         "streaming_callback": None,
                         "generation_kwargs": {},
                         "timeout": 30.0,

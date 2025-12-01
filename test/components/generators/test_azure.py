@@ -75,7 +75,7 @@ class TestAzureOpenAIGenerator:
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
                 "azure_deployment": "gpt-4.1-mini",
-                "api_version": None,
+                "api_version": "2025-04-14",
                 "streaming_callback": None,
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
@@ -110,7 +110,7 @@ class TestAzureOpenAIGenerator:
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["ENV_VAR1"], "strict": False, "type": "env_var"},
                 "azure_deployment": "gpt-4.1-mini",
-                "api_version": None,
+                "api_version": "2025-04-14",
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
@@ -132,7 +132,7 @@ class TestAzureOpenAIGenerator:
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
                 "azure_deployment": "gpt-4.1-mini",
-                "api_version": None,
+                "api_version": "2025-04-14",
                 "streaming_callback": None,
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
@@ -149,7 +149,7 @@ class TestAzureOpenAIGenerator:
         assert component.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
         assert component.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False)
         assert component.azure_deployment == "gpt-4.1-mini"
-        assert component.api_version is None
+        assert component.api_version == "2025-04-14"
         assert component.streaming_callback is None
         assert component.azure_endpoint == "some-non-existing-endpoint"
         assert component.organization is None

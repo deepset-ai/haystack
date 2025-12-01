@@ -77,7 +77,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         Initialize the Azure OpenAI Generator.
 
         :param azure_endpoint: The endpoint of the deployed model, for example `https://example-resource.azure.openai.com/`.
-        :param api_version: The version of the API to use. Defaults to None.
+        :param api_version: The version of the API to use. Defaults to 2025-04-14.
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
         :param azure_ad_token: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
