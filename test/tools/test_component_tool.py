@@ -526,6 +526,7 @@ class TestComponentToolInPipeline:
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_component_tool_in_pipeline_openai_tools_strict(self):
         # Create component and convert it to tool
         tool = ComponentTool(
