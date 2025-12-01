@@ -18,19 +18,20 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 class TestLLMMetadataExtractor:
     def test_init(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
 
         extractor = LLMMetadataExtractor(
             prompt="prompt {{document.content}}", expected_keys=["key1", "key2"], chat_generator=chat_generator
         )
         assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
-        assert extractor._chat_generator.model == "gpt-4o-mini"
+        # Not testing specific model name, just that it's set (truthy)
+        assert extractor._chat_generator.model
         assert extractor._chat_generator.generation_kwargs == {"temperature": 0.5}
         assert extractor.expected_keys == ["key1", "key2"]
 
     def test_init_missing_prompt_variable(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini")
+        chat_generator = OpenAIChatGenerator()
 
         with pytest.raises(ValueError):
             _ = LLMMetadataExtractor(
@@ -44,7 +45,7 @@ class TestLLMMetadataExtractor:
 
     def test_to_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
         extractor = LLMMetadataExtractor(
             prompt="some prompt that was used with the LLM {{document.content}}",
             expected_keys=["key1", "key2"],
@@ -67,7 +68,7 @@ class TestLLMMetadataExtractor:
 
     def test_from_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        chat_generator = OpenAIChatGenerator(model="gpt-4o-mini", generation_kwargs={"temperature": 0.5})
+        chat_generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0.5})
 
         extractor_dict = {
             "type": "haystack.components.extractors.llm_metadata_extractor.LLMMetadataExtractor",

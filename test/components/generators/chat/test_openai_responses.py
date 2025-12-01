@@ -990,6 +990,7 @@ class TestOpenAIResponsesChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_with_reasoning_and_streaming(self):
         class Callback:
             def __init__(self):

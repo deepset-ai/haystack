@@ -65,19 +65,19 @@ class AnswerJoiner:
                 ChatMessage.from_user(query)]
 
     pipe = Pipeline()
-    pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
-    pipe.add_component("gpt-4o-mini", OpenAIChatGenerator(model="gpt-4o-mini"))
+    pipe.add_component("llm_1", OpenAIChatGenerator()
+    pipe.add_component("llm_2", OpenAIChatGenerator()
     pipe.add_component("aba", AnswerBuilder())
     pipe.add_component("abb", AnswerBuilder())
     pipe.add_component("joiner", AnswerJoiner())
 
-    pipe.connect("gpt-4o.replies", "aba")
-    pipe.connect("gpt-4o-mini.replies", "abb")
+    pipe.connect("llm_1.replies", "aba")
+    pipe.connect("llm_2.replies", "abb")
     pipe.connect("aba.answers", "joiner")
     pipe.connect("abb.answers", "joiner")
 
-    results = pipe.run(data={"gpt-4o": {"messages": messages},
-                                "gpt-4o-mini": {"messages": messages},
+    results = pipe.run(data={"llm_1": {"messages": messages},
+                                "llm_2": {"messages": messages},
                                 "aba": {"query": query},
                                 "abb": {"query": query}})
     ```
