@@ -79,7 +79,7 @@ class TestAzureOpenAIChatGenerator:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
         assert component.client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.azure_deployment == "gpt-4.1-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
 
@@ -100,7 +100,7 @@ class TestAzureOpenAIChatGenerator:
             azure_ad_token_provider=default_azure_ad_token_provider,
         )
         assert component.client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.azure_deployment == "gpt-4.1-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.tools == tools
@@ -121,7 +121,7 @@ class TestAzureOpenAIChatGenerator:
             max_retries=0,
         )
         assert component.client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.azure_deployment == "gpt-4.1-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.tools == tools
@@ -138,9 +138,9 @@ class TestAzureOpenAIChatGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "api_version": "2023-05-15",
+                "api_version": None,
                 "azure_endpoint": "some-non-existing-endpoint",
-                "azure_deployment": "gpt-4o-mini",
+                "azure_deployment": "gpt-4.1-mini",
                 "organization": None,
                 "streaming_callback": None,
                 "generation_kwargs": {},
@@ -177,9 +177,9 @@ class TestAzureOpenAIChatGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["ENV_VAR1"], "strict": False, "type": "env_var"},
-                "api_version": "2023-05-15",
+                "api_version": None,
                 "azure_endpoint": "some-non-existing-endpoint",
-                "azure_deployment": "gpt-4o-mini",
+                "azure_deployment": "gpt-4.1-mini",
                 "organization": None,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "timeout": 2.5,
@@ -222,9 +222,9 @@ class TestAzureOpenAIChatGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "api_version": "2023-05-15",
+                "api_version": None,
                 "azure_endpoint": "some-non-existing-endpoint",
-                "azure_deployment": "gpt-4o-mini",
+                "azure_deployment": "gpt-4.1-mini",
                 "organization": None,
                 "streaming_callback": None,
                 "generation_kwargs": {},
@@ -252,9 +252,9 @@ class TestAzureOpenAIChatGenerator:
 
         assert generator.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
         assert generator.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False)
-        assert generator.api_version == "2023-05-15"
+        assert generator.api_version is None
         assert generator.azure_endpoint == "some-non-existing-endpoint"
-        assert generator.azure_deployment == "gpt-4o-mini"
+        assert generator.azure_deployment == "gpt-4.1-mini"
         assert generator.organization is None
         assert generator.streaming_callback is None
         assert generator.generation_kwargs == {}
@@ -282,9 +282,9 @@ class TestAzureOpenAIChatGenerator:
                     "type": "haystack.components.generators.chat.azure.AzureOpenAIChatGenerator",
                     "init_parameters": {
                         "azure_endpoint": "some-non-existing-endpoint",
-                        "azure_deployment": "gpt-4o-mini",
+                        "azure_deployment": "gpt-4.1-mini",
                         "organization": None,
-                        "api_version": "2023-05-15",
+                        "api_version": None,
                         "streaming_callback": None,
                         "generation_kwargs": {},
                         "timeout": 30.0,
@@ -341,7 +341,7 @@ class TestAzureOpenAIChatGenerator:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-4o-mini" in message.meta["model"]
+        assert "gpt-4.1-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
     @pytest.mark.integration
@@ -544,7 +544,7 @@ class TestAzureOpenAIChatGeneratorAsync:
             tools_strict=True,
         )
         assert component.async_client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.azure_deployment == "gpt-4.1-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.tools == tools

@@ -40,7 +40,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     client = AzureOpenAIGenerator(
         azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
         api_key=Secret.from_token("<your-api-key>"),
-        azure_deployment="<this a model name, e.g.  gpt-4o-mini>")
+        azure_deployment="<this a model name, e.g.  gpt-4.1-mini>")
     response = client.run("What's Natural Language Processing? Be brief.")
     print(response)
     ```
@@ -49,7 +49,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
     >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
     >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
-    >> 'gpt-4o-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
+    >> 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
     >> 'completion_tokens': 49, 'total_tokens': 65}}]}
     ```
     """
@@ -58,8 +58,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     def __init__(  # pylint: disable=too-many-positional-arguments  # noqa: PLR0913
         self,
         azure_endpoint: Optional[str] = None,
-        api_version: Optional[str] = "2023-05-15",
-        azure_deployment: Optional[str] = "gpt-4o-mini",
+        api_version: Optional[str] = None,
+        azure_deployment: Optional[str] = "gpt-4.1-mini",
         api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
         organization: Optional[str] = None,
@@ -77,7 +77,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         Initialize the Azure OpenAI Generator.
 
         :param azure_endpoint: The endpoint of the deployed model, for example `https://example-resource.azure.openai.com/`.
-        :param api_version: The version of the API to use. Defaults to 2023-05-15.
+        :param api_version: The version of the API to use. Defaults to None.
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
         :param azure_ad_token: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
@@ -144,7 +144,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         self.azure_endpoint = azure_endpoint
         self.azure_deployment = azure_deployment
         self.organization = organization
-        self.model: str = azure_deployment or "gpt-4o-mini"
+        self.model: str = azure_deployment or "gpt-4.1-mini"
         self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.http_client_kwargs = http_client_kwargs

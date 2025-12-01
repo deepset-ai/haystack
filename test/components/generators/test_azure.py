@@ -19,7 +19,7 @@ class TestAzureOpenAIGenerator:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIGenerator(azure_endpoint="some-non-existing-endpoint")
         assert component.client.api_key == "test-api-key"
-        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.azure_deployment == "gpt-4.1-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
 
@@ -33,13 +33,13 @@ class TestAzureOpenAIGenerator:
         component = AzureOpenAIGenerator(
             api_key=Secret.from_token("fake-api-key"),
             azure_endpoint="some-non-existing-endpoint",
-            azure_deployment="gpt-4o-mini",
+            azure_deployment="gpt-4.1-mini",
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             azure_ad_token_provider=default_azure_ad_token_provider,
         )
         assert component.client.api_key == "fake-api-key"
-        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.azure_deployment == "gpt-4.1-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.timeout == 30.0
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
@@ -51,14 +51,14 @@ class TestAzureOpenAIGenerator:
         component = AzureOpenAIGenerator(
             api_key=Secret.from_token("fake-api-key"),
             azure_endpoint="some-non-existing-endpoint",
-            azure_deployment="gpt-4o-mini",
+            azure_deployment="gpt-4.1-mini",
             streaming_callback=print_streaming_chunk,
             generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
             azure_ad_token_provider=default_azure_ad_token_provider,
             max_retries=0,
         )
         assert component.client.api_key == "fake-api-key"
-        assert component.azure_deployment == "gpt-4o-mini"
+        assert component.azure_deployment == "gpt-4.1-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.timeout == 30.0
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
@@ -74,8 +74,8 @@ class TestAzureOpenAIGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "azure_deployment": "gpt-4o-mini",
-                "api_version": "2023-05-15",
+                "azure_deployment": "gpt-4.1-mini",
+                "api_version": None,
                 "streaming_callback": None,
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
@@ -109,8 +109,8 @@ class TestAzureOpenAIGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["ENV_VAR1"], "strict": False, "type": "env_var"},
-                "azure_deployment": "gpt-4o-mini",
-                "api_version": "2023-05-15",
+                "azure_deployment": "gpt-4.1-mini",
+                "api_version": None,
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
@@ -131,8 +131,8 @@ class TestAzureOpenAIGenerator:
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "azure_deployment": "gpt-4o-mini",
-                "api_version": "2023-05-15",
+                "azure_deployment": "gpt-4.1-mini",
+                "api_version": None,
                 "streaming_callback": None,
                 "azure_endpoint": "some-non-existing-endpoint",
                 "organization": None,
@@ -148,8 +148,8 @@ class TestAzureOpenAIGenerator:
         component = AzureOpenAIGenerator.from_dict(data)
         assert component.api_key == Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False)
         assert component.azure_ad_token == Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False)
-        assert component.azure_deployment == "gpt-4o-mini"
-        assert component.api_version == "2023-05-15"
+        assert component.azure_deployment == "gpt-4.1-mini"
+        assert component.api_version is None
         assert component.streaming_callback is None
         assert component.azure_endpoint == "some-non-existing-endpoint"
         assert component.organization is None
@@ -187,7 +187,7 @@ class TestAzureOpenAIGenerator:
         assert "Paris" in response
 
         metadata = results["meta"][0]
-        assert "gpt-4o-mini" in metadata["model"]
+        assert "gpt-4.1-mini" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
 
         assert "usage" in metadata
