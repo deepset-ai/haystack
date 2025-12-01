@@ -55,19 +55,19 @@ messages = [ChatMessage.from_system("You are a helpful, respectful and honest as
             ChatMessage.from_user(query)]
 
 pipe = Pipeline()
-pipe.add_component("gpt-4o", OpenAIChatGenerator(model="gpt-4o"))
-pipe.add_component("gpt-4o-mini", OpenAIChatGenerator(model="gpt-4o-mini"))
+pipe.add_component("llm_1", OpenAIChatGenerator()
+pipe.add_component("llm_2", OpenAIChatGenerator()
 pipe.add_component("aba", AnswerBuilder())
 pipe.add_component("abb", AnswerBuilder())
 pipe.add_component("joiner", AnswerJoiner())
 
-pipe.connect("gpt-4o.replies", "aba")
-pipe.connect("gpt-4o-mini.replies", "abb")
+pipe.connect("llm_1.replies", "aba")
+pipe.connect("llm_2.replies", "abb")
 pipe.connect("aba.answers", "joiner")
 pipe.connect("abb.answers", "joiner")
 
-results = pipe.run(data={"gpt-4o": {"messages": messages},
-                            "gpt-4o-mini": {"messages": messages},
+results = pipe.run(data={"llm_1": {"messages": messages},
+                            "llm_2": {"messages": messages},
                             "aba": {"query": query},
                             "abb": {"query": query}})
 ```
@@ -197,7 +197,7 @@ pipe = Pipeline()
 
 # Add components to the pipeline
 pipe.add_component('joiner', BranchJoiner(list[ChatMessage]))
-pipe.add_component('generator', OpenAIChatGenerator(model="gpt-4o-mini"))
+pipe.add_component('generator', OpenAIChatGenerator())
 pipe.add_component('validator', JsonSchemaValidator(json_schema=person_schema))
 pipe.add_component('adapter', OutputAdapter("{{chat_message}}", list[ChatMessage], unsafe=True))
 
@@ -476,8 +476,8 @@ feedback_message = [ChatMessage.from_system(feedback_prompt)]
 
 prompt_builder = ChatPromptBuilder(template=user_message)
 feedback_prompt_builder = ChatPromptBuilder(template=feedback_message)
-llm = OpenAIChatGenerator(model="gpt-4o-mini")
-feedback_llm = OpenAIChatGenerator(model="gpt-4o-mini")
+llm = OpenAIChatGenerator()
+feedback_llm = OpenAIChatGenerator()
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", prompt_builder)
