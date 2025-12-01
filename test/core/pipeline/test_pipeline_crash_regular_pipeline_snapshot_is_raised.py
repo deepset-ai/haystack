@@ -91,10 +91,14 @@ class TestPipelineOutputsRaisedInException:
         assert pipeline_outputs is not None, "Pipeline outputs should be captured in the exception"
 
         # verify that bm25_retriever and text_embedder ran successfully before the crash
-        assert "bm25_retriever" in pipeline_outputs, "BM25 retriever output not captured"
-        assert "documents" in pipeline_outputs["bm25_retriever"], "BM25 retriever should have produced documents"
-        assert "text_embedder" in pipeline_outputs, "Text embedder output not captured"
-        assert "embedding" in pipeline_outputs["text_embedder"], "Text embedder should have produced embeddings"
+        assert "bm25_retriever" in pipeline_outputs["serialized_data"], "BM25 retriever output not captured"
+        assert "documents" in (pipeline_outputs["serialized_data"]["bm25_retriever"]), (
+            "BM25 retriever should have produced documents"
+        )
+        assert "text_embedder" in (pipeline_outputs["serialized_data"]), "Text embedder output not captured"
+        assert "embedding" in (pipeline_outputs["serialized_data"]["text_embedder"]), (
+            "Text embedder should have produced embeddings"
+        )
 
         # components after the crash point are not in the outputs
         assert "document_joiner" not in pipeline_outputs, "Document joiner should not have run due to crash"

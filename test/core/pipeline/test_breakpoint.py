@@ -136,8 +136,15 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path):
         loaded_snapshot = load_pipeline_snapshot(snapshot_file)
 
         # verify the snapshot contains the intermediate outputs from comp1
-        assert "comp1" in loaded_snapshot.pipeline_state.pipeline_outputs
-        assert loaded_snapshot.pipeline_state.pipeline_outputs["comp1"]["result"] == "processed_test"
+        assert loaded_snapshot.pipeline_state.pipeline_outputs == (
+            {
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {"comp1": {"type": "object", "properties": {"result": {"type": "string"}}}},
+                },
+                "serialized_data": {"comp1": {"result": "processed_test"}},
+            }
+        )
 
         # verify the whole pipeline state contains the expected data
         assert loaded_snapshot.pipeline_state.component_visits["comp1"] == 1
@@ -145,6 +152,37 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path):
         assert "comp1" in loaded_snapshot.include_outputs_from
         assert loaded_snapshot.break_point.component_name == "comp2"
         assert loaded_snapshot.break_point.visit_count == 0
+
+
+def test_load_pipeline_snapshot_with_old_pipeline_outputs_format(tmp_path):
+    "Test to ensure backwards compatibility with the old pipeline_outputs format"
+    # TODO: remove this test in haystack 2.23.0
+    pipeline_snapshot = {
+        "pipeline_state": {
+            "inputs": {
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {"comp2": {"type": "object", "properties": {}}},
+                },
+                "serialized_data": {"comp2": {}},
+            },
+            "component_visits": {"comp1": 1, "comp2": 0},
+            "pipeline_outputs": {"comp1": {"result": "Answer from comp1"}},
+        },
+        "break_point": {"component_name": "comp2", "visit_count": 0, "snapshot_file_path": "test_breakpoints"},
+        "agent_snapshot": None,
+        "timestamp": "2025-12-01T17:14:24.366124",
+        "original_input_data": {"serialization_schema": {"type": "object", "properties": {}}, "serialized_data": {}},
+        "ordered_component_names": ["comp1", "comp2"],
+        "include_outputs_from": ["comp1"],
+    }
+
+    pipeline_snapshot_file = tmp_path / "old_pipeline_outputs_format.json"
+    with open(pipeline_snapshot_file, "w") as f:
+        json.dump(pipeline_snapshot, f)
+
+    loaded_snapshot = load_pipeline_snapshot(pipeline_snapshot_file)
+    assert loaded_snapshot == PipelineSnapshot.from_dict(pipeline_snapshot)
 
 
 def test_trigger_tool_invoker_breakpoint(make_pipeline_snapshot_with_agent_snapshot):
@@ -236,7 +274,13 @@ class TestCreatePipelineSnapshot:
                 "serialized_data": {"comp1": {"input_value": "test"}, "comp2": {"input_value": "processed_test"}},
             },
             component_visits={"comp1": 1, "comp2": 0},
-            pipeline_outputs={"comp1": {"result": "processed_test"}},
+            pipeline_outputs={
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {"comp1": {"type": "object", "properties": {"result": {"type": "string"}}}},
+                },
+                "serialized_data": {"comp1": {"result": "processed_test"}},
+            },
         )
 
     def test_create_pipeline_snapshot_with_dataclasses_in_pipeline_outputs(self):
@@ -260,7 +304,20 @@ class TestCreatePipelineSnapshot:
                 "serialized_data": {"comp2": {}},
             },
             component_visits={"comp1": 1, "comp2": 0},
-            pipeline_outputs={"comp1": {"result": ChatMessage.from_user("hello")}},
+            pipeline_outputs={
+                "serialization_schema": {
+                    "type": "object",
+                    "properties": {
+                        "comp1": {
+                            "type": "object",
+                            "properties": {"result": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+                        }
+                    },
+                },
+                "serialized_data": {
+                    "comp1": {"result": {"role": "user", "meta": {}, "name": None, "content": [{"text": "hello"}]}}
+                },
+            },
         )
 
     def test_create_pipeline_snapshot_non_serializable_inputs(self, caplog):
