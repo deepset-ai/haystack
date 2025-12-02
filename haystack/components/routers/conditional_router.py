@@ -404,7 +404,8 @@ class ConditionalRouter:
                 if not self._validate_template(self._env, output):
                     raise ValueError(f"Invalid template for output: {output}")
 
-    def _extract_variables(self, env: Environment, templates: list[str]) -> set[str]:
+    @staticmethod
+    def _extract_variables(env: Environment, templates: list[str]) -> set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 
