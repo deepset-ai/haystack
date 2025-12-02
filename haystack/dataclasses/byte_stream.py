@@ -99,6 +99,17 @@ class ByteStream:
         # directly.
         return {"data": list(self.data), "meta": self.meta, "mime_type": self.mime_type}
 
+    def _to_trace_dict(self) -> dict[str, Any]:
+        """
+        Convert the ByteStream to a dictionary representation for tracing.
+
+        Binary data is replaced with a placeholder string to avoid sending large payloads to the tracing backend.
+
+        :returns:
+            Serialized version of the object only for tracing purposes.
+        """
+        return {"data": f"Binary data ({len(self.data)} bytes)", "meta": self.meta, "mime_type": self.mime_type}
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ByteStream":
         """

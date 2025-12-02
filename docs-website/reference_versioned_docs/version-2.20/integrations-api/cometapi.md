@@ -23,8 +23,8 @@ standard configurations available in the OpenAIChatGenerator.
 
 - `api_key`: The API key for authenticating with the CometAPI. Defaults to
 loading from the "COMET_API_KEY" environment variable.
-- `model`: The name of the model to use for chat generation (e.g., "gpt-4o-mini", "grok-3-mini").
-Defaults to "gpt-4o-mini".
+- `model`: The name of the model to use for chat generation (e.g., "gpt-5-mini", "grok-3-mini").
+Defaults to "gpt-5-mini".
 - `streaming_callback`: An optional callable that will be called with each chunk of
 a streaming response.
 - `generation_kwargs`: Optional keyword arguments to pass to the underlying generation

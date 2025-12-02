@@ -14,7 +14,7 @@ from haystack.components.fetchers.link_content import (
     _text_content_handler,
 )
 
-HTML_URL = "https://docs.haystack.deepset.ai/docs"
+HTML_URL = "https://docs.haystack.deepset.ai/docs/intro"
 TEXT_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/main/README.md"
 PDF_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/b5987a6d8d0714eb2f3011183ab40093d2e4a41a/e2e/samples/pipelines/sample_pdf_1.pdf"
 
@@ -404,3 +404,38 @@ class TestLinkContentFetcherAsync:
             assert sent_headers["X-Async"] == "true"
             assert sent_headers["Accept-Language"] == "de-DE"
             assert sent_headers["User-Agent"] == "ua-async-1"  # rotating UA wins
+
+    @pytest.mark.asyncio
+    async def test_duplicated_request_headers_merging(self):
+        # Patch the AsyncClient class to control the instance created by LinkContentFetcher
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
+            aclient = AsyncClientMock.return_value
+            aclient.headers = {}  # base headers used in the merge
+
+            mock_response = Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+            aclient.get = AsyncMock(return_value=mock_response)
+
+            fetcher = LinkContentFetcher(
+                request_headers={
+                    "x-test-header": "header-1",
+                    "X-Test-Header": "agent-2",
+                    "X-TEST-HEADER": "agent-3",
+                    "X-TeSt-HeAdEr": "good-one",
+                }
+            )
+
+            _ = (await fetcher.run_async(urls=["https://example.com"]))["streams"]
+
+            assert aclient.get.await_count == 1
+            sent_headers = aclient.get.call_args.kwargs["headers"]
+            existing_keys = {}
+            for key, value in sent_headers.items():
+                lower_key = key.lower()
+                if lower_key in existing_keys:
+                    assert False
+                elif lower_key == "x-test-header":
+                    assert value == "good-one"
+                existing_keys[lower_key] = key
+
+            assert "x-test-header" in existing_keys
+            assert existing_keys["x-test-header"] == "X-TeSt-HeAdEr"

@@ -115,7 +115,7 @@ def mock_parsed_chat_completion():
     with patch("openai.resources.chat.completions.Completions.parse") as mock_chat_completion_parse:
         completion = ParsedChatCompletion[CalendarEvent](
             id="json_foo",
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion",
             choices=[
                 ParsedChoice[CalendarEvent](
@@ -182,7 +182,7 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator()
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.client.timeout == 30
@@ -210,7 +210,6 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
-            model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
@@ -221,7 +220,7 @@ class TestOpenAIChatGenerator:
             http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
         )
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 40.0
@@ -235,13 +234,12 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
-            model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
         )
         assert component.client.api_key == "test-api-key"
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 100.0
@@ -255,7 +253,7 @@ class TestOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "organization": None,
                 "streaming_callback": None,
                 "api_base_url": None,
@@ -274,7 +272,6 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = OpenAIChatGenerator(
             api_key=Secret.from_env_var("ENV_VAR"),
-            model="gpt-4o-mini",
             streaming_callback=print_streaming_chunk,
             api_base_url="test-base-url",
             generation_kwargs={
@@ -295,7 +292,7 @@ class TestOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["ENV_VAR"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "organization": None,
                 "api_base_url": "test-base-url",
                 "max_retries": 10,
@@ -347,7 +344,6 @@ class TestOpenAIChatGenerator:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator(
             api_key=Secret.from_env_var("OPENAI_API_KEY"),
-            model="gpt-4o-mini",
             generation_kwargs={"response_format": {"type": "json_object"}},
         )
         data = component.to_dict()
@@ -355,7 +351,7 @@ class TestOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "api_base_url": None,
                 "organization": None,
                 "streaming_callback": None,
@@ -374,7 +370,7 @@ class TestOpenAIChatGenerator:
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
-                "model": "gpt-4o-mini",
+                "model": "gpt-5-mini",
                 "api_base_url": "test-base-url",
                 "streaming_callback": "haystack.components.generators.utils.print_streaming_chunk",
                 "max_retries": 10,
@@ -398,7 +394,7 @@ class TestOpenAIChatGenerator:
         component = OpenAIChatGenerator.from_dict(data)
 
         assert isinstance(component, OpenAIChatGenerator)
-        assert component.model == "gpt-4o-mini"
+        assert component.model == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.api_base_url == "test-base-url"
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
@@ -747,7 +743,7 @@ class TestOpenAIChatGenerator:
         with patch("openai.resources.chat.completions.Completions.create") as mock_create:
             mock_create.return_value = ChatCompletion(
                 id="test",
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 object="chat.completion",
                 choices=[
                     Choice(
@@ -806,15 +802,14 @@ class TestOpenAIChatGenerator:
     @pytest.mark.integration
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = OpenAIChatGenerator(generation_kwargs={"n": 1, "logprobs": True})
+        component = OpenAIChatGenerator(generation_kwargs={"n": 1})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-4o" in message.meta["model"]
+        assert "gpt-5" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
-        assert message.meta["logprobs"] is not None
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -990,7 +985,7 @@ class TestOpenAIChatGenerator:
 
         callback = Callback()
         component = OpenAIChatGenerator(
-            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}, "logprobs": True}
+            streaming_callback=callback, generation_kwargs={"stream_options": {"include_usage": True}}
         )
         results = component.run([ChatMessage.from_user("What's the capital of France?")])
 
@@ -1003,9 +998,8 @@ class TestOpenAIChatGenerator:
 
         # Metadata checks
         metadata = message.meta
-        assert "gpt-4o" in metadata["model"]
+        assert "gpt-5" in metadata["model"]
         assert metadata["finish_reason"] == "stop"
-        assert metadata["logprobs"] is not None
 
         # Usage information checks
         assert isinstance(metadata.get("usage"), dict), "meta.usage not a dict"
@@ -1048,7 +1042,10 @@ class TestOpenAIChatGenerator:
             assert tool_call.tool_name == "weather"
 
         arguments = [tool_call.arguments for tool_call in tool_calls]
-        assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
+        # Check that both cities are present (case-insensitive, allowing for variations like "Paris, France")
+        city_values = [arg["city"].lower() for arg in arguments]
+        assert any("berlin" in city for city in city_values)
+        assert any("paris" in city for city in city_values)
         assert message.meta["finish_reason"] == "tool_calls"
 
     def test_openai_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
@@ -1271,7 +1268,7 @@ def chat_completion_chunks():
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(role="assistant"), index=0)],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1294,7 +1291,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1312,7 +1309,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1330,7 +1327,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1348,7 +1345,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1364,7 +1361,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1387,7 +1384,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1405,7 +1402,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1423,7 +1420,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1441,7 +1438,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1457,7 +1454,7 @@ def chat_completion_chunks():
                 )
             ],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1466,7 +1463,7 @@ def chat_completion_chunks():
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(), finish_reason="tool_calls", index=0)],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1475,7 +1472,7 @@ def chat_completion_chunks():
             id="chatcmpl-BZdwjFecdcaQfCf7bn319vRp6fY8F",
             choices=[],
             created=1747834733,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
@@ -1498,7 +1495,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": None,
                 "finish_reason": None,
@@ -1509,7 +1506,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [
                     ChoiceDeltaToolCall(
@@ -1530,7 +1527,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))],
                 "finish_reason": None,
@@ -1543,7 +1540,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='ty": '))],
                 "finish_reason": None,
@@ -1556,7 +1553,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"Paris'))],
                 "finish_reason": None,
@@ -1569,7 +1566,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"}'))],
                 "finish_reason": None,
@@ -1582,7 +1579,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [
                     ChoiceDeltaToolCall(
@@ -1603,7 +1600,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))],
                 "finish_reason": None,
@@ -1616,7 +1613,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='ty": '))],
                 "finish_reason": None,
@@ -1629,7 +1626,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='"Berli'))],
                 "finish_reason": None,
@@ -1642,7 +1639,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='n"}'))],
                 "finish_reason": None,
@@ -1655,7 +1652,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "index": 0,
                 "tool_calls": None,
                 "finish_reason": "tool_calls",
@@ -1667,7 +1664,7 @@ def streaming_chunks():
         StreamingChunk(
             content="",
             meta={
-                "model": "gpt-4o-mini-2024-07-18",
+                "model": "gpt-5-mini",
                 "received_at": ANY,
                 "usage": {
                     "completion_tokens": 42,
@@ -1710,7 +1707,7 @@ class TestChatCompletionChunkConversion:
                 )
             ],
             created=1742207200,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
         )
         result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])
@@ -1719,7 +1716,7 @@ class TestChatCompletionChunkConversion:
         assert result.tool_calls == [ToolCallDelta(index=0)]
         assert result.tool_call_result is None
         assert result.index == 0
-        assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
+        assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
 
     def test_handle_stream_response(self, chat_completion_chunks):
@@ -1740,7 +1737,7 @@ class TestChatCompletionChunkConversion:
         assert result.tool_calls[1].arguments == {"city": "Berlin"}
 
         # Verify meta information
-        assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
+        assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["finish_reason"] == "tool_calls"
         assert result.meta["index"] == 0
         assert result.meta["completion_start_time"] is not None
@@ -1762,7 +1759,7 @@ class TestChatCompletionChunkConversion:
             id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
             choices=[],
             created=1742207200,
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-5-mini",
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_06737a9306",
@@ -1781,5 +1778,5 @@ class TestChatCompletionChunkConversion:
         assert result.start is False
         assert result.tool_calls is None
         assert result.tool_call_result is None
-        assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
+        assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None

@@ -37,7 +37,7 @@ def __init__(api_key: Secret = Secret.from_env_var("TOGETHER_API_KEY"),
              api_base_url: Optional[str] = "https://api.together.xyz/v1",
              streaming_callback: Optional[StreamingCallbackT] = None,
              system_prompt: Optional[str] = None,
-             generation_kwargs: Optional[Dict[str, Any]] = None,
+             generation_kwargs: Optional[dict[str, Any]] = None,
              timeout: Optional[float] = None,
              max_retries: Optional[int] = None)
 ```
@@ -82,7 +82,7 @@ inferred from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
 #### TogetherAIGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
@@ -230,11 +230,11 @@ def __init__(*,
              model: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
              streaming_callback: Optional[StreamingCallbackT] = None,
              api_base_url: Optional[str] = "https://api.together.xyz/v1",
-             generation_kwargs: Optional[Dict[str, Any]] = None,
+             generation_kwargs: Optional[dict[str, Any]] = None,
              tools: Optional[ToolsType] = None,
              timeout: Optional[float] = None,
              max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[Dict[str, Any]] = None)
+             http_client_kwargs: Optional[dict[str, Any]] = None)
 ```
 
 Creates an instance of TogetherAIChatGenerator. Unless specified otherwise,
@@ -263,6 +263,13 @@ Some of the supported parameters:
     events as they become available, with the stream terminated by a data: [DONE] message.
 - `safe_prompt`: Whether to inject a safety prompt before all conversations.
 - `random_seed`: The seed to use for random sampling.
+- `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+    If provided, the output will always be validated against this
+    format (unless the model returns a tool call).
+    For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+    Notes:
+    - For structured outputs with streaming,
+      the `response_format` must be a JSON schema and not a Pydantic model.
 - `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
 Each tool should have a unique name.
 - `timeout`: The timeout for the Together AI API call.
@@ -276,7 +283,7 @@ For more information, see the [HTTPX documentation](https://www.python-httpx.org
 #### TogetherAIChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.
