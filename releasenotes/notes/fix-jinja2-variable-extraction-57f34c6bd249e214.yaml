@@ -1,4 +1,7 @@
 ---
 fixes:
   - |
-    Fixes jinja2 variable detection in ConditionalRouter, ChatPromptBuilder, PromptBuilder and OutputAdapter by properly skipping variables that are assigned within the template. Previously variables assigned within a template like {% set x = 0 %} would falsely be picked up as input variables to the component.
+    Fixes jinja2 variable detection in ``ConditionalRouter``, ``ChatPromptBuilder``, ``PromptBuilder`` and ``OutputAdapter`` by properly
+    skipping variables that are assigned within the template.
+    Previously under specific scenarios variables assigned within a template would falsely be picked up as input variables to the component.
+    For more information you can check out the parent issue in the Jinja2 library here: https://github.com/pallets/jinja/issues/2069
