@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added a `return_empty_on_no_match parameter` (default True) to RegexTextExtractor.__init__(). When set to False, the component returns {"captured_text": ""} instead of {} when no regex match is found. Provides a consistent output structure for pipeline integration.

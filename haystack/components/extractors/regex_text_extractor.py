@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+import warnings
 from typing import Union
 
 from haystack import component, logging
@@ -37,7 +38,7 @@ class RegexTextExtractor:
     ```
     """
 
-    def __init__(self, regex_pattern: str):
+    def __init__(self, regex_pattern: str, return_empty_on_no_match: bool = True):
         """
         Creates an instance of the RegexTextExtractor component.
 
@@ -45,8 +46,12 @@ class RegexTextExtractor:
             The regular expression pattern used to extract text.
             The pattern should include a capture group to extract the desired text.
             Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue url="github.com/hahahaha">'`.
+        :return_empty_on_no_match:
+            If True, returns an empty dictionary when no match is found. If False, returns `{"captured_text": ""}`.
+            Default is True.
         """
         self.regex_pattern = regex_pattern
+        self.return_empty_on_no_match = return_empty_on_no_match
 
         # Check if the pattern has at least one capture group
         num_groups = re.compile(regex_pattern).groups
@@ -66,24 +71,32 @@ class RegexTextExtractor:
             Either a string or a list of ChatMessage objects to search through.
 
         :returns:
-          - If match found: `{"captured_text": "matched text"}`
-          - If no match and `return_empty_on_no_match=True`: `{}`
+          - {"captured_text": "matched text"} if a match is found
+          - {} if no match is found and self.return_empty_on_no_match=True (default behavior)
+          - {"captured_text": ""} if no match is found and self.return_empty_on_no_match=False
 
         :raises:
             - ValueError: if receiving a list the last element is not a ChatMessage instance.
         """
         if isinstance(text_or_messages, str):
-            return RegexTextExtractor._build_result(self._extract_from_text(text_or_messages))
+            return self._build_result(self._extract_from_text(text_or_messages))
         if not text_or_messages:
             logger.warning("Received empty list of messages")
             return {}
         return self._process_last_message(text_or_messages)
 
-    @staticmethod
-    def _build_result(result: Union[str, list[str]]) -> dict:
+    def _build_result(self, result: Union[str, list[str]]) -> dict:
         """Helper method to build the return dictionary based on configuration."""
         if (isinstance(result, str) and result == "") or (isinstance(result, list) and not result):
-            return {}
+            if self.return_empty_on_no_match:
+                msg = (
+                    "Warning: In an upcoming release, the output when no matches are found will change from "
+                    "'{}' to {'captured_text': "
+                    "}"
+                )
+                warnings.warn(msg, DeprecationWarning, stacklevel=2)
+                return {}
+            return {"captured_text": ""}
         return {"captured_text": result}
 
     def _process_last_message(self, messages: list[ChatMessage]) -> dict:
@@ -95,7 +108,7 @@ class RegexTextExtractor:
             logger.warning("Last message has no text content")
             return {}
         result = self._extract_from_text(last_message.text)
-        return RegexTextExtractor._build_result(result)
+        return self._build_result(result)
 
     def _extract_from_text(self, text: str) -> Union[str, list[str]]:
         """
