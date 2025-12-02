@@ -27,7 +27,7 @@ from haystack.utils.misc import _get_output_dir
 
 if TYPE_CHECKING:
     from haystack.components.agents.agent import _ExecutionContext
-    from haystack.tools import Tool, Toolset, ToolsType
+    from haystack.tools import ToolsType
 
 logger = logging.getLogger(__name__)
 
@@ -259,9 +259,20 @@ def _create_pipeline_snapshot(
         )
         serialized_original_input_data = {}
 
+    try:
+        serialized_pipeline_outputs = _serialize_value_with_schema(pipeline_outputs)
+    except Exception as error:
+        logger.warning(
+            "Failed to serialize outputs of the current pipeline state. "
+            "This likely occurred due to non-serializable object types. "
+            "The snapshot will store an empty dictionary instead. Error: {e}",
+            e=error,
+        )
+        serialized_pipeline_outputs = {}
+
     pipeline_snapshot = PipelineSnapshot(
         pipeline_state=PipelineState(
-            inputs=serialized_inputs, component_visits=component_visits, pipeline_outputs=pipeline_outputs
+            inputs=serialized_inputs, component_visits=component_visits, pipeline_outputs=serialized_pipeline_outputs
         ),
         timestamp=datetime.now(),
         break_point=break_point,
