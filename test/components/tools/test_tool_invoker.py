@@ -1173,15 +1173,11 @@ class TestWarmUpTools:
         # Should only be warmed up once
         assert tool.warm_up_count == 1
 
-    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-    @pytest.mark.integration
     def test_warm_up_refreshes_tools_with_names(self):
         """
-        Test that ToolInvoker.warm_up() refreshes _tools_with_names when using a toolset with eager_connect=False.
+        Test that ToolInvoker.warm_up() refreshes _tools_with_names when using a toolset with lazy connection.
         """
-        from haystack.components.converters import OutputAdapter
-
-        # Create placeholder tool that simulates MCPToolset behavior when not eagerly connected
+        # Create placeholder tool that simulates MCPToolset behavior of lazy connection
         placeholder_tool = Tool(
             name="mcp_not_connected_placeholder_123",
             description="Placeholder tool before connection",
@@ -1190,7 +1186,7 @@ class TestWarmUpTools:
         )
 
         # Create the actual tool that will replace the placeholder during warmup
-        # This simulates what mcp-server-time would provide
+        # This simulates what mcp-server-time mcp would provide
         actual_tool = Tool(
             name="get_time",
             description="Get the current time in ISO format",
@@ -1198,7 +1194,7 @@ class TestWarmUpTools:
             function=lambda: "2024-12-01T12:00:00Z",
         )
 
-        # Create a toolset that simulates MCPToolset with eager_connect=False
+        # Create a toolset that simulates MCPToolset with eager_connect=False (lazy connection)
         class MockMCPToolset(Toolset):
             """Simulates MCPToolset behavior with eager_connect=False."""
 
@@ -1215,45 +1211,15 @@ class TestWarmUpTools:
                     self._warmed_up = True
 
         mcp_toolset = MockMCPToolset()
-
-        # Build the full pipeline where the issues was reported
-        pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=mcp_toolset))
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=mcp_toolset))
-        pipeline.add_component(
-            "adapter",
-            OutputAdapter(
-                template="{{ initial_msg + initial_tool_messages + tool_messages }}",
-                output_type=list[ChatMessage],
-                unsafe=True,
-            ),
-        )
-        pipeline.add_component("response_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
-        pipeline.connect("llm.replies", "tool_invoker.messages")
-        pipeline.connect("llm.replies", "adapter.initial_tool_messages")
-        pipeline.connect("tool_invoker.tool_messages", "adapter.tool_messages")
-        pipeline.connect("adapter.output", "response_llm.messages")
+        invoker = ToolInvoker(tools=mcp_toolset)
 
         # Before warmup: _tools_with_names should contain the placeholder tool
-        assert "mcp_not_connected_placeholder_123" in pipeline.get_component("tool_invoker")._tools_with_names
-        assert "get_time" not in pipeline.get_component("tool_invoker")._tools_with_names
+        assert "mcp_not_connected_placeholder_123" in invoker._tools_with_names
+        assert "get_time" not in invoker._tools_with_names
 
-        # Run the pipeline to trigger warmup
-        user_input = "What is the current time? Call the get_time tool."
-        user_input_msg = ChatMessage.from_user(text=user_input)
-        result = pipeline.run({"llm": {"messages": [user_input_msg]}, "adapter": {"initial_msg": [user_input_msg]}})
+        # Call warm_up() directly to trigger tool refresh
+        invoker.warm_up()
 
         # After warmup: _tools_with_names should be refreshed with actual tool names
-        tool_invoker = pipeline.get_component("tool_invoker")
-        assert "mcp_not_connected_placeholder_123" not in tool_invoker._tools_with_names
-        assert "get_time" in tool_invoker._tools_with_names
-
-        # Verify the tool was successfully invoked (not raise ToolNotFoundException)
-        # Without the fix, this would fail with ToolNotFoundException
-        assert "response_llm" in result
-        assert "replies" in result["response_llm"]
-        assert len(result["response_llm"]["replies"]) == 1
-        # The response should contain something about the time
-        response_text = result["response_llm"]["replies"][0].text
-        assert "December" in response_text
-        assert "2024" in response_text
+        assert "mcp_not_connected_placeholder_123" not in invoker._tools_with_names
+        assert "get_time" in invoker._tools_with_names
