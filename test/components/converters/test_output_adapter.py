@@ -206,8 +206,14 @@ class TestOutputAdapter:
         assert res["output"] == documents[0]
 
     def test_variables_correct_with_assignment(self) -> None:
-        template = "{% set x = my_value %}{{ x + 2 }}"
+        template = """{% if control == 'something' %}
+    {% set output = 1 %}
+{% else %}
+    {% set output = 3 %}
+{% endif %}
+{{ output }}
+"""
         adapter = OutputAdapter(template=template, output_type=int)
-        assert adapter.__haystack_input__._sockets_dict == {"my_value": InputSocket(name="my_value", type=Any)}
-        res = adapter.run(my_value=3)
-        assert res["output"] == 5
+        assert adapter.__haystack_input__._sockets_dict == {"control": InputSocket(name="control", type=Any)}
+        res = adapter.run(control="something")
+        assert res["output"] == 1

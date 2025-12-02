@@ -976,7 +976,11 @@ The number is {{ x }}!
 
     def test_variables_correct_with_tuple_assignment(self):
         template = """{% message role="user" %}
+{% if name is not none -%}
 {% set x, y = (0, 1) %}
+{% else -%}
+{% set x, y = (2, 3) %}
+{% endif -%}
 x={{ x }}, y={{ y }}
 Hello, my name is {{name}}!
 {% endmessage %}
@@ -989,7 +993,11 @@ Hello, my name is {{name}}!
 
     def test_variables_correct_with_list_assignment(self):
         template = """{% message role="user" %}
+{% if name is not none -%}
 {% set x, y = [0, 1] %}
+{% else -%}
+{% set x, y = [2, 3] %}
+{% endif -%}
 x={{ x }}, y={{ y }}
 Hello, my name is {{name}}!
 {% endmessage %}
