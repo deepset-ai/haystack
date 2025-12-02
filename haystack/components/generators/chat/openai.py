@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import asyncio
 import json
 import os
 from datetime import datetime
@@ -505,13 +505,22 @@ class OpenAIChatGenerator:
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
-        async for chunk in chat_completion:  # pylint: disable=not-an-iterable
-            assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
-                chunk=chunk, previous_chunks=chunks, component_info=component_info
-            )
-            chunks.append(chunk_delta)
-            await callback(chunk_delta)
+        try:
+            async for chunk in chat_completion:  # pylint: disable=not-an-iterable
+                assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
+                chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
+                    chunk=chunk, previous_chunks=chunks, component_info=component_info
+                )
+                chunks.append(chunk_delta)
+                await callback(chunk_delta)
+
+        except asyncio.CancelledError:
+            await asyncio.shield(chat_completion.close())
+            # close the stream when task is cancelled
+            # asyncio.shield ensures the close operation completes
+            # https://docs.python.org/3/library/asyncio-task.html#shielding-from-cancellation
+            raise  # Re-raise to propagate cancellation
+
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
 
