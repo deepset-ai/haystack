@@ -187,9 +187,7 @@ class DocumentSplitter:
         :raises ValueError: if the content of a document is None.
         """
         if self._use_sentence_splitter and self.sentence_splitter is None:
-            raise RuntimeError(
-                "The component DocumentSplitter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("DocumentSplitter expects a List of Documents as input.")

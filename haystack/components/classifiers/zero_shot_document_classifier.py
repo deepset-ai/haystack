@@ -203,10 +203,7 @@ class TransformersZeroShotDocumentClassifier:
         """
 
         if self.pipeline is None:
-            raise RuntimeError(
-                "The component TransformerZeroShotDocumentClassifier wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(

@@ -237,7 +237,7 @@ class SentenceTransformersDocumentImageEmbedder:
                 "In case you want to embed a string, please use the SentenceTransformersTextEmbedder."
             )
         if self._embedding_backend is None:
-            raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
+            self.warm_up()
 
         images_source_info = _extract_image_sources_info(
             documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path

@@ -117,9 +117,7 @@ class DALLEImageGenerator:
             to the prompt made by OpenAI.
         """
         if self.client is None:
-            raise RuntimeError(
-                "The component DALLEImageGenerator wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         size = size or self.size
         quality = quality or self.quality
