@@ -46,6 +46,9 @@ class RegexTextExtractor:
             The regular expression pattern used to extract text.
             The pattern should include a capture group to extract the desired text.
             Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue url="github.com/hahahaha">'`.
+        :return_empty_on_no_match:
+            If True, returns an empty dictionary when no match is found. If False, returns `{"captured_text": ""}`.
+            Default is True.
         """
         self.regex_pattern = regex_pattern
         self.return_empty_on_no_match = return_empty_on_no_match
@@ -68,8 +71,9 @@ class RegexTextExtractor:
             Either a string or a list of ChatMessage objects to search through.
 
         :returns:
-          - If match found: `{"captured_text": "matched text"}`
-          - If no match and `self.return_empty_on_no_match=True`: `{}`
+          - {"captured_text": "matched text"} if a match is found
+          - {} if no match is found and self.return_empty_on_no_match=True (default behavior)
+          - {"captured_text": ""} if no match is found and self.return_empty_on_no_match=False
 
         :raises:
             - ValueError: if receiving a list the last element is not a ChatMessage instance.
@@ -95,7 +99,7 @@ class RegexTextExtractor:
             return {"captured_text": ""}
         return {"captured_text": result}
 
-    def _process_last_message(self, messages: list[ChatMessage], return_empty_on_no_match: bool = True) -> dict:
+    def _process_last_message(self, messages: list[ChatMessage]) -> dict:
         """Process only the last message and build the result."""
         last_message = messages[-1]
         if not isinstance(last_message, ChatMessage):
@@ -104,7 +108,7 @@ class RegexTextExtractor:
             logger.warning("Last message has no text content")
             return {}
         result = self._extract_from_text(last_message.text)
-        return RegexTextExtractor._build_result(self, result)
+        return self._build_result(result)
 
     def _extract_from_text(self, text: str) -> Union[str, list[str]]:
         """
