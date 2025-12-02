@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - "docs/pydoc/config_docusaurus/**"
+      - "pydoc/**"
       - "haystack/**"
       - ".github/workflows/docusaurus_sync.yml"
 
@@ -33,12 +33,11 @@ jobs:
         run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Generate API reference for Docusaurus
-        # This command simply runs ./.github/utils/pydoc-markdown.sh with a specific config path
-        run: hatch run readme:sync "../config_docusaurus/*"
+        run: hatch run docs
 
       - name: Sync generated API reference to docs folder
         run: |
-          SOURCE_PATH="docs/pydoc/temp"
+          SOURCE_PATH="pydoc/temp"
           DEST_PATH="docs-website/reference/haystack-api"
 
           echo "Syncing from $SOURCE_PATH to $DEST_PATH"

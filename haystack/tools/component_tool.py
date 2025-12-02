@@ -70,7 +70,7 @@ class ComponentTool(Tool):
 
     # Create pipeline with OpenAIChatGenerator and ToolInvoker
     pipeline = Pipeline()
-    pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+    pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
     pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
 
     # Connect components

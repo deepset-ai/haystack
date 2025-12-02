@@ -8,7 +8,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from openai import AsyncStream, Stream
+from openai.types import Reasoning
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, chat_completion_chunk
+from openai.types.responses import (
+    Response,
+    ResponseOutputItemAddedEvent,
+    ResponseOutputMessage,
+    ResponseOutputText,
+    ResponseReasoningItem,
+    ResponseReasoningSummaryTextDeltaEvent,
+    ResponseTextDeltaEvent,
+    ResponseUsage,
+)
+from openai.types.responses.response_reasoning_item import Summary
+from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 
 
 @pytest.fixture
@@ -177,3 +190,229 @@ async def openai_mock_async_chat_completion_chunk():
         )
         mock_chat_completion_create.return_value = OpenAIAsyncMockStream(completion)
         yield mock_chat_completion_create
+
+
+@pytest.fixture
+def openai_mock_responses():
+    """
+    Mock a fully populated non-streaming Response returned by the
+    OpenAI Responses API (client.responses.create).
+    """
+
+    with patch("openai.resources.responses.Responses.create") as mock_create:
+        # Build the Response object exactly like the one you provided
+        mock_response = Response(
+            id="resp_mock_123",
+            created_at=float(datetime.now().timestamp()),
+            metadata={},
+            model="gpt-5-mini-2025-08-07",
+            object="response",
+            output=[
+                ResponseReasoningItem(
+                    id="rs_mock_1",
+                    type="reasoning",
+                    summary=[
+                        Summary(
+                            text=(
+                                "**Providing concise information**\n\n"
+                                "The question is simple: the answer is Paris. "
+                                "It’s useful to mention that Paris is the capital and a major "
+                                "city in France. There’s really no need for extra details in this "
+                                "case, so I’ll keep it concise and straightforward."
+                            ),
+                            type="summary_text",
+                        )
+                    ],
+                ),
+                ResponseOutputMessage(
+                    id="msg_mock_1",
+                    role="assistant",
+                    type="message",
+                    status="completed",
+                    content=[
+                        ResponseOutputText(
+                            text="The capital of France is Paris.", type="output_text", logprobs=None, annotations=[]
+                        )
+                    ],
+                ),
+            ],
+            parallel_tool_calls=True,
+            temperature=1.0,
+            tool_choice="auto",
+            tools=[],
+            reasoning=Reasoning(effort="low", generate_summary=None, summary="auto"),
+            usage=ResponseUsage(
+                input_tokens=11,
+                input_tokens_details=InputTokensDetails(cached_tokens=0),
+                output_tokens=13,
+                output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
+                total_tokens=24,
+            ),
+            user=None,
+            billing={"payer": "developer"},
+            prompt_cache_retention=None,
+            store=True,
+        )
+
+        mock_create.return_value = mock_response
+        yield mock_create
+
+
+@pytest.fixture
+def openai_mock_async_responses():
+    """
+    Mock a fully populated non-streaming Response returned by the
+    OpenAI Responses API (client.responses.create).
+    """
+
+    with patch("openai.resources.responses.AsyncResponses.create") as mock_create:
+        # Build the Response object exactly like the one you provided
+        mock_response = Response(
+            id="resp_mock_123",
+            created_at=float(datetime.now().timestamp()),
+            metadata={},
+            model="gpt-5-mini-2025-08-07",
+            object="response",
+            output=[
+                ResponseReasoningItem(
+                    id="rs_mock_1",
+                    type="reasoning",
+                    summary=[
+                        Summary(
+                            text=(
+                                "**Providing concise information**\n\n"
+                                "The question is simple: the answer is Paris. "
+                                "It’s useful to mention that Paris is the capital and a major "
+                                "city in France. There’s really no need for extra details in this "
+                                "case, so I’ll keep it concise and straightforward."
+                            ),
+                            type="summary_text",
+                        )
+                    ],
+                ),
+                ResponseOutputMessage(
+                    id="msg_mock_1",
+                    role="assistant",
+                    type="message",
+                    status="completed",
+                    content=[
+                        ResponseOutputText(
+                            text="The capital of France is Paris.", type="output_text", annotations=[], logprobs=None
+                        )
+                    ],
+                ),
+            ],
+            parallel_tool_calls=True,
+            temperature=1.0,
+            tool_choice="auto",
+            tools=[],
+            reasoning=Reasoning(effort="low", generate_summary=None, summary="auto"),
+            usage=ResponseUsage(
+                input_tokens=11,
+                input_tokens_details=InputTokensDetails(cached_tokens=0),
+                output_tokens=13,
+                output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
+                total_tokens=24,
+            ),
+            user=None,
+            billing={"payer": "developer"},
+            prompt_cache_retention=None,
+            store=True,
+        )
+
+        mock_create.return_value = mock_response
+        yield mock_create
+
+
+@pytest.fixture
+def openai_mock_responses_stream_text_delta():
+    """
+    Mock the Responses API streaming text-delta event (sync)
+    and reuse it for tests.
+    """
+
+    with patch("openai.resources.responses.Responses.create") as mock_responses_create:
+        event = ResponseTextDeltaEvent(
+            # required fields in the current SDK
+            content_index=0,
+            delta="The capital of France is Paris.",
+            item_id="item_1",
+            logprobs=[],
+            output_index=0,
+            sequence_number=0,
+            type="response.output_text.delta",
+        )
+
+        # Your OpenAIMockStream should iterate over this event
+        mock_responses_create.return_value = OpenAIMockStream(event, cast_to=None, response=None, client=None)
+        yield mock_responses_create
+
+
+@pytest.fixture
+async def openai_mock_async_responses_stream_text_delta():
+    """
+    Mock the Responses API streaming text-delta event (async)
+    and reuse it for async tests.
+    """
+
+    with patch("openai.resources.responses.AsyncResponses.create", new_callable=AsyncMock) as mock_responses_create:
+        event = ResponseTextDeltaEvent(
+            content_index=0,
+            delta="Hello",
+            item_id="item_1",
+            logprobs=[],
+            output_index=0,
+            sequence_number=0,
+            type="response.output_text.delta",
+        )
+
+        mock_responses_create.return_value = OpenAIAsyncMockStream(event)
+        yield mock_responses_create
+
+
+@pytest.fixture
+def openai_mock_responses_reasoning_summary_delta():
+    """
+    Mock a Responses API *streaming* reasoning summary text delta event (sync).
+    """
+
+    with patch("openai.resources.responses.Responses.create") as mock_responses_create:
+        start_event = ResponseOutputItemAddedEvent(
+            item=ResponseReasoningItem(
+                id="rs_094e3f8beffcca02006928978067848190b477543eddbf32b3",
+                summary=[],
+                type="reasoning",
+                content=None,
+                encrypted_content=None,
+                status=None,
+            ),
+            output_index=0,
+            sequence_number=2,
+            type="response.output_item.added",
+        )
+
+        event = ResponseReasoningSummaryTextDeltaEvent(
+            delta="I need to check the capital of France.",
+            item_id="rs_01e88f7d57f9a2f70069284d2170c48193918c04f85244cf7c",
+            output_index=0,
+            sequence_number=4,
+            summary_index=0,
+            type="response.reasoning_summary_text.delta",
+            obfuscation="cGcv5W5F",
+        )
+
+        # Create a custom stream that yields both events sequentially
+        class MultiEventMockStream(OpenAIMockStream):
+            def __init__(self, *events, **kwargs):
+                self.events = events
+                super().__init__(events[0] if events else None, **kwargs)
+
+            def __stream__(self):
+                for event in self.events:
+                    yield event
+
+        mock_responses_create.return_value = MultiEventMockStream(
+            start_event, event, cast_to=None, response=None, client=None
+        )
+
+        yield mock_responses_create

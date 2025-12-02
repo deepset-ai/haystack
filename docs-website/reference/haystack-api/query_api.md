@@ -5,11 +5,11 @@ description: "Components for query processing and expansion."
 slug: "/query-api"
 ---
 
-<a id="haystack.components.query.query_expander"></a>
+<a id="query_expander"></a>
 
-## Module haystack.components.query.query\_expander
+## Module query\_expander
 
-<a id="haystack.components.query.query_expander.QueryExpander"></a>
+<a id="query_expander.QueryExpander"></a>
 
 ### QueryExpander
 
@@ -43,7 +43,7 @@ expander = QueryExpander(n_expansions=2, include_original_query=True)  # Up to 3
 expander = QueryExpander(n_expansions=3, include_original_query=False)  # Exactly 3 total
 ```
 
-<a id="haystack.components.query.query_expander.QueryExpander.__init__"></a>
+<a id="query_expander.QueryExpander.__init__"></a>
 
 #### QueryExpander.\_\_init\_\_
 
@@ -68,7 +68,7 @@ structure: `{"queries": ["query1", "query2", "query3"]}`. The template should in
 - `n_expansions`: Number of alternative queries to generate (default: 4).
 - `include_original_query`: Whether to include the original query in the output.
 
-<a id="haystack.components.query.query_expander.QueryExpander.to_dict"></a>
+<a id="query_expander.QueryExpander.to_dict"></a>
 
 #### QueryExpander.to\_dict
 
@@ -82,7 +82,7 @@ Serializes the component to a dictionary.
 
 Dictionary with serialized data.
 
-<a id="haystack.components.query.query_expander.QueryExpander.from_dict"></a>
+<a id="query_expander.QueryExpander.from_dict"></a>
 
 #### QueryExpander.from\_dict
 
@@ -101,7 +101,7 @@ Deserializes the component from a dictionary.
 
 Deserialized component.
 
-<a id="haystack.components.query.query_expander.QueryExpander.run"></a>
+<a id="query_expander.QueryExpander.run"></a>
 
 #### QueryExpander.run
 
@@ -131,7 +131,7 @@ Dictionary with "queries" key containing the list of expanded queries.
 If include_original_query=True, the original query will be included in addition
 to the n_expansions alternative queries.
 
-<a id="haystack.components.query.query_expander.QueryExpander.warm_up"></a>
+<a id="query_expander.QueryExpander.warm_up"></a>
 
 #### QueryExpander.warm\_up
 
