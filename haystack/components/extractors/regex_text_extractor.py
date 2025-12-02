@@ -71,9 +71,9 @@ class RegexTextExtractor:
             Either a string or a list of ChatMessage objects to search through.
 
         :returns:
-          - {"captured_text": "matched text"} if a match is found
-          - {} if no match is found and self.return_empty_on_no_match=True (default behavior)
-          - {"captured_text": ""} if no match is found and self.return_empty_on_no_match=False
+          - `{"captured_text": "matched text"}` if a match is found
+          - `{}` if no match is found and self.return_empty_on_no_match=True (default behavior)
+          - `{"captured_text": ""}` if no match is found and self.return_empty_on_no_match=False
 
         :raises:
             - ValueError: if receiving a list the last element is not a ChatMessage instance.
