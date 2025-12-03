@@ -543,7 +543,7 @@ class TestComponentToolInPipeline:
         # Connect components
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
-        message = ChatMessage.from_user(text="Vladimir")
+        message = ChatMessage.from_user(text="Using tools, greet Vladimir")
 
         # Run pipeline
         result = pipeline.run({"llm": {"messages": [message]}})
@@ -569,7 +569,7 @@ class TestComponentToolInPipeline:
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
-        message = ChatMessage.from_user(text="I am Alice and I'm 30 years old")
+        message = ChatMessage.from_user(text="Greet the user Alice who is 30 years old")
 
         result = pipeline.run({"llm": {"messages": [message]}})
         tool_messages = result["tool_invoker"]["tool_messages"]
@@ -625,7 +625,9 @@ class TestComponentToolInPipeline:
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
-        message = ChatMessage.from_user(text="Diana lives at 123 Elm Street in Metropolis")
+        message = ChatMessage.from_user(
+            text="Process information about the person Diana who lives at 123 Elm Street in Metropolis"
+        )
 
         result = pipeline.run({"llm": {"messages": [message]}})
         tool_messages = result["tool_invoker"]["tool_messages"]
