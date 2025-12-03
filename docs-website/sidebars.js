@@ -460,6 +460,13 @@ export default {
         },
         {
           type: 'category',
+          label: 'Query',
+          items: [
+            'pipeline-components/query/queryexpander',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Rankers',
           link: {
             type: 'doc',
@@ -515,6 +522,8 @@ export default {
             'pipeline-components/retrievers/inmemoryembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasfulltextretriever',
+            'pipeline-components/retrievers/multiqueryembeddingretriever',
+            'pipeline-components/retrievers/multiquerytextretriever',
             'pipeline-components/retrievers/opensearchbm25retriever',
             'pipeline-components/retrievers/opensearchembeddingretriever',
             'pipeline-components/retrievers/opensearchhybridretriever',
