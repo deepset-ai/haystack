@@ -397,10 +397,23 @@ class ConditionalRouter:
 
             # Validate templates
             if not self._validate_template(self._env, route["condition"]):
-                raise ValueError(f"Invalid template for condition: {route['condition']}")
+                condition_value = route["condition"]
+                if not isinstance(condition_value, str):
+                    raise ValueError(
+                        f"Invalid template for condition: {condition_value!r} (type: {type(condition_value).__name__})."
+                        f"Condition must be a string representing a valid Jinja2 template. "
+                        f"For example, use {str(condition_value)!r} instead of {condition_value!r}."
+                    )
+                raise ValueError(f"Invalid template for condition: {condition_value}")
 
             for output in outputs:
                 if not self._validate_template(self._env, output):
+                    if not isinstance(output, str):
+                        raise ValueError(
+                            f"Invalid template for output: {output!r} (type: {type(output).__name__}). "
+                            f"Output must be a string representing a valid Jinja2 template. "
+                            f"For example, use {str(output)!r} instead of {output!r}."
+                        )
                     raise ValueError(f"Invalid template for output: {output}")
 
     def _extract_variables(self, env: Environment, templates: list[str]) -> set[str]:
@@ -424,6 +437,9 @@ class ConditionalRouter:
         :param template_text: A Jinja template string.
         :returns: `True` if the template is valid, `False` otherwise.
         """
+        # Check if template_text is a string before attempting to parse
+        if not isinstance(template_text, str):
+            return False
         try:
             env.parse(template_text)
             return True

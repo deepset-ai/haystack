@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Improved error messages in ConditionalRouter when non-string values are provided as route outputs.
+    Users now receive clear guidance (e.g., "use '2' instead of 2") instead of the cryptic "Can't compile non template nodes" error.
