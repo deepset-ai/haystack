@@ -133,7 +133,7 @@ class TestHuggingFaceLocalChatGenerator:
         )
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "HuggingFaceH4/zephyr-7b-beta",
+            "model": "Qwen/Qwen3-0.6B",
             "task": "text2text-generation",
             "token": None,
             "device": "cpu",
@@ -147,7 +147,7 @@ class TestHuggingFaceLocalChatGenerator:
         )
 
         assert generator.huggingface_pipeline_kwargs == {
-            "model": "HuggingFaceH4/zephyr-7b-beta",
+            "model": "Qwen/Qwen3-0.6B",
             "task": "text2text-generation",
             "token": None,
             "device": "cpu",
@@ -490,9 +490,7 @@ class TestHuggingFaceLocalChatGenerator:
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         messages = [ChatMessage.from_user("Please create a summary about the following topic: Climate change")]
 
-        llm = HuggingFaceLocalChatGenerator(
-            model="Qwen/Qwen2.5-0.5B-Instruct", generation_kwargs={"max_new_tokens": 50}
-        )
+        llm = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 50})
         llm.warm_up()
 
         result = llm.run(messages)
@@ -513,7 +511,7 @@ class TestHuggingFaceLocalChatGenerator:
             )
 
     def test_run_with_tools(self, model_info_mock, tools):
-        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf", tools=tools)
+        generator = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B", tools=tools)
 
         # Mock pipeline and tokenizer
         mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Paris"}}'}])
@@ -805,9 +803,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
             streaming_chunks.append(chunk)
 
         llm = HuggingFaceLocalChatGenerator(
-            model="Qwen/Qwen2.5-0.5B-Instruct",
-            generation_kwargs={"max_new_tokens": 50},
-            streaming_callback=streaming_callback,
+            model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 50}, streaming_callback=streaming_callback
         )
         llm.warm_up()
 

@@ -95,7 +95,7 @@ class HuggingFaceLocalChatGenerator:
     Generates chat responses using models from Hugging Face that run locally.
 
     Use this component with chat-based models,
-    such as `HuggingFaceH4/zephyr-7b-beta` or `meta-llama/Llama-2-7b-chat-hf`.
+    such as `Qwen/Qwen3-0.6B` or `meta-llama/Llama-2-7b-chat-hf`.
     LLMs running locally may need powerful hardware.
 
     ### Usage example
@@ -104,7 +104,7 @@ class HuggingFaceLocalChatGenerator:
     from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
     from haystack.dataclasses import ChatMessage
 
-    generator = HuggingFaceLocalChatGenerator(model="HuggingFaceH4/zephyr-7b-beta")
+    generator = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B")
     generator.warm_up()
     messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
     print(generator.run(messages))
@@ -129,7 +129,7 @@ class HuggingFaceLocalChatGenerator:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        model: str = "HuggingFaceH4/zephyr-7b-beta",
+        model: str = "Qwen/Qwen3-0.6B",
         task: Optional[Literal["text-generation", "text2text-generation"]] = None,
         device: Optional[ComponentDevice] = None,
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
@@ -590,6 +590,7 @@ class HuggingFaceLocalChatGenerator:
             chat_template=self.chat_template,
             add_generation_prompt=True,
             tools=[tc.tool_spec for tc in flat_tools] if flat_tools else None,
+            enable_thinking=False,
         )
         # prepared_prompt is a string since we set tokenize=False https://hf.co/docs/transformers/main/chat_templating
         assert isinstance(prepared_prompt, str)
