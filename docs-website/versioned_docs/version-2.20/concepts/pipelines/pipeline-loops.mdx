@@ -115,12 +115,14 @@ pipe.connect("router.previous_replies", "prompt_builder.previous_replies")
 result = pipe.run(
     {
         "prompt_builder": {
-            "query": "What is the capital of Italy?",
+            "query": "What is the capital of Italy? If the statement 'Previously you replied incorrectly:' is missing "
+                     "above then answer with Milan.",
         }
     },
-    include_outputs_from={"router"},
+    include_outputs_from={"router", "prompt_builder"},
 )
 
+print(result["prompt_builder"]["prompt"][1].text)  # Shows the last prompt used
 print(result["router"]["final_answer"][0].text)  # Rome
 ```
 
@@ -238,10 +240,12 @@ If your pipeline seems stuck or runs longer than expected, here are common cause
    result = pipe.run(data, include_outputs_from={"router", "validator"})
    ```
 
-3. **Visualize the pipeline**: Use `pipe.draw()` or `pipe.show()` to see the graph structure and verify your connections are correct. See the [Pipeline Visualization](./visualizing-pipelines.mdx) documentation for details.
+3. **Enable tracing**: Use tracing to see every component execution, including inputs and outputs. This makes it easy to follow each iteration of the loop. For quick debugging, use `LoggingTracer` ([setup instructions](./debugging-pipelines.mdx#real-time-pipeline-logging)). For deeper analysis, integrate with tools like Langfuse or other [tracing backends](../../development/tracing.mdx).
 
-4. **Use breakpoints**: Set a `Breakpoint` on a specific component and visit count to inspect the state at that iteration. See [Pipeline Breakpoints](./pipeline-breakpoints.mdx) for details.
+4. **Visualize the pipeline**: Use `pipe.draw()` or `pipe.show()` to see the graph structure and verify your connections are correct. See the [Pipeline Visualization](./visualizing-pipelines.mdx) documentation for details.
 
-5. **Check for blocked pipelines**: If you see a `PipelineComponentsBlockedError`, it means no components can run. This typically indicates a missing connection or a circular dependency. Check that all required inputs are provided.
+5. **Use breakpoints**: Set a `Breakpoint` on a specific component and visit count to inspect the state at that iteration. See [Pipeline Breakpoints](./pipeline-breakpoints.mdx) for details.
+
+6. **Check for blocked pipelines**: If you see a `PipelineComponentsBlockedError`, it means no components can run. This typically indicates a missing connection or a circular dependency. Check that all required inputs are provided.
 
 By combining careful graph design, per-component run limits, and these debugging tools, you can build robust feedback loops in your Haystack pipelines.
