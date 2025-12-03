@@ -39,11 +39,41 @@ pip install pgvector-haystack
 
 ## Usage
 
-Define the connection string to your PostgreSQL database in the `PG_CONN_STR` environment variable. For example:
+### Connection String
 
-```shell Shell
-export PG_CONN_STR="postgresql://postgres:postgres@localhost:5432/postgres"
+Define the connection string to your PostgreSQL database in the `PG_CONN_STR` environment variable. Two formats are supported:
+
+**URI format:**
+
+```shell
+export PG_CONN_STR="postgresql://USER:PASSWORD@HOST:PORT/DB_NAME"
 ```
+
+**Keyword/value format:**
+
+```shell
+export PG_CONN_STR="host=HOST port=PORT dbname=DB_NAME user=USER password=PASSWORD"
+```
+
+:::caution Special Characters in Passwords
+
+When using the URI format, special characters in the password must be [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding). Otherwise, connection errors may occur. A password like `p=ssword` would cause the error `psycopg.OperationalError: [Errno -2] Name or service not known`.
+
+For example, if your password is `p=ssword`, the connection string should be:
+
+```shell
+export PG_CONN_STR="postgresql://postgres:p%3Dssword@localhost:5432/postgres"
+```
+
+Alternatively, use the keyword/value format, which does not require percent-encoding:
+
+```shell
+export PG_CONN_STR="host=localhost port=5432 dbname=postgres user=postgres password=p=ssword"
+```
+
+:::
+
+For more details, see the [PostgreSQL connection string documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING).
 
 ## Initialization
 
