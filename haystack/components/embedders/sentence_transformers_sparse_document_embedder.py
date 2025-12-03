@@ -216,7 +216,7 @@ class SentenceTransformersSparseDocumentEmbedder:
                 "In case you want to embed a list of strings, please use the SentenceTransformersSparseTextEmbedder."
             )
         if self.embedding_backend is None:
-            raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
+            self.warm_up()
 
         texts_to_embed = []
         for doc in documents:

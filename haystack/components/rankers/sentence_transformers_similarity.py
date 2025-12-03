@@ -233,14 +233,9 @@ class SentenceTransformersSimilarityRanker:
 
         :raises ValueError:
             If `top_k` is not > 0.
-        :raises RuntimeError:
-            If the model is not loaded because `warm_up()` was not called before.
         """
         if self._cross_encoder is None:
-            raise RuntimeError(
-                "The component SentenceTransformersSimilarityRanker wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not documents:
             return {"documents": []}

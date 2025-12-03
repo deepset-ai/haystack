@@ -361,6 +361,9 @@ class HuggingFaceLocalChatGenerator:
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
+        if self.pipeline is None:
+            self.warm_up()
+
         prepared_inputs = self._prepare_inputs(
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools
         )
@@ -475,6 +478,9 @@ class HuggingFaceLocalChatGenerator:
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
+        if self.pipeline is None:
+            self.warm_up()
+
         prepared_inputs = self._prepare_inputs(
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools
         )
@@ -542,12 +548,8 @@ class HuggingFaceLocalChatGenerator:
         :param streaming_callback: An optional callable for handling streaming responses.
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :returns: A dictionary containing the prepared prompt, tokenizer, generation kwargs, and tools.
-        :raises RuntimeError: If the generation model has not been loaded.
         :raises ValueError: If both tools and streaming_callback are provided.
         """
-        if self.pipeline is None:
-            raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
-
         tools = tools or self.tools
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")

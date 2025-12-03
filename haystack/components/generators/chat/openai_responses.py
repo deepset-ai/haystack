@@ -297,7 +297,7 @@ class OpenAIResponsesChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         tools: Optional[Union[ToolsType, list[dict]]] = None,
         tools_strict: Optional[bool] = None,
-    ):
+    ) -> dict[str, list[ChatMessage]]:
         """
         Invokes response generation based on the provided messages and generation parameters.
 
@@ -326,6 +326,9 @@ class OpenAIResponsesChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         if len(messages) == 0:
             return {"replies": []}
 
@@ -364,7 +367,7 @@ class OpenAIResponsesChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         tools: Optional[Union[ToolsType, list[dict]]] = None,
         tools_strict: Optional[bool] = None,
-    ):
+    ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes response generation based on the provided messages and generation parameters.
 
@@ -395,6 +398,9 @@ class OpenAIResponsesChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True

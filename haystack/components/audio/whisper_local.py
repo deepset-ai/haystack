@@ -127,9 +127,7 @@ class LocalWhisperTranscriber:
                 for the transcription.
         """
         if self._model is None:
-            raise RuntimeError(
-                "The component LocalWhisperTranscriber was not warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if whisper_params is None:
             whisper_params = self.whisper_params
@@ -172,7 +170,7 @@ class LocalWhisperTranscriber:
             A dictionary mapping 'file_path' to 'transcription'.
         """
         if self._model is None:
-            raise RuntimeError("Model is not loaded, please run 'warm_up()' before calling 'run()'")
+            self.warm_up()
 
         return_segments = kwargs.pop("return_segments", False)
         transcriptions = {}

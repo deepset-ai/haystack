@@ -270,11 +270,6 @@ class TestSentenceTransformersSimilarityRanker:
         output = ranker.run(query="City in Germany", documents=[])
         assert not output["documents"]
 
-    def test_raises_component_error_if_model_not_warmed_up(self):
-        ranker = SentenceTransformersSimilarityRanker()
-        with pytest.raises(RuntimeError):
-            ranker.run(query="query", documents=[Document(content="document")])
-
     def test_embed_meta(self):
         ranker = SentenceTransformersSimilarityRanker(
             model="model", meta_fields_to_embed=["meta_field"], embedding_separator="\n"
@@ -373,7 +368,6 @@ class TestSentenceTransformersSimilarityRanker:
     @pytest.mark.slow
     def test_run(self):
         ranker = SentenceTransformersSimilarityRanker(model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce")
-        ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -401,7 +395,6 @@ class TestSentenceTransformersSimilarityRanker:
         ranker = SentenceTransformersSimilarityRanker(
             model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", top_k=2
         )
-        ranker.warm_up()
 
         query = "City in Bosnia and Herzegovina"
         docs_before_texts = ["Berlin", "Belgrade", "Sarajevo"]
@@ -426,7 +419,6 @@ class TestSentenceTransformersSimilarityRanker:
         ranker = SentenceTransformersSimilarityRanker(
             model="cross-encoder-testing/reranker-bert-tiny-gooaq-bce", device=None
         )
-        ranker.warm_up()
         docs_before = [Document(content="Berlin")]
         output = ranker.run(query="City in Germany", documents=docs_before)
         docs_after = output["documents"]

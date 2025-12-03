@@ -192,7 +192,7 @@ class SentenceTransformersSparseTextEmbedder:
                 "SentenceTransformersSparseDocumentEmbedder."
             )
         if self.embedding_backend is None:
-            raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
+            self.warm_up()
 
         text_to_embed = self.prefix + text + self.suffix
 

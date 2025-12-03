@@ -575,14 +575,9 @@ class ExtractiveReader:
             If None is provided then all answers are kept.
         :returns:
             List of answers sorted by (desc.) answer score.
-
-        :raises RuntimeError:
-            If the component was not warmed up by calling 'warm_up()' before.
         """
         if self.model is None:
-            raise RuntimeError(
-                "The component ExtractiveReader was not warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not documents:
             return {"answers": []}

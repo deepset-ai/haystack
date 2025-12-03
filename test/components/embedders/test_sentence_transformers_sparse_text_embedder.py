@@ -210,11 +210,6 @@ class TestSentenceTransformersSparseTextEmbedder:
         embedder.warm_up()
         mocked_factory.get_embedding_backend.assert_called_once()
 
-    def test_run_no_warmup(self):
-        embedder = SentenceTransformersSparseTextEmbedder(model="model")
-        with pytest.raises(RuntimeError, match="The embedding model has not been loaded"):
-            embedder.run(text="a nice text to embed")
-
     def test_run(self):
         embedder = SentenceTransformersSparseTextEmbedder(model="model")
         embedder.embedding_backend = MagicMock()
@@ -337,7 +332,6 @@ class TestSentenceTransformersSparseTextEmbedder:
         embedder = SentenceTransformersSparseTextEmbedder(
             model="sparse-encoder-testing/splade-bert-tiny-nq", device=ComponentDevice.from_str("cpu")
         )
-        embedder.warm_up()
         result = embedder.run(text=text)
         sparse_embedding = result["sparse_embedding"]
 

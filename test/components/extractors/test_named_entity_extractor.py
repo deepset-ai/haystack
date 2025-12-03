@@ -166,13 +166,3 @@ def test_named_entity_extractor_run():
         assert "named_entities" in result["documents"][0].meta
         assert result["documents"][0].meta["named_entities"] == expected_annotations[0]
         assert "named_entities" not in documents[0].meta
-
-
-def test_named_entity_extractor_run_not_warmed_up():
-    """Test that run method raises error when not warmed up."""
-    extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
-
-    documents = [Document(content="Test document")]
-
-    with pytest.raises(RuntimeError, match="The component NamedEntityExtractor was not warmed up"):
-        extractor.run(documents=documents)

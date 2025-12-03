@@ -108,6 +108,17 @@ class LLMEvaluator:
             generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 42}
             self._chat_generator = OpenAIChatGenerator(generation_kwargs=generation_kwargs)
 
+        self._is_warmed_up = False
+
+    def warm_up(self):
+        """
+        Warm up the component by warming up the underlying chat generator.
+        """
+        if not self._is_warmed_up:
+            if hasattr(self._chat_generator, "warm_up"):
+                self._chat_generator.warm_up()
+            self._is_warmed_up = True
+
     @staticmethod
     def validate_init_parameters(
         inputs: list[tuple[str, type[list]]], outputs: list[str], examples: list[dict[str, Any]]
@@ -181,6 +192,9 @@ class LLMEvaluator:
             Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         self.validate_input_parameters(dict(self.inputs), inputs)
 
         # inputs is a dictionary with keys being input names and values being a list of input values

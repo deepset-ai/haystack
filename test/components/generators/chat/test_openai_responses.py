@@ -780,7 +780,8 @@ class TestOpenAIResponsesChatGenerator:
         component.warm_up()
         assert len(warm_up_calls) == call_count
 
-    def test_run(self, openai_mock_responses):
+    def test_run(self, openai_mock_responses, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
             model="gpt-4", generation_kwargs={"include": ["message.output_text.logprobs"]}

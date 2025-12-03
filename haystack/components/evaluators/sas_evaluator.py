@@ -164,8 +164,7 @@ class SASEvaluator:
             return {"score": 0.0, "individual_scores": [0.0]}
 
         if not self._similarity_model:
-            msg = "The model has not been initialized. Call warm_up() before running the evaluator."
-            raise RuntimeError(msg)
+            self.warm_up()
 
         if isinstance(self._similarity_model, CrossEncoder):
             # For Cross Encoders we create a list of pairs of predictions and labels

@@ -249,14 +249,10 @@ class TransformersSimilarityRanker:
         :raises ValueError:
             If `top_k` is not > 0.
             If `scale_score` is True and `calibration_factor` is not provided.
-        :raises RuntimeError:
-            If the model is not loaded because `warm_up()` was not called before.
         """
         # If a model path is provided but the model isn't loaded
         if self.model is None:
-            raise RuntimeError(
-                "The component TransformersSimilarityRanker wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not documents:
             return {"documents": []}
