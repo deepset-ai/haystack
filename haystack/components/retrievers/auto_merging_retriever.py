@@ -184,7 +184,8 @@ class AutoMergingRetriever:
         AutoMergingRetriever._check_valid_documents(documents)
 
         async def _get_parent_doc(parent_id: str) -> Document:
-            parent_docs = await self.document_store.filter_documents_async(
+            # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
+            parent_docs = await self.document_store.filter_documents_async(  # type: ignore[attr-defined]
                 {"field": "id", "operator": "==", "value": parent_id}
             )
             if len(parent_docs) != 1:

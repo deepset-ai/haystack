@@ -104,5 +104,6 @@ class FilterRetriever:
         :returns:
             A list of retrieved documents.
         """
-        out_documents = await self.document_store.filter_documents_async(filters=filters or self.filters)
+        # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
+        out_documents = await self.document_store.filter_documents_async(filters=filters or self.filters)  # type: ignore[attr-defined]
         return {"documents": out_documents}
