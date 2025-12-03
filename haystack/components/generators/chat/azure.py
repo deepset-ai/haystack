@@ -75,7 +75,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         azure_endpoint: Optional[str] = None,
-        api_version: Optional[str] = "2025-04-14",
+        api_version: Optional[str] = "2024-12-01-preview",
         azure_deployment: Optional[str] = "gpt-4.1-mini",
         api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
