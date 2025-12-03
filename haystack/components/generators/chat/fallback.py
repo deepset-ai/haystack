@@ -195,7 +195,7 @@ class FallbackChatGenerator:
         generation_kwargs: Union[dict[str, Any], None] = None,
         tools: Optional[ToolsType] = None,
         streaming_callback: Union[StreamingCallbackT, None] = None,
-    ) -> dict[str, list[ChatMessage] | dict[str, Any]]:
+    ) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]:
         """
         Asynchronously execute chat generators sequentially until one succeeds.
 
