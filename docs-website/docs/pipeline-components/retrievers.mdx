@@ -90,6 +90,16 @@ Some hybrid Retrievers are available in Haystack, such as [`QdrantHybridRetrieve
 If your preferred Document Store does not have a hybrid Retriever available or if you want to customize the behavior even further, check out the hybrid retrieval pipelines [tutorial](https://haystack.deepset.ai/tutorials/33_hybrid_retrieval).
 :::
 
+##### Multi-Query Retrieval
+
+Multi-query retrieval improves recall by expanding a single user query into multiple semantically similar queries. Each query variation can capture different aspects of the user's intent and match documents that use different terminology.
+
+This approach works with both text-based and embedding-based Retrievers:
+- [`MultiQueryTextRetriever`](retrievers/multiquerytextretriever.mdx): Wraps a text-based Retriever (such as BM25) and runs multiple queries in parallel.
+- [`MultiQueryEmbeddingRetriever`](retrievers/multiqueryembeddingretriever.mdx): Wraps an embedding-based Retriever and runs multiple queries in parallel.
+
+To generate query variations, use the [`QueryExpander`](query/queryexpander.mdx) component, which uses an LLM to create semantically similar queries from the original.
+
 ##### Multi-Embedding Retrieval
 
 In this strategy, you use two embedding-based Retrievers, each with a different model, to embed the same documents. You then end up having multiple embeddings of one document. It can also be handy if you need multimodal retrieval.
@@ -143,6 +153,8 @@ For details on how to initialize and use a Retriever in a pipeline, see the docu
 | [InMemoryBM25Retriever](retrievers/inmemorybm25retriever.mdx)                       | A keyword-based Retriever compatible with the InMemoryDocumentStore.                                                            |
 | [InMemoryEmbeddingRetriever](retrievers/inmemoryembeddingretriever.mdx)             | An embedding-based Retriever compatible with the InMemoryDocumentStore.                                                         |
 | [FilterRetriever](retrievers/filterretriever.mdx)                                 | A special Retriever to be used with any Document Store to get the Documents that match specific filters.                        |
+| [MultiQueryEmbeddingRetriever](retrievers/multiqueryembeddingretriever.mdx)       | Retrieves documents using multiple queries in parallel with an embedding-based Retriever.                                       |
+| [MultiQueryTextRetriever](retrievers/multiquerytextretriever.mdx)                 | Retrieves documents using multiple queries in parallel with a text-based Retriever.                                             |
 | [MongoDBAtlasEmbeddingRetriever](retrievers/mongodbatlasembeddingretriever.mdx)   | An embedding Retriever compatible with the MongoDB Atlas Document Store.                                                        |
 | [OpenSearchBM25Retriever](retrievers/opensearchbm25retriever.mdx)                 | A keyword-based Retriever that fetches Documents matching a query from an OpenSearch Document Store.                            |
 | [OpenSearchEmbeddingRetriever](retrievers/opensearchembeddingretriever.mdx)       | An embedding-based Retriever compatible with the OpenSearch Document Store.                                                     |

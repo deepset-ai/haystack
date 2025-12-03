@@ -611,7 +611,7 @@ result = parser.run(text_or_messages=messages)
 #### RegexTextExtractor.\_\_init\_\_
 
 ```python
-def __init__(regex_pattern: str)
+def __init__(regex_pattern: str, return_empty_on_no_match: bool = True)
 ```
 
 Creates an instance of the RegexTextExtractor component.
@@ -643,6 +643,7 @@ Extracts text from input using the configured regex pattern.
 
 **Returns**:
 
-- If match found: `{"captured_text": "matched text"}`
-- If no match and `return_empty_on_no_match=True`: `{}`
+- `{"captured_text": "matched text"}` if a match is found
+- `{}` if no match is found and self.return_empty_on_no_match=True (default behavior)
+- `{"captured_text": ""}` if no match is found and self.return_empty_on_no_match=False
 
