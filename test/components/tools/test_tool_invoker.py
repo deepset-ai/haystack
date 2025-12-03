@@ -4,6 +4,7 @@
 
 import datetime
 import json
+import os
 import time
 from typing import Any
 from unittest.mock import patch
@@ -1179,3 +1180,54 @@ class TestWarmUpTools:
 
         # Should only be warmed up once
         assert tool.warm_up_count == 1
+
+    def test_warm_up_refreshes_tools_with_names(self):
+        """
+        Test that ToolInvoker.warm_up() refreshes _tools_with_names when using a toolset with lazy connection.
+        """
+        # Create placeholder tool that simulates MCPToolset behavior of lazy connection
+        placeholder_tool = Tool(
+            name="mcp_not_connected_placeholder_123",
+            description="Placeholder tool before connection",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "placeholder",
+        )
+
+        # Create the actual tool that will replace the placeholder during warmup
+        # This simulates what mcp-server-time mcp would provide
+        actual_tool = Tool(
+            name="get_time",
+            description="Get the current time in ISO format",
+            parameters={"type": "object", "properties": {}, "required": []},
+            function=lambda: "2024-12-01T12:00:00Z",
+        )
+
+        # Create a toolset that simulates MCPToolset with eager_connect=False (lazy connection)
+        class MockMCPToolset(Toolset):
+            """Simulates MCPToolset behavior with eager_connect=False."""
+
+            def __init__(self):
+                # Start with placeholder tools (like MCPToolset does when not eagerly connected)
+                super().__init__([placeholder_tool])
+                self._warmed_up = False
+
+            def warm_up(self):
+                """Simulate connecting to MCP server and replacing placeholder tools with actual tools."""
+                if not self._warmed_up:
+                    # Replace placeholder tools with actual tools (simulating MCP connection)
+                    self.tools = [actual_tool]
+                    self._warmed_up = True
+
+        mcp_toolset = MockMCPToolset()
+        invoker = ToolInvoker(tools=mcp_toolset)
+
+        # Before warmup: _tools_with_names should contain the placeholder tool
+        assert "mcp_not_connected_placeholder_123" in invoker._tools_with_names
+        assert "get_time" not in invoker._tools_with_names
+
+        # Call warm_up() directly to trigger tool refresh
+        invoker.warm_up()
+
+        # After warmup: _tools_with_names should be refreshed with actual tool names
+        assert "mcp_not_connected_placeholder_123" not in invoker._tools_with_names
+        assert "get_time" in invoker._tools_with_names
