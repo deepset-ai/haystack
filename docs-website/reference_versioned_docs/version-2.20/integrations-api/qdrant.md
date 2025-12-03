@@ -41,7 +41,7 @@ retriever.run(query_embedding=[0.1]*768)
 
 ```python
 def __init__(document_store: QdrantDocumentStore,
-             filters: Optional[Union[Dict[str, Any], models.Filter]] = None,
+             filters: Optional[Union[dict[str, Any], models.Filter]] = None,
              top_k: int = 10,
              scale_score: bool = False,
              return_embedding: bool = False,
@@ -79,7 +79,7 @@ value, all values will be used for grouping. One point can be in multiple groups
 #### QdrantEmbeddingRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -94,7 +94,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "QdrantEmbeddingRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "QdrantEmbeddingRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -112,15 +112,15 @@ Deserialized component.
 #### QdrantEmbeddingRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(query_embedding: List[float],
-        filters: Optional[Union[Dict[str, Any], models.Filter]] = None,
+@component.output_types(documents=list[Document])
+def run(query_embedding: list[float],
+        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         return_embedding: Optional[bool] = None,
         score_threshold: Optional[float] = None,
         group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> Dict[str, List[Document]]
+        group_size: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Run the Embedding Retriever on the given input data.
@@ -151,16 +151,16 @@ The retrieved documents.
 #### QdrantEmbeddingRetriever.run\_async
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 async def run_async(
-        query_embedding: List[float],
-        filters: Optional[Union[Dict[str, Any], models.Filter]] = None,
+        query_embedding: list[float],
+        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         return_embedding: Optional[bool] = None,
         score_threshold: Optional[float] = None,
         group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> Dict[str, List[Document]]
+        group_size: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously run the Embedding Retriever on the given input data.
@@ -219,7 +219,7 @@ retriever.run(query_sparse_embedding=sparse_embedding)
 
 ```python
 def __init__(document_store: QdrantDocumentStore,
-             filters: Optional[Union[Dict[str, Any], models.Filter]] = None,
+             filters: Optional[Union[dict[str, Any], models.Filter]] = None,
              top_k: int = 10,
              scale_score: bool = False,
              return_embedding: bool = False,
@@ -257,7 +257,7 @@ value, all values will be used for grouping. One point can be in multiple groups
 #### QdrantSparseEmbeddingRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -272,7 +272,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "QdrantSparseEmbeddingRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "QdrantSparseEmbeddingRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -290,15 +290,15 @@ Deserialized component.
 #### QdrantSparseEmbeddingRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(query_sparse_embedding: SparseEmbedding,
-        filters: Optional[Union[Dict[str, Any], models.Filter]] = None,
+        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         return_embedding: Optional[bool] = None,
         score_threshold: Optional[float] = None,
         group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> Dict[str, List[Document]]
+        group_size: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Run the Sparse Embedding Retriever on the given input data.
@@ -334,16 +334,16 @@ The retrieved documents.
 #### QdrantSparseEmbeddingRetriever.run\_async
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 async def run_async(
         query_sparse_embedding: SparseEmbedding,
-        filters: Optional[Union[Dict[str, Any], models.Filter]] = None,
+        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
         top_k: Optional[int] = None,
         scale_score: Optional[bool] = None,
         return_embedding: Optional[bool] = None,
         score_threshold: Optional[float] = None,
         group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> Dict[str, List[Document]]
+        group_size: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously run the Sparse Embedding Retriever on the given input data.
@@ -413,7 +413,7 @@ retriever.run(query_embedding=embedding, query_sparse_embedding=sparse_embedding
 
 ```python
 def __init__(document_store: QdrantDocumentStore,
-             filters: Optional[Union[Dict[str, Any], models.Filter]] = None,
+             filters: Optional[Union[dict[str, Any], models.Filter]] = None,
              top_k: int = 10,
              return_embedding: bool = False,
              filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
@@ -449,7 +449,7 @@ value, all values will be used for grouping. One point can be in multiple groups
 #### QdrantHybridRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -464,7 +464,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "QdrantHybridRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "QdrantHybridRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -482,15 +482,15 @@ Deserialized component.
 #### QdrantHybridRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(query_embedding: List[float],
+@component.output_types(documents=list[Document])
+def run(query_embedding: list[float],
         query_sparse_embedding: SparseEmbedding,
-        filters: Optional[Union[Dict[str, Any], models.Filter]] = None,
+        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
         top_k: Optional[int] = None,
         return_embedding: Optional[bool] = None,
         score_threshold: Optional[float] = None,
         group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> Dict[str, List[Document]]
+        group_size: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Run the Sparse Embedding Retriever on the given input data.
@@ -526,16 +526,16 @@ The retrieved documents.
 #### QdrantHybridRetriever.run\_async
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 async def run_async(
-        query_embedding: List[float],
+        query_embedding: list[float],
         query_sparse_embedding: SparseEmbedding,
-        filters: Optional[Union[Dict[str, Any], models.Filter]] = None,
+        filters: Optional[Union[dict[str, Any], models.Filter]] = None,
         top_k: Optional[int] = None,
         return_embedding: Optional[bool] = None,
         score_threshold: Optional[float] = None,
         group_by: Optional[str] = None,
-        group_size: Optional[int] = None) -> Dict[str, List[Document]]
+        group_size: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously run the Sparse Embedding Retriever on the given input data.
@@ -575,7 +575,7 @@ The retrieved documents.
 #### get\_batches\_from\_generator
 
 ```python
-def get_batches_from_generator(iterable: List, n: int) -> Generator
+def get_batches_from_generator(iterable: list, n: int) -> Generator
 ```
 
 Batch elements of an iterable into fixed-length chunks or blocks.
@@ -654,12 +654,11 @@ def __init__(location: Optional[str] = None,
              optimizers_config: Optional[dict] = None,
              wal_config: Optional[dict] = None,
              quantization_config: Optional[dict] = None,
-             init_from: Optional[dict] = None,
              wait_result_from_api: bool = True,
              metadata: Optional[dict] = None,
              write_batch_size: int = 100,
              scroll_size: int = 10_000,
-             payload_fields_to_index: Optional[List[dict]] = None) -> None
+             payload_fields_to_index: Optional[list[dict]] = None) -> None
 ```
 
 Initializes a QdrantDocumentStore.
@@ -709,7 +708,6 @@ Note: indexed payload values remain in RAM.
 - `optimizers_config`: Params for optimizer.
 - `wal_config`: Params for Write-Ahead-Log.
 - `quantization_config`: Params for quantization. If `None`, quantization will be disabled.
-- `init_from`: Use data stored in another collection to initialize this collection.
 - `wait_result_from_api`: Whether to wait for the result from the API after each request.
 - `metadata`: Additional metadata to include with the documents.
 - `write_batch_size`: The batch size for writing documents.
@@ -742,8 +740,8 @@ Asynchronously returns the number of documents present in the document dtore.
 
 ```python
 def filter_documents(
-    filters: Optional[Union[Dict[str, Any], rest.Filter]] = None
-) -> List[Document]
+    filters: Optional[Union[dict[str, Any], rest.Filter]] = None
+) -> list[Document]
 ```
 
 Returns the documents that match the provided filters.
@@ -765,8 +763,8 @@ A list of documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-    filters: Optional[Union[Dict[str, Any], rest.Filter]] = None
-) -> List[Document]
+    filters: Optional[Union[dict[str, Any], rest.Filter]] = None
+) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the provided filters.
@@ -776,7 +774,7 @@ Asynchronously returns the documents that match the provided filters.
 #### QdrantDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: List[Document],
+def write_documents(documents: list[Document],
                     policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int
 ```
 
@@ -803,7 +801,7 @@ The number of documents written to the document store.
 
 ```python
 async def write_documents_async(
-        documents: List[Document],
+        documents: list[Document],
         policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int
 ```
 
@@ -829,7 +827,7 @@ The number of documents written to the document store.
 #### QdrantDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: List[str]) -> None
+def delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes documents that match the provided `document_ids` from the document store.
@@ -843,7 +841,7 @@ Deletes documents that match the provided `document_ids` from the document store
 #### QdrantDocumentStore.delete\_documents\_async
 
 ```python
-async def delete_documents_async(document_ids: List[str]) -> None
+async def delete_documents_async(document_ids: list[str]) -> None
 ```
 
 Asynchronously deletes documents that match the provided `document_ids` from the document store.
@@ -886,7 +884,7 @@ Asynchronously deletes all documents from the document store.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "QdrantDocumentStore"
+def from_dict(cls, data: dict[str, Any]) -> "QdrantDocumentStore"
 ```
 
 Deserializes the component from a dictionary.
@@ -904,7 +902,7 @@ The deserialized component.
 #### QdrantDocumentStore.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -918,7 +916,7 @@ Dictionary with serialized data.
 #### QdrantDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(ids: List[str]) -> List[Document]
+def get_documents_by_id(ids: list[str]) -> list[Document]
 ```
 
 Retrieves documents from Qdrant by their IDs.
@@ -936,7 +934,7 @@ A list of documents.
 #### QdrantDocumentStore.get\_documents\_by\_id\_async
 
 ```python
-async def get_documents_by_id_async(ids: List[str]) -> List[Document]
+async def get_documents_by_id_async(ids: list[str]) -> list[Document]
 ```
 
 Retrieves documents from Qdrant by their IDs.

@@ -277,7 +277,7 @@ class ToolInvoker:
         # - If using convert_result_to_json_string we'd rather convert Haystack objects to JSON serializable dicts
         # - If using default str() we prefer converting Haystack objects to dicts rather than relying on the
         #   __repr__ method
-        serializable = _serializable_value(result)
+        serializable = _serializable_value(value=result, use_placeholders=False)
 
         if self.convert_result_to_json_string:
             try:
@@ -496,6 +496,8 @@ class ToolInvoker:
         """
         if not self._is_warmed_up:
             warm_up_tools(self.tools)
+            # tools could have been updated by the warm_up, validate/prepare for invocation
+            self._tools_with_names = self._validate_and_prepare_tools(self.tools)
             self._is_warmed_up = True
 
     @component.output_types(tool_messages=list[ChatMessage], state=State)

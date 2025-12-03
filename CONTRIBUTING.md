@@ -25,6 +25,7 @@ and smooth out the experience for all involved. The community looks forward to y
   - [Suggesting Enhancements](#suggesting-enhancements)
     - [Before Submitting an Enhancement](#before-submitting-an-enhancement)
     - [How Do I Submit a Good Enhancement Suggestion?](#how-do-i-submit-a-good-enhancement-suggestion)
+  - [Contributing to Documentation](#contributing-to-documentation)
   - [Contribute code](#contribute-code)
     - [Where to start](#where-to-start)
     - [Setting up your development environment](#setting-up-your-development-environment)
@@ -128,6 +129,10 @@ Enhancement suggestions are tracked as GitHub issues of type [Feature request fo
 
 - Use a **clear and descriptive title** for the issue to identify the suggestion.
 - Fill the issue following the template
+
+## Contributing to Documentation
+
+If you'd like to improve the documentation by fixing errors, clarifying explanations, adding examples, or creating new guides, see the [Documentation Contributing Guide](docs-website/CONTRIBUTING.md).
 
 ## Contribute code
 
@@ -318,16 +323,16 @@ executing some workflows on your changes, like automated tests, linting, formatt
 
 If all goes well, at the bottom of your PR page you should see something like this, where all checks are green.
 
-![Successful CI](docs/img/ci-success.png)
+![Successful CI](images/ci-success.png)
 
 If you see some red checks (like the following), then something didn't work, and action is needed from your side.
 
-![Failed CI](docs/img/ci-failure-example.png)
+![Failed CI](images/ci-failure-example.png)
 
 Click on the failing test and see if there are instructions at the end of the logs of the failed test.
 For example, in the case above, the CI will give you instructions on how to fix the issue.
 
-![Logs of failed CI, with instructions for fixing the failure](docs/img/ci-failure-example-instructions.png)
+![Logs of failed CI, with instructions for fixing the failure](images/ci-failure-example-instructions.png)
 
 ## Working from GitHub forks
 
@@ -336,7 +341,7 @@ In order for maintainers to be able to help you, we usually ask contributors to 
 To do so, please verify that "Allow edits and access to secrets by maintainers" on the PR preview page is checked
 (you can check it later on the PR's sidebar once it's created).
 
-![Allow access to your branch to maintainers](docs/img/first_time_contributor_enable_access.png)
+![Allow access to your branch to maintainers](images/first_time_contributor_enable_access.png)
 
 ## Writing tests
 

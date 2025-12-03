@@ -35,7 +35,7 @@ from haystack.utils import Secret
 
 generator = WatsonxGenerator(
     api_key=Secret.from_env_var("WATSONX_API_KEY"),
-    model="ibm/granite-13b-chat-v2",
+    model="ibm/granite-4-h-small",
     project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
 )
 
@@ -51,7 +51,7 @@ Output:
     "replies": ["Quantum computing uses quantum-mechanical phenomena like...."],
     "meta": [
         {
-            "model": "ibm/granite-13b-chat-v2",
+            "model": "ibm/granite-4-h-small",
             "project_id": "your-project-id",
             "usage": {
                 "prompt_tokens": 12,
@@ -70,7 +70,7 @@ Output:
 ```python
 def __init__(*,
              api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
-             model: str = "ibm/granite-3-3-8b-instruct",
+             model: str = "ibm/granite-4-h-small",
              project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
              api_base_url: str = "https://us-south.ml.cloud.ibm.com",
              system_prompt: str | None = None,
@@ -91,7 +91,7 @@ Before initializing the component, you can set environment variables:
 
 - `api_key`: IBM Cloud API key for watsonx.ai access.
 Can be set via `WATSONX_API_KEY` environment variable or passed directly.
-- `model`: The model ID to use for completions. Defaults to "ibm/granite-13b-chat-v2".
+- `model`: The model ID to use for completions. Defaults to "ibm/granite-4-h-small".
 Available models can be found in your IBM Cloud account.
 - `project_id`: IBM Cloud project ID
 - `api_base_url`: Custom base URL for the API endpoint.
@@ -250,7 +250,7 @@ messages = [ChatMessage.from_user("Explain quantum computing in simple terms")]
 
 client = WatsonxChatGenerator(
     api_key=Secret.from_env_var("WATSONX_API_KEY"),
-    model="ibm/granite-13b-chat-v2",
+    model="ibm/granite-4-h-small",
     project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
 )
 response = client.run(messages)
@@ -285,7 +285,7 @@ print(response)
 ```python
 def __init__(*,
              api_key: Secret = Secret.from_env_var("WATSONX_API_KEY"),
-             model: str = "ibm/granite-3-3-8b-instruct",
+             model: str = "ibm/granite-4-h-small",
              project_id: Secret = Secret.from_env_var("WATSONX_PROJECT_ID"),
              api_base_url: str = "https://us-south.ml.cloud.ibm.com",
              generation_kwargs: dict[str, Any] | None = None,
@@ -305,7 +305,7 @@ Before initializing the component, you can set environment variables:
 
 - `api_key`: IBM Cloud API key for watsonx.ai access.
 Can be set via `WATSONX_API_KEY` environment variable or passed directly.
-- `model`: The model ID to use for completions. Defaults to "ibm/granite-13b-chat-v2".
+- `model`: The model ID to use for completions. Defaults to "ibm/granite-4-h-small".
 Available models can be found in your IBM Cloud account.
 - `project_id`: IBM Cloud project ID
 - `api_base_url`: Custom base URL for the API endpoint.

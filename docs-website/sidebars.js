@@ -19,6 +19,7 @@ export default {
         'overview/telemetry',
         'overview/breaking-change-policy',
         'overview/migration',
+        'overview/migrating-from-langgraphlangchain-to-haystack',
       ],
     },
     {
@@ -62,6 +63,7 @@ export default {
             'concepts/pipelines/visualizing-pipelines',
             'concepts/pipelines/debugging-pipelines',
             'concepts/pipelines/pipeline-breakpoints',
+            'concepts/pipelines/pipeline-loops',
             'concepts/pipelines/pipeline-templates',
             'concepts/pipelines/asyncpipeline',
           ],
@@ -375,6 +377,7 @@ export default {
             },
             'pipeline-components/generators/amazonbedrockchatgenerator',
             'pipeline-components/generators/amazonbedrockgenerator',
+            'pipeline-components/generators/aimllapichatgenerator',
             'pipeline-components/generators/anthropicchatgenerator',
             'pipeline-components/generators/anthropicgenerator',
             'pipeline-components/generators/anthropicvertexchatgenerator',
@@ -383,6 +386,7 @@ export default {
             'pipeline-components/generators/azureopenaigenerator',
             'pipeline-components/generators/coherechatgenerator',
             'pipeline-components/generators/coheregenerator',
+            'pipeline-components/generators/cometapichatgenerator',
             'pipeline-components/generators/dalleimagegenerator',
             'pipeline-components/generators/fallbackchatgenerator',
             'pipeline-components/generators/googleaigeminichatgenerator',
@@ -457,6 +461,13 @@ export default {
         },
         {
           type: 'category',
+          label: 'Query',
+          items: [
+            'pipeline-components/query/queryexpander',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Rankers',
           link: {
             type: 'doc',
@@ -512,6 +523,8 @@ export default {
             'pipeline-components/retrievers/inmemoryembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasfulltextretriever',
+            'pipeline-components/retrievers/multiqueryembeddingretriever',
+            'pipeline-components/retrievers/multiquerytextretriever',
             'pipeline-components/retrievers/opensearchbm25retriever',
             'pipeline-components/retrievers/opensearchembeddingretriever',
             'pipeline-components/retrievers/opensearchhybridretriever',

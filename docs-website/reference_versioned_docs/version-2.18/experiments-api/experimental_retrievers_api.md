@@ -181,7 +181,7 @@ for doc in result["documents"]:
 def __init__(*,
              retriever: EmbeddingRetriever,
              query_embedder: TextEmbedder,
-             max_workers: int = 3)
+             max_workers: int = 3) -> None
 ```
 
 Initialize MultiQueryEmbeddingRetriever.
@@ -207,9 +207,11 @@ Warm up the query embedder and the retriever if any has a warm_up method.
 #### MultiQueryEmbeddingRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(queries: List[str],
-        retriever_kwargs: Optional[dict[str, Any]] = None) -> dict[str, Any]
+@component.output_types(documents=list[Document])
+def run(
+    queries: list[str],
+    retriever_kwargs: Optional[dict[str, Any]] = None
+) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using multiple queries in parallel.
@@ -311,7 +313,7 @@ for doc in results["documents"]:
 #### MultiQueryTextRetriever.\_\_init\_\_
 
 ```python
-def __init__(retriever: TextRetriever, max_workers: int = 3)
+def __init__(*, retriever: TextRetriever, max_workers: int = 3) -> None
 ```
 
 Initialize MultiQueryTextRetriever.
@@ -337,8 +339,10 @@ Warm up the retriever if it has a warm_up method.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(queries: List[str],
-        retriever_kwargs: Optional[dict[str, Any]] = None) -> dict[str, Any]
+def run(
+    queries: list[str],
+    retriever_kwargs: Optional[dict[str, Any]] = None
+) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using multiple queries in parallel.

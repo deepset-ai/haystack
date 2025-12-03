@@ -54,7 +54,7 @@ class OpenAIChatGenerator:
     """
     Completes chats using OpenAI's large language models (LLMs).
 
-    It works with the gpt-4 and o-series models and supports streaming responses
+    It works with the gpt-4 and gpt-5 series models and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
@@ -86,7 +86,7 @@ class OpenAIChatGenerator:
             that focuses on enabling computers to understand, interpret, and generate human language in
             a way that is meaningful and useful.")],
          _name=None,
-         _meta={'model': 'gpt-4o-mini', 'index': 0, 'finish_reason': 'stop',
+         _meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})
         ]
     }
@@ -96,7 +96,7 @@ class OpenAIChatGenerator:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "gpt-4o-mini",
+        model: str = "gpt-5-mini",
         streaming_callback: Optional[StreamingCallbackT] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
@@ -108,7 +108,7 @@ class OpenAIChatGenerator:
         http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
-        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-4o-mini
+        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
 
         Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
         environment variables to override the `timeout` and `max_retries` parameters respectively

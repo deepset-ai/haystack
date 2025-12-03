@@ -16,7 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+        # use VERSION.txt file from main branch
+        with:
+          ref: main
 
       - name: Get version to release
         id: version
@@ -32,16 +35,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Install promote_unstable_docs.py dependencies
-        run: pip install requests
-
-      # TODO: remove this once migration to Docusaurus is complete
-      # - name: Release Readme version
-      #   env:
-      #     RDME_API_KEY: ${{ secrets.README_API_KEY }}
-      #   run: |
-      #     python ./.github/utils/promote_unstable_docs.py --version ${{ steps.version.outputs.version }}
 
       - name: Promote unstable docs for Docusaurus
         run: |
