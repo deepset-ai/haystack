@@ -567,7 +567,7 @@ class TestAzureOpenAIChatGeneratorAsync:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-4o" in message.meta["model"]
+        assert "gpt-4.1-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
     @pytest.mark.integration
