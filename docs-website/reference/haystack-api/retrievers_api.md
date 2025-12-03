@@ -131,6 +131,28 @@ continuing up the hierarchy until no more merges are possible.
 
 List of documents (could be a mix of different hierarchy levels)
 
+<a id="auto_merging_retriever.AutoMergingRetriever.run_async"></a>
+
+#### AutoMergingRetriever.run\_async
+
+```python
+@component.output_types(documents=list[Document])
+async def run_async(documents: list[Document])
+```
+
+Asynchronously run the AutoMergingRetriever.
+
+Recursively groups documents by their parents and merges them if they meet the threshold,
+continuing up the hierarchy until no more merges are possible.
+
+**Arguments**:
+
+- `documents`: List of leaf documents that were matched by a retriever
+
+**Returns**:
+
+List of documents (could be a mix of different hierarchy levels)
+
 <a id="filter_retriever"></a>
 
 ## Module filter\_retriever
@@ -222,6 +244,26 @@ def run(filters: Optional[dict[str, Any]] = None)
 ```
 
 Run the FilterRetriever on the given input data.
+
+**Arguments**:
+
+- `filters`: A dictionary with filters to narrow down the search space.
+If not specified, the FilterRetriever uses the values provided at initialization.
+
+**Returns**:
+
+A list of retrieved documents.
+
+<a id="filter_retriever.FilterRetriever.run_async"></a>
+
+#### FilterRetriever.run\_async
+
+```python
+@component.output_types(documents=list[Document])
+async def run_async(filters: Optional[dict[str, Any]] = None)
+```
+
+Asynchronously run the FilterRetriever on the given input data.
 
 **Arguments**:
 
