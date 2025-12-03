@@ -36,7 +36,7 @@ from haystack.utils import Secret
 client = AzureOpenAIGenerator(
     azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
     api_key=Secret.from_token("<your-api-key>"),
-    azure_deployment="<this a model name, e.g.  gpt-4o-mini>")
+    azure_deployment="<this a model name, e.g.  gpt-4.1-mini>")
 response = client.run("What's Natural Language Processing? Be brief.")
 print(response)
 ```
@@ -45,7 +45,7 @@ print(response)
 >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
 >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
 >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
->> 'gpt-4o-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
+>> 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
 >> 'completion_tokens': 49, 'total_tokens': 65}}]}
 ```
 
@@ -55,8 +55,8 @@ print(response)
 
 ```python
 def __init__(azure_endpoint: Optional[str] = None,
-             api_version: Optional[str] = "2023-05-15",
-             azure_deployment: Optional[str] = "gpt-4o-mini",
+             api_version: Optional[str] = "2024-12-01-preview",
+             azure_deployment: Optional[str] = "gpt-4.1-mini",
              api_key: Optional[Secret] = Secret.from_env_var(
                  "AZURE_OPENAI_API_KEY", strict=False),
              azure_ad_token: Optional[Secret] = Secret.from_env_var(
@@ -78,7 +78,7 @@ Initialize the Azure OpenAI Generator.
 **Arguments**:
 
 - `azure_endpoint`: The endpoint of the deployed model, for example `https://example-resource.azure.openai.com/`.
-- `api_version`: The version of the API to use. Defaults to 2023-05-15.
+- `api_version`: The version of the API to use. Defaults to 2024-12-01-preview.
 - `azure_deployment`: The deployment of the model, usually the model name.
 - `api_key`: The API key to use for authentication.
 - `azure_ad_token`: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
@@ -801,7 +801,7 @@ messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client = AzureOpenAIChatGenerator(
     azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
     api_key=Secret.from_token("<your-api-key>"),
-    azure_deployment="<this a model name, e.g. gpt-4o-mini>")
+    azure_deployment="<this a model name, e.g. gpt-4.1-mini>")
 response = client.run(messages)
 print(response)
 ```
@@ -812,7 +812,7 @@ print(response)
     "Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
      enabling computers to understand, interpret, and generate human language in a way that is useful.")],
      _name=None,
-     _meta={'model': 'gpt-4o-mini', 'index': 0, 'finish_reason': 'stop',
+     _meta={'model': 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop',
      'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]
 }
 ```
@@ -823,8 +823,8 @@ print(response)
 
 ```python
 def __init__(azure_endpoint: Optional[str] = None,
-             api_version: Optional[str] = "2023-05-15",
-             azure_deployment: Optional[str] = "gpt-4o-mini",
+             api_version: Optional[str] = "2024-12-01-preview",
+             azure_deployment: Optional[str] = "gpt-4.1-mini",
              api_key: Optional[Secret] = Secret.from_env_var(
                  "AZURE_OPENAI_API_KEY", strict=False),
              azure_ad_token: Optional[Secret] = Secret.from_env_var(
@@ -848,7 +848,7 @@ Initialize the Azure OpenAI Chat Generator component.
 **Arguments**:
 
 - `azure_endpoint`: The endpoint of the deployed model, for example `"https://example-resource.azure.openai.com/"`.
-- `api_version`: The version of the API to use. Defaults to 2023-05-15.
+- `api_version`: The version of the API to use. Defaults to 2024-12-01-preview.
 - `azure_deployment`: The deployment of the model, usually the model name.
 - `api_key`: The API key to use for authentication.
 - `azure_ad_token`: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
