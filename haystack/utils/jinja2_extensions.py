@@ -94,3 +94,26 @@ class Jinja2TimeExtension(Extension):
         )
 
         return nodes.Output([call_method], lineno=lineno)
+
+
+def _collect_assigned_variables(ast: nodes.Template) -> set[str]:
+    """
+    Extract variables assigned within the Jinja2 template AST.
+
+    :param ast: The Jinja2 Abstract Syntax Tree (AST) of the template.
+
+    :returns:
+        A set of variable names that are assigned within the template.
+    """
+    # Collect all variables assigned inside the template via {% set %}
+    assigned_variables = set()
+
+    for node in ast.find_all(nodes.Assign):
+        if isinstance(node.target, nodes.Name):
+            assigned_variables.add(node.target.name)
+        elif isinstance(node.target, (nodes.List, nodes.Tuple)):
+            for name_node in node.target.items:
+                if isinstance(name_node, nodes.Name):
+                    assigned_variables.add(name_node.name)
+
+    return assigned_variables

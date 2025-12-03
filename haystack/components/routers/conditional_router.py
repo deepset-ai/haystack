@@ -12,6 +12,7 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
+from haystack.utils.jinja2_extensions import _collect_assigned_variables
 
 logger = logging.getLogger(__name__)
 
@@ -403,7 +404,8 @@ class ConditionalRouter:
                 if not self._validate_template(self._env, output):
                     raise ValueError(f"Invalid template for output: {output}")
 
-    def _extract_variables(self, env: Environment, templates: list[str]) -> set[str]:
+    @staticmethod
+    def _extract_variables(env: Environment, templates: list[str]) -> set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 
@@ -413,7 +415,10 @@ class ConditionalRouter:
         """
         variables = set()
         for template in templates:
-            variables.update(meta.find_undeclared_variables(env.parse(template)))
+            jinja2_ast = env.parse(template)
+            template_variables = meta.find_undeclared_variables(jinja2_ast)
+            assigned_variables = _collect_assigned_variables(jinja2_ast)
+            variables.update(template_variables - assigned_variables)
         return variables
 
     def _validate_template(self, env: Environment, template_text: str):
