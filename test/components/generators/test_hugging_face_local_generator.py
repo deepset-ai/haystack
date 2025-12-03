@@ -383,14 +383,6 @@ class TestHuggingFaceLocalGenerator:
         # the tokenizer should be set, here it is a mock
         assert streamer.tokenizer
 
-    def test_run_fails_without_warm_up(self):
-        generator = HuggingFaceLocalGenerator(
-            model="google/flan-t5-base", task="text2text-generation", generation_kwargs={"max_new_tokens": 100}
-        )
-
-        with pytest.raises(RuntimeError, match="The component HuggingFaceLocalGenerator was not warmed up"):
-            generator.run(prompt="irrelevant")
-
     def test_stop_words_criteria_with_a_mocked_tokenizer(self):
         """
         Test that StopWordsCriteria will caught stop word tokens in a continuous and sequential order in the input_ids
@@ -462,7 +454,6 @@ class TestHuggingFaceLocalGenerator:
         generator = HuggingFaceLocalGenerator(
             model="google/flan-t5-small", task="text2text-generation", stop_words=["unambiguously"]
         )
-        generator.warm_up()
         assert generator.stopping_criteria_list is not None
 
     @pytest.mark.integration
@@ -471,7 +462,6 @@ class TestHuggingFaceLocalGenerator:
     def test_live_run(self, monkeypatch):
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         llm = HuggingFaceLocalGenerator(model="Qwen/Qwen2.5-0.5B-Instruct", generation_kwargs={"max_new_tokens": 50})
-        llm.warm_up()
 
         # You must use the `apply_chat_template` method to add the generation prompt to properly include the instruction
         # tokens in the prompt. Otherwise, the model will not generate the expected output.
