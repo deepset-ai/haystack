@@ -55,7 +55,7 @@ export PG_CONN_STR="postgresql://USER:PASSWORD@HOST:PORT/DB_NAME"
 export PG_CONN_STR="host=HOST port=PORT dbname=DB_NAME user=USER password=PASSWORD"
 ```
 
-:::caution Special Characters in Passwords
+:::caution Special Characters in Connection URIs
 
 When using the URI format, special characters in the password must be [percent-encoded](https://en.wikipedia.org/wiki/Percent-encoding). Otherwise, connection errors may occur. A password like `p=ssword` would cause the error `psycopg.OperationalError: [Errno -2] Name or service not known`.
 
