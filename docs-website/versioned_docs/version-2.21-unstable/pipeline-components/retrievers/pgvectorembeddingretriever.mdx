@@ -1,0 +1,110 @@
+---
+title: "PgvectorEmbeddingRetriever"
+id: pgvectorembeddingretriever
+slug: "/pgvectorembeddingretriever"
+description: "An embedding-based Retriever compatible with the Pgvector Document Store."
+---
+
+# PgvectorEmbeddingRetriever
+
+An embedding-based Retriever compatible with the Pgvector Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of a [PgvectorDocumentStore](../../document-stores/pgvectordocumentstore.mdx)                                                                                                                                                                                     |
+| **Mandatory run variables**            | `query_embedding`: A vector representing the query (a list of floats)                                                                                                                                                                                                     |
+| **Output variables**                   | `documents`: A list of documents                                                                                                                                                                                                                                          |
+| **API reference**                      | [Pgvector](/reference/integrations-pgvector)                                                                                                                                                                                                                                     |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/pgvector                                                                                                                                                                                |
+
+</div>
+
+## Overview
+
+The `PgvectorEmbeddingRetriever` is an embedding-based Retriever compatible with the `PgvectorDocumentStore`. It compares the query and Document embeddings and fetches the Documents most relevant to the query from the `PgvectorDocumentStore` based on the outcome.
+
+When using the `PgvectorEmbeddingRetriever` in your Pipeline, make sure it has the query and Document embeddings available. You can do so by adding a Document Embedder to your indexing Pipeline and a Text Embedder to your query Pipeline.
+
+In addition to the `query_embedding`, the `PgvectorEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
+
+Some relevant parameters that impact the embedding retrieval must be defined when the corresponding `PgvectorDocumentStore` is initialized: these include embedding dimension, vector function, and some others related to the search strategy (exact nearest neighbor or HNSW).
+
+## Installation
+
+To quickly set up a PostgreSQL database with pgvector, you can use Docker:
+
+```shell
+docker run -d -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres ankane/pgvector
+```
+
+For more information on installing pgvector, visit the [pgvector GitHub repository](https://github.com/pgvector/pgvector).
+
+To use pgvector with Haystack, install the `pgvector-haystack` integration:
+
+```shell
+pip install pgvector-haystack
+```
+
+## Usage
+
+### On its own
+
+This Retriever needs the `PgvectorDocumentStore` and indexed Documents to run.
+
+```python
+import os
+from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
+from haystack_integrations.components.retrievers.pgvector import PgvectorEmbeddingRetriever
+
+os.environ["PG_CONN_STR"] = "postgresql://postgres:postgres@localhost:5432/postgres"
+
+document_store = PgvectorDocumentStore()
+retriever = PgvectorEmbeddingRetriever(document_store=document_store)
+
+## using a fake vector to keep the example simple
+retriever.run(query_embedding=[0.1]*768)
+```
+
+### In a Pipeline
+
+```python
+import os
+from haystack.document_stores import DuplicatePolicy
+from haystack import Document, Pipeline
+from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+
+from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
+from haystack_integrations.components.retrievers.pgvector import PgvectorEmbeddingRetriever
+
+os.environ["PG_CONN_STR"] = "postgresql://postgres:postgres@localhost:5432/postgres"
+
+document_store = PgvectorDocumentStore(
+    embedding_dimension=768,
+    vector_function="cosine_similarity",
+    recreate_table=True,
+)
+
+documents = [Document(content="There are over 7,000 languages spoken around the world today."),
+						Document(content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors."),
+						Document(content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.")]
+
+document_embedder = SentenceTransformersDocumentEmbedder()
+document_embedder.warm_up()
+documents_with_embeddings = document_embedder.run(documents)
+
+document_store.write_documents(documents_with_embeddings.get("documents"), policy=DuplicatePolicy.OVERWRITE)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
+query_pipeline.add_component("retriever", PgvectorEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result['retriever']['documents'][0])
+```

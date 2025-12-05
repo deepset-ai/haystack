@@ -1,0 +1,167 @@
+---
+title: "DocumentTypeRouter"
+id: documenttyperouter
+slug: "/documenttyperouter"
+description: "Use this Router in pipelines to route documents based on their MIME types to different outputs for further processing."
+---
+
+# DocumentTypeRouter
+
+Use this Router in pipelines to route documents based on their MIME types to different outputs for further processing.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | As a preprocessing component to route documents by type before sending them to specific [Converters](../converters.mdx) or [Preprocessors](../preprocessors.mdx) |
+| **Mandatory init variables** | `mime_types`: A list of MIME types or regex patterns for classification |
+| **Mandatory run variables** | `documents`: A list of [Documents](../../concepts/data-classes.mdx#document) to categorize |
+| **Output variables** | `unclassified`: A list of uncategorized [Documents](../../concepts/data-classes.mdx#document)  <br /> <br />`mime_types`: For example "text/plain", "application/pdf", "image/jpeg": List of categorized [Documents](../../concepts/data-classes.mdx#document) |
+| **API reference** | [Routers](/reference/routers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/document_type_router.py |
+
+</div>
+
+## Overview
+
+`DocumentTypeRouter` routes documents based on their MIME types, supporting both exact matches and regex patterns. It can determine MIME types from document metadata or infer them from file paths using standard Python `mimetypes` module and custom mappings.
+
+When initializing the component, specify the set of MIME types to route to separate outputs. Set the `mime_types` parameter to a list of types, for example: `["text/plain", "audio/x-wav", "image/jpeg"]`. Documents with MIME types that are not listed are routed to an output named "unclassified".
+
+The component requires at least one of the following parameters to determine MIME types:
+
+- `mime_type_meta_field`: Name of the metadata field containing the MIME type
+- `file_path_meta_field`: Name of the metadata field containing the file path (MIME type will be inferred from the file extension)
+
+## Usage
+
+### On its own
+
+Below is an example that uses the `DocumentTypeRouter` to categorize documents by their MIME types:
+
+```python
+from haystack.components.routers import DocumentTypeRouter
+from haystack.dataclasses import Document
+
+docs = [
+    Document(content="Example text", meta={"file_path": "example.txt"}),
+    Document(content="Another document", meta={"mime_type": "application/pdf"}),
+    Document(content="Unknown type")
+]
+
+router = DocumentTypeRouter(
+    mime_type_meta_field="mime_type",
+    file_path_meta_field="file_path",
+    mime_types=["text/plain", "application/pdf"]
+)
+
+result = router.run(documents=docs)
+print(result)
+```
+
+Expected output:
+
+```python
+{
+    "text/plain": [Document(...)],
+    "application/pdf": [Document(...)],
+    "unclassified": [Document(...)]
+}
+```
+
+### Using regex patterns
+
+You can use regex patterns to match multiple MIME types with similar patterns:
+
+```python
+from haystack.components.routers import DocumentTypeRouter
+from haystack.dataclasses import Document
+
+docs = [
+    Document(content="Plain text", meta={"mime_type": "text/plain"}),
+    Document(content="HTML text", meta={"mime_type": "text/html"}),
+    Document(content="Markdown text", meta={"mime_type": "text/markdown"}),
+    Document(content="JPEG image", meta={"mime_type": "image/jpeg"}),
+    Document(content="PNG image", meta={"mime_type": "image/png"}),
+    Document(content="PDF document", meta={"mime_type": "application/pdf"}),
+]
+
+router = DocumentTypeRouter(mime_type_meta_field="mime_type", mime_types=[r"text/.*", r"image/.*"])
+
+result = router.run(documents=docs)
+
+## Result will have:
+## - "text/.*": 3 documents (text/plain, text/html, text/markdown)
+## - "image/.*": 2 documents (image/jpeg, image/png)
+## - "unclassified": 1 document (application/pdf)
+```
+
+### Using custom MIME types
+
+You can add custom MIME type mappings for uncommon file types:
+
+```python
+from haystack.components.routers import DocumentTypeRouter
+from haystack.dataclasses import Document
+
+docs = [
+    Document(content="Word document", meta={"file_path": "document.docx"}),
+    Document(content="Markdown file", meta={"file_path": "readme.md"}),
+    Document(content="Outlook message", meta={"file_path": "email.msg"}),
+]
+
+router = DocumentTypeRouter(
+    file_path_meta_field="file_path",
+    mime_types=[
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/markdown",
+        "application/vnd.ms-outlook",
+    ],
+    additional_mimetypes={"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx"},
+)
+
+result = router.run(documents=docs)
+```
+
+### In a pipeline
+
+Below is an example of a pipeline that uses a `DocumentTypeRouter` to categorize documents by type and then process them differently. Text documents get processed by a `DocumentSplitter` before being stored, while PDF documents are stored directly.
+
+```python
+from haystack import Pipeline
+from haystack.components.routers import DocumentTypeRouter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.dataclasses import Document
+
+## Create document store
+document_store = InMemoryDocumentStore()
+
+## Create pipeline
+p = Pipeline()
+p.add_component(instance=DocumentTypeRouter(mime_types=["text/plain", "application/pdf"], mime_type_meta_field="mime_type"), name="document_type_router")
+p.add_component(instance=DocumentSplitter(), name="text_splitter")
+p.add_component(instance=DocumentWriter(document_store=document_store), name="text_writer")
+p.add_component(instance=DocumentWriter(document_store=document_store), name="pdf_writer")
+
+## Connect components
+p.connect("document_type_router.text/plain", "text_splitter.documents")
+p.connect("text_splitter.documents", "text_writer.documents")
+p.connect("document_type_router.application/pdf", "pdf_writer.documents")
+
+## Create test documents
+docs = [
+    Document(content="This is a text document that will be split and stored.", meta={"mime_type": "text/plain"}),
+    Document(content="This is a PDF document that will be stored directly.", meta={"mime_type": "application/pdf"}),
+    Document(content="This is an image document that will be unclassified.", meta={"mime_type": "image/jpeg"}),
+]
+
+## Run pipeline
+result = p.run({"document_type_router": {"documents": docs}})
+
+## The pipeline will route documents based on their MIME types:
+## - Text documents (text/plain) → DocumentSplitter → DocumentWriter
+## - PDF documents (application/pdf) → DocumentWriter (direct)
+## - Other documents → unclassified output
+```

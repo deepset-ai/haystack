@@ -60,7 +60,7 @@ jobs:
             --title "Bump unstable version" \
             --body "This PR bumps the unstable version for \`v2.x\`. \
           The release branch \`v${{ steps.versions.outputs.current_release_minor }}.x\` has been correctly created. \
-          Verify documentation on Readme has been correctly updated before approving and merging this PR." \
+          Approve and merge this PR." \
             --label "ignore-for-release-notes"
 
       - uses: actions/setup-python@v6
@@ -69,14 +69,6 @@ jobs:
 
       - name: Install create_unstable_docs.py dependencies
         run: pip install requests
-
-      # TODO: remove this once migration to Docusaurus is complete
-      # - name: Release Readme version
-      #   env:
-      #     RDME_API_KEY: ${{ secrets.README_API_KEY }}
-      #   run: |
-      #     git checkout main
-      #     python ./.github/utils/create_unstable_docs.py --new-version ${{ steps.versions.outputs.current_release_minor }}
 
       - name: Generate unstable docs for Docusaurus
         run: |

@@ -53,7 +53,7 @@ const config = {
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.21-unstable',
+              label: '2.22-unstable',
               path: 'next',
               banner: 'unreleased',
             },
@@ -62,6 +62,10 @@ const config = {
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
+        },
+        gtag: {
+          trackingID: 'G-XLR9NC5CBS',
+          anonymizeIP: true,
         },
       }),
     ],
@@ -93,7 +97,7 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.21-unstable',
+            label: '2.22-unstable',
             path: 'next',
             banner: 'unreleased',
           },
@@ -110,6 +114,17 @@ const config = {
     ],
     // Local plugin to teach Webpack how to handle `.txt` files like `llms.txt`
     require.resolve('./plugins/txtLoaderPlugin'),
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          {
+            from: '/docs',
+            to: '/docs/intro',
+          },
+        ],
+      },
+    ],
   ],
 
   themeConfig:

@@ -2,22 +2,22 @@
 title: "ChatMessage"
 id: chatmessage
 slug: "/chatmessage"
-description: "`ChatMessage` is the central abstraction to represent a message for a LLM. It contains role, metadata and several types of content, including text, images, tool calls and tool calls results."
+description: "`ChatMessage` is the central abstraction to represent a message for a LLM. It contains role, metadata and several types of content, including text, images, tool calls, tool call results, and reasoning content."
 ---
 
 # ChatMessage
 
-`ChatMessage` is the central abstraction to represent a message for a LLM. It contains role, metadata and several types of content, including text, images, tool calls and tool calls results.
+`ChatMessage` is the central abstraction to represent a message for a LLM. It contains role, metadata and several types of content, including text, images, tool calls, tool call results, and reasoning content.
 
 To create a `ChatMessage` instance, use `from_user`, `from_system`, `from_assistant`, and `from_tool` class methods.
 
-The [content](#types-of-content) of the `ChatMessage` can then be inspected using the `text`, `texts`, `image`, `images`, `tool_call`, `tool_calls`, `tool_call_result`, and `tool_call_results` properties.
+The [content](#types-of-content) of the `ChatMessage` can then be inspected using the `text`, `texts`, `image`, `images`, `tool_call`, `tool_calls`, `tool_call_result`, `tool_call_results`, `reasoning`, and `reasonings` properties.
 
 If you are looking for the details of this data class methods and parameters, head over to our [API documentation](/reference/data-classes-api#chatmessage).
 
 ## Types of Content
 
-`ChatMessage` currently supports `TextContent`, `ImageContent`, `ToolCall` and `ToolCallResult` types of content:
+`ChatMessage` currently supports `TextContent`, `ImageContent`, `ToolCall`, `ToolCallResult`, and `ReasoningContent` types of content:
 
 ```python
 @dataclass
@@ -38,11 +38,14 @@ class ToolCall:
     :param tool_name: The name of the Tool to call.
     :param arguments: The arguments to call the Tool with.
     :param id: The ID of the Tool call.
+    :param extra: Dictionary of extra information about the Tool call. Use to store provider-specific
+        information. To avoid serialization issues, values should be JSON serializable.
     """
 
     tool_name: str
     arguments: Dict[str, Any]
     id: Optional[str] = None  # noqa: A003
+    extra: Optional[Dict[str, Any]] = None
 
 @dataclass
 class ToolCallResult:
@@ -81,6 +84,19 @@ class ImageContent:
     detail: Optional[Literal["auto", "high", "low"]] = None
     meta: Dict[str, Any] = field(default_factory=dict)
     validation: bool = True
+
+@dataclass
+class ReasoningContent:
+    """
+    Represents the optional reasoning content prepared by the model, usually contained in an assistant message.
+
+    :param reasoning_text: The reasoning text produced by the model.
+    :param extra: Dictionary of extra information about the reasoning content. Use to store provider-specific
+        information. To avoid serialization issues, values should be JSON serializable.
+    """
+
+    reasoning_text: str
+    extra: Dict[str, Any] = field(default_factory=dict)
 
 ```
 
@@ -306,7 +322,8 @@ message = ChatMessage.from_user("Hello!")
   - `text` and `texts`
   - `image` and `images`
   - `tool_call` and `tool_calls`
-  - `tool_call_result` and `tool_calls_results`
+  - `tool_call_result` and `tool_call_results`
+  - `reasoning` and `reasonings`
 
 ```python
 from haystack.dataclasses import ChatMessage
