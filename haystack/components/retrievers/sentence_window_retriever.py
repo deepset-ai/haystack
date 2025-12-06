@@ -204,7 +204,7 @@ class SentenceWindowRetriever:
 
         """
         window_size = window_size or self.window_size
-        self._raise_if_windows_size_is_negative(window_size)
+        SentenceWindowRetriever._raise_if_windows_size_is_negative(window_size)
         self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
         context_text = []
@@ -237,7 +237,7 @@ class SentenceWindowRetriever:
 
         """
         window_size = window_size or self.window_size
-        self._raise_if_windows_size_is_negative(window_size)
+        SentenceWindowRetriever._raise_if_windows_size_is_negative(window_size)
         self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
         context_text = []
@@ -249,7 +249,8 @@ class SentenceWindowRetriever:
 
         return {"context_windows": context_text, "context_documents": context_documents}
 
-    def _raise_if_windows_size_is_negative(self, window_size: int) -> None:
+    @staticmethod
+    def _raise_if_windows_size_is_negative(window_size: int) -> None:
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
 
@@ -278,7 +279,7 @@ class SentenceWindowRetriever:
                 source_id=self._source_id_meta_fields,
                 split_id=self.split_id_meta_field,
             )
-            return (doc.content or "", [doc])
+            return doc.content or "", [doc]
 
         assert split_id is not None
         filter_conditions = self._build_filter_conditions(split_id, window_size, source_ids)
@@ -300,7 +301,7 @@ class SentenceWindowRetriever:
                 source_id=self._source_id_meta_fields,
                 split_id=self.split_id_meta_field,
             )
-            return (doc.content or "", [doc])
+            return doc.content or "", [doc]
 
         assert split_id is not None
         filter_conditions = self._build_filter_conditions(split_id, window_size, source_ids)

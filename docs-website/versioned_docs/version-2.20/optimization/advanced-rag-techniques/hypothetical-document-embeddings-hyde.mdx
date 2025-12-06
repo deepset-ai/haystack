@@ -53,7 +53,8 @@ prompt_builder = PromptBuilder(
 adapter = OutputAdapter(
     template="{{answers | build_doc}}",
     output_type=List[Document],
-    custom_filters={"build_doc": lambda data: [Document(content=d) for d in data]}
+    custom_filters={"build_doc": lambda data: [Document(content=d) for d in data]},
+    unsafe=True
 )
 
 embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
