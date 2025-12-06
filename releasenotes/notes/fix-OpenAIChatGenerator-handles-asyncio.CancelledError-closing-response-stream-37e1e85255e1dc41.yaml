@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The ``_handle_async_stream_response()`` method in ``OpenAIChatGenerator`` now handles ``asyncio.CancelledError`` exceptions. When a streaming task is cancelled mid-stream, the async for loop gracefully closes the stream using ``asyncio.shield()``to ensure the cleanup operation completes even during cancellation.
