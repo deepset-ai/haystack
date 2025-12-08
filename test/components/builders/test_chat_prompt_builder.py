@@ -957,3 +957,53 @@ Third line.
         assert builder.template == template
         assert builder.variables == ["name", "assistant_name"]
         assert builder.required_variables == ["name"]
+
+    def test_variables_correct_with_assignment(self):
+        template = """{% message role="user" %}
+{% if existing_documents is not none -%}
+{% set x = existing_documents|length -%}
+{% else -%}
+{% set x = 0 -%}
+{% endif -%}
+The number is {{ x }}!
+{% endmessage %}
+"""
+        builder = ChatPromptBuilder(template=template, required_variables="*")
+        assert builder.variables == ["existing_documents"]
+        assert builder.required_variables == "*"
+        res = builder.run(existing_documents=None)
+        assert res["prompt"][0].text == "The number is 0!"
+
+    def test_variables_correct_with_tuple_assignment(self):
+        template = """{% message role="user" %}
+{% if name is not none -%}
+{% set x, y = (0, 1) %}
+{% else -%}
+{% set x, y = (2, 3) %}
+{% endif -%}
+x={{ x }}, y={{ y }}
+Hello, my name is {{name}}!
+{% endmessage %}
+"""
+        builder = ChatPromptBuilder(template=template, required_variables="*")
+        assert builder.variables == ["name"]
+        assert builder.required_variables == "*"
+        res = builder.run(name="John")
+        assert res["prompt"][0].text == "x=0, y=1\nHello, my name is John!"
+
+    def test_variables_correct_with_list_assignment(self):
+        template = """{% message role="user" %}
+{% if name is not none -%}
+{% set x, y = [0, 1] %}
+{% else -%}
+{% set x, y = [2, 3] %}
+{% endif -%}
+x={{ x }}, y={{ y }}
+Hello, my name is {{name}}!
+{% endmessage %}
+"""
+        builder = ChatPromptBuilder(template=template, required_variables="*")
+        assert builder.variables == ["name"]
+        assert builder.required_variables == "*"
+        res = builder.run(name="John")
+        assert res["prompt"][0].text == "x=0, y=1\nHello, my name is John!"

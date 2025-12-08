@@ -1,0 +1,172 @@
+---
+title: "MistralOCRDocumentConverter"
+id: mistralocrdocumentconverter
+slug: "/mistralocrdocumentconverter"
+description: "`MistralOCRDocumentConverter` extracts text from documents using Mistral's OCR API, with optional structured annotations for both individual image regions and full documents. It supports various input formats including local files, URLs, and Mistral file IDs."
+---
+
+# MistralOCRDocumentConverter
+
+`MistralOCRDocumentConverter` extracts text from documents using Mistral's OCR API, with optional structured annotations for both individual image regions and full documents. It supports various input formats including local files, URLs, and Mistral file IDs.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx), or right at the beginning of an indexing pipeline |
+| **Mandatory init variables** | `api_key`: The Mistral API key. Can be set with `MISTRAL_API_KEY` environment variable. |
+| **Mandatory run variables** | `sources`: A list of document sources (file paths, ByteStreams, URLs, or Mistral chunks) |
+| **Output variables** | `documents`: A list of documents <br /> <br />`raw_mistral_response`: A list of raw OCR responses from Mistral API |
+| **API reference** | [Mistral](/reference/integrations-mistral) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mistral |
+
+</div>
+
+## Overview
+
+The `MistralOCRDocumentConverter` takes a list of document sources and uses Mistral's OCR API to extract text from images and PDFs. It supports multiple input formats:
+
+- **Local files**: File paths (str or Path) or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects
+- **Remote resources**: Document URLs, image URLs using Mistral's `DocumentURLChunk` and `ImageURLChunk`
+- **Mistral storage**: File IDs using Mistral's `FileChunk` for files previously uploaded to Mistral
+
+The component returns one Haystack [`Document`](../../concepts/data-classes.mdx#document) per source, with all pages concatenated using form feed characters (`\f`) as separators. This format ensures compatibility with Haystack's [`DocumentSplitter`](../preprocessors/documentsplitter.mdx) for accurate page-wise splitting and overlap handling. The content is returned in markdown format, with images represented as `![img-id](img-id)` tags.
+
+By default, the component uses the `MISTRAL_API_KEY` environment variable for authentication. You can also pass an `api_key` at initialization. Local files are automatically uploaded to Mistral's storage for processing and deleted afterward (configurable with `cleanup_uploaded_files`).
+
+When you initialize the component, you can optionally specify which pages to process, set limits on image extraction, configure minimum image sizes, or include base64-encoded images in the response. The default model is `"mistral-ocr-2505"`. See the [Mistral models documentation](https://docs.mistral.ai/getting-started/models/models_overview/) for available models.
+
+### Structured Annotations
+
+A unique feature of `MistralOCRDocumentConverter` is its support for structured annotations using Pydantic schemas:
+
+- **Bounding box annotations** (`bbox_annotation_schema`): Annotate individual image regions with structured data (for example, image type, description, summary). These annotations are inserted inline after the corresponding image tags in the markdown content.
+- **Document annotations** (`document_annotation_schema`): Annotate the full document with structured data (for example, language, chapter titles, URLs). These annotations are unpacked into the document's metadata with a `source_` prefix (for example, `source_language`, `source_chapter_titles`).
+
+When annotation schemas are provided, the OCR model first extracts text and structure, then a Vision LLM analyzes the content and generates structured annotations according to your defined Pydantic schemas. Note that document annotation is limited to a maximum of 8 pages. For more details, see the [Mistral documentation on annotations](https://docs.mistral.ai/capabilities/document_ai/annotations/).
+
+## Usage
+
+You need to install the `mistral-haystack` integration to use `MistralOCRDocumentConverter`:
+
+```shell
+pip install mistral-haystack
+```
+
+### On its own
+
+Basic usage with a local file:
+
+```python
+from pathlib import Path
+from haystack.utils import Secret
+from haystack_integrations.components.converters.mistral import MistralOCRDocumentConverter
+
+converter = MistralOCRDocumentConverter(
+    api_key=Secret.from_env_var("MISTRAL_API_KEY"),
+    model="mistral-ocr-2505"
+)
+
+result = converter.run(sources=[Path("my_document.pdf")])
+documents = result["documents"]
+```
+
+Processing multiple sources with different types:
+
+```python
+from pathlib import Path
+from haystack.utils import Secret
+from haystack_integrations.components.converters.mistral import MistralOCRDocumentConverter
+from mistralai.models import DocumentURLChunk, ImageURLChunk
+
+converter = MistralOCRDocumentConverter(
+    api_key=Secret.from_env_var("MISTRAL_API_KEY"),
+    model="mistral-ocr-2505"
+)
+
+sources = [
+    Path("local_document.pdf"),
+    DocumentURLChunk(document_url="https://example.com/document.pdf"),
+    ImageURLChunk(image_url="https://example.com/receipt.jpg"),
+]
+
+result = converter.run(sources=sources)
+documents = result["documents"]  # List of 3 Documents
+raw_responses = result["raw_mistral_response"]  # List of 3 raw responses
+```
+
+Using structured annotations:
+
+```python
+from pathlib import Path
+from typing import List
+from pydantic import BaseModel, Field
+from haystack.utils import Secret
+from haystack_integrations.components.converters.mistral import MistralOCRDocumentConverter
+from mistralai.models import DocumentURLChunk
+
+# Define schema for image region annotations
+class ImageAnnotation(BaseModel):
+    image_type: str = Field(..., description="The type of image content")
+    short_description: str = Field(..., description="Short natural-language description")
+    summary: str = Field(..., description="Detailed summary of the image content")
+
+# Define schema for document-level annotations
+class DocumentAnnotation(BaseModel):
+    language: str = Field(..., description="Primary language of the document")
+    chapter_titles: List[str] = Field(..., description="Detected chapter or section titles")
+    urls: List[str] = Field(..., description="URLs found in the text")
+
+converter = MistralOCRDocumentConverter(
+    api_key=Secret.from_env_var("MISTRAL_API_KEY"),
+    model="mistral-ocr-2505"
+)
+
+sources = [DocumentURLChunk(document_url="https://example.com/report.pdf")]
+result = converter.run(
+    sources=sources,
+    bbox_annotation_schema=ImageAnnotation,
+    document_annotation_schema=DocumentAnnotation,
+)
+
+documents = result["documents"]
+# Document metadata will include:
+# - source_language: extracted from DocumentAnnotation
+# - source_chapter_titles: extracted from DocumentAnnotation
+# - source_urls: extracted from DocumentAnnotation
+# Document content will include inline image annotations
+```
+
+### In a pipeline
+
+Here's an example of an indexing pipeline that processes PDFs with OCR and writes them to a Document Store:
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.utils import Secret
+from haystack_integrations.components.converters.mistral import MistralOCRDocumentConverter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "converter",
+    MistralOCRDocumentConverter(
+        api_key=Secret.from_env_var("MISTRAL_API_KEY"),
+        model="mistral-ocr-2505"
+    )
+)
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="page", split_length=1))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+file_paths = ["invoice.pdf", "receipt.jpg", "contract.pdf"]
+pipeline.run({"converter": {"sources": file_paths}})
+```

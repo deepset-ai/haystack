@@ -6,6 +6,7 @@ import copy
 from unittest import mock
 
 import pytest
+from jinja2.nativetypes import NativeEnvironment
 
 from haystack import Pipeline
 from haystack.components.routers import ConditionalRouter
@@ -636,3 +637,15 @@ class TestRouter:
         reloaded_router = ConditionalRouter.from_dict(router.to_dict())
         assert reloaded_router.custom_filters == router.custom_filters
         assert reloaded_router.routes == router.routes
+
+    def test_extract_variables_correct_with_assignment(self):
+        condition = """{%- if control == 'something' -%}
+{% set streams = 1 %}
+{%- else -%}
+{% set streams = 2 %}
+{%- endif -%}
+{{streams == 1}}
+"""
+        templates = [condition, "{{query}}"]
+        extracted_variables = ConditionalRouter._extract_variables(env=NativeEnvironment(), templates=templates)
+        assert extracted_variables == {"control", "query"}

@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    Updated the default Azure OpenAI model from ``gpt-4o-mini`` to ``gpt-4.1-mini`` and the default API version from ``2023-05-15`` to ``2024-12-01-preview`` for both ``AzureOpenAIGenerator`` and ``AzureOpenAIChatGenerator``.
