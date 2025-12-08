@@ -1,0 +1,35 @@
+---
+title: "Deployment"
+id: deployment
+slug: "/deployment"
+description: "Deploy your Haystack pipelines through various services such as Docker, Kubernetes, Ray, or a variety of Serverless options."
+---
+
+# Deployment
+
+Deploy your Haystack pipelines through various services such as Docker, Kubernetes, Ray, or a variety of Serverless options.
+
+As a framework, Haystack is typically integrated into a variety of applications and environments, and there is no single, specific deployment strategy to follow. However, it is very common to make Haystack pipelines accessible through a service that can be easily called from other software systems.
+
+These guides focus on tools and techniques that can be used to run Haystack pipelines in common scenarios. While these suggestions should not be considered the only way to do so, they should provide inspiration and the ability to customize them according to your needs.
+
+### Guides
+
+Here are the currently available guides on Haystack pipeline deployment:
+
+- [Deploying with Docker](deployment/docker.mdx)
+- [Deploying with Kubernetes](deployment/kubernetes.mdx)
+- [Deploying with OpenShift](deployment/openshift.mdx)
+
+### Hayhooks
+
+Haystack can be easily integrated into any HTTP application, but if you don’t have one, you can use Hayhooks, a ready-made application that serves Haystack pipelines as REST endpoints. We’ll be using Hayhooks throughout this guide to streamline the code examples. Refer to the Hayhooks [documentation](hayhooks.mdx) to get details about how to run the server and deploy your pipelines.
+
+:::note Looking to scale with confidence?
+
+If your team needs **enterprise-grade support, best practices, and deployment guidance** to run Haystack in production, check out **Haystack Enterprise**.
+
+📜 [Learn more about Haystack Enterprise](https://haystack.deepset.ai/blog/announcing-haystack-enterprise)
+
+👉 [Get in touch with our team](https://www.deepset.ai/products-and-services/haystack-enterprise)
+:::
