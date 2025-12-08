@@ -178,6 +178,7 @@ class TestHuggingFaceLocalChatGenerator:
             streaming_callback=None,
             chat_template="irrelevant",
             tools=tools,
+            enable_thinking=True,
         )
 
         # Call the to_dict method
@@ -191,6 +192,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert init_params["generation_kwargs"] == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}
         assert init_params["streaming_callback"] is None
         assert init_params["chat_template"] == "irrelevant"
+        assert init_params["enable_thinking"] is True
         assert init_params["tools"] == [
             {
                 "type": "haystack.tools.tool.Tool",
@@ -214,6 +216,7 @@ class TestHuggingFaceLocalChatGenerator:
             streaming_callback=None,
             chat_template="irrelevant",
             tools=tools,
+            enable_thinking=True,
         )
         # Call the to_dict method
         result = generator.to_dict()
@@ -224,6 +227,7 @@ class TestHuggingFaceLocalChatGenerator:
         assert generator_2.generation_kwargs == {"max_new_tokens": 512, "n": 5, "stop_sequences": ["stop", "words"]}
         assert generator_2.streaming_callback is None
         assert generator_2.chat_template == "irrelevant"
+        assert generator_2.enable_thinking is True
         assert len(generator_2.tools) == 1
         assert generator_2.tools[0].name == "weather"
         assert generator_2.tools[0].description == "useful to determine the weather in a given location"

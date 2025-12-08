@@ -141,6 +141,7 @@ class HuggingFaceLocalChatGenerator:
         tools: Optional[ToolsType] = None,
         tool_parsing_function: Optional[Callable[[str], Optional[list[ToolCall]]]] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
+        enable_thinking: bool = False,
     ) -> None:
         """
         Initializes the HuggingFaceLocalChatGenerator component.
@@ -186,6 +187,9 @@ class HuggingFaceLocalChatGenerator:
         :param async_executor:
             Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded executor will be
             initialized and used
+        :param enable_thinking:
+            Whether to enable thinking mode in the chat template. When enabled, the model can generate
+            intermediate reasoning steps before producing the final response. Defaults to False.
         """
         torch_and_transformers_import.check()
 
@@ -243,6 +247,7 @@ class HuggingFaceLocalChatGenerator:
         self.streaming_callback = streaming_callback
         self.pipeline: Optional[HfPipeline] = None
         self.tools = tools
+        self.enable_thinking = enable_thinking
 
         self._owns_executor = async_executor is None
         self.executor = (
@@ -308,6 +313,7 @@ class HuggingFaceLocalChatGenerator:
             chat_template=self.chat_template,
             tools=serialize_tools_or_toolset(self.tools),
             tool_parsing_function=serialize_callable(self.tool_parsing_function),
+            enable_thinking=self.enable_thinking,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -590,7 +596,7 @@ class HuggingFaceLocalChatGenerator:
             chat_template=self.chat_template,
             add_generation_prompt=True,
             tools=[tc.tool_spec for tc in flat_tools] if flat_tools else None,
-            enable_thinking=False,
+            enable_thinking=self.enable_thinking,
         )
         # prepared_prompt is a string since we set tokenize=False https://hf.co/docs/transformers/main/chat_templating
         assert isinstance(prepared_prompt, str)
