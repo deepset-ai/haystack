@@ -953,7 +953,7 @@ assert result["output"] == "Test content"
 def __init__(template: str,
              output_type: TypeAlias,
              custom_filters: Optional[dict[str, Callable]] = None,
-             unsafe: bool = False)
+             unsafe: bool = False) -> None
 ```
 
 Create an OutputAdapter component.
