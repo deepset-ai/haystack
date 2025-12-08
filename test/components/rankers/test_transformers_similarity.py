@@ -338,7 +338,10 @@ class TestSimilarityRanker:
 
     def test_returns_empty_list_if_no_documents_are_provided(self):
         sampler = TransformersSimilarityRanker()
+        # Mock all attributes that are set during warm_up
         sampler.model = MagicMock()
+        sampler.tokenizer = MagicMock()
+        sampler.device = MagicMock()
 
         output = sampler.run(query="City in Germany", documents=[])
         assert not output["documents"]
