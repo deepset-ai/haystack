@@ -1,0 +1,83 @@
+---
+title: "AzureOCRDocumentConverter"
+id: azureocrdocumentconverter
+slug: "/azureocrdocumentconverter"
+description: "`AzureOCRDocumentConverter` converts files to documents using Azure's Document Intelligence service. It supports the following file formats: PDF (both searchable and image-only), JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML."
+---
+
+# AzureOCRDocumentConverter
+
+`AzureOCRDocumentConverter` converts files to documents using Azure's Document Intelligence service. It supports the following file formats: PDF (both searchable and image-only), JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx) , or right at the beginning of an indexing pipeline |
+| **Mandatory init variables** | `endpoint`: The endpoint of your Azure resource  <br /> <br />`api_key`: The API key of your Azure resource. Can be set with `AZURE_AI_API_KEY` environment variable. |
+| **Mandatory run variables** | `sources`: A list of file paths |
+| **Output variables** | `documents`: A list of documents  <br /> <br />`raw_azure_response`: A list of raw responses from Azure |
+| **API reference** | [Converters](/reference/converters-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/azure.py |
+
+</div>
+
+## Overview
+
+`AzureOCRDocumentConverter` takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and uses Azure services to convert the files to a list of documents. Optionally, metadata can be attached to the documents through the `meta` input parameter. You need an active Azure account and a Document Intelligence or Cognitive Services resource to use this integration. Follow the steps described in the Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api) to set up your resource.
+
+The component uses an `AZURE_AI_API_KEY` environment variable by default. Otherwise, you can pass an `api_key` at initialization – see code examples below.
+
+When you initialize the component, you can optionally set the `model_id`, which refers to the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature) for a list of available models. The default model is `"prebuilt-read"`.
+
+The `AzureOCRDocumentConverter` doesn’t extract the tables from a file as plain text but generates separate `Document` objects of type `table` that maintain the two-dimensional structure of the tables.
+
+## Usage
+
+You need to install `azure-ai-formrecognizer` package to use the `AzureOCRDocumentConverter`:
+
+```shell
+pip install "azure-ai-formrecognizer>=3.2.0b2"
+```
+
+### On its own
+
+```python
+from pathlib import Path
+
+from haystack.components.converters import AzureOCRDocumentConverter
+from haystack.utils import Secret
+
+converter = AzureOCRDocumentConverter(
+    endpoint="azure_resource_url",
+    api_key=Secret.from_token("<your-api-key>")
+)
+
+converter.run(sources=[Path("my_file.pdf")])
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import AzureOCRDocumentConverter
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.utils import Secret
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", AzureOCRDocumentConverter(endpoint="azure_resource_url", api_key=Secret.from_token("<your-api-key>")))
+pipeline.add_component("cleaner", DocumentCleaner())
+pipeline.add_component("splitter", DocumentSplitter(split_by="sentence", split_length=5))
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "cleaner")
+pipeline.connect("cleaner", "splitter")
+pipeline.connect("splitter", "writer")
+
+file_names = ["my_file.pdf"]
+pipeline.run({"converter": {"sources": file_names}})
+```

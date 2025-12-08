@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import List
+from typing import Any, List
 
 import pytest
 
 from haystack import Pipeline, component
 from haystack.components.converters import OutputAdapter
 from haystack.components.converters.output_adapter import OutputAdaptationException
+from haystack.core.component.sockets import InputSocket
 from haystack.dataclasses import Document
 
 
@@ -203,3 +204,16 @@ class TestOutputAdapter:
         ]
         res = adapter.run(documents=documents)
         assert res["output"] == documents[0]
+
+    def test_variables_correct_with_assignment(self) -> None:
+        template = """{% if control == 'something' %}
+    {% set output = 1 %}
+{% else %}
+    {% set output = 3 %}
+{% endif %}
+{{ output }}
+"""
+        adapter = OutputAdapter(template=template, output_type=int)
+        assert adapter.__haystack_input__._sockets_dict == {"control": InputSocket(name="control", type=Any)}
+        res = adapter.run(control="something")
+        assert res["output"] == 1
