@@ -454,6 +454,7 @@ class TestHuggingFaceLocalGenerator:
         generator = HuggingFaceLocalGenerator(
             model="google/flan-t5-small", task="text2text-generation", stop_words=["unambiguously"]
         )
+        generator.warm_up()
         assert generator.stopping_criteria_list is not None
 
     @pytest.mark.integration
