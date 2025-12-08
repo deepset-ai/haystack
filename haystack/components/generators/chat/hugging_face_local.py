@@ -556,6 +556,9 @@ class HuggingFaceLocalChatGenerator:
         flat_tools = flatten_tools_or_toolsets(tools)
         _check_duplicate_tool_names(flat_tools)
 
+        # To make mypy happy even though this is set in warm_up()
+        assert self.pipeline is not None
+
         tokenizer = self.pipeline.tokenizer
         # initialized text-generation/text2text-generation pipelines always have a non-None tokenizer
         assert tokenizer is not None

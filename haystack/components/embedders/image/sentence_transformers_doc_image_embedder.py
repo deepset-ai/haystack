@@ -238,6 +238,8 @@ class SentenceTransformersDocumentImageEmbedder:
             )
         if self._embedding_backend is None:
             self.warm_up()
+        # To make mypy happy even though this is set in warm_up()
+        assert self._embedding_backend is not None
 
         images_source_info = _extract_image_sources_info(
             documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path

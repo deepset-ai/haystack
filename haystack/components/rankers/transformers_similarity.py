@@ -253,6 +253,10 @@ class TransformersSimilarityRanker:
         # If a model path is provided but the model isn't loaded
         if self.model is None:
             self.warm_up()
+        # To make mypy happy even though these are set in warm_up()
+        assert self.model is not None
+        assert self.tokenizer is not None
+        assert self.device is not None
 
         if not documents:
             return {"documents": []}

@@ -236,6 +236,8 @@ class SentenceTransformersSimilarityRanker:
         """
         if self._cross_encoder is None:
             self.warm_up()
+        # To make mypy happy even though this is set in warm_up()
+        assert self._cross_encoder is not None
 
         if not documents:
             return {"documents": []}

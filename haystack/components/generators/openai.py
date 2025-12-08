@@ -265,4 +265,7 @@ class OpenAIGenerator:
         for response in completions:
             _check_finish_reason(response.meta)
 
-        return {"replies": [message.text for message in completions], "meta": [message.meta for message in completions]}
+        return {
+            "replies": [message.text or "" for message in completions],
+            "meta": [message.meta for message in completions],
+        }

@@ -230,6 +230,8 @@ class SentenceTransformersTextEmbedder:
             )
         if self.embedding_backend is None:
             self.warm_up()
+        # To make mypy happy even though this is set in warm_up()
+        assert self.embedding_backend is not None
 
         text_to_embed = self.prefix + text + self.suffix
         embedding = self.embedding_backend.embed(

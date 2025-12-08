@@ -245,6 +245,8 @@ class SentenceTransformersDocumentEmbedder:
             )
         if self.embedding_backend is None:
             self.warm_up()
+        # To make mypy happy even though this is set in warm_up()
+        assert self.embedding_backend is not None
 
         texts_to_embed = []
         for doc in documents:

@@ -118,6 +118,7 @@ class DALLEImageGenerator:
         """
         if self.client is None:
             self.warm_up()
+        assert self.client is not None  # for mypy
 
         size = size or self.size
         quality = quality or self.quality

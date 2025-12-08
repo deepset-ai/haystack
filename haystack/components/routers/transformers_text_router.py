@@ -191,6 +191,8 @@ class TransformersTextRouter:
         """
         if self.pipeline is None:
             self.warm_up()
+        # To make mypy happy even though this is set in warm_up()
+        assert self.pipeline is not None
 
         if not isinstance(text, str):
             raise TypeError("TransformersTextRouter expects a str as input.")

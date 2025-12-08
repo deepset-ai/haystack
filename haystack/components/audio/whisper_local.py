@@ -171,6 +171,8 @@ class LocalWhisperTranscriber:
         """
         if self._model is None:
             self.warm_up()
+        # To make mypy happy even though this is set in warm_up()
+        assert self._model is not None
 
         return_segments = kwargs.pop("return_segments", False)
         transcriptions = {}
