@@ -36,6 +36,9 @@ A pipeline can have multiple branches that process data concurrently. For exampl
 ### Loops
 
 Components in a pipeline can work in iterative loops, which you can cap at a desired number. This can be handy for scenarios like self-correcting loops, where you have a generator producing some output and then a validator component to check if the output is correct. If the generator's output has errors, the validator component can loop back to the generator for a corrected output. The loop goes on until the output passes the validation and can be sent further down the pipeline.
+
+See [Pipeline Loops](pipelines/pipeline-loops.mdx) for a deeper explanation of how loops are executed, how they terminate, and how to use them safely.
+
 <ClickableImage src="/img/2390eea-Pipeline_Illustrations_1_2.png" alt="Pipeline architecture diagram illustrating a feedback loop where output from later components loops back to earlier components" size="large" />
 
 ### Async Pipelines

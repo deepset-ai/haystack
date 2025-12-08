@@ -63,6 +63,7 @@ export default {
             'concepts/pipelines/visualizing-pipelines',
             'concepts/pipelines/debugging-pipelines',
             'concepts/pipelines/pipeline-breakpoints',
+            'concepts/pipelines/pipeline-loops',
             'concepts/pipelines/pipeline-templates',
             'concepts/pipelines/asyncpipeline',
           ],
