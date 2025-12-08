@@ -222,7 +222,7 @@ extraction_agent.connect("fetcher.streams", "converter.sources")
 extraction_agent.connect("converter.documents", "builder.docs")
 extraction_agent.connect("builder", "database_agent")
 
-agent_output = extraction_agent.run({"fetcher":{"urls":["https://en.wikipedia.org/wiki/Deepset"]}})
+agent_output = extraction_agent.run({"fetcher":{"urls":["https://haystack.deepset.ai/release-notes/v2.20.0"]}})
 
 print(agent_output["database_agent"]["messages"][-1].text)
 ```
