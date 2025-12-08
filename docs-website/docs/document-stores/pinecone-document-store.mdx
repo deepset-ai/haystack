@@ -54,7 +54,7 @@ document_store = PineconeDocumentStore(
 )
 
 document_store.write_documents([
-    Document(content="This is first", embedding=[0.0]*5),
+    Document(content="This is first", embedding=[0.1]*5),
     Document(content="This is second", embedding=[0.1, 0.2, 0.3, 0.4, 0.5])
     ])
 print(document_store.count_documents())
