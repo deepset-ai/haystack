@@ -344,6 +344,7 @@ export default {
             'pipeline-components/extractors/llmdocumentcontentextractor',
             'pipeline-components/extractors/llmmetadataextractor',
             'pipeline-components/extractors/namedentityextractor',
+            'pipeline-components/extractors/regextextextractor',
           ],
         },
         {
