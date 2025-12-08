@@ -4,12 +4,11 @@
 
 from typing import Any, Literal, Optional, Union
 
-from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_to_dict, logging
 from haystack.utils import Jinja2TimeExtension
-from haystack.utils.jinja2_extensions import _collect_assigned_variables
+from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
 
@@ -177,9 +176,9 @@ class PromptBuilder:
         self.template = self._env.from_string(template)
 
         if not variables:
-            jinja2_ast = self._env.parse(template)
-            template_variables = meta.find_undeclared_variables(jinja2_ast)
-            assigned_variables = _collect_assigned_variables(jinja2_ast)
+            assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                env=self._env, template=template
+            )
             variables = list(template_variables - assigned_variables)
 
         variables = variables or []

@@ -6,13 +6,13 @@ import ast
 import contextlib
 from typing import Any, Callable, Mapping, Optional, Sequence, TypedDict, Union, get_args, get_origin
 
-from jinja2 import Environment, TemplateSyntaxError, meta
+from jinja2 import Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
-from haystack.utils.jinja2_extensions import _collect_assigned_variables
+from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
 
@@ -415,9 +415,9 @@ class ConditionalRouter:
         """
         variables = set()
         for template in templates:
-            jinja2_ast = env.parse(template)
-            template_variables = meta.find_undeclared_variables(jinja2_ast)
-            assigned_variables = _collect_assigned_variables(jinja2_ast)
+            assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                env=env, template=template
+            )
             variables.update(template_variables - assigned_variables)
         return variables
 

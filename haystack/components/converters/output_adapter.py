@@ -7,14 +7,14 @@ import contextlib
 from typing import Any, Callable, Optional
 
 import jinja2.runtime
-from jinja2 import Environment, TemplateSyntaxError, meta
+from jinja2 import TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
 from typing_extensions import TypeAlias
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
-from haystack.utils.jinja2_extensions import _collect_assigned_variables
+from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,10 @@ class OutputAdapter:
             self._env.filters[name] = filter_func
 
         # b) extract variables in the template
-        route_input_names = self._extract_variables(self._env)
+        assigned_variables, template_variables = _extract_template_variables_and_assignments(
+            env=self._env, template=self.template
+        )
+        route_input_names = template_variables - assigned_variables
         input_types.update(route_input_names)
 
         # the env is not needed, discarded automatically
@@ -174,15 +177,3 @@ class OutputAdapter:
                 for name, filter_func in custom_filters.items()
             }
         return default_from_dict(cls, data)
-
-    def _extract_variables(self, env: Environment) -> set[str]:
-        """
-        Extracts all variables from a list of Jinja template strings.
-
-        :param env: A Jinja environment.
-        :returns: A set of variable names extracted from the template strings.
-        """
-        jinja2_ast = env.parse(self.template)
-        template_variables = meta.find_undeclared_variables(jinja2_ast)
-        assigned_variables = _collect_assigned_variables(jinja2_ast)
-        return template_variables - assigned_variables

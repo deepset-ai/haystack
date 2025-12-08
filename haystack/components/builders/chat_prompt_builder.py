@@ -6,7 +6,6 @@ import json
 from copy import deepcopy
 from typing import Any, Literal, Optional, Union
 
-from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -14,7 +13,7 @@ from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
-from haystack.utils.jinja2_extensions import _collect_assigned_variables
+from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
 
@@ -180,14 +179,14 @@ class ChatPromptBuilder:
                             raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
                         if message.text and "templatize_part" in message.text:
                             raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
-                        jinja2_ast = self._env.parse(message.text)
-                        template_variables = meta.find_undeclared_variables(jinja2_ast)
-                        assigned_variables = _collect_assigned_variables(jinja2_ast)
+                        assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                            env=self._env, template=message.text
+                        )
                         extracted_variables += list(template_variables - assigned_variables)
             elif isinstance(template, str):
-                jinja2_ast = self._env.parse(template)
-                template_variables = meta.find_undeclared_variables(jinja2_ast)
-                assigned_variables = _collect_assigned_variables(jinja2_ast)
+                assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                    env=self._env, template=template
+                )
                 extracted_variables = list(template_variables - assigned_variables)
 
         extracted_variables = extracted_variables or []
