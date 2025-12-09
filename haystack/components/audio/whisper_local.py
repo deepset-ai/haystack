@@ -156,6 +156,19 @@ class LocalWhisperTranscriber:
             documents.append(doc)
         return documents
 
+    def _get_path(self, source: Union[str, Path, ByteStream]) -> Path:
+        if isinstance(source, (Path, str)):
+            return Path(source)
+
+        potential_path = source.meta.get("file_path")
+        if potential_path is not None:
+            return Path(potential_path)
+        else:
+            with tempfile.NamedTemporaryFile(delete=False) as fp:
+                path = Path(fp.name)
+                source.to_file(path)
+            return path
+
     def _raw_transcribe(self, sources: list[Union[str, Path, ByteStream]], **kwargs) -> dict[Path, Any]:
         """
         Transcribes the given audio files. Returns the output of the model, a dictionary, for each input file.
@@ -171,21 +184,15 @@ class LocalWhisperTranscriber:
         """
         if self._model is None:
             self.warm_up()
-        # To make mypy happy even though this is set in warm_up()
-        assert self._model is not None
 
         return_segments = kwargs.pop("return_segments", False)
         transcriptions = {}
 
         for source in sources:
-            path = Path(source) if not isinstance(source, ByteStream) else source.meta.get("file_path")
+            path = self._get_path(source)
 
-            if isinstance(source, ByteStream) and path is None:
-                with tempfile.NamedTemporaryFile(delete=False) as fp:
-                    path = Path(fp.name)
-                    source.to_file(path)
-
-            transcription = self._model.transcribe(str(path), **kwargs)
+            # mypy doesn't know this is set in warm_up
+            transcription = self._model.transcribe(str(path), **kwargs)  # type: ignore[attr-defined]
 
             if not return_segments:
                 transcription.pop("segments", None)

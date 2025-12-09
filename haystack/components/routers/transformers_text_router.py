@@ -191,12 +191,13 @@ class TransformersTextRouter:
         """
         if self.pipeline is None:
             self.warm_up()
-        # To make mypy happy even though this is set in warm_up()
-        assert self.pipeline is not None
 
         if not isinstance(text, str):
             raise TypeError("TransformersTextRouter expects a str as input.")
 
-        prediction = self.pipeline([text], return_all_scores=False, function_to_apply="none")
+        # mypy doesn't know this is set in warm_up
+        prediction = self.pipeline(  # type: ignore[misc]
+            [text], return_all_scores=False, function_to_apply="none"
+        )
         label = prediction[0]["label"]
         return {label: text}

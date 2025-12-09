@@ -556,12 +556,8 @@ class HuggingFaceLocalChatGenerator:
         flat_tools = flatten_tools_or_toolsets(tools)
         _check_duplicate_tool_names(flat_tools)
 
-        # To make mypy happy even though this is set in warm_up()
-        assert self.pipeline is not None
-
-        tokenizer = self.pipeline.tokenizer
-        # initialized text-generation/text2text-generation pipelines always have a non-None tokenizer
-        assert tokenizer is not None
+        # mypy doesn't know this is set in warm_up
+        tokenizer = self.pipeline.tokenizer  # type: ignore[union-attr]
 
         # Check and update generation parameters
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
@@ -582,14 +578,23 @@ class HuggingFaceLocalChatGenerator:
         stop_words = self._validate_stop_words(stop_words)
 
         # Set up stop words criteria if stop words exist
-        stop_words_criteria = StopWordsCriteria(tokenizer, stop_words, self.pipeline.device) if stop_words else None
+        stop_words_criteria = (
+            StopWordsCriteria(
+                tokenizer,  # type: ignore[arg-type]
+                stop_words,
+                self.pipeline.device,  # type: ignore[union-attr]
+            )
+            if stop_words
+            else None
+        )
         if stop_words_criteria:
             generation_kwargs["stopping_criteria"] = StoppingCriteriaList([stop_words_criteria])
 
         # convert messages to HF format
         hf_messages = [convert_message_to_hf_format(message) for message in messages]
 
-        prepared_prompt = tokenizer.apply_chat_template(
+        # mypy doesn't know tokenizer is set in warm_up
+        prepared_prompt = tokenizer.apply_chat_template(  # type: ignore[union-attr]
             hf_messages,
             tokenize=False,
             chat_template=self.chat_template,
@@ -600,8 +605,9 @@ class HuggingFaceLocalChatGenerator:
         assert isinstance(prepared_prompt, str)
 
         # Avoid some unnecessary warnings in the generation pipeline call
+        # mypy doesn't know tokenizer is set in warm_up
         generation_kwargs["pad_token_id"] = (
-            generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
+            generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id  # type: ignore[union-attr]
         )
 
         return {

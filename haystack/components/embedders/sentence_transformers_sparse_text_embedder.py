@@ -193,11 +193,10 @@ class SentenceTransformersSparseTextEmbedder:
             )
         if self.embedding_backend is None:
             self.warm_up()
-        # To make mypy happy even though this is set in warm_up()
-        assert self.embedding_backend is not None
 
         text_to_embed = self.prefix + text + self.suffix
 
-        sparse_embedding = self.embedding_backend.embed(data=[text_to_embed])[0]
+        # mypy doesn't know this is set in warm_up
+        sparse_embedding = self.embedding_backend.embed(data=[text_to_embed])[0]  # type: ignore[union-attr]
 
         return {"sparse_embedding": sparse_embedding}

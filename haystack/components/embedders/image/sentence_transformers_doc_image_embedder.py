@@ -238,8 +238,6 @@ class SentenceTransformersDocumentImageEmbedder:
             )
         if self._embedding_backend is None:
             self.warm_up()
-        # To make mypy happy even though this is set in warm_up()
-        assert self._embedding_backend is not None
 
         images_source_info = _extract_image_sources_info(
             documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
@@ -272,7 +270,8 @@ class SentenceTransformersDocumentImageEmbedder:
         if none_images_doc_ids:
             raise RuntimeError(f"Conversion failed for some documents. Document IDs: {none_images_doc_ids}.")
 
-        embeddings = self._embedding_backend.embed(
+        # mypy doesn't know this is set in warm_up
+        embeddings = self._embedding_backend.embed(  # type: ignore[union-attr]
             data=images_to_embed,
             batch_size=self.batch_size,
             show_progress_bar=self.progress_bar,

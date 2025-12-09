@@ -202,13 +202,14 @@ class TransformersZeroShotTextRouter:
         """
         if self.pipeline is None:
             self.warm_up()
-        # To make mypy happy even though this is set in warm_up()
-        assert self.pipeline is not None
 
         if not isinstance(text, str):
             raise TypeError("TransformersZeroShotTextRouter expects a str as input.")
 
-        prediction = self.pipeline([text], candidate_labels=self.labels, multi_label=self.multi_label)
+        # mypy doesn't know this is set in warm_up
+        prediction = self.pipeline(  # type: ignore[misc]
+            [text], candidate_labels=self.labels, multi_label=self.multi_label
+        )
         predicted_scores = prediction[0]["scores"]
         max_score_index = max(range(len(predicted_scores)), key=predicted_scores.__getitem__)
         label = prediction[0]["labels"][max_score_index]

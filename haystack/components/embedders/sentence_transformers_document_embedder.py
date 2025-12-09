@@ -245,8 +245,6 @@ class SentenceTransformersDocumentEmbedder:
             )
         if self.embedding_backend is None:
             self.warm_up()
-        # To make mypy happy even though this is set in warm_up()
-        assert self.embedding_backend is not None
 
         texts_to_embed = []
         for doc in documents:
@@ -258,7 +256,8 @@ class SentenceTransformersDocumentEmbedder:
             )
             texts_to_embed.append(text_to_embed)
 
-        embeddings = self.embedding_backend.embed(
+        # # mypy doesn't know this is set in warm_up
+        embeddings = self.embedding_backend.embed(  # type: ignore[union-attr]
             texts_to_embed,
             batch_size=self.batch_size,
             show_progress_bar=self.progress_bar,
