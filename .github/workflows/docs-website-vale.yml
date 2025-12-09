@@ -33,9 +33,7 @@ jobs:
         uses: errata-ai/vale-action@v2
         with:
           vale_flags: "--config=docs-website/.vale.ini"
-          files: |
-            docs-website/docs
-            docs-website/versioned_docs
+          files: docs-website/docs
           reporter: github-pr-review
           fail_on_error: false
         env:
