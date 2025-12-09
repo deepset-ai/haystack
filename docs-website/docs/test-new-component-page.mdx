@@ -1,0 +1,100 @@
+---
+title: "ExampleRetriever"
+id: exampleretriever
+slug: "/exampleretriever"
+description: "A retriever component for fetching documents from an example document store."
+---
+
+# ExampleRetriever
+
+A retriever component that allows you to fetch relevant documents from an ExampleDocumentStore.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a query embedder, before a reader or generator |
+| **Mandatory init variables** | `document_store`: An instance of `ExampleDocumentStore` |
+| **Mandatory run variables** | `query_embedding`: A list of floats representing the query vector |
+| **Output variables** | `documents`: A list of relevant [`Document`](../../concepts/data-classes/document.mdx) objects |
+| **API reference** | [Retrievers](/reference/retrievers-api) |
+
+</div>
+
+## Overview
+
+The `ExampleRetriever` enables you to perform semantic search over documents stored in an ExampleDocumentStore. The user can configure various parameters to customize the retrieval behavior, e.g. the number of documents to return.
+
+This component utilizes vector similarity to find relevant documents. It supports the following distance metrics:
+
+- Cosine similarity
+- Dot product
+- Euclidean distance
+
+Please note that the retriever requires documents to be indexed with embeddings before retrieval can work.
+
+## Usage
+
+### On its own
+
+To use the retriever, the user needs to first initialize an ExampleDocumentStore and index some documents:
+
+```python
+from haystack import Document
+from haystack.document_stores import ExampleDocumentStore
+from haystack.components.retrievers import ExampleRetriever
+
+# Initialize the document store
+document_store = ExampleDocumentStore()
+
+# Index some documents
+documents = [
+    Document(content="haystack is an open-source framework for building AI applications."),
+    Document(content="You can build question-answering systems with Haystack."),
+]
+document_store.write_documents(documents)
+
+# Initialize the retriever
+retriever = ExampleRetriever(document_store=document_store, top_k=3)
+
+# Run retrieval (assuming you have a query embedding)
+result = retriever.run(query_embedding=[0.1, 0.2, 0.3])
+print(result["documents"])
+```
+
+### In a Pipeline
+
+The retriever is typically used in a RAG pipeline after an embedder:
+
+```python
+from haystack import Pipeline
+from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack.components.retrievers import ExampleRetriever
+from haystack.document_stores import ExampleDocumentStore
+
+document_store = ExampleDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("embedder", SentenceTransformersTextEmbedder())
+pipeline.add_component("retriever", ExampleRetriever(document_store=document_store))
+pipeline.connect("embedder.embedding", "retriever.query_embedding")
+
+result = pipeline.run({"embedder": {"text": "What is Haystack?"}})
+```
+
+## Configuration
+
+The retriever accepts the following initialization parameters:
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `document_store` | `ExampleDocumentStore` | Required | The document store to retrieve from |
+| `top_k` | `int` | `10` | Number of documents to return |
+| `filters` | `dict` | `None` | Filters to apply during retrieval |
+
+You can export the configuration to a json file for later use.
+
+## Related Links
+
+- [ExampleDocumentStore documentation](../document-stores/exampledocumentstore.mdx)
+- [Building a RAG Pipeline](../../tutorials/rag-pipeline.mdx)
