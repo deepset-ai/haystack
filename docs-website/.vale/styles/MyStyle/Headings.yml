@@ -1,5 +1,5 @@
 extends: capitalization
-message: "Headings and titles should use title case (e.g., 'Create a Workspace in deepset Cloud')."
+message: "Headings and titles should use title case."
 level: warning
 scope: heading
 style: AP

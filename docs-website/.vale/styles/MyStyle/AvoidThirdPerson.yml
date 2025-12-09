@@ -1,5 +1,5 @@
 extends: existence
-message: "Prefer second person (e.g., 'you') instead of '%s'."
+message: "Prefer second person ('you') instead of '%s'."
 level: warning
 nonword: true
 scope: text
