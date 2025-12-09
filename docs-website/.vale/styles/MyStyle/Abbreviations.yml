@@ -1,0 +1,9 @@
+extends: substitution
+message: "Avoid abbreviation '%s'. Use '%s' instead."
+level: warning
+ignorecase: true
+action:
+  name: replace
+swap:
+  '\bmisc\b': miscellaneous
+  '\bdoc\b': document
