@@ -1,5 +1,5 @@
 extends: substitution
-message: "Avoid abbreviation '%s'. Use '%s' instead."
+message: "Use '%s' instead of the abbreviation '%s'."
 level: warning
 ignorecase: true
 action:
