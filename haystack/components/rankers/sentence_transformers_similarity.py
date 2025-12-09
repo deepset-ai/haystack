@@ -236,8 +236,6 @@ class SentenceTransformersSimilarityRanker:
         """
         if self._cross_encoder is None:
             self.warm_up()
-        # To make mypy happy even though this is set in warm_up()
-        assert self._cross_encoder is not None
 
         if not documents:
             return {"documents": []}
@@ -261,7 +259,8 @@ class SentenceTransformersSimilarityRanker:
 
         activation_fn = Sigmoid() if scale_score else Identity()
 
-        ranking_result = self._cross_encoder.rank(
+        # mypy doesn't know this is set in warm_up
+        ranking_result = self._cross_encoder.rank(  # type: ignore[attr-defined]
             query=prepared_query,
             documents=prepared_documents,
             batch_size=self.batch_size,

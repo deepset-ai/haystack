@@ -123,7 +123,7 @@ class TransformersSimilarityRanker:
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.tokenizer = None
-        self.device = None
+        self.device: Optional[ComponentDevice] = None
         self.top_k = top_k
         self.token = token
         self.meta_fields_to_embed = meta_fields_to_embed or []
@@ -165,8 +165,10 @@ class TransformersSimilarityRanker:
                 token=self.token.resolve_value() if self.token else None,
                 **self.tokenizer_kwargs,
             )
-            assert self.model is not None
-            self.device = ComponentDevice.from_multiple(device_map=DeviceMap.from_hf(self.model.hf_device_map))
+            # mypy doesn't know this is set right above
+            self.device = ComponentDevice.from_multiple(
+                device_map=DeviceMap.from_hf(self.model.hf_device_map)  # type: ignore[attr-defined]
+            )
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -253,10 +255,6 @@ class TransformersSimilarityRanker:
         # If a model path is provided but the model isn't loaded
         if self.model is None:
             self.warm_up()
-        # To make mypy happy even though these are set in warm_up()
-        assert self.model is not None
-        assert self.tokenizer is not None
-        assert self.device is not None
 
         if not documents:
             return {"documents": []}
@@ -292,30 +290,33 @@ class TransformersSimilarityRanker:
             def __getitem__(self, item):
                 return {key: self.batch_encoding.data[key][item] for key in self.batch_encoding.data.keys()}
 
-        batch_enc = self.tokenizer(query_doc_pairs, padding=True, truncation=True, return_tensors="pt").to(
-            self.device.first_device.to_torch()
+        # mypy doesn't know this is set in warm_up
+        batch_enc = self.tokenizer(  # type: ignore[misc]
+            query_doc_pairs, padding=True, truncation=True, return_tensors="pt"
+        ).to(
+            self.device.first_device.to_torch()  # type: ignore[union-attr]
         )
         dataset = _Dataset(batch_enc)
         inp_dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False)
 
-        similarity_scores = []
+        list_similarity_scores = []
         with torch.inference_mode():
             for features in inp_dataloader:
-                model_preds = self.model(**features).logits.squeeze(dim=1)
-                similarity_scores.extend(model_preds)
-        similarity_scores = torch.stack(similarity_scores)
+                model_preds = self.model(**features).logits.squeeze(dim=1)  # type: ignore[misc]
+                list_similarity_scores.extend(model_preds)
+        similarity_scores = torch.stack(list_similarity_scores)
 
-        if scale_score:
+        if scale_score and calibration_factor is not None:
             similarity_scores = torch.sigmoid(similarity_scores * calibration_factor)
 
         _, sorted_indices = torch.sort(similarity_scores, descending=True)
 
-        sorted_indices = sorted_indices.cpu().tolist()
-        similarity_scores = similarity_scores.cpu().tolist()
+        list_sorted_indices = sorted_indices.cpu().tolist()
+        list_similarity_scores = similarity_scores.cpu().tolist()
         ranked_docs = []
-        for sorted_index in sorted_indices:
+        for sorted_index in list_sorted_indices:
             i = sorted_index
-            documents[i].score = similarity_scores[i]
+            documents[i].score = list_similarity_scores[i]
             ranked_docs.append(documents[i])
 
         if score_threshold is not None:
