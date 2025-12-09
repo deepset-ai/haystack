@@ -34,7 +34,11 @@ Components should take only "basic" Python types as parameters of their `__init_
 dictionaries containing only such values. Anything else (objects, functions, etc) will raise an exception at init
 time. If there's the need for such values, consider serializing them to a string.
 
-_(TODO explain how to use classes and functions in init. In the meantime see `test/components/test_accumulate.py`)_
+If you need to accept classes or callables, accept either a string import path or the callable itself. Resolve strings
+to objects in `__init__`, and serialize objects back to importable strings in `to_dict()` so that `from_dict()` can load
+them (for example, store `"module_path.symbol_name"` and load it via `importlib`). This keeps init parameters JSON
+serializable for pipeline save/load. See `haystack.testing.sample_components.accumulate.Accumulate` for a reference
+implementation.
 
 The `__init__` must be extremely lightweight, because it's a frequent operation during the construction and
 validation of the pipeline. If a component has some heavy state to initialize (models, backends, etc...) refer to
