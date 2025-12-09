@@ -41,6 +41,15 @@ If you have any questions, please reach out to us on the [GitHub Discussion](htt
 
 In the example below, we show how to set an API key using a Haystack [Secret](../concepts/secret-management.mdx). However, for easier use, you can also set an OpenAI key as an `OPENAI_API_KEY` environment variable.
 
+:::note
+**Using OpenAIChatGenerator requires an OpenAI API key with sufficient quota.**  
+New users on the free tier may immediately encounter a `429` ("insufficient_quota") error when running
+the example below.
+
+If you do not have enough OpenAI credits, you may skip this example or use an alternative Generator such as
+`HuggingFaceAPIChatGenerator`.
+:::
+
 ```python
 # import necessary dependencies
 from haystack import Pipeline, Document
