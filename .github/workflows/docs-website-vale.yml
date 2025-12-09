@@ -32,7 +32,7 @@ jobs:
       - name: Vale
         uses: errata-ai/vale-action@v2
         with:
-          config: docs-website/.vale.ini
+          vale_flags: "--config=docs-website/.vale.ini"
           files: |
             docs-website/docs
             docs-website/versioned_docs
