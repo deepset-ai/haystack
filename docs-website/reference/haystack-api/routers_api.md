@@ -1058,7 +1058,6 @@ Routes the text strings to different connections based on a category label.
 **Raises**:
 
 - `TypeError`: If the input is not a str.
-- `RuntimeError`: If the pipeline has not been loaded because warm_up() was not called before.
 
 **Returns**:
 
@@ -1233,7 +1232,6 @@ Routes the text strings to different connections based on a category label.
 **Raises**:
 
 - `TypeError`: If the input is not a str.
-- `RuntimeError`: If the pipeline has not been loaded because warm_up() was not called before.
 
 **Returns**:
 
