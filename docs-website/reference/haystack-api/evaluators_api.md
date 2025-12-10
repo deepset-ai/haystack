@@ -222,6 +222,16 @@ Deserialize this component from a dictionary.
 
 The deserialized component instance.
 
+<a id="context_relevance.ContextRelevanceEvaluator.warm_up"></a>
+
+#### ContextRelevanceEvaluator.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the component by warming up the underlying chat generator.
+
 <a id="context_relevance.ContextRelevanceEvaluator.validate_init_parameters"></a>
 
 #### ContextRelevanceEvaluator.validate\_init\_parameters
@@ -819,6 +829,16 @@ Deserialize this component from a dictionary.
 
 The deserialized component instance.
 
+<a id="faithfulness.FaithfulnessEvaluator.warm_up"></a>
+
+#### FaithfulnessEvaluator.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the component by warming up the underlying chat generator.
+
 <a id="faithfulness.FaithfulnessEvaluator.validate_init_parameters"></a>
 
 #### FaithfulnessEvaluator.validate\_init\_parameters
@@ -994,6 +1014,16 @@ They contain the input and output as dictionaries respectively.
 In order for the component to work, the LLM should be configured to return a JSON object. For example,
 when using the OpenAIChatGenerator, you should pass `{"response_format": {"type": "json_object"}}` in the
 `generation_kwargs`.
+
+<a id="llm_evaluator.LLMEvaluator.warm_up"></a>
+
+#### LLMEvaluator.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the component by warming up the underlying chat generator.
 
 <a id="llm_evaluator.LLMEvaluator.validate_init_parameters"></a>
 

@@ -367,6 +367,9 @@ class HuggingFaceLocalChatGenerator:
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
+        if self.pipeline is None:
+            self.warm_up()
+
         prepared_inputs = self._prepare_inputs(
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools
         )
@@ -481,6 +484,9 @@ class HuggingFaceLocalChatGenerator:
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
+        if self.pipeline is None:
+            self.warm_up()
+
         prepared_inputs = self._prepare_inputs(
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools
         )
@@ -548,21 +554,16 @@ class HuggingFaceLocalChatGenerator:
         :param streaming_callback: An optional callable for handling streaming responses.
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :returns: A dictionary containing the prepared prompt, tokenizer, generation kwargs, and tools.
-        :raises RuntimeError: If the generation model has not been loaded.
         :raises ValueError: If both tools and streaming_callback are provided.
         """
-        if self.pipeline is None:
-            raise RuntimeError("The generation model has not been loaded. Please call warm_up() before running.")
-
         tools = tools or self.tools
         if tools and streaming_callback is not None:
             raise ValueError("Using tools and streaming at the same time is not supported. Please choose one.")
         flat_tools = flatten_tools_or_toolsets(tools)
         _check_duplicate_tool_names(flat_tools)
 
-        tokenizer = self.pipeline.tokenizer
-        # initialized text-generation/text2text-generation pipelines always have a non-None tokenizer
-        assert tokenizer is not None
+        # mypy doesn't know this is set in warm_up
+        tokenizer = self.pipeline.tokenizer  # type: ignore[union-attr]
 
         # Check and update generation parameters
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
@@ -583,14 +584,23 @@ class HuggingFaceLocalChatGenerator:
         stop_words = self._validate_stop_words(stop_words)
 
         # Set up stop words criteria if stop words exist
-        stop_words_criteria = StopWordsCriteria(tokenizer, stop_words, self.pipeline.device) if stop_words else None
+        stop_words_criteria = (
+            StopWordsCriteria(
+                tokenizer,  # type: ignore[arg-type]
+                stop_words,
+                self.pipeline.device,  # type: ignore[union-attr]
+            )
+            if stop_words
+            else None
+        )
         if stop_words_criteria:
             generation_kwargs["stopping_criteria"] = StoppingCriteriaList([stop_words_criteria])
 
         # convert messages to HF format
         hf_messages = [convert_message_to_hf_format(message) for message in messages]
 
-        prepared_prompt = tokenizer.apply_chat_template(
+        # mypy doesn't know tokenizer is set in warm_up
+        prepared_prompt = tokenizer.apply_chat_template(  # type: ignore[union-attr]
             hf_messages,
             tokenize=False,
             chat_template=self.chat_template,
@@ -602,8 +612,9 @@ class HuggingFaceLocalChatGenerator:
         assert isinstance(prepared_prompt, str)
 
         # Avoid some unnecessary warnings in the generation pipeline call
+        # mypy doesn't know tokenizer is set in warm_up
         generation_kwargs["pad_token_id"] = (
-            generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id
+            generation_kwargs.get("pad_token_id", tokenizer.pad_token_id) or tokenizer.eos_token_id  # type: ignore[union-attr]
         )
 
         return {

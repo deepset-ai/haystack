@@ -210,7 +210,6 @@ The keys must match the schema defined in the Agent's `state_schema`.
 
 **Raises**:
 
-- `RuntimeError`: If the Agent component wasn't warmed up before calling `run()`.
 - `BreakpointException`: If an agent breakpoint is triggered.
 
 **Returns**:
@@ -260,7 +259,6 @@ The keys must match the schema defined in the Agent's `state_schema`.
 
 **Raises**:
 
-- `RuntimeError`: If the Agent component wasn't warmed up before calling `run_async()`.
 - `BreakpointException`: If an agent breakpoint is triggered.
 
 **Returns**:

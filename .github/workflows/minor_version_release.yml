@@ -89,3 +89,4 @@ jobs:
             This PR creates the unstable docs for Haystack ${{ steps.versions.outputs.current_release_minor }}.
             It is expected to run during the branch-off process.
             You can inspect the docs preview (two unstable versions will be available) and merge it.
+          reviewers: "${{ github.actor }}"
