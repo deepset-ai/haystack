@@ -225,7 +225,8 @@ class ExtractiveReader:
             document_ids.append(i)
             document_contents.append(doc.content)
 
-        encodings_pt = self.tokenizer(  # type: ignore
+        # mypy doesn't know this is set in warm_up
+        encodings_pt = self.tokenizer(  # type: ignore[misc]
             queries,
             document_contents,
             padding=True,
@@ -236,12 +237,9 @@ class ExtractiveReader:
             stride=stride,
         )
 
-        # To make mypy happy even though self.device is set in warm_up()
-        assert self.device is not None
-        assert self.device.first_device is not None
-
         # Take the first device used by `accelerate`. Needed to pass inputs from the tokenizer to the correct device.
-        first_device = self.device.first_device.to_torch()
+        # mypy doesn't know this is set in warm_up
+        first_device = self.device.first_device.to_torch()  # type: ignore[union-attr]
 
         input_ids = encodings_pt.input_ids.to(first_device)
         attention_mask = encodings_pt.attention_mask.to(first_device)
@@ -575,14 +573,9 @@ class ExtractiveReader:
             If None is provided then all answers are kept.
         :returns:
             List of answers sorted by (desc.) answer score.
-
-        :raises RuntimeError:
-            If the component was not warmed up by calling 'warm_up()' before.
         """
         if self.model is None:
-            raise RuntimeError(
-                "The component ExtractiveReader was not warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not documents:
             return {"answers": []}
@@ -622,7 +615,8 @@ class ExtractiveReader:
             cur_attention_mask = attention_mask[start_index:end_index]
 
             with torch.inference_mode():
-                output = self.model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)
+                # mypy doesn't know this is set in warm_up
+                output = self.model(input_ids=cur_input_ids, attention_mask=cur_attention_mask)  # type: ignore[misc]
             cur_start_logits = output.start_logits
             cur_end_logits = output.end_logits
             if num_batches != 1:

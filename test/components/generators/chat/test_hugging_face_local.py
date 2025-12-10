@@ -493,7 +493,6 @@ class TestHuggingFaceLocalChatGenerator:
         llm = HuggingFaceLocalChatGenerator(
             model="Qwen/Qwen2.5-0.5B-Instruct", generation_kwargs={"max_new_tokens": 50}
         )
-        llm.warm_up()
 
         result = llm.run(messages)
 
@@ -679,10 +678,6 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         """Test error handling in async context"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model")
 
-        # Test without warm_up
-        with pytest.raises(RuntimeError, match="The generation model has not been loaded"):
-            await generator.run_async(messages=[ChatMessage.from_user("test")])
-
         # Test with invalid streaming callback
         generator.pipeline = mock_pipeline_with_tokenizer
         with pytest.raises(ValueError, match="Using tools and streaming at the same time is not supported"):
@@ -809,7 +804,6 @@ class TestHuggingFaceLocalChatGeneratorAsync:
             generation_kwargs={"max_new_tokens": 50},
             streaming_callback=streaming_callback,
         )
-        llm.warm_up()
 
         response = await llm.run_async(
             messages=[ChatMessage.from_user("Please create a summary about the following topic: Capital of France")]

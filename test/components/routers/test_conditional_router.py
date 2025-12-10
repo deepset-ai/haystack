@@ -40,6 +40,47 @@ class TestRouter:
         with pytest.raises(ValueError, match="Invalid template"):
             ConditionalRouter(routes)
 
+    def test_invalid_output_template_non_string(self):
+        """
+        ConditionalRouter init raises a ValueError with helpful error message when output is not a string
+        """
+        # output is an int instead of a string template
+        routes = [
+            {
+                "condition": '{{ flag == "double" }}',
+                "output": 2,
+                "output_name": "num_additional_outputs",
+                "output_type": int,
+            }
+        ]
+        with pytest.raises(ValueError) as exc_info:
+            ConditionalRouter(routes)
+        error_message = str(exc_info.value)
+        assert "Invalid template for output" in error_message
+        assert "string" in error_message
+        assert "Jinja2 template" in error_message
+        assert "2" in error_message
+
+    def test_invalid_output_template_non_string_list(self):
+        """
+        ConditionalRouter init raises a ValueError with helpful error message when output in list is not a string
+        """
+        # output list contains an int instead of a string template
+        routes = [
+            {
+                "condition": '{{ flag == "double" }}',
+                "output": ["{{streams}}", 2],
+                "output_name": ["streams", "num"],
+                "output_type": [list[int], int],
+            }
+        ]
+        with pytest.raises(ValueError) as exc_info:
+            ConditionalRouter(routes)
+        error_message = str(exc_info.value)
+        assert "Invalid template for output" in error_message
+        assert "string" in error_message
+        assert "Jinja2 template" in error_message
+
     def test_no_vars_in_output_route_but_with_output_name(self):
         """
         Router can't accept a route with no variables used in the output field

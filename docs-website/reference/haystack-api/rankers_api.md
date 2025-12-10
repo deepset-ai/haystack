@@ -743,7 +743,6 @@ strategy is "maximum_margin_relevance".
 **Raises**:
 
 - `ValueError`: If the top_k value is less than or equal to 0.
-- `RuntimeError`: If the component has not been warmed up.
 
 **Returns**:
 
@@ -910,7 +909,6 @@ If set, overrides the value set at initialization.
 **Raises**:
 
 - `ValueError`: If `top_k` is not > 0.
-- `RuntimeError`: If the model is not loaded because `warm_up()` was not called before.
 
 **Returns**:
 
@@ -1078,7 +1076,6 @@ Used only if `scale_score` is `True`.
 
 - `ValueError`: If `top_k` is not > 0.
 If `scale_score` is True and `calibration_factor` is not provided.
-- `RuntimeError`: If the model is not loaded because `warm_up()` was not called before.
 
 **Returns**:
 

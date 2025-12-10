@@ -59,3 +59,4 @@ jobs:
             content/release-notes
           body: |
             This PR adds the release notes for Haystack ${{ env.VERSION }} to the website.
+          reviewers: "${{ github.actor }}"

@@ -47,7 +47,7 @@ class FallbackChatGenerator:
     - Any other exception
     """
 
-    def __init__(self, chat_generators: list[ChatGenerator]):
+    def __init__(self, chat_generators: list[ChatGenerator]) -> None:
         """
         Creates an instance of FallbackChatGenerator.
 
@@ -58,6 +58,7 @@ class FallbackChatGenerator:
             raise ValueError(msg)
 
         self.chat_generators = list(chat_generators)
+        self._is_warmed_up = False
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component, including nested chat generators when they support serialization."""
@@ -87,9 +88,14 @@ class FallbackChatGenerator:
 
         This method calls warm_up() on each underlying generator that supports it.
         """
+        if self._is_warmed_up:
+            return
+
         for gen in self.chat_generators:
             if hasattr(gen, "warm_up") and callable(gen.warm_up):
                 gen.warm_up()
+
+        self._is_warmed_up = True
 
     def _run_single_sync(  # pylint: disable=too-many-positional-arguments
         self,
@@ -133,7 +139,7 @@ class FallbackChatGenerator:
         generation_kwargs: Union[dict[str, Any], None] = None,
         tools: Optional[ToolsType] = None,
         streaming_callback: Union[StreamingCallbackT, None] = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]:
         """
         Execute chat generators sequentially until one succeeds.
 
@@ -147,6 +153,9 @@ class FallbackChatGenerator:
               total_attempts, failed_chat_generators, plus any metadata from the successful generator.
         :raises RuntimeError: If all chat generators fail.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
 
@@ -186,7 +195,7 @@ class FallbackChatGenerator:
         generation_kwargs: Union[dict[str, Any], None] = None,
         tools: Optional[ToolsType] = None,
         streaming_callback: Union[StreamingCallbackT, None] = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]:
         """
         Asynchronously execute chat generators sequentially until one succeeds.
 
@@ -200,6 +209,9 @@ class FallbackChatGenerator:
               total_attempts, failed_chat_generators, plus any metadata from the successful generator.
         :raises RuntimeError: If all chat generators fail.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         failed: list[str] = []
         last_error: Union[BaseException, None] = None
 

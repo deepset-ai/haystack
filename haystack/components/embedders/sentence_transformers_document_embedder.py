@@ -22,7 +22,7 @@ class SentenceTransformersDocumentEmbedder:
     It stores the embeddings in the `embedding` metadata field of each document.
     You can also embed documents' metadata.
     Use this component in indexing pipelines to embed input documents
-    and send them to DocumentWriter to write a into a Document Store.
+    and send them to DocumentWriter to write into a Document Store.
 
     ### Usage example:
 
@@ -244,7 +244,7 @@ class SentenceTransformersDocumentEmbedder:
                 "In case you want to embed a string, please use the SentenceTransformersTextEmbedder."
             )
         if self.embedding_backend is None:
-            raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
+            self.warm_up()
 
         texts_to_embed = []
         for doc in documents:
@@ -256,7 +256,8 @@ class SentenceTransformersDocumentEmbedder:
             )
             texts_to_embed.append(text_to_embed)
 
-        embeddings = self.embedding_backend.embed(
+        # # mypy doesn't know this is set in warm_up
+        embeddings = self.embedding_backend.embed(  # type: ignore[union-attr]
             texts_to_embed,
             batch_size=self.batch_size,
             show_progress_bar=self.progress_bar,

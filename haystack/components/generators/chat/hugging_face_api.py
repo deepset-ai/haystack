@@ -436,7 +436,7 @@ class HuggingFaceAPIChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-    ):
+    ) -> dict[str, list[ChatMessage]]:
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
 
@@ -454,6 +454,8 @@ class HuggingFaceAPIChatGenerator:
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage objects.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
 
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
@@ -485,7 +487,7 @@ class HuggingFaceAPIChatGenerator:
         generation_kwargs: Optional[dict[str, Any]] = None,
         tools: Optional[ToolsType] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-    ):
+    ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes the text generation inference based on the provided messages and generation parameters.
 
@@ -506,6 +508,8 @@ class HuggingFaceAPIChatGenerator:
         :returns: A dictionary with the following keys:
             - `replies`: A list containing the generated responses as ChatMessage objects.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
 
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
