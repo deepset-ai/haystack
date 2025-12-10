@@ -59,7 +59,7 @@ class TestRouter:
         assert "Invalid template for output" in error_message
         assert "string" in error_message
         assert "Jinja2 template" in error_message
-        assert "2" in error_message or "2!" in error_message
+        assert "2" in error_message
 
     def test_invalid_output_template_non_string_list(self):
         """
