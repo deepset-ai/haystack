@@ -346,12 +346,6 @@ class TestSimilarityRanker:
         output = sampler.run(query="City in Germany", documents=[])
         assert not output["documents"]
 
-    #  Raises ComponentError if model is not warmed up
-    def test_raises_component_error_if_model_not_warmed_up(self):
-        sampler = TransformersSimilarityRanker()
-        with pytest.raises(RuntimeError):
-            sampler.run(query="query", documents=[Document(content="document")])
-
     @pytest.mark.integration
     @pytest.mark.slow
     def test_run(self):

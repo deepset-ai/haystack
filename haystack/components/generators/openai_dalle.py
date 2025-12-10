@@ -118,12 +118,11 @@ class DALLEImageGenerator:
         """
         if self.client is None:
             self.warm_up()
-        assert self.client is not None  # for mypy
 
         size = size or self.size
         quality = quality or self.quality
         response_format = response_format or self.response_format
-        response = self.client.images.generate(
+        response = self.client.images.generate(  # type: ignore[union-attr]
             model=self.model, prompt=prompt, size=size, quality=quality, response_format=response_format, n=1
         )
         if response.data is not None:
