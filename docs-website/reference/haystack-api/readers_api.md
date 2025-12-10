@@ -200,10 +200,6 @@ However, for the answers "the river in" and "in Maine" there is only a max overl
 both of these answers could be kept if this variable is set to 0.24 or lower.
 If None is provided then all answers are kept.
 
-**Raises**:
-
-- `RuntimeError`: If the component was not warmed up by calling 'warm_up()' before.
-
 **Returns**:
 
 List of answers sorted by (desc.) answer score.

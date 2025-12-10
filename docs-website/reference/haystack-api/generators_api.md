@@ -158,10 +158,12 @@ The deserialized component instance.
 
 ```python
 @component.output_types(replies=list[str], meta=list[dict[str, Any]])
-def run(prompt: str,
-        system_prompt: Optional[str] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None)
+def run(
+    prompt: str,
+    system_prompt: Optional[str] = None,
+    streaming_callback: Optional[StreamingCallbackT] = None,
+    generation_kwargs: Optional[dict[str, Any]] = None
+) -> dict[str, Union[list[str], list[dict[str, Any]]]]
 ```
 
 Invoke the text generation inference based on the provided messages and generation parameters.
@@ -611,10 +613,12 @@ The deserialized component instance.
 
 ```python
 @component.output_types(replies=list[str], meta=list[dict[str, Any]])
-def run(prompt: str,
-        system_prompt: Optional[str] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None)
+def run(
+    prompt: str,
+    system_prompt: Optional[str] = None,
+    streaming_callback: Optional[StreamingCallbackT] = None,
+    generation_kwargs: Optional[dict[str, Any]] = None
+) -> dict[str, Union[list[str], list[dict[str, Any]]]]
 ```
 
 Invoke the text generation inference based on the provided messages and generation parameters.
@@ -956,7 +960,7 @@ def run(messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
         tools: Optional[ToolsType] = None,
-        tools_strict: Optional[bool] = None)
+        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes chat completion based on the provided messages and generation parameters.
@@ -985,12 +989,13 @@ A dictionary with the following key:
 
 ```python
 @component.output_types(replies=list[ChatMessage])
-async def run_async(messages: list[ChatMessage],
-                    streaming_callback: Optional[StreamingCallbackT] = None,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    *,
-                    tools: Optional[ToolsType] = None,
-                    tools_strict: Optional[bool] = None)
+async def run_async(
+        messages: list[ChatMessage],
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        *,
+        tools: Optional[ToolsType] = None,
+        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes chat completion based on the provided messages and generation parameters.
@@ -1191,7 +1196,7 @@ def run(messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None)
+        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes response generation based on the provided messages and generation parameters.
@@ -1225,12 +1230,13 @@ A dictionary with the following key:
 
 ```python
 @component.output_types(replies=list[ChatMessage])
-async def run_async(messages: list[ChatMessage],
-                    *,
-                    streaming_callback: Optional[StreamingCallbackT] = None,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    tools: Optional[Union[ToolsType, list[dict]]] = None,
-                    tools_strict: Optional[bool] = None)
+async def run_async(
+        messages: list[ChatMessage],
+        *,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[Union[ToolsType, list[dict]]] = None,
+        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes response generation based on the provided messages and generation parameters.
@@ -1726,10 +1732,12 @@ Deserialize this component from a dictionary.
 
 ```python
 @component.output_types(replies=list[ChatMessage])
-def run(messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None)
+def run(
+    messages: list[ChatMessage],
+    generation_kwargs: Optional[dict[str, Any]] = None,
+    tools: Optional[ToolsType] = None,
+    streaming_callback: Optional[StreamingCallbackT] = None
+) -> dict[str, list[ChatMessage]]
 ```
 
 Invoke the text generation inference based on the provided messages and generation parameters.
@@ -1755,10 +1763,12 @@ A dictionary with the following keys:
 
 ```python
 @component.output_types(replies=list[ChatMessage])
-async def run_async(messages: list[ChatMessage],
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    tools: Optional[ToolsType] = None,
-                    streaming_callback: Optional[StreamingCallbackT] = None)
+async def run_async(
+    messages: list[ChatMessage],
+    generation_kwargs: Optional[dict[str, Any]] = None,
+    tools: Optional[ToolsType] = None,
+    streaming_callback: Optional[StreamingCallbackT] = None
+) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes the text generation inference based on the provided messages and generation parameters.
@@ -1962,7 +1972,7 @@ def run(messages: list[ChatMessage],
         generation_kwargs: Optional[dict[str, Any]] = None,
         *,
         tools: Optional[ToolsType] = None,
-        tools_strict: Optional[bool] = None)
+        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes chat completion based on the provided messages and generation parameters.
@@ -1991,12 +2001,13 @@ A dictionary with the following key:
 
 ```python
 @component.output_types(replies=list[ChatMessage])
-async def run_async(messages: list[ChatMessage],
-                    streaming_callback: Optional[StreamingCallbackT] = None,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    *,
-                    tools: Optional[ToolsType] = None,
-                    tools_strict: Optional[bool] = None)
+async def run_async(
+        messages: list[ChatMessage],
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        *,
+        tools: Optional[ToolsType] = None,
+        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes chat completion based on the provided messages and generation parameters.
@@ -2198,7 +2209,7 @@ def run(messages: list[ChatMessage],
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
         tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None)
+        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes response generation based on the provided messages and generation parameters.
@@ -2232,12 +2243,13 @@ A dictionary with the following key:
 
 ```python
 @component.output_types(replies=list[ChatMessage])
-async def run_async(messages: list[ChatMessage],
-                    *,
-                    streaming_callback: Optional[StreamingCallbackT] = None,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    tools: Optional[Union[ToolsType, list[dict]]] = None,
-                    tools_strict: Optional[bool] = None)
+async def run_async(
+        messages: list[ChatMessage],
+        *,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        tools: Optional[Union[ToolsType, list[dict]]] = None,
+        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes response generation based on the provided messages and generation parameters.
@@ -2307,7 +2319,7 @@ Failover is automatically triggered when a generator raises any exception, inclu
 #### FallbackChatGenerator.\_\_init\_\_
 
 ```python
-def __init__(chat_generators: list[ChatGenerator])
+def __init__(chat_generators: list[ChatGenerator]) -> None
 ```
 
 Creates an instance of FallbackChatGenerator.
@@ -2359,8 +2371,8 @@ def run(
     messages: list[ChatMessage],
     generation_kwargs: Union[dict[str, Any], None] = None,
     tools: Optional[ToolsType] = None,
-    streaming_callback: Union[StreamingCallbackT,
-                              None] = None) -> dict[str, Any]
+    streaming_callback: Union[StreamingCallbackT, None] = None
+) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]
 ```
 
 Execute chat generators sequentially until one succeeds.
@@ -2393,8 +2405,8 @@ async def run_async(
     messages: list[ChatMessage],
     generation_kwargs: Union[dict[str, Any], None] = None,
     tools: Optional[ToolsType] = None,
-    streaming_callback: Union[StreamingCallbackT,
-                              None] = None) -> dict[str, Any]
+    streaming_callback: Union[StreamingCallbackT, None] = None
+) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]
 ```
 
 Asynchronously execute chat generators sequentially until one succeeds.
