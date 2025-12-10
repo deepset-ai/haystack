@@ -494,9 +494,7 @@ class TestHuggingFaceLocalChatGenerator:
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
         messages = [ChatMessage.from_user("Please create a summary about the following topic: Climate change")]
 
-        llm = HuggingFaceLocalChatGenerator(
-            model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 50}
-        )
+        llm = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 50})
 
         result = llm.run(messages)
 
