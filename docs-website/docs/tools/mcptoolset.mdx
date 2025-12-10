@@ -128,7 +128,6 @@ toolset = MCPToolset(
 )
 
 agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset, exit_conditions=["text"])
-agent.warm_up()
 
 response = agent.run(messages=[ChatMessage.from_user("What is the time in New York?")])
 print(response["messages"][-1].text)

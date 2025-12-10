@@ -88,7 +88,6 @@ agent = Agent(
     exit_conditions=["text"]
 )
 
-agent.warm_up()
 response = agent.run(messages=[
     ChatMessage.from_user("Please analyze this GitHub issue and summarize the main problem: https://github.com/deepset-ai/haystack/issues/123")
 ])

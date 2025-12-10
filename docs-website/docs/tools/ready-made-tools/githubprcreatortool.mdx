@@ -86,7 +86,6 @@ agent = Agent(
     exit_conditions=["text"]
 )
 
-agent.warm_up()
 response = agent.run(messages=[
     ChatMessage.from_user("Create a pull request for issue https://github.com/owner/repo/issues/4 with title 'Fix authentication bug' and empty body using my fix-4 branch and main as target branch")
 ])

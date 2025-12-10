@@ -189,7 +189,6 @@ agent = Agent(
     tools=math_toolset
 )
 
-agent.warm_up()
 response = agent.run(messages=[ChatMessage.from_user("What is 4 + 2?")])
 
 print(response["messages"][-1].text)

@@ -97,7 +97,6 @@ agent = Agent(
     exit_conditions=["text"]
 )
 
-agent.warm_up()
 response = agent.run(messages=[
     ChatMessage.from_user("Edit the file README.md in the repository \"owner/repo\" and replace the original string 'tpyo' with the replacement 'typo'. This is all context you need.")
 ])
