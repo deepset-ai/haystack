@@ -96,7 +96,6 @@ agent = Agent(
     state_schema={"documents": {"type": List[Document]}},
 )
 
-agent.warm_up()
 response = agent.run(messages=[
     ChatMessage.from_user("Can you analyze the structure of the deepset-ai/haystack repository and tell me about the main components?")
 ])

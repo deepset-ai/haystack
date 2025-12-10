@@ -128,7 +128,6 @@ extractor = LLMMetadataExtractor(
   raise_on_failure=False,
 )
 
-extractor.warm_up()
 extractor.run(documents=docs)
 
 >> {'documents': [

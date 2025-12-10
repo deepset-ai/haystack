@@ -77,10 +77,7 @@ coordinator_agent = Agent(
     exit_conditions=["text"]
 )
 
-## Warm up and run
-research_agent.warm_up()
-coordinator_agent.warm_up()
-
+## Run
 result = coordinator_agent.run(
     messages=[ChatMessage.from_user("Tell me about Haystack")]
 )
@@ -159,7 +156,6 @@ agent = Agent(
 )
 
 ## Run the Agent
-agent.warm_up()
 response = agent.run(messages=[ChatMessage.from_user("What is 7 * (4 + 2)?")])
 
 ## Output
