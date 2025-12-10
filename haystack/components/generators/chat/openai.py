@@ -288,7 +288,7 @@ class OpenAIChatGenerator:
         tools_strict: Optional[bool] = None,
     ):
         """
-        Invokes chat completion based on the provided messages and generation parameters. TRIGGER!
+        Invokes chat completion based on the provided messages and generation parameters.
 
         :param messages:
             A list of ChatMessage instances representing the input messages.
