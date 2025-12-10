@@ -204,8 +204,6 @@ class TransformersZeroShotDocumentClassifier:
 
         if self.pipeline is None:
             self.warm_up()
-        # To make mypy happy even though this is set in warm_up()
-        assert self.pipeline is not None
 
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
@@ -230,7 +228,10 @@ class TransformersZeroShotDocumentClassifier:
             for doc in documents
         ]
 
-        predictions = self.pipeline(texts, self.labels, multi_label=self.multi_label, batch_size=batch_size)
+        # mypy doesn't know this is set in warm_up
+        predictions = self.pipeline(  # type: ignore[misc]
+            texts, self.labels, multi_label=self.multi_label, batch_size=batch_size
+        )
 
         new_documents = []
         for prediction, document in zip(predictions, documents):
