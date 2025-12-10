@@ -76,7 +76,7 @@ jobs:
           python ./.github/utils/create_unstable_docs_docusaurus.py --new-version ${{ steps.versions.outputs.current_release_minor }}
 
       - name: Create Pull Request with Docusaurus docs updates
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Create unstable docs for Haystack ${{ steps.versions.outputs.current_release_minor }}"

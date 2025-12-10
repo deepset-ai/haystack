@@ -46,7 +46,7 @@ jobs:
           rsync -av --delete --exclude='.git/' "$SOURCE_PATH/" "$DEST_PATH/"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Sync Haystack API reference on Docusaurus"
