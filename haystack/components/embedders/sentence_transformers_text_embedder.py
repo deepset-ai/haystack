@@ -229,10 +229,12 @@ class SentenceTransformersTextEmbedder:
                 "In case you want to embed a list of Documents, please use the SentenceTransformersDocumentEmbedder."
             )
         if self.embedding_backend is None:
-            raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
+            self.warm_up()
 
         text_to_embed = self.prefix + text + self.suffix
-        embedding = self.embedding_backend.embed(
+
+        # mypy doesn't know this is set in warm_up
+        embedding = self.embedding_backend.embed(  # type: ignore[union-attr]
             [text_to_embed],
             batch_size=self.batch_size,
             show_progress_bar=self.progress_bar,

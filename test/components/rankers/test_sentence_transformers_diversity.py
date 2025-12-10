@@ -255,20 +255,6 @@ class TestSentenceTransformersDiversityRanker:
             )
 
     @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
-    def test_run_without_warm_up(self, similarity):
-        """
-        Tests that run method raises ComponentError if model is not warmed up
-        """
-        ranker = SentenceTransformersDiversityRanker(
-            model="sentence-transformers/all-MiniLM-L6-v2", top_k=1, similarity=similarity
-        )
-        documents = [Document(content="doc1"), Document(content="doc2")]
-
-        error_msg = "The component SentenceTransformersDiversityRanker wasn't warmed up."
-        with pytest.raises(RuntimeError, match=error_msg):
-            ranker.run(query="test query", documents=documents)
-
-    @pytest.mark.parametrize("similarity", ["dot_product", "cosine"])
     def test_warm_up(self, similarity, monkeypatch):
         """
         Test that ranker loads the SentenceTransformer model correctly during warm up.
@@ -585,7 +571,6 @@ class TestSentenceTransformersDiversityRanker:
         ranker = SentenceTransformersDiversityRanker(
             model="sentence-transformers-testing/stsb-bert-tiny-safetensors", similarity=similarity
         )
-        ranker.warm_up()
         query = "What are the reasons for long-standing animosities between Russia and Poland?"
 
         doc1 = Document(
@@ -674,7 +659,6 @@ class TestSentenceTransformersDiversityRanker:
             similarity=similarity,
             strategy="maximum_margin_relevance",
         )
-        ranker.warm_up()
 
         # lambda_threshold=1, the most relevant document should be returned first
         results = ranker.run(query=query, documents=docs, lambda_threshold=1, top_k=len(docs))

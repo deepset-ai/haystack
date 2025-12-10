@@ -229,9 +229,7 @@ class HuggingFaceLocalGenerator:
             - replies: A list of strings representing the generated replies.
         """
         if not self._warmed_up:
-            raise RuntimeError(
-                "The component HuggingFaceLocalGenerator was not warmed up. Please call warm_up() before running."
-            )
+            self.warm_up()
 
         # at this point, we know that the pipeline has been initialized
         assert self.pipeline is not None

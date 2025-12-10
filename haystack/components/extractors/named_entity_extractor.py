@@ -192,8 +192,7 @@ class NamedEntityExtractor:
             If the backend fails to process a document.
         """
         if not self._warmed_up:
-            msg = "The component NamedEntityExtractor was not warmed up. Call warm_up() before running the component."
-            raise RuntimeError(msg)
+            self.warm_up()
 
         texts = [doc.content if doc.content is not None else "" for doc in documents]
         annotations = self._backend.annotate(texts, batch_size=batch_size)

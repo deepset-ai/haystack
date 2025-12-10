@@ -192,7 +192,7 @@ class OpenAIGenerator:
         system_prompt: Optional[str] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
         generation_kwargs: Optional[dict[str, Any]] = None,
-    ):
+    ) -> dict[str, Union[list[str], list[dict[str, Any]]]]:
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
 
@@ -265,4 +265,7 @@ class OpenAIGenerator:
         for response in completions:
             _check_finish_reason(response.meta)
 
-        return {"replies": [message.text for message in completions], "meta": [message.meta for message in completions]}
+        return {
+            "replies": [message.text or "" for message in completions],
+            "meta": [message.meta for message in completions],
+        }
