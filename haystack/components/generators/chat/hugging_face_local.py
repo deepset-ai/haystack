@@ -188,8 +188,8 @@ class HuggingFaceLocalChatGenerator:
             Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded executor will be
             initialized and used
         :param enable_thinking:
-            Whether to enable thinking mode in the chat template. When enabled, the model can generate
-            intermediate reasoning steps before producing the final response. Defaults to False.
+            Whether to enable thinking mode in the chat template for thinking-capable models.
+            When enabled, the model generates intermediate reasoning before the final response. Defaults to False.
         """
         torch_and_transformers_import.check()
 
