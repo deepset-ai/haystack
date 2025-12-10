@@ -959,7 +959,7 @@ def run(messages: list[ChatMessage],
         tools_strict: Optional[bool] = None)
 ```
 
-Invokes chat completion based on the provided messages and generation parameters.
+Invokes chat completion based on the provided messages and generation parameters. TRIGGER!
 
 **Arguments**:
 
@@ -1965,7 +1965,7 @@ def run(messages: list[ChatMessage],
         tools_strict: Optional[bool] = None)
 ```
 
-Invokes chat completion based on the provided messages and generation parameters.
+Invokes chat completion based on the provided messages and generation parameters. TRIGGER!
 
 **Arguments**:
 
