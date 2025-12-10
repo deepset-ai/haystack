@@ -9,6 +9,7 @@ on:
       - "pydoc/**"
       - "haystack/**"
       - ".github/workflows/docusaurus_sync.yml"
+  pull_request:
 
 env:
   HATCH_VERSION: "1.14.2"
@@ -57,3 +58,5 @@ jobs:
             docs-website/reference/haystack-api
           body: |
             This PR syncs the Haystack API reference on Docusaurus. Just approve and merge it.
+          reviewers: "${{ github.actor }}"
+          draft: true
