@@ -502,6 +502,54 @@ class TestHuggingFaceLocalChatGenerator:
         assert isinstance(result["replies"][0], ChatMessage)
         assert "climate change" in result["replies"][0].text.lower()
 
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    def test_live_run_with_enable_thinking(self, monkeypatch):
+        """Test that enable_thinking works with the default Qwen3 model in a live run."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        messages = [ChatMessage.from_user("What is 2+2?")]
+
+        llm = HuggingFaceLocalChatGenerator(
+            model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 450}, enable_thinking=True
+        )
+
+        result = llm.run(messages)
+
+        assert "replies" in result
+        assert isinstance(result["replies"][0], ChatMessage)
+        reply_text = result["replies"][0].text
+
+        assert reply_text is not None
+        assert "<think>" in reply_text
+        assert "</think>" in reply_text
+        assert len(reply_text) > 0
+        assert "4" in reply_text.lower()
+
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    def test_live_run_without_enable_thinking(self, monkeypatch):
+        """Test that enable_thinking=False prevents thinking tags in the response."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        messages = [ChatMessage.from_user("What is 2+2?")]
+
+        llm = HuggingFaceLocalChatGenerator(
+            model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 450}, enable_thinking=False
+        )
+
+        result = llm.run(messages)
+
+        assert "replies" in result
+        assert isinstance(result["replies"][0], ChatMessage)
+        reply_text = result["replies"][0].text
+
+        assert reply_text is not None
+        assert "<think>" not in reply_text
+        assert "</think>" not in reply_text
+        assert len(reply_text) > 0
+        assert "4" in reply_text.lower()
+
     def test_init_fail_with_duplicate_tool_names(self, model_info_mock, tools):
         duplicate_tools = [tools[0], tools[0]]
         with pytest.raises(ValueError, match="Duplicate tool names found"):
