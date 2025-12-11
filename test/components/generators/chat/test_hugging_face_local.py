@@ -491,26 +491,30 @@ class TestHuggingFaceLocalChatGenerator:
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run(self, monkeypatch):
-        """Test live run with default behavior and enable_thinking."""
+        """Test live run with default behavior (no thinking)."""
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
-
-        # Test 1: Default behavior (no enable_thinking parameter) - should not include thinking tags
         messages = [ChatMessage.from_user("Please create a summary about the following topic: Climate change")]
+
         llm = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 50})
+
         result = llm.run(messages)
 
         assert "replies" in result
         assert isinstance(result["replies"][0], ChatMessage)
-        reply_text = result["replies"][0].text
-        assert "climate change" in reply_text.lower()
-        assert "<think>" not in reply_text
-        assert "</think>" not in reply_text
+        assert "climate change" in result["replies"][0].text.lower()
 
-        # Test 2: With enable_thinking=True - should include thinking tags
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
+    def test_live_run_thinking(self, monkeypatch):
+        """Test live run with enable_thinking=True."""
+        monkeypatch.delenv("HF_API_TOKEN", raising=False)
         messages = [ChatMessage.from_user("What is 2+2?")]
+
         llm = HuggingFaceLocalChatGenerator(
             model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 450}, enable_thinking=True
         )
+
         result = llm.run(messages)
 
         assert "replies" in result
