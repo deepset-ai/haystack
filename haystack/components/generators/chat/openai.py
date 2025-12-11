@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import json
 import os
 from datetime import datetime
@@ -54,7 +55,7 @@ class OpenAIChatGenerator:
     """
     Completes chats using OpenAI's large language models (LLMs).
 
-    It works with the gpt-4 and o-series models and supports streaming responses
+    It works with the gpt-4 and gpt-5 series models and supports streaming responses
     from OpenAI API. It uses [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
     format in input and output.
 
@@ -86,7 +87,7 @@ class OpenAIChatGenerator:
             that focuses on enabling computers to understand, interpret, and generate human language in
             a way that is meaningful and useful.")],
          _name=None,
-         _meta={'model': 'gpt-4o-mini', 'index': 0, 'finish_reason': 'stop',
+         _meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop',
          'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})
         ]
     }
@@ -96,7 +97,7 @@ class OpenAIChatGenerator:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "gpt-4o-mini",
+        model: str = "gpt-5-mini",
         streaming_callback: Optional[StreamingCallbackT] = None,
         api_base_url: Optional[str] = None,
         organization: Optional[str] = None,
@@ -108,7 +109,7 @@ class OpenAIChatGenerator:
         http_client_kwargs: Optional[dict[str, Any]] = None,
     ):
         """
-        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-4o-mini
+        Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
 
         Before initializing the component, you can set the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES'
         environment variables to override the `timeout` and `max_retries` parameters respectively
@@ -286,7 +287,7 @@ class OpenAIChatGenerator:
         *,
         tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
-    ):
+    ) -> dict[str, list[ChatMessage]]:
         """
         Invokes chat completion based on the provided messages and generation parameters.
 
@@ -310,6 +311,9 @@ class OpenAIChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         if len(messages) == 0:
             return {"replies": []}
 
@@ -358,7 +362,7 @@ class OpenAIChatGenerator:
         *,
         tools: Optional[ToolsType] = None,
         tools_strict: Optional[bool] = None,
-    ):
+    ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes chat completion based on the provided messages and generation parameters.
 
@@ -385,6 +389,9 @@ class OpenAIChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
@@ -505,13 +512,22 @@ class OpenAIChatGenerator:
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
-        async for chunk in chat_completion:  # pylint: disable=not-an-iterable
-            assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
-                chunk=chunk, previous_chunks=chunks, component_info=component_info
-            )
-            chunks.append(chunk_delta)
-            await callback(chunk_delta)
+        try:
+            async for chunk in chat_completion:  # pylint: disable=not-an-iterable
+                assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
+                chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
+                    chunk=chunk, previous_chunks=chunks, component_info=component_info
+                )
+                chunks.append(chunk_delta)
+                await callback(chunk_delta)
+
+        except asyncio.CancelledError:
+            await asyncio.shield(chat_completion.close())
+            # close the stream when task is cancelled
+            # asyncio.shield ensures the close operation completes
+            # https://docs.python.org/3/library/asyncio-task.html#shielding-from-cancellation
+            raise  # Re-raise to propagate cancellation
+
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
 

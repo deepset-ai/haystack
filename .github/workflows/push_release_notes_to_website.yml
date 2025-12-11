@@ -48,7 +48,7 @@ jobs:
           cat "$RELEASE_NOTES_PATH"
 
       - name: Create Pull Request to Haystack Home
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Add release notes for Haystack ${{ env.VERSION }}"
@@ -59,3 +59,4 @@ jobs:
             content/release-notes
           body: |
             This PR adds the release notes for Haystack ${{ env.VERSION }} to the website.
+          reviewers: "${{ github.actor }}"

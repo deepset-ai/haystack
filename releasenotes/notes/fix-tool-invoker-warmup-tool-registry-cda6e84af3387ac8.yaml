@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ToolInvoker missing tools after warmup for lazy-initialized toolsets.
+    The invoker now refreshes its tool registry post-warmup, ensuring replaced
+    placeholders (e.g., MCPToolset with eager_connect=False) resolve to the
+    actual tool names at invocation time.

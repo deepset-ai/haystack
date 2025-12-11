@@ -725,10 +725,6 @@ Split a list of documents into documents with smaller chunks of text.
 
 - `documents`: List of Documents to split.
 
-**Raises**:
-
-- `RuntimeError`: If the component wasn't warmed up but requires it for sentence splitting or tokenization.
-
 **Returns**:
 
 A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding

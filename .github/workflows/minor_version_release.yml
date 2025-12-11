@@ -76,7 +76,7 @@ jobs:
           python ./.github/utils/create_unstable_docs_docusaurus.py --new-version ${{ steps.versions.outputs.current_release_minor }}
 
       - name: Create Pull Request with Docusaurus docs updates
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Create unstable docs for Haystack ${{ steps.versions.outputs.current_release_minor }}"
@@ -89,3 +89,4 @@ jobs:
             This PR creates the unstable docs for Haystack ${{ steps.versions.outputs.current_release_minor }}.
             It is expected to run during the branch-off process.
             You can inspect the docs preview (two unstable versions will be available) and merge it.
+          reviewers: "${{ github.actor }}"

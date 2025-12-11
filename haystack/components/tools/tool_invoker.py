@@ -496,6 +496,8 @@ class ToolInvoker:
         """
         if not self._is_warmed_up:
             warm_up_tools(self.tools)
+            # tools could have been updated by the warm_up, validate/prepare for invocation
+            self._tools_with_names = self._validate_and_prepare_tools(self.tools)
             self._is_warmed_up = True
 
     @component.output_types(tool_messages=list[ChatMessage], state=State)
@@ -538,6 +540,9 @@ class ToolInvoker:
         :raises ToolOutputMergeError:
             If merging tool outputs into state fails and `raise_on_failure` is True.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         tools_with_names = self._tools_with_names
         if tools is not None:
             tools_with_names = self._validate_and_prepare_tools(tools)
@@ -670,6 +675,8 @@ class ToolInvoker:
         :raises ToolOutputMergeError:
             If merging tool outputs into state fails and `raise_on_failure` is True.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
 
         tools_with_names = self._tools_with_names
         if tools is not None:
