@@ -396,18 +396,7 @@ def _create_pipeline_snapshot_from_chat_generator(
         },
     )
 
-    # Create an empty pipeline snapshot
-    final_snapshot = PipelineSnapshot(
-        pipeline_state=PipelineState(inputs={}, component_visits={}, pipeline_outputs={}),
-        timestamp=agent_snapshot.timestamp,
-        break_point=agent_snapshot.break_point,
-        agent_snapshot=agent_snapshot,
-        original_input_data={},
-        ordered_component_names=[],
-        include_outputs_from=set(),
-    )
-
-    return final_snapshot
+    return PipelineSnapshot._from_agent_snapshot(agent_snapshot=agent_snapshot)
 
 
 def _create_pipeline_snapshot_from_tool_invoker(
@@ -457,17 +446,7 @@ def _create_pipeline_snapshot_from_tool_invoker(
     )
 
     # Create an empty pipeline snapshot
-    final_snapshot = PipelineSnapshot(
-        pipeline_state=PipelineState(inputs={}, component_visits={}, pipeline_outputs={}),
-        timestamp=agent_snapshot.timestamp,
-        break_point=agent_snapshot.break_point,
-        agent_snapshot=agent_snapshot,
-        original_input_data={},
-        ordered_component_names=[],
-        include_outputs_from=set(),
-    )
-
-    return final_snapshot
+    return PipelineSnapshot._from_agent_snapshot(agent_snapshot=agent_snapshot)
 
 
 def _should_trigger_tool_invoker_breakpoint(break_point: ToolBreakpoint, llm_messages: list[ChatMessage]) -> bool:
