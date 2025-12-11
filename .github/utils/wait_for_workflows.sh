@@ -11,11 +11,16 @@
 # successfully complete.
 
 
-# With the current values, we wait for 20 minutes
-MAX_ATTEMPTS=40
-SLEEP_SECONDS=30
+# With the default values, we wait for 20 minutes
+MAX_ATTEMPTS="${MAX_ATTEMPTS:-40}"
+SLEEP_SECONDS="${SLEEP_SECONDS:-30}"
 
 set -euo pipefail
+
+if [[ -z "${GH_TOKEN:-}" ]] || [[ -z "${GITHUB_REPOSITORY:-}" ]]; then
+    echo "❌ GH_TOKEN and GITHUB_REPOSITORY must be set"
+    exit 1
+fi
 
 TAG="$1"
 shift
