@@ -388,7 +388,8 @@ class Pipeline(PipelineBase):
                     pipeline_snapshot = _create_pipeline_snapshot(
                         inputs=_deepcopy_with_exceptions(inputs),
                         component_inputs=_deepcopy_with_exceptions(component_inputs),
-                        break_point=break_point,
+                        # TODO Consider adding/requiring the breakpoint that caused the BreakpointException
+                        break_point=break_point,  # type: ignore[arg-type]
                         component_visits=component_visits,
                         original_input_data=data,
                         ordered_component_names=ordered_component_names,
