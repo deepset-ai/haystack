@@ -141,6 +141,7 @@ class HuggingFaceLocalChatGenerator:
         tools: Optional[ToolsType] = None,
         tool_parsing_function: Optional[Callable[[str], Optional[list[ToolCall]]]] = None,
         async_executor: Optional[ThreadPoolExecutor] = None,
+        *,
         enable_thinking: bool = False,
     ) -> None:
         """
