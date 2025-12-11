@@ -1,0 +1,203 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v2.99.0-rc1 or v2.99.0)'
+        required: true
+        type: string
+
+jobs:
+  parse-validate-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse-validate.outputs.version }}
+      major_minor: ${{ steps.parse-validate.outputs.major_minor }}
+      release_branch: ${{ steps.parse-validate.outputs.release_branch }}
+      is_first_rc: ${{ steps.parse-validate.outputs.is_first_rc }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # needed to fetch tags and branches
+
+      - name: Parse and validate version
+        id: parse-validate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/utils/parse_validate_version.sh "${{ inputs.version }}"
+
+  branch-off:
+    if: needs.parse-validate-version.outputs.is_first_rc == 'true'
+    needs: parse-validate-version
+    uses: ./.github/workflows/branch_off.yml
+    # https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows#passing-secrets-to-nested-workflows
+    secrets: inherit
+
+  create-release-tag:
+    needs: ["parse-validate-version", "branch-off"]
+    if: always() && needs.parse-validate-version.result == 'success' && needs.branch-off.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # needed to fetch tags and branches
+          fetch-depth: 0
+          # use this token so the created tag triggers workflows (does not happen with the default github.token)
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+
+      - name: Update VERSION.txt and create tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout ${{ needs.parse-validate-version.outputs.release_branch }}
+          git pull origin ${{ needs.parse-validate-version.outputs.release_branch }}
+
+          echo "${{ needs.parse-validate-version.outputs.version }}" > VERSION.txt
+          git add VERSION.txt
+          git commit -m "bump version to ${{ needs.parse-validate-version.outputs.version }}"
+          git push origin ${{ needs.parse-validate-version.outputs.release_branch }}
+
+          TAG="v${{ needs.parse-validate-version.outputs.version }}"
+          git tag -m "$TAG" "$TAG"
+          git push origin "$TAG"
+
+  check-artifacts:
+    needs: ["parse-validate-version", "create-release-tag"]
+    if: always() && needs.parse-validate-version.result == 'success' && needs.create-release-tag.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      github_url: ${{ steps.set-outputs.outputs.github_url }}
+      pypi_url: ${{ steps.set-outputs.outputs.pypi_url }}
+      docker_url: ${{ steps.set-outputs.outputs.docker_url }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.parse-validate-version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # needed to fetch tags
+
+      - name: Wait for release workflows
+        run: |
+          .github/utils/wait_for_workflows.sh "v${{ env.VERSION }}" \
+            "Project release on PyPi" \
+            "Project release on Github" \
+            "Docker image release"
+
+      - name: Check artifacts
+        run: |
+          check() {
+            for _ in {1..5}; do curl -sf "$2" > /dev/null && echo "✅ $1" && return 0; sleep 30; done
+            echo "❌ $1 not found" && return 1
+          }
+          check "GitHub Release" "https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ env.VERSION }}"
+          check "PyPI package" "https://pypi.org/pypi/haystack-ai/${{ env.VERSION }}/json"
+          check "Docker image" "https://hub.docker.com/v2/repositories/deepset/haystack/tags/base-v${{ env.VERSION }}"
+
+      - name: Set artifact URLs
+        id: set-outputs
+        run: |
+          {
+            echo "github_url=https://github.com/${{ github.repository }}/releases/tag/v${{ env.VERSION }}"
+            echo "pypi_url=https://pypi.org/project/haystack-ai/${{ env.VERSION }}/"
+            echo "docker_url=https://hub.docker.com/r/deepset/haystack/tags?name=base-v${{ env.VERSION }}"
+          } >> "$GITHUB_OUTPUT"
+
+  notify:
+    needs: ["parse-validate-version", "branch-off", "create-release-tag", "check-artifacts"]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Calculate alert type and message
+        id: calculator
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            {
+              echo "alert_type=error"
+              echo "title=Release ${VERSION} failed"
+              echo "event_text=Release ${VERSION} failed. Check workflow run for details: ${RUN_URL}"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          {
+            echo "alert_type=success"
+            echo "title=Release ${VERSION} completed successfully"
+            [[ "${VERSION}" == *"-rc"* ]] && echo "released_rc=true"
+          } >> "$GITHUB_OUTPUT"
+
+          TXT="Release ${VERSION} completed successfully\n"
+          TXT+="\n📦 Artifacts:\n"
+          TXT+="- Release notes (GitHub): ${{ needs.check-artifacts.outputs.github_url }}\n"
+          TXT+="- PyPI: ${{ needs.check-artifacts.outputs.pypi_url }}\n"
+          TXT+="- Docker: ${{ needs.check-artifacts.outputs.docker_url }}\n"
+
+          # For RCs, include link to the Tests workflow run
+          if [[ "${VERSION}" == *"-rc"* ]]; then
+            COMMIT_SHA=$(gh api "repos/${{ github.repository }}/commits/${VERSION}" --jq '.sha' 2>/dev/null || echo "")
+            if [[ -n "${COMMIT_SHA}" ]]; then
+              TESTS_RUN=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=${COMMIT_SHA}" \
+                --jq '.workflow_runs[] | select(.name == "Tests") | .html_url' 2>/dev/null | head -1 || echo "")
+              if [[ -n "${TESTS_RUN}" ]]; then
+                TXT+="\n🧪 Tests: ${TESTS_RUN}\n"
+              fi
+            fi
+          fi
+
+          # For first RC, include the PRs to merge from branch-off
+          if [[ "${{ needs.parse-validate-version.outputs.is_first_rc }}" == "true" ]]; then
+            TXT+="\n📋 PRs to merge:\n"
+            TXT+="- Bump unstable version and create unstable docs: ${{ needs.branch-off.outputs.bump_version_pr_url }}\n"
+          fi
+
+          # For final minor releases (vX.Y.0), include the docs promotion PR
+          if [[ "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.0$ ]]; then
+            PROMOTE_DOCS_PR_URL=$(gh pr list --repo "${{ github.repository }}" \
+              --head "promote-unstable-docs-${{ needs.parse-validate-version.outputs.major_minor }}" --json url \
+              --jq '.[0].url' 2>/dev/null || echo "")
+            if [[ -n "${PROMOTE_DOCS_PR_URL}" ]]; then
+              TXT+="\n📋 PRs to merge:\n"
+              TXT+="- Promote unstable docs: ${PROMOTE_DOCS_PR_URL}\n"
+            fi
+          fi
+
+          # For final releases (not RCs), include info about pushing release notes to website
+          if [[ "${VERSION}" != *"-rc"* ]]; then
+            TXT+="\n📝 After refining and finalizing release notes, push them to Haystack website:\n"
+            TXT+="gh workflow run push_release_notes_to_website.yml -R deepset-ai/haystack -f version=${VERSION}\n"
+          fi
+
+          echo "event_text=${TXT}" >> "$GITHUB_OUTPUT"
+
+      - name: Send event to Datadog
+        uses: masci/datadog@v1
+        with:
+          api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
+          api-url: https://api.datadoghq.eu
+          events: |
+            - title: "${{ steps.calculator.outputs.title }}"
+              text: "${{ steps.calculator.outputs.event_text }}"
+              alert_type: "${{ steps.calculator.outputs.alert_type }}"
+              source_type_name: "Github"
+              host: ${{ github.repository_owner }}
+              tags:
+                - "project:${{ github.repository }}"
+                - "job:${{ github.job }}"
+                - "run_id:${{ github.run_id }}"
+                - "workflow:${{ github.workflow }}"
+                - "version:${{ inputs.version }}"
+                - "released_rc:${{ steps.calculator.outputs.released_rc || 'false' }}"
