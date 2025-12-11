@@ -363,14 +363,8 @@ class Pipeline(PipelineBase):
                         component_inputs["snapshot"] = pipeline_snapshot.agent_snapshot
                         component_inputs["break_point"] = None
 
-                # An AgentBreakpoint is provided to stop the pipeline at an Agent component so we pass on the
-                # break point to the Agent's inputs
-                agent_break_point_triggered = (
-                    break_point
-                    and isinstance(break_point, AgentBreakpoint)
-                    and component_name == break_point.agent_name
-                )
-                if agent_break_point_triggered:
+                # If AgentBreakpoint is provided pass onto Agent's inputs
+                if isinstance(break_point, AgentBreakpoint) and component_name == break_point.agent_name:
                     component_inputs["break_point"] = break_point
 
                 try:
@@ -383,42 +377,22 @@ class Pipeline(PipelineBase):
                         # A break point is provided to stop the pipeline at a specific component
                         break_point=break_point if isinstance(break_point, Breakpoint) else None,
                     )
-                except BreakpointException as error:
-                    # Create a snapshot of the state of the pipeline before the breakpoint occurred.
-                    pipeline_snapshot = _create_pipeline_snapshot(
-                        inputs=_deepcopy_with_exceptions(inputs),
-                        component_inputs=_deepcopy_with_exceptions(component_inputs),
+                except (BreakpointException, PipelineRuntimeError) as error:
+                    if isinstance(error, PipelineRuntimeError):
+                        saved_break_point = Breakpoint(
+                            component_name=component_name,
+                            visit_count=component_visits[component_name],
+                            snapshot_file_path=_get_output_dir("pipeline_snapshot"),
+                        )
+                    else:
                         # TODO Consider adding/requiring the breakpoint that caused the BreakpointException
-                        break_point=break_point,  # type: ignore[arg-type]
-                        component_visits=component_visits,
-                        original_input_data=data,
-                        ordered_component_names=ordered_component_names,
-                        include_outputs_from=include_outputs_from,
-                        pipeline_outputs=pipeline_outputs,
-                    )
-
-                    # If the BreakpointException came from an Agent component, we take the agent snapshot
-                    # and attach it to the pipeline snapshot we create here.
-                    if error.pipeline_snapshot and error.pipeline_snapshot.agent_snapshot:
-                        pipeline_snapshot.agent_snapshot = error.pipeline_snapshot.agent_snapshot
-
-                    # Attach the pipeline snapshot to the error before re-raising
-                    error.pipeline_snapshot = pipeline_snapshot
-                    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
-                    error.pipeline_snapshot_file_path = full_file_path
-                    raise error
-                except PipelineRuntimeError as error:
-                    break_point = Breakpoint(
-                        component_name=component_name,
-                        visit_count=component_visits[component_name],
-                        snapshot_file_path=_get_output_dir("pipeline_snapshot"),
-                    )
+                        saved_break_point = break_point  # type: ignore[assignment]
 
                     # Create a snapshot of the state of the pipeline before the error occurred.
                     pipeline_snapshot = _create_pipeline_snapshot(
                         inputs=_deepcopy_with_exceptions(inputs),
                         component_inputs=_deepcopy_with_exceptions(component_inputs),
-                        break_point=break_point,
+                        break_point=saved_break_point,
                         component_visits=component_visits,
                         original_input_data=data,
                         ordered_component_names=ordered_component_names,
@@ -426,8 +400,8 @@ class Pipeline(PipelineBase):
                         pipeline_outputs=pipeline_outputs,
                     )
 
-                    # If the pipeline_snapshot already exists it came from an Agent component.
-                    # We take the agent snapshot and attach it to the pipeline snapshot we create here.
+                    # If the PipelineRuntimeError or BreakpointException came from an Agent component, we take the
+                    # agent snapshot and attach it to the pipeline snapshot we create here.
                     # We also update the break_point to be an AgentBreakpoint.
                     if error.pipeline_snapshot and error.pipeline_snapshot.agent_snapshot:
                         pipeline_snapshot.agent_snapshot = error.pipeline_snapshot.agent_snapshot
@@ -436,7 +410,7 @@ class Pipeline(PipelineBase):
                     # Attach the pipeline snapshot to the error before re-raising
                     error.pipeline_snapshot = pipeline_snapshot
                     full_file_path = _save_pipeline_snapshot(
-                        pipeline_snapshot=pipeline_snapshot, raise_on_failure=False
+                        pipeline_snapshot=pipeline_snapshot, raise_on_failure=isinstance(error, BreakpointException)
                     )
                     error.pipeline_snapshot_file_path = full_file_path
                     raise error
