@@ -590,9 +590,7 @@ class Agent:
                         raise e
                     except PipelineRuntimeError as e:
                         e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=getattr(self, "__component_name__", None),
-                            execution_context=exe_context,
-                            break_point=None,
+                            agent_name=getattr(self, "__component_name__", None), execution_context=exe_context
                         )
                         raise e
 
