@@ -1,0 +1,25 @@
+extends: substitution
+message: "Use '%s' instead of '%s'."
+level: warning
+ignorecase: true
+action:
+  name: replace
+swap:
+  drop-down list: list
+  drop-down: list
+  dropdown: list
+  radio button: option
+  radio buttons: options
+  text field: field
+  text fields: fields
+  text area: field
+  hyperlink: link
+  hyperlinks: links
+  pop-up menu: context menu
+  popup menu: context menu
+  push button: button
+  push buttons: buttons
+  list box: list
+  choice box: list
+  pull-down list: list
+  scroll bar: scroll

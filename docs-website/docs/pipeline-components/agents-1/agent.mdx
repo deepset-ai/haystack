@@ -77,10 +77,7 @@ coordinator_agent = Agent(
     exit_conditions=["text"]
 )
 
-## Warm up and run
-research_agent.warm_up()
-coordinator_agent.warm_up()
-
+## Run
 result = coordinator_agent.run(
     messages=[ChatMessage.from_user("Tell me about Haystack")]
 )
@@ -159,7 +156,6 @@ agent = Agent(
 )
 
 ## Run the Agent
-agent.warm_up()
 response = agent.run(messages=[ChatMessage.from_user("What is 7 * (4 + 2)?")])
 
 ## Output
@@ -222,7 +218,7 @@ extraction_agent.connect("fetcher.streams", "converter.sources")
 extraction_agent.connect("converter.documents", "builder.docs")
 extraction_agent.connect("builder", "database_agent")
 
-agent_output = extraction_agent.run({"fetcher":{"urls":["https://en.wikipedia.org/wiki/Deepset"]}})
+agent_output = extraction_agent.run({"fetcher":{"urls":["https://haystack.deepset.ai/release-notes/v2.20.0"]}})
 
 print(agent_output["database_agent"]["messages"][-1].text)
 ```

@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    The default OpenAI model has been changed from `gpt-4o-mini` to `gpt-5-mini` for `OpenAIChatGenerator` and `OpenAIGenerator`. If you rely on the default model and need to continue using `gpt-4o-mini`, explicitly specify it when initializing these components: `OpenAIChatGenerator(model="gpt-4o-mini")`.
+enhancements:
+  - |
+    The default OpenAI model for `OpenAIChatGenerator` and `OpenAIGenerator` has been updated from `gpt-4o-mini` to `gpt-5-mini`.

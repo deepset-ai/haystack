@@ -406,14 +406,9 @@ class SentenceTransformersDiversityRanker:
             - `documents`: List of Document objects that have been selected based on the diversity ranking.
 
         :raises ValueError: If the top_k value is less than or equal to 0.
-        :raises RuntimeError: If the component has not been warmed up.
         """
         if self.model is None:
-            error_msg = (
-                "The component SentenceTransformersDiversityRanker wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
-            raise RuntimeError(error_msg)
+            self.warm_up()
 
         if not documents:
             return {"documents": []}

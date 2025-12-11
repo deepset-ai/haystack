@@ -428,6 +428,19 @@ a:hover {
   color: var(--ifm-navbar-link-hover-color, var(--ifm-color-primary)) !important;
 }
 
+/* Hide navbar title on mobile/tablet to prevent overlap with search bar */
+@media (max-width: 996px) {
+  .navbar__title {
+    display: none !important;
+  }
+
+  /* Ensure navbar brand doesn't grow too large */
+  .navbar__brand {
+    flex-shrink: 0;
+    max-width: fit-content;
+  }
+}
+
 /* Remove underline from navbar logo link */
 .navbar__logo,
 .navbar__brand {

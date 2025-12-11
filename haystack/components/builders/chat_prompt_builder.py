@@ -6,7 +6,6 @@ import json
 from copy import deepcopy
 from typing import Any, Literal, Optional, Union
 
-from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -14,6 +13,7 @@ from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension, templatize_part
+from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +71,10 @@ class ChatPromptBuilder:
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
-    from haystack.utils import Secret
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = ChatPromptBuilder()
-    llm = OpenAIChatGenerator(api_key=Secret.from_token("<your-api-key>"), model="gpt-4o-mini")
+    llm = OpenAIChatGenerator(model="gpt-5-mini")
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)
@@ -90,13 +89,12 @@ class ChatPromptBuilder:
     res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "language": language},
                                         "template": messages}})
     print(res)
-
-    >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
-    "Berlin is the capital city of Germany and one of the most vibrant
-    and diverse cities in Europe. Here are some key things to know...Enjoy your time exploring the vibrant and dynamic
-    capital of Germany!")], _name=None, _meta={'model': 'gpt-4o-mini',
-    'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens':
-    708}})]}}
+    # >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
+    # "Berlin is the capital city of Germany and one of the most vibrant
+    # and diverse cities in Europe. Here are some key things to know...Enjoy your time exploring the vibrant and dynamic
+    # capital of Germany!")], _name=None, _meta={'model': 'gpt-5-mini',
+    # 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens':
+    # 708}})]}}
 
     messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next
     {{day_count}} days?")]
@@ -105,12 +103,12 @@ class ChatPromptBuilder:
                                         "template": messages}})
 
     print(res)
-    >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
-    "Here is the weather forecast for Berlin in the next 5
-    days:\\n\\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
-    closer to your visit.")], _name=None, _meta={'model': 'gpt-4o-mini',
-    'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201,
-    'total_tokens': 238}})]}}
+    # >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
+    # "Here is the weather forecast for Berlin in the next 5
+    # days:\\n\\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
+    # closer to your visit.")], _name=None, _meta={'model': 'gpt-5-mini',
+    # 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201,
+    # 'total_tokens': 238}})]}}
     ```
 
     #### String prompt template
@@ -131,7 +129,8 @@ class ChatPromptBuilder:
     {% endmessage %}
     \"\"\"
 
-    images = [ImageContent.from_file_path("apple.jpg"), ImageContent.from_file_path("orange.jpg")]
+    images = [ImageContent.from_file_path("test/test_files/images/apple.jpg"),
+              ImageContent.from_file_path("test/test_files/images/haystack-logo.png")]
 
     builder = ChatPromptBuilder(template=template)
     builder.run(user_name="John", images=images)
@@ -179,13 +178,17 @@ class ChatPromptBuilder:
                             raise ValueError(NO_TEXT_ERROR_MESSAGE.format(role=message.role.value, message=message))
                         if message.text and "templatize_part" in message.text:
                             raise ValueError(FILTER_NOT_ALLOWED_ERROR_MESSAGE)
-                        ast = self._env.parse(message.text)
-                        template_variables = meta.find_undeclared_variables(ast)
-                        extracted_variables += list(template_variables)
+                        assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                            env=self._env, template=message.text
+                        )
+                        extracted_variables += list(template_variables - assigned_variables)
             elif isinstance(template, str):
-                ast = self._env.parse(template)
-                extracted_variables = list(meta.find_undeclared_variables(ast))
+                assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                    env=self._env, template=template
+                )
+                extracted_variables = list(template_variables - assigned_variables)
 
+        extracted_variables = extracted_variables or []
         self.variables = variables or extracted_variables
         self.required_variables = required_variables or []
 

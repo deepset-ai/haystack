@@ -1,5 +1,5 @@
 extends: existence
-message: "Keyboard keys should be capitalized (e.g., 'Delete', 'F2')."
+message: "Keyboard keys should be capitalized ('Delete', 'Enter', 'F2')."
 level: warning
 scope: text
 tokens:

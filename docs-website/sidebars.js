@@ -63,6 +63,7 @@ export default {
             'concepts/pipelines/visualizing-pipelines',
             'concepts/pipelines/debugging-pipelines',
             'concepts/pipelines/pipeline-breakpoints',
+            'concepts/pipelines/pipeline-loops',
             'concepts/pipelines/pipeline-templates',
             'concepts/pipelines/asyncpipeline',
           ],
@@ -343,6 +344,7 @@ export default {
             'pipeline-components/extractors/llmdocumentcontentextractor',
             'pipeline-components/extractors/llmmetadataextractor',
             'pipeline-components/extractors/namedentityextractor',
+            'pipeline-components/extractors/regextextextractor',
           ],
         },
         {
@@ -460,6 +462,13 @@ export default {
         },
         {
           type: 'category',
+          label: 'Query',
+          items: [
+            'pipeline-components/query/queryexpander',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Rankers',
           link: {
             type: 'doc',
@@ -515,6 +524,8 @@ export default {
             'pipeline-components/retrievers/inmemoryembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasfulltextretriever',
+            'pipeline-components/retrievers/multiqueryembeddingretriever',
+            'pipeline-components/retrievers/multiquerytextretriever',
             'pipeline-components/retrievers/opensearchbm25retriever',
             'pipeline-components/retrievers/opensearchembeddingretriever',
             'pipeline-components/retrievers/opensearchhybridretriever',

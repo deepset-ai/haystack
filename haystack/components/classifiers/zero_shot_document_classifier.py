@@ -203,10 +203,7 @@ class TransformersZeroShotDocumentClassifier:
         """
 
         if self.pipeline is None:
-            raise RuntimeError(
-                "The component TransformerZeroShotDocumentClassifier wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
@@ -231,7 +228,10 @@ class TransformersZeroShotDocumentClassifier:
             for doc in documents
         ]
 
-        predictions = self.pipeline(texts, self.labels, multi_label=self.multi_label, batch_size=batch_size)
+        # mypy doesn't know this is set in warm_up
+        predictions = self.pipeline(  # type: ignore[misc]
+            texts, self.labels, multi_label=self.multi_label, batch_size=batch_size
+        )
 
         new_documents = []
         for prediction, document in zip(predictions, documents):

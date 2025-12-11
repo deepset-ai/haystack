@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Ensure request header keys are unique in link_content to prevent 400 Bad Request errors.
+
+    Some image providers return a 400 Bad Request when using ImageContent.from_url() because the User-Agent
+    header appears multiple times with different casing (e.g., user-agent, User-Agent).
+    This update normalizes header keys in a case-insensitive way, removes duplicates, and
+    preserves only the last occurrence.

@@ -2,8 +2,7 @@
 
 This directory contains the Docusaurus-powered documentation website for [Haystack](https://github.com/deepset-ai/haystack), an open-source framework for building production-ready applications with Large Language Models (LLMs).
 
-- **Vercel production deployment:** https://haystack-docs.vercel.app/docs/intro
-- **Live site:** https://docs.haystack.deepset.ai
+- **Website URL:** https://docs.haystack.deepset.ai
 
 **Table of Contents**
 
@@ -98,8 +97,18 @@ docs-website/
 | [Vale](https://vale.sh/) | Latest | Prose linting |
 
 **Key Docusaurus Plugins:**
-- `@docusaurus/plugin-content-docs` (dual instances for docs and API reference)
-- Custom remark plugins for versioned reference links
+- `@docusaurus/plugin-content-docs` — Two separate instances of this plugin run simultaneously:
+  1. **Main docs instance** (via the `classic` preset): serves `docs/` at `/docs/`
+  2. **Reference instance** (explicit plugin): serves `reference/` at `/reference/`
+
+  Each instance has its own sidebar, versioning config (`versions.json` vs `reference_versions.json`), and versioned content folders. This allows the API reference and guides to version independently and maintain separate navigation.
+
+- **Custom remark plugin** (`src/remark/versionedReferenceLinks.js`) — Automatically rewrites cross-links between docs and reference to include the correct version prefix. For example, if you're viewing docs version 2.19 and click a link to `/reference/some-api`, the plugin rewrites it to `/reference/2.19/some-api` so readers stay in the same version context.
+
+**When one might need these plugins:**
+- **Broken cross-links after a release:** If links between docs and API reference pages break (404s), the remark plugin may need adjustment—especially if version naming conventions change.
+- **Version dropdown issues:** If the version selector shows wrong versions or doesn't switch correctly between docs/reference, check the dual `plugin-content-docs` configs in `docusaurus.config.js`.
+- **Sidebar mismatches:** If API reference navigation breaks separately from main docs, remember they use different sidebar files (`sidebars.js` vs `reference-sidebars.js`).
 
 ## Available Scripts
 
@@ -143,7 +152,7 @@ These workflows automatically create versioned documentation snapshots and pull 
 
 ## Deployment
 
-The documentation site is automatically deployed to **https://haystack-docs.vercel.app/docs/intro** (in future https://docs.haystack.deepset.ai) when changes are merged to the `main` branch.
+The documentation site is automatically deployed to **https://docs.haystack.deepset.ai** when changes are merged to the `main` branch.
 
 ## llms.txt for AI tools
 

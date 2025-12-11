@@ -220,12 +220,6 @@ class TestSentenceTransformersDocumentImageEmbedder:
             assert new_doc.meta["embedding_source"]["type"] == "image"
             assert "file_path_meta_field" in new_doc.meta["embedding_source"]
 
-    def test_run_no_warmup(self):
-        embedder = SentenceTransformersDocumentImageEmbedder(model="model")
-
-        with pytest.raises(RuntimeError, match="The embedding model has not been loaded."):
-            embedder.run(documents=[Document(content="test")])
-
     def test_run_wrong_input_format(self):
         embedder = SentenceTransformersDocumentImageEmbedder(model="model")
 
@@ -329,7 +323,6 @@ class TestSentenceTransformersDocumentImageEmbedder:
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
 
         embedder = SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
-        embedder.warm_up()
 
         documents = [
             Document(

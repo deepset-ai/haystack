@@ -56,11 +56,6 @@ def test_ner_extractor_init(monkeypatch):
     monkeypatch.delenv("HF_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
 
     extractor = NamedEntityExtractor(backend=NamedEntityExtractorBackend.HUGGING_FACE, model="dslim/bert-base-NER")
-
-    with pytest.raises(RuntimeError, match=r"not warmed up"):
-        extractor.run(documents=[])
-
-    assert not extractor.initialized
     extractor.warm_up()
     assert extractor.initialized
 
