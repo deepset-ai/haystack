@@ -556,8 +556,8 @@ class Agent:
             - Any additional keys defined in the `state_schema`.
         :raises BreakpointException: If an agent breakpoint is triggered.
         """
-        # We pop parent_snapshot from kwargs to avoid passing it into State.
-        parent_snapshot = kwargs.pop("parent_snapshot", None)
+        # # We pop parent_snapshot from kwargs to avoid passing it into State.
+        # parent_snapshot = kwargs.pop("parent_snapshot", None)
         agent_inputs = {
             "messages": messages,
             "streaming_callback": streaming_callback,
@@ -592,7 +592,7 @@ class Agent:
             while exe_context.counter < self.max_agent_steps:
                 # Handle breakpoint and ChatGenerator call
                 Agent._check_chat_generator_breakpoint(
-                    execution_context=exe_context, break_point=break_point, parent_snapshot=parent_snapshot
+                    execution_context=exe_context, break_point=break_point, parent_snapshot=None
                 )
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
                 if exe_context.skip_chat_generator:
@@ -615,7 +615,7 @@ class Agent:
                         pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
                             agent_name=getattr(self, "__component_name__", None),
                             execution_context=exe_context,
-                            parent_snapshot=parent_snapshot,
+                            parent_snapshot=None,
                         )
                         e.pipeline_snapshot = pipeline_snapshot
                         raise e
@@ -630,7 +630,7 @@ class Agent:
 
                 # Handle breakpoint and ToolInvoker call
                 Agent._check_tool_invoker_breakpoint(
-                    execution_context=exe_context, break_point=break_point, parent_snapshot=parent_snapshot
+                    execution_context=exe_context, break_point=break_point, parent_snapshot=None
                 )
                 try:
                     # We only send the messages from the LLM to the tool invoker
@@ -654,7 +654,7 @@ class Agent:
                         tool_name=tool_name,
                         agent_name=getattr(self, "__component_name__", None),
                         execution_context=exe_context,
-                        parent_snapshot=parent_snapshot,
+                        parent_snapshot=None,
                     )
                     e.pipeline_snapshot = pipeline_snapshot
                     raise e
@@ -723,8 +723,8 @@ class Agent:
             - Any additional keys defined in the `state_schema`.
         :raises BreakpointException: If an agent breakpoint is triggered.
         """
-        # We pop parent_snapshot from kwargs to avoid passing it into State.
-        parent_snapshot = kwargs.pop("parent_snapshot", None)
+        # # We pop parent_snapshot from kwargs to avoid passing it into State.
+        # parent_snapshot = kwargs.pop("parent_snapshot", None)
         agent_inputs = {
             "messages": messages,
             "streaming_callback": streaming_callback,
@@ -759,7 +759,7 @@ class Agent:
             while exe_context.counter < self.max_agent_steps:
                 # Handle breakpoint and ChatGenerator call
                 self._check_chat_generator_breakpoint(
-                    execution_context=exe_context, break_point=break_point, parent_snapshot=parent_snapshot
+                    execution_context=exe_context, break_point=break_point, parent_snapshot=None
                 )
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
                 if exe_context.skip_chat_generator:
@@ -787,7 +787,7 @@ class Agent:
 
                 # Handle breakpoint and ToolInvoker call
                 self._check_tool_invoker_breakpoint(
-                    execution_context=exe_context, break_point=break_point, parent_snapshot=parent_snapshot
+                    execution_context=exe_context, break_point=break_point, parent_snapshot=None
                 )
                 # We only send the messages from the LLM to the tool invoker
                 tool_invoker_result = await AsyncPipeline._run_component_async(
