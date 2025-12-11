@@ -24,11 +24,19 @@ and a Document Intelligence or Cognitive Services resource. For help with settin
 ### Usage example
 
 ```python
+import os
+from datetime import datetime
 from haystack.components.converters import AzureOCRDocumentConverter
 from haystack.utils import Secret
 
-converter = AzureOCRDocumentConverter(endpoint="<url>", api_key=Secret.from_token("<your-api-key>"))
-results = converter.run(sources=["path/to/doc_with_images.pdf"], meta={"date_added": datetime.now().isoformat()})
+converter = AzureOCRDocumentConverter(
+    endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"],
+    api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY"),
+)
+results = converter.run(
+    sources=["test/test_files/pdf/react_paper.pdf"],
+    meta={"date_added": datetime.now().isoformat()},
+)
 documents = results["documents"]
 print(documents[0].content)
 # 'This is a text from the PDF file.'
