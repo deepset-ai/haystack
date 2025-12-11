@@ -1,6 +1,9 @@
 ---
 upgrade:
   - |
-    `HuggingFaceLocalChatGenerator` now uses `Qwen/Qwen3-0.6B` as the default model, replacing the previous default.
-    Additionally, a new `enable_thinking` parameter has been added to enable thinking mode in chat templates for
-    thinking-capable models, allowing them to generate intermediate reasoning steps before producing final responses.
+    ``HuggingFaceLocalChatGenerator`` now uses ``Qwen/Qwen3-0.6B`` as the default model, replacing the previous default.
+enhancements:
+  - |
+    A new ``enable_thinking`` parameter has been added to enable thinking mode in chat templates for thinking-capable models, 
+    allowing them to generate intermediate reasoning steps before producing final responses.
+ 
