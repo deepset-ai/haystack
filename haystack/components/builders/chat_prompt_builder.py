@@ -89,12 +89,12 @@ class ChatPromptBuilder:
     res = pipe.run(data={"prompt_builder": {"template_variables": {"location": location, "language": language},
                                         "template": messages}})
     print(res)
-    >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
-    "Berlin is the capital city of Germany and one of the most vibrant
-    and diverse cities in Europe. Here are some key things to know...Enjoy your time exploring the vibrant and dynamic
-    capital of Germany!")], _name=None, _meta={'model': 'gpt-5-mini',
-    'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens':
-    708}})]}}
+    # >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
+    # "Berlin is the capital city of Germany and one of the most vibrant
+    # and diverse cities in Europe. Here are some key things to know...Enjoy your time exploring the vibrant and dynamic
+    # capital of Germany!")], _name=None, _meta={'model': 'gpt-5-mini',
+    # 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 27, 'completion_tokens': 681, 'total_tokens':
+    # 708}})]}}
 
     messages = [system_message, ChatMessage.from_user("What's the weather forecast for {{location}} in the next
     {{day_count}} days?")]
@@ -103,12 +103,12 @@ class ChatPromptBuilder:
                                         "template": messages}})
 
     print(res)
-    >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
-    "Here is the weather forecast for Berlin in the next 5
-    days:\\n\\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
-    closer to your visit.")], _name=None, _meta={'model': 'gpt-5-mini',
-    'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201,
-    'total_tokens': 238}})]}}
+    # >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
+    # "Here is the weather forecast for Berlin in the next 5
+    # days:\\n\\nDay 1: Mostly cloudy with a high of 22°C (72°F) and...so it's always a good idea to check for updates
+    # closer to your visit.")], _name=None, _meta={'model': 'gpt-5-mini',
+    # 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 37, 'completion_tokens': 201,
+    # 'total_tokens': 238}})]}}
     ```
 
     #### String prompt template
