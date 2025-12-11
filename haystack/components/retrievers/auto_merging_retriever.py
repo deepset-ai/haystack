@@ -38,24 +38,26 @@ class AutoMergingRetriever:
     from haystack.components.preprocessors import HierarchicalDocumentSplitter
     from haystack.components.retrievers.auto_merging_retriever import AutoMergingRetriever
     from haystack.document_stores.in_memory import InMemoryDocumentStore
+    from haystack.document_stores.types import DuplicatePolicy
 
     # create a hierarchical document structure with 3 levels, where the parent document has 3 children
     text = "The sun rose early in the morning. It cast a warm glow over the trees. Birds began to sing."
     original_document = Document(content=text)
-    builder = HierarchicalDocumentSplitter(block_sizes=[10, 3], split_overlap=0, split_by="word")
+    builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
     docs = builder.run([original_document])["documents"]
 
     # store level-1 parent documents and initialize the retriever
     doc_store_parents = InMemoryDocumentStore()
-    for doc in docs["documents"]:
-        if doc.meta["children_ids"] and doc.meta["level"] == 1:
-            doc_store_parents.write_documents([doc])
+    for doc in docs + [original_document]:
+        if doc.meta["__children_ids"] and doc.meta["__level"] in [0,1]:  # store the root document and level 1 documents
+            doc_store_parents.write_documents([doc], policy=DuplicatePolicy.SKIP)
+
     retriever = AutoMergingRetriever(doc_store_parents, threshold=0.5)
 
     # assume we retrieved 2 leaf docs from the same parent, the parent document should be returned,
     # since it has 3 children and the threshold=0.5, and we retrieved 2 children (2/3 > 0.66(6))
-    leaf_docs = [doc for doc in docs["documents"] if not doc.meta["children_ids"]]
-    docs = retriever.run(leaf_docs[4:6])
+    leaf_docs = [doc for doc in docs if not doc.meta["__children_ids"]]
+    retrieved_docs = retriever.run(leaf_docs[4:6])
     >> {'documents': [Document(id=538..),
     >> content: 'warm glow over the trees. Birds began to sing.',
     >> meta: {'block_size': 10, 'parent_id': '835..', 'children_ids': ['c17...', '3ff...', '352...'], 'level': 1, 'source_id': '835...',
