@@ -491,62 +491,34 @@ class TestHuggingFaceLocalChatGenerator:
     @pytest.mark.slow
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run(self, monkeypatch):
+        """Test live run with default behavior and enable_thinking."""
         monkeypatch.delenv("HF_API_TOKEN", raising=False)  # https://github.com/deepset-ai/haystack/issues/8811
+
+        # Test 1: Default behavior (no enable_thinking parameter) - should not include thinking tags
         messages = [ChatMessage.from_user("Please create a summary about the following topic: Climate change")]
-
         llm = HuggingFaceLocalChatGenerator(model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 50})
-
         result = llm.run(messages)
 
         assert "replies" in result
         assert isinstance(result["replies"][0], ChatMessage)
-        assert "climate change" in result["replies"][0].text.lower()
+        reply_text = result["replies"][0].text
+        assert "climate change" in reply_text.lower()
+        assert "<think>" not in reply_text
+        assert "</think>" not in reply_text
 
-    @pytest.mark.integration
-    @pytest.mark.slow
-    @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run_with_enable_thinking(self, monkeypatch):
-        """Test that enable_thinking works with the default Qwen3 model in a live run."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
+        # Test 2: With enable_thinking=True - should include thinking tags
         messages = [ChatMessage.from_user("What is 2+2?")]
-
         llm = HuggingFaceLocalChatGenerator(
             model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 450}, enable_thinking=True
         )
-
         result = llm.run(messages)
 
         assert "replies" in result
         assert isinstance(result["replies"][0], ChatMessage)
         reply_text = result["replies"][0].text
-
         assert reply_text is not None
         assert "<think>" in reply_text
         assert "</think>" in reply_text
-        assert len(reply_text) > 0
-        assert "4" in reply_text.lower()
-
-    @pytest.mark.integration
-    @pytest.mark.slow
-    @pytest.mark.flaky(reruns=3, reruns_delay=10)
-    def test_live_run_without_enable_thinking(self, monkeypatch):
-        """Test that enable_thinking=False prevents thinking tags in the response."""
-        monkeypatch.delenv("HF_API_TOKEN", raising=False)
-        messages = [ChatMessage.from_user("What is 2+2?")]
-
-        llm = HuggingFaceLocalChatGenerator(
-            model="Qwen/Qwen3-0.6B", generation_kwargs={"max_new_tokens": 450}, enable_thinking=False
-        )
-
-        result = llm.run(messages)
-
-        assert "replies" in result
-        assert isinstance(result["replies"][0], ChatMessage)
-        reply_text = result["replies"][0].text
-
-        assert reply_text is not None
-        assert "<think>" not in reply_text
-        assert "</think>" not in reply_text
         assert len(reply_text) > 0
         assert "4" in reply_text.lower()
 
