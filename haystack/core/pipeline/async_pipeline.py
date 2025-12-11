@@ -38,6 +38,7 @@ class AsyncPipeline(PipelineBase):
         component_inputs: dict[str, Any],
         component_visits: dict[str, int],
         parent_span: Optional[tracing.Span] = None,
+        *,
         break_point: Optional[Breakpoint] = None,
     ) -> Mapping[str, Any]:
         """
