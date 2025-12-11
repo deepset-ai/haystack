@@ -26,7 +26,7 @@ from haystack.components.audio import LocalWhisperTranscriber
 
 whisper = LocalWhisperTranscriber(model="small")
 whisper.warm_up()
-transcription = whisper.run(sources=["path/to/audio/file"])
+transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
 ```
 
 <a id="whisper_local.LocalWhisperTranscriber.__init__"></a>
@@ -162,8 +162,8 @@ For the supported audio formats, languages, and other parameters, see the
 ```python
 from haystack.components.audio import RemoteWhisperTranscriber
 
-whisper = RemoteWhisperTranscriber(api_key=Secret.from_token("<your-api-key>"), model="tiny")
-transcription = whisper.run(sources=["path/to/audio/file"])
+whisper = RemoteWhisperTranscriber(model="whisper-1")
+transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
 ```
 
 <a id="whisper_remote.RemoteWhisperTranscriber.__init__"></a>
