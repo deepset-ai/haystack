@@ -40,7 +40,15 @@ class DocumentLanguageClassifier:
 
     p = Pipeline()
     p.add_component(instance=DocumentLanguageClassifier(languages=["en"]), name="language_classifier")
-    p.add_component(instance=MetadataRouter(rules={"en": {"language": {"$eq": "en"}}}), name="router")
+    p.add_component(
+    instance=MetadataRouter(rules={
+        "en": {
+            "field": "meta.language",
+            "operator": "==",
+            "value": "en"
+        }
+    }),
+    name="router")
     p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
     p.connect("language_classifier.documents", "router.documents")
     p.connect("router.en", "writer.documents")
