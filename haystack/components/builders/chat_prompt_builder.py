@@ -71,7 +71,6 @@ class ChatPromptBuilder:
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack import Pipeline
-    from haystack.utils import Secret
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = ChatPromptBuilder()
