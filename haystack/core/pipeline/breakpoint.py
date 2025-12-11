@@ -470,33 +470,6 @@ def _create_pipeline_snapshot_from_tool_invoker(
     return final_snapshot
 
 
-def _trigger_chat_generator_breakpoint(*, pipeline_snapshot: PipelineSnapshot) -> None:
-    """
-    Trigger a breakpoint before ChatGenerator execution in Agent.
-
-    :param pipeline_snapshot: PipelineSnapshot object containing the state of the pipeline and Agent snapshot.
-    :raises BreakpointException: Always raised when this function is called, indicating a breakpoint has been triggered.
-    """
-    if not isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
-        raise ValueError("PipelineSnapshot must contain an AgentBreakpoint to trigger a chat generator breakpoint.")
-
-    if not isinstance(pipeline_snapshot.agent_snapshot, AgentSnapshot):
-        raise ValueError("PipelineSnapshot must contain an AgentSnapshot to trigger a chat generator breakpoint.")
-
-    break_point = pipeline_snapshot.break_point.break_point
-    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
-    msg = (
-        f"Breaking at {break_point.component_name} visit count "
-        f"{pipeline_snapshot.agent_snapshot.component_visits[break_point.component_name]}"
-    )
-    raise BreakpointException(
-        message=msg,
-        component=break_point.component_name,
-        pipeline_snapshot=pipeline_snapshot,
-        pipeline_snapshot_file_path=full_file_path,
-    )
-
-
 def _trigger_tool_invoker_breakpoint(*, llm_messages: list[ChatMessage], pipeline_snapshot: PipelineSnapshot) -> None:
     """
     Check if a tool call breakpoint should be triggered before executing the tool invoker.

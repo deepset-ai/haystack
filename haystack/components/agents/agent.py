@@ -10,12 +10,12 @@ from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
 from haystack.core.component.component import component
-from haystack.core.errors import PipelineRuntimeError
+from haystack.core.errors import BreakpointException, PipelineRuntimeError
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot_from_chat_generator,
     _create_pipeline_snapshot_from_tool_invoker,
-    _trigger_chat_generator_breakpoint,
+    _save_pipeline_snapshot,
     _trigger_tool_invoker_breakpoint,
     _validate_tool_breakpoint_is_valid,
 )
@@ -467,29 +467,6 @@ class Agent:
             _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=self.tools)
 
     @staticmethod
-    def _check_chat_generator_breakpoint(
-        execution_context: _ExecutionContext, break_point: Optional[AgentBreakpoint]
-    ) -> None:
-        """
-        Check if the chat generator breakpoint should be triggered.
-
-        If the breakpoint should be triggered, create an agent snapshot and trigger the chat generator breakpoint.
-
-        :param execution_context: The current execution context of the agent.
-        :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-            for "tool_invoker".
-        """
-        if (
-            break_point
-            and break_point.break_point.component_name == "chat_generator"
-            and execution_context.component_visits["chat_generator"] == break_point.break_point.visit_count
-        ):
-            pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                execution_context=execution_context, break_point=break_point
-            )
-            _trigger_chat_generator_breakpoint(pipeline_snapshot=pipeline_snapshot)
-
-    @staticmethod
     def _check_tool_invoker_breakpoint(
         execution_context: _ExecutionContext, break_point: Optional[AgentBreakpoint]
     ) -> None:
@@ -582,8 +559,6 @@ class Agent:
             span.set_content_tag("haystack.agent.input", _deepcopy_with_exceptions(agent_inputs))
 
             while exe_context.counter < self.max_agent_steps:
-                # Handle breakpoint and ChatGenerator call
-                Agent._check_chat_generator_breakpoint(execution_context=exe_context, break_point=break_point)
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
                 if exe_context.skip_chat_generator:
                     llm_messages = exe_context.state.get("messages", [])[-1:]
@@ -600,10 +575,24 @@ class Agent:
                             },
                             component_visits=exe_context.component_visits,
                             parent_span=span,
+                            break_point=break_point.break_point if isinstance(break_point, AgentBreakpoint) else None,
                         )
+                    except BreakpointException as e:
+                        e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
+                            agent_name=break_point.agent_name, execution_context=exe_context, break_point=break_point
+                        )
+                        # We check if the agent is part of a pipeline by checking for __component_name__
+                        # If it is not in a pipeline, we save the snapshot to a file.
+                        in_pipeline = getattr(self, "__component_name__", None) is not None
+                        if not in_pipeline:
+                            full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                            e.pipeline_snapshot_file_path = full_file_path
+                        raise e
                     except PipelineRuntimeError as e:
                         e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=getattr(self, "__component_name__", None), execution_context=exe_context
+                            agent_name=getattr(self, "__component_name__", None),
+                            execution_context=exe_context,
+                            break_point=None,
                         )
                         raise e
 
@@ -629,7 +618,22 @@ class Agent:
                         },
                         component_visits=exe_context.component_visits,
                         parent_span=span,
+                        # TODO This is actually a bit trickier. We only want to send this down if the tool_name
+                        #      in the tool_invoker_inputs matches the breakpoint tool name.
+                        #      Otherwise it will always trigger at ToolInvoker not matter what the tool name is.
+                        # break_point=break_point.break_point if isinstance(break_point, AgentBreakpoint) else None,
                     )
+                # except BreakpointException as e:
+                #     # Re-raise with agent snapshot
+                #     e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
+                #         # TODO Consider adding/requiring the breakpoint that caused the BreakpointException
+                #         #      Would provide better access to tool name
+                #         tool_name=getattr(break_point.break_point.tool_name, "tool_name", None),
+                #         agent_name=getattr(self, "__component_name__", None),
+                #         execution_context=exe_context,
+                #         break_point=break_point,
+                #     )
+                #     raise e
                 except PipelineRuntimeError as e:
                     # Access the original Tool Invoker exception
                     original_error = e.__cause__
@@ -637,6 +641,7 @@ class Agent:
                         tool_name=getattr(original_error, "tool_name", None),
                         agent_name=getattr(self, "__component_name__", None),
                         execution_context=exe_context,
+                        break_point=None,
                     )
                     raise e
 
@@ -736,24 +741,35 @@ class Agent:
             span.set_content_tag("haystack.agent.input", _deepcopy_with_exceptions(agent_inputs))
 
             while exe_context.counter < self.max_agent_steps:
-                # Handle breakpoint and ChatGenerator call
-                self._check_chat_generator_breakpoint(execution_context=exe_context, break_point=break_point)
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
                 if exe_context.skip_chat_generator:
                     llm_messages = exe_context.state.get("messages", [])[-1:]
                     # Set to False so the next iteration will call the chat generator
                     exe_context.skip_chat_generator = False
                 else:
-                    result = await AsyncPipeline._run_component_async(
-                        component_name="chat_generator",
-                        component={"instance": self.chat_generator},
-                        component_inputs={
-                            "messages": exe_context.state.data["messages"],
-                            **exe_context.chat_generator_inputs,
-                        },
-                        component_visits=exe_context.component_visits,
-                        parent_span=span,
-                    )
+                    try:
+                        result = await AsyncPipeline._run_component_async(
+                            component_name="chat_generator",
+                            component={"instance": self.chat_generator},
+                            component_inputs={
+                                "messages": exe_context.state.data["messages"],
+                                **exe_context.chat_generator_inputs,
+                            },
+                            component_visits=exe_context.component_visits,
+                            parent_span=span,
+                            break_point=break_point.break_point if isinstance(break_point, AgentBreakpoint) else None,
+                        )
+                    except BreakpointException as e:
+                        e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
+                            agent_name=break_point.agent_name, execution_context=exe_context, break_point=break_point
+                        )
+                        # We check if the agent is part of a pipeline by checking for __component_name__
+                        # If it is not in a pipeline, we save the snapshot to a file.
+                        in_pipeline = getattr(self, "__component_name__", None) is not None
+                        if not in_pipeline:
+                            full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                            e.pipeline_snapshot_file_path = full_file_path
+                        raise e
                     llm_messages = result["replies"]
                     exe_context.state.set("messages", llm_messages)
 
@@ -763,7 +779,7 @@ class Agent:
                     break
 
                 # Handle breakpoint and ToolInvoker call
-                self._check_tool_invoker_breakpoint(execution_context=exe_context, break_point=break_point)
+                Agent._check_tool_invoker_breakpoint(execution_context=exe_context, break_point=break_point)
                 # We only send the messages from the LLM to the tool invoker
                 tool_invoker_result = await AsyncPipeline._run_component_async(
                     component_name="tool_invoker",

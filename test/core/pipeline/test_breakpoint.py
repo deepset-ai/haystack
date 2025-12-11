@@ -14,11 +14,10 @@ from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
     _save_pipeline_snapshot,
     _transform_json_structure,
-    _trigger_chat_generator_breakpoint,
     _trigger_tool_invoker_breakpoint,
     load_pipeline_snapshot,
 )
-from haystack.dataclasses import ByteStream, ChatMessage, Document, ToolCall
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.breakpoints import (
     AgentBreakpoint,
     AgentSnapshot,
@@ -224,14 +223,6 @@ def test_trigger_tool_invoker_breakpoint_specific_tool(make_pipeline_snapshot_wi
             ],
             pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint,
         )
-
-
-def test_trigger_chat_generator_breakpoint(make_pipeline_snapshot_with_agent_snapshot):
-    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot_with_agent_snapshot(
-        break_point=AgentBreakpoint("agent", Breakpoint(component_name="chat_generator"))
-    )
-    with pytest.raises(BreakpointException):
-        _trigger_chat_generator_breakpoint(pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint)
 
 
 class TestCreatePipelineSnapshot:
