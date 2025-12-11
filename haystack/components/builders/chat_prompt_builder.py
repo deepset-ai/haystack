@@ -75,7 +75,7 @@ class ChatPromptBuilder:
 
     # no parameter init, we don't use any runtime template variables
     prompt_builder = ChatPromptBuilder()
-    llm = OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"), model="gpt-5-mini")
+    llm = OpenAIChatGenerator(model="gpt-5-mini")
 
     pipe = Pipeline()
     pipe.add_component("prompt_builder", prompt_builder)
