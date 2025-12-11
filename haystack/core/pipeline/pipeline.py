@@ -18,7 +18,6 @@ from haystack.core.pipeline.base import (
 from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
     _save_pipeline_snapshot,
-    _trigger_break_point,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
 )
@@ -381,7 +380,7 @@ class Pipeline(PipelineBase):
                         inputs=component_inputs,  # the inputs to the current component
                         component_visits=component_visits,
                         parent_span=span,
-                        # Scenario 2: A break point is provided to stop the pipeline at a specific component
+                        # A break point is provided to stop the pipeline at a specific component
                         break_point=break_point if isinstance(break_point, Breakpoint) else None,
                     )
                 except BreakpointException as error:
