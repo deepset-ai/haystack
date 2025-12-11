@@ -552,23 +552,23 @@ class Agent:
                             parent_span=span,
                             break_point=break_point.break_point if isinstance(break_point, AgentBreakpoint) else None,
                         )
-                    except BreakpointException as e:
-                        # TODO Consider adding/requiring the breakpoint that caused the BreakpointException
+                    except (BreakpointException, PipelineRuntimeError) as e:
+                        if isinstance(e, BreakpointException):
+                            agent_name = break_point.agent_name if break_point else None
+                            # TODO Consider adding/requiring the breakpoint that caused the BreakpointException
+                            saved_bp = break_point
+                        else:
+                            agent_name = getattr(self, "__component_name__", None)
+                            saved_bp = None
+
                         e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=break_point.agent_name if break_point else None,
-                            execution_context=exe_context,
-                            break_point=break_point,
+                            agent_name=agent_name, execution_context=exe_context, break_point=saved_bp
                         )
                         # If Agent is not in a pipeline, we save the snapshot to a file.
                         # Checked by __component_name__ not being set.
                         if getattr(self, "__component_name__", None) is None:
                             full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
                             e.pipeline_snapshot_file_path = full_file_path
-                        raise e
-                    except PipelineRuntimeError as e:
-                        e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=getattr(self, "__component_name__", None), execution_context=exe_context
-                        )
                         raise e
 
                     llm_messages = result["replies"]
@@ -604,29 +604,26 @@ class Agent:
                         parent_span=span,
                         break_point=break_point_to_pass,
                     )
-                except BreakpointException as e:
-                    e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
+                except (BreakpointException, PipelineRuntimeError) as e:
+                    if isinstance(e, BreakpointException):
                         # TODO Consider adding/requiring the breakpoint that caused the BreakpointException
                         #      Would provide better access to tool name
-                        tool_name=break_point.break_point.tool_name,  # type: ignore[union-attr]
-                        agent_name=break_point.agent_name if break_point else None,
-                        execution_context=exe_context,
-                        break_point=break_point,
+                        agent_name = break_point.agent_name if break_point else None
+                        tool_name = break_point.break_point.tool_name  # type: ignore[union-attr]
+                        saved_bp = break_point
+                    else:
+                        agent_name = getattr(self, "__component_name__", None)
+                        tool_name = getattr(e.__cause__, "tool_name", None)
+                        saved_bp = None
+
+                    e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
+                        tool_name=tool_name, agent_name=agent_name, execution_context=exe_context, break_point=saved_bp
                     )
                     # If Agent is not in a pipeline, we save the snapshot to a file.
                     # Checked by __component_name__ not being set.
                     if getattr(self, "__component_name__", None) is None:
                         full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
                         e.pipeline_snapshot_file_path = full_file_path
-                    raise e
-                except PipelineRuntimeError as e:
-                    # Access the original Tool Invoker exception
-                    original_error = e.__cause__
-                    e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        tool_name=getattr(original_error, "tool_name", None),
-                        agent_name=getattr(self, "__component_name__", None),
-                        execution_context=exe_context,
-                    )
                     raise e
 
                 tool_messages = tool_invoker_result["tool_messages"]
@@ -756,6 +753,7 @@ class Agent:
                             full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
                             e.pipeline_snapshot_file_path = full_file_path
                         raise e
+
                     llm_messages = result["replies"]
                     exe_context.state.set("messages", llm_messages)
 
