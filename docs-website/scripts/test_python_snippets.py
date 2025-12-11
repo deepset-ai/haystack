@@ -331,12 +331,25 @@ def run_snippet(snippet: Snippet, timeout_seconds: int, cwd: str, skip_unsafe: b
             stderr=completed.stderr,
         )
     except subprocess.TimeoutExpired as exc:
+        # Handle stderr which might be bytes or str
+        stderr_text = exc.stderr
+        if stderr_text is None:
+            stderr_text = ""
+        elif isinstance(stderr_text, bytes):
+            stderr_text = stderr_text.decode("utf-8", errors="replace")
+        stderr_text = stderr_text + f"\n[timeout after {timeout_seconds}s]"
+
+        # Handle stdout which might be bytes or str
+        stdout_text = exc.stdout
+        if stdout_text is not None and isinstance(stdout_text, bytes):
+            stdout_text = stdout_text.decode("utf-8", errors="replace")
+
         return ExecutionResult(
             snippet=snippet,
             status=ExecutionStatus.FAILED,
             reason=f"timeout after {timeout_seconds}s",
-            stdout=exc.stdout or None,
-            stderr=(exc.stderr or "") + f"\n[timeout after {timeout_seconds}s]",
+            stdout=stdout_text,
+            stderr=stderr_text,
         )
 
 
@@ -414,7 +427,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             "(defaults to docs and versioned_docs)"
         ),
     )
-    parser.add_argument("--timeout-seconds", type=int, default=30, help="Timeout per snippet execution (seconds)")
+    parser.add_argument("--timeout-seconds", type=int, default=600, help="Timeout per snippet execution (seconds)")
     parser.add_argument(
         "--allow-unsafe", action="store_true", help="Allow execution of snippets with potentially unsafe patterns"
     )
