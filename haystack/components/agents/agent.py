@@ -555,7 +555,6 @@ class Agent:
                     except (BreakpointException, PipelineRuntimeError) as e:
                         if isinstance(e, BreakpointException):
                             agent_name = break_point.agent_name if break_point else None
-                            # TODO Consider adding/requiring the breakpoint that caused the BreakpointException
                             saved_bp = break_point
                         else:
                             agent_name = getattr(self, "__component_name__", None)
@@ -606,10 +605,8 @@ class Agent:
                     )
                 except (BreakpointException, PipelineRuntimeError) as e:
                     if isinstance(e, BreakpointException):
-                        # TODO Consider adding/requiring the breakpoint that caused the BreakpointException
-                        #      Would provide better access to tool name
                         agent_name = break_point.agent_name if break_point else None
-                        tool_name = break_point.break_point.tool_name  # type: ignore[union-attr]
+                        tool_name = e.break_point.tool_name if isinstance(e.break_point, ToolBreakpoint) else None
                         saved_bp = break_point
                     else:
                         agent_name = getattr(self, "__component_name__", None)
@@ -789,9 +786,7 @@ class Agent:
                     )
                 except BreakpointException as e:
                     e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        # TODO Consider adding/requiring the breakpoint that caused the BreakpointException
-                        #      Would provide better access to tool name
-                        tool_name=break_point.break_point.tool_name,  # type: ignore[union-attr]
+                        tool_name=e.break_point.tool_name if isinstance(e.break_point, ToolBreakpoint) else None,
                         agent_name=break_point.agent_name if break_point else None,
                         execution_context=exe_context,
                         break_point=break_point,

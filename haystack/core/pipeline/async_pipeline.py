@@ -54,15 +54,12 @@ class AsyncPipeline(PipelineBase):
         :param component_inputs: Inputs for the component.
         :returns: Outputs from the component that can be yielded from run_async_generator.
         """
-        component_break_point_triggered = (
-            break_point
-            and isinstance(break_point, Breakpoint)
+        if (
+            isinstance(break_point, Breakpoint)
             and break_point.component_name == component_name
             and break_point.visit_count == component_visits[component_name]
-        )
-        if component_break_point_triggered:
-            msg = f"Breaking at component {component_name} at visit count {component_visits[component_name]}"
-            raise BreakpointException(message=msg, component=component_name)
+        ):
+            raise BreakpointException.from_triggered_breakpoint(break_point=break_point)
 
         instance: Component = component["instance"]
 

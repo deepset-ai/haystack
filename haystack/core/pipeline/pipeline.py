@@ -59,15 +59,12 @@ class Pipeline(PipelineBase):
         :raises PipelineRuntimeError: If Component doesn't return a dictionary.
         :return: The output of the Component.
         """
-        component_break_point_triggered = (
-            break_point
-            and isinstance(break_point, Breakpoint)
+        if (
+            isinstance(break_point, Breakpoint)
             and break_point.component_name == component_name
             and break_point.visit_count == component_visits[component_name]
-        )
-        if component_break_point_triggered:
-            msg = f"Breaking at component {component_name} at visit count {component_visits[component_name]}"
-            raise BreakpointException(message=msg, component=component_name)
+        ):
+            raise BreakpointException.from_triggered_breakpoint(break_point=break_point)
 
         instance: Component = component["instance"]
 
@@ -378,6 +375,7 @@ class Pipeline(PipelineBase):
                         break_point=break_point if isinstance(break_point, Breakpoint) else None,
                     )
                 except (BreakpointException, PipelineRuntimeError) as error:
+                    saved_break_point: Union[Breakpoint, AgentBreakpoint]
                     if isinstance(error, PipelineRuntimeError):
                         saved_break_point = Breakpoint(
                             component_name=component_name,
@@ -385,8 +383,7 @@ class Pipeline(PipelineBase):
                             snapshot_file_path=_get_output_dir("pipeline_snapshot"),
                         )
                     else:
-                        # TODO Consider adding/requiring the breakpoint that caused the BreakpointException
-                        saved_break_point = break_point  # type: ignore[assignment]
+                        saved_break_point = error.break_point
 
                     # Create a snapshot of the state of the pipeline before the error occurred.
                     pipeline_snapshot = _create_pipeline_snapshot(
