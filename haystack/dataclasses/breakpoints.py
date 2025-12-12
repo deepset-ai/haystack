@@ -259,3 +259,19 @@ class PipelineSnapshot:
             ordered_component_names=data.get("ordered_component_names", []),
             include_outputs_from=include_outputs_from,
         )
+
+    @classmethod
+    def _from_agent_snapshot(cls, agent_snapshot: AgentSnapshot) -> "PipelineSnapshot":
+        """
+        Create a PipelineSnapshot from an AgentSnapshot.
+        """
+        # Create an empty pipeline snapshot
+        return PipelineSnapshot(
+            pipeline_state=PipelineState(inputs={}, component_visits={}, pipeline_outputs={}),
+            timestamp=agent_snapshot.timestamp,
+            break_point=agent_snapshot.break_point,
+            agent_snapshot=agent_snapshot,
+            original_input_data={},
+            ordered_component_names=[],
+            include_outputs_from=set(),
+        )
