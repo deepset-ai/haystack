@@ -48,7 +48,7 @@ class AutoMergingRetriever:
 
     # store level-1 parent documents and initialize the retriever
     doc_store_parents = InMemoryDocumentStore()
-    for doc in docs + [original_document]:
+    for doc in docs:
         if doc.meta["__children_ids"] and doc.meta["__level"] in [0,1]:  # store the root document and level 1 documents
             doc_store_parents.write_documents([doc], policy=DuplicatePolicy.SKIP)
 
