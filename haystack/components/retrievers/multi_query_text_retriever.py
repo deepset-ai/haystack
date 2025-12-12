@@ -49,10 +49,10 @@ class MultiQueryTextRetriever:
     results = multiquery_retriever.run(queries=["renewable energy?", "Geothermal", "Hydropower"])
     for doc in results["documents"]:
         print(f"Content: {doc.content}, Score: {doc.score}")
-    >>
-    >> Content: Geothermal energy is heat that comes from the sub-surface of the earth., Score: 1.6474448833731097
-    >> Content: Hydropower is a form of renewable energy using the flow of water to generate electricity., Score: 1.615
-    >> Content: Renewable energy is energy that is collected from renewable resources., Score: 1.5255309812344944
+    # >>
+    # >> Content: Geothermal energy is heat that comes from the sub-surface of the earth., Score: 1.6474448833731097
+    # >> Content: Hydropower is a form of renewable energy using the flow of water to generate electricity., Score: 1.615
+    # >> Content: Renewable energy is energy that is collected from renewable resources., Score: 1.5255309812344944
     ```
     """  # noqa E501
 
