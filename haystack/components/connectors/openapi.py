@@ -23,8 +23,6 @@ class OpenAPIConnector:
     arguments to it from a Haystack pipeline run method or by other components in a pipeline that
     pass input arguments to this component.
 
-    BIG TRIGGER
-
     Example:
     ```python
     from haystack.utils import Secret
