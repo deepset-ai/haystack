@@ -17,7 +17,7 @@ on:
 
 jobs:
   reno:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Skip mandatory job
         run: echo "Skipped!"

@@ -33,7 +33,7 @@ repos:
           - tomli
 
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.7
+    rev: v1.7.9
     hooks:
       - id: actionlint-docker
         args: ["-ignore", "SC2102"]
