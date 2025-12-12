@@ -13,7 +13,7 @@ env:
 
 jobs:
   promote:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v6

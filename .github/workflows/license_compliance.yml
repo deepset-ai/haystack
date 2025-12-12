@@ -18,7 +18,7 @@ jobs:
     name: Direct dependencies only
     env:
       REQUIREMENTS_FILE: requirements_direct.txt
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Checkout the code
         uses: actions/checkout@v6
