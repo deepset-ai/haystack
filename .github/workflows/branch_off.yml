@@ -12,7 +12,7 @@ env:
 
 jobs:
   branch-off:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       bump_version_pr_url: ${{ steps.create-pr.outputs.pull-request-url }}
 

@@ -15,7 +15,7 @@ env:
 jobs:
   push-release-notes-to-website:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Checkout Haystack home repository
         uses: actions/checkout@v6
