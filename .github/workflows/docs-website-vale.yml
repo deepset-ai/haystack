@@ -2,8 +2,8 @@ name: Vale Lint
 
 on:
   pull_request:
-    paths:
-      - 'docs-website/**'
+    # paths:
+    #   - 'docs-website/**'
   push:
     branches: [ main ]
     paths:
