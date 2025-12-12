@@ -8,6 +8,11 @@ on:
         required: true
         type: string
 
+# Only one release workflow runs at a time; additional runs are queued.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   parse-validate-version:
     runs-on: ubuntu-slim
