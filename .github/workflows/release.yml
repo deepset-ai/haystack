@@ -117,71 +117,23 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Calculate alert type and message
-        id: calculator
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Prepare release notification
+        id: prepare-notification
         env:
           VERSION: ${{ inputs.version }}
           GH_TOKEN: ${{ github.token }}
-        run: |
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
-            {
-              echo "alert_type=error"
-              echo "title=Release ${VERSION} failed"
-              echo "event_text=Release ${VERSION} failed. Check workflow run for details: ${RUN_URL}"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          {
-            echo "alert_type=success"
-            echo "title=Release ${VERSION} completed successfully"
-            [[ "${VERSION}" == *"-rc"* ]] && echo "released_rc=true"
-          } >> "$GITHUB_OUTPUT"
-
-          TXT="Release ${VERSION} completed successfully\n"
-          TXT+="\n📦 Artifacts:\n"
-          TXT+="- Release notes (GitHub): ${{ needs.check-artifacts.outputs.github_url }}\n"
-          TXT+="- PyPI: ${{ needs.check-artifacts.outputs.pypi_url }}\n"
-          TXT+="- Docker: ${{ needs.check-artifacts.outputs.docker_url }}\n"
-
-          # For RCs, include link to the Tests workflow run
-          if [[ "${VERSION}" == *"-rc"* ]]; then
-            COMMIT_SHA=$(gh api "repos/${{ github.repository }}/commits/${VERSION}" --jq '.sha' 2>/dev/null || echo "")
-            if [[ -n "${COMMIT_SHA}" ]]; then
-              TESTS_RUN=$(gh api "repos/${{ github.repository }}/actions/runs?head_sha=${COMMIT_SHA}" \
-                --jq '.workflow_runs[] | select(.name == "Tests") | .html_url' 2>/dev/null | head -1 || echo "")
-              if [[ -n "${TESTS_RUN}" ]]; then
-                TXT+="\n🧪 Tests: ${TESTS_RUN}\n"
-              fi
-            fi
-          fi
-
-          # For first RC, include the PRs to merge from branch-off
-          if [[ "${{ needs.parse-validate-version.outputs.is_first_rc }}" == "true" ]]; then
-            TXT+="\n📋 PRs to merge:\n"
-            TXT+="- Bump unstable version and create unstable docs: ${{ needs.branch-off.outputs.bump_version_pr_url }}\n"
-          fi
-
-          # For final minor releases (vX.Y.0), include the docs promotion PR
-          if [[ "${VERSION}" =~ ^v[0-9]+\.[0-9]+\.0$ ]]; then
-            PROMOTE_DOCS_PR_URL=$(gh pr list --repo "${{ github.repository }}" \
-              --head "promote-unstable-docs-${{ needs.parse-validate-version.outputs.major_minor }}" --json url \
-              --jq '.[0].url' 2>/dev/null || echo "")
-            if [[ -n "${PROMOTE_DOCS_PR_URL}" ]]; then
-              TXT+="\n📋 PRs to merge:\n"
-              TXT+="- Promote unstable docs: ${PROMOTE_DOCS_PR_URL}\n"
-            fi
-          fi
-
-          # For final releases (not RCs), include info about pushing release notes to website
-          if [[ "${VERSION}" != *"-rc"* ]]; then
-            TXT+="\n📝 After refining and finalizing release notes, push them to Haystack website:\n"
-            TXT+="gh workflow run push_release_notes_to_website.yml -R deepset-ai/haystack -f version=${VERSION}\n"
-          fi
-
-          echo "event_text=${TXT}" >> "$GITHUB_OUTPUT"
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HAS_FAILURE: ${{ contains(needs.*.result, 'failure') }}
+          IS_FIRST_RC: ${{ needs.parse-validate-version.outputs.is_first_rc }}
+          MAJOR_MINOR: ${{ needs.parse-validate-version.outputs.major_minor }}
+          GITHUB_URL: ${{ needs.check-artifacts.outputs.github_url }}
+          PYPI_URL: ${{ needs.check-artifacts.outputs.pypi_url }}
+          DOCKER_URL: ${{ needs.check-artifacts.outputs.docker_url }}
+          BUMP_VERSION_PR_URL: ${{ needs.branch-off.outputs.bump_version_pr_url }}
+        run: .github/utils/prepare_release_notification.sh
 
       - name: Send event to Datadog
         uses: masci/datadog@v1
@@ -189,9 +141,9 @@ jobs:
           api-key: ${{ secrets.CORE_DATADOG_API_KEY }}
           api-url: https://api.datadoghq.eu
           events: |
-            - title: "${{ steps.calculator.outputs.title }}"
-              text: "${{ steps.calculator.outputs.event_text }}"
-              alert_type: "${{ steps.calculator.outputs.alert_type }}"
+            - title: "${{ steps.prepare-notification.outputs.title }}"
+              text: "${{ steps.prepare-notification.outputs.event_text }}"
+              alert_type: "${{ steps.prepare-notification.outputs.alert_type }}"
               source_type_name: "Github"
               host: ${{ github.repository_owner }}
               tags:
@@ -200,4 +152,4 @@ jobs:
                 - "run_id:${{ github.run_id }}"
                 - "workflow:${{ github.workflow }}"
                 - "version:${{ inputs.version }}"
-                - "released_rc:${{ steps.calculator.outputs.released_rc || 'false' }}"
+                - "released_rc:${{ steps.prepare-notification.outputs.released_rc }}"
