@@ -21,7 +21,7 @@ on:
 jobs:
   check_if_changed:
     name: Check if changed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: read
     outputs:

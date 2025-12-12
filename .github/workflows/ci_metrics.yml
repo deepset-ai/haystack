@@ -14,7 +14,7 @@ on:
       - closed
 jobs:
   send:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - uses: int128/datadog-actions-metrics@v1
         with:
