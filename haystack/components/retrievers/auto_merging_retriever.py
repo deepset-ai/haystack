@@ -58,10 +58,7 @@ class AutoMergingRetriever:
     # since it has 3 children and the threshold=0.5, and we retrieved 2 children (2/3 > 0.66(6))
     leaf_docs = [doc for doc in docs if not doc.meta["__children_ids"]]
     retrieved_docs = retriever.run(leaf_docs[4:6])
-    >> {'documents': [Document(id=538..),
-    >> content: 'warm glow over the trees. Birds began to sing.',
-    >> meta: {'block_size': 10, 'parent_id': '835..', 'children_ids': ['c17...', '3ff...', '352...'], 'level': 1, 'source_id': '835...',
-    >> 'page_number': 1, 'split_id': 1, 'split_idx_start': 45})]}
+    print(retrieved_docs["documents"])
     ```
     """  # noqa: E501
 
