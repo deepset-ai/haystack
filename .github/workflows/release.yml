@@ -29,8 +29,8 @@ jobs:
         run: .github/utils/parse_validate_version.sh "${{ inputs.version }}"
 
   branch-off:
+    needs: ["parse-validate-version"]
     if: needs.parse-validate-version.outputs.is_first_rc == 'true'
-    needs: parse-validate-version
     uses: ./.github/workflows/branch_off.yml
     # https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows#passing-secrets-to-nested-workflows
     secrets: inherit
