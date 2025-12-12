@@ -10,7 +10,7 @@ on:
 
 jobs:
   parse-validate-version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       version: ${{ steps.parse-validate.outputs.version }}
       major_minor: ${{ steps.parse-validate.outputs.major_minor }}
@@ -38,7 +38,7 @@ jobs:
   create-release-tag:
     needs: ["parse-validate-version", "branch-off"]
     if: always() && needs.parse-validate-version.result == 'success' && needs.branch-off.result != 'failure'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: write
     steps:
@@ -115,7 +115,7 @@ jobs:
   notify:
     needs: ["parse-validate-version", "branch-off", "create-release-tag", "check-artifacts"]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
