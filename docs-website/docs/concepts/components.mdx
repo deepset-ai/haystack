@@ -43,19 +43,17 @@ Returns a list of Documents ranked by their similarity to the given query.
 
 ## Warming Up Components
 
-Components that use heavy resources, like LLMs or embedding models, additionally have a `warm_up()` method. When you run a component like this on its own, you must run `warm_up()` after initializing it, but before running it, like this:
+Components that use heavy resources, like LLMs or embedding models, have a `warm_up()` method that loads the necessary resources (such as models) into memory. This method is automatically called the first time the component runs, so you can use components directly without explicitly calling `warm_up()`:
 
 ```python
 from haystack import Document
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-doc = Document(content="I love pizza!")
-doc_embedder = SentenceTransformersDocumentEmbedder() # First, initialize the component
-doc_embedder.warm_up() # Then, warm it up to load the model
 
-result = doc_embedder.run([doc]) # And finally, run it
+doc = Document(content="I love pizza!")
+doc_embedder = SentenceTransformersDocumentEmbedder()
+
+result = doc_embedder.run([doc])  # warm_up() is called automatically on first run
 print(result['documents'][0].embedding)
 ```
 
-If you're using a component that has the `warm_up()` method in a pipeline, you don't have to do anything additionally. The pipeline takes care of warming it up before running.
-
-The `warm_up()` method is a nice way to keep the `init()` methods lightweight and the validation fast. (Validation in the pipeline happens when connecting the components but before warming them up and running.)
+You can still call `warm_up()` explicitly if you want to control when resources are loaded.

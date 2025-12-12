@@ -554,7 +554,6 @@ class Agent:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
             - Any additional keys defined in the `state_schema`.
-        :raises RuntimeError: If the Agent component wasn't warmed up before calling `run()`.
         :raises BreakpointException: If an agent breakpoint is triggered.
         """
         # We pop parent_snapshot from kwargs to avoid passing it into State.
@@ -722,7 +721,6 @@ class Agent:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
             - Any additional keys defined in the `state_schema`.
-        :raises RuntimeError: If the Agent component wasn't warmed up before calling `run_async()`.
         :raises BreakpointException: If an agent breakpoint is triggered.
         """
         # We pop parent_snapshot from kwargs to avoid passing it into State.

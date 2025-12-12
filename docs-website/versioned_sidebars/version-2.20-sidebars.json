@@ -59,6 +59,7 @@
             "concepts/pipelines/visualizing-pipelines",
             "concepts/pipelines/debugging-pipelines",
             "concepts/pipelines/pipeline-breakpoints",
+            "concepts/pipelines/pipeline-loops",
             "concepts/pipelines/pipeline-templates",
             "concepts/pipelines/asyncpipeline"
           ]
@@ -338,7 +339,8 @@
           "items": [
             "pipeline-components/extractors/llmdocumentcontentextractor",
             "pipeline-components/extractors/llmmetadataextractor",
-            "pipeline-components/extractors/namedentityextractor"
+            "pipeline-components/extractors/namedentityextractor",
+            "pipeline-components/extractors/regextextextractor"
           ]
         },
         {

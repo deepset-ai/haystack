@@ -6,12 +6,13 @@ import ast
 import contextlib
 from typing import Any, Callable, Mapping, Optional, Sequence, TypedDict, Union, get_args, get_origin
 
-from jinja2 import Environment, TemplateSyntaxError, meta
+from jinja2 import Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
+from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
 
@@ -397,13 +398,27 @@ class ConditionalRouter:
 
             # Validate templates
             if not self._validate_template(self._env, route["condition"]):
-                raise ValueError(f"Invalid template for condition: {route['condition']}")
+                condition_value = route["condition"]
+                if not isinstance(condition_value, str):
+                    raise ValueError(
+                        f"Invalid template for condition: {condition_value!r} (type: {type(condition_value).__name__})."
+                        f"Condition must be a string representing a valid Jinja2 template. "
+                        f"For example, use {str(condition_value)!r} instead of {condition_value!r}."
+                    )
+                raise ValueError(f"Invalid template for condition: {condition_value}")
 
             for output in outputs:
                 if not self._validate_template(self._env, output):
+                    if not isinstance(output, str):
+                        raise ValueError(
+                            f"Invalid template for output: {output!r} (type: {type(output).__name__}). "
+                            f"Output must be a string representing a valid Jinja2 template. "
+                            f"For example, use {str(output)!r} instead of {output!r}."
+                        )
                     raise ValueError(f"Invalid template for output: {output}")
 
-    def _extract_variables(self, env: Environment, templates: list[str]) -> set[str]:
+    @staticmethod
+    def _extract_variables(env: Environment, templates: list[str]) -> set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 
@@ -413,7 +428,10 @@ class ConditionalRouter:
         """
         variables = set()
         for template in templates:
-            variables.update(meta.find_undeclared_variables(env.parse(template)))
+            assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                env=env, template=template
+            )
+            variables.update(template_variables - assigned_variables)
         return variables
 
     def _validate_template(self, env: Environment, template_text: str):
@@ -424,6 +442,9 @@ class ConditionalRouter:
         :param template_text: A Jinja template string.
         :returns: `True` if the template is valid, `False` otherwise.
         """
+        # Check if template_text is a string before attempting to parse
+        if not isinstance(template_text, str):
+            return False
         try:
             env.parse(template_text)
             return True

@@ -1,0 +1,88 @@
+name: Branch off
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      bump_version_pr_url:
+        description: 'URL of the bump version PR'
+        value: ${{ jobs.branch-off.outputs.bump_version_pr_url }}
+env:
+  PYTHON_VERSION: "3.9"
+
+jobs:
+  branch-off:
+    runs-on: ubuntu-latest
+    outputs:
+      bump_version_pr_url: ${{ steps.create-pr.outputs.pull-request-url }}
+
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Define all versions
+        id: versions
+        shell: bash
+        run: |
+          # example: 2.20.0-rc0 in VERSION.txt -> 2.20
+          echo "current_version_major_minor=$(cut -d "." -f 1,2 < VERSION.txt)" >> "$GITHUB_OUTPUT"
+          # example: 2.20.0-rc0 in VERSION.txt -> 2.21.0-rc0
+          echo "next_version_rc0=$(awk -F. '/[0-9]+\./{$2++;print}' OFS=. < VERSION.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Create release branch and tag
+        shell: bash
+        env:
+          # We use the HAYSTACK_BOT_TOKEN here so the PR created by the step will
+          # trigger required workflows and can be merged by anyone
+          GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create the release branch from main
+          git checkout -b v${{ steps.versions.outputs.current_version_major_minor }}.x
+          git push -u origin v${{ steps.versions.outputs.current_version_major_minor }}.x
+
+          # Tag the branch-off point with the next version rc0 to mark start of next dev cycle.
+          # The tag points to this commit (before VERSION.txt is bumped).
+          # This is intentional for reno to work properly.
+          git tag "v${{ steps.versions.outputs.next_version_rc0 }}" -m "v${{ steps.versions.outputs.next_version_rc0 }}"
+          git push --tags
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Prepare changes for main
+        shell: bash
+        run: |
+          git checkout main
+
+          # Bump VERSION.txt to next version rc0
+          echo "${{ steps.versions.outputs.next_version_rc0 }}" > VERSION.txt
+
+          # Generate unstable docs for Docusaurus
+          python ./.github/utils/create_unstable_docs_docusaurus.py --new-version ${{ steps.versions.outputs.current_version_major_minor }}
+
+      - name: Create PR to bump unstable version and create unstable docs
+        id: create-pr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          commit-message: "Bump unstable version and create unstable docs"
+          branch: bump-version
+          base: main
+          title: "Bump unstable version and create unstable docs"
+          add-paths: |
+            VERSION.txt
+            docs-website
+          body: |
+            This PR:
+            - Bumps the unstable version to `${{ steps.versions.outputs.next_version_rc0 }}`
+            - Creates the unstable docs for Haystack ${{ steps.versions.outputs.current_version_major_minor }}
+
+            You can inspect the docs preview (two unstable versions will be available) and merge it.
+          labels: "ignore-for-release-notes"
+          reviewers: "${{ github.actor }}"

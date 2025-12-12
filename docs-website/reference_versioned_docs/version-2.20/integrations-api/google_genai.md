@@ -15,7 +15,7 @@ slug: "/integrations-google-genai"
 
 A component for generating chat completions using Google's Gemini models via the Google Gen AI SDK.
 
-Supports models like gemini-2.0-flash and other Gemini variants. For Gemini 2.5 series models,
+Supports models like gemini-2.5-flash and other Gemini variants. For Gemini 2.5 series models,
 enables thinking features via `generation_kwargs={"thinking_budget": value}`.
 
 ### Thinking Support (Gemini 2.5 Series)
@@ -43,7 +43,7 @@ context across turns. Include previous assistant responses in chat history for c
 from haystack_integrations.components.generators.google_genai import GoogleGenAIChatGenerator
 
 # export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
-chat_generator = GoogleGenAIChatGenerator(model="gemini-2.0-flash")
+chat_generator = GoogleGenAIChatGenerator(model="gemini-2.5-flash")
 ```
 
 **2. Vertex AI (Application Default Credentials)**
@@ -55,7 +55,7 @@ chat_generator = GoogleGenAIChatGenerator(
     api="vertex",
     vertex_ai_project="my-project",
     vertex_ai_location="us-central1",
-    model="gemini-2.0-flash"
+    model="gemini-2.5-flash",
 )
 ```
 
@@ -66,7 +66,7 @@ from haystack_integrations.components.generators.google_genai import GoogleGenAI
 # export the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
 chat_generator = GoogleGenAIChatGenerator(
     api="vertex",
-    model="gemini-2.0-flash"
+    model="gemini-2.5-flash",
 )
 ```
 
@@ -127,9 +127,9 @@ def __init__(*,
              api: Literal["gemini", "vertex"] = "gemini",
              vertex_ai_project: Optional[str] = None,
              vertex_ai_location: Optional[str] = None,
-             model: str = "gemini-2.0-flash",
-             generation_kwargs: Optional[Dict[str, Any]] = None,
-             safety_settings: Optional[List[Dict[str, Any]]] = None,
+             model: str = "gemini-2.5-flash",
+             generation_kwargs: Optional[dict[str, Any]] = None,
+             safety_settings: Optional[list[dict[str, Any]]] = None,
              streaming_callback: Optional[StreamingCallbackT] = None,
              tools: Optional[ToolsType] = None)
 ```
@@ -147,7 +147,7 @@ Go to https://cloud.google.com/vertex-ai/generative-ai/docs/start/api-keys for a
 Application Default Credentials.
 - `vertex_ai_location`: Google Cloud location for Vertex AI (e.g., "us-central1", "europe-west1").
 Required when using Vertex AI with Application Default Credentials.
-- `model`: Name of the model to use (e.g., "gemini-2.0-flash")
+- `model`: Name of the model to use (e.g., "gemini-2.5-flash")
 - `generation_kwargs`: Configuration for generation (temperature, max_tokens, etc.).
 For Gemini 2.5 series, supports `thinking_budget` to configure thinking behavior:
 - `thinking_budget`: int, controls thinking token allocation
@@ -164,7 +164,7 @@ Each tool should have a unique name.
 #### GoogleGenAIChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -179,7 +179,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GoogleGenAIChatGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "GoogleGenAIChatGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -197,12 +197,12 @@ Deserialized component.
 #### GoogleGenAIChatGenerator.run
 
 ```python
-@component.output_types(replies=List[ChatMessage])
-def run(messages: List[ChatMessage],
-        generation_kwargs: Optional[Dict[str, Any]] = None,
-        safety_settings: Optional[List[Dict[str, Any]]] = None,
+@component.output_types(replies=list[ChatMessage])
+def run(messages: list[ChatMessage],
+        generation_kwargs: Optional[dict[str, Any]] = None,
+        safety_settings: Optional[list[dict[str, Any]]] = None,
         streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[ToolsType] = None) -> Dict[str, Any]
+        tools: Optional[ToolsType] = None) -> dict[str, Any]
 ```
 
 Run the Google Gen AI chat generator on the given input data.
@@ -235,12 +235,12 @@ A dictionary with the following keys:
 #### GoogleGenAIChatGenerator.run\_async
 
 ```python
-@component.output_types(replies=List[ChatMessage])
-async def run_async(messages: List[ChatMessage],
-                    generation_kwargs: Optional[Dict[str, Any]] = None,
-                    safety_settings: Optional[List[Dict[str, Any]]] = None,
+@component.output_types(replies=list[ChatMessage])
+async def run_async(messages: list[ChatMessage],
+                    generation_kwargs: Optional[dict[str, Any]] = None,
+                    safety_settings: Optional[list[dict[str, Any]]] = None,
                     streaming_callback: Optional[StreamingCallbackT] = None,
-                    tools: Optional[ToolsType] = None) -> Dict[str, Any]
+                    tools: Optional[ToolsType] = None) -> dict[str, Any]
 ```
 
 Async version of the run method. Run the Google Gen AI chat generator on the given input data.
@@ -347,9 +347,9 @@ def __init__(*,
              suffix: str = "",
              batch_size: int = 32,
              progress_bar: bool = True,
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: Optional[list[str]] = None,
              embedding_separator: str = "\n",
-             config: Optional[Dict[str, Any]] = None) -> None
+             config: Optional[dict[str, Any]] = None) -> None
 ```
 
 Creates an GoogleGenAIDocumentEmbedder component.
@@ -382,7 +382,7 @@ For more information, see the [Google AI Task types](https://ai.google.dev/gemin
 #### GoogleGenAIDocumentEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -397,7 +397,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GoogleGenAIDocumentEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "GoogleGenAIDocumentEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -415,10 +415,10 @@ Deserialized component.
 #### GoogleGenAIDocumentEmbedder.run
 
 ```python
-@component.output_types(documents=List[Document], meta=Dict[str, Any])
+@component.output_types(documents=list[Document], meta=dict[str, Any])
 def run(
-    documents: List[Document]
-) -> Union[Dict[str, List[Document]], Dict[str, Any]]
+    documents: list[Document]
+) -> Union[dict[str, list[Document]], dict[str, Any]]
 ```
 
 Embeds a list of documents.
@@ -438,10 +438,10 @@ A dictionary with the following keys:
 #### GoogleGenAIDocumentEmbedder.run\_async
 
 ```python
-@component.output_types(documents=List[Document], meta=Dict[str, Any])
+@component.output_types(documents=list[Document], meta=dict[str, Any])
 async def run_async(
-    documents: List[Document]
-) -> Union[Dict[str, List[Document]], Dict[str, Any]]
+    documents: list[Document]
+) -> Union[dict[str, list[Document]], dict[str, Any]]
 ```
 
 Embeds a list of documents asynchronously.
@@ -537,7 +537,7 @@ def __init__(*,
              model: str = "text-embedding-004",
              prefix: str = "",
              suffix: str = "",
-             config: Optional[Dict[str, Any]] = None) -> None
+             config: Optional[dict[str, Any]] = None) -> None
 ```
 
 Creates an GoogleGenAITextEmbedder component.
@@ -566,7 +566,7 @@ For more information, see the [Google AI Task types](https://ai.google.dev/gemin
 #### GoogleGenAITextEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -581,7 +581,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GoogleGenAITextEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "GoogleGenAITextEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -599,8 +599,8 @@ Deserialized component.
 #### GoogleGenAITextEmbedder.run
 
 ```python
-@component.output_types(embedding=List[float], meta=Dict[str, Any])
-def run(text: str) -> Union[Dict[str, List[float]], Dict[str, Any]]
+@component.output_types(embedding=list[float], meta=dict[str, Any])
+def run(text: str) -> Union[dict[str, list[float]], dict[str, Any]]
 ```
 
 Embeds a single string.
@@ -620,9 +620,9 @@ A dictionary with the following keys:
 #### GoogleGenAITextEmbedder.run\_async
 
 ```python
-@component.output_types(embedding=List[float], meta=Dict[str, Any])
+@component.output_types(embedding=list[float], meta=dict[str, Any])
 async def run_async(
-        text: str) -> Union[Dict[str, List[float]], Dict[str, Any]]
+        text: str) -> Union[dict[str, list[float]], dict[str, Any]]
 ```
 
 Asynchronously embed a single string.
@@ -639,3 +639,4 @@ but can be used with `await` in async code.
 A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
+

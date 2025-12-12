@@ -461,14 +461,10 @@ class RecursiveDocumentSplitter:
         :returns:
             A dictionary containing a key "documents" with a List of Documents with smaller chunks of text corresponding
             to the input documents.
-
-        :raises RuntimeError: If the component wasn't warmed up but requires it for sentence splitting or tokenization.
         """
         if not self._is_warmed_up and ("sentence" in self.separators or self.split_units == "token"):
-            raise RuntimeError(
-                "The component RecursiveDocumentSplitter wasn't warmed up but requires it "
-                "for sentence splitting or tokenization. Call 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
+
         docs = []
         for doc in documents:
             if not doc.content or doc.content == "":

@@ -84,7 +84,6 @@ agent = Agent(
     exit_conditions=["text"]
 )
 
-agent.warm_up()
 response = agent.run(messages=[
     ChatMessage.from_user("Please post a helpful comment on this GitHub issue: https://github.com/owner/repo/issues/123 acknowledging the bug report and mentioning that we're investigating")
 ])

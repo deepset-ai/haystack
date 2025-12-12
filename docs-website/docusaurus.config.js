@@ -53,15 +53,19 @@ const config = {
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.21-unstable',
+              label: '2.22-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.20',
+          lastVersion: '2.21',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
+        },
+        gtag: {
+          trackingID: 'G-XLR9NC5CBS',
+          anonymizeIP: true,
         },
       }),
     ],
@@ -93,12 +97,12 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.21-unstable',
+            label: '2.22-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.20',
+        lastVersion: '2.21',
       },
     ],
     [
@@ -110,17 +114,17 @@ const config = {
     ],
     // Local plugin to teach Webpack how to handle `.txt` files like `llms.txt`
     require.resolve('./plugins/txtLoaderPlugin'),
-    ['@cmfcmf/docusaurus-search-local',      {
-      includeParentCategoriesInPageTitle: true,
-      indexDocSidebarParentCategories: 1,
-      lunr: {
-        titleBoost: 1,
-        contentBoost: 1,
-        tagsBoost: 3,
-        parentCategoriesBoost: 5,
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          {
+            from: '/docs',
+            to: '/docs/intro',
+          },
+        ],
       },
-    },
-    ]
+    ],
   ],
 
   themeConfig:

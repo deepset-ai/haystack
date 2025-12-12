@@ -34,13 +34,12 @@ Note that only _one_ predicted answer is compared to _one_ ground truth answer a
 
 ### On its own
 
-Below is an example of using a `SASEvaluator` component to evaluate two answers and compare them to ground truth answers. We need to call `warm_up()` before `run()` to load the model.
+Below is an example of using a `SASEvaluator` component to evaluate two answers and compare them to ground truth answers.
 
 ```python
 from haystack.components.evaluators import SASEvaluator
 
 sas_evaluator = SASEvaluator()
-sas_evaluator.warm_up()
 result = sas_evaluator.run(
   ground_truth_answers=["Berlin", "Paris"],
   predicted_answers=["Berlin", "Lyon"]

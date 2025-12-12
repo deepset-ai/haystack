@@ -188,17 +188,16 @@ class TransformersTextRouter:
 
         :raises TypeError:
             If the input is not a str.
-        :raises RuntimeError:
-            If the pipeline has not been loaded because warm_up() was not called before.
         """
         if self.pipeline is None:
-            raise RuntimeError(
-                "The component TextTransformersRouter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(text, str):
             raise TypeError("TransformersTextRouter expects a str as input.")
 
-        prediction = self.pipeline([text], return_all_scores=False, function_to_apply="none")
+        # mypy doesn't know this is set in warm_up
+        prediction = self.pipeline(  # type: ignore[misc]
+            [text], return_all_scores=False, function_to_apply="none"
+        )
         label = prediction[0]["label"]
         return {label: text}

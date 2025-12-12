@@ -192,10 +192,11 @@ class SentenceTransformersSparseTextEmbedder:
                 "SentenceTransformersSparseDocumentEmbedder."
             )
         if self.embedding_backend is None:
-            raise RuntimeError("The embedding model has not been loaded. Please call warm_up() before running.")
+            self.warm_up()
 
         text_to_embed = self.prefix + text + self.suffix
 
-        sparse_embedding = self.embedding_backend.embed(data=[text_to_embed])[0]
+        # mypy doesn't know this is set in warm_up
+        sparse_embedding = self.embedding_backend.embed(data=[text_to_embed])[0]  # type: ignore[union-attr]
 
         return {"sparse_embedding": sparse_embedding}
