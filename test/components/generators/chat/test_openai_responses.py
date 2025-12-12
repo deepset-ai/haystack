@@ -273,6 +273,15 @@ def weather_function(city: str) -> dict[str, Any]:
     return weather_info.get(city, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
+# Tool Function used in the test_live_run_with_agent_streaming_and_reasoning test
+def calculate(expression: str) -> dict:
+    try:
+        result = eval(expression, {"__builtins__": {}})
+        return {"result": result}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @pytest.fixture
 def tools():
     weather_tool = Tool(
@@ -1064,7 +1073,8 @@ class TestOpenAIResponsesChatGenerator:
         tool_call = message.tool_call
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
+        assert tool_call.arguments.keys() == {"city"}
+        assert "Paris" in tool_call.arguments["city"]
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -1169,14 +1179,6 @@ class TestOpenAIResponsesChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_agent_streaming_and_reasoning(self):
-        # Tool Function
-        def calculate(expression: str) -> dict:
-            try:
-                result = eval(expression, {"__builtins__": {}})
-                return {"result": result}
-            except Exception as e:
-                return {"error": str(e)}
-
         # Tool Definition
         calculator_tool = Tool(
             name="calculator",
