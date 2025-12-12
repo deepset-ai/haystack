@@ -200,6 +200,7 @@ class TestRemoteWhisperTranscriber:
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
+    @pytest.mark.flaky(reruns=3, reruns_delay=5)
     @pytest.mark.integration
     def test_whisper_remote_transcriber_pipeline_and_url_source(self):
         pipe = Pipeline()

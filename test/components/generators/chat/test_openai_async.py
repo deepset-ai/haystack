@@ -344,7 +344,7 @@ class TestOpenAIChatGeneratorAsync:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_run_async_cancellation_integration(self):
-        generator = OpenAIChatGenerator(model="gpt-4")
+        generator = OpenAIChatGenerator(model="gpt-4.1-nano")
         messages = [ChatMessage.from_user("Write me an essay about the history of jazz music, at least 500 words.")]
         received_chunks = []
 
