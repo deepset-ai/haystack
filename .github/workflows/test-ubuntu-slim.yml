@@ -1,0 +1,48 @@
+name: Test ubuntu-slim tools
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-tools:
+    runs-on: ubuntu-slim
+    steps:
+      # Tools used by release scripts (parse_validate_version.sh, prepare_release_notification.sh, wait_for_workflows.sh)
+      - name: Check gh CLI
+        run: |
+          echo "=== gh CLI (used by release scripts) ==="
+          which gh && gh --version || echo "❌ gh NOT FOUND"
+
+      - name: Check jq
+        run: |
+          echo "=== jq (used by wait_for_workflows.sh, github_release.yml) ==="
+          which jq && jq --version || echo "❌ jq NOT FOUND"
+
+      - name: Check git
+        run: |
+          echo "=== git ==="
+          which git && git --version || echo "❌ git NOT FOUND"
+
+      - name: Check curl
+        run: |
+          echo "=== curl (used by release.yml/check-artifacts) ==="
+          which curl && curl --version | head -1 || echo "❌ curl NOT FOUND"
+
+      # Tools used by other workflows
+      - name: Check rsync
+        run: |
+          echo "=== rsync (used by docusaurus_sync.yml) ==="
+          which rsync && rsync --version | head -1 || echo "❌ rsync NOT FOUND"
+
+      # Standard Unix tools used across scripts
+      - name: Check standard Unix tools
+        run: |
+          echo "=== Standard Unix tools ==="
+          for cmd in awk cut grep sort tail cat echo sed head bash; do
+            if which $cmd > /dev/null 2>&1; then
+              echo "✅ $cmd"
+            else
+              echo "❌ $cmd NOT FOUND"
+            fi
+          done
