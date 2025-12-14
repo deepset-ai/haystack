@@ -377,6 +377,7 @@ export default {
                 'pipeline-components/generators/guides-to-generators/generators-vs-chat-generators',
               ],
             },
+            'pipeline-components/generators/aibadgrchatgenerator',
             'pipeline-components/generators/amazonbedrockchatgenerator',
             'pipeline-components/generators/amazonbedrockgenerator',
             'pipeline-components/generators/aimllapichatgenerator',
