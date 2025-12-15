@@ -780,8 +780,8 @@ class TestComponentToolInPipeline:
             name="simple_tool",
             description="A simple tool",
             outputs_to_string={"source": "reply", "handler": reply_formatter},
-            inputs_from_state={"test": "input"},
-            outputs_to_state={"output": {"source": "out", "handler": output_handler}},
+            inputs_from_state={"test": "text"},
+            outputs_to_state={"output": {"source": "reply", "handler": output_handler}},
         )
 
         # Test serialization
@@ -793,8 +793,8 @@ class TestComponentToolInPipeline:
                 "description": "A simple tool",
                 "parameters": None,
                 "outputs_to_string": {"source": "reply", "handler": "test_component_tool.reply_formatter"},
-                "inputs_from_state": {"test": "input"},
-                "outputs_to_state": {"output": {"source": "out", "handler": "test_component_tool.output_handler"}},
+                "inputs_from_state": {"test": "text"},
+                "outputs_to_state": {"output": {"source": "reply", "handler": "test_component_tool.output_handler"}},
             },
         }
         tool_dict = tool.to_dict()
