@@ -196,12 +196,17 @@ class TestComponentTool:
 
     def test_from_component_with_invalid_inputs_from_state_nested_dict(self):
         """Test that ComponentTool rejects nested dict format for inputs_from_state"""
-        with pytest.raises(ValueError, match="inputs_from_state.*must be a string"):
+        with pytest.raises(ValueError, match="must be str, not dict"):
             ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})
 
     def test_from_component_with_outputs_to_state(self):
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
         assert tool.outputs_to_state == {"replies": {"source": "reply"}}
+
+    def test_from_component_with_invalid_outputs_to_state_source(self):
+        """Test that ComponentTool validates outputs_to_state source against component outputs"""
+        with pytest.raises(ValueError, match="unknown output"):
+            ComponentTool(component=SimpleComponent(), outputs_to_state={"result": {"source": "nonexistent"}})
 
     def test_from_component_with_dataclass(self):
         tool = ComponentTool(component=UserGreeter())
