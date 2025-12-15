@@ -8,7 +8,7 @@ on:
         description: 'URL of the bump version PR'
         value: ${{ jobs.branch-off.outputs.bump_version_pr_url }}
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
 
 jobs:
   branch-off:

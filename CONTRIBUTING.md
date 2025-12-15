@@ -153,7 +153,7 @@ next contribution!
 
 ### Setting up your development environment
 
-*To run Haystack tests locally, ensure your development environment uses Python >=3.9 and <3.13.*
+*To run Haystack tests locally, ensure your development environment uses Python >=3.10 and <3.14.*
 Some optional dependencies are not yet compatible with Python 3.13
 (see [this PR](https://github.com/deepset-ai/haystack/pull/8965) for details).
 
