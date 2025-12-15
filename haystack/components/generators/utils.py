@@ -5,7 +5,7 @@
 import json
 
 from haystack import logging
-from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, ReasoningContent, StreamingChunk, ToolCall
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,10 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
             logprobs.append(chunk.meta.get("logprobs"))
     tool_calls = []
 
+    # Accumulate reasoning content from chunks
+    reasoning_parts = [chunk.reasoning.reasoning_text for chunk in chunks if chunk.reasoning]
+    reasoning = ReasoningContent(reasoning_text="".join(reasoning_parts)) if reasoning_parts else None
+
     # Process tool calls if present in any chunk
     tool_call_data: dict[int, dict[str, str]] = {}  # Track tool calls by index
     for chunk in chunks:
@@ -141,7 +145,7 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     if logprobs:
         meta["logprobs"] = logprobs
 
-    return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, meta=meta)
+    return ChatMessage.from_assistant(text=text or None, tool_calls=tool_calls, reasoning=reasoning, meta=meta)
 
 
 def _serialize_object(obj):

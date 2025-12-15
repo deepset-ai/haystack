@@ -12,6 +12,7 @@ from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
+    ReasoningContent,
     StreamingCallbackT,
     StreamingChunk,
     SyncStreamingCallbackT,
@@ -178,6 +179,12 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
     # see https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion.n
     choice = chunk.choices[0]
     mapped_finish_reason = _map_hf_finish_reason_to_haystack(choice) if choice.finish_reason else None
+
+    # Extract reasoning content if present
+    reasoning = None
+    if hasattr(choice.delta, "reasoning") and choice.delta.reasoning:
+        reasoning = ReasoningContent(reasoning_text=choice.delta.reasoning)
+
     stream_chunk = StreamingChunk(
         content=choice.delta.content or "",
         meta={"model": chunk.model, "received_at": datetime.now().isoformat(), "finish_reason": choice.finish_reason},
@@ -187,6 +194,7 @@ def _convert_chat_completion_stream_output_to_streaming_chunk(
         # start is True at the very beginning since first chunk contains role information + first part of the answer.
         start=len(previous_chunks) == 0,
         finish_reason=mapped_finish_reason,
+        reasoning=reasoning,
     )
     return stream_chunk
 
@@ -582,6 +590,11 @@ class HuggingFaceAPIChatGenerator:
 
         tool_calls = _convert_hfapi_tool_calls(choice.message.tool_calls)
 
+        # Extract reasoning content if present
+        reasoning = None
+        if hasattr(choice.message, "reasoning") and choice.message.reasoning:
+            reasoning = ReasoningContent(reasoning_text=choice.message.reasoning)
+
         mapped_finish_reason = _map_hf_finish_reason_to_haystack(choice) if choice.finish_reason else None
         meta: dict[str, Any] = {
             "model": self._client.model,
@@ -597,7 +610,7 @@ class HuggingFaceAPIChatGenerator:
             }
         meta["usage"] = usage
 
-        message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
+        message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, reasoning=reasoning, meta=meta)
         return {"replies": [message]}
 
     async def _run_streaming_async(
@@ -647,6 +660,11 @@ class HuggingFaceAPIChatGenerator:
 
         tool_calls = _convert_hfapi_tool_calls(choice.message.tool_calls)
 
+        # Extract reasoning content if present
+        reasoning = None
+        if hasattr(choice.message, "reasoning") and choice.message.reasoning:
+            reasoning = ReasoningContent(reasoning_text=choice.message.reasoning)
+
         mapped_finish_reason = _map_hf_finish_reason_to_haystack(choice) if choice.finish_reason else None
         meta: dict[str, Any] = {
             "model": self._async_client.model,
@@ -662,5 +680,5 @@ class HuggingFaceAPIChatGenerator:
             }
         meta["usage"] = usage
 
-        message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
+        message = ChatMessage.from_assistant(text=text, tool_calls=tool_calls, reasoning=reasoning, meta=meta)
         return {"replies": [message]}
