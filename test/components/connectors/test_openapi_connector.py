@@ -197,6 +197,7 @@ class TestOpenAPIConnectorIntegration:
         not os.environ.get("GITHUB_TOKEN", None), reason="Export an env var called GITHUB_TOKEN to run this test."
     )
     @pytest.mark.integration
+    @pytest.mark.flaky(reruns=3, reruns_delay=5)
     def test_github_api_integration(self):
         component = OpenAPIConnector(
             openapi_spec="https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
