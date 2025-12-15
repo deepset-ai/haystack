@@ -5,6 +5,105 @@ description: "Various connectors to integrate with external services."
 slug: "/connectors-api"
 ---
 
+<a id="openapi"></a>
+
+## Module openapi
+
+<a id="openapi.OpenAPIConnector"></a>
+
+### OpenAPIConnector
+
+OpenAPIConnector enables direct invocation of REST endpoints defined in an OpenAPI specification.
+
+The OpenAPIConnector serves as a bridge between Haystack pipelines and any REST API that follows
+the OpenAPI(formerly Swagger) specification. It dynamically interprets the API specification and
+provides an interface for executing API operations. It is usually invoked by passing input
+arguments to it from a Haystack pipeline run method or by other components in a pipeline that
+pass input arguments to this component.
+
+**Example**:
+
+```python
+from haystack.utils import Secret
+from haystack.components.connectors.openapi import OpenAPIConnector
+
+connector = OpenAPIConnector(
+    openapi_spec="https://bit.ly/serperdev_openapi",
+    credentials=Secret.from_env_var("SERPERDEV_API_KEY"),
+    service_kwargs={"config_factory": my_custom_config_factory}
+)
+response = connector.run(
+    operation_id="search",
+    arguments={"q": "Who was Nikola Tesla?"}
+)
+```
+
+**Notes**:
+
+  - The `parameters` argument is required for this component.
+  - The `service_kwargs` argument is optional, it can be used to pass additional options to the OpenAPIClient.
+
+<a id="openapi.OpenAPIConnector.__init__"></a>
+
+#### OpenAPIConnector.\_\_init\_\_
+
+```python
+def __init__(openapi_spec: str,
+             credentials: Optional[Secret] = None,
+             service_kwargs: Optional[dict[str, Any]] = None)
+```
+
+Initialize the OpenAPIConnector with a specification and optional credentials.
+
+**Arguments**:
+
+- `openapi_spec`: URL, file path, or raw string of the OpenAPI specification
+- `credentials`: Optional API key or credentials for the service wrapped in a Secret
+- `service_kwargs`: Additional keyword arguments passed to OpenAPIClient.from_spec()
+For example, you can pass a custom config_factory or other configuration options.
+
+<a id="openapi.OpenAPIConnector.to_dict"></a>
+
+#### OpenAPIConnector.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+<a id="openapi.OpenAPIConnector.from_dict"></a>
+
+#### OpenAPIConnector.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "OpenAPIConnector"
+```
+
+Deserialize this component from a dictionary.
+
+<a id="openapi.OpenAPIConnector.run"></a>
+
+#### OpenAPIConnector.run
+
+```python
+@component.output_types(response=dict[str, Any])
+def run(operation_id: str,
+        arguments: Optional[dict[str, Any]] = None) -> dict[str, Any]
+```
+
+Invokes a REST endpoint specified in the OpenAPI specification.
+
+**Arguments**:
+
+- `operation_id`: The operationId from the OpenAPI spec to invoke
+- `arguments`: Optional parameters for the endpoint (query, path, or body parameters)
+
+**Returns**:
+
+Dictionary containing the service response
+
 <a id="openapi_service"></a>
 
 ## Module openapi\_service
@@ -145,103 +244,4 @@ Deserializes the component from a dictionary.
 **Returns**:
 
 The deserialized component.
-
-<a id="openapi"></a>
-
-## Module openapi
-
-<a id="openapi.OpenAPIConnector"></a>
-
-### OpenAPIConnector
-
-OpenAPIConnector enables direct invocation of REST endpoints defined in an OpenAPI specification.
-
-The OpenAPIConnector serves as a bridge between Haystack pipelines and any REST API that follows
-the OpenAPI(formerly Swagger) specification. It dynamically interprets the API specification and
-provides an interface for executing API operations. It is usually invoked by passing input
-arguments to it from a Haystack pipeline run method or by other components in a pipeline that
-pass input arguments to this component.
-
-**Example**:
-
-```python
-from haystack.utils import Secret
-from haystack.components.connectors.openapi import OpenAPIConnector
-
-connector = OpenAPIConnector(
-    openapi_spec="https://bit.ly/serperdev_openapi",
-    credentials=Secret.from_env_var("SERPERDEV_API_KEY"),
-    service_kwargs={"config_factory": my_custom_config_factory}
-)
-response = connector.run(
-    operation_id="search",
-    arguments={"q": "Who was Nikola Tesla?"}
-)
-```
-
-**Notes**:
-
-  - The `parameters` argument is required for this component.
-  - The `service_kwargs` argument is optional, it can be used to pass additional options to the OpenAPIClient.
-
-<a id="openapi.OpenAPIConnector.__init__"></a>
-
-#### OpenAPIConnector.\_\_init\_\_
-
-```python
-def __init__(openapi_spec: str,
-             credentials: Optional[Secret] = None,
-             service_kwargs: Optional[dict[str, Any]] = None)
-```
-
-Initialize the OpenAPIConnector with a specification and optional credentials.
-
-**Arguments**:
-
-- `openapi_spec`: URL, file path, or raw string of the OpenAPI specification
-- `credentials`: Optional API key or credentials for the service wrapped in a Secret
-- `service_kwargs`: Additional keyword arguments passed to OpenAPIClient.from_spec()
-For example, you can pass a custom config_factory or other configuration options.
-
-<a id="openapi.OpenAPIConnector.to_dict"></a>
-
-#### OpenAPIConnector.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize this component to a dictionary.
-
-<a id="openapi.OpenAPIConnector.from_dict"></a>
-
-#### OpenAPIConnector.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAPIConnector"
-```
-
-Deserialize this component from a dictionary.
-
-<a id="openapi.OpenAPIConnector.run"></a>
-
-#### OpenAPIConnector.run
-
-```python
-@component.output_types(response=dict[str, Any])
-def run(operation_id: str,
-        arguments: Optional[dict[str, Any]] = None) -> dict[str, Any]
-```
-
-Invokes a REST endpoint specified in the OpenAPI specification.
-
-**Arguments**:
-
-- `operation_id`: The operationId from the OpenAPI spec to invoke
-- `arguments`: Optional parameters for the endpoint (query, path, or body parameters)
-
-**Returns**:
-
-Dictionary containing the service response
 

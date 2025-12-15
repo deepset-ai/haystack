@@ -5,274 +5,6 @@ description: "Unified abstractions to represent tools across the framework."
 slug: "/tools-api"
 ---
 
-<a id="tool"></a>
-
-## Module tool
-
-<a id="tool.Tool"></a>
-
-### Tool
-
-Data class representing a Tool that Language Models can prepare a call for.
-
-Accurate definitions of the textual attributes such as `name` and `description`
-are important for the Language Model to correctly prepare the call.
-
-For resource-intensive operations like establishing connections to remote services or
-loading models, override the `warm_up()` method. This method is called before the Tool
-is used and should be idempotent, as it may be called multiple times during
-pipeline/agent setup.
-
-**Arguments**:
-
-- `name`: Name of the Tool.
-- `description`: Description of the Tool.
-- `parameters`: A JSON schema defining the parameters expected by the Tool.
-- `function`: The function that will be invoked when the Tool is called.
-- `outputs_to_string`: Optional dictionary defining how a tool outputs should be converted into a string.
-If the source is provided only the specified output key is sent to the handler.
-If the source is omitted the whole tool result is sent to the handler.
-Example:
-```python
-{
-    "source": "docs", "handler": format_documents
-}
-```
-- `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
-Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
-- `outputs_to_state`: Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
-If the source is provided only the specified output key is sent to the handler.
-Example:
-```python
-{
-    "documents": {"source": "docs", "handler": custom_handler}
-}
-```
-If the source is omitted the whole tool result is sent to the handler.
-Example:
-```python
-{
-    "documents": {"handler": custom_handler}
-}
-```
-
-<a id="tool.Tool.tool_spec"></a>
-
-#### Tool.tool\_spec
-
-```python
-@property
-def tool_spec() -> dict[str, Any]
-```
-
-Return the Tool specification to be used by the Language Model.
-
-<a id="tool.Tool.warm_up"></a>
-
-#### Tool.warm\_up
-
-```python
-def warm_up() -> None
-```
-
-Prepare the Tool for use.
-
-Override this method to establish connections to remote services, load models,
-or perform other resource-intensive initialization. This method should be idempotent,
-as it may be called multiple times.
-
-<a id="tool.Tool.invoke"></a>
-
-#### Tool.invoke
-
-```python
-def invoke(**kwargs: Any) -> Any
-```
-
-Invoke the Tool with the provided keyword arguments.
-
-<a id="tool.Tool.to_dict"></a>
-
-#### Tool.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serializes the Tool to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="tool.Tool.from_dict"></a>
-
-#### Tool.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "Tool"
-```
-
-Deserializes the Tool from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized Tool.
-
-<a id="from_function"></a>
-
-## Module from\_function
-
-<a id="from_function.create_tool_from_function"></a>
-
-#### create\_tool\_from\_function
-
-```python
-def create_tool_from_function(
-        function: Callable,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        inputs_from_state: Optional[dict[str, str]] = None,
-        outputs_to_state: Optional[dict[str, dict[str,
-                                                  Any]]] = None) -> "Tool"
-```
-
-Create a Tool instance from a function.
-
-Allows customizing the Tool name and description.
-For simpler use cases, consider using the `@tool` decorator.
-
-### Usage example
-
-```python
-from typing import Annotated, Literal
-from haystack.tools import create_tool_from_function
-
-def get_weather(
-    city: Annotated[str, "the city for which to get the weather"] = "Munich",
-    unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius"):
-    '''A simple function to get the current weather for a location.'''
-    return f"Weather report for {city}: 20 {unit}, sunny"
-
-tool = create_tool_from_function(get_weather)
-
-print(tool)
->>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
->>> parameters={
->>> 'type': 'object',
->>> 'properties': {
->>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
->>>     'unit': {
->>>         'type': 'string',
->>>         'enum': ['Celsius', 'Fahrenheit'],
->>>         'description': 'the unit for the temperature',
->>>         'default': 'Celsius',
->>>     },
->>>     }
->>> },
->>> function=<function get_weather at 0x7f7b3a8a9b80>)
-```
-
-**Arguments**:
-
-- `function`: The function to be converted into a Tool.
-The function must include type hints for all parameters.
-The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
-Other input types may work but are not guaranteed.
-If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
-- `name`: The name of the Tool. If not provided, the name of the function will be used.
-- `description`: The description of the Tool. If not provided, the docstring of the function will be used.
-To intentionally leave the description empty, pass an empty string.
-- `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
-Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
-- `outputs_to_state`: Optional dictionary defining how tool outputs map to state and message handling.
-Example:
-```python
-{
-    "documents": {"source": "docs", "handler": custom_handler},
-    "message": {"source": "summary", "handler": format_summary}
-}
-```
-
-**Raises**:
-
-- `ValueError`: If any parameter of the function lacks a type hint.
-- `SchemaGenerationError`: If there is an error generating the JSON schema for the Tool.
-
-**Returns**:
-
-The Tool created from the function.
-
-<a id="from_function.tool"></a>
-
-#### tool
-
-```python
-def tool(
-    function: Optional[Callable] = None,
-    *,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    inputs_from_state: Optional[dict[str, str]] = None,
-    outputs_to_state: Optional[dict[str, dict[str, Any]]] = None
-) -> Union[Tool, Callable[[Callable], Tool]]
-```
-
-Decorator to convert a function into a Tool.
-
-Can be used with or without parameters:
-@tool  # without parameters
-def my_function(): ...
-
-@tool(name="custom_name")  # with parameters
-def my_function(): ...
-
-### Usage example
-```python
-from typing import Annotated, Literal
-from haystack.tools import tool
-
-@tool
-def get_weather(
-    city: Annotated[str, "the city for which to get the weather"] = "Munich",
-    unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius"):
-    '''A simple function to get the current weather for a location.'''
-    return f"Weather report for {city}: 20 {unit}, sunny"
-
-print(get_weather)
->>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
->>> parameters={
->>> 'type': 'object',
->>> 'properties': {
->>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
->>>     'unit': {
->>>         'type': 'string',
->>>         'enum': ['Celsius', 'Fahrenheit'],
->>>         'description': 'the unit for the temperature',
->>>         'default': 'Celsius',
->>>     },
->>>     }
->>> },
->>> function=<function get_weather at 0x7f7b3a8a9b80>)
-```
-
-**Arguments**:
-
-- `function`: The function to decorate (when used without parameters)
-- `name`: Optional custom name for the tool
-- `description`: Optional custom description
-- `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names
-- `outputs_to_state`: Optional dictionary defining how tool outputs map to state and message handling
-
-**Returns**:
-
-Either a Tool instance or a decorator function that will create one
-
 <a id="component_tool"></a>
 
 ## Module component\_tool
@@ -449,6 +181,274 @@ def invoke(**kwargs: Any) -> Any
 ```
 
 Invoke the Tool with the provided keyword arguments.
+
+<a id="from_function"></a>
+
+## Module from\_function
+
+<a id="from_function.create_tool_from_function"></a>
+
+#### create\_tool\_from\_function
+
+```python
+def create_tool_from_function(
+        function: Callable,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        inputs_from_state: Optional[dict[str, str]] = None,
+        outputs_to_state: Optional[dict[str, dict[str,
+                                                  Any]]] = None) -> "Tool"
+```
+
+Create a Tool instance from a function.
+
+Allows customizing the Tool name and description.
+For simpler use cases, consider using the `@tool` decorator.
+
+### Usage example
+
+```python
+from typing import Annotated, Literal
+from haystack.tools import create_tool_from_function
+
+def get_weather(
+    city: Annotated[str, "the city for which to get the weather"] = "Munich",
+    unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius"):
+    '''A simple function to get the current weather for a location.'''
+    return f"Weather report for {city}: 20 {unit}, sunny"
+
+tool = create_tool_from_function(get_weather)
+
+print(tool)
+>>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
+>>> parameters={
+>>> 'type': 'object',
+>>> 'properties': {
+>>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+>>>     'unit': {
+>>>         'type': 'string',
+>>>         'enum': ['Celsius', 'Fahrenheit'],
+>>>         'description': 'the unit for the temperature',
+>>>         'default': 'Celsius',
+>>>     },
+>>>     }
+>>> },
+>>> function=<function get_weather at 0x7f7b3a8a9b80>)
+```
+
+**Arguments**:
+
+- `function`: The function to be converted into a Tool.
+The function must include type hints for all parameters.
+The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
+Other input types may work but are not guaranteed.
+If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
+- `name`: The name of the Tool. If not provided, the name of the function will be used.
+- `description`: The description of the Tool. If not provided, the docstring of the function will be used.
+To intentionally leave the description empty, pass an empty string.
+- `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
+Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
+- `outputs_to_state`: Optional dictionary defining how tool outputs map to state and message handling.
+Example:
+```python
+{
+    "documents": {"source": "docs", "handler": custom_handler},
+    "message": {"source": "summary", "handler": format_summary}
+}
+```
+
+**Raises**:
+
+- `ValueError`: If any parameter of the function lacks a type hint.
+- `SchemaGenerationError`: If there is an error generating the JSON schema for the Tool.
+
+**Returns**:
+
+The Tool created from the function.
+
+<a id="from_function.tool"></a>
+
+#### tool
+
+```python
+def tool(
+    function: Optional[Callable] = None,
+    *,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    inputs_from_state: Optional[dict[str, str]] = None,
+    outputs_to_state: Optional[dict[str, dict[str, Any]]] = None
+) -> Union[Tool, Callable[[Callable], Tool]]
+```
+
+Decorator to convert a function into a Tool.
+
+Can be used with or without parameters:
+@tool  # without parameters
+def my_function(): ...
+
+@tool(name="custom_name")  # with parameters
+def my_function(): ...
+
+### Usage example
+```python
+from typing import Annotated, Literal
+from haystack.tools import tool
+
+@tool
+def get_weather(
+    city: Annotated[str, "the city for which to get the weather"] = "Munich",
+    unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius"):
+    '''A simple function to get the current weather for a location.'''
+    return f"Weather report for {city}: 20 {unit}, sunny"
+
+print(get_weather)
+>>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
+>>> parameters={
+>>> 'type': 'object',
+>>> 'properties': {
+>>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+>>>     'unit': {
+>>>         'type': 'string',
+>>>         'enum': ['Celsius', 'Fahrenheit'],
+>>>         'description': 'the unit for the temperature',
+>>>         'default': 'Celsius',
+>>>     },
+>>>     }
+>>> },
+>>> function=<function get_weather at 0x7f7b3a8a9b80>)
+```
+
+**Arguments**:
+
+- `function`: The function to decorate (when used without parameters)
+- `name`: Optional custom name for the tool
+- `description`: Optional custom description
+- `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names
+- `outputs_to_state`: Optional dictionary defining how tool outputs map to state and message handling
+
+**Returns**:
+
+Either a Tool instance or a decorator function that will create one
+
+<a id="tool"></a>
+
+## Module tool
+
+<a id="tool.Tool"></a>
+
+### Tool
+
+Data class representing a Tool that Language Models can prepare a call for.
+
+Accurate definitions of the textual attributes such as `name` and `description`
+are important for the Language Model to correctly prepare the call.
+
+For resource-intensive operations like establishing connections to remote services or
+loading models, override the `warm_up()` method. This method is called before the Tool
+is used and should be idempotent, as it may be called multiple times during
+pipeline/agent setup.
+
+**Arguments**:
+
+- `name`: Name of the Tool.
+- `description`: Description of the Tool.
+- `parameters`: A JSON schema defining the parameters expected by the Tool.
+- `function`: The function that will be invoked when the Tool is called.
+- `outputs_to_string`: Optional dictionary defining how a tool outputs should be converted into a string.
+If the source is provided only the specified output key is sent to the handler.
+If the source is omitted the whole tool result is sent to the handler.
+Example:
+```python
+{
+    "source": "docs", "handler": format_documents
+}
+```
+- `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
+Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
+- `outputs_to_state`: Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
+If the source is provided only the specified output key is sent to the handler.
+Example:
+```python
+{
+    "documents": {"source": "docs", "handler": custom_handler}
+}
+```
+If the source is omitted the whole tool result is sent to the handler.
+Example:
+```python
+{
+    "documents": {"handler": custom_handler}
+}
+```
+
+<a id="tool.Tool.tool_spec"></a>
+
+#### Tool.tool\_spec
+
+```python
+@property
+def tool_spec() -> dict[str, Any]
+```
+
+Return the Tool specification to be used by the Language Model.
+
+<a id="tool.Tool.warm_up"></a>
+
+#### Tool.warm\_up
+
+```python
+def warm_up() -> None
+```
+
+Prepare the Tool for use.
+
+Override this method to establish connections to remote services, load models,
+or perform other resource-intensive initialization. This method should be idempotent,
+as it may be called multiple times.
+
+<a id="tool.Tool.invoke"></a>
+
+#### Tool.invoke
+
+```python
+def invoke(**kwargs: Any) -> Any
+```
+
+Invoke the Tool with the provided keyword arguments.
+
+<a id="tool.Tool.to_dict"></a>
+
+#### Tool.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the Tool to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="tool.Tool.from_dict"></a>
+
+#### Tool.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "Tool"
+```
+
+Deserializes the Tool from a dictionary.
+
+**Arguments**:
+
+- `data`: Dictionary to deserialize from.
+
+**Returns**:
+
+Deserialized Tool.
 
 <a id="toolset"></a>
 
