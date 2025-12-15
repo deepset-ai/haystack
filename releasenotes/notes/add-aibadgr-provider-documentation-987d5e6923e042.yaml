@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add documentation for AI Badgr provider integration. AI Badgr is a budget/utility OpenAI-compatible
+    provider that can be used with Haystack's OpenAIChatGenerator component by configuring the api_base_url
+    parameter. The documentation includes usage examples for tier-based model names (basic, normal, premium)
+    and guidance on authentication, streaming, and environment variable configuration.
