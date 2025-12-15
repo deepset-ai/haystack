@@ -696,6 +696,176 @@ Embeds a single string asynchronously.
 A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 
+<a id="image/sentence_transformers_doc_image_embedder"></a>
+
+## Module image/sentence\_transformers\_doc\_image\_embedder
+
+<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder"></a>
+
+### SentenceTransformersDocumentImageEmbedder
+
+A component for computing Document embeddings based on images using Sentence Transformers models.
+
+The embedding of each Document is stored in the `embedding` field of the Document.
+
+### Usage example
+```python
+from haystack import Document
+from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
+
+embedder = SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
+embedder.warm_up()
+
+documents = [
+    Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
+    Document(content="A photo of a dog", meta={"file_path": "dog.jpg"}),
+]
+
+result = embedder.run(documents=documents)
+documents_with_embeddings = result["documents"]
+print(documents_with_embeddings)
+
+# [Document(id=...,
+#           content='A photo of a cat',
+#           meta={'file_path': 'cat.jpg',
+#                 'embedding_source': {'type': 'image', 'file_path_meta_field': 'file_path'}},
+#           embedding=vector of size 512),
+#  ...]
+```
+
+<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder.__init__"></a>
+
+#### SentenceTransformersDocumentImageEmbedder.\_\_init\_\_
+
+```python
+def __init__(*,
+             file_path_meta_field: str = "file_path",
+             root_path: Optional[str] = None,
+             model: str = "sentence-transformers/clip-ViT-B-32",
+             device: Optional[ComponentDevice] = None,
+             token: Optional[Secret] = Secret.from_env_var(
+                 ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+             batch_size: int = 32,
+             progress_bar: bool = True,
+             normalize_embeddings: bool = False,
+             trust_remote_code: bool = False,
+             local_files_only: bool = False,
+             model_kwargs: Optional[dict[str, Any]] = None,
+             tokenizer_kwargs: Optional[dict[str, Any]] = None,
+             config_kwargs: Optional[dict[str, Any]] = None,
+             precision: Literal["float32", "int8", "uint8", "binary",
+                                "ubinary"] = "float32",
+             encode_kwargs: Optional[dict[str, Any]] = None,
+             backend: Literal["torch", "onnx", "openvino"] = "torch") -> None
+```
+
+Creates a SentenceTransformersDocumentEmbedder component.
+
+**Arguments**:
+
+- `file_path_meta_field`: The metadata field in the Document that contains the file path to the image or PDF.
+- `root_path`: The root directory path where document files are located. If provided, file paths in
+document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+- `model`: The Sentence Transformers model to use for calculating embeddings. Pass a local path or ID of the model on
+Hugging Face. To be used with this component, the model must be able to embed images and text into the same
+vector space. Compatible models include:
+- "sentence-transformers/clip-ViT-B-32"
+- "sentence-transformers/clip-ViT-L-14"
+- "sentence-transformers/clip-ViT-B-16"
+- "sentence-transformers/clip-ViT-B-32-multilingual-v1"
+- "jinaai/jina-embeddings-v4"
+- "jinaai/jina-clip-v1"
+- "jinaai/jina-clip-v2".
+- `device`: The device to use for loading the model.
+Overrides the default device.
+- `token`: The API token to download private models from Hugging Face.
+- `batch_size`: Number of documents to embed at once.
+- `progress_bar`: If `True`, shows a progress bar when embedding documents.
+- `normalize_embeddings`: If `True`, the embeddings are normalized using L2 normalization, so that each embedding has a norm of 1.
+- `trust_remote_code`: If `False`, allows only Hugging Face verified model architectures.
+If `True`, allows custom models and scripts.
+- `local_files_only`: If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
+- `model_kwargs`: Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
+when loading the model. Refer to specific model documentation for available kwargs.
+- `tokenizer_kwargs`: Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
+Refer to specific model documentation for available kwargs.
+- `config_kwargs`: Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
+- `precision`: The precision to use for the embeddings.
+All non-float32 precisions are quantized embeddings.
+Quantized embeddings are smaller and faster to compute, but may have a lower accuracy.
+They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
+- `encode_kwargs`: Additional keyword arguments for `SentenceTransformer.encode` when embedding documents.
+This parameter is provided for fine customization. Be careful not to clash with already set parameters and
+avoid passing parameters that change the output type.
+- `backend`: The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
+Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
+for more information on acceleration and quantization options.
+
+<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder.to_dict"></a>
+
+#### SentenceTransformersDocumentImageEmbedder.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder.from_dict"></a>
+
+#### SentenceTransformersDocumentImageEmbedder.from\_dict
+
+```python
+@classmethod
+def from_dict(
+        cls, data: dict[str,
+                        Any]) -> "SentenceTransformersDocumentImageEmbedder"
+```
+
+Deserializes the component from a dictionary.
+
+**Arguments**:
+
+- `data`: Dictionary to deserialize from.
+
+**Returns**:
+
+Deserialized component.
+
+<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder.warm_up"></a>
+
+#### SentenceTransformersDocumentImageEmbedder.warm\_up
+
+```python
+def warm_up() -> None
+```
+
+Initializes the component.
+
+<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder.run"></a>
+
+#### SentenceTransformersDocumentImageEmbedder.run
+
+```python
+@component.output_types(documents=list[Document])
+def run(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Embed a list of documents.
+
+**Arguments**:
+
+- `documents`: Documents to embed.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `documents`: Documents with embeddings.
+
 <a id="openai_document_embedder"></a>
 
 ## Module openai\_document\_embedder
@@ -1170,162 +1340,6 @@ Embed a list of documents.
 A dictionary with the following keys:
 - `documents`: Documents with embeddings.
 
-<a id="sentence_transformers_text_embedder"></a>
-
-## Module sentence\_transformers\_text\_embedder
-
-<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder"></a>
-
-### SentenceTransformersTextEmbedder
-
-Embeds strings using Sentence Transformers models.
-
-You can use it to embed user query and send it to an embedding retriever.
-
-Usage example:
-```python
-from haystack.components.embedders import SentenceTransformersTextEmbedder
-
-text_to_embed = "I love pizza!"
-
-text_embedder = SentenceTransformersTextEmbedder()
-text_embedder.warm_up()
-
-print(text_embedder.run(text_to_embed))
-
-# {'embedding': [-0.07804739475250244, 0.1498992145061493,, ...]}
-```
-
-<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.__init__"></a>
-
-#### SentenceTransformersTextEmbedder.\_\_init\_\_
-
-```python
-def __init__(model: str = "sentence-transformers/all-mpnet-base-v2",
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
-                 ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             prefix: str = "",
-             suffix: str = "",
-             batch_size: int = 32,
-             progress_bar: bool = True,
-             normalize_embeddings: bool = False,
-             trust_remote_code: bool = False,
-             local_files_only: bool = False,
-             truncate_dim: Optional[int] = None,
-             model_kwargs: Optional[dict[str, Any]] = None,
-             tokenizer_kwargs: Optional[dict[str, Any]] = None,
-             config_kwargs: Optional[dict[str, Any]] = None,
-             precision: Literal["float32", "int8", "uint8", "binary",
-                                "ubinary"] = "float32",
-             encode_kwargs: Optional[dict[str, Any]] = None,
-             backend: Literal["torch", "onnx", "openvino"] = "torch",
-             revision: Optional[str] = None)
-```
-
-Create a SentenceTransformersTextEmbedder component.
-
-**Arguments**:
-
-- `model`: The model to use for calculating embeddings.
-Specify the path to a local model or the ID of the model on Hugging Face.
-- `device`: Overrides the default device used to load the model.
-- `token`: An API token to use private models from Hugging Face.
-- `prefix`: A string to add at the beginning of each text to be embedded.
-You can use it to prepend the text with an instruction, as required by some embedding models,
-such as E5 and bge.
-- `suffix`: A string to add at the end of each text to embed.
-- `batch_size`: Number of texts to embed at once.
-- `progress_bar`: If `True`, shows a progress bar for calculating embeddings.
-If `False`, disables the progress bar.
-- `normalize_embeddings`: If `True`, the embeddings are normalized using L2 normalization, so that the embeddings have a norm of 1.
-- `trust_remote_code`: If `False`, permits only Hugging Face verified model architectures.
-If `True`, permits custom models and scripts.
-- `local_files_only`: If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
-- `truncate_dim`: The dimension to truncate sentence embeddings to. `None` does no truncation.
-If the model has not been trained with Matryoshka Representation Learning,
-truncation of embeddings can significantly affect performance.
-- `model_kwargs`: Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
-when loading the model. Refer to specific model documentation for available kwargs.
-- `tokenizer_kwargs`: Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-Refer to specific model documentation for available kwargs.
-- `config_kwargs`: Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
-- `precision`: The precision to use for the embeddings.
-All non-float32 precisions are quantized embeddings.
-Quantized embeddings are smaller in size and faster to compute, but may have a lower accuracy.
-They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
-- `encode_kwargs`: Additional keyword arguments for `SentenceTransformer.encode` when embedding texts.
-This parameter is provided for fine customization. Be careful not to clash with already set parameters and
-avoid passing parameters that change the output type.
-- `backend`: The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
-Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
-for more information on acceleration and quantization options.
-- `revision`: The specific model version to use. It can be a branch name, a tag name, or a commit id,
-for a stored model on Hugging Face.
-
-<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.to_dict"></a>
-
-#### SentenceTransformersTextEmbedder.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.from_dict"></a>
-
-#### SentenceTransformersTextEmbedder.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "SentenceTransformersTextEmbedder"
-```
-
-Deserializes the component from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized component.
-
-<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.warm_up"></a>
-
-#### SentenceTransformersTextEmbedder.warm\_up
-
-```python
-def warm_up()
-```
-
-Initializes the component.
-
-<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.run"></a>
-
-#### SentenceTransformersTextEmbedder.run
-
-```python
-@component.output_types(embedding=list[float])
-def run(text: str)
-```
-
-Embed a single string.
-
-**Arguments**:
-
-- `text`: Text to embed.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `embedding`: The embedding of the input text.
-
 <a id="sentence_transformers_sparse_document_embedder"></a>
 
 ## Module sentence\_transformers\_sparse\_document\_embedder
@@ -1612,95 +1626,81 @@ Embed a single string.
 A dictionary with the following keys:
 - `sparse_embedding`: The sparse embedding of the input text.
 
-<a id="image/sentence_transformers_doc_image_embedder"></a>
+<a id="sentence_transformers_text_embedder"></a>
 
-## Module image/sentence\_transformers\_doc\_image\_embedder
+## Module sentence\_transformers\_text\_embedder
 
-<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder"></a>
+<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder"></a>
 
-### SentenceTransformersDocumentImageEmbedder
+### SentenceTransformersTextEmbedder
 
-A component for computing Document embeddings based on images using Sentence Transformers models.
+Embeds strings using Sentence Transformers models.
 
-The embedding of each Document is stored in the `embedding` field of the Document.
+You can use it to embed user query and send it to an embedding retriever.
 
-### Usage example
+Usage example:
 ```python
-from haystack import Document
-from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
+from haystack.components.embedders import SentenceTransformersTextEmbedder
 
-embedder = SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
-embedder.warm_up()
+text_to_embed = "I love pizza!"
 
-documents = [
-    Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
-    Document(content="A photo of a dog", meta={"file_path": "dog.jpg"}),
-]
+text_embedder = SentenceTransformersTextEmbedder()
+text_embedder.warm_up()
 
-result = embedder.run(documents=documents)
-documents_with_embeddings = result["documents"]
-print(documents_with_embeddings)
+print(text_embedder.run(text_to_embed))
 
-# [Document(id=...,
-#           content='A photo of a cat',
-#           meta={'file_path': 'cat.jpg',
-#                 'embedding_source': {'type': 'image', 'file_path_meta_field': 'file_path'}},
-#           embedding=vector of size 512),
-#  ...]
+# {'embedding': [-0.07804739475250244, 0.1498992145061493,, ...]}
 ```
 
-<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder.__init__"></a>
+<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.__init__"></a>
 
-#### SentenceTransformersDocumentImageEmbedder.\_\_init\_\_
+#### SentenceTransformersTextEmbedder.\_\_init\_\_
 
 ```python
-def __init__(*,
-             file_path_meta_field: str = "file_path",
-             root_path: Optional[str] = None,
-             model: str = "sentence-transformers/clip-ViT-B-32",
+def __init__(model: str = "sentence-transformers/all-mpnet-base-v2",
              device: Optional[ComponentDevice] = None,
              token: Optional[Secret] = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+             prefix: str = "",
+             suffix: str = "",
              batch_size: int = 32,
              progress_bar: bool = True,
              normalize_embeddings: bool = False,
              trust_remote_code: bool = False,
              local_files_only: bool = False,
+             truncate_dim: Optional[int] = None,
              model_kwargs: Optional[dict[str, Any]] = None,
              tokenizer_kwargs: Optional[dict[str, Any]] = None,
              config_kwargs: Optional[dict[str, Any]] = None,
              precision: Literal["float32", "int8", "uint8", "binary",
                                 "ubinary"] = "float32",
              encode_kwargs: Optional[dict[str, Any]] = None,
-             backend: Literal["torch", "onnx", "openvino"] = "torch") -> None
+             backend: Literal["torch", "onnx", "openvino"] = "torch",
+             revision: Optional[str] = None)
 ```
 
-Creates a SentenceTransformersDocumentEmbedder component.
+Create a SentenceTransformersTextEmbedder component.
 
 **Arguments**:
 
-- `file_path_meta_field`: The metadata field in the Document that contains the file path to the image or PDF.
-- `root_path`: The root directory path where document files are located. If provided, file paths in
-document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
-- `model`: The Sentence Transformers model to use for calculating embeddings. Pass a local path or ID of the model on
-Hugging Face. To be used with this component, the model must be able to embed images and text into the same
-vector space. Compatible models include:
-- "sentence-transformers/clip-ViT-B-32"
-- "sentence-transformers/clip-ViT-L-14"
-- "sentence-transformers/clip-ViT-B-16"
-- "sentence-transformers/clip-ViT-B-32-multilingual-v1"
-- "jinaai/jina-embeddings-v4"
-- "jinaai/jina-clip-v1"
-- "jinaai/jina-clip-v2".
-- `device`: The device to use for loading the model.
-Overrides the default device.
-- `token`: The API token to download private models from Hugging Face.
-- `batch_size`: Number of documents to embed at once.
-- `progress_bar`: If `True`, shows a progress bar when embedding documents.
-- `normalize_embeddings`: If `True`, the embeddings are normalized using L2 normalization, so that each embedding has a norm of 1.
-- `trust_remote_code`: If `False`, allows only Hugging Face verified model architectures.
-If `True`, allows custom models and scripts.
+- `model`: The model to use for calculating embeddings.
+Specify the path to a local model or the ID of the model on Hugging Face.
+- `device`: Overrides the default device used to load the model.
+- `token`: An API token to use private models from Hugging Face.
+- `prefix`: A string to add at the beginning of each text to be embedded.
+You can use it to prepend the text with an instruction, as required by some embedding models,
+such as E5 and bge.
+- `suffix`: A string to add at the end of each text to embed.
+- `batch_size`: Number of texts to embed at once.
+- `progress_bar`: If `True`, shows a progress bar for calculating embeddings.
+If `False`, disables the progress bar.
+- `normalize_embeddings`: If `True`, the embeddings are normalized using L2 normalization, so that the embeddings have a norm of 1.
+- `trust_remote_code`: If `False`, permits only Hugging Face verified model architectures.
+If `True`, permits custom models and scripts.
 - `local_files_only`: If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
+- `truncate_dim`: The dimension to truncate sentence embeddings to. `None` does no truncation.
+If the model has not been trained with Matryoshka Representation Learning,
+truncation of embeddings can significantly affect performance.
 - `model_kwargs`: Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
 when loading the model. Refer to specific model documentation for available kwargs.
 - `tokenizer_kwargs`: Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
@@ -1708,18 +1708,20 @@ Refer to specific model documentation for available kwargs.
 - `config_kwargs`: Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
 - `precision`: The precision to use for the embeddings.
 All non-float32 precisions are quantized embeddings.
-Quantized embeddings are smaller and faster to compute, but may have a lower accuracy.
+Quantized embeddings are smaller in size and faster to compute, but may have a lower accuracy.
 They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
-- `encode_kwargs`: Additional keyword arguments for `SentenceTransformer.encode` when embedding documents.
+- `encode_kwargs`: Additional keyword arguments for `SentenceTransformer.encode` when embedding texts.
 This parameter is provided for fine customization. Be careful not to clash with already set parameters and
 avoid passing parameters that change the output type.
 - `backend`: The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
 Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
 for more information on acceleration and quantization options.
+- `revision`: The specific model version to use. It can be a branch name, a tag name, or a commit id,
+for a stored model on Hugging Face.
 
-<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder.to_dict"></a>
+<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.to_dict"></a>
 
-#### SentenceTransformersDocumentImageEmbedder.to\_dict
+#### SentenceTransformersTextEmbedder.to\_dict
 
 ```python
 def to_dict() -> dict[str, Any]
@@ -1731,15 +1733,13 @@ Serializes the component to a dictionary.
 
 Dictionary with serialized data.
 
-<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder.from_dict"></a>
+<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.from_dict"></a>
 
-#### SentenceTransformersDocumentImageEmbedder.from\_dict
+#### SentenceTransformersTextEmbedder.from\_dict
 
 ```python
 @classmethod
-def from_dict(
-        cls, data: dict[str,
-                        Any]) -> "SentenceTransformersDocumentImageEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "SentenceTransformersTextEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -1752,33 +1752,33 @@ Deserializes the component from a dictionary.
 
 Deserialized component.
 
-<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder.warm_up"></a>
+<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.warm_up"></a>
 
-#### SentenceTransformersDocumentImageEmbedder.warm\_up
+#### SentenceTransformersTextEmbedder.warm\_up
 
 ```python
-def warm_up() -> None
+def warm_up()
 ```
 
 Initializes the component.
 
-<a id="image/sentence_transformers_doc_image_embedder.SentenceTransformersDocumentImageEmbedder.run"></a>
+<a id="sentence_transformers_text_embedder.SentenceTransformersTextEmbedder.run"></a>
 
-#### SentenceTransformersDocumentImageEmbedder.run
+#### SentenceTransformersTextEmbedder.run
 
 ```python
-@component.output_types(documents=list[Document])
-def run(documents: list[Document]) -> dict[str, list[Document]]
+@component.output_types(embedding=list[float])
+def run(text: str)
 ```
 
-Embed a list of documents.
+Embed a single string.
 
 **Arguments**:
 
-- `documents`: Documents to embed.
+- `text`: Text to embed.
 
 **Returns**:
 
 A dictionary with the following keys:
-- `documents`: Documents with embeddings.
+- `embedding`: The embedding of the input text.
 

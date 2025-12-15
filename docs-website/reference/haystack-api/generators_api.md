@@ -183,594 +183,6 @@ the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/c
 A list of strings containing the generated responses and a list of dictionaries containing the metadata
 for each response.
 
-<a id="hugging_face_local"></a>
-
-## Module hugging\_face\_local
-
-<a id="hugging_face_local.HuggingFaceLocalGenerator"></a>
-
-### HuggingFaceLocalGenerator
-
-Generates text using models from Hugging Face that run locally.
-
-LLMs running locally may need powerful hardware.
-
-### Usage example
-
-```python
-from haystack.components.generators import HuggingFaceLocalGenerator
-
-generator = HuggingFaceLocalGenerator(
-    model="google/flan-t5-large",
-    task="text2text-generation",
-    generation_kwargs={"max_new_tokens": 100, "temperature": 0.9})
-
-generator.warm_up()
-
-print(generator.run("Who is the best American actor?"))
-# {'replies': ['John Cusack']}
-```
-
-<a id="hugging_face_local.HuggingFaceLocalGenerator.__init__"></a>
-
-#### HuggingFaceLocalGenerator.\_\_init\_\_
-
-```python
-def __init__(model: str = "google/flan-t5-base",
-             task: Optional[Literal["text-generation",
-                                    "text2text-generation"]] = None,
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
-                 ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
-             stop_words: Optional[list[str]] = None,
-             streaming_callback: Optional[StreamingCallbackT] = None)
-```
-
-Creates an instance of a HuggingFaceLocalGenerator.
-
-**Arguments**:
-
-- `model`: The Hugging Face text generation model name or path.
-- `task`: The task for the Hugging Face pipeline. Possible options:
-- `text-generation`: Supported by decoder models, like GPT.
-- `text2text-generation`: Supported by encoder-decoder models, like T5.
-If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
-If not specified, the component calls the Hugging Face API to infer the task from the model name.
-- `device`: The device for loading the model. If `None`, automatically selects the default device.
-If a device or device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
-- `token`: The token to use as HTTP bearer authorization for remote files.
-If the token is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
-- `generation_kwargs`: A dictionary with keyword arguments to customize text generation.
-Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`.
-See Hugging Face's documentation for more information:
-- [customize-text-generation](https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation)
-- [transformers.GenerationConfig](https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig)
-- `huggingface_pipeline_kwargs`: Dictionary with keyword arguments to initialize the
-Hugging Face pipeline for text generation.
-These keyword arguments provide fine-grained control over the Hugging Face pipeline.
-In case of duplication, these kwargs override `model`, `task`, `device`, and `token` init parameters.
-For available kwargs, see [Hugging Face documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task).
-In this dictionary, you can also include `model_kwargs` to specify the kwargs for model initialization:
-[transformers.PreTrainedModel.from_pretrained](https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained)
-- `stop_words`: If the model generates a stop word, the generation stops.
-If you provide this parameter, don't specify the `stopping_criteria` in `generation_kwargs`.
-For some chat models, the output includes both the new text and the original prompt.
-In these cases, make sure your prompt has no stop words.
-- `streaming_callback`: An optional callable for handling streaming responses.
-
-<a id="hugging_face_local.HuggingFaceLocalGenerator.warm_up"></a>
-
-#### HuggingFaceLocalGenerator.warm\_up
-
-```python
-def warm_up()
-```
-
-Initializes the component.
-
-<a id="hugging_face_local.HuggingFaceLocalGenerator.to_dict"></a>
-
-#### HuggingFaceLocalGenerator.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="hugging_face_local.HuggingFaceLocalGenerator.from_dict"></a>
-
-#### HuggingFaceLocalGenerator.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceLocalGenerator"
-```
-
-Deserializes the component from a dictionary.
-
-**Arguments**:
-
-- `data`: The dictionary to deserialize from.
-
-**Returns**:
-
-The deserialized component.
-
-<a id="hugging_face_local.HuggingFaceLocalGenerator.run"></a>
-
-#### HuggingFaceLocalGenerator.run
-
-```python
-@component.output_types(replies=list[str])
-def run(prompt: str,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None)
-```
-
-Run the text generation model on the given prompt.
-
-**Arguments**:
-
-- `prompt`: A string representing the prompt.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `generation_kwargs`: Additional keyword arguments for text generation.
-
-**Returns**:
-
-A dictionary containing the generated replies.
-- replies: A list of strings representing the generated replies.
-
-<a id="hugging_face_api"></a>
-
-## Module hugging\_face\_api
-
-<a id="hugging_face_api.HuggingFaceAPIGenerator"></a>
-
-### HuggingFaceAPIGenerator
-
-Generates text using Hugging Face APIs.
-
-Use it with the following Hugging Face APIs:
-- [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
-- [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
-
-**Note:** As of July 2025, the Hugging Face Inference API no longer offers generative models through the
-`text_generation` endpoint. Generative models are now only available through providers supporting the
-`chat_completion` endpoint. As a result, this component might no longer work with the Hugging Face Inference API.
-Use the `HuggingFaceAPIChatGenerator` component, which supports the `chat_completion` endpoint.
-
-### Usage examples
-
-#### With Hugging Face Inference Endpoints
-
-
-#### With self-hosted text generation inference
-
-#### With the free serverless inference API
-
-Be aware that this example might not work as the Hugging Face Inference API no longer offer models that support the
-`text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models through the
-`chat_completion` endpoint.
-
-```python
-from haystack.components.generators import HuggingFaceAPIGenerator
-from haystack.utils import Secret
-
-generator = HuggingFaceAPIGenerator(api_type="inference_endpoints",
-                                    api_params={"url": "<your-inference-endpoint-url>"},
-                                    token=Secret.from_token("<your-api-key>"))
-
-result = generator.run(prompt="What's Natural Language Processing?")
-print(result)
-```
-```python
-from haystack.components.generators import HuggingFaceAPIGenerator
-
-generator = HuggingFaceAPIGenerator(api_type="text_generation_inference",
-                                    api_params={"url": "http://localhost:8080"})
-
-result = generator.run(prompt="What's Natural Language Processing?")
-print(result)
-```
-```python
-from haystack.components.generators import HuggingFaceAPIGenerator
-from haystack.utils import Secret
-
-generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
-                                    api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
-                                    token=Secret.from_token("<your-api-key>"))
-
-result = generator.run(prompt="What's Natural Language Processing?")
-print(result)
-```
-
-<a id="hugging_face_api.HuggingFaceAPIGenerator.__init__"></a>
-
-#### HuggingFaceAPIGenerator.\_\_init\_\_
-
-```python
-def __init__(api_type: Union[HFGenerationAPIType, str],
-             api_params: dict[str, str],
-             token: Optional[Secret] = Secret.from_env_var(
-                 ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             stop_words: Optional[list[str]] = None,
-             streaming_callback: Optional[StreamingCallbackT] = None)
-```
-
-Initialize the HuggingFaceAPIGenerator instance.
-
-**Arguments**:
-
-- `api_type`: The type of Hugging Face API to use. Available types:
-- `text_generation_inference`: See [TGI](https://github.com/huggingface/text-generation-inference).
-- `inference_endpoints`: See [Inference Endpoints](https://huggingface.co/inference-endpoints).
-- `serverless_inference_api`: See [Serverless Inference API](https://huggingface.co/inference-api).
-  This might no longer work due to changes in the models offered in the Hugging Face Inference API.
-  Please use the `HuggingFaceAPIChatGenerator` component instead.
-- `api_params`: A dictionary with the following keys:
-- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
-- `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
-`TEXT_GENERATION_INFERENCE`.
-- Other parameters specific to the chosen API type, such as `timeout`, `headers`, `provider` etc.
-- `token`: The Hugging Face token to use as HTTP bearer authorization.
-Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
-- `generation_kwargs`: A dictionary with keyword arguments to customize text generation. Some examples: `max_new_tokens`,
-`temperature`, `top_k`, `top_p`.
-For details, see [Hugging Face documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client#huggingface_hub.InferenceClient.text_generation)
-for more information.
-- `stop_words`: An optional list of strings representing the stop words.
-- `streaming_callback`: An optional callable for handling streaming responses.
-
-<a id="hugging_face_api.HuggingFaceAPIGenerator.to_dict"></a>
-
-#### HuggingFaceAPIGenerator.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize this component to a dictionary.
-
-**Returns**:
-
-A dictionary containing the serialized component.
-
-<a id="hugging_face_api.HuggingFaceAPIGenerator.from_dict"></a>
-
-#### HuggingFaceAPIGenerator.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceAPIGenerator"
-```
-
-Deserialize this component from a dictionary.
-
-<a id="hugging_face_api.HuggingFaceAPIGenerator.run"></a>
-
-#### HuggingFaceAPIGenerator.run
-
-```python
-@component.output_types(replies=list[str], meta=list[dict[str, Any]])
-def run(prompt: str,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None)
-```
-
-Invoke the text generation inference for the given prompt and generation parameters.
-
-**Arguments**:
-
-- `prompt`: A string representing the prompt.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `generation_kwargs`: Additional keyword arguments for text generation.
-
-**Returns**:
-
-A dictionary with the generated replies and metadata. Both are lists of length n.
-- replies: A list of strings representing the generated replies.
-
-<a id="openai"></a>
-
-## Module openai
-
-<a id="openai.OpenAIGenerator"></a>
-
-### OpenAIGenerator
-
-Generates text using OpenAI's large language models (LLMs).
-
-It works with the gpt-4 and gpt-5 series models and supports streaming responses
-from OpenAI API. It uses strings as input and output.
-
-You can customize how the text is generated by passing parameters to the
-OpenAI API. Use the `**generation_kwargs` argument when you initialize
-the component or when you run it. Any parameter that works with
-`openai.ChatCompletion.create` will work here too.
-
-
-For details on OpenAI API parameters, see
-[OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
-
-### Usage example
-
-```python
-from haystack.components.generators import OpenAIGenerator
-client = OpenAIGenerator()
-response = client.run("What's Natural Language Processing? Be brief.")
-print(response)
-
->> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
->> the interaction between computers and human language. It involves enabling computers to understand, interpret,
->> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
->> 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
->> 'completion_tokens': 49, 'total_tokens': 65}}]}
-```
-
-<a id="openai.OpenAIGenerator.__init__"></a>
-
-#### OpenAIGenerator.\_\_init\_\_
-
-```python
-def __init__(api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-             model: str = "gpt-5-mini",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             api_base_url: Optional[str] = None,
-             organization: Optional[str] = None,
-             system_prompt: Optional[str] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
-```
-
-Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
-
-By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters
-in the OpenAI client.
-
-**Arguments**:
-
-- `api_key`: The OpenAI API key to connect to OpenAI.
-- `model`: The name of the model to use.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-The callback function accepts StreamingChunk as an argument.
-- `api_base_url`: An optional base URL.
-- `organization`: The Organization ID, defaults to `None`.
-- `system_prompt`: The system prompt to use for text generation. If not provided, the system prompt is
-omitted, and the default system prompt of the model is used.
-- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
-the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
-more details.
-Some of the supported parameters:
-- `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
-    including visible output tokens and reasoning tokens.
-- `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
-    Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
-- `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
-    considers the results of the tokens with top_p probability mass. So, 0.1 means only the tokens
-    comprising the top 10% probability mass are considered.
-- `n`: How many completions to generate for each prompt. For example, if the LLM gets 3 prompts and n is 2,
-    it will generate two completions for each of the three prompts, ending up with 6 completions in total.
-- `stop`: One or more sequences after which the LLM should stop generating tokens.
-- `presence_penalty`: What penalty to apply if a token is already present at all. Bigger values mean
-    the model will be less likely to repeat the same token in the text.
-- `frequency_penalty`: What penalty to apply if a token has already been generated in the text.
-    Bigger values mean the model will be less likely to repeat the same token in the text.
-- `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
-    values are the bias to add to that token.
-- `timeout`: Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable
-or set to 30.
-- `max_retries`: Maximum retries to establish contact with OpenAI if it returns an internal error, if not set it is inferred
-from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
-- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
-For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
-
-<a id="openai.OpenAIGenerator.to_dict"></a>
-
-#### OpenAIGenerator.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize this component to a dictionary.
-
-**Returns**:
-
-The serialized component as a dictionary.
-
-<a id="openai.OpenAIGenerator.from_dict"></a>
-
-#### OpenAIGenerator.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "OpenAIGenerator"
-```
-
-Deserialize this component from a dictionary.
-
-**Arguments**:
-
-- `data`: The dictionary representation of this component.
-
-**Returns**:
-
-The deserialized component instance.
-
-<a id="openai.OpenAIGenerator.run"></a>
-
-#### OpenAIGenerator.run
-
-```python
-@component.output_types(replies=list[str], meta=list[dict[str, Any]])
-def run(
-    prompt: str,
-    system_prompt: Optional[str] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    generation_kwargs: Optional[dict[str, Any]] = None
-) -> dict[str, Union[list[str], list[dict[str, Any]]]]
-```
-
-Invoke the text generation inference based on the provided messages and generation parameters.
-
-**Arguments**:
-
-- `prompt`: The string prompt to use for text generation.
-- `system_prompt`: The system prompt to use for text generation. If this run time system prompt is omitted, the system
-prompt, if defined at initialisation time, is used.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will potentially override the parameters
-passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to
-the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
-
-**Returns**:
-
-A list of strings containing the generated responses and a list of dictionaries containing the metadata
-for each response.
-
-<a id="openai_dalle"></a>
-
-## Module openai\_dalle
-
-<a id="openai_dalle.DALLEImageGenerator"></a>
-
-### DALLEImageGenerator
-
-Generates images using OpenAI's DALL-E model.
-
-For details on OpenAI API parameters, see
-[OpenAI documentation](https://platform.openai.com/docs/api-reference/images/create).
-
-### Usage example
-
-```python
-from haystack.components.generators import DALLEImageGenerator
-image_generator = DALLEImageGenerator()
-response = image_generator.run("Show me a picture of a black cat.")
-print(response)
-```
-
-<a id="openai_dalle.DALLEImageGenerator.__init__"></a>
-
-#### DALLEImageGenerator.\_\_init\_\_
-
-```python
-def __init__(model: str = "dall-e-3",
-             quality: Literal["standard", "hd"] = "standard",
-             size: Literal["256x256", "512x512", "1024x1024", "1792x1024",
-                           "1024x1792"] = "1024x1024",
-             response_format: Literal["url", "b64_json"] = "url",
-             api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-             api_base_url: Optional[str] = None,
-             organization: Optional[str] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
-```
-
-Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
-
-**Arguments**:
-
-- `model`: The model to use for image generation. Can be "dall-e-2" or "dall-e-3".
-- `quality`: The quality of the generated image. Can be "standard" or "hd".
-- `size`: The size of the generated images.
-Must be one of 256x256, 512x512, or 1024x1024 for dall-e-2.
-Must be one of 1024x1024, 1792x1024, or 1024x1792 for dall-e-3 models.
-- `response_format`: The format of the response. Can be "url" or "b64_json".
-- `api_key`: The OpenAI API key to connect to OpenAI.
-- `api_base_url`: An optional base URL.
-- `organization`: The Organization ID, defaults to `None`.
-- `timeout`: Timeout for OpenAI Client calls. If not set, it is inferred from the `OPENAI_TIMEOUT` environment variable
-or set to 30.
-- `max_retries`: Maximum retries to establish contact with OpenAI if it returns an internal error. If not set, it is inferred
-from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
-- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
-For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
-
-<a id="openai_dalle.DALLEImageGenerator.warm_up"></a>
-
-#### DALLEImageGenerator.warm\_up
-
-```python
-def warm_up() -> None
-```
-
-Warm up the OpenAI client.
-
-<a id="openai_dalle.DALLEImageGenerator.run"></a>
-
-#### DALLEImageGenerator.run
-
-```python
-@component.output_types(images=list[str], revised_prompt=str)
-def run(prompt: str,
-        size: Optional[Literal["256x256", "512x512", "1024x1024", "1792x1024",
-                               "1024x1792"]] = None,
-        quality: Optional[Literal["standard", "hd"]] = None,
-        response_format: Optional[Optional[Literal["url",
-                                                   "b64_json"]]] = None)
-```
-
-Invokes the image generation inference based on the provided prompt and generation parameters.
-
-**Arguments**:
-
-- `prompt`: The prompt to generate the image.
-- `size`: If provided, overrides the size provided during initialization.
-- `quality`: If provided, overrides the quality provided during initialization.
-- `response_format`: If provided, overrides the response format provided during initialization.
-
-**Returns**:
-
-A dictionary containing the generated list of images and the revised prompt.
-Depending on the `response_format` parameter, the list of images can be URLs or base64 encoded JSON strings.
-The revised prompt is the prompt that was used to generate the image, if there was any revision
-to the prompt made by OpenAI.
-
-<a id="openai_dalle.DALLEImageGenerator.to_dict"></a>
-
-#### DALLEImageGenerator.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize this component to a dictionary.
-
-**Returns**:
-
-The serialized component as a dictionary.
-
-<a id="openai_dalle.DALLEImageGenerator.from_dict"></a>
-
-#### DALLEImageGenerator.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "DALLEImageGenerator"
-```
-
-Deserialize this component from a dictionary.
-
-**Arguments**:
-
-- `data`: The dictionary representation of this component.
-
-**Returns**:
-
-The deserialized component instance.
-
 <a id="chat/azure"></a>
 
 ## Module chat/azure
@@ -1266,6 +678,403 @@ If set, it will override the `tools_strict` parameter set during component initi
 A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
+<a id="chat/fallback"></a>
+
+## Module chat/fallback
+
+<a id="chat/fallback.FallbackChatGenerator"></a>
+
+### FallbackChatGenerator
+
+A chat generator wrapper that tries multiple chat generators sequentially.
+
+It forwards all parameters transparently to the underlying chat generators and returns the first successful result.
+Calls chat generators sequentially until one succeeds. Falls back on any exception raised by a generator.
+If all chat generators fail, it raises a RuntimeError with details.
+
+Timeout enforcement is fully delegated to the underlying chat generators. The fallback mechanism will only
+work correctly if the underlying chat generators implement proper timeout handling and raise exceptions
+when timeouts occur. For predictable latency guarantees, ensure your chat generators:
+- Support a `timeout` parameter in their initialization
+- Implement timeout as total wall-clock time (shared deadline for both streaming and non-streaming)
+- Raise timeout exceptions (e.g., TimeoutError, asyncio.TimeoutError, httpx.TimeoutException) when exceeded
+
+Note: Most well-implemented chat generators (OpenAI, Anthropic, Cohere, etc.) support timeout parameters
+with consistent semantics. For HTTP-based LLM providers, a single timeout value (e.g., `timeout=30`)
+typically applies to all connection phases: connection setup, read, write, and pool. For streaming
+responses, read timeout is the maximum gap between chunks. For non-streaming, it's the time limit for
+receiving the complete response.
+
+Failover is automatically triggered when a generator raises any exception, including:
+- Timeout errors (if the generator implements and raises them)
+- Rate limit errors (429)
+- Authentication errors (401)
+- Context length errors (400)
+- Server errors (500+)
+- Any other exception
+
+<a id="chat/fallback.FallbackChatGenerator.__init__"></a>
+
+#### FallbackChatGenerator.\_\_init\_\_
+
+```python
+def __init__(chat_generators: list[ChatGenerator]) -> None
+```
+
+Creates an instance of FallbackChatGenerator.
+
+**Arguments**:
+
+- `chat_generators`: A non-empty list of chat generator components to try in order.
+
+<a id="chat/fallback.FallbackChatGenerator.to_dict"></a>
+
+#### FallbackChatGenerator.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize the component, including nested chat generators when they support serialization.
+
+<a id="chat/fallback.FallbackChatGenerator.from_dict"></a>
+
+#### FallbackChatGenerator.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator
+```
+
+Rebuild the component from a serialized representation, restoring nested chat generators.
+
+<a id="chat/fallback.FallbackChatGenerator.warm_up"></a>
+
+#### FallbackChatGenerator.warm\_up
+
+```python
+def warm_up() -> None
+```
+
+Warm up all underlying chat generators.
+
+This method calls warm_up() on each underlying generator that supports it.
+
+<a id="chat/fallback.FallbackChatGenerator.run"></a>
+
+#### FallbackChatGenerator.run
+
+```python
+@component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
+def run(
+    messages: list[ChatMessage],
+    generation_kwargs: Union[dict[str, Any], None] = None,
+    tools: Optional[ToolsType] = None,
+    streaming_callback: Union[StreamingCallbackT, None] = None
+) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]
+```
+
+Execute chat generators sequentially until one succeeds.
+
+**Arguments**:
+
+- `messages`: The conversation history as a list of ChatMessage instances.
+- `generation_kwargs`: Optional parameters for the chat generator (e.g., temperature, max_tokens).
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
+- `streaming_callback`: Optional callable for handling streaming responses.
+
+**Raises**:
+
+- `RuntimeError`: If all chat generators fail.
+
+**Returns**:
+
+A dictionary with:
+- "replies": Generated ChatMessage instances from the first successful generator.
+- "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
+  total_attempts, failed_chat_generators, plus any metadata from the successful generator.
+
+<a id="chat/fallback.FallbackChatGenerator.run_async"></a>
+
+#### FallbackChatGenerator.run\_async
+
+```python
+@component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
+async def run_async(
+    messages: list[ChatMessage],
+    generation_kwargs: Union[dict[str, Any], None] = None,
+    tools: Optional[ToolsType] = None,
+    streaming_callback: Union[StreamingCallbackT, None] = None
+) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]
+```
+
+Asynchronously execute chat generators sequentially until one succeeds.
+
+**Arguments**:
+
+- `messages`: The conversation history as a list of ChatMessage instances.
+- `generation_kwargs`: Optional parameters for the chat generator (e.g., temperature, max_tokens).
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
+- `streaming_callback`: Optional callable for handling streaming responses.
+
+**Raises**:
+
+- `RuntimeError`: If all chat generators fail.
+
+**Returns**:
+
+A dictionary with:
+- "replies": Generated ChatMessage instances from the first successful generator.
+- "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
+  total_attempts, failed_chat_generators, plus any metadata from the successful generator.
+
+<a id="chat/hugging_face_api"></a>
+
+## Module chat/hugging\_face\_api
+
+<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator"></a>
+
+### HuggingFaceAPIChatGenerator
+
+Completes chats using Hugging Face APIs.
+
+HuggingFaceAPIChatGenerator uses the [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
+format for input and output. Use it to generate text with Hugging Face APIs:
+- [Serverless Inference API (Inference Providers)](https://huggingface.co/docs/inference-providers)
+- [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
+- [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
+
+### Usage examples
+
+#### With the serverless inference API (Inference Providers) - free tier available
+
+```python
+from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+from haystack.utils.hf import HFGenerationAPIType
+
+messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
+            ChatMessage.from_user("What's Natural Language Processing?")]
+
+# the api_type can be expressed using the HFGenerationAPIType enum or as a string
+api_type = HFGenerationAPIType.SERVERLESS_INFERENCE_API
+api_type = "serverless_inference_api" # this is equivalent to the above
+
+generator = HuggingFaceAPIChatGenerator(api_type=api_type,
+                                        api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
+                                                    "provider": "together"},
+                                        token=Secret.from_token("<your-api-key>"))
+
+result = generator.run(messages)
+print(result)
+```
+
+#### With the serverless inference API (Inference Providers) and text+image input
+
+```python
+from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack.utils import Secret
+from haystack.utils.hf import HFGenerationAPIType
+
+# Create an image from file path, URL, or base64
+image = ImageContent.from_file_path("path/to/your/image.jpg")
+
+# Create a multimodal message with both text and image
+messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
+
+generator = HuggingFaceAPIChatGenerator(
+    api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+    api_params={
+        "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
+        "provider": "hyperbolic"
+    },
+    token=Secret.from_token("<your-api-key>")
+)
+
+result = generator.run(messages)
+print(result)
+```
+
+#### With paid inference endpoints
+
+```python
+from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
+            ChatMessage.from_user("What's Natural Language Processing?")]
+
+generator = HuggingFaceAPIChatGenerator(api_type="inference_endpoints",
+                                        api_params={"url": "<your-inference-endpoint-url>"},
+                                        token=Secret.from_token("<your-api-key>"))
+
+result = generator.run(messages)
+print(result)
+
+#### With self-hosted text generation inference
+
+```python
+from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
+            ChatMessage.from_user("What's Natural Language Processing?")]
+
+generator = HuggingFaceAPIChatGenerator(api_type="text_generation_inference",
+                                        api_params={"url": "http://localhost:8080"})
+
+result = generator.run(messages)
+print(result)
+```
+
+<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.__init__"></a>
+
+#### HuggingFaceAPIChatGenerator.\_\_init\_\_
+
+```python
+def __init__(api_type: Union[HFGenerationAPIType, str],
+             api_params: dict[str, str],
+             token: Optional[Secret] = Secret.from_env_var(
+                 ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+             generation_kwargs: Optional[dict[str, Any]] = None,
+             stop_words: Optional[list[str]] = None,
+             streaming_callback: Optional[StreamingCallbackT] = None,
+             tools: Optional[ToolsType] = None)
+```
+
+Initialize the HuggingFaceAPIChatGenerator instance.
+
+**Arguments**:
+
+- `api_type`: The type of Hugging Face API to use. Available types:
+- `text_generation_inference`: See [TGI](https://github.com/huggingface/text-generation-inference).
+- `inference_endpoints`: See [Inference Endpoints](https://huggingface.co/inference-endpoints).
+- `serverless_inference_api`: See
+[Serverless Inference API - Inference Providers](https://huggingface.co/docs/inference-providers).
+- `api_params`: A dictionary with the following keys:
+- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
+- `provider`: Provider name. Recommended when `api_type` is `SERVERLESS_INFERENCE_API`.
+- `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
+`TEXT_GENERATION_INFERENCE`.
+- Other parameters specific to the chosen API type, such as `timeout`, `headers`, etc.
+- `token`: The Hugging Face token to use as HTTP bearer authorization.
+Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
+- `generation_kwargs`: A dictionary with keyword arguments to customize text generation.
+Some examples: `max_tokens`, `temperature`, `top_p`.
+For details, see [Hugging Face chat_completion documentation](https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion).
+- `stop_words`: An optional list of strings representing the stop words.
+- `streaming_callback`: An optional callable for handling streaming responses.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+The chosen model should support tool/function calling, according to the model card.
+Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
+unexpected behavior.
+
+<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.warm_up"></a>
+
+#### HuggingFaceAPIChatGenerator.warm\_up
+
+```python
+def warm_up()
+```
+
+Warm up the Hugging Face API chat generator.
+
+This will warm up the tools registered in the chat generator.
+This method is idempotent and will only warm up the tools once.
+
+<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.to_dict"></a>
+
+#### HuggingFaceAPIChatGenerator.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns**:
+
+A dictionary containing the serialized component.
+
+<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.from_dict"></a>
+
+#### HuggingFaceAPIChatGenerator.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceAPIChatGenerator"
+```
+
+Deserialize this component from a dictionary.
+
+<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.run"></a>
+
+#### HuggingFaceAPIChatGenerator.run
+
+```python
+@component.output_types(replies=list[ChatMessage])
+def run(
+    messages: list[ChatMessage],
+    generation_kwargs: Optional[dict[str, Any]] = None,
+    tools: Optional[ToolsType] = None,
+    streaming_callback: Optional[StreamingCallbackT] = None
+) -> dict[str, list[ChatMessage]]
+```
+
+Invoke the text generation inference based on the provided messages and generation parameters.
+
+**Arguments**:
+
+- `messages`: A list of ChatMessage objects representing the input messages.
+- `generation_kwargs`: Additional keyword arguments for text generation.
+- `tools`: A list of tools or a Toolset for which the model can prepare calls. If set, it will override
+the `tools` parameter set during component initialization. This parameter can accept either a
+list of `Tool` objects or a `Toolset` instance.
+- `streaming_callback`: An optional callable for handling streaming responses. If set, it will override the `streaming_callback`
+parameter set during component initialization.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `replies`: A list containing the generated responses as ChatMessage objects.
+
+<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.run_async"></a>
+
+#### HuggingFaceAPIChatGenerator.run\_async
+
+```python
+@component.output_types(replies=list[ChatMessage])
+async def run_async(
+    messages: list[ChatMessage],
+    generation_kwargs: Optional[dict[str, Any]] = None,
+    tools: Optional[ToolsType] = None,
+    streaming_callback: Optional[StreamingCallbackT] = None
+) -> dict[str, list[ChatMessage]]
+```
+
+Asynchronously invokes the text generation inference based on the provided messages and generation parameters.
+
+This is the asynchronous version of the `run` method. It has the same parameters
+and return values but can be used with `await` in an async code.
+
+**Arguments**:
+
+- `messages`: A list of ChatMessage objects representing the input messages.
+- `generation_kwargs`: Additional keyword arguments for text generation.
+- `tools`: A list of tools or a Toolset for which the model can prepare calls. If set, it will override the `tools`
+parameter set during component initialization. This parameter can accept either a list of `Tool` objects
+or a `Toolset` instance.
+- `streaming_callback`: An optional callable for handling streaming responses. If set, it will override the `streaming_callback`
+parameter set during component initialization.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `replies`: A list containing the generated responses as ChatMessage objects.
+
 <a id="chat/hugging_face_local"></a>
 
 ## Module chat/hugging\_face\_local
@@ -1547,253 +1356,6 @@ If set, it will override the `tools` parameter provided during initialization.
 
 A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage instances.
-
-<a id="chat/hugging_face_api"></a>
-
-## Module chat/hugging\_face\_api
-
-<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator"></a>
-
-### HuggingFaceAPIChatGenerator
-
-Completes chats using Hugging Face APIs.
-
-HuggingFaceAPIChatGenerator uses the [ChatMessage](https://docs.haystack.deepset.ai/docs/chatmessage)
-format for input and output. Use it to generate text with Hugging Face APIs:
-- [Serverless Inference API (Inference Providers)](https://huggingface.co/docs/inference-providers)
-- [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
-- [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
-
-### Usage examples
-
-#### With the serverless inference API (Inference Providers) - free tier available
-
-```python
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
-from haystack.dataclasses import ChatMessage
-from haystack.utils import Secret
-from haystack.utils.hf import HFGenerationAPIType
-
-messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
-            ChatMessage.from_user("What's Natural Language Processing?")]
-
-# the api_type can be expressed using the HFGenerationAPIType enum or as a string
-api_type = HFGenerationAPIType.SERVERLESS_INFERENCE_API
-api_type = "serverless_inference_api" # this is equivalent to the above
-
-generator = HuggingFaceAPIChatGenerator(api_type=api_type,
-                                        api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
-                                                    "provider": "together"},
-                                        token=Secret.from_token("<your-api-key>"))
-
-result = generator.run(messages)
-print(result)
-```
-
-#### With the serverless inference API (Inference Providers) and text+image input
-
-```python
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
-from haystack.dataclasses import ChatMessage, ImageContent
-from haystack.utils import Secret
-from haystack.utils.hf import HFGenerationAPIType
-
-# Create an image from file path, URL, or base64
-image = ImageContent.from_file_path("path/to/your/image.jpg")
-
-# Create a multimodal message with both text and image
-messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
-
-generator = HuggingFaceAPIChatGenerator(
-    api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-    api_params={
-        "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
-        "provider": "hyperbolic"
-    },
-    token=Secret.from_token("<your-api-key>")
-)
-
-result = generator.run(messages)
-print(result)
-```
-
-#### With paid inference endpoints
-
-```python
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
-from haystack.dataclasses import ChatMessage
-from haystack.utils import Secret
-
-messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
-            ChatMessage.from_user("What's Natural Language Processing?")]
-
-generator = HuggingFaceAPIChatGenerator(api_type="inference_endpoints",
-                                        api_params={"url": "<your-inference-endpoint-url>"},
-                                        token=Secret.from_token("<your-api-key>"))
-
-result = generator.run(messages)
-print(result)
-
-#### With self-hosted text generation inference
-
-```python
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
-from haystack.dataclasses import ChatMessage
-
-messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
-            ChatMessage.from_user("What's Natural Language Processing?")]
-
-generator = HuggingFaceAPIChatGenerator(api_type="text_generation_inference",
-                                        api_params={"url": "http://localhost:8080"})
-
-result = generator.run(messages)
-print(result)
-```
-
-<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.__init__"></a>
-
-#### HuggingFaceAPIChatGenerator.\_\_init\_\_
-
-```python
-def __init__(api_type: Union[HFGenerationAPIType, str],
-             api_params: dict[str, str],
-             token: Optional[Secret] = Secret.from_env_var(
-                 ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             stop_words: Optional[list[str]] = None,
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             tools: Optional[ToolsType] = None)
-```
-
-Initialize the HuggingFaceAPIChatGenerator instance.
-
-**Arguments**:
-
-- `api_type`: The type of Hugging Face API to use. Available types:
-- `text_generation_inference`: See [TGI](https://github.com/huggingface/text-generation-inference).
-- `inference_endpoints`: See [Inference Endpoints](https://huggingface.co/inference-endpoints).
-- `serverless_inference_api`: See
-[Serverless Inference API - Inference Providers](https://huggingface.co/docs/inference-providers).
-- `api_params`: A dictionary with the following keys:
-- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
-- `provider`: Provider name. Recommended when `api_type` is `SERVERLESS_INFERENCE_API`.
-- `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
-`TEXT_GENERATION_INFERENCE`.
-- Other parameters specific to the chosen API type, such as `timeout`, `headers`, etc.
-- `token`: The Hugging Face token to use as HTTP bearer authorization.
-Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
-- `generation_kwargs`: A dictionary with keyword arguments to customize text generation.
-Some examples: `max_tokens`, `temperature`, `top_p`.
-For details, see [Hugging Face chat_completion documentation](https://huggingface.co/docs/huggingface_hub/package_reference/inference_client#huggingface_hub.InferenceClient.chat_completion).
-- `stop_words`: An optional list of strings representing the stop words.
-- `streaming_callback`: An optional callable for handling streaming responses.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-The chosen model should support tool/function calling, according to the model card.
-Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
-unexpected behavior.
-
-<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.warm_up"></a>
-
-#### HuggingFaceAPIChatGenerator.warm\_up
-
-```python
-def warm_up()
-```
-
-Warm up the Hugging Face API chat generator.
-
-This will warm up the tools registered in the chat generator.
-This method is idempotent and will only warm up the tools once.
-
-<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.to_dict"></a>
-
-#### HuggingFaceAPIChatGenerator.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize this component to a dictionary.
-
-**Returns**:
-
-A dictionary containing the serialized component.
-
-<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.from_dict"></a>
-
-#### HuggingFaceAPIChatGenerator.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceAPIChatGenerator"
-```
-
-Deserialize this component from a dictionary.
-
-<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.run"></a>
-
-#### HuggingFaceAPIChatGenerator.run
-
-```python
-@component.output_types(replies=list[ChatMessage])
-def run(
-    messages: list[ChatMessage],
-    generation_kwargs: Optional[dict[str, Any]] = None,
-    tools: Optional[ToolsType] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None
-) -> dict[str, list[ChatMessage]]
-```
-
-Invoke the text generation inference based on the provided messages and generation parameters.
-
-**Arguments**:
-
-- `messages`: A list of ChatMessage objects representing the input messages.
-- `generation_kwargs`: Additional keyword arguments for text generation.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. If set, it will override
-the `tools` parameter set during component initialization. This parameter can accept either a
-list of `Tool` objects or a `Toolset` instance.
-- `streaming_callback`: An optional callable for handling streaming responses. If set, it will override the `streaming_callback`
-parameter set during component initialization.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `replies`: A list containing the generated responses as ChatMessage objects.
-
-<a id="chat/hugging_face_api.HuggingFaceAPIChatGenerator.run_async"></a>
-
-#### HuggingFaceAPIChatGenerator.run\_async
-
-```python
-@component.output_types(replies=list[ChatMessage])
-async def run_async(
-    messages: list[ChatMessage],
-    generation_kwargs: Optional[dict[str, Any]] = None,
-    tools: Optional[ToolsType] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None
-) -> dict[str, list[ChatMessage]]
-```
-
-Asynchronously invokes the text generation inference based on the provided messages and generation parameters.
-
-This is the asynchronous version of the `run` method. It has the same parameters
-and return values but can be used with `await` in an async code.
-
-**Arguments**:
-
-- `messages`: A list of ChatMessage objects representing the input messages.
-- `generation_kwargs`: Additional keyword arguments for text generation.
-- `tools`: A list of tools or a Toolset for which the model can prepare calls. If set, it will override the `tools`
-parameter set during component initialization. This parameter can accept either a list of `Tool` objects
-or a `Toolset` instance.
-- `streaming_callback`: An optional callable for handling streaming responses. If set, it will override the `streaming_callback`
-parameter set during component initialization.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `replies`: A list containing the generated responses as ChatMessage objects.
 
 <a id="chat/openai"></a>
 
@@ -2283,155 +1845,593 @@ If set, it will override the `tools_strict` parameter set during component initi
 A dictionary with the following key:
 - `replies`: A list containing the generated responses as ChatMessage instances.
 
-<a id="chat/fallback"></a>
+<a id="hugging_face_api"></a>
 
-## Module chat/fallback
+## Module hugging\_face\_api
 
-<a id="chat/fallback.FallbackChatGenerator"></a>
+<a id="hugging_face_api.HuggingFaceAPIGenerator"></a>
 
-### FallbackChatGenerator
+### HuggingFaceAPIGenerator
 
-A chat generator wrapper that tries multiple chat generators sequentially.
+Generates text using Hugging Face APIs.
 
-It forwards all parameters transparently to the underlying chat generators and returns the first successful result.
-Calls chat generators sequentially until one succeeds. Falls back on any exception raised by a generator.
-If all chat generators fail, it raises a RuntimeError with details.
+Use it with the following Hugging Face APIs:
+- [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
+- [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
-Timeout enforcement is fully delegated to the underlying chat generators. The fallback mechanism will only
-work correctly if the underlying chat generators implement proper timeout handling and raise exceptions
-when timeouts occur. For predictable latency guarantees, ensure your chat generators:
-- Support a `timeout` parameter in their initialization
-- Implement timeout as total wall-clock time (shared deadline for both streaming and non-streaming)
-- Raise timeout exceptions (e.g., TimeoutError, asyncio.TimeoutError, httpx.TimeoutException) when exceeded
+**Note:** As of July 2025, the Hugging Face Inference API no longer offers generative models through the
+`text_generation` endpoint. Generative models are now only available through providers supporting the
+`chat_completion` endpoint. As a result, this component might no longer work with the Hugging Face Inference API.
+Use the `HuggingFaceAPIChatGenerator` component, which supports the `chat_completion` endpoint.
 
-Note: Most well-implemented chat generators (OpenAI, Anthropic, Cohere, etc.) support timeout parameters
-with consistent semantics. For HTTP-based LLM providers, a single timeout value (e.g., `timeout=30`)
-typically applies to all connection phases: connection setup, read, write, and pool. For streaming
-responses, read timeout is the maximum gap between chunks. For non-streaming, it's the time limit for
-receiving the complete response.
+### Usage examples
 
-Failover is automatically triggered when a generator raises any exception, including:
-- Timeout errors (if the generator implements and raises them)
-- Rate limit errors (429)
-- Authentication errors (401)
-- Context length errors (400)
-- Server errors (500+)
-- Any other exception
+#### With Hugging Face Inference Endpoints
 
-<a id="chat/fallback.FallbackChatGenerator.__init__"></a>
 
-#### FallbackChatGenerator.\_\_init\_\_
+#### With self-hosted text generation inference
+
+#### With the free serverless inference API
+
+Be aware that this example might not work as the Hugging Face Inference API no longer offer models that support the
+`text_generation` endpoint. Use the `HuggingFaceAPIChatGenerator` for generative models through the
+`chat_completion` endpoint.
 
 ```python
-def __init__(chat_generators: list[ChatGenerator]) -> None
+from haystack.components.generators import HuggingFaceAPIGenerator
+from haystack.utils import Secret
+
+generator = HuggingFaceAPIGenerator(api_type="inference_endpoints",
+                                    api_params={"url": "<your-inference-endpoint-url>"},
+                                    token=Secret.from_token("<your-api-key>"))
+
+result = generator.run(prompt="What's Natural Language Processing?")
+print(result)
+```
+```python
+from haystack.components.generators import HuggingFaceAPIGenerator
+
+generator = HuggingFaceAPIGenerator(api_type="text_generation_inference",
+                                    api_params={"url": "http://localhost:8080"})
+
+result = generator.run(prompt="What's Natural Language Processing?")
+print(result)
+```
+```python
+from haystack.components.generators import HuggingFaceAPIGenerator
+from haystack.utils import Secret
+
+generator = HuggingFaceAPIGenerator(api_type="serverless_inference_api",
+                                    api_params={"model": "HuggingFaceH4/zephyr-7b-beta"},
+                                    token=Secret.from_token("<your-api-key>"))
+
+result = generator.run(prompt="What's Natural Language Processing?")
+print(result)
 ```
 
-Creates an instance of FallbackChatGenerator.
+<a id="hugging_face_api.HuggingFaceAPIGenerator.__init__"></a>
+
+#### HuggingFaceAPIGenerator.\_\_init\_\_
+
+```python
+def __init__(api_type: Union[HFGenerationAPIType, str],
+             api_params: dict[str, str],
+             token: Optional[Secret] = Secret.from_env_var(
+                 ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+             generation_kwargs: Optional[dict[str, Any]] = None,
+             stop_words: Optional[list[str]] = None,
+             streaming_callback: Optional[StreamingCallbackT] = None)
+```
+
+Initialize the HuggingFaceAPIGenerator instance.
 
 **Arguments**:
 
-- `chat_generators`: A non-empty list of chat generator components to try in order.
+- `api_type`: The type of Hugging Face API to use. Available types:
+- `text_generation_inference`: See [TGI](https://github.com/huggingface/text-generation-inference).
+- `inference_endpoints`: See [Inference Endpoints](https://huggingface.co/inference-endpoints).
+- `serverless_inference_api`: See [Serverless Inference API](https://huggingface.co/inference-api).
+  This might no longer work due to changes in the models offered in the Hugging Face Inference API.
+  Please use the `HuggingFaceAPIChatGenerator` component instead.
+- `api_params`: A dictionary with the following keys:
+- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
+- `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
+`TEXT_GENERATION_INFERENCE`.
+- Other parameters specific to the chosen API type, such as `timeout`, `headers`, `provider` etc.
+- `token`: The Hugging Face token to use as HTTP bearer authorization.
+Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
+- `generation_kwargs`: A dictionary with keyword arguments to customize text generation. Some examples: `max_new_tokens`,
+`temperature`, `top_k`, `top_p`.
+For details, see [Hugging Face documentation](https://huggingface.co/docs/huggingface_hub/en/package_reference/inference_client#huggingface_hub.InferenceClient.text_generation)
+for more information.
+- `stop_words`: An optional list of strings representing the stop words.
+- `streaming_callback`: An optional callable for handling streaming responses.
 
-<a id="chat/fallback.FallbackChatGenerator.to_dict"></a>
+<a id="hugging_face_api.HuggingFaceAPIGenerator.to_dict"></a>
 
-#### FallbackChatGenerator.to\_dict
+#### HuggingFaceAPIGenerator.to\_dict
 
 ```python
 def to_dict() -> dict[str, Any]
 ```
 
-Serialize the component, including nested chat generators when they support serialization.
+Serialize this component to a dictionary.
 
-<a id="chat/fallback.FallbackChatGenerator.from_dict"></a>
+**Returns**:
 
-#### FallbackChatGenerator.from\_dict
+A dictionary containing the serialized component.
+
+<a id="hugging_face_api.HuggingFaceAPIGenerator.from_dict"></a>
+
+#### HuggingFaceAPIGenerator.from\_dict
 
 ```python
 @classmethod
-def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator
+def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceAPIGenerator"
 ```
 
-Rebuild the component from a serialized representation, restoring nested chat generators.
+Deserialize this component from a dictionary.
 
-<a id="chat/fallback.FallbackChatGenerator.warm_up"></a>
+<a id="hugging_face_api.HuggingFaceAPIGenerator.run"></a>
 
-#### FallbackChatGenerator.warm\_up
+#### HuggingFaceAPIGenerator.run
+
+```python
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
+def run(prompt: str,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None)
+```
+
+Invoke the text generation inference for the given prompt and generation parameters.
+
+**Arguments**:
+
+- `prompt`: A string representing the prompt.
+- `streaming_callback`: A callback function that is called when a new token is received from the stream.
+- `generation_kwargs`: Additional keyword arguments for text generation.
+
+**Returns**:
+
+A dictionary with the generated replies and metadata. Both are lists of length n.
+- replies: A list of strings representing the generated replies.
+
+<a id="hugging_face_local"></a>
+
+## Module hugging\_face\_local
+
+<a id="hugging_face_local.HuggingFaceLocalGenerator"></a>
+
+### HuggingFaceLocalGenerator
+
+Generates text using models from Hugging Face that run locally.
+
+LLMs running locally may need powerful hardware.
+
+### Usage example
+
+```python
+from haystack.components.generators import HuggingFaceLocalGenerator
+
+generator = HuggingFaceLocalGenerator(
+    model="google/flan-t5-large",
+    task="text2text-generation",
+    generation_kwargs={"max_new_tokens": 100, "temperature": 0.9})
+
+generator.warm_up()
+
+print(generator.run("Who is the best American actor?"))
+# {'replies': ['John Cusack']}
+```
+
+<a id="hugging_face_local.HuggingFaceLocalGenerator.__init__"></a>
+
+#### HuggingFaceLocalGenerator.\_\_init\_\_
+
+```python
+def __init__(model: str = "google/flan-t5-base",
+             task: Optional[Literal["text-generation",
+                                    "text2text-generation"]] = None,
+             device: Optional[ComponentDevice] = None,
+             token: Optional[Secret] = Secret.from_env_var(
+                 ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+             generation_kwargs: Optional[dict[str, Any]] = None,
+             huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
+             stop_words: Optional[list[str]] = None,
+             streaming_callback: Optional[StreamingCallbackT] = None)
+```
+
+Creates an instance of a HuggingFaceLocalGenerator.
+
+**Arguments**:
+
+- `model`: The Hugging Face text generation model name or path.
+- `task`: The task for the Hugging Face pipeline. Possible options:
+- `text-generation`: Supported by decoder models, like GPT.
+- `text2text-generation`: Supported by encoder-decoder models, like T5.
+If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
+If not specified, the component calls the Hugging Face API to infer the task from the model name.
+- `device`: The device for loading the model. If `None`, automatically selects the default device.
+If a device or device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
+- `token`: The token to use as HTTP bearer authorization for remote files.
+If the token is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
+- `generation_kwargs`: A dictionary with keyword arguments to customize text generation.
+Some examples: `max_length`, `max_new_tokens`, `temperature`, `top_k`, `top_p`.
+See Hugging Face's documentation for more information:
+- [customize-text-generation](https://huggingface.co/docs/transformers/main/en/generation_strategies#customize-text-generation)
+- [transformers.GenerationConfig](https://huggingface.co/docs/transformers/main/en/main_classes/text_generation#transformers.GenerationConfig)
+- `huggingface_pipeline_kwargs`: Dictionary with keyword arguments to initialize the
+Hugging Face pipeline for text generation.
+These keyword arguments provide fine-grained control over the Hugging Face pipeline.
+In case of duplication, these kwargs override `model`, `task`, `device`, and `token` init parameters.
+For available kwargs, see [Hugging Face documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline.task).
+In this dictionary, you can also include `model_kwargs` to specify the kwargs for model initialization:
+[transformers.PreTrainedModel.from_pretrained](https://huggingface.co/docs/transformers/en/main_classes/model#transformers.PreTrainedModel.from_pretrained)
+- `stop_words`: If the model generates a stop word, the generation stops.
+If you provide this parameter, don't specify the `stopping_criteria` in `generation_kwargs`.
+For some chat models, the output includes both the new text and the original prompt.
+In these cases, make sure your prompt has no stop words.
+- `streaming_callback`: An optional callable for handling streaming responses.
+
+<a id="hugging_face_local.HuggingFaceLocalGenerator.warm_up"></a>
+
+#### HuggingFaceLocalGenerator.warm\_up
+
+```python
+def warm_up()
+```
+
+Initializes the component.
+
+<a id="hugging_face_local.HuggingFaceLocalGenerator.to_dict"></a>
+
+#### HuggingFaceLocalGenerator.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="hugging_face_local.HuggingFaceLocalGenerator.from_dict"></a>
+
+#### HuggingFaceLocalGenerator.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "HuggingFaceLocalGenerator"
+```
+
+Deserializes the component from a dictionary.
+
+**Arguments**:
+
+- `data`: The dictionary to deserialize from.
+
+**Returns**:
+
+The deserialized component.
+
+<a id="hugging_face_local.HuggingFaceLocalGenerator.run"></a>
+
+#### HuggingFaceLocalGenerator.run
+
+```python
+@component.output_types(replies=list[str])
+def run(prompt: str,
+        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: Optional[dict[str, Any]] = None)
+```
+
+Run the text generation model on the given prompt.
+
+**Arguments**:
+
+- `prompt`: A string representing the prompt.
+- `streaming_callback`: A callback function that is called when a new token is received from the stream.
+- `generation_kwargs`: Additional keyword arguments for text generation.
+
+**Returns**:
+
+A dictionary containing the generated replies.
+- replies: A list of strings representing the generated replies.
+
+<a id="openai"></a>
+
+## Module openai
+
+<a id="openai.OpenAIGenerator"></a>
+
+### OpenAIGenerator
+
+Generates text using OpenAI's large language models (LLMs).
+
+It works with the gpt-4 and gpt-5 series models and supports streaming responses
+from OpenAI API. It uses strings as input and output.
+
+You can customize how the text is generated by passing parameters to the
+OpenAI API. Use the `**generation_kwargs` argument when you initialize
+the component or when you run it. Any parameter that works with
+`openai.ChatCompletion.create` will work here too.
+
+
+For details on OpenAI API parameters, see
+[OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
+
+### Usage example
+
+```python
+from haystack.components.generators import OpenAIGenerator
+client = OpenAIGenerator()
+response = client.run("What's Natural Language Processing? Be brief.")
+print(response)
+
+>> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
+>> the interaction between computers and human language. It involves enabling computers to understand, interpret,
+>> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
+>> 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
+>> 'completion_tokens': 49, 'total_tokens': 65}}]}
+```
+
+<a id="openai.OpenAIGenerator.__init__"></a>
+
+#### OpenAIGenerator.\_\_init\_\_
+
+```python
+def __init__(api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+             model: str = "gpt-5-mini",
+             streaming_callback: Optional[StreamingCallbackT] = None,
+             api_base_url: Optional[str] = None,
+             organization: Optional[str] = None,
+             system_prompt: Optional[str] = None,
+             generation_kwargs: Optional[dict[str, Any]] = None,
+             timeout: Optional[float] = None,
+             max_retries: Optional[int] = None,
+             http_client_kwargs: Optional[dict[str, Any]] = None)
+```
+
+Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
+
+By setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' you can change the timeout and max_retries parameters
+in the OpenAI client.
+
+**Arguments**:
+
+- `api_key`: The OpenAI API key to connect to OpenAI.
+- `model`: The name of the model to use.
+- `streaming_callback`: A callback function that is called when a new token is received from the stream.
+The callback function accepts StreamingChunk as an argument.
+- `api_base_url`: An optional base URL.
+- `organization`: The Organization ID, defaults to `None`.
+- `system_prompt`: The system prompt to use for text generation. If not provided, the system prompt is
+omitted, and the default system prompt of the model is used.
+- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
+the OpenAI endpoint. See OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat) for
+more details.
+Some of the supported parameters:
+- `max_completion_tokens`: An upper bound for the number of tokens that can be generated for a completion,
+    including visible output tokens and reasoning tokens.
+- `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
+    Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
+- `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
+    considers the results of the tokens with top_p probability mass. So, 0.1 means only the tokens
+    comprising the top 10% probability mass are considered.
+- `n`: How many completions to generate for each prompt. For example, if the LLM gets 3 prompts and n is 2,
+    it will generate two completions for each of the three prompts, ending up with 6 completions in total.
+- `stop`: One or more sequences after which the LLM should stop generating tokens.
+- `presence_penalty`: What penalty to apply if a token is already present at all. Bigger values mean
+    the model will be less likely to repeat the same token in the text.
+- `frequency_penalty`: What penalty to apply if a token has already been generated in the text.
+    Bigger values mean the model will be less likely to repeat the same token in the text.
+- `logit_bias`: Add a logit bias to specific tokens. The keys of the dictionary are tokens, and the
+    values are the bias to add to that token.
+- `timeout`: Timeout for OpenAI Client calls, if not set it is inferred from the `OPENAI_TIMEOUT` environment variable
+or set to 30.
+- `max_retries`: Maximum retries to establish contact with OpenAI if it returns an internal error, if not set it is inferred
+from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
+
+<a id="openai.OpenAIGenerator.to_dict"></a>
+
+#### OpenAIGenerator.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns**:
+
+The serialized component as a dictionary.
+
+<a id="openai.OpenAIGenerator.from_dict"></a>
+
+#### OpenAIGenerator.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "OpenAIGenerator"
+```
+
+Deserialize this component from a dictionary.
+
+**Arguments**:
+
+- `data`: The dictionary representation of this component.
+
+**Returns**:
+
+The deserialized component instance.
+
+<a id="openai.OpenAIGenerator.run"></a>
+
+#### OpenAIGenerator.run
+
+```python
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
+def run(
+    prompt: str,
+    system_prompt: Optional[str] = None,
+    streaming_callback: Optional[StreamingCallbackT] = None,
+    generation_kwargs: Optional[dict[str, Any]] = None
+) -> dict[str, Union[list[str], list[dict[str, Any]]]]
+```
+
+Invoke the text generation inference based on the provided messages and generation parameters.
+
+**Arguments**:
+
+- `prompt`: The string prompt to use for text generation.
+- `system_prompt`: The system prompt to use for text generation. If this run time system prompt is omitted, the system
+prompt, if defined at initialisation time, is used.
+- `streaming_callback`: A callback function that is called when a new token is received from the stream.
+- `generation_kwargs`: Additional keyword arguments for text generation. These parameters will potentially override the parameters
+passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to
+the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).
+
+**Returns**:
+
+A list of strings containing the generated responses and a list of dictionaries containing the metadata
+for each response.
+
+<a id="openai_dalle"></a>
+
+## Module openai\_dalle
+
+<a id="openai_dalle.DALLEImageGenerator"></a>
+
+### DALLEImageGenerator
+
+Generates images using OpenAI's DALL-E model.
+
+For details on OpenAI API parameters, see
+[OpenAI documentation](https://platform.openai.com/docs/api-reference/images/create).
+
+### Usage example
+
+```python
+from haystack.components.generators import DALLEImageGenerator
+image_generator = DALLEImageGenerator()
+response = image_generator.run("Show me a picture of a black cat.")
+print(response)
+```
+
+<a id="openai_dalle.DALLEImageGenerator.__init__"></a>
+
+#### DALLEImageGenerator.\_\_init\_\_
+
+```python
+def __init__(model: str = "dall-e-3",
+             quality: Literal["standard", "hd"] = "standard",
+             size: Literal["256x256", "512x512", "1024x1024", "1792x1024",
+                           "1024x1792"] = "1024x1024",
+             response_format: Literal["url", "b64_json"] = "url",
+             api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+             api_base_url: Optional[str] = None,
+             organization: Optional[str] = None,
+             timeout: Optional[float] = None,
+             max_retries: Optional[int] = None,
+             http_client_kwargs: Optional[dict[str, Any]] = None)
+```
+
+Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
+
+**Arguments**:
+
+- `model`: The model to use for image generation. Can be "dall-e-2" or "dall-e-3".
+- `quality`: The quality of the generated image. Can be "standard" or "hd".
+- `size`: The size of the generated images.
+Must be one of 256x256, 512x512, or 1024x1024 for dall-e-2.
+Must be one of 1024x1024, 1792x1024, or 1024x1792 for dall-e-3 models.
+- `response_format`: The format of the response. Can be "url" or "b64_json".
+- `api_key`: The OpenAI API key to connect to OpenAI.
+- `api_base_url`: An optional base URL.
+- `organization`: The Organization ID, defaults to `None`.
+- `timeout`: Timeout for OpenAI Client calls. If not set, it is inferred from the `OPENAI_TIMEOUT` environment variable
+or set to 30.
+- `max_retries`: Maximum retries to establish contact with OpenAI if it returns an internal error. If not set, it is inferred
+from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
+
+<a id="openai_dalle.DALLEImageGenerator.warm_up"></a>
+
+#### DALLEImageGenerator.warm\_up
 
 ```python
 def warm_up() -> None
 ```
 
-Warm up all underlying chat generators.
+Warm up the OpenAI client.
 
-This method calls warm_up() on each underlying generator that supports it.
+<a id="openai_dalle.DALLEImageGenerator.run"></a>
 
-<a id="chat/fallback.FallbackChatGenerator.run"></a>
-
-#### FallbackChatGenerator.run
+#### DALLEImageGenerator.run
 
 ```python
-@component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
-def run(
-    messages: list[ChatMessage],
-    generation_kwargs: Union[dict[str, Any], None] = None,
-    tools: Optional[ToolsType] = None,
-    streaming_callback: Union[StreamingCallbackT, None] = None
-) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]
+@component.output_types(images=list[str], revised_prompt=str)
+def run(prompt: str,
+        size: Optional[Literal["256x256", "512x512", "1024x1024", "1792x1024",
+                               "1024x1792"]] = None,
+        quality: Optional[Literal["standard", "hd"]] = None,
+        response_format: Optional[Optional[Literal["url",
+                                                   "b64_json"]]] = None)
 ```
 
-Execute chat generators sequentially until one succeeds.
+Invokes the image generation inference based on the provided prompt and generation parameters.
 
 **Arguments**:
 
-- `messages`: The conversation history as a list of ChatMessage instances.
-- `generation_kwargs`: Optional parameters for the chat generator (e.g., temperature, max_tokens).
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
-- `streaming_callback`: Optional callable for handling streaming responses.
-
-**Raises**:
-
-- `RuntimeError`: If all chat generators fail.
+- `prompt`: The prompt to generate the image.
+- `size`: If provided, overrides the size provided during initialization.
+- `quality`: If provided, overrides the quality provided during initialization.
+- `response_format`: If provided, overrides the response format provided during initialization.
 
 **Returns**:
 
-A dictionary with:
-- "replies": Generated ChatMessage instances from the first successful generator.
-- "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
-  total_attempts, failed_chat_generators, plus any metadata from the successful generator.
+A dictionary containing the generated list of images and the revised prompt.
+Depending on the `response_format` parameter, the list of images can be URLs or base64 encoded JSON strings.
+The revised prompt is the prompt that was used to generate the image, if there was any revision
+to the prompt made by OpenAI.
 
-<a id="chat/fallback.FallbackChatGenerator.run_async"></a>
+<a id="openai_dalle.DALLEImageGenerator.to_dict"></a>
 
-#### FallbackChatGenerator.run\_async
+#### DALLEImageGenerator.to\_dict
 
 ```python
-@component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
-async def run_async(
-    messages: list[ChatMessage],
-    generation_kwargs: Union[dict[str, Any], None] = None,
-    tools: Optional[ToolsType] = None,
-    streaming_callback: Union[StreamingCallbackT, None] = None
-) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]
+def to_dict() -> dict[str, Any]
 ```
 
-Asynchronously execute chat generators sequentially until one succeeds.
+Serialize this component to a dictionary.
+
+**Returns**:
+
+The serialized component as a dictionary.
+
+<a id="openai_dalle.DALLEImageGenerator.from_dict"></a>
+
+#### DALLEImageGenerator.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "DALLEImageGenerator"
+```
+
+Deserialize this component from a dictionary.
 
 **Arguments**:
 
-- `messages`: The conversation history as a list of ChatMessage instances.
-- `generation_kwargs`: Optional parameters for the chat generator (e.g., temperature, max_tokens).
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
-- `streaming_callback`: Optional callable for handling streaming responses.
-
-**Raises**:
-
-- `RuntimeError`: If all chat generators fail.
+- `data`: The dictionary representation of this component.
 
 **Returns**:
 
-A dictionary with:
-- "replies": Generated ChatMessage instances from the first successful generator.
-- "meta": Execution metadata including successful_chat_generator_index, successful_chat_generator_class,
-  total_attempts, failed_chat_generators, plus any metadata from the successful generator.
+The deserialized component instance.
 
 <a id="utils"></a>
 

@@ -5,154 +5,95 @@ description: "Components to extract specific elements from textual data."
 slug: "/extractors-api"
 ---
 
-<a id="named_entity_extractor"></a>
+<a id="image/llm_document_content_extractor"></a>
 
-## Module named\_entity\_extractor
+## Module image/llm\_document\_content\_extractor
 
-<a id="named_entity_extractor.NamedEntityExtractorBackend"></a>
+<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor"></a>
 
-### NamedEntityExtractorBackend
+### LLMDocumentContentExtractor
 
-NLP backend to use for Named Entity Recognition.
+Extracts textual content from image-based documents using a vision-enabled LLM (Large Language Model).
 
-<a id="named_entity_extractor.NamedEntityExtractorBackend.HUGGING_FACE"></a>
+This component converts each input document into an image using the DocumentToImageContent component,
+uses a prompt to instruct the LLM on how to extract content, and uses a ChatGenerator to extract structured
+textual content based on the provided prompt.
 
-#### HUGGING\_FACE
+The prompt must not contain variables; it should only include instructions for the LLM. Image data and the prompt
+are passed together to the LLM as a chat message.
 
-Uses an Hugging Face model and pipeline.
+Documents for which the LLM fails to extract content are returned in a separate `failed_documents` list. These
+failed documents will have a `content_extraction_error` entry in their metadata. This metadata can be used for
+debugging or for reprocessing the documents later.
 
-<a id="named_entity_extractor.NamedEntityExtractorBackend.SPACY"></a>
-
-#### SPACY
-
-Uses a spaCy model and pipeline.
-
-<a id="named_entity_extractor.NamedEntityExtractorBackend.from_str"></a>
-
-#### NamedEntityExtractorBackend.from\_str
-
-```python
-@staticmethod
-def from_str(string: str) -> "NamedEntityExtractorBackend"
-```
-
-Convert a string to a NamedEntityExtractorBackend enum.
-
-<a id="named_entity_extractor.NamedEntityAnnotation"></a>
-
-### NamedEntityAnnotation
-
-Describes a single NER annotation.
-
-**Arguments**:
-
-- `entity`: Entity label.
-- `start`: Start index of the entity in the document.
-- `end`: End index of the entity in the document.
-- `score`: Score calculated by the model.
-
-<a id="named_entity_extractor.NamedEntityExtractor"></a>
-
-### NamedEntityExtractor
-
-Annotates named entities in a collection of documents.
-
-The component supports two backends: Hugging Face and spaCy. The
-former can be used with any sequence classification model from the
-[Hugging Face model hub](https://huggingface.co/models), while the
-latter can be used with any [spaCy model](https://spacy.io/models)
-that contains an NER component. Annotations are stored as metadata
-in the documents.
-
-Usage example:
+### Usage example
 ```python
 from haystack import Document
-from haystack.components.extractors.named_entity_extractor import NamedEntityExtractor
-
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.extractors.image import LLMDocumentContentExtractor
+chat_generator = OpenAIChatGenerator()
+extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
 documents = [
-    Document(content="I'm Merlin, the happy pig!"),
-    Document(content="My name is Clara and I live in Berkeley, California."),
+    Document(content="", meta={"file_path": "image.jpg"}),
+    Document(content="", meta={"file_path": "document.pdf", "page_number": 1}),
 ]
-extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
-extractor.warm_up()
-results = extractor.run(documents=documents)["documents"]
-annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
-print(annotations)
+updated_documents = extractor.run(documents=documents)["documents"]
+print(updated_documents)
+# [Document(content='Extracted text from image.jpg',
+#           meta={'file_path': 'image.jpg'}),
+#  ...]
 ```
 
-<a id="named_entity_extractor.NamedEntityExtractor.__init__"></a>
+<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.__init__"></a>
 
-#### NamedEntityExtractor.\_\_init\_\_
+#### LLMDocumentContentExtractor.\_\_init\_\_
 
 ```python
-def __init__(
-    *,
-    backend: Union[str, NamedEntityExtractorBackend],
-    model: str,
-    pipeline_kwargs: Optional[dict[str, Any]] = None,
-    device: Optional[ComponentDevice] = None,
-    token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"],
-                                                  strict=False)
-) -> None
+def __init__(*,
+             chat_generator: ChatGenerator,
+             prompt: str = DEFAULT_PROMPT_TEMPLATE,
+             file_path_meta_field: str = "file_path",
+             root_path: Optional[str] = None,
+             detail: Optional[Literal["auto", "high", "low"]] = None,
+             size: Optional[tuple[int, int]] = None,
+             raise_on_failure: bool = False,
+             max_workers: int = 3)
 ```
 
-Create a Named Entity extractor component.
+Initialize the LLMDocumentContentExtractor component.
 
 **Arguments**:
 
-- `backend`: Backend to use for NER.
-- `model`: Name of the model or a path to the model on
-the local disk. Dependent on the backend.
-- `pipeline_kwargs`: Keyword arguments passed to the pipeline. The
-pipeline can override these arguments. Dependent on the backend.
-- `device`: The device on which the model is loaded. If `None`,
-the default device is automatically selected. If a
-device/device map is specified in `pipeline_kwargs`,
-it overrides this parameter (only applicable to the
-HuggingFace backend).
-- `token`: The API token to download private models from Hugging Face.
+- `chat_generator`: A ChatGenerator instance representing the LLM used to extract text. This generator must
+support vision-based input and return a plain text response.
+- `prompt`: Instructional text provided to the LLM. It must not contain Jinja variables.
+The prompt should only contain instructions on how to extract the content of the image-based document.
+- `file_path_meta_field`: The metadata field in the Document that contains the file path to the image or PDF.
+- `root_path`: The root directory path where document files are located. If provided, file paths in
+document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+- `detail`: Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
+This will be passed to chat_generator when processing the images.
+- `size`: If provided, resizes the image to fit within the specified dimensions (width, height) while
+maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
+when working with models that have resolution constraints or when transmitting images to remote services.
+- `raise_on_failure`: If True, exceptions from the LLM are raised. If False, failed documents are logged
+and returned.
+- `max_workers`: Maximum number of threads used to parallelize LLM calls across documents using a
+ThreadPoolExecutor.
 
-<a id="named_entity_extractor.NamedEntityExtractor.warm_up"></a>
+<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.warm_up"></a>
 
-#### NamedEntityExtractor.warm\_up
+#### LLMDocumentContentExtractor.warm\_up
 
 ```python
 def warm_up()
 ```
 
-Initialize the component.
+Warm up the ChatGenerator if it has a warm_up method.
 
-**Raises**:
+<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.to_dict"></a>
 
-- `ComponentError`: If the backend fails to initialize successfully.
-
-<a id="named_entity_extractor.NamedEntityExtractor.run"></a>
-
-#### NamedEntityExtractor.run
-
-```python
-@component.output_types(documents=list[Document])
-def run(documents: list[Document], batch_size: int = 1) -> dict[str, Any]
-```
-
-Annotate named entities in each document and store the annotations in the document's metadata.
-
-**Arguments**:
-
-- `documents`: Documents to process.
-- `batch_size`: Batch size used for processing the documents.
-
-**Raises**:
-
-- `ComponentError`: If the backend fails to process a document.
-
-**Returns**:
-
-Processed documents.
-
-<a id="named_entity_extractor.NamedEntityExtractor.to_dict"></a>
-
-#### NamedEntityExtractor.to\_dict
+#### LLMDocumentContentExtractor.to\_dict
 
 ```python
 def to_dict() -> dict[str, Any]
@@ -164,55 +105,50 @@ Serializes the component to a dictionary.
 
 Dictionary with serialized data.
 
-<a id="named_entity_extractor.NamedEntityExtractor.from_dict"></a>
+<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.from_dict"></a>
 
-#### NamedEntityExtractor.from\_dict
+#### LLMDocumentContentExtractor.from\_dict
 
 ```python
 @classmethod
-def from_dict(cls, data: dict[str, Any]) -> "NamedEntityExtractor"
+def from_dict(cls, data: dict[str, Any]) -> "LLMDocumentContentExtractor"
 ```
 
 Deserializes the component from a dictionary.
 
 **Arguments**:
 
-- `data`: Dictionary to deserialize from.
+- `data`: Dictionary with serialized data.
 
 **Returns**:
 
-Deserialized component.
+An instance of the component.
 
-<a id="named_entity_extractor.NamedEntityExtractor.initialized"></a>
+<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.run"></a>
 
-#### NamedEntityExtractor.initialized
-
-```python
-@property
-def initialized() -> bool
-```
-
-Returns if the extractor is ready to annotate text.
-
-<a id="named_entity_extractor.NamedEntityExtractor.get_stored_annotations"></a>
-
-#### NamedEntityExtractor.get\_stored\_annotations
+#### LLMDocumentContentExtractor.run
 
 ```python
-@classmethod
-def get_stored_annotations(
-        cls, document: Document) -> Optional[list[NamedEntityAnnotation]]
+@component.output_types(documents=list[Document],
+                        failed_documents=list[Document])
+def run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
-Returns the document's named entity annotations stored in its metadata, if any.
+Run content extraction on a list of image-based documents using a vision-capable LLM.
+
+Each document is passed to the LLM along with a predefined prompt. The response is used to update the document's
+content. If the extraction fails, the document is returned in the `failed_documents` list with metadata
+describing the failure.
 
 **Arguments**:
 
-- `document`: Document whose annotations are to be fetched.
+- `documents`: A list of image-based documents to process. Each must have a valid file path in its metadata.
 
 **Returns**:
 
-The stored annotations.
+A dictionary with:
+- "documents": Successfully processed documents, updated with extracted content.
+- "failed_documents": Documents that failed processing, annotated with failure metadata.
 
 <a id="llm_metadata_extractor"></a>
 
@@ -431,95 +367,154 @@ A dictionary with the keys:
 "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
 re-run with the extractor to extract metadata.
 
-<a id="image/llm_document_content_extractor"></a>
+<a id="named_entity_extractor"></a>
 
-## Module image/llm\_document\_content\_extractor
+## Module named\_entity\_extractor
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor"></a>
+<a id="named_entity_extractor.NamedEntityExtractorBackend"></a>
 
-### LLMDocumentContentExtractor
+### NamedEntityExtractorBackend
 
-Extracts textual content from image-based documents using a vision-enabled LLM (Large Language Model).
+NLP backend to use for Named Entity Recognition.
 
-This component converts each input document into an image using the DocumentToImageContent component,
-uses a prompt to instruct the LLM on how to extract content, and uses a ChatGenerator to extract structured
-textual content based on the provided prompt.
+<a id="named_entity_extractor.NamedEntityExtractorBackend.HUGGING_FACE"></a>
 
-The prompt must not contain variables; it should only include instructions for the LLM. Image data and the prompt
-are passed together to the LLM as a chat message.
+#### HUGGING\_FACE
 
-Documents for which the LLM fails to extract content are returned in a separate `failed_documents` list. These
-failed documents will have a `content_extraction_error` entry in their metadata. This metadata can be used for
-debugging or for reprocessing the documents later.
+Uses an Hugging Face model and pipeline.
 
-### Usage example
-```python
-from haystack import Document
-from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.extractors.image import LLMDocumentContentExtractor
-chat_generator = OpenAIChatGenerator()
-extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
-documents = [
-    Document(content="", meta={"file_path": "image.jpg"}),
-    Document(content="", meta={"file_path": "document.pdf", "page_number": 1}),
-]
-updated_documents = extractor.run(documents=documents)["documents"]
-print(updated_documents)
-# [Document(content='Extracted text from image.jpg',
-#           meta={'file_path': 'image.jpg'}),
-#  ...]
-```
+<a id="named_entity_extractor.NamedEntityExtractorBackend.SPACY"></a>
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.__init__"></a>
+#### SPACY
 
-#### LLMDocumentContentExtractor.\_\_init\_\_
+Uses a spaCy model and pipeline.
+
+<a id="named_entity_extractor.NamedEntityExtractorBackend.from_str"></a>
+
+#### NamedEntityExtractorBackend.from\_str
 
 ```python
-def __init__(*,
-             chat_generator: ChatGenerator,
-             prompt: str = DEFAULT_PROMPT_TEMPLATE,
-             file_path_meta_field: str = "file_path",
-             root_path: Optional[str] = None,
-             detail: Optional[Literal["auto", "high", "low"]] = None,
-             size: Optional[tuple[int, int]] = None,
-             raise_on_failure: bool = False,
-             max_workers: int = 3)
+@staticmethod
+def from_str(string: str) -> "NamedEntityExtractorBackend"
 ```
 
-Initialize the LLMDocumentContentExtractor component.
+Convert a string to a NamedEntityExtractorBackend enum.
+
+<a id="named_entity_extractor.NamedEntityAnnotation"></a>
+
+### NamedEntityAnnotation
+
+Describes a single NER annotation.
 
 **Arguments**:
 
-- `chat_generator`: A ChatGenerator instance representing the LLM used to extract text. This generator must
-support vision-based input and return a plain text response.
-- `prompt`: Instructional text provided to the LLM. It must not contain Jinja variables.
-The prompt should only contain instructions on how to extract the content of the image-based document.
-- `file_path_meta_field`: The metadata field in the Document that contains the file path to the image or PDF.
-- `root_path`: The root directory path where document files are located. If provided, file paths in
-document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
-- `detail`: Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
-This will be passed to chat_generator when processing the images.
-- `size`: If provided, resizes the image to fit within the specified dimensions (width, height) while
-maintaining aspect ratio. This reduces file size, memory usage, and processing time, which is beneficial
-when working with models that have resolution constraints or when transmitting images to remote services.
-- `raise_on_failure`: If True, exceptions from the LLM are raised. If False, failed documents are logged
-and returned.
-- `max_workers`: Maximum number of threads used to parallelize LLM calls across documents using a
-ThreadPoolExecutor.
+- `entity`: Entity label.
+- `start`: Start index of the entity in the document.
+- `end`: End index of the entity in the document.
+- `score`: Score calculated by the model.
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.warm_up"></a>
+<a id="named_entity_extractor.NamedEntityExtractor"></a>
 
-#### LLMDocumentContentExtractor.warm\_up
+### NamedEntityExtractor
+
+Annotates named entities in a collection of documents.
+
+The component supports two backends: Hugging Face and spaCy. The
+former can be used with any sequence classification model from the
+[Hugging Face model hub](https://huggingface.co/models), while the
+latter can be used with any [spaCy model](https://spacy.io/models)
+that contains an NER component. Annotations are stored as metadata
+in the documents.
+
+Usage example:
+```python
+from haystack import Document
+from haystack.components.extractors.named_entity_extractor import NamedEntityExtractor
+
+documents = [
+    Document(content="I'm Merlin, the happy pig!"),
+    Document(content="My name is Clara and I live in Berkeley, California."),
+]
+extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
+extractor.warm_up()
+results = extractor.run(documents=documents)["documents"]
+annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
+print(annotations)
+```
+
+<a id="named_entity_extractor.NamedEntityExtractor.__init__"></a>
+
+#### NamedEntityExtractor.\_\_init\_\_
+
+```python
+def __init__(
+    *,
+    backend: Union[str, NamedEntityExtractorBackend],
+    model: str,
+    pipeline_kwargs: Optional[dict[str, Any]] = None,
+    device: Optional[ComponentDevice] = None,
+    token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"],
+                                                  strict=False)
+) -> None
+```
+
+Create a Named Entity extractor component.
+
+**Arguments**:
+
+- `backend`: Backend to use for NER.
+- `model`: Name of the model or a path to the model on
+the local disk. Dependent on the backend.
+- `pipeline_kwargs`: Keyword arguments passed to the pipeline. The
+pipeline can override these arguments. Dependent on the backend.
+- `device`: The device on which the model is loaded. If `None`,
+the default device is automatically selected. If a
+device/device map is specified in `pipeline_kwargs`,
+it overrides this parameter (only applicable to the
+HuggingFace backend).
+- `token`: The API token to download private models from Hugging Face.
+
+<a id="named_entity_extractor.NamedEntityExtractor.warm_up"></a>
+
+#### NamedEntityExtractor.warm\_up
 
 ```python
 def warm_up()
 ```
 
-Warm up the ChatGenerator if it has a warm_up method.
+Initialize the component.
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.to_dict"></a>
+**Raises**:
 
-#### LLMDocumentContentExtractor.to\_dict
+- `ComponentError`: If the backend fails to initialize successfully.
+
+<a id="named_entity_extractor.NamedEntityExtractor.run"></a>
+
+#### NamedEntityExtractor.run
+
+```python
+@component.output_types(documents=list[Document])
+def run(documents: list[Document], batch_size: int = 1) -> dict[str, Any]
+```
+
+Annotate named entities in each document and store the annotations in the document's metadata.
+
+**Arguments**:
+
+- `documents`: Documents to process.
+- `batch_size`: Batch size used for processing the documents.
+
+**Raises**:
+
+- `ComponentError`: If the backend fails to process a document.
+
+**Returns**:
+
+Processed documents.
+
+<a id="named_entity_extractor.NamedEntityExtractor.to_dict"></a>
+
+#### NamedEntityExtractor.to\_dict
 
 ```python
 def to_dict() -> dict[str, Any]
@@ -531,50 +526,55 @@ Serializes the component to a dictionary.
 
 Dictionary with serialized data.
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.from_dict"></a>
+<a id="named_entity_extractor.NamedEntityExtractor.from_dict"></a>
 
-#### LLMDocumentContentExtractor.from\_dict
+#### NamedEntityExtractor.from\_dict
 
 ```python
 @classmethod
-def from_dict(cls, data: dict[str, Any]) -> "LLMDocumentContentExtractor"
+def from_dict(cls, data: dict[str, Any]) -> "NamedEntityExtractor"
 ```
 
 Deserializes the component from a dictionary.
 
 **Arguments**:
 
-- `data`: Dictionary with serialized data.
+- `data`: Dictionary to deserialize from.
 
 **Returns**:
 
-An instance of the component.
+Deserialized component.
 
-<a id="image/llm_document_content_extractor.LLMDocumentContentExtractor.run"></a>
+<a id="named_entity_extractor.NamedEntityExtractor.initialized"></a>
 
-#### LLMDocumentContentExtractor.run
+#### NamedEntityExtractor.initialized
 
 ```python
-@component.output_types(documents=list[Document],
-                        failed_documents=list[Document])
-def run(documents: list[Document]) -> dict[str, list[Document]]
+@property
+def initialized() -> bool
 ```
 
-Run content extraction on a list of image-based documents using a vision-capable LLM.
+Returns if the extractor is ready to annotate text.
 
-Each document is passed to the LLM along with a predefined prompt. The response is used to update the document's
-content. If the extraction fails, the document is returned in the `failed_documents` list with metadata
-describing the failure.
+<a id="named_entity_extractor.NamedEntityExtractor.get_stored_annotations"></a>
+
+#### NamedEntityExtractor.get\_stored\_annotations
+
+```python
+@classmethod
+def get_stored_annotations(
+        cls, document: Document) -> Optional[list[NamedEntityAnnotation]]
+```
+
+Returns the document's named entity annotations stored in its metadata, if any.
 
 **Arguments**:
 
-- `documents`: A list of image-based documents to process. Each must have a valid file path in its metadata.
+- `document`: Document whose annotations are to be fetched.
 
 **Returns**:
 
-A dictionary with:
-- "documents": Successfully processed documents, updated with extracted content.
-- "failed_documents": Documents that failed processing, annotated with failure metadata.
+The stored annotations.
 
 <a id="regex_text_extractor"></a>
 
