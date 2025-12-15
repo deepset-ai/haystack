@@ -194,6 +194,11 @@ class TestComponentTool:
             "description": "A simple component that generates text.",
         }
 
+    def test_from_component_with_invalid_inputs_from_state_nested_dict(self):
+        """Test that ComponentTool rejects nested dict format for inputs_from_state"""
+        with pytest.raises(ValueError, match="inputs_from_state.*must be a string"):
+            ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})
+
     def test_from_component_with_outputs_to_state(self):
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
         assert tool.outputs_to_state == {"replies": {"source": "reply"}}

@@ -80,6 +80,23 @@ class Tool:
         except SchemaError as e:
             raise ValueError("The provided parameters do not define a valid JSON schema") from e
 
+        # Validate inputs_from_state structure if provided
+        if self.inputs_from_state is not None:
+            for state_key, param_name in self.inputs_from_state.items():
+                if not isinstance(param_name, str):
+                    # Provide helpful error message with suggestion
+                    if isinstance(param_name, dict) and "source" in param_name:
+                        suggested_value = param_name["source"]
+                        suggestion = f"Did you mean: {{'{state_key}': '{suggested_value}'}}?"
+                    else:
+                        suggestion = "Expected format: {'state_key': 'component_input_name'}"
+                    raise ValueError(
+                        f"inputs_from_state mapping for '{state_key}' must be str, not {type(param_name).__name__}. "
+                        f"Expected format: {{'state_key': 'component_input_name'}}, "
+                        f"but got: {{'{state_key}': {param_name!r}}}. "
+                        f"{suggestion}"
+                    )
+
         # Validate outputs structure if provided
         if self.outputs_to_state is not None:
             for key, config in self.outputs_to_state.items():

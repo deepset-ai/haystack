@@ -57,6 +57,24 @@ class TestTool:
                 outputs_to_state=outputs_to_state,
             )
 
+    @pytest.mark.parametrize(
+        "inputs_from_state",
+        [
+            pytest.param({"documents": {"source": "documents"}}, id="value-is-dict-not-string"),
+            pytest.param({"documents": ["documents"]}, id="value-is-list-not-string"),
+            pytest.param({"documents": 123}, id="value-is-int-not-string"),
+        ],
+    )
+    def test_init_invalid_inputs_from_state(self, inputs_from_state):
+        with pytest.raises(ValueError, match="inputs_from_state"):
+            Tool(
+                name="test_tool",
+                description="test",
+                parameters={"type": "object", "properties": {}},
+                function=get_weather_report,
+                inputs_from_state=inputs_from_state,
+            )
+
     def test_tool_spec(self):
         tool = Tool(
             name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
