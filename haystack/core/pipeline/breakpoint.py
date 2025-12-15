@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
@@ -30,6 +31,10 @@ if TYPE_CHECKING:
     from haystack.tools import ToolsType
 
 logger = logging.getLogger(__name__)
+
+# Type alias for snapshot callback function
+# The callback receives a PipelineSnapshot and optionally returns a file path string
+SnapshotCallback = Callable[[PipelineSnapshot], Optional[str]]
 
 
 def _validate_break_point_against_pipeline(
@@ -143,10 +148,18 @@ def load_pipeline_snapshot(file_path: Union[str, Path]) -> PipelineSnapshot:
     return pipeline_snapshot
 
 
-def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failure: bool = True) -> Optional[str]:
+def _save_pipeline_snapshot(
+    pipeline_snapshot: PipelineSnapshot,
+    raise_on_failure: bool = True,
+    snapshot_callback: Optional[SnapshotCallback] = None,
+) -> Optional[str]:
     """
-    Save the pipeline snapshot dictionary to a JSON file.
+    Save the pipeline snapshot dictionary to a JSON file, or invoke a custom callback.
 
+    If a `snapshot_callback` is provided, it will be called with the pipeline snapshot instead of saving to a file.
+    This allows users to customize how snapshots are handled (e.g., saving to a database, sending to a remote service).
+
+    When no callback is provided, the default behavior saves to a JSON file:
     - The filename is generated based on the component name, visit count, and timestamp.
         - The component name is taken from the break point's `component_name`.
         - The visit count is taken from the pipeline state's `component_visits` for the component name.
@@ -156,12 +169,28 @@ def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failur
 
     :param pipeline_snapshot: The pipeline snapshot to save.
     :param raise_on_failure: If True, raises an exception if saving fails. If False, logs the error and returns.
+    :param snapshot_callback: Optional callback function that receives the PipelineSnapshot.
+        If provided, the callback is invoked instead of the default file-saving behavior.
+        The callback should return an optional string (e.g., a file path or identifier) or None.
 
     :returns:
-        The full path to the saved JSON file, or None if `snapshot_file_path` is None.
+        The full path to the saved JSON file (or the value returned by the callback), or None if
+        `snapshot_file_path` is None and no callback is provided.
     :raises:
-        Exception: If saving the JSON snapshot fails.
+        Exception: If saving the JSON snapshot fails (when raise_on_failure is True).
     """
+    # If a callback is provided, use it instead of the default file-saving behavior
+    if snapshot_callback is not None:
+        try:
+            result = snapshot_callback(pipeline_snapshot)
+            logger.info("Pipeline snapshot handled by custom callback.")
+            return result
+        except Exception as error:
+            logger.error("Failed to handle pipeline snapshot with custom callback. Error: {e}", e=error)
+            if raise_on_failure:
+                raise
+            return None
+
     break_point = pipeline_snapshot.break_point
     snapshot_file_path = (
         break_point.break_point.snapshot_file_path
@@ -313,14 +342,18 @@ def _transform_json_structure(data: Union[dict[str, Any], list[Any], Any]) -> An
     return data
 
 
-def _trigger_break_point(*, pipeline_snapshot: PipelineSnapshot) -> None:
+def _trigger_break_point(
+    *, pipeline_snapshot: PipelineSnapshot, snapshot_callback: Optional[SnapshotCallback] = None
+) -> None:
     """
     Trigger a breakpoint by saving a snapshot and raising exception.
 
     :param pipeline_snapshot: The current pipeline snapshot containing the state and break point
+    :param snapshot_callback: Optional callback function that receives the PipelineSnapshot.
+        If provided, the callback is invoked instead of the default file-saving behavior.
     :raises BreakpointException: When breakpoint is triggered
     """
-    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
+    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot, snapshot_callback=snapshot_callback)
 
     if isinstance(pipeline_snapshot.break_point, Breakpoint):
         component_name = pipeline_snapshot.break_point.component_name
