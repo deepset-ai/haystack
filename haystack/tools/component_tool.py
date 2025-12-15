@@ -151,6 +151,17 @@ class ComponentTool(Tool):
             )
             raise ValueError(msg)
 
+        # Validate inputs_from_state against component input sockets
+        if inputs_from_state is not None:
+            component_inputs = set(component.__haystack_input__._sockets_dict.keys())  # type: ignore[attr-defined]
+            for state_key, param_name in inputs_from_state.items():
+                # Skip validation if param_name is not a string (will be caught by Tool.__post_init__)
+                if isinstance(param_name, str) and param_name not in component_inputs:
+                    raise ValueError(
+                        f"inputs_from_state for ComponentTool maps '{state_key}' to unknown input '{param_name}'. "
+                        f"Valid component inputs are: {component_inputs}."
+                    )
+
         self._unresolved_parameters = parameters
         # Create the tools schema from the component run method parameters
         tool_schema = parameters or self._create_tool_parameters_schema(component, inputs_from_state or {})
@@ -212,6 +223,17 @@ class ComponentTool(Tool):
         )
         self._component = component
         self._is_warmed_up = False
+
+        # Validate outputs_to_state references valid component outputs
+        if outputs_to_state is not None:
+            output_sockets = set(component.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
+            for state_key, config in outputs_to_state.items():
+                source = config.get("source")
+                if source is not None and source not in output_sockets:
+                    raise ValueError(
+                        f"outputs_to_state for '{self.name}' maps state key '{state_key}' to unknown output '{source}'."
+                        f"Valid outputs are: {output_sockets}."
+                    )
 
     def warm_up(self):
         """
