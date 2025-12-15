@@ -123,7 +123,6 @@ class BreakpointException(Exception):
         self.pipeline_snapshot_file_path = pipeline_snapshot_file_path
         self._break_point = break_point
 
-    def __post_init__(self) -> None:
         if self.pipeline_snapshot is None and self._break_point is None:
             raise ValueError("Either pipeline_snapshot or break_point must be provided.")
 
@@ -176,7 +175,7 @@ class BreakpointException(Exception):
         """
         if self._break_point is not None:
             return self._break_point
-        # Mypy doesn't know that pipeline_snapshot.break_point must not be None here based on the _post_init__ check
+        # Mypy doesn't know that pipeline_snapshot.break_point must not be None here based on the constructor check
         return self.pipeline_snapshot.break_point  # type: ignore[union-attr]
 
 

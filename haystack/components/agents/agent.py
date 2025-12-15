@@ -563,7 +563,8 @@ class Agent:
                         e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
                             agent_name=agent_name, execution_context=exe_context, break_point=saved_bp
                         )
-                        e._break_point = e.pipeline_snapshot.break_point
+                        if hasattr(e, "_break_point"):
+                            e._break_point = e.pipeline_snapshot.break_point
                         # If Agent is not in a pipeline, we save the snapshot to a file.
                         # Checked by __component_name__ not being set.
                         if getattr(self, "__component_name__", None) is None:
@@ -617,7 +618,8 @@ class Agent:
                     e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
                         tool_name=tool_name, agent_name=agent_name, execution_context=exe_context, break_point=saved_bp
                     )
-                    e._break_point = e.pipeline_snapshot.break_point
+                    if hasattr(e, "_break_point"):
+                        e._break_point = e.pipeline_snapshot.break_point
                     # If Agent is not in a pipeline, we save the snapshot to a file.
                     # Checked by __component_name__ not being set.
                     if getattr(self, "__component_name__", None) is None:
