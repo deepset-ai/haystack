@@ -186,7 +186,7 @@ def _save_pipeline_snapshot(
             logger.info("Pipeline snapshot handled by custom callback.")
             return result
         except Exception as error:
-            logger.error("Failed to handle pipeline snapshot with custom callback. Error: {e}", e=error)
+            logger.error("Failed to handle pipeline snapshot with custom callback. Error: {error}", error=error)
             if raise_on_failure:
                 raise
             return None
