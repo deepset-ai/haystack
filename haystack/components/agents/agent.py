@@ -425,8 +425,10 @@ class Agent:
             return tools
 
         if isinstance(tools, list):
-            self._validate_tools_against_state_schema(tools)
-            return cast(list[Union[Tool, Toolset]], tools)  # mypy can't narrow the Union type from isinstance check
+            # At this point, we know it's not list[str] (handled above), so it must be list[Tool | Toolset]
+            tools_typed = cast(list[Union[Tool, Toolset]], tools)
+            self._validate_tools_against_state_schema(tools_typed)
+            return tools_typed
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
