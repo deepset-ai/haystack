@@ -173,6 +173,49 @@ class TestAgent:
             "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
         }
 
+    def test_agent_validates_tool_inputs_from_state_keys(self, monkeypatch):
+        """Test that Agent validates inputs_from_state keys against state_schema"""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        chat_generator = OpenAIChatGenerator()
+        tool = Tool(
+            name="test_tool",
+            description="Test tool",
+            parameters={"type": "object", "properties": {"query": {"type": "string"}}},
+            function=lambda query: query,
+            inputs_from_state={"nonexistent_state_key": "query"},
+        )
+        with pytest.raises(ValueError, match="unknown state key"):
+            Agent(chat_generator=chat_generator, tools=[tool])
+
+    def test_agent_validates_tool_outputs_to_state_keys(self, monkeypatch):
+        """Test that Agent validates outputs_to_state keys against state_schema (without handler)"""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        chat_generator = OpenAIChatGenerator()
+        tool = Tool(
+            name="test_tool",
+            description="Test tool",
+            parameters={"type": "object", "properties": {"query": {"type": "string"}}},
+            function=lambda query: {"result": query},
+            outputs_to_state={"nonexistent_state_key": {"source": "result"}},
+        )
+        with pytest.raises(ValueError, match="unknown state key"):
+            Agent(chat_generator=chat_generator, tools=[tool])
+
+    def test_agent_allows_outputs_to_state_with_handler(self, monkeypatch):
+        """Test that Agent allows outputs_to_state with handler even if state key doesn't exist"""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        chat_generator = OpenAIChatGenerator()
+        tool = Tool(
+            name="test_tool",
+            description="Test tool",
+            parameters={"type": "object", "properties": {"query": {"type": "string"}}},
+            function=lambda query: {"result": query},
+            outputs_to_state={"any_key": {"source": "result", "handler": lambda old, new: new}},
+        )
+        # Should not raise - handlers can create new state entries
+        agent = Agent(chat_generator=chat_generator, tools=[tool])
+        assert agent is not None
+
     def test_to_dict(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()

@@ -97,6 +97,15 @@ class Tool:
                         f"{suggestion}"
                     )
 
+            # Validate parameter names exist in tool schema
+            valid_params = set(self.parameters.get("properties", {}).keys())
+            for state_key, param_name in self.inputs_from_state.items():
+                if param_name not in valid_params:
+                    raise ValueError(
+                        f"inputs_from_state for tool '{self.name}' maps to unknown parameter '{param_name}'. "
+                        f"Valid parameters are: {valid_params}."
+                    )
+
         # Validate outputs structure if provided
         if self.outputs_to_state is not None:
             for key, config in self.outputs_to_state.items():

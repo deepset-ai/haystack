@@ -203,6 +203,11 @@ class TestComponentTool:
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
         assert tool.outputs_to_state == {"replies": {"source": "reply"}}
 
+    def test_from_component_with_invalid_outputs_to_state_source(self):
+        """Test that ComponentTool validates outputs_to_state source against component outputs"""
+        with pytest.raises(ValueError, match="unknown component output"):
+            ComponentTool(component=SimpleComponent(), outputs_to_state={"result": {"source": "nonexistent"}})
+
     def test_from_component_with_dataclass(self):
         tool = ComponentTool(component=UserGreeter())
         assert tool.parameters == {

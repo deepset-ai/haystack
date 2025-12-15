@@ -225,6 +225,10 @@ class Agent:
             component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
+        # Validate tools' state mappings against state schema
+        if tools:
+            self._validate_tools_against_state_schema(tools)
+
         self.tool_invoker_kwargs = tool_invoker_kwargs
         self._tool_invoker = None
         if self.tools:
@@ -361,6 +365,32 @@ class Agent:
             tool_invoker_inputs=tool_invoker_inputs,
         )
 
+    def _validate_tools_against_state_schema(self, tools: ToolsType) -> None:
+        """
+        Validate that tools' state mappings reference valid state schema keys.
+
+        :param tools: Tools to validate against the state schema.
+        :raises ValueError: If any tool references invalid state keys.
+        """
+        for tool in flatten_tools_or_toolsets(tools):
+            # Validate inputs_from_state keys exist in state schema
+            if tool.inputs_from_state:
+                for state_key in tool.inputs_from_state.keys():
+                    if state_key not in self.state_schema:
+                        raise ValueError(
+                            f"Tool '{tool.name}' reads from unknown state key '{state_key}'. "
+                            f"Valid state keys are: {set(self.state_schema.keys())}."
+                        )
+
+            # Validate outputs_to_state keys exist in state schema (only when no handler)
+            if tool.outputs_to_state:
+                for state_key, config in tool.outputs_to_state.items():
+                    if config.get("handler") is None and state_key not in self.state_schema:
+                        raise ValueError(
+                            f"Tool '{tool.name}' writes to unknown state key '{state_key}'. "
+                            f"Valid state keys are: {set(self.state_schema.keys())}."
+                        )
+
     def _select_tools(self, tools: Optional[Union[ToolsType, list[str]]] = None) -> ToolsType:
         """
         Select tools for the current run based on the provided tools parameter.
@@ -389,10 +419,13 @@ class Agent:
                 )
             return [tool for tool in available_tools if tool.name in selected_tool_names]
 
+        # Validate runtime tools against state schema
         if isinstance(tools, Toolset):
+            self._validate_tools_against_state_schema(tools)
             return tools
 
         if isinstance(tools, list):
+            self._validate_tools_against_state_schema(tools)
             return cast(list[Union[Tool, Toolset]], tools)  # mypy can't narrow the Union type from isinstance check
 
         raise TypeError(

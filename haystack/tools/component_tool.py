@@ -213,6 +213,17 @@ class ComponentTool(Tool):
         self._component = component
         self._is_warmed_up = False
 
+        # Validate outputs_to_state references valid component outputs
+        if outputs_to_state is not None:
+            output_sockets = set(component.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
+            for state_key, config in outputs_to_state.items():
+                source = config.get("source")
+                if source is not None and source not in output_sockets:
+                    raise ValueError(
+                        f"outputs_to_state for '{self.name}' maps state key '{state_key}' to unknown output '{source}'."
+                        f"Valid outputs are: {output_sockets}."
+                    )
+
     def warm_up(self):
         """
         Prepare the ComponentTool for use.

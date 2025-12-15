@@ -75,6 +75,17 @@ class TestTool:
                 inputs_from_state=inputs_from_state,
             )
 
+    def test_init_inputs_from_state_invalid_param_name(self):
+        """Test that inputs_from_state values must match tool parameters"""
+        with pytest.raises(ValueError, match="unknown parameter"):
+            Tool(
+                name="test_tool",
+                description="test",
+                parameters={"type": "object", "properties": {"city": {"type": "string"}}},
+                function=get_weather_report,
+                inputs_from_state={"some_key": "nonexistent_param"},
+            )
+
     def test_tool_spec(self):
         tool = Tool(
             name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
