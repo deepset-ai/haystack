@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    This is a good release note that uses reStructuredText formatting.
+    ``Inline code`` is supported.
+
+    Code blocks are supported.
+
+    .. code:: python
+      from haystack.dataclasses import ChatMessage
+
+      message = ChatMessage.from_user("Hello!")
+      print(message.text)
+
+    Normal text is supported.
