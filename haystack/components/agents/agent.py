@@ -377,18 +377,32 @@ class Agent:
             if tool.inputs_from_state:
                 for state_key in tool.inputs_from_state.keys():
                     if state_key not in self.state_schema:
+                        available_keys = set(self.state_schema.keys())
+                        tool_param = tool.inputs_from_state[state_key]
                         raise ValueError(
-                            f"Tool '{tool.name}' reads from unknown state key '{state_key}'. "
-                            f"Valid state keys are: {set(self.state_schema.keys())}."
+                            f"Tool '{tool.name}' reads from unknown state key '{state_key}'.\n"
+                            f"Available state keys: {available_keys}\n\n"
+                            f"To fix this:\n"
+                            f"1. Add '{state_key}' to your Agent's state_schema:\n"
+                            f"   Agent(..., state_schema={{'{state_key}': {{'type': YourType}}, ...}})\n"
+                            f"2. Or map from an existing state key to tool parameter '{tool_param}':\n"
+                            f"   Tool(..., inputs_from_state={{'existing_state_key': '{tool_param}'}})"
                         )
 
             # Validate outputs_to_state keys exist in state schema (only when no handler)
             if tool.outputs_to_state:
                 for state_key, config in tool.outputs_to_state.items():
                     if config.get("handler") is None and state_key not in self.state_schema:
+                        available_keys = set(self.state_schema.keys())
                         raise ValueError(
-                            f"Tool '{tool.name}' writes to unknown state key '{state_key}'. "
-                            f"Valid state keys are: {set(self.state_schema.keys())}."
+                            f"Tool '{tool.name}' writes to unknown state key '{state_key}'.\n"
+                            f"Available state keys: {available_keys}\n\n"
+                            f"To fix this:\n"
+                            f"1. Add '{state_key}' to your Agent's state_schema:\n"
+                            f"   Agent(..., state_schema={{'{state_key}': {{'type': YourType}}, ...}})\n"
+                            f"2. Or provide a handler to create the key dynamically:\n"
+                            f"   Tool(..., outputs_to_state={{'{state_key}':"
+                            f" {{'source': 'output', 'handler': your_handler}}}})"
                         )
 
     def _select_tools(self, tools: Optional[Union[ToolsType, list[str]]] = None) -> ToolsType:
