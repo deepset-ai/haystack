@@ -1,4 +1,34 @@
 ---
 enhancements:
   - |
-    The parameters ```query_suffix``` and ```document_suffix``` have been added to ```SentenceTransformersSimilarityRanker``` to better support the Qwen3 reranker model family.
+    The parameters ``query_suffix`` and ``document_suffix`` have been added to ``SentenceTransformersSimilarityRanker`` to better support the Qwen3 reranker model family.
+
+    Here is an example of how to use these new parameters to use the Qwen3-Reranker-0.6B:
+
+    .. code:: python
+
+       from haystack import Document
+       from haystack.components.rankers.sentence_transformers_similarity import SentenceTransformersSimilarityRanker
+
+       ranker = SentenceTransformersSimilarityRanker(
+           model="tomaarsen/Qwen3-Reranker-0.6B-seq-cls",
+           query_prefix='<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n<Instruct>: Given a web search query, retrieve relevant passages that answer the query\n<Query>: ',
+           query_suffix="\n",
+           document_prefix="<Document>: ",
+           document_suffix="<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+       )
+
+       result = ranker.run(
+           query="Which planet is known as the Red Planet?",
+           documents=[
+               Document(content="Venus is often called Earth's twin because of its similar size and proximity."),
+               Document(content="Mars, known for its reddish appearance, is often referred to as the Red Planet."),
+               Document(content="Jupiter, the largest planet in our solar system, has a prominent red spot."),
+               Document(content="Saturn, famous for its rings, is sometimes mistaken for the Red Planet."),
+           ],
+       )
+
+       print(result)
+
+    NOTE: This only works with the Qwen3 reranker models that use the sequence classification architecture.
+    For example, you can find some on ``tomaarsen``'s Hugging Face profile.
