@@ -556,3 +556,75 @@ class TestSnapshotCallback:
         # Verify file was saved to disk
         snapshot_files = list(tmp_path.glob("comp2_*.json"))
         assert len(snapshot_files) == 1
+
+    def test_trigger_chat_generator_breakpoint_with_callback(
+        self, make_pipeline_snapshot_with_agent_snapshot, tmp_path
+    ):
+        captured_snapshots = []
+
+        def custom_callback(snapshot: PipelineSnapshot) -> str:
+            captured_snapshots.append(snapshot)
+            return "agent_chat_generator_callback_id"
+
+        pipeline_snapshot = make_pipeline_snapshot_with_agent_snapshot(
+            break_point=AgentBreakpoint(
+                "agent", Breakpoint(component_name="chat_generator", snapshot_file_path=str(tmp_path))
+            )
+        )
+
+        with pytest.raises(BreakpointException) as exc_info:
+            _trigger_chat_generator_breakpoint(pipeline_snapshot=pipeline_snapshot, snapshot_callback=custom_callback)
+
+        # Verify callback was called
+        assert len(captured_snapshots) == 1
+        assert captured_snapshots[0] == pipeline_snapshot
+        # Verify exception has the callback return value
+        assert exc_info.value.pipeline_snapshot_file_path == "agent_chat_generator_callback_id"
+        # Verify no file was created
+        assert list(tmp_path.glob("*.json")) == []
+
+    def test_trigger_tool_invoker_breakpoint_with_callback(self, make_pipeline_snapshot_with_agent_snapshot, tmp_path):
+        captured_snapshots = []
+
+        def custom_callback(snapshot: PipelineSnapshot) -> str:
+            captured_snapshots.append(snapshot)
+            return "agent_tool_invoker_callback_id"
+
+        pipeline_snapshot = make_pipeline_snapshot_with_agent_snapshot(
+            break_point=AgentBreakpoint(
+                "agent", ToolBreakpoint(component_name="tool_invoker", snapshot_file_path=str(tmp_path))
+            )
+        )
+
+        with pytest.raises(BreakpointException) as exc_info:
+            _trigger_tool_invoker_breakpoint(
+                llm_messages=[ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="tool1", arguments={})])],
+                pipeline_snapshot=pipeline_snapshot,
+                snapshot_callback=custom_callback,
+            )
+
+        # Verify callback was called
+        assert len(captured_snapshots) == 1
+        assert captured_snapshots[0] == pipeline_snapshot
+        # Verify exception has the callback return value
+        assert exc_info.value.pipeline_snapshot_file_path == "agent_tool_invoker_callback_id"
+        # Verify no file was created
+        assert list(tmp_path.glob("*.json")) == []
+
+    def test_trigger_chat_generator_breakpoint_without_callback_saves_file(
+        self, make_pipeline_snapshot_with_agent_snapshot, tmp_path
+    ):
+        pipeline_snapshot = make_pipeline_snapshot_with_agent_snapshot(
+            break_point=AgentBreakpoint(
+                "agent", Breakpoint(component_name="chat_generator", snapshot_file_path=str(tmp_path))
+            )
+        )
+
+        with pytest.raises(BreakpointException) as exc_info:
+            _trigger_chat_generator_breakpoint(pipeline_snapshot=pipeline_snapshot)
+
+        # Verify file was created
+        snapshot_files = list(tmp_path.glob("*.json"))
+        assert len(snapshot_files) == 1
+        # Verify exception has the file path
+        assert exc_info.value.pipeline_snapshot_file_path == str(snapshot_files[0])

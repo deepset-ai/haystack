@@ -536,11 +536,15 @@ def _create_pipeline_snapshot_from_tool_invoker(
     return final_snapshot
 
 
-def _trigger_chat_generator_breakpoint(*, pipeline_snapshot: PipelineSnapshot) -> None:
+def _trigger_chat_generator_breakpoint(
+    *, pipeline_snapshot: PipelineSnapshot, snapshot_callback: Optional[SnapshotCallback] = None
+) -> None:
     """
     Trigger a breakpoint before ChatGenerator execution in Agent.
 
     :param pipeline_snapshot: PipelineSnapshot object containing the state of the pipeline and Agent snapshot.
+    :param snapshot_callback: Optional callback function that receives the PipelineSnapshot.
+        If provided, the callback is invoked instead of the default file-saving behavior.
     :raises BreakpointException: Always raised when this function is called, indicating a breakpoint has been triggered.
     """
     if not isinstance(pipeline_snapshot.break_point, AgentBreakpoint):
@@ -550,7 +554,7 @@ def _trigger_chat_generator_breakpoint(*, pipeline_snapshot: PipelineSnapshot) -
         raise ValueError("PipelineSnapshot must contain an AgentSnapshot to trigger a chat generator breakpoint.")
 
     break_point = pipeline_snapshot.break_point.break_point
-    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
+    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot, snapshot_callback=snapshot_callback)
     msg = (
         f"Breaking at {break_point.component_name} visit count "
         f"{pipeline_snapshot.agent_snapshot.component_visits[break_point.component_name]}"
@@ -563,12 +567,19 @@ def _trigger_chat_generator_breakpoint(*, pipeline_snapshot: PipelineSnapshot) -
     )
 
 
-def _trigger_tool_invoker_breakpoint(*, llm_messages: list[ChatMessage], pipeline_snapshot: PipelineSnapshot) -> None:
+def _trigger_tool_invoker_breakpoint(
+    *,
+    llm_messages: list[ChatMessage],
+    pipeline_snapshot: PipelineSnapshot,
+    snapshot_callback: Optional[SnapshotCallback] = None,
+) -> None:
     """
     Check if a tool call breakpoint should be triggered before executing the tool invoker.
 
     :param llm_messages: List of ChatMessage objects containing potential tool calls.
     :param pipeline_snapshot: PipelineSnapshot object containing the state of the pipeline and Agent snapshot.
+    :param snapshot_callback: Optional callback function that receives the PipelineSnapshot.
+        If provided, the callback is invoked instead of the default file-saving behavior.
     :raises BreakpointException: If the breakpoint is triggered, indicating a breakpoint has been reached for a tool
         call.
     """
@@ -593,7 +604,7 @@ def _trigger_tool_invoker_breakpoint(*, llm_messages: list[ChatMessage], pipelin
     if not should_break:
         return  # No breakpoint triggered
 
-    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot)
+    full_file_path = _save_pipeline_snapshot(pipeline_snapshot=pipeline_snapshot, snapshot_callback=snapshot_callback)
 
     msg = (
         f"Breaking at {tool_breakpoint.component_name} visit count "

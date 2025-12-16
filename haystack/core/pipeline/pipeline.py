@@ -387,10 +387,11 @@ class Pipeline(PipelineBase):
                     )
 
                     # An AgentBreakpoint is provided to stop the pipeline at an Agent component so we pass on the
-                    # break point and snapshot to the Agent's inputs
+                    # break point, snapshot, and callback to the Agent's inputs
                     if agent_break_point_triggered:
                         component_inputs["break_point"] = break_point
                         component_inputs["parent_snapshot"] = new_pipeline_snapshot
+                        component_inputs["snapshot_callback"] = snapshot_callback
 
                     # trigger the break point if needed
                     if component_break_point_triggered:

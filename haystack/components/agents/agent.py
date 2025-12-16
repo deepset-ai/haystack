@@ -13,6 +13,7 @@ from haystack.core.component.component import component
 from haystack.core.errors import PipelineRuntimeError
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.breakpoint import (
+    SnapshotCallback,
     _create_pipeline_snapshot_from_chat_generator,
     _create_pipeline_snapshot_from_tool_invoker,
     _trigger_chat_generator_breakpoint,
@@ -471,6 +472,7 @@ class Agent:
         execution_context: _ExecutionContext,
         break_point: Optional[AgentBreakpoint],
         parent_snapshot: Optional[PipelineSnapshot],
+        snapshot_callback: Optional[SnapshotCallback] = None,
     ) -> None:
         """
         Check if the chat generator breakpoint should be triggered.
@@ -481,6 +483,8 @@ class Agent:
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
         :param parent_snapshot: An optional parent snapshot for the agent execution.
+        :param snapshot_callback: Optional callback function that receives the PipelineSnapshot.
+            If provided, the callback is invoked instead of the default file-saving behavior.
         """
         if (
             break_point
@@ -490,13 +494,14 @@ class Agent:
             pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
                 execution_context=execution_context, break_point=break_point, parent_snapshot=parent_snapshot
             )
-            _trigger_chat_generator_breakpoint(pipeline_snapshot=pipeline_snapshot)
+            _trigger_chat_generator_breakpoint(pipeline_snapshot=pipeline_snapshot, snapshot_callback=snapshot_callback)
 
     @staticmethod
     def _check_tool_invoker_breakpoint(
         execution_context: _ExecutionContext,
         break_point: Optional[AgentBreakpoint],
         parent_snapshot: Optional[PipelineSnapshot],
+        snapshot_callback: Optional[SnapshotCallback] = None,
     ) -> None:
         """
         Check if the tool invoker breakpoint should be triggered.
@@ -507,6 +512,8 @@ class Agent:
         :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
             for "tool_invoker".
         :param parent_snapshot: An optional parent snapshot for the agent execution.
+        :param snapshot_callback: Optional callback function that receives the PipelineSnapshot.
+            If provided, the callback is invoked instead of the default file-saving behavior.
         """
         if (
             break_point
@@ -517,7 +524,9 @@ class Agent:
                 execution_context=execution_context, break_point=break_point, parent_snapshot=parent_snapshot
             )
             _trigger_tool_invoker_breakpoint(
-                llm_messages=execution_context.state.data["messages"][-1:], pipeline_snapshot=pipeline_snapshot
+                llm_messages=execution_context.state.data["messages"][-1:],
+                pipeline_snapshot=pipeline_snapshot,
+                snapshot_callback=snapshot_callback,
             )
 
     def run(  # noqa: PLR0915
@@ -530,6 +539,7 @@ class Agent:
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
         tools: Optional[Union[ToolsType, list[str]]] = None,
+        snapshot_callback: Optional[SnapshotCallback] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -547,6 +557,9 @@ class Agent:
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
+        :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
+            The callback receives a `PipelineSnapshot` object and can return an optional string.
+            If provided, the callback is used instead of the default file-saving behavior.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -592,7 +605,10 @@ class Agent:
             while exe_context.counter < self.max_agent_steps:
                 # Handle breakpoint and ChatGenerator call
                 Agent._check_chat_generator_breakpoint(
-                    execution_context=exe_context, break_point=break_point, parent_snapshot=parent_snapshot
+                    execution_context=exe_context,
+                    break_point=break_point,
+                    parent_snapshot=parent_snapshot,
+                    snapshot_callback=snapshot_callback,
                 )
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
                 if exe_context.skip_chat_generator:
@@ -630,7 +646,10 @@ class Agent:
 
                 # Handle breakpoint and ToolInvoker call
                 Agent._check_tool_invoker_breakpoint(
-                    execution_context=exe_context, break_point=break_point, parent_snapshot=parent_snapshot
+                    execution_context=exe_context,
+                    break_point=break_point,
+                    parent_snapshot=parent_snapshot,
+                    snapshot_callback=snapshot_callback,
                 )
                 try:
                     # We only send the messages from the LLM to the tool invoker
