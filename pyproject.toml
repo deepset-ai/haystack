@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "LLM framework to build customizable, production-ready LLM applications. Connect components (models, vector DBs, file converters) to pipelines or agents that can interact with your data."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "deepset.ai", email = "malte.pietsch@deepset.ai" }]
 keywords = [
   "BERT",
@@ -34,7 +34,6 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -52,7 +51,7 @@ dependencies = [
   "pyyaml",
   "more-itertools",         # TextDocumentSplitter
   "networkx",               # Pipeline graphs
-  "typing_extensions>=4.7", # typing support for Python 3.9
+  "typing_extensions>=4.7", # Extended typing features (NotRequired, etc.)
   "requests",
   "numpy",
   "python-dateutil",
@@ -169,9 +168,6 @@ extra-dependencies = [
   # NamedEntityExtractor
   "spacy>=3.8,<3.9",
   "en-core-web-trf @ https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.8.0/en_core_web_trf-3.8.0-py3-none-any.whl",
-  # spacy requires thinc, which depends on blis. We pin blis because version 1.2.1 does not have wheels for python 3.9
-  # and compiling it from source takes much time.
-  "blis<1.2.1; python_version < '3.10'",
 ]
 
 [tool.hatch.envs.e2e.scripts]
@@ -268,7 +264,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 check_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
