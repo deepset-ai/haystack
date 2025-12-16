@@ -327,6 +327,30 @@ class TestSentenceTransformersSimilarityRanker:
         assert isinstance(kwargs["activation_fn"], torch.nn.Sigmoid)
         assert kwargs["convert_to_numpy"] is True
 
+    def test_suffix(self):
+        ranker = SentenceTransformersSimilarityRanker(
+            model="model", query_suffix="\nquery_suffix", document_suffix="\ndocument_suffix"
+        )
+        mock_cross_encoder = MagicMock()
+        ranker._cross_encoder = mock_cross_encoder
+
+        documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
+
+        ranker.run(query="test", documents=documents)
+
+        _, kwargs = mock_cross_encoder.rank.call_args
+        assert kwargs["query"] == "test\nquery_suffix"
+        assert kwargs["documents"] == [
+            "document number 0\ndocument_suffix",
+            "document number 1\ndocument_suffix",
+            "document number 2\ndocument_suffix",
+            "document number 3\ndocument_suffix",
+            "document number 4\ndocument_suffix",
+        ]
+        assert kwargs["batch_size"] == 16
+        assert isinstance(kwargs["activation_fn"], torch.nn.Sigmoid)
+        assert kwargs["convert_to_numpy"] is True
+
     def test_scale_score_false(self):
         mock_cross_encoder = MagicMock()
         ranker = SentenceTransformersSimilarityRanker(model="model", scale_score=False)
