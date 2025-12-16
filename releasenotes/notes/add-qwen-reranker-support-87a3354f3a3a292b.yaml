@@ -1,7 +1,7 @@
 ---
 enhancements:
   - |
-    The parameters ``query_suffix`` and ``document_suffix`` have been added to ``SentenceTransformersSimilarityRanker`` to better support the Qwen3 reranker model family.
+    The parameters ``query_suffix`` and ``document_suffix`` have been added to ``SentenceTransformersSimilarityRanker`` to support the Qwen3 reranker model family.
 
     Here is an example of how to use these new parameters to use the Qwen3-Reranker-0.6B:
 
