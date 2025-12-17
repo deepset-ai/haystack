@@ -6,30 +6,5 @@
 enhancements:
   - |
     Added reasoning content support to ``HuggingFaceAPIChatGenerator``. The component now extracts
-    and returns reasoning content from models that support chain-of-thought reasoning (such as
-    DeepSeek R1 or Qwen QwQ). Both streaming and non-streaming modes are supported.
-
-    When a model returns reasoning content, it will be available in the ``reasoning`` field of the
-    returned ``ChatMessage``:
-
-    .. code:: python
-
-        from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
-        from haystack.utils import Secret
-
-        generator = HuggingFaceAPIChatGenerator(
-            api_type="serverless_inference_api",
-            api_params={"model": "deepseek-ai/DeepSeek-R1"},
-            token=Secret.from_env_var("HF_API_TOKEN"),
-        )
-
-        messages = [ChatMessage.from_user("What is 2+2? Think step by step.")]
-        response = generator.run(messages=messages)
-
-        reply = response["replies"][0]
-        if reply.reasoning:
-            print(f"Reasoning: {reply.reasoning.reasoning_text}")
-        print(f"Answer: {reply.text}")
-
-    For streaming mode, each ``StreamingChunk`` may contain reasoning content that gets accumulated
-    into the final message.
+    reasoning content from models that support chain-of-thought reasoning (e.g., DeepSeek R1).
+    Both streaming and non-streaming modes are supported. Access via ``reply.reasoning.reasoning_text``.
