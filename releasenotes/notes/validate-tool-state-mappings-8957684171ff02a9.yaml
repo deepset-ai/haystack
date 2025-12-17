@@ -1,8 +1,8 @@
 ---
 enhancements:
   - |
-    Added validation to ensure that tools' state mappings (`inputs_from_state` and `outputs_to_state`)
-    reference valid keys in the Agent's state schema. The Agent now raises a `ValueError` with helpful
+    Added validation to ensure that tools' state mappings (``inputs_from_state`` and ``outputs_to_state``)
+    reference valid keys in the Agent's state schema. The Agent now raises a ``ValueError`` with helpful
     error messages when tools reference non-existent state keys, catching configuration errors early
-    during initialization or runtime tool selection. Handlers in `outputs_to_state` can still create
+    during initialization or runtime tool selection. Handlers in ``outputs_to_state`` can still create
     new state entries dynamically.
