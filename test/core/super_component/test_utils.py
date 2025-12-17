@@ -64,6 +64,41 @@ class TestTypeCompatibility:
         is_compat, common = _is_compatible(float, Union[int, str])
         assert not is_compat and common is None
 
+        # PEP 604 union types (X | Y syntax)
+        is_compat, common = _is_compatible(int, int | str)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(int | str, int)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(int | str, str | int)
+        assert is_compat and (common == int | str or common == str | int)
+
+        is_compat, common = _is_compatible(str, str | None)
+        assert is_compat and common == str
+
+        is_compat, common = _is_compatible(str | None, str)
+        assert is_compat and common == str
+
+        is_compat, common = _is_compatible(bool, int | str)
+        assert not is_compat and common is None
+
+        is_compat, common = _is_compatible(float, int | str)
+        assert not is_compat and common is None
+
+        # PEP 604 with typing.Union
+        is_compat, common = _is_compatible(int | str, Union[int, str])
+        assert is_compat
+
+        is_compat, common = _is_compatible(Union[int, str], int | str)
+        assert is_compat
+
+        is_compat, common = _is_compatible(str | None, Optional[str])
+        assert is_compat
+
+        is_compat, common = _is_compatible(Optional[str], str | None)
+        assert is_compat
+
     def test_variadic_type_compatibility(self):
         """Test compatibility with Variadic and GreedyVariadic types."""
         # Basic type compatibility
@@ -98,6 +133,24 @@ class TestTypeCompatibility:
         is_compat, common = _is_compatible(list[int], greedy_list)
         assert is_compat and common == list[int]
 
+        # PEP 604 with Variadic
+        variadic_union = Variadic[int | str]
+
+        is_compat, common = _is_compatible(variadic_union, int | str)
+        assert is_compat and common == int | str
+
+        is_compat, common = _is_compatible(int | str, variadic_union)
+        assert is_compat and common == int | str
+
+        # PEP 604 optional with GreedyVariadic
+        greedy_opt = GreedyVariadic[int | None]
+
+        is_compat, common = _is_compatible(greedy_opt, int)
+        assert is_compat and common == int
+
+        is_compat, common = _is_compatible(int, greedy_opt)
+        assert is_compat and common == int
+
     def test_nested_type_unwrapping(self):
         """Test nested type unwrapping behavior with unwrap_nested parameter."""
         # Test with unwrap_nested=True (default)
@@ -116,6 +169,20 @@ class TestTypeCompatibility:
 
         is_compat, common = _is_compatible(list[int], nested_union)
         assert is_compat and common == list[int]
+
+        # PEP 604 (X | Y and X | None syntax)
+        nested_pep604_optional = Variadic[list[int | None]]
+
+        is_compat, common = _is_compatible(nested_pep604_optional, list[int])
+        assert is_compat and common == list[int]
+
+        is_compat, common = _is_compatible(list[int], nested_pep604_optional)
+        assert is_compat and common == list[int]
+
+        nested_pep604_union = Variadic[list[str | int]]
+
+        is_compat, common = _is_compatible(nested_pep604_union, list[str | int])
+        assert is_compat
 
     def test_complex_nested_types(self):
         """Test complex nested type scenarios."""

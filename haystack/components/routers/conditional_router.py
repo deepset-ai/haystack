@@ -13,6 +13,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
+from haystack.utils.type_serialization import is_union_type
 
 logger = logging.getLogger(__name__)
 
@@ -495,8 +496,8 @@ class ConditionalRouter:
                 for k, v in value.items()
             )
 
-        # Handle Union types (including Optional)
-        if origin is Union:
+        # Handle Union types (including Optional and X | Y syntax)
+        if is_union_type(origin):
             return any(self._output_matches_type(value, arg) for arg in args)
 
         return False

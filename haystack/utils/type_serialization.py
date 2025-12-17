@@ -6,23 +6,23 @@ import builtins
 import importlib
 import inspect
 import sys
-import types
 import typing
 from threading import Lock
-from types import ModuleType
-from typing import Any, get_args
+from types import ModuleType, UnionType
+from typing import Any, Union, get_args
 
 from haystack.core.errors import DeserializationError
 
 _import_lock = Lock()
 
 
-# Sentinel for Python < 3.10
-class _Missing:
-    pass
+def is_union_type(origin: Any) -> bool:
+    """
+    Check if origin is a Union type.
 
-
-_UnionType = getattr(types, "UnionType", _Missing)
+    This handles both `typing.Union[X, Y]` and `X | Y` syntax from PEP 604.
+    """
+    return origin is Union or origin is UnionType
 
 
 def serialize_type(target: Any) -> str:
@@ -42,7 +42,7 @@ def serialize_type(target: Any) -> str:
 
     args = get_args(target)
 
-    if isinstance(target, _UnionType):
+    if isinstance(target, UnionType):
         return " | ".join([serialize_type(a) for a in args])
 
     name = getattr(target, "__name__", str(target))
@@ -88,6 +88,43 @@ def _parse_generic_args(args_str):
     return args
 
 
+def _parse_union_args(union_str: str) -> list[str]:
+    """
+    Parse a PEP 604 union string (e.g., "str | int | None") into individual type strings.
+
+    Handles nested generics properly, e.g., "list[str] | dict[str, int] | None".
+
+    :param union_str: The union string to parse
+    :returns: A list of individual type strings
+    """
+    args = []
+    bracket_count = 0
+    current_arg = ""
+
+    i = 0
+    while i < len(union_str):
+        char = union_str[i]
+
+        if char == "[":
+            bracket_count += 1
+            current_arg += char
+        elif char == "]":
+            bracket_count -= 1
+            current_arg += char
+        elif char == "|" and bracket_count == 0:
+            # We found a union separator at the top level
+            args.append(current_arg.strip())
+            current_arg = ""
+        else:
+            current_arg += char
+        i += 1
+
+    if current_arg.strip():
+        args.append(current_arg.strip())
+
+    return args
+
+
 def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-statements
     """
     Deserializes a type given its full import path as a string, including nested generic types.
@@ -103,6 +140,13 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
     :raises DeserializationError:
         If the type cannot be deserialized due to missing module or type.
     """
+    # Handle PEP 604 union syntax (e.g., "str | int", "str | None")
+    # We need to check this before generics because "list[str] | None" contains both
+    if " | " in type_str:
+        union_args = _parse_union_args(type_str)
+        deserialized_args = [deserialize_type(arg) for arg in union_args]
+        # Use Union to construct the type, which works for both typing.Union and X | Y
+        return Union[tuple(deserialized_args)]
 
     # Handle generics
     if "[" in type_str and type_str.endswith("]"):

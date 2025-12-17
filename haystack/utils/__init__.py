@@ -19,7 +19,7 @@ _import_structure = {
     "jupyter": ["is_in_jupyter"],
     "misc": ["expit", "expand_page_range"],
     "requests_utils": ["request_with_retry", "async_request_with_retry"],
-    "type_serialization": ["deserialize_type", "serialize_type"],
+    "type_serialization": ["deserialize_type", "is_union_type", "serialize_type"],
 }
 
 if TYPE_CHECKING:
@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from .requests_utils import async_request_with_retry as async_request_with_retry
     from .requests_utils import request_with_retry as request_with_retry
     from .type_serialization import deserialize_type as deserialize_type
+    from .type_serialization import is_union_type as is_union_type
     from .type_serialization import serialize_type as serialize_type
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

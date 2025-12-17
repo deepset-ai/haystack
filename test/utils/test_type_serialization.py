@@ -5,12 +5,13 @@
 import sys
 import typing
 from collections import deque
+from types import UnionType
 from typing import Any, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Union
 
 import pytest
 
 from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
-from haystack.utils.type_serialization import deserialize_type, serialize_type
+from haystack.utils.type_serialization import _parse_union_args, deserialize_type, is_union_type, serialize_type
 
 TYPING_AND_TYPE_TESTS = [
     # dict
@@ -254,7 +255,6 @@ def test_output_type_deserialization_haystack_dataclasses():
     assert deserialize_type("dict[int, haystack.dataclasses.document.Document]") == dict[int, Document]
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
 def test_output_type_serialization_pep_604():
     # PEP 604 allows for union types to be defined with the `|` operator
     assert serialize_type(str | int) == "str | int"
@@ -264,3 +264,38 @@ def test_output_type_serialization_pep_604():
     )
     assert serialize_type(str | None) == "str | None"
     assert serialize_type(list[str] | None) == "list[str] | None"
+
+
+def test_output_type_deserialization_pep_604():
+    assert deserialize_type("str | int") == Union[str, int]
+    assert deserialize_type("str | None") == Union[str, None]
+    assert deserialize_type("int | float") == Union[int, float]
+    assert deserialize_type("str | int | float") == Union[str, int, float]
+    assert deserialize_type("str | int | None") == Union[str, int, None]
+    assert deserialize_type("list[str] | None") == Union[list[str], None]
+    assert deserialize_type("list[str] | list[int]") == Union[list[str], list[int]]
+    assert deserialize_type("dict[str, int] | None") == Union[dict[str, int], None]
+    assert deserialize_type("list[dict[str, int]] | None") == Union[list[dict[str, int]], None]
+    assert deserialize_type("dict[str, list[int]] | set[str]") == Union[dict[str, list[int]], set[str]]
+    assert deserialize_type("typing.List[str] | None") == Union[List[str], None]
+    assert deserialize_type("typing.Dict[str, int] | typing.List[str]") == Union[Dict[str, int], List[str]]
+
+
+def test_is_union_type():
+    assert is_union_type(Union) is True
+    assert is_union_type(UnionType) is True
+
+    assert is_union_type(str) is False
+    assert is_union_type(None) is False
+
+
+def test_parse_union_args():
+    assert _parse_union_args("str | int") == ["str", "int"]
+    assert _parse_union_args("str | None") == ["str", "None"]
+    assert _parse_union_args("str | int | float") == ["str", "int", "float"]
+    assert _parse_union_args("str | int | None") == ["str", "int", "None"]
+
+    # Nested generics
+    assert _parse_union_args("list[str] | None") == ["list[str]", "None"]
+    assert _parse_union_args("list[str] | dict[str, int]") == ["list[str]", "dict[str, int]"]
+    assert _parse_union_args("list[str] | dict[str, int] | None") == ["list[str]", "dict[str, int]", "None"]
