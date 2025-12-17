@@ -4,7 +4,7 @@
 
 import asyncio
 import contextvars
-from typing import Any, AsyncIterator, Mapping, Optional
+from typing import Any, AsyncIterator, Mapping
 
 from haystack import logging, tracing
 from haystack.core.component import Component

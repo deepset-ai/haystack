@@ -5,7 +5,7 @@
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional, TypeVar
+from typing import Any, Iterable, TypeVar
 
 from haystack import logging
 from haystack.core.component.component import _hook_component_init

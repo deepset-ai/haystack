@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
-
 from haystack import component, logging
 from haystack.lazy_imports import LazyImport
 

@@ -5,7 +5,7 @@
 import functools
 from pathlib import Path
 from types import new_class
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 from haystack import logging
 from haystack.core.component.component import component

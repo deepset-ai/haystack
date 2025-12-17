@@ -8,7 +8,7 @@ import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
-from typing import Any, Callable, Literal, Optional, Union
+from typing import Any, Callable, Literal, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall

@@ -4,7 +4,7 @@
 
 import json
 from copy import deepcopy
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from jinja2.sandbox import SandboxedEnvironment
 

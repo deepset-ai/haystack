@@ -5,7 +5,7 @@
 import os
 import platform
 import sys
-from typing import Any, Optional
+from typing import Any
 
 from haystack.version import __version__
 

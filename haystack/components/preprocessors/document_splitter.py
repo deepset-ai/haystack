@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Callable, Literal, Optional
+from typing import Any, Callable, Literal
 
 from more_itertools import windowed
 

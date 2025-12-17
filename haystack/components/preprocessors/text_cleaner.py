@@ -4,7 +4,7 @@
 
 import re
 import string
-from typing import Any, Optional
+from typing import Any
 
 from haystack import component
 

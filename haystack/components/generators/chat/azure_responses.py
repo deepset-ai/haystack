@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Awaitable, Callable, Optional, Union
+from typing import Any, Awaitable, Callable
 
 from openai.lib._pydantic import to_strict_json_schema
 from pydantic import BaseModel

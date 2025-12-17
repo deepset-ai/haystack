@@ -4,7 +4,7 @@
 
 import re
 from copy import deepcopy
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport

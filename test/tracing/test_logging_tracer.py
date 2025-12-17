@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Optional
 
 from haystack import Pipeline, component, tracing
 from haystack.tracing.logging_tracer import LoggingTracer

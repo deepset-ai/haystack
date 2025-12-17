@@ -4,7 +4,7 @@
 
 import inspect
 from dataclasses import dataclass
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator

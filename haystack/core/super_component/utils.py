@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from types import UnionType
-from typing import Annotated, Any, Optional, TypeVar, Union, cast, get_args, get_origin
+from typing import Annotated, Any, TypeVar, Union, cast, get_args, get_origin
 
 from haystack.core.component.types import HAYSTACK_GREEDY_VARIADIC_ANNOTATION, HAYSTACK_VARIADIC_ANNOTATION
 from haystack.utils.type_serialization import is_union_type

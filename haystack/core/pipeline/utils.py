@@ -6,7 +6,7 @@ import heapq
 from copy import deepcopy
 from functools import wraps
 from itertools import count
-from typing import Any, Optional
+from typing import Any
 
 from haystack import logging
 from haystack.core.component import Component

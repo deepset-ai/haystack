@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
-
 import pytest
 
 from haystack.core.component.types import InputSocket, OutputSocket, Variadic

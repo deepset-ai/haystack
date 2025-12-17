@@ -4,7 +4,6 @@
 
 import re
 import warnings
-from typing import Union
 
 from haystack import component, logging
 from haystack.dataclasses import ChatMessage

@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Optional
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport

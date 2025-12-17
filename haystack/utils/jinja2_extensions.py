@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from jinja2 import Environment, meta, nodes
 from jinja2.ext import Extension

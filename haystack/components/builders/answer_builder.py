@@ -4,7 +4,7 @@
 
 import re
 from dataclasses import replace
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, GeneratedAnswer, component, logging
 from haystack.dataclasses.chat_message import ChatMessage

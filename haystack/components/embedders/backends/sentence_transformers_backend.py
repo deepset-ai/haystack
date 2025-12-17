@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 from jinja2 import TemplateSyntaxError, nodes
 from jinja2.ext import Extension

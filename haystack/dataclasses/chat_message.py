@@ -5,7 +5,7 @@
 import json
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence
 
 from haystack import logging
 from haystack.dataclasses.image_content import ImageContent

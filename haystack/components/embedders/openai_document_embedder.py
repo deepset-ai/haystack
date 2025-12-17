@@ -4,7 +4,7 @@
 
 import os
 from dataclasses import replace
-from typing import Any, Optional
+from typing import Any
 
 from more_itertools import batched
 from openai import APIError, AsyncOpenAI, OpenAI

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.lazy_imports import LazyImport

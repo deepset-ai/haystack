@@ -6,7 +6,7 @@ import copy
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Union
 
 import networkx as nx
 

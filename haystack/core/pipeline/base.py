@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, ContextManager, Iterator, Mapping, Optional, TextIO, TypeVar, Union
+from typing import Any, ContextManager, Iterator, Mapping, TextIO, TypeVar
 
 import networkx
 

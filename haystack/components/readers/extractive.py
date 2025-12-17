@@ -4,7 +4,7 @@
 
 import math
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, ExtractedAnswer, component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport

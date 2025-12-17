@@ -5,7 +5,7 @@
 import mimetypes
 import tempfile
 from pathlib import Path
-from typing import Any, Optional, Union, overload
+from typing import Any, overload
 
 from numpy import exp, ndarray
 

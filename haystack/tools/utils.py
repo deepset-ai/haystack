@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset

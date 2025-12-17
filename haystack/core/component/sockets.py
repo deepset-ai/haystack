@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
-
 from haystack.core.type_utils import _type_name
 
 from .types import InputSocket, OutputSocket

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from jinja2.sandbox import SandboxedEnvironment
 

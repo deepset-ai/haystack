@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from haystack import default_from_dict, default_to_dict, logging
 from haystack.components.builders.prompt_builder import PromptBuilder

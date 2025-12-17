@@ -4,7 +4,7 @@
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any
 
 
 @dataclass(frozen=True)

@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport

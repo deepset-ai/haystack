@@ -80,7 +80,7 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Iterator, Mapping, Optional, ParamSpec, Protocol, TypeVar, Union, overload, runtime_checkable
+from typing import Any, Iterator, Mapping, ParamSpec, Protocol, TypeVar, overload, runtime_checkable
 
 from haystack import logging
 from haystack.core.errors import ComponentError

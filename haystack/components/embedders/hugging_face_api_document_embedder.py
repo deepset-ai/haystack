@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Any, Optional, Union
+from typing import Any
 
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm

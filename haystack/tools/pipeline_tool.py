@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 from haystack import AsyncPipeline, Pipeline, SuperComponent, logging
 from haystack.core.serialization import generate_qualified_class_name

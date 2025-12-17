@@ -5,7 +5,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.lib._pydantic import to_strict_json_schema

@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from haystack.utils.misc import _guess_mime_type
 

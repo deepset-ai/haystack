@@ -4,7 +4,7 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from haystack import Document, Pipeline, super_component
 from haystack.components.converters import (

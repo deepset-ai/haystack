@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_sparse_backend import (

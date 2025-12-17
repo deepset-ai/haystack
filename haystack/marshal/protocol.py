@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Protocol, Union
+from typing import Any, Protocol
 
 # Ellipsis are needed for the type checker, it's safe to disable module-wide
 # pylint: disable=unnecessary-ellipsis

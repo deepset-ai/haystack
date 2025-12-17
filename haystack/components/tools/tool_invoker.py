@@ -8,7 +8,7 @@ import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from haystack.components.agents import State
 from haystack.core.component.component import component

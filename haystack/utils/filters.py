@@ -4,7 +4,7 @@
 
 from dataclasses import fields
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any
 
 import dateutil.parser
 

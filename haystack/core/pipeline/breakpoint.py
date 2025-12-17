@@ -5,7 +5,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from networkx import MultiDiGraph
 

@@ -4,7 +4,7 @@
 
 import hashlib
 from dataclasses import asdict, dataclass, field, fields
-from typing import Any, Optional
+from typing import Any
 
 from numpy import ndarray
 

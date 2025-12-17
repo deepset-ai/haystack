@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator

@@ -8,7 +8,7 @@ import os
 import uuid
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import posthog
 import yaml
