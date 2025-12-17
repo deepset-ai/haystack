@@ -113,15 +113,16 @@ class Tool:
                     )
 
         # Validate outputs_to_state against tool outputs (if available)
-        valid_outputs = self._get_valid_outputs()
-        if self.outputs_to_state is not None and valid_outputs is not None:
-            for state_key, config in self.outputs_to_state.items():
-                source = config.get("source")
-                if source is not None and source not in valid_outputs:
-                    raise ValueError(
-                        f"outputs_to_state for '{self.name}' maps state key '{state_key}' to unknown output '{source}'"
-                        f"Valid outputs are: {valid_outputs}."
-                    )
+        if self.outputs_to_state is not None:
+            valid_outputs: Optional[set[str]] = self._get_valid_outputs()
+            if valid_outputs is not None:
+                for state_key, config in self.outputs_to_state.items():
+                    source = config.get("source")
+                    if source is not None and source not in valid_outputs:
+                        raise ValueError(
+                            f"outputs_to_state: '{self.name}' maps state key '{state_key}' to unknown output '{source}'"
+                            f"Valid outputs are: {valid_outputs}."
+                        )
 
     def _get_valid_inputs(self) -> set[str]:
         """
