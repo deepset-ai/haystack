@@ -169,9 +169,8 @@ class BreakpointException(Exception):
         """
         Returns the Breakpoint or AgentBreakpoint that caused this exception, if available.
 
-        If a specific breakpoint was provided during initialization, it is returned.
-        Otherwise, if the pipeline snapshot contains a breakpoint, that is returned.
-        If neither is available, returns None.
+        If a specific break point was provided during initialization, it is returned.
+        Otherwise, if the pipeline snapshot contains a break point, that is returned.
         """
         if self._break_point is not None:
             return self._break_point
