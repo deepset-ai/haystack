@@ -64,7 +64,7 @@ import textwrap
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable
 
 FENCE_START_RE = re.compile(r"^\s*```(?P<lang>[^\n\r]*)\s*$")
 FENCE_END_RE = re.compile(r"^\s*```\s*$")

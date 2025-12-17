@@ -105,44 +105,22 @@ def _parse_union_args(union_str: str) -> list[str]:
     bracket_count = 0
     current_arg = ""
 
-    i = 0
-    while i < len(union_str):
-        char = union_str[i]
-
+    for char in union_str:
         if char == "[":
             bracket_count += 1
-            current_arg += char
         elif char == "]":
             bracket_count -= 1
-            current_arg += char
-        elif char == "|" and bracket_count == 0:
-            # We found a union separator at the top level
+
+        if char == "|" and bracket_count == 0:
             args.append(current_arg.strip())
             current_arg = ""
         else:
             current_arg += char
-        i += 1
 
     if current_arg.strip():
         args.append(current_arg.strip())
 
     return args
-
-
-def _has_top_level_union(type_str: str) -> bool:
-    """Check if the type string has a union operator at the top level (not inside brackets)."""
-    bracket_count = 0
-    i = 0
-    while i < len(type_str) - 2:
-        char = type_str[i]
-        if char == "[":
-            bracket_count += 1
-        elif char == "]":
-            bracket_count -= 1
-        elif char == "|" and bracket_count == 0 and type_str[i - 1 : i + 2] == " | ":
-            return True
-        i += 1
-    return False
 
 
 def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-statements
@@ -163,8 +141,8 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
     # Handle PEP 604 union syntax (e.g., "str | int", "str | None")
     # We need to check this before generics because "list[str] | None" contains both
     # But we must ensure the | is at the top level, not inside brackets like "list[str | int]"
-    if _has_top_level_union(type_str):
-        union_args = _parse_union_args(type_str)
+    union_args = _parse_union_args(type_str)
+    if len(union_args) > 1:
         deserialized_args = [deserialize_type(arg) for arg in union_args]
         # Use Union to construct the type, which works for both typing.Union and X | Y
         return Union[tuple(deserialized_args)]  # noqa: UP007
