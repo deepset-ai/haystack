@@ -8,7 +8,7 @@ from typing import Any, AsyncIterator, Mapping, Optional
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import PipelineRuntimeError
+from haystack.core.errors import BreakpointException, PipelineRuntimeError
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -17,6 +17,7 @@ from haystack.core.pipeline.base import (
     PipelineBase,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
+from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,8 @@ class AsyncPipeline(PipelineBase):
         component_inputs: dict[str, Any],
         component_visits: dict[str, int],
         parent_span: Optional[tracing.Span] = None,
+        *,
+        break_point: Optional[Breakpoint] = None,
     ) -> Mapping[str, Any]:
         """
         Executes a single component asynchronously.
@@ -51,6 +54,13 @@ class AsyncPipeline(PipelineBase):
         :param component_inputs: Inputs for the component.
         :returns: Outputs from the component that can be yielded from run_async_generator.
         """
+        if (
+            isinstance(break_point, Breakpoint)
+            and break_point.component_name == component_name
+            and break_point.visit_count == component_visits[component_name]
+        ):
+            raise BreakpointException.from_triggered_breakpoint(break_point=break_point)
+
         instance: Component = component["instance"]
 
         with PipelineBase._create_component_span(
