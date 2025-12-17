@@ -216,11 +216,25 @@ class ComponentTool(Tool):
         )
 
     def _get_valid_inputs(self) -> set[str]:
-        """Return valid input socket names from the component."""
+        """
+        Return valid input parameter names from the component's input sockets.
+
+        Used to validate `inputs_from_state` against the component's actual inputs.
+        This ensures users don't reference non-existent component inputs.
+
+        :returns: Set of component input socket names.
+        """
         return set(self._component.__haystack_input__._sockets_dict.keys())  # type: ignore[attr-defined]
 
     def _get_valid_outputs(self) -> set[str]:
-        """Return valid output socket names from the component."""
+        """
+        Return valid output names from the component's output sockets.
+
+        Used to validate `outputs_to_state` against the component's actual outputs.
+        This ensures users don't reference non-existent component outputs.
+
+        :returns: Set of component output socket names.
+        """
         return set(self._component.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
 
     def warm_up(self):

@@ -97,7 +97,7 @@ class Tool:
             if "handler" in self.outputs_to_string and not callable(self.outputs_to_string["handler"]):
                 raise ValueError("outputs_to_string handler must be callable")
 
-        # Validate inputs_from_state against valid inputs
+        # Validate that inputs_from_state parameter names exist as valid tool parameters
         if self.inputs_from_state is not None:
             valid_inputs = self._get_valid_inputs()
             for state_key, param_name in self.inputs_from_state.items():
@@ -112,7 +112,7 @@ class Tool:
                         f"Valid parameters are: {valid_inputs}."
                     )
 
-        # Validate outputs_to_state against tool outputs (if available)
+        # Validate that outputs_to_state source keys exist as valid tool outputs
         if self.outputs_to_state is not None:
             valid_outputs: Optional[set[str]] = self._get_valid_outputs()
             if valid_outputs is not None:
@@ -126,13 +126,18 @@ class Tool:
 
     def _get_valid_inputs(self) -> set[str]:
         """
-        Return the set of valid input parameter names for this tool.
+        Return the set of valid input parameter names that this tool accepts.
 
-        By default, attempts to introspect the function signature to get all parameters.
-        If introspection fails, falls back to the JSON schema properties.
-        Subclasses can override this method to provide a custom source for valid inputs.
+        Used to validate that `inputs_from_state` only references parameters that actually exist.
+        This prevents typos and catches configuration errors at tool construction time.
 
-        :returns: Set of valid input parameter names.
+        By default, introspects the function signature to get ALL parameters, including those
+        that may be excluded from the JSON schema (e.g., parameters mapped from state).
+        Falls back to schema properties if introspection fails.
+
+        Subclasses like ComponentTool override this to return component input socket names.
+
+        :returns: Set of valid input parameter names for validation.
         """
         # Try to introspect the function signature to get all parameters
         # This handles cases where some parameters are excluded from the schema
@@ -146,12 +151,18 @@ class Tool:
 
     def _get_valid_outputs(self) -> Optional[set[str]]:
         """
-        Return the set of valid output names for this tool.
+        Return the set of valid output names that this tool produces.
 
-        Subclasses can override this method to enable validation of outputs_to_state.
-        If None is returned, no validation is performed.
+        Used to validate that `outputs_to_state` only references outputs that actually exist.
+        This prevents typos and catches configuration errors at tool construction time.
 
-        :returns: Set of valid output names, or None to skip validation.
+        By default, returns None because regular function-based tools don't have a formal
+        output schema. When None is returned, output validation is skipped.
+
+        Subclasses like ComponentTool override this to return component output socket names,
+        enabling validation for tools where outputs are known.
+
+        :returns: Set of valid output names for validation, or None to skip validation.
         """
         return None
 
