@@ -10,6 +10,7 @@ import React, {
   useState,
 } from "react";
 import { useHistory } from "@docusaurus/router";
+import { useColorMode } from "@docusaurus/theme-common";
 import debounce from "lodash/debounce";
 import styles from "./styles.module.css";
 
@@ -185,6 +186,8 @@ export default function SearchBar() {
   const requestAbortRef = useRef(null);
 
   const history = useHistory();
+  const { colorMode } = useColorMode();
+  const isDarkMode = colorMode === "dark";
 
   const performSearch = useCallback(
     async (searchQuery) => {
@@ -479,6 +482,21 @@ export default function SearchBar() {
                   )}
                 </div>
               )}
+            </div>
+
+            <div className={styles.modalFooter}>
+              <span className={styles.poweredBy}>
+                Powered by{" "}
+                <img
+                  src={
+                    isDarkMode
+                      ? "/img/haystack-by-deepset-light.png"
+                      : "/img/haystack-by-deepset.png"
+                  }
+                  alt="Haystack by deepset"
+                  className={styles.poweredByLogo}
+                />
+              </span>
             </div>
           </div>
         </div>
