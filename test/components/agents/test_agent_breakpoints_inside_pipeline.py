@@ -267,7 +267,7 @@ def test_agent_breakpoint_chat_generator_and_resume_pipeline(pipeline_with_agent
             pipeline_with_agent.run(
                 data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoint
             )
-            assert False, "Expected PipelineBreakpointException was not raised"
+            assert False, "Expected BreakpointException was not raised"
 
         except BreakpointException as e:
             assert e.component == "chat_generator"
@@ -315,7 +315,7 @@ def test_agent_breakpoint_tool_and_resume_pipeline(pipeline_with_agent):
             pipeline_with_agent.run(
                 data={"fetcher": {"urls": ["https://en.wikipedia.org/wiki/Deepset"]}}, break_point=agent_breakpoint
             )
-            assert False, "Expected PipelineBreakpointException was not raised"
+            assert False, "Expected BreakpointException was not raised"
 
         except BreakpointException as e:
             assert e.component == "tool_invoker"
