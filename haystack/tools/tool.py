@@ -139,15 +139,22 @@ class Tool:
 
         :returns: Set of valid input parameter names for validation.
         """
-        # Try to introspect the function signature to get all parameters
-        # This handles cases where some parameters are excluded from the schema
-        # (e.g., when they come from state)
+        # Combine parameters from both function signature and schema for robustness
+        # Function signature includes all parameters (even those excluded from schema)
+        # Schema properties provide the validated parameter set
+        valid_params: set[str] = set()
+
+        # Try to get parameters from function introspection
         try:
             sig = inspect.signature(self.function)
-            return set(sig.parameters.keys())
+            valid_params.update(sig.parameters.keys())
         except (ValueError, TypeError):
-            # Fall back to schema properties if introspection fails
-            return set(self.parameters.get("properties", {}).keys())
+            pass  # Introspection failed, will rely on schema
+
+        # Add parameters from schema (union with function params)
+        valid_params.update(self.parameters.get("properties", {}).keys())
+
+        return valid_params
 
     def _get_valid_outputs(self) -> Optional[set[str]]:
         """
