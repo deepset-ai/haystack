@@ -158,7 +158,7 @@ def _unwrap_all(t: T, recursive: bool) -> T:
             unwrapped_args = tuple(_unwrap_all(arg, recursive) for arg in args)
             # types.UnionType (PEP 604 X | Y) is not subscriptable, so we use typing.Union instead
             if origin is UnionType:
-                t = Union[unwrapped_args]
+                t = cast(T, Union[unwrapped_args])
             else:
                 t = origin[unwrapped_args]
 
