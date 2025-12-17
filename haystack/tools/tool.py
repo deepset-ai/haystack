@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Optional
 
@@ -126,12 +127,21 @@ class Tool:
         """
         Return the set of valid input parameter names for this tool.
 
-        By default, returns the parameter names from the JSON schema properties.
+        By default, attempts to introspect the function signature to get all parameters.
+        If introspection fails, falls back to the JSON schema properties.
         Subclasses can override this method to provide a custom source for valid inputs.
 
         :returns: Set of valid input parameter names.
         """
-        return set(self.parameters.get("properties", {}).keys())
+        # Try to introspect the function signature to get all parameters
+        # This handles cases where some parameters are excluded from the schema
+        # (e.g., when they come from state)
+        try:
+            sig = inspect.signature(self.function)
+            return set(sig.parameters.keys())
+        except (ValueError, TypeError):
+            # Fall back to schema properties if introspection fails
+            return set(self.parameters.get("properties", {}).keys())
 
     def _get_valid_outputs(self) -> Optional[set[str]]:
         """
