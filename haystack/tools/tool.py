@@ -96,6 +96,45 @@ class Tool:
             if "handler" in self.outputs_to_string and not callable(self.outputs_to_string["handler"]):
                 raise ValueError("outputs_to_string handler must be callable")
 
+        # Validate inputs_from_state against parameter schema
+        if self.inputs_from_state is not None:
+            valid_params = set(self.parameters.get("properties", {}).keys())
+            for state_key, param_name in self.inputs_from_state.items():
+                if not isinstance(param_name, str):
+                    raise ValueError(
+                        f"inputs_from_state values must be str, not {type(param_name).__name__}. "
+                        f"Got {param_name!r} for key '{state_key}'."
+                    )
+                # Only validate against schema if there are properties defined
+                # Subclasses like ComponentTool may exclude state-mapped params from schema
+                if valid_params and param_name not in valid_params:
+                    raise ValueError(
+                        f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
+                        f"Valid parameters are: {valid_params}."
+                    )
+
+        # Validate outputs_to_state against tool outputs (if available)
+        valid_outputs = self._get_valid_outputs()
+        if self.outputs_to_state is not None and valid_outputs is not None:
+            for state_key, config in self.outputs_to_state.items():
+                source = config.get("source")
+                if source is not None and source not in valid_outputs:
+                    raise ValueError(
+                        f"outputs_to_state for '{self.name}' maps state key '{state_key}' to unknown output '{source}'"
+                        f"Valid outputs are: {valid_outputs}."
+                    )
+
+    def _get_valid_outputs(self) -> Optional[set[str]]:
+        """
+        Return the set of valid output names for this tool.
+
+        Subclasses can override this method to enable validation of outputs_to_state.
+        If None is returned, no validation is performed.
+
+        :returns: Set of valid output names, or None to skip validation.
+        """
+        return None
+
     @property
     def tool_spec(self) -> dict[str, Any]:
         """

@@ -151,14 +151,15 @@ class ComponentTool(Tool):
             )
             raise ValueError(msg)
 
-        # Validate inputs_from_state against component input sockets
+        # Validate inputs_from_state against component input sockets (before schema creation)
+        # This is needed because ComponentTool excludes state-mapped parameters from the schema
         if inputs_from_state is not None:
             component_inputs = set(component.__haystack_input__._sockets_dict.keys())  # type: ignore[attr-defined]
             for state_key, param_name in inputs_from_state.items():
                 # Skip validation if param_name is not a string (will be caught by Tool.__post_init__)
                 if isinstance(param_name, str) and param_name not in component_inputs:
                     raise ValueError(
-                        f"inputs_from_state for ComponentTool maps '{state_key}' to unknown input '{param_name}'. "
+                        f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
                         f"Valid component inputs are: {component_inputs}."
                     )
 
@@ -211,6 +212,10 @@ class ComponentTool(Tool):
 
         description = description or component.__doc__ or name
 
+        # Store component before calling super().__init__() so _get_valid_outputs() can access it
+        self._component = component
+        self._is_warmed_up = False
+
         # Create the Tool instance with the component invoker as the function to be called and the schema
         super().__init__(
             name=name,
@@ -221,19 +226,10 @@ class ComponentTool(Tool):
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,
         )
-        self._component = component
-        self._is_warmed_up = False
 
-        # Validate outputs_to_state references valid component outputs
-        if outputs_to_state is not None:
-            output_sockets = set(component.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
-            for state_key, config in outputs_to_state.items():
-                source = config.get("source")
-                if source is not None and source not in output_sockets:
-                    raise ValueError(
-                        f"outputs_to_state for '{self.name}' maps state key '{state_key}' to unknown output '{source}'."
-                        f"Valid outputs are: {output_sockets}."
-                    )
+    def _get_valid_outputs(self) -> set[str]:
+        """Return valid output socket names from the component."""
+        return set(self._component.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
 
     def warm_up(self):
         """
