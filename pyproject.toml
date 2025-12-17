@@ -305,6 +305,7 @@ skip-magic-trailing-comma = true
 "test/components/converters/test_output_adapter.py" = ["UP006"]
 "test/components/joiners/test_list_joiner.py" = ["UP006"]
 "test/core/test_type_utils.py" = ["UP006", "UP007", "UP045"]
+"test/core/pipeline/test_type_syntax_compatibility.py" = ["UP007", "UP045"]
 "test/core/super_component/test_utils.py" = ["UP007", "UP045"]
 "test/tools/test_parameters_schema_utils.py" = ["UP007"]
 "test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP045"]
