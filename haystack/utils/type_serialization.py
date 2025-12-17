@@ -8,7 +8,7 @@ import inspect
 import sys
 import typing
 from threading import Lock
-from types import ModuleType, UnionType
+from types import ModuleType, NoneType, UnionType
 from typing import Any, Union, get_args
 
 from haystack.core.errors import DeserializationError
@@ -37,7 +37,7 @@ def serialize_type(target: Any) -> str:
     :return:
         The string representation of the type.
     """
-    if target is type(None):
+    if target is NoneType:
         return "None"
 
     args = get_args(target)
@@ -59,7 +59,7 @@ def serialize_type(target: Any) -> str:
         module_name = f"{module.__name__}"
 
     if args:
-        args_str = ", ".join([serialize_type(a) for a in args if a is not type(None)])
+        args_str = ", ".join([serialize_type(a) for a in args if a is not NoneType])
         return f"{module_name}.{name}[{args_str}]" if module_name else f"{name}[{args_str}]"
 
     return f"{module_name}.{name}" if module_name else f"{name}"
@@ -193,7 +193,7 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
 
     # Special case for NoneType
     if type_str == "NoneType":
-        return type(None)
+        return NoneType
 
     # Special case for None
     if type_str == "None":
