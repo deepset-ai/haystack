@@ -98,11 +98,7 @@ class Tool:
 
         # Validate inputs_from_state against valid inputs
         if self.inputs_from_state is not None:
-            # Get valid inputs from subclass or fall back to schema properties
             valid_inputs = self._get_valid_inputs()
-            if valid_inputs is None:
-                valid_inputs = set(self.parameters.get("properties", {}).keys())
-
             for state_key, param_name in self.inputs_from_state.items():
                 if not isinstance(param_name, str):
                     raise ValueError(
@@ -126,16 +122,16 @@ class Tool:
                         f"Valid outputs are: {valid_outputs}."
                     )
 
-    def _get_valid_inputs(self) -> Optional[set[str]]:
+    def _get_valid_inputs(self) -> set[str]:
         """
         Return the set of valid input parameter names for this tool.
 
+        By default, returns the parameter names from the JSON schema properties.
         Subclasses can override this method to provide a custom source for valid inputs.
-        If None is returned, validation falls back to the parameter schema properties.
 
-        :returns: Set of valid input names, or None to use schema properties.
+        :returns: Set of valid input parameter names.
         """
-        return None
+        return set(self.parameters.get("properties", {}).keys())
 
     def _get_valid_outputs(self) -> Optional[set[str]]:
         """
