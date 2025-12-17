@@ -203,9 +203,7 @@ class TestTool:
         # Invalid output should raise an error
         with pytest.raises(
             ValueError,
-            match=re.escape(
-                "outputs_to_state for 'weather' maps state key 'result' to unknown output. Valid outputs are: {"
-            ),
+            match=re.escape("outputs_to_state for 'weather' maps state key 'result' to unknown output 'nonexistent'"),
         ):
             ToolWithOutputs(
                 name="weather",

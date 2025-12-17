@@ -96,21 +96,23 @@ class Tool:
             if "handler" in self.outputs_to_string and not callable(self.outputs_to_string["handler"]):
                 raise ValueError("outputs_to_string handler must be callable")
 
-        # Validate inputs_from_state against parameter schema
+        # Validate inputs_from_state against valid inputs
         if self.inputs_from_state is not None:
-            valid_params = set(self.parameters.get("properties", {}).keys())
+            # Get valid inputs from subclass or fall back to schema properties
+            valid_inputs = self._get_valid_inputs()
+            if valid_inputs is None:
+                valid_inputs = set(self.parameters.get("properties", {}).keys())
+
             for state_key, param_name in self.inputs_from_state.items():
                 if not isinstance(param_name, str):
                     raise ValueError(
                         f"inputs_from_state values must be str, not {type(param_name).__name__}. "
                         f"Got {param_name!r} for key '{state_key}'."
                     )
-                # Only validate against schema if there are properties defined
-                # Subclasses like ComponentTool may exclude state-mapped params from schema
-                if valid_params and param_name not in valid_params:
+                if valid_inputs and param_name not in valid_inputs:
                     raise ValueError(
                         f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
-                        f"Valid parameters are: {valid_params}."
+                        f"Valid parameters are: {valid_inputs}."
                     )
 
         # Validate outputs_to_state against tool outputs (if available)
@@ -123,6 +125,17 @@ class Tool:
                         f"outputs_to_state for '{self.name}' maps state key '{state_key}' to unknown output '{source}'"
                         f"Valid outputs are: {valid_outputs}."
                     )
+
+    def _get_valid_inputs(self) -> Optional[set[str]]:
+        """
+        Return the set of valid input parameter names for this tool.
+
+        Subclasses can override this method to provide a custom source for valid inputs.
+        If None is returned, validation falls back to the parameter schema properties.
+
+        :returns: Set of valid input names, or None to use schema properties.
+        """
+        return None
 
     def _get_valid_outputs(self) -> Optional[set[str]]:
         """

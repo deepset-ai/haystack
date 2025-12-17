@@ -151,18 +151,6 @@ class ComponentTool(Tool):
             )
             raise ValueError(msg)
 
-        # Validate inputs_from_state against component input sockets (before schema creation)
-        # This is needed because ComponentTool excludes state-mapped parameters from the schema
-        if inputs_from_state is not None:
-            component_inputs = set(component.__haystack_input__._sockets_dict.keys())  # type: ignore[attr-defined]
-            for state_key, param_name in inputs_from_state.items():
-                # Skip validation if param_name is not a string (will be caught by Tool.__post_init__)
-                if isinstance(param_name, str) and param_name not in component_inputs:
-                    raise ValueError(
-                        f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
-                        f"Valid component inputs are: {component_inputs}."
-                    )
-
         self._unresolved_parameters = parameters
         # Create the tools schema from the component run method parameters
         tool_schema = parameters or self._create_tool_parameters_schema(component, inputs_from_state or {})
@@ -226,6 +214,10 @@ class ComponentTool(Tool):
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,
         )
+
+    def _get_valid_inputs(self) -> set[str]:
+        """Return valid input socket names from the component."""
+        return set(self._component.__haystack_input__._sockets_dict.keys())  # type: ignore[attr-defined]
 
     def _get_valid_outputs(self) -> set[str]:
         """Return valid output socket names from the component."""
