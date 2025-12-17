@@ -46,12 +46,7 @@ def test_http_client_kwargs_with_invalid_params():
 
 def test_init_http_client_with_dict_limits():
     """Test that dict limits are converted to httpx.Limits objects without AttributeError."""
-    http_client_kwargs = {
-        "limits": {
-            "max_connections": 100,
-            "max_keepalive_connections": 20
-        }
-    }
+    http_client_kwargs = {"limits": {"max_connections": 100, "max_keepalive_connections": 20}}
 
     # This should not raise AttributeError: 'dict' object has no attribute 'max_connections'
     client = init_http_client(http_client_kwargs=http_client_kwargs, async_client=False)
