@@ -41,6 +41,15 @@ def init_http_client(
         return None
     if not isinstance(http_client_kwargs, dict):
         raise TypeError("The parameter 'http_client_kwargs' must be a dictionary.")
+
+    # Create a copy to avoid modifying the original dict
+    processed_kwargs = http_client_kwargs.copy()
+
+    # Handle limits parameter - convert dict to httpx.Limits object if needed
+    if "limits" in processed_kwargs and isinstance(processed_kwargs["limits"], dict):
+        limits_dict = processed_kwargs["limits"]
+        processed_kwargs["limits"] = httpx.Limits(**limits_dict)
+
     if async_client:
-        return httpx.AsyncClient(**http_client_kwargs)
-    return httpx.Client(**http_client_kwargs)
+        return httpx.AsyncClient(**processed_kwargs)
+    return httpx.Client(**processed_kwargs)
