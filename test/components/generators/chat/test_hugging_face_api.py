@@ -1084,6 +1084,54 @@ class TestHuggingFaceAPIChatGenerator:
         finally:
             await generator._async_client.close()
 
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    @pytest.mark.flaky(reruns=2, reruns_delay=10)
+    def test_live_run_multi_turn_with_reasoning_model(self):
+        """
+        Test multi-turn conversation with a reasoning model.
+
+        This test verifies that:
+        1. Reasoning content is captured from the model's response
+        2. When the assistant message (with reasoning) is sent back in a multi-turn conversation,
+           the API call succeeds (reasoning is dropped during conversion since HF API doesn't support it)
+        """
+        # Note: Using a model that supports reasoning. DeepSeek-R1-Distill models are available
+        # via serverless inference and support reasoning output.
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"},
+            generation_kwargs={"max_tokens": 100},
+        )
+
+        # First turn: ask a question
+        messages = [ChatMessage.from_user("What is 2 + 2? Answer briefly.")]
+        response = generator.run(messages=messages)
+
+        assert "replies" in response
+        assert len(response["replies"]) > 0
+        first_reply = response["replies"][0]
+        assert first_reply.text is not None
+
+        # Second turn: send a follow-up including the assistant's previous response
+        # This tests that convert_message_to_hf_format properly handles messages
+        # that may contain ReasoningContent (it should skip it)
+        follow_up_messages = [
+            ChatMessage.from_user("What is 2 + 2? Answer briefly."),
+            first_reply,  # Include the assistant's response (may contain reasoning)
+            ChatMessage.from_user("Now what is 3 + 3? Answer briefly."),
+        ]
+        follow_up_response = generator.run(messages=follow_up_messages)
+
+        # Verify the second turn succeeds
+        assert "replies" in follow_up_response
+        assert len(follow_up_response["replies"]) > 0
+        assert follow_up_response["replies"][0].text is not None
+
     def test_hugging_face_api_generator_with_toolset_initialization(self, mock_check_valid_model, tools):
         """Test that the HuggingFaceAPIChatGenerator can be initialized with a Toolset."""
         toolset = Toolset(tools)
