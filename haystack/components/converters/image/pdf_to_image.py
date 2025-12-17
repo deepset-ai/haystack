@@ -42,9 +42,9 @@ class PDFToImageContent:
     def __init__(
         self,
         *,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[tuple[int, int]] = None,
-        page_range: Optional[list[Union[str, int]]] = None,
+        detail: Literal["auto", "high", "low"] | None = None,
+        size: tuple[int, int] | None = None,
+        page_range: list[str | int] | None = None,
     ):
         """
         Create the PDFToImageContent component.
@@ -69,12 +69,12 @@ class PDFToImageContent:
     @component.output_types(image_contents=list[ImageContent])
     def run(
         self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+        sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
         *,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[tuple[int, int]] = None,
-        page_range: Optional[list[Union[str, int]]] = None,
+        detail: Literal["auto", "high", "low"] | None = None,
+        size: tuple[int, int] | None = None,
+        page_range: list[str | int] | None = None,
     ) -> dict[str, list[ImageContent]]:
         """
         Converts files to ImageContent objects.

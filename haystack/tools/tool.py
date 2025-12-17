@@ -69,9 +69,9 @@ class Tool:
     description: str
     parameters: dict[str, Any]
     function: Callable
-    outputs_to_string: Optional[dict[str, Any]] = None
-    inputs_from_state: Optional[dict[str, str]] = None
-    outputs_to_state: Optional[dict[str, dict[str, Any]]] = None
+    outputs_to_string: dict[str, Any] | None = None
+    inputs_from_state: dict[str, str] | None = None
+    outputs_to_state: dict[str, dict[str, Any]] | None = None
 
     def __post_init__(self):
         # Check that the parameters define a valid JSON schema
@@ -173,7 +173,7 @@ class Tool:
         return cls(**init_parameters)
 
 
-def _check_duplicate_tool_names(tools: Optional[list[Tool]]) -> None:
+def _check_duplicate_tool_names(tools: list[Tool] | None) -> None:
     """
     Checks for duplicate tool names and raises a ValueError if they are found.
 

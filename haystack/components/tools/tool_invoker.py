@@ -176,7 +176,7 @@ class ToolInvoker:
         tools: ToolsType,
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
         enable_streaming_callback_passthrough: bool = False,
         max_workers: int = 4,
@@ -437,7 +437,7 @@ class ToolInvoker:
         *,
         messages_with_tool_calls: list[ChatMessage],
         state: State,
-        streaming_callback: Optional[StreamingCallbackT],
+        streaming_callback: StreamingCallbackT | None,
         enable_streaming_passthrough: bool,
         tools_with_names: dict[str, Tool],
     ) -> tuple[list[ToolCall], list[dict[str, Any]], list[ChatMessage]]:
@@ -504,11 +504,11 @@ class ToolInvoker:
     def run(
         self,
         messages: list[ChatMessage],
-        state: Optional[State] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        state: State | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[ToolsType] = None,
+        enable_streaming_callback_passthrough: bool | None = None,
+        tools: ToolsType | None = None,
     ) -> dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
@@ -638,11 +638,11 @@ class ToolInvoker:
     async def run_async(
         self,
         messages: list[ChatMessage],
-        state: Optional[State] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        state: State | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[ToolsType] = None,
+        enable_streaming_callback_passthrough: bool | None = None,
+        tools: ToolsType | None = None,
     ) -> dict[str, Any]:
         """
         Asynchronously processes ChatMessage objects containing tool calls.

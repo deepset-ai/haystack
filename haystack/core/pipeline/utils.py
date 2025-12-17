@@ -54,7 +54,7 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
         return obj
 
 
-def parse_connect_string(connection: str) -> tuple[str, Optional[str]]:
+def parse_connect_string(connection: str) -> tuple[str, str | None]:
     """
     Returns component-connection pairs from a connect_to/from string.
 
@@ -135,7 +135,7 @@ class FIFOPriorityQueue:
         priority, _, item = self._queue[0]
         return priority, item
 
-    def get(self) -> Optional[tuple[int, Any]]:
+    def get(self) -> tuple[int, Any] | None:
         """
         Remove and return the highest priority item from the queue.
 

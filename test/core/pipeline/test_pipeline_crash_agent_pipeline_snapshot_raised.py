@@ -49,7 +49,7 @@ class MockChatGenerator:
         self.fail_on_call = fail_on_call
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs) -> dict:
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict:
         if self.fail_on_call:
             # Simulate a crash in the chat generator
             raise Exception("Error in chat generator component")

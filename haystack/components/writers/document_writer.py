@@ -80,7 +80,7 @@ class DocumentWriter:
         return default_from_dict(cls, data)
 
     @component.output_types(documents_written=int)
-    def run(self, documents: list[Document], policy: Optional[DuplicatePolicy] = None):
+    def run(self, documents: list[Document], policy: DuplicatePolicy | None = None):
         """
         Run the DocumentWriter on the given input data.
 
@@ -101,7 +101,7 @@ class DocumentWriter:
         return {"documents_written": documents_written}
 
     @component.output_types(documents_written=int)
-    async def run_async(self, documents: list[Document], policy: Optional[DuplicatePolicy] = None):
+    async def run_async(self, documents: list[Document], policy: DuplicatePolicy | None = None):
         """
         Asynchronously run the DocumentWriter on the given input data.
 

@@ -53,7 +53,7 @@ class OpenAPIServiceToFunctions:
         openapi_imports.check()
 
     @component.output_types(functions=list[dict[str, Any]], openapi_specs=list[dict[str, Any]])
-    def run(self, sources: list[Union[str, Path, ByteStream]]) -> dict[str, Any]:
+    def run(self, sources: list[str | Path | ByteStream]) -> dict[str, Any]:
         """
         Converts OpenAPI definitions in OpenAI function calling format.
 
@@ -150,7 +150,7 @@ class OpenAPIServiceToFunctions:
                     functions.append(function_dict)
         return functions
 
-    def _parse_endpoint_spec(self, resolved_spec: dict[str, Any]) -> Optional[dict[str, Any]]:
+    def _parse_endpoint_spec(self, resolved_spec: dict[str, Any]) -> dict[str, Any] | None:
         if not isinstance(resolved_spec, dict):
             logger.warning("Invalid OpenAPI spec format provided. Could not extract function.")
             return {}
@@ -191,7 +191,7 @@ class OpenAPIServiceToFunctions:
             return {}
 
     def _parse_property_attributes(
-        self, property_schema: dict[str, Any], include_attributes: Optional[list[str]] = None
+        self, property_schema: dict[str, Any], include_attributes: list[str] | None = None
     ) -> dict[str, Any]:
         """
         Parses the attributes of a property schema.

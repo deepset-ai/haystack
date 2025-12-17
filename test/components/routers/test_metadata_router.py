@@ -62,7 +62,7 @@ class TestMetadataRouter:
         docs = [byt1, byt2, doc1, doc2]
         router = MetadataRouter(
             rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}},
-            output_type=list[Union[Document, ByteStream]],
+            output_type=list[Document | ByteStream],
         )
         output = router.run(documents=docs)
         assert output["en"][0].data == byt1.data
@@ -118,13 +118,13 @@ class TestMetadataRouter:
                 "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
             }
         }
-        router = MetadataRouter(rules=rules, output_type=list[Union[ByteStream, Document]])
+        router = MetadataRouter(rules=rules, output_type=list[ByteStream | Document])
         expected_dict = {
             "type": "haystack.components.routers.metadata_router.MetadataRouter",
             "init_parameters": {
                 "rules": rules,
-                "output_type": "list[typing.Union[haystack.dataclasses.byte_stream.ByteStream, "
-                "haystack.dataclasses.document.Document]]",
+                "output_type": "list[haystack.dataclasses.byte_stream.ByteStream "
+                "| haystack.dataclasses.document.Document]",
             },
         }
         assert router.to_dict() == expected_dict
@@ -172,7 +172,7 @@ class TestMetadataRouter:
                 "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
             }
         }
-        assert router.output_type == list[Union[ByteStream, Document]]
+        assert router.output_type == list[ByteStream | Document]
 
     def test_from_dict_no_output_type(self):
         router_dict = {

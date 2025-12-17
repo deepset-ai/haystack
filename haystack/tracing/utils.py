@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 PRIMITIVE_TYPES = (bool, str, int, float)
 
 
-def coerce_tag_value(value: Any) -> Union[bool, str, int, float]:
+def coerce_tag_value(value: Any) -> bool | str | int | float:
     """
     Coerces span tag values to compatible types for the tracing backend.
 

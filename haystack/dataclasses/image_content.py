@@ -75,8 +75,8 @@ class ImageContent:
     """
 
     base64_image: str
-    mime_type: Optional[str] = None
-    detail: Optional[Literal["auto", "high", "low"]] = None
+    mime_type: str | None = None
+    detail: Literal["auto", "high", "low"] | None = None
     meta: dict[str, Any] = field(default_factory=dict)
     validation: bool = True
 
@@ -150,11 +150,11 @@ class ImageContent:
     @classmethod
     def from_file_path(
         cls,
-        file_path: Union[str, Path],
+        file_path: str | Path,
         *,
-        size: Optional[tuple[int, int]] = None,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        meta: Optional[dict[str, Any]] = None,
+        size: tuple[int, int] | None = None,
+        detail: Literal["auto", "high", "low"] | None = None,
+        meta: dict[str, Any] | None = None,
     ) -> "ImageContent":
         """
         Create an ImageContent object from a file path.
@@ -191,9 +191,9 @@ class ImageContent:
         *,
         retry_attempts: int = 2,
         timeout: int = 10,
-        size: Optional[tuple[int, int]] = None,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        meta: Optional[dict[str, Any]] = None,
+        size: tuple[int, int] | None = None,
+        detail: Literal["auto", "high", "low"] | None = None,
+        meta: dict[str, Any] | None = None,
     ) -> "ImageContent":
         """
         Create an ImageContent object from a URL. The image is downloaded and converted to a base64 string.

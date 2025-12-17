@@ -37,7 +37,7 @@ class FilterRetriever:
     ```
     """
 
-    def __init__(self, document_store: DocumentStore, filters: Optional[dict[str, Any]] = None):
+    def __init__(self, document_store: DocumentStore, filters: dict[str, Any] | None = None):
         """
         Create the FilterRetriever component.
 
@@ -81,7 +81,7 @@ class FilterRetriever:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, filters: Optional[dict[str, Any]] = None):
+    def run(self, filters: dict[str, Any] | None = None):
         """
         Run the FilterRetriever on the given input data.
 
@@ -94,7 +94,7 @@ class FilterRetriever:
         return {"documents": self.document_store.filter_documents(filters=filters or self.filters)}
 
     @component.output_types(documents=list[Document])
-    async def run_async(self, filters: Optional[dict[str, Any]] = None):
+    async def run_async(self, filters: dict[str, Any] | None = None):
         """
         Asynchronously run the FilterRetriever on the given input data.
 

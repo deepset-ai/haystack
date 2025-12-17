@@ -54,12 +54,12 @@ def test_component_with_empty_dict_as_output_appears_in_results():
         def __init__(self, prefix: str):
             self.prefix = prefix
 
-        @component.output_types(value=Optional[str])
-        def run(self, text: Optional[str]):
+        @component.output_types(value=str | None)
+        def run(self, text: str | None):
             return {"value": f"{self.prefix}: {text}"}
 
-        @component.output_types(value=Optional[str])
-        async def run_async(self, text: Optional[str]):
+        @component.output_types(value=str | None)
+        async def run_async(self, text: str | None):
             return {"value": f"{self.prefix}: {text}"}
 
     @component
@@ -77,7 +77,7 @@ def test_component_with_empty_dict_as_output_appears_in_results():
     @component
     class Combiner:
         @component.output_types(combined=str)
-        def run(self, input_a: Optional[str], input_b: Optional[str]):
+        def run(self, input_a: str | None, input_b: str | None):
             if input_a is None:
                 input_a = ""
             if input_b is None:
@@ -85,7 +85,7 @@ def test_component_with_empty_dict_as_output_appears_in_results():
             return {"combined": f"{input_a} | {input_b}"}
 
         @component.output_types(combined=str)
-        async def run_async(self, input_a: Optional[str], input_b: Optional[str]):
+        async def run_async(self, input_a: str | None, input_b: str | None):
             if input_a is None:
                 input_a = ""
             if input_b is None:

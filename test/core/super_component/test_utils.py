@@ -154,7 +154,7 @@ class TestTypeCompatibility:
     def test_nested_type_unwrapping(self):
         """Test nested type unwrapping behavior with unwrap_nested parameter."""
         # Test with unwrap_nested=True (default)
-        nested_optional = Variadic[list[Optional[int]]]
+        nested_optional = Variadic[list[int | None]]
 
         is_compat, common = _is_compatible(nested_optional, list[int])
         assert is_compat and common == list[int]

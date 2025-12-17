@@ -16,7 +16,7 @@ from test.tracing.utils import SpyingSpan, SpyingTracer
 @component
 class Hello:
     @component.output_types(output=str)
-    def run(self, word: Optional[str]):  # use optional to spice up the typing tags
+    def run(self, word: str | None):  # use optional to spice up the typing tags
         """
         Takes a string in input and returns "Hello, <string>!" in output.
         """
@@ -90,6 +90,7 @@ class TestTracing:
         assert spying_tracer.spans[1].tags["haystack.component.input_spec"]["word"]["type"] in [
             "typing.Union[str, NoneType]",
             "typing.Optional[str]",
+            "str | None",
         ]
 
     def test_with_enabled_content_tracing(

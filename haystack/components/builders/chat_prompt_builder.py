@@ -139,9 +139,9 @@ class ChatPromptBuilder:
 
     def __init__(
         self,
-        template: Optional[Union[list[ChatMessage], str]] = None,
-        required_variables: Optional[Union[list[str], Literal["*"]]] = None,
-        variables: Optional[list[str]] = None,
+        template: list[ChatMessage] | str | None = None,
+        required_variables: list[str] | Literal["*"] | None = None,
+        variables: list[str] | None = None,
     ):
         """
         Constructs a ChatPromptBuilder component.
@@ -211,8 +211,8 @@ class ChatPromptBuilder:
     @component.output_types(prompt=list[ChatMessage])
     def run(
         self,
-        template: Optional[Union[list[ChatMessage], str]] = None,
-        template_variables: Optional[dict[str, Any]] = None,
+        template: list[ChatMessage] | str | None = None,
+        template_variables: dict[str, Any] | None = None,
         **kwargs,
     ):
         """
@@ -327,7 +327,7 @@ class ChatPromptBuilder:
         :returns:
             Serialized dictionary representation of the component.
         """
-        template: Optional[Union[list[dict[str, Any]], str]] = None
+        template: list[dict[str, Any]] | str | None = None
         if isinstance(self.template, list):
             template = [m.to_dict() for m in self.template]
         elif isinstance(self.template, str):

@@ -50,19 +50,19 @@ class TransformersSimilarityRanker:
 
     def __init__(  # noqa: PLR0913, pylint: disable=too-many-positional-arguments
         self,
-        model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 10,
         query_prefix: str = "",
         document_prefix: str = "",
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
-        calibration_factor: Optional[float] = 1.0,
-        score_threshold: Optional[float] = None,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
+        calibration_factor: float | None = 1.0,
+        score_threshold: float | None = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
         batch_size: int = 16,
     ):
         """
@@ -123,7 +123,7 @@ class TransformersSimilarityRanker:
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
         self.tokenizer = None
-        self.device: Optional[ComponentDevice] = None
+        self.device: ComponentDevice | None = None
         self.top_k = top_k
         self.token = token
         self.meta_fields_to_embed = meta_fields_to_embed or []
@@ -222,10 +222,10 @@ class TransformersSimilarityRanker:
         self,
         query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        calibration_factor: Optional[float] = None,
-        score_threshold: Optional[float] = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        calibration_factor: float | None = None,
+        score_threshold: float | None = None,
     ):
         """
         Returns a list of documents ranked by their similarity to the given query.

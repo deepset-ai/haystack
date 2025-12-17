@@ -65,14 +65,14 @@ class OpenAIGenerator:
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-5-mini",
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
-        system_prompt: Optional[str] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        api_base_url: str | None = None,
+        organization: str | None = None,
+        system_prompt: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
     ):
         """
         Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
@@ -189,10 +189,10 @@ class OpenAIGenerator:
     def run(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Union[list[str], list[dict[str, Any]]]]:
+        system_prompt: str | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+    ) -> dict[str, list[str] | list[dict[str, Any]]]:
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
 
@@ -230,7 +230,7 @@ class OpenAIGenerator:
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
 
-        completion: Union[Stream[ChatCompletionChunk], ChatCompletion] = self.client.chat.completions.create(
+        completion: Stream[ChatCompletionChunk] | ChatCompletion = self.client.chat.completions.create(
             model=self.model,
             messages=openai_formatted_messages,  # type: ignore
             stream=streaming_callback is not None,

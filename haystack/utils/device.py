@@ -62,9 +62,9 @@ class Device:
     """
 
     type: DeviceType
-    id: Optional[int] = field(default=None)
+    id: int | None = field(default=None)
 
-    def __init__(self, type: DeviceType, id: Optional[int] = None):  # noqa:A002
+    def __init__(self, type: DeviceType, id: int | None = None):  # noqa:A002
         """
         Create a generic device.
 
@@ -189,7 +189,7 @@ class DeviceMap:
         return {key: str(device) for key, device in self.mapping.items()}
 
     @property
-    def first_device(self) -> Optional[Device]:
+    def first_device(self) -> Device | None:
         """
         Return the first device in the mapping, if any.
 
@@ -252,8 +252,8 @@ class ComponentDevice:
     This can be either a single device or a device map.
     """
 
-    _single_device: Optional[Device] = field(default=None)
-    _multiple_devices: Optional[DeviceMap] = field(default=None)
+    _single_device: Device | None = field(default=None)
+    _multiple_devices: DeviceMap | None = field(default=None)
 
     @classmethod
     def from_str(cls, device_str: str) -> "ComponentDevice":
@@ -364,7 +364,7 @@ class ComponentDevice:
         else:
             return -1
 
-    def to_hf(self) -> Union[Union[int, str], dict[str, Union[int, str]]]:
+    def to_hf(self) -> int | str | dict[str, int | str]:
         """
         Convert the component device representation to HuggingFace format.
 
@@ -373,7 +373,7 @@ class ComponentDevice:
         """
         self._validate()
 
-        def convert_device(device: Device, *, gpu_id_only: bool = False) -> Union[int, str]:
+        def convert_device(device: Device, *, gpu_id_only: bool = False) -> int | str:
             if gpu_id_only and device.type == DeviceType.GPU:
                 assert device.id is not None
                 return device.id
@@ -528,7 +528,7 @@ def _get_default_device() -> Device:
         return Device.cpu()
 
 
-def _split_device_string(string: str) -> tuple[str, Optional[int]]:
+def _split_device_string(string: str) -> tuple[str, int | None]:
     """
     Split a device string into device type and device id.
 

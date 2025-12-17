@@ -56,7 +56,7 @@ class MetaFieldGroupingRanker:
     ```
     """  # noqa: E501
 
-    def __init__(self, group_by: str, subgroup_by: Optional[str] = None, sort_docs_by: Optional[str] = None):
+    def __init__(self, group_by: str, subgroup_by: str | None = None, sort_docs_by: str | None = None):
         """
         Creates an instance of MetaFieldGroupingRanker.
 

@@ -13,6 +13,6 @@ class Marshaller(Protocol):
         "Convert a dictionary to its string representation"
         ...
 
-    def unmarshal(self, data_: Union[str, bytes, bytearray]) -> dict[str, Any]:
+    def unmarshal(self, data_: str | bytes | bytearray) -> dict[str, Any]:
         """Convert a marshalled object to its dictionary representation"""
         ...

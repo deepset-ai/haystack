@@ -17,7 +17,7 @@ class AddFixedValue:
         self.add = add
 
     @component.output_types(result=int)
-    def run(self, value: int, add: Optional[int] = None):
+    def run(self, value: int, add: int | None = None):
         """
         Adds two values together.
         """

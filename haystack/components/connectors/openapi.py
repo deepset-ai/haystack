@@ -45,7 +45,7 @@ class OpenAPIConnector:
     """
 
     def __init__(
-        self, openapi_spec: str, credentials: Optional[Secret] = None, service_kwargs: Optional[dict[str, Any]] = None
+        self, openapi_spec: str, credentials: Secret | None = None, service_kwargs: dict[str, Any] | None = None
     ):
         """
         Initialize the OpenAPIConnector with a specification and optional credentials.
@@ -86,7 +86,7 @@ class OpenAPIConnector:
         return default_from_dict(cls, data)
 
     @component.output_types(response=dict[str, Any])
-    def run(self, operation_id: str, arguments: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def run(self, operation_id: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Invokes a REST endpoint specified in the OpenAPI specification.
 

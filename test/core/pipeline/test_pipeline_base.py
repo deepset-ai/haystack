@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 @component
 class FakeComponent:
-    def __init__(self, an_init_param: Optional[str] = None):
+    def __init__(self, an_init_param: str | None = None):
         pass
 
     @component.output_types(value=str)
@@ -42,7 +42,7 @@ class FakeComponent:
 
 @component
 class FakeComponentSquared:
-    def __init__(self, an_init_param: Optional[str] = None):
+    def __init__(self, an_init_param: str | None = None):
         self.an_init_param = an_init_param
         self.inner = FakeComponent()
 
@@ -399,7 +399,7 @@ class TestPipelineBase:
         assert add_two["instance"].add == 2
         assert add_two["input_sockets"] == {
             "value": InputSocket(name="value", type=int),
-            "add": InputSocket(name="add", type=Optional[int], default_value=None),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
         }
         assert add_two["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
         assert add_two["visits"] == 0
@@ -409,7 +409,7 @@ class TestPipelineBase:
         assert add_default["instance"].add == 1
         assert add_default["input_sockets"] == {
             "value": InputSocket(name="value", type=int, senders=["double"]),
-            "add": InputSocket(name="add", type=Optional[int], default_value=None),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
         }
         assert add_default["output_sockets"] == {"result": OutputSocket(name="result", type=int)}
         assert add_default["visits"] == 0
@@ -566,7 +566,7 @@ class TestPipelineBase:
         assert add_two_data["instance"].add == 2
         assert add_two_data["input_sockets"] == {
             "value": InputSocket(name="value", type=int),
-            "add": InputSocket(name="add", type=Optional[int], default_value=None),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
         }
         assert add_two_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
         assert add_two_data["visits"] == 0
@@ -577,7 +577,7 @@ class TestPipelineBase:
         assert add_default_data["instance"].add == 1
         assert add_default_data["input_sockets"] == {
             "value": InputSocket(name="value", type=int, senders=["double"]),
-            "add": InputSocket(name="add", type=Optional[int], default_value=None),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
         }
         assert add_default_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=[])}
         assert add_default_data["visits"] == 0
@@ -720,7 +720,7 @@ class TestPipelineBase:
         }
 
     def test_describe_input_all_components_have_inputs(self):
-        A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
+        A = component_class("A", input_types={"x": int | None}, output={"x": 0})
         B = component_class("B", input_types={"y": int}, output={"y": 0})
         C = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})
         p = PipelineBase()
@@ -730,11 +730,11 @@ class TestPipelineBase:
         p.connect("a.x", "c.x")
         p.connect("b.y", "c.y")
         assert p.inputs() == {
-            "a": {"x": {"type": Optional[int], "is_mandatory": True}},
+            "a": {"x": {"type": int | None, "is_mandatory": True}},
             "b": {"y": {"type": int, "is_mandatory": True}},
         }
         assert p.inputs(include_components_with_connected_inputs=True) == {
-            "a": {"x": {"type": Optional[int], "is_mandatory": True}},
+            "a": {"x": {"type": int | None, "is_mandatory": True}},
             "b": {"y": {"type": int, "is_mandatory": True}},
             "c": {"x": {"type": int, "is_mandatory": True}, "y": {"type": int, "is_mandatory": True}},
         }
@@ -761,7 +761,7 @@ class TestPipelineBase:
         """
         This pipeline has one output: {"c": {"z": {"type": int}}}
         """
-        A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
+        A = component_class("A", input_types={"x": int | None}, output={"x": 0})
         B = component_class("B", input_types={"y": int}, output={"y": 0})
         C = component_class("C", input_types={"x": int, "y": int}, output={"z": 0})
         p = PipelineBase()
@@ -785,7 +785,7 @@ class TestPipelineBase:
         This pipeline sets up elaborate connections between three components but in fact it has no outputs:
         Check that p.outputs() == {}
         """
-        A = component_class("A", input_types={"x": Optional[int]}, output={"x": 0})
+        A = component_class("A", input_types={"x": int | None}, output={"x": 0})
         B = component_class("B", input_types={"y": int}, output={"y": 0})
         C = component_class("C", input_types={"x": int, "y": int}, output={})
         p = PipelineBase()
@@ -861,7 +861,7 @@ class TestPipelineBase:
                 self.iteration_counter = 0
 
             @component.output_types(intermediate=str, final=str)
-            def run(self, word: str, intermediate: Optional[str] = None):
+            def run(self, word: str, intermediate: str | None = None):
                 """
                 Takes a string in input and returns "Hello, <string>!" in output.
                 """

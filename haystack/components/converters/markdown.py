@@ -58,11 +58,7 @@ class MarkdownToDocument:
         self.store_full_path = store_full_path
 
     @component.output_types(documents=list[Document])
-    def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
         """
         Converts a list of Markdown files to Documents.
 

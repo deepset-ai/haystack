@@ -31,7 +31,7 @@ class OutputValidator:
         self.iteration_counter = 0
 
     # Define the component output
-    @component.output_types(valid_replies=list[str], invalid_replies=Optional[list[str]], error_message=Optional[str])
+    @component.output_types(valid_replies=list[str], invalid_replies=list[str] | None, error_message=str | None)
     def run(self, replies: list[ChatMessage]):
         self.iteration_counter += 1
 

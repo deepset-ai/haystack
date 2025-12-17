@@ -42,7 +42,7 @@ class TopPSampler:
     ```
     """
 
-    def __init__(self, top_p: float = 1.0, score_field: Optional[str] = None, min_top_k: Optional[int] = None):
+    def __init__(self, top_p: float = 1.0, score_field: str | None = None, min_top_k: int | None = None):
         """
         Creates an instance of TopPSampler.
 
@@ -62,7 +62,7 @@ class TopPSampler:
         self.min_top_k = min_top_k
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document], top_p: Optional[float] = None):
+    def run(self, documents: list[Document], top_p: float | None = None):
         """
         Filters documents using top-p sampling based on their scores.
 
@@ -122,7 +122,7 @@ class TopPSampler:
         return {"documents": selected_docs}
 
     @staticmethod
-    def _get_doc_score(doc: Document, score_field: Optional[str] = None) -> Optional[float]:
+    def _get_doc_score(doc: Document, score_field: str | None = None) -> float | None:
         """
         Get the score of a document.
 

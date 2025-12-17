@@ -16,7 +16,7 @@ class _delegate_default:
 T = TypeVar("T")
 
 
-def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> tuple[bool, Optional[T]]:
+def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> tuple[bool, T | None]:
     """
     Check if two types are compatible (bidirectional/symmetric check).
 
@@ -32,7 +32,7 @@ def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> tuple[bool
     return _types_are_compatible(type1_unwrapped, type2_unwrapped)
 
 
-def _types_are_compatible(type1: T, type2: T) -> tuple[bool, Optional[T]]:
+def _types_are_compatible(type1: T, type2: T) -> tuple[bool, T | None]:
     """
     Core type compatibility check implementing symmetric matching.
 
@@ -61,7 +61,7 @@ def _types_are_compatible(type1: T, type2: T) -> tuple[bool, Optional[T]]:
     return _check_non_union_compatibility(type1, type2, type1_origin, type2_origin)
 
 
-def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> tuple[bool, Optional[T]]:
+def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> tuple[bool, T | None]:
     """Handle all Union type compatibility cases (including X | Y syntax)."""
     if is_union_type(type1_origin) and not is_union_type(type2_origin):
         # Find all compatible types from the union
@@ -74,7 +74,7 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
             # The constructed Union or single type must be cast to Optional[T]
             # to satisfy mypy, as T is specific to this function's call context.
             result_type = Union[tuple(compatible_types)] if len(compatible_types) > 1 else compatible_types[0]
-            return True, cast(Optional[T], result_type)
+            return True, cast(T | None, result_type)
         return False, None
 
     if is_union_type(type2_origin) and not is_union_type(type1_origin):
@@ -88,7 +88,7 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
             # The constructed Union or single type must be cast to Optional[T]
             # to satisfy mypy, as T is specific to this function's call context.
             result_type = Union[tuple(compatible_types)] if len(compatible_types) > 1 else compatible_types[0]
-            return True, cast(Optional[T], result_type)
+            return True, cast(T | None, result_type)
         return False, None
 
     # Both are Union types
@@ -103,13 +103,11 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
         # The constructed Union or single type must be cast to Optional[T]
         # to satisfy mypy, as T is specific to this function's call context.
         result_type = Union[tuple(compatible_types)] if len(compatible_types) > 1 else compatible_types[0]
-        return True, cast(Optional[T], result_type)
+        return True, cast(T | None, result_type)
     return False, None
 
 
-def _check_non_union_compatibility(
-    type1: T, type2: T, type1_origin: Any, type2_origin: Any
-) -> tuple[bool, Optional[T]]:
+def _check_non_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_origin: Any) -> tuple[bool, T | None]:
     """Handle non-Union type compatibility cases."""
     # If no origin, compare types directly
     if not type1_origin and not type2_origin:
@@ -137,7 +135,7 @@ def _check_non_union_compatibility(
         common_args.append(common)
 
     # Reconstruct the type with common arguments
-    return True, cast(Optional[T], type1_origin[tuple(common_args)])
+    return True, cast(T | None, type1_origin[tuple(common_args)])
 
 
 def _unwrap_all(t: T, recursive: bool) -> T:

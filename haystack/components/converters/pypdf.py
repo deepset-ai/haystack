@@ -71,7 +71,7 @@ class PyPDFToDocument:
     def __init__(
         self,
         *,
-        extraction_mode: Union[str, PyPDFExtractionMode] = PyPDFExtractionMode.PLAIN,
+        extraction_mode: str | PyPDFExtractionMode = PyPDFExtractionMode.PLAIN,
         plain_mode_orientations: tuple = (0, 90, 180, 270),
         plain_mode_space_width: float = 200.0,
         layout_mode_space_vertically: bool = True,
@@ -172,11 +172,7 @@ class PyPDFToDocument:
         return text
 
     @component.output_types(documents=list[Document])
-    def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
         """
         Converts PDF files to documents.
 

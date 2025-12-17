@@ -21,7 +21,7 @@ class ByteStream:
 
     data: bytes
     meta: dict[str, Any] = field(default_factory=dict, hash=False)
-    mime_type: Optional[str] = field(default=None)
+    mime_type: str | None = field(default=None)
 
     def to_file(self, destination_path: Path) -> None:
         """
@@ -36,8 +36,8 @@ class ByteStream:
     def from_file_path(
         cls,
         filepath: Path,
-        mime_type: Optional[str] = None,
-        meta: Optional[dict[str, Any]] = None,
+        mime_type: str | None = None,
+        meta: dict[str, Any] | None = None,
         guess_mime_type: bool = False,
     ) -> "ByteStream":
         """
@@ -55,7 +55,7 @@ class ByteStream:
 
     @classmethod
     def from_string(
-        cls, text: str, encoding: str = "utf-8", mime_type: Optional[str] = None, meta: Optional[dict[str, Any]] = None
+        cls, text: str, encoding: str = "utf-8", mime_type: str | None = None, meta: dict[str, Any] | None = None
     ) -> "ByteStream":
         """
         Create a ByteStream encoding a string.

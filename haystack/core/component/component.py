@@ -91,7 +91,7 @@ from .types import InputSocket, OutputSocket, _empty
 logger = logging.getLogger(__name__)
 
 RunParamsT = ParamSpec("RunParamsT")
-RunReturnT = TypeVar("RunReturnT", bound=Union[Mapping[str, Any], Coroutine[Any, Any, Mapping[str, Any]]])
+RunReturnT = TypeVar("RunReturnT", bound=Mapping[str, Any] | Coroutine[Any, Any, Mapping[str, Any]])
 
 
 @dataclass
@@ -111,7 +111,7 @@ class PreInitHookPayload:
     in_progress: bool = False
 
 
-_COMPONENT_PRE_INIT_HOOK: ContextVar[Optional[PreInitHookPayload]] = ContextVar("component_pre_init_hook", default=None)
+_COMPONENT_PRE_INIT_HOOK: ContextVar[PreInitHookPayload | None] = ContextVar("component_pre_init_hook", default=None)
 
 
 @contextmanager
@@ -615,7 +615,7 @@ class _Component:
     @overload
     def __call__(self) -> Callable[[type[T]], type[T]]: ...
 
-    def __call__(self, cls: Optional[type[T]] = None) -> Union[type[T], Callable[[type[T]], type[T]]]:
+    def __call__(self, cls: type[T] | None = None) -> type[T] | Callable[[type[T]], type[T]]:
         # We must wrap the call to the decorator in a function for it to work
         # correctly with or without parens
         def wrap(cls: type[T]) -> type[T]:

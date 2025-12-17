@@ -80,10 +80,10 @@ class CSVToDocument:
     @component.output_types(documents=list[Document])
     def run(
         self,
-        sources: list[Union[str, Path, ByteStream]],
+        sources: list[str | Path | ByteStream],
         *,
-        content_column: Optional[str] = None,
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+        content_column: str | None = None,
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
     ):
         """
         Converts CSV files to a Document (file mode) or to one Document per row (row mode).

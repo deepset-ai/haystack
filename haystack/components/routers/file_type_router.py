@@ -59,10 +59,7 @@ class FileTypeRouter:
     """
 
     def __init__(
-        self,
-        mime_types: list[str],
-        additional_mimetypes: Optional[dict[str, str]] = None,
-        raise_on_failure: bool = False,
+        self, mime_types: list[str], additional_mimetypes: dict[str, str] | None = None, raise_on_failure: bool = False
     ):
         """
         Initialize the FileTypeRouter component.
@@ -99,9 +96,9 @@ class FileTypeRouter:
         # but this would cause PipelineConnectError with Converters
         component.set_output_types(
             self,
-            unclassified=list[Union[str, Path, ByteStream]],
-            failed=list[Union[str, Path, ByteStream]],
-            **dict.fromkeys(mime_types, list[Union[str, Path, ByteStream]]),
+            unclassified=list[str | Path | ByteStream],
+            failed=list[str | Path | ByteStream],
+            **dict.fromkeys(mime_types, list[str | Path | ByteStream]),
         )
         self.mime_types = mime_types
         self._additional_mimetypes = additional_mimetypes
@@ -134,10 +131,8 @@ class FileTypeRouter:
         return default_from_dict(cls, data)
 
     def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ) -> dict[str, list[Union[ByteStream, Path]]]:
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
+    ) -> dict[str, list[ByteStream | Path]]:
         """
         Categorize files or byte streams according to their MIME types.
 
@@ -156,7 +151,7 @@ class FileTypeRouter:
                    and `"failed"` when a source cannot be processed (for example, a file path that doesn't exist).
         """
 
-        mime_types: defaultdict[str, list[Union[Path, ByteStream]]] = defaultdict(list)
+        mime_types: defaultdict[str, list[Path | ByteStream]] = defaultdict(list)
         meta_list = normalize_metadata(meta=meta, sources_count=len(sources))
 
         for source, meta_dict in zip(sources, meta_list):

@@ -34,7 +34,7 @@ class YamlMarshaller:
                 "Error dumping pipeline to YAML - Ensure that all pipeline components only serialize basic Python types"
             ) from e
 
-    def unmarshal(self, data_: Union[str, bytes, bytearray]) -> dict[str, Any]:
+    def unmarshal(self, data_: str | bytes | bytearray) -> dict[str, Any]:
         """Return a dictionary from the given YAML data."""
         try:
             return yaml.load(data_, Loader=YamlLoader)

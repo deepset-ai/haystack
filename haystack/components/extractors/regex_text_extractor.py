@@ -63,7 +63,7 @@ class RegexTextExtractor:
             )
 
     @component.output_types(captured_text=str, captured_texts=list[str])
-    def run(self, text_or_messages: Union[str, list[ChatMessage]]) -> dict:
+    def run(self, text_or_messages: str | list[ChatMessage]) -> dict:
         """
         Extracts text from input using the configured regex pattern.
 
@@ -85,7 +85,7 @@ class RegexTextExtractor:
             return {}
         return self._process_last_message(text_or_messages)
 
-    def _build_result(self, result: Union[str, list[str]]) -> dict:
+    def _build_result(self, result: str | list[str]) -> dict:
         """Helper method to build the return dictionary based on configuration."""
         if (isinstance(result, str) and result == "") or (isinstance(result, list) and not result):
             if self.return_empty_on_no_match:
@@ -110,7 +110,7 @@ class RegexTextExtractor:
         result = self._extract_from_text(last_message.text)
         return self._build_result(result)
 
-    def _extract_from_text(self, text: str) -> Union[str, list[str]]:
+    def _extract_from_text(self, text: str) -> str | list[str]:
         """
         Extract text using the regex pattern.
 

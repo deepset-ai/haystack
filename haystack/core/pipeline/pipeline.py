@@ -43,9 +43,9 @@ class Pipeline(PipelineBase):
         component: dict[str, Any],
         inputs: dict[str, Any],
         component_visits: dict[str, int],
-        parent_span: Optional[tracing.Span] = None,
+        parent_span: tracing.Span | None = None,
         *,
-        break_point: Optional[Breakpoint] = None,
+        break_point: Breakpoint | None = None,
     ) -> Mapping[str, Any]:
         """
         Runs a Component with the given inputs.
@@ -108,10 +108,10 @@ class Pipeline(PipelineBase):
     def run(  # noqa: PLR0915, PLR0912, C901, pylint: disable=too-many-branches
         self,
         data: dict[str, Any],
-        include_outputs_from: Optional[set[str]] = None,
+        include_outputs_from: set[str] | None = None,
         *,
-        break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
-        pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        break_point: Breakpoint | AgentBreakpoint | None = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
     ) -> dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -375,7 +375,7 @@ class Pipeline(PipelineBase):
                         break_point=break_point if isinstance(break_point, Breakpoint) else None,
                     )
                 except (BreakpointException, PipelineRuntimeError) as error:
-                    saved_break_point: Union[Breakpoint, AgentBreakpoint]
+                    saved_break_point: Breakpoint | AgentBreakpoint
                     if isinstance(error, PipelineRuntimeError):
                         saved_break_point = Breakpoint(
                             component_name=component_name,

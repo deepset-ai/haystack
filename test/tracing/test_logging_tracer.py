@@ -12,14 +12,14 @@ from haystack.tracing.logging_tracer import LoggingTracer
 @component
 class Hello:
     @component.output_types(output=str)
-    def run(self, word: Optional[str]):
+    def run(self, word: str | None):
         return {"output": f"Hello, {word}!"}
 
 
 @component
 class FailingComponent:
     @component.output_types(output=str)
-    def run(self, word: Optional[str]):
+    def run(self, word: str | None):
         raise Exception("Failing component")
 
 

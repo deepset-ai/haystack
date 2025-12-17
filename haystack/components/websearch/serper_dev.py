@@ -52,9 +52,9 @@ class SerperDevWebSearch:
     def __init__(
         self,
         api_key: Secret = Secret.from_env_var("SERPERDEV_API_KEY"),
-        top_k: Optional[int] = 10,
-        allowed_domains: Optional[list[str]] = None,
-        search_params: Optional[dict[str, Any]] = None,
+        top_k: int | None = 10,
+        allowed_domains: list[str] | None = None,
+        search_params: dict[str, Any] | None = None,
         *,
         exclude_subdomains: bool = False,
     ):
@@ -138,7 +138,7 @@ class SerperDevWebSearch:
             return True
 
     @component.output_types(documents=list[Document], links=list[str])
-    def run(self, query: str) -> dict[str, Union[list[Document], list[str]]]:
+    def run(self, query: str) -> dict[str, list[Document] | list[str]]:
         """
         Use [Serper](https://serper.dev/) to search the web.
 

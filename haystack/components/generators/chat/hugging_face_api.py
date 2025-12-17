@@ -49,7 +49,7 @@ with LazyImport(message="Run 'pip install \"huggingface_hub[inference]>=0.27.0\"
     )
 
 
-def _convert_hfapi_tool_calls(hfapi_tool_calls: Optional[list["ChatCompletionOutputToolCall"]]) -> list[ToolCall]:
+def _convert_hfapi_tool_calls(hfapi_tool_calls: list["ChatCompletionOutputToolCall"] | None) -> list[ToolCall]:
     """
     Convert HuggingFace API tool calls to a list of Haystack ToolCall.
 
@@ -94,7 +94,7 @@ def _convert_hfapi_tool_calls(hfapi_tool_calls: Optional[list["ChatCompletionOut
     return tool_calls
 
 
-def _convert_tools_to_hfapi_tools(tools: Optional[ToolsType]) -> Optional[list["ChatCompletionInputTool"]]:
+def _convert_tools_to_hfapi_tools(tools: ToolsType | None) -> list["ChatCompletionInputTool"] | None:
     if not tools:
         return None
 
@@ -114,7 +114,7 @@ def _convert_tools_to_hfapi_tools(tools: Optional[ToolsType]) -> Optional[list["
 
 def _map_hf_finish_reason_to_haystack(
     choice: Union["ChatCompletionStreamOutputChoice", "ChatCompletionOutputComplete"],
-) -> Optional[FinishReason]:
+) -> FinishReason | None:
     """
     Map HuggingFace finish reasons to Haystack FinishReason literals.
 
@@ -157,7 +157,7 @@ def _map_hf_finish_reason_to_haystack(
 def _convert_chat_completion_stream_output_to_streaming_chunk(
     chunk: "ChatCompletionStreamOutput",
     previous_chunks: list[StreamingChunk],
-    component_info: Optional[ComponentInfo] = None,
+    component_info: ComponentInfo | None = None,
 ) -> StreamingChunk:
     """
     Converts the Hugging Face API ChatCompletionStreamOutput to a StreamingChunk.
@@ -291,13 +291,13 @@ class HuggingFaceAPIChatGenerator:
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        api_type: Union[HFGenerationAPIType, str],
+        api_type: HFGenerationAPIType | str,
         api_params: dict[str, str],
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        stop_words: Optional[list[str]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[ToolsType] = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        generation_kwargs: dict[str, Any] | None = None,
+        stop_words: list[str] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        tools: ToolsType | None = None,
     ):
         """
         Initialize the HuggingFaceAPIChatGenerator instance.
@@ -433,9 +433,9 @@ class HuggingFaceAPIChatGenerator:
     def run(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Invoke the text generation inference based on the provided messages and generation parameters.
@@ -484,9 +484,9 @@ class HuggingFaceAPIChatGenerator:
     async def run_async(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes the text generation inference based on the provided messages and generation parameters.
@@ -564,7 +564,7 @@ class HuggingFaceAPIChatGenerator:
         self,
         messages: list[dict[str, str]],
         generation_kwargs: dict[str, Any],
-        tools: Optional[list["ChatCompletionInputTool"]] = None,
+        tools: list["ChatCompletionInputTool"] | None = None,
     ) -> dict[str, list[ChatMessage]]:
         api_chat_output: ChatCompletionOutput = self._client.chat_completion(
             messages=messages, tools=tools, **generation_kwargs
@@ -632,7 +632,7 @@ class HuggingFaceAPIChatGenerator:
         self,
         messages: list[dict[str, str]],
         generation_kwargs: dict[str, Any],
-        tools: Optional[list["ChatCompletionInputTool"]] = None,
+        tools: list["ChatCompletionInputTool"] | None = None,
     ) -> dict[str, list[ChatMessage]]:
         api_chat_output: ChatCompletionOutput = await self._async_client.chat_completion(
             messages=messages, tools=tools, **generation_kwargs

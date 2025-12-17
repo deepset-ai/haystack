@@ -21,7 +21,7 @@ from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
 # - list[Toolset]: Less common pattern - list of Toolset objects
 # - list[Union[Tool, Toolset]]: Mixing Tools and Toolsets in one list
 # - Toolset: Single Toolset (not in a list)
-ToolsType = Union[list[Tool], list[Toolset], list[Union[Tool, Toolset]], Toolset]
+ToolsType = list[Tool] | list[Toolset] | list[Tool | Toolset] | Toolset
 
 __all__ = [
     "_check_duplicate_tool_names",

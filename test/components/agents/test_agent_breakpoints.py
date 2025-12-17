@@ -40,7 +40,7 @@ def weather_tool():
 
 @component
 class MockChatGenerator:
-    def __init__(self, responses: Optional[list[ChatMessage]] = None):
+    def __init__(self, responses: list[ChatMessage] | None = None):
         self._counter = 0
         self.responses = responses or [
             ChatMessage.from_assistant(
@@ -58,9 +58,7 @@ class MockChatGenerator:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
-    ) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
         if self._counter >= len(self.responses):
             return {"replies": [self.responses[-1]]}
         else:
@@ -70,7 +68,7 @@ class MockChatGenerator:
 
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
     ) -> dict[str, Any]:
         if self._counter >= len(self.responses):
             return {"replies": [self.responses[-1]]}

@@ -24,13 +24,13 @@ with LazyImport("Run 'pip install openapi3'") as openapi_imports:
         self,
         base_url: str,
         *,
-        data: Optional[Any] = None,
-        parameters: Optional[dict[str, Any]] = None,
+        data: Any | None = None,
+        parameters: dict[str, Any] | None = None,
         raw_response: bool = False,
-        security: Optional[dict[str, str]] = None,
-        session: Optional[Any] = None,
-        verify: Union[bool, str] = True,
-    ) -> Optional[Any]:
+        security: dict[str, str] | None = None,
+        session: Any | None = None,
+        verify: bool | str = True,
+    ) -> Any | None:
         """
         Sends an HTTP request as described by this path.
 
@@ -196,7 +196,7 @@ class OpenAPIServiceConnector:
 
     """
 
-    def __init__(self, ssl_verify: Optional[Union[bool, str]] = None):
+    def __init__(self, ssl_verify: bool | str | None = None):
         """
         Initializes the OpenAPIServiceConnector instance
 
@@ -211,7 +211,7 @@ class OpenAPIServiceConnector:
         self,
         messages: list[ChatMessage],
         service_openapi_spec: dict[str, Any],
-        service_credentials: Optional[Union[dict, str]] = None,
+        service_credentials: dict | str | None = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Processes a list of chat messages to invoke a method on an OpenAPI service.
@@ -282,7 +282,7 @@ class OpenAPIServiceConnector:
         """
         return default_from_dict(cls, data)
 
-    def _authenticate_service(self, openapi_service: "OpenAPI", credentials: Optional[Union[dict, str]] = None):
+    def _authenticate_service(self, openapi_service: "OpenAPI", credentials: dict | str | None = None):
         """
         Authentication with an OpenAPI service.
 

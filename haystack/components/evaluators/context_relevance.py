@@ -99,10 +99,10 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        examples: Optional[list[dict[str, Any]]] = None,
+        examples: list[dict[str, Any]] | None = None,
         progress_bar: bool = True,
         raise_on_failure: bool = True,
-        chat_generator: Optional[ChatGenerator] = None,
+        chat_generator: ChatGenerator | None = None,
     ):
         """
         Creates an instance of ContextRelevanceEvaluator.

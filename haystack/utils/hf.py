@@ -140,7 +140,7 @@ def deserialize_hf_model_kwargs(kwargs: dict[str, Any]) -> None:
             deserialize_hf_model_kwargs(v)
 
 
-def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optional[dict[str, Any]]) -> dict[str, Any]:
+def resolve_hf_device_map(device: ComponentDevice | None, model_kwargs: dict[str, Any] | None) -> dict[str, Any]:
     """
     Update `model_kwargs` to include the keyword argument `device_map`.
 
@@ -177,10 +177,10 @@ def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optio
 def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
     huggingface_pipeline_kwargs: dict[str, Any],
     model: str,
-    task: Optional[str],
+    task: str | None,
     supported_tasks: list[str],
-    device: Optional[ComponentDevice],
-    token: Optional[Secret],
+    device: ComponentDevice | None,
+    token: Secret | None,
 ) -> dict[str, Any]:
     """
     Resolve the HuggingFace pipeline keyword arguments based on explicit user inputs.
@@ -218,7 +218,7 @@ def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
     return huggingface_pipeline_kwargs
 
 
-def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Secret]) -> None:
+def check_valid_model(model_id: str, model_type: HFModelType, token: Secret | None) -> None:
     """
     Check if the provided model ID corresponds to a valid model on HuggingFace Hub.
 
@@ -333,9 +333,9 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
             stop_words: list[str],
-            device: Union[str, torch.device] = "cpu",
+            device: str | torch.device = "cpu",
         ):
             super().__init__()
             # check if tokenizer is a valid tokenizer
@@ -385,10 +385,10 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
             stream_handler: SyncStreamingCallbackT,
-            stop_words: Optional[list[str]] = None,
-            component_info: Optional[ComponentInfo] = None,
+            stop_words: list[str] | None = None,
+            component_info: ComponentInfo | None = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler
@@ -419,10 +419,10 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
             stream_handler: AsyncStreamingCallbackT,
-            stop_words: Optional[list[str]] = None,
-            component_info: Optional[ComponentInfo] = None,
+            stop_words: list[str] | None = None,
+            component_info: ComponentInfo | None = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler

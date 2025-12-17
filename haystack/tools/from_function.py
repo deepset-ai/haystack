@@ -13,10 +13,10 @@ from .tool import Tool
 
 def create_tool_from_function(
     function: Callable,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    inputs_from_state: Optional[dict[str, str]] = None,
-    outputs_to_state: Optional[dict[str, dict[str, Any]]] = None,
+    name: str | None = None,
+    description: str | None = None,
+    inputs_from_state: dict[str, str] | None = None,
+    outputs_to_state: dict[str, dict[str, Any]] | None = None,
 ) -> "Tool":
     """
     Create a Tool instance from a function.
@@ -138,13 +138,13 @@ def create_tool_from_function(
 
 
 def tool(
-    function: Optional[Callable] = None,
+    function: Callable | None = None,
     *,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    inputs_from_state: Optional[dict[str, str]] = None,
-    outputs_to_state: Optional[dict[str, dict[str, Any]]] = None,
-) -> Union[Tool, Callable[[Callable], Tool]]:
+    name: str | None = None,
+    description: str | None = None,
+    inputs_from_state: dict[str, str] | None = None,
+    outputs_to_state: dict[str, dict[str, Any]] | None = None,
+) -> Tool | Callable[[Callable], Tool]:
     """
     Decorator to convert a function into a Tool.
 

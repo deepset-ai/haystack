@@ -19,7 +19,7 @@ CUSTOM_MIMETYPES = {
 }
 
 
-def expand_page_range(page_range: list[Union[str, int]]) -> list[int]:
+def expand_page_range(page_range: list[str | int]) -> list[int]:
     """
     Takes a list of page numbers and ranges and expands them into a list of page numbers.
 
@@ -61,7 +61,7 @@ def expand_page_range(page_range: list[Union[str, int]]) -> list[int]:
 def expit(x: float) -> float: ...
 @overload
 def expit(x: ndarray[Any, Any]) -> ndarray[Any, Any]: ...
-def expit(x: Union[float, ndarray[Any, Any]]) -> Union[float, ndarray[Any, Any]]:
+def expit(x: float | ndarray[Any, Any]) -> float | ndarray[Any, Any]:
     """
     Compute logistic sigmoid function. Maps input values to a range between 0 and 1
 
@@ -70,7 +70,7 @@ def expit(x: Union[float, ndarray[Any, Any]]) -> Union[float, ndarray[Any, Any]]
     return 1 / (1 + exp(-x))
 
 
-def _guess_mime_type(path: Path) -> Optional[str]:
+def _guess_mime_type(path: Path) -> str | None:
     """
     Guess the MIME type of the provided file path.
 

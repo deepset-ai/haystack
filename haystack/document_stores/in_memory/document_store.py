@@ -64,10 +64,10 @@ class InMemoryDocumentStore:
         self,
         bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25L",
-        bm25_parameters: Optional[dict] = None,
+        bm25_parameters: dict | None = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
-        index: Optional[str] = None,
-        async_executor: Optional[ThreadPoolExecutor] = None,
+        index: str | None = None,
+        async_executor: ThreadPoolExecutor | None = None,
         return_embedding: bool = True,
     ):
         """
@@ -415,7 +415,7 @@ class InMemoryDocumentStore:
         """
         return len(self.storage.keys())
 
-    def filter_documents(self, filters: Optional[dict[str, Any]] = None) -> list[Document]:
+    def filter_documents(self, filters: dict[str, Any] | None = None) -> list[Document]:
         """
         Returns the documents that match the filters provided.
 
@@ -506,7 +506,7 @@ class InMemoryDocumentStore:
                 self._avg_doc_len = 0
 
     def bm25_retrieval(
-        self, query: str, filters: Optional[dict[str, Any]] = None, top_k: int = 10, scale_score: bool = False
+        self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
     ) -> list[Document]:
         """
         Retrieves documents that are most relevant to the query using BM25 algorithm.
@@ -566,10 +566,10 @@ class InMemoryDocumentStore:
     def embedding_retrieval(  # pylint: disable=too-many-positional-arguments
         self,
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         top_k: int = 10,
         scale_score: bool = False,
-        return_embedding: Optional[bool] = False,
+        return_embedding: bool | None = False,
     ) -> list[Document]:
         """
         Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -683,7 +683,7 @@ class InMemoryDocumentStore:
         """
         return len(self.storage.keys())
 
-    async def filter_documents_async(self, filters: Optional[dict[str, Any]] = None) -> list[Document]:
+    async def filter_documents_async(self, filters: dict[str, Any] | None = None) -> list[Document]:
         """
         Returns the documents that match the filters provided.
 
@@ -720,7 +720,7 @@ class InMemoryDocumentStore:
         )
 
     async def bm25_retrieval_async(
-        self, query: str, filters: Optional[dict[str, Any]] = None, top_k: int = 10, scale_score: bool = False
+        self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
     ) -> list[Document]:
         """
         Retrieves documents that are most relevant to the query using BM25 algorithm.
@@ -739,7 +739,7 @@ class InMemoryDocumentStore:
     async def embedding_retrieval_async(  # pylint: disable=too-many-positional-arguments
         self,
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         top_k: int = 10,
         scale_score: bool = False,
         return_embedding: bool = False,

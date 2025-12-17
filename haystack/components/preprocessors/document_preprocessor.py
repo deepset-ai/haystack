@@ -38,7 +38,7 @@ class DocumentPreprocessor:
         split_length: int = 250,
         split_overlap: int = 0,
         split_threshold: int = 0,
-        splitting_function: Optional[Callable[[str], list[str]]] = None,
+        splitting_function: Callable[[str], list[str]] | None = None,
         respect_sentence_boundary: bool = False,
         language: Language = "en",
         use_split_rules: bool = True,
@@ -48,9 +48,9 @@ class DocumentPreprocessor:
         remove_extra_whitespaces: bool = True,
         remove_repeated_substrings: bool = False,
         keep_id: bool = False,
-        remove_substrings: Optional[list[str]] = None,
-        remove_regex: Optional[str] = None,
-        unicode_normalization: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
+        remove_substrings: list[str] | None = None,
+        remove_regex: str | None = None,
+        unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
         ascii_only: bool = False,
     ) -> None:
         """

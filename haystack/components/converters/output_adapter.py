@@ -44,7 +44,7 @@ class OutputAdapter:
         self,
         template: str,
         output_type: TypeAlias,
-        custom_filters: Optional[dict[str, Callable]] = None,
+        custom_filters: dict[str, Callable] | None = None,
         unsafe: bool = False,
     ) -> None:
         """

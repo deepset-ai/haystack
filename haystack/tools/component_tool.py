@@ -89,13 +89,13 @@ class ComponentTool(Tool):
     def __init__(
         self,
         component: Component,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        parameters: Optional[dict[str, Any]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        parameters: dict[str, Any] | None = None,
         *,
-        outputs_to_string: Optional[dict[str, Union[str, Callable[[Any], str]]]] = None,
-        inputs_from_state: Optional[dict[str, str]] = None,
-        outputs_to_state: Optional[dict[str, dict[str, Union[str, Callable]]]] = None,
+        outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
+        inputs_from_state: dict[str, str] | None = None,
+        outputs_to_state: dict[str, dict[str, str | Callable]] | None = None,
     ) -> None:
         """
         Create a Tool instance from a Haystack component.

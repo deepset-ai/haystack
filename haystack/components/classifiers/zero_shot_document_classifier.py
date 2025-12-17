@@ -77,10 +77,10 @@ class TransformersZeroShotDocumentClassifier:
         model: str,
         labels: list[str],
         multi_label: bool = False,
-        classification_field: Optional[str] = None,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
+        classification_field: str | None = None,
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        huggingface_pipeline_kwargs: dict[str, Any] | None = None,
     ):
         """
         Initializes the TransformersZeroShotDocumentClassifier.
@@ -131,7 +131,7 @@ class TransformersZeroShotDocumentClassifier:
         )
 
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
-        self.pipeline: Optional[HfPipeline] = None
+        self.pipeline: HfPipeline | None = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """

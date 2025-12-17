@@ -98,9 +98,9 @@ class TransformersZeroShotTextRouter:
         labels: list[str],
         multi_label: bool = False,
         model: str = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        huggingface_pipeline_kwargs: dict[str, Any] | None = None,
     ):
         """
         Initializes the TransformersZeroShotTextRouter component.
@@ -137,7 +137,7 @@ class TransformersZeroShotTextRouter:
             token=token,
         )
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
-        self.pipeline: Optional[HfPipeline] = None
+        self.pipeline: HfPipeline | None = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """

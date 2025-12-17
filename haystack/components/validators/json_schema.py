@@ -99,7 +99,7 @@ class JsonSchemaValidator:
         "JSON string, this is the most important part of the task. Don't use any markdown and don't add any comment."
     )
 
-    def __init__(self, json_schema: Optional[dict[str, Any]] = None, error_template: Optional[str] = None):
+    def __init__(self, json_schema: dict[str, Any] | None = None, error_template: str | None = None):
         """
         Initialize the JsonSchemaValidator component.
 
@@ -112,10 +112,7 @@ class JsonSchemaValidator:
 
     @component.output_types(validated=list[ChatMessage], validation_error=list[ChatMessage])
     def run(
-        self,
-        messages: list[ChatMessage],
-        json_schema: Optional[dict[str, Any]] = None,
-        error_template: Optional[str] = None,
+        self, messages: list[ChatMessage], json_schema: dict[str, Any] | None = None, error_template: str | None = None
     ) -> dict[str, list[ChatMessage]]:
         """
         Validates the last of the provided messages against the specified json schema.

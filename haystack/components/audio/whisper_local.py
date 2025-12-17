@@ -53,8 +53,8 @@ class LocalWhisperTranscriber:
     def __init__(
         self,
         model: WhisperLocalModel = "large",
-        device: Optional[ComponentDevice] = None,
-        whisper_params: Optional[dict[str, Any]] = None,
+        device: ComponentDevice | None = None,
+        whisper_params: dict[str, Any] | None = None,
     ):
         """
         Creates an instance of the LocalWhisperTranscriber component.
@@ -109,7 +109,7 @@ class LocalWhisperTranscriber:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[Union[str, Path, ByteStream]], whisper_params: Optional[dict[str, Any]] = None):
+    def run(self, sources: list[str | Path | ByteStream], whisper_params: dict[str, Any] | None = None):
         """
         Transcribes a list of audio files into a list of documents.
 
@@ -135,7 +135,7 @@ class LocalWhisperTranscriber:
         documents = self.transcribe(sources, **whisper_params)
         return {"documents": documents}
 
-    def transcribe(self, sources: list[Union[str, Path, ByteStream]], **kwargs) -> list[Document]:
+    def transcribe(self, sources: list[str | Path | ByteStream], **kwargs) -> list[Document]:
         """
         Transcribes the audio files into a list of Documents, one for each input file.
 
@@ -156,7 +156,7 @@ class LocalWhisperTranscriber:
             documents.append(doc)
         return documents
 
-    def _get_path(self, source: Union[str, Path, ByteStream]) -> Path:
+    def _get_path(self, source: str | Path | ByteStream) -> Path:
         if isinstance(source, (Path, str)):
             return Path(source)
 
@@ -169,7 +169,7 @@ class LocalWhisperTranscriber:
                 source.to_file(path)
             return path
 
-    def _raw_transcribe(self, sources: list[Union[str, Path, ByteStream]], **kwargs) -> dict[Path, Any]:
+    def _raw_transcribe(self, sources: list[str | Path | ByteStream], **kwargs) -> dict[Path, Any]:
         """
         Transcribes the given audio files. Returns the output of the model, a dictionary, for each input file.
 

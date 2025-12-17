@@ -16,12 +16,16 @@ from haystack.core.errors import DeserializationError
 _import_lock = Lock()
 
 
-def is_union_type(origin: Any) -> bool:
+def is_union_type(target: Any) -> bool:
     """
-    Check if origin is a Union type.
+    Check if target is a Union type.
 
-    This handles both `typing.Union[X, Y]` and `X | Y` syntax from PEP 604.
+    This handles both `typing.Union[X, Y]` and `X | Y` syntax from PEP 604,
+    including parameterized types like `Optional[str]`.
     """
+    if target is Union or target is UnionType:
+        return True
+    origin = typing.get_origin(target)
     return origin is Union or origin is UnionType
 
 
@@ -125,6 +129,22 @@ def _parse_union_args(union_str: str) -> list[str]:
     return args
 
 
+def _has_top_level_union(type_str: str) -> bool:
+    """Check if the type string has a union operator at the top level (not inside brackets)."""
+    bracket_count = 0
+    i = 0
+    while i < len(type_str) - 2:
+        char = type_str[i]
+        if char == "[":
+            bracket_count += 1
+        elif char == "]":
+            bracket_count -= 1
+        elif char == "|" and bracket_count == 0 and type_str[i - 1 : i + 2] == " | ":
+            return True
+        i += 1
+    return False
+
+
 def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-statements
     """
     Deserializes a type given its full import path as a string, including nested generic types.
@@ -142,11 +162,12 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
     """
     # Handle PEP 604 union syntax (e.g., "str | int", "str | None")
     # We need to check this before generics because "list[str] | None" contains both
-    if " | " in type_str:
+    # But we must ensure the | is at the top level, not inside brackets like "list[str | int]"
+    if _has_top_level_union(type_str):
         union_args = _parse_union_args(type_str)
         deserialized_args = [deserialize_type(arg) for arg in union_args]
         # Use Union to construct the type, which works for both typing.Union and X | Y
-        return Union[tuple(deserialized_args)]
+        return Union[tuple(deserialized_args)]  # noqa: UP007
 
     # Handle generics
     if "[" in type_str and type_str.endswith("]"):

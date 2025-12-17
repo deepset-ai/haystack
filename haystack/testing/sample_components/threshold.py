@@ -22,7 +22,7 @@ class Threshold:  # pylint: disable=too-few-public-methods
         self.threshold = threshold
 
     @component.output_types(above=int, below=int)
-    def run(self, value: int, threshold: Optional[int] = None):
+    def run(self, value: int, threshold: int | None = None):
         """
         Redirects the value, along a different connection whether the value is above or below the given threshold.
 

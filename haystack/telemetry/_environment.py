@@ -56,7 +56,7 @@ def _has_docker_cgroup_v2() -> bool:
     return os.path.isfile(path) and _str_in_any_line_of_file("/docker/containers/", path)
 
 
-def _is_containerized() -> Optional[bool]:
+def _is_containerized() -> bool | None:
     """
     This code is based on the popular 'is-docker' package for node.js
     """

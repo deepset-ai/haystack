@@ -64,7 +64,7 @@ class ListJoiner:
     ```
     """
 
-    def __init__(self, list_type_: Optional[type] = None):
+    def __init__(self, list_type_: type | None = None):
         """
         Creates a ListJoiner component.
 

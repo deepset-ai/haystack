@@ -111,7 +111,7 @@ class State:
     ```
     """
 
-    def __init__(self, schema: dict[str, Any], data: Optional[dict[str, Any]] = None):
+    def __init__(self, schema: dict[str, Any], data: dict[str, Any] | None = None):
         """
         Initialize a State object with a schema and optional data.
 
@@ -149,7 +149,7 @@ class State:
         """
         return deepcopy(self._data.get(key, default))
 
-    def set(self, key: str, value: Any, handler_override: Optional[Callable[[Any, Any], Any]] = None) -> None:
+    def set(self, key: str, value: Any, handler_override: Callable[[Any, Any], Any] | None = None) -> None:
         """
         Set or merge a value in the state according to schema rules.
 

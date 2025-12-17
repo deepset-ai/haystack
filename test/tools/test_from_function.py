@@ -56,7 +56,7 @@ def test_from_function_annotated():
     def function_with_annotations(
         city: Annotated[str, "the city for which to get the weather"] = "Munich",
         unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius",
-        nullable_param: Annotated[Optional[str], "a nullable parameter"] = None,
+        nullable_param: Annotated[str | None, "a nullable parameter"] = None,
     ) -> str:
         """A simple function to get the current weather for a location."""
         return f"Weather report for {city}: 20 {unit}, sunny"

@@ -57,7 +57,7 @@ class SASEvaluator:
         self,
         model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
         batch_size: int = 32,
-        device: Optional[ComponentDevice] = None,
+        device: ComponentDevice | None = None,
         token: Secret = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ):
         """
@@ -80,7 +80,7 @@ class SASEvaluator:
         self._batch_size = batch_size
         self._device = device
         self._token = token
-        self._similarity_model: Union[SentenceTransformer, CrossEncoder, None] = None
+        self._similarity_model: SentenceTransformer | CrossEncoder | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """

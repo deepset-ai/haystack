@@ -49,6 +49,14 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.Optional[dict]", Optional[dict]),
     pytest.param("typing.Optional[float]", Optional[float]),
     pytest.param("typing.Optional[bool]", Optional[bool]),
+    # PEP 604 X | None
+    pytest.param("str | None", str | None),
+    pytest.param("int | None", int | None),
+    pytest.param("dict | None", dict | None),
+    pytest.param("float | None", float | None),
+    pytest.param("bool | None", bool | None),
+    pytest.param("list[str] | None", list[str] | None),
+    pytest.param("dict[str, int] | None", dict[str, int] | None),
     # set
     pytest.param("set", set),
     pytest.param("set[int]", set[int]),
@@ -84,6 +92,14 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.Union[dict, str]", Union[dict, str]),
     pytest.param("typing.Union[float, bool]", Union[float, bool]),
     pytest.param("typing.Optional[str]", typing.Union[None, str]),  # Union with None becomes Optional
+    # PEP 604 X | Y
+    pytest.param("str | int", str | int),
+    pytest.param("int | float", int | float),
+    pytest.param("dict | str", dict | str),
+    pytest.param("float | bool", float | bool),
+    pytest.param("str | int | float", str | int | float),
+    pytest.param("list[str] | list[int]", list[str] | list[int]),
+    pytest.param("dict[str, int] | list[str]", dict[str, int] | list[str]),
     # other
     pytest.param("frozenset", frozenset),
     pytest.param("frozenset[int]", frozenset[int]),
@@ -115,6 +131,8 @@ def test_output_type_deserialization_typing_no_module():
     assert deserialize_type("Tuple[int]") == Tuple[int]
     assert deserialize_type("FrozenSet[int]") == FrozenSet[int]
     assert deserialize_type("Deque[str]") == Deque[str]
+    assert deserialize_type("Optional[int]") == Optional[int]
+    assert deserialize_type("Union[str, int]") == Union[str, int]
 
 
 def test_output_type_serialization():
@@ -161,6 +179,11 @@ def test_output_type_serialization_nested():
     assert serialize_type(list[dict[str, int]]) == "list[dict[str, int]]"
     assert serialize_type(list[list[int]]) == "list[list[int]]"
     assert serialize_type(list[list[list[int]]]) == "list[list[list[int]]]"
+    # PEP 604
+    assert serialize_type(list[str | int]) == "list[str | int]"
+    assert serialize_type(list[str | None]) == "list[str | None]"
+    assert serialize_type(dict[str, int | None]) == "dict[str, int | None]"
+    assert serialize_type(list[dict[str, int] | None]) == "list[dict[str, int] | None]"
 
 
 def test_output_type_deserialization_nested():
@@ -176,6 +199,11 @@ def test_output_type_deserialization_nested():
     assert deserialize_type("list[dict[str, int]]") == list[dict[str, int]]
     assert deserialize_type("list[list[int]]") == list[list[int]]
     assert deserialize_type("list[list[list[int]]]") == list[list[list[int]]]
+    # PEP 604
+    assert deserialize_type("list[str | int]") == list[Union[str, int]]
+    assert deserialize_type("list[str | None]") == list[Union[str, None]]
+    assert deserialize_type("dict[str, int | None]") == dict[str, Union[int, None]]
+    assert deserialize_type("list[dict[str, int] | None]") == list[Union[dict[str, int], None]]
 
 
 def test_output_type_serialization_haystack_dataclasses():
@@ -264,6 +292,12 @@ def test_output_type_serialization_pep_604():
     )
     assert serialize_type(str | None) == "str | None"
     assert serialize_type(list[str] | None) == "list[str] | None"
+    assert serialize_type(int | float | str) == "int | float | str"
+    assert serialize_type(dict[str, int] | None) == "dict[str, int] | None"
+    assert serialize_type(set[int] | None) == "set[int] | None"
+    assert serialize_type(tuple[int, str] | None) == "tuple[int, str] | None"
+    assert serialize_type(list[int] | list[str]) == "list[int] | list[str]"
+    assert serialize_type(dict[str, int] | dict[int, str]) == "dict[str, int] | dict[int, str]"
 
 
 def test_output_type_deserialization_pep_604():
@@ -279,14 +313,25 @@ def test_output_type_deserialization_pep_604():
     assert deserialize_type("dict[str, list[int]] | set[str]") == Union[dict[str, list[int]], set[str]]
     assert deserialize_type("typing.List[str] | None") == Union[List[str], None]
     assert deserialize_type("typing.Dict[str, int] | typing.List[str]") == Union[Dict[str, int], List[str]]
+    assert deserialize_type("set[int] | None") == Union[set[int], None]
+    assert deserialize_type("tuple[int, str] | None") == Union[tuple[int, str], None]
+    assert deserialize_type("frozenset[int] | None") == Union[frozenset[int], None]
+    assert deserialize_type("dict[str, int] | dict[int, str]") == Union[dict[str, int], dict[int, str]]
+    assert deserialize_type("list[int] | list[str] | list[float]") == Union[list[int], list[str], list[float]]
 
 
 def test_is_union_type():
     assert is_union_type(Union) is True
     assert is_union_type(UnionType) is True
+    assert is_union_type(Union[str, int]) is True
+    assert is_union_type(str | int) is True
+    assert is_union_type(str | None) is True
+    assert is_union_type(Optional[str]) is True
 
     assert is_union_type(str) is False
     assert is_union_type(None) is False
+    assert is_union_type(list[str]) is False
+    assert is_union_type(dict[str, int]) is False
 
 
 def test_parse_union_args():
@@ -299,3 +344,7 @@ def test_parse_union_args():
     assert _parse_union_args("list[str] | None") == ["list[str]", "None"]
     assert _parse_union_args("list[str] | dict[str, int]") == ["list[str]", "dict[str, int]"]
     assert _parse_union_args("list[str] | dict[str, int] | None") == ["list[str]", "dict[str, int]", "None"]
+    assert _parse_union_args("set[int] | None") == ["set[int]", "None"]
+    assert _parse_union_args("tuple[int, str] | None") == ["tuple[int, str]", "None"]
+    assert _parse_union_args("dict[str, list[int]] | set[str]") == ["dict[str, list[int]]", "set[str]"]
+    assert _parse_union_args("list[int] | list[str] | list[float]") == ["list[int]", "list[str]", "list[float]"]

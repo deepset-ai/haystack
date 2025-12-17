@@ -57,7 +57,7 @@ class LLMMessagesRouter:
         chat_generator: ChatGenerator,
         output_names: list[str],
         output_patterns: list[str],
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
     ):
         """
         Initialize the LLMMessagesRouter component.
@@ -97,7 +97,7 @@ class LLMMessagesRouter:
                 self._chat_generator.warm_up()
             self._is_warmed_up = True
 
-    def run(self, messages: list[ChatMessage]) -> dict[str, Union[str, list[ChatMessage]]]:
+    def run(self, messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]:
         """
         Classify the messages based on LLM output and route them to the appropriate output connection.
 

@@ -226,7 +226,7 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
             _deserialize_value_with_schema({"serialization_schema": schema["items"], "serialized_data": item})
             for item in data
         ]
-        final_array: Union[list, set, tuple]
+        final_array: list | set | tuple
         # Is a set if uniqueItems is True
         if schema.get("uniqueItems") is True:
             final_array = set(deserialized_items)

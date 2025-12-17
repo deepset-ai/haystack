@@ -66,9 +66,9 @@ class DocumentToImageContent:
         self,
         *,
         file_path_meta_field: str = "file_path",
-        root_path: Optional[str] = None,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[tuple[int, int]] = None,
+        root_path: str | None = None,
+        detail: Literal["auto", "high", "low"] | None = None,
+        size: tuple[int, int] | None = None,
     ):
         """
         Initialize the DocumentToImageContent component.
@@ -90,8 +90,8 @@ class DocumentToImageContent:
         self.detail = detail
         self.size = size
 
-    @component.output_types(image_contents=list[Optional[ImageContent]])
-    def run(self, documents: list[Document]) -> dict[str, list[Optional[ImageContent]]]:
+    @component.output_types(image_contents=list[ImageContent | None])
+    def run(self, documents: list[Document]) -> dict[str, list[ImageContent | None]]:
         """
         Convert documents with image or PDF sources into ImageContent objects.
 
@@ -117,7 +117,7 @@ class DocumentToImageContent:
             documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
         )
 
-        image_contents: list[Optional[ImageContent]] = [None] * len(documents)
+        image_contents: list[ImageContent | None] = [None] * len(documents)
 
         pdf_page_infos: list[_PDFPageInfo] = []
 

@@ -35,7 +35,7 @@ class LoggingTracer(Tracer):
     A simple tracer that logs the operation name and tags of a span.
     """
 
-    def __init__(self, tags_color_strings: Optional[dict[str, str]] = None) -> None:
+    def __init__(self, tags_color_strings: dict[str, str] | None = None) -> None:
         """
         Initialize the LoggingTracer.
 
@@ -51,7 +51,7 @@ class LoggingTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[dict[str, Any]] = None, parent_span: Optional[Span] = None
+        self, operation_name: str, tags: dict[str, Any] | None = None, parent_span: Span | None = None
     ) -> Iterator[Span]:
         """
         Trace the execution of a block of code.
@@ -81,7 +81,7 @@ class LoggingTracer(Tracer):
                     color_string + "{tag_name}={tag_value}" + RESET_COLOR, tag_name=tag_name, tag_value=coerced_value
                 )
 
-    def current_span(self) -> Optional[Span]:
+    def current_span(self) -> Span | None:
         """Return the current active span, if any."""
         # we don't store spans in this simple tracer
         return None

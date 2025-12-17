@@ -113,20 +113,20 @@ class SentenceTransformersDiversityRanker:
         self,
         model: str = "sentence-transformers/all-MiniLM-L6-v2",
         top_k: int = 10,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        similarity: Union[str, DiversityRankingSimilarity] = "cosine",
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        similarity: str | DiversityRankingSimilarity = "cosine",
         query_prefix: str = "",
         query_suffix: str = "",
         document_prefix: str = "",
         document_suffix: str = "",
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
-        strategy: Union[str, DiversityRankingStrategy] = "greedy_diversity_order",
+        strategy: str | DiversityRankingStrategy = "greedy_diversity_order",
         lambda_threshold: float = 0.5,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         """
@@ -175,7 +175,7 @@ class SentenceTransformersDiversityRanker:
         self.top_k = top_k
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
-        self.model: Optional[SentenceTransformer] = None
+        self.model: SentenceTransformer | None = None
         self.similarity = DiversityRankingSimilarity.from_str(similarity) if isinstance(similarity, str) else similarity
         self.query_prefix = query_prefix
         self.document_prefix = document_prefix
@@ -387,11 +387,7 @@ class SentenceTransformersDiversityRanker:
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        query: str,
-        documents: list[Document],
-        top_k: Optional[int] = None,
-        lambda_threshold: Optional[float] = None,
+        self, query: str, documents: list[Document], top_k: int | None = None, lambda_threshold: float | None = None
     ) -> dict[str, list[Document]]:
         """
         Rank the documents based on their diversity.

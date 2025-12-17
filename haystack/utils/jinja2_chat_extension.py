@@ -66,7 +66,7 @@ class ChatMessageExtension(Extension):
 
     tags = {"message"}
 
-    def parse(self, parser: Any) -> Union[nodes.Node, list[nodes.Node]]:
+    def parse(self, parser: Any) -> nodes.Node | list[nodes.Node]:
         """
         Parse the message tag and its attributes in the Jinja2 template.
 
@@ -120,7 +120,7 @@ class ChatMessageExtension(Extension):
             body,
         ).set_lineno(lineno)
 
-    def _build_chat_message_json(self, role: str, name: Optional[str], meta: dict, caller: Callable[[], str]) -> str:
+    def _build_chat_message_json(self, role: str, name: str | None, meta: dict, caller: Callable[[], str]) -> str:
         """
         Build a ChatMessage object from template content and serialize it to a JSON string.
 
@@ -205,7 +205,7 @@ class ChatMessageExtension(Extension):
 
     @staticmethod
     def _validate_build_chat_message(
-        parts: list[ChatMessageContentT], role: str, meta: dict, name: Optional[str] = None
+        parts: list[ChatMessageContentT], role: str, meta: dict, name: str | None = None
     ) -> ChatMessage:
         """
         Validate the parts of a chat message and build a ChatMessage object.

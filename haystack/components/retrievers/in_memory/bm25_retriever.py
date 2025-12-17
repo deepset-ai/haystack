@@ -41,7 +41,7 @@ class InMemoryBM25Retriever:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         document_store: InMemoryDocumentStore,
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         top_k: int = 10,
         scale_score: bool = False,
         filter_policy: FilterPolicy = FilterPolicy.REPLACE,
@@ -128,9 +128,9 @@ class InMemoryBM25Retriever:
     def run(
         self,
         query: str,
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
     ):
         """
         Run the InMemoryBM25Retriever on the given input data.
@@ -166,9 +166,9 @@ class InMemoryBM25Retriever:
     async def run_async(
         self,
         query: str,
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
     ):
         """
         Run the InMemoryBM25Retriever on the given input data.

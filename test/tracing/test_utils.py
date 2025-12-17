@@ -115,7 +115,7 @@ class TestTypeCoercion:
             ),
         ],
     )
-    def test_type_coercion(self, raw_value: Any, expected_tag_value: Union[bool, str, int, float]) -> None:
+    def test_type_coercion(self, raw_value: Any, expected_tag_value: bool | str | int | float) -> None:
         coerced_value = utils.coerce_tag_value(raw_value)
 
         assert coerced_value == expected_tag_value

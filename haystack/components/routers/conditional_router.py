@@ -28,9 +28,9 @@ class RouteConditionException(Exception):
 
 class Route(TypedDict):
     condition: str
-    output: Union[str, list[str]]
-    output_name: Union[str, list[str]]
-    output_type: Union[type, list[type]]
+    output: str | list[str]
+    output_name: str | list[str]
+    output_type: type | list[type]
 
 
 @component
@@ -116,10 +116,10 @@ class ConditionalRouter:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         routes: list[Route],
-        custom_filters: Optional[dict[str, Callable]] = None,
+        custom_filters: dict[str, Callable] | None = None,
         unsafe: bool = False,
         validate_output_type: bool = False,
-        optional_variables: Optional[list[str]] = None,
+        optional_variables: list[str] | None = None,
     ):
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
@@ -206,7 +206,7 @@ class ConditionalRouter:
         self._validate_routes(routes)
         # Inspect the routes to determine input and output types.
         input_types: set[str] = set()  # let's just store the name, type will always be Any
-        output_types: dict[str, Union[type, list[type]]] = {}
+        output_types: dict[str, type | list[type]] = {}
 
         for route in routes:
             # extract inputs

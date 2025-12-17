@@ -69,8 +69,8 @@ class AnswerBuilder:
 
     def __init__(
         self,
-        pattern: Optional[str] = None,
-        reference_pattern: Optional[str] = None,
+        pattern: str | None = None,
+        reference_pattern: str | None = None,
         last_message_only: bool = False,
         *,
         return_only_referenced_documents: bool = True,
@@ -117,11 +117,11 @@ class AnswerBuilder:
     def run(  # pylint: disable=too-many-positional-arguments
         self,
         query: str,
-        replies: Union[list[str], list[ChatMessage]],
-        meta: Optional[list[dict[str, Any]]] = None,
-        documents: Optional[list[Document]] = None,
-        pattern: Optional[str] = None,
-        reference_pattern: Optional[str] = None,
+        replies: list[str] | list[ChatMessage],
+        meta: list[dict[str, Any]] | None = None,
+        documents: list[Document] | None = None,
+        pattern: str | None = None,
+        reference_pattern: str | None = None,
     ):
         """
         Turns the output of a Generator into `GeneratedAnswer` objects using regular expressions.
@@ -219,7 +219,7 @@ class AnswerBuilder:
         return {"answers": all_answers}
 
     @staticmethod
-    def _extract_answer_string(reply: str, pattern: Optional[str] = None) -> str:
+    def _extract_answer_string(reply: str, pattern: str | None = None) -> str:
         """
         Extract the answer string from the generator output using the specified pattern.
 

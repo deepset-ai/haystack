@@ -47,7 +47,7 @@ class PDFMinerToDocument:
         char_margin: float = 2.0,
         line_margin: float = 0.5,
         word_margin: float = 0.1,
-        boxes_flow: Optional[float] = 0.5,
+        boxes_flow: float | None = 0.5,
         detect_vertical: bool = True,
         all_texts: bool = False,
         store_full_path: bool = False,
@@ -157,11 +157,7 @@ class PDFMinerToDocument:
         return {"total_chars": total_chars, "cid_chars": cid_chars, "percentage": round(percentage, 2)}
 
     @component.output_types(documents=list[Document])
-    def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
         """
         Converts PDF files to Documents.
 

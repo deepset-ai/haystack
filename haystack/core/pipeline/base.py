@@ -76,7 +76,7 @@ class PipelineBase:  # noqa: PLW1641
 
     def __init__(
         self,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         max_runs_per_component: int = 100,
         connection_type_validation: bool = True,
     ):
@@ -94,7 +94,7 @@ class PipelineBase:  # noqa: PLW1641
             Defaults to True.
         """
         self._telemetry_runs = 0
-        self._last_telemetry_sent: Optional[datetime] = None
+        self._last_telemetry_sent: datetime | None = None
         self.metadata = metadata or {}
         self.graph = networkx.MultiDiGraph()
         self._max_runs_per_component = max_runs_per_component
@@ -162,7 +162,7 @@ class PipelineBase:  # noqa: PLW1641
 
     @classmethod
     def from_dict(
-        cls: type[T], data: dict[str, Any], callbacks: Optional[DeserializationCallbacks] = None, **kwargs: Any
+        cls: type[T], data: dict[str, Any], callbacks: DeserializationCallbacks | None = None, **kwargs: Any
     ) -> T:
         """
         Deserializes the pipeline from a dictionary.
@@ -265,9 +265,9 @@ class PipelineBase:  # noqa: PLW1641
     @classmethod
     def loads(
         cls: type[T],
-        data: Union[str, bytes, bytearray],
+        data: str | bytes | bytearray,
         marshaller: Marshaller = DEFAULT_MARSHALLER,
-        callbacks: Optional[DeserializationCallbacks] = None,
+        callbacks: DeserializationCallbacks | None = None,
     ) -> T:
         """
         Creates a `Pipeline` object from the string representation passed in the `data` argument.
@@ -298,7 +298,7 @@ class PipelineBase:  # noqa: PLW1641
         cls: type[T],
         fp: TextIO,
         marshaller: Marshaller = DEFAULT_MARSHALLER,
-        callbacks: Optional[DeserializationCallbacks] = None,
+        callbacks: DeserializationCallbacks | None = None,
     ) -> T:
         """
         Creates a `Pipeline` object a string representation.
@@ -464,7 +464,7 @@ class PipelineBase:  # noqa: PLW1641
             )
 
         # If the name of either socket is given, get the socket
-        sender_socket: Optional[OutputSocket] = None
+        sender_socket: OutputSocket | None = None
         if sender_socket_name:
             sender_socket = sender_sockets.get(sender_socket_name)
             if not sender_socket:
@@ -474,7 +474,7 @@ class PipelineBase:  # noqa: PLW1641
                     + ", ".join([f"{name} (type {_type_name(socket.type)})" for name, socket in sender_sockets.items()])
                 )
 
-        receiver_socket: Optional[InputSocket] = None
+        receiver_socket: InputSocket | None = None
         if receiver_socket_name:
             receiver_socket = receiver_sockets.get(receiver_socket_name)
             if not receiver_socket:
@@ -682,7 +682,7 @@ class PipelineBase:  # noqa: PLW1641
         self,
         *,
         server_url: str = "https://mermaid.ink",
-        params: Optional[dict] = None,
+        params: dict | None = None,
         timeout: int = 30,
         super_component_expansion: bool = False,
     ) -> None:
@@ -749,7 +749,7 @@ class PipelineBase:  # noqa: PLW1641
         *,
         path: Path,
         server_url: str = "https://mermaid.ink",
-        params: Optional[dict] = None,
+        params: dict | None = None,
         timeout: int = 30,
         super_component_expansion: bool = False,
     ) -> None:
@@ -835,7 +835,7 @@ class PipelineBase:  # noqa: PLW1641
 
     @staticmethod
     def _create_component_span(
-        component_name: str, instance: Component, inputs: dict[str, Any], parent_span: Optional[tracing.Span] = None
+        component_name: str, instance: Component, inputs: dict[str, Any], parent_span: tracing.Span | None = None
     ) -> ContextManager[tracing.Span]:
         return tracing.tracer.trace(
             "haystack.component.run",
@@ -960,7 +960,7 @@ class PipelineBase:  # noqa: PLW1641
 
     @classmethod
     def from_template(
-        cls, predefined_pipeline: PredefinedPipeline, template_params: Optional[dict[str, Any]] = None
+        cls, predefined_pipeline: PredefinedPipeline, template_params: dict[str, Any] | None = None
     ) -> "PipelineBase":
         """
         Create a Pipeline from a predefined template. See `PredefinedPipeline` for available options.
@@ -1132,7 +1132,7 @@ class PipelineBase:  # noqa: PLW1641
 
     def _get_next_runnable_component(
         self, priority_queue: FIFOPriorityQueue, component_visits: dict[str, int]
-    ) -> Union[tuple[ComponentPriority, str, dict[str, Any]], None]:
+    ) -> tuple[ComponentPriority, str, dict[str, Any]] | None:
         """
         Returns the next runnable component alongside its metadata from the priority queue.
 
@@ -1142,7 +1142,7 @@ class PipelineBase:  # noqa: PLW1641
             or None if no component in the queue can run.
         :raises: PipelineMaxComponentRuns if the next runnable component has exceeded the maximum number of runs.
         """
-        priority_and_component_name: Union[tuple[ComponentPriority, str], None] = (
+        priority_and_component_name: tuple[ComponentPriority, str] | None = (
             None if (item := priority_queue.get()) is None else (ComponentPriority(item[0]), str(item[1]))
         )
 
@@ -1180,8 +1180,8 @@ class PipelineBase:  # noqa: PLW1641
         component_name: str,
         priority: ComponentPriority,
         priority_queue: FIFOPriorityQueue,
-        topological_sort: Union[dict[str, int], None],
-    ) -> tuple[str, Union[dict[str, int], None]]:
+        topological_sort: dict[str, int] | None,
+    ) -> tuple[str, dict[str, int] | None]:
         """
         Decides which component to run when multiple components are waiting for inputs with the same priority.
 
