@@ -100,13 +100,19 @@ class TestTransformersZeroShotDocumentClassifier:
         component.warm_up()
         assert component.pipeline is not None
 
-    def test_run_fails_without_warm_up(self):
+    @patch("haystack.components.classifiers.zero_shot_document_classifier.pipeline")
+    @patch.object(TransformersZeroShotDocumentClassifier, "warm_up")
+    def test_run_calls_warm_up(self, warm_up_mock, hf_pipeline_mock):
+        hf_pipeline_mock.return_value = [
+            {"sequence": "That's good. I like it.", "labels": ["positive", "negative"], "scores": [0.99, 0.01]}
+        ]
         component = TransformersZeroShotDocumentClassifier(
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )
+        warm_up_mock.side_effect = lambda: setattr(component, "pipeline", hf_pipeline_mock)
         positive_documents = [Document(content="That's good. I like it.")]
-        with pytest.raises(RuntimeError):
-            component.run(documents=positive_documents)
+        component.run(documents=positive_documents)
+        warm_up_mock.assert_called_once()
 
     @patch("haystack.components.classifiers.zero_shot_document_classifier.pipeline")
     def test_run_fails_with_non_document_input(self, hf_pipeline_mock):
