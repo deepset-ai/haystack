@@ -100,6 +100,23 @@ def test_from_function_schema_generation_error():
         create_tool_from_function(function=function_with_invalid_type_hint)
 
 
+def test_from_function_async_raises_error():
+    async def async_function(city: str) -> str:
+        return f"Weather report for {city}: 20°C, sunny"
+
+    with pytest.raises(ValueError, match="Async functions are not supported as tools"):
+        create_tool_from_function(function=async_function)
+
+
+def test_tool_decorator_async_raises_error():
+    with pytest.raises(ValueError, match="Async functions are not supported as tools"):
+
+        @tool
+        async def async_get_weather(city: str) -> str:
+            """Get weather report for a city."""
+            return f"Weather report for {city}: 20°C, sunny"
+
+
 def test_tool_decorator():
     @tool
     def get_weather(city: str) -> str:
