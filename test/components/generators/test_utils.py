@@ -680,3 +680,86 @@ def test_print_streaming_chunk_empty_chunk():
     with patch("builtins.print") as mock_print:
         print_streaming_chunk(chunk)
         mock_print.assert_not_called()
+
+
+def test_convert_streaming_chunks_to_chat_message_usage_not_in_last_chunk():
+    """
+    Test that usage info is correctly extracted even when it's not in the last chunk.
+    This can happen with some API providers like Qwen3 where usage info may be returned
+    in a different chunk than the final one.
+    """
+    chunks = [
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "qwen-plus",
+                "index": 0,
+                "finish_reason": None,
+                "received_at": "2025-01-01T00:00:00.000000",
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+        ),
+        StreamingChunk(
+            content="Hello",
+            meta={
+                "model": "qwen-plus",
+                "index": 0,
+                "finish_reason": None,
+                "received_at": "2025-01-01T00:00:00.100000",
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+            index=0,
+            start=True,
+        ),
+        StreamingChunk(
+            content=" world",
+            meta={
+                "model": "qwen-plus",
+                "index": 0,
+                "finish_reason": None,
+                "received_at": "2025-01-01T00:00:00.200000",
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+            index=0,
+        ),
+        # Chunk with usage info (not the last chunk)
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "qwen-plus",
+                "received_at": "2025-01-01T00:00:00.300000",
+                "usage": {
+                    "completion_tokens": 10,
+                    "prompt_tokens": 20,
+                    "total_tokens": 30,
+                },
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+            index=None,
+        ),
+        # Final chunk with finish_reason but no usage (simulating Qwen3 behavior)
+        StreamingChunk(
+            content="",
+            meta={
+                "model": "qwen-plus",
+                "index": 0,
+                "finish_reason": "stop",
+                "received_at": "2025-01-01T00:00:00.400000",
+                "usage": None,  # No usage info in final chunk
+            },
+            component_info=ComponentInfo(name="test", type="test"),
+            finish_reason="stop",
+        ),
+    ]
+
+    result = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+
+    assert result.text == "Hello world"
+    assert result.meta["model"] == "qwen-plus"
+    assert result.meta["finish_reason"] == "stop"
+    # Usage should be extracted from the chunk that has it, not just the last chunk
+    assert result.meta["usage"] == {
+        "completion_tokens": 10,
+        "prompt_tokens": 20,
+        "total_tokens": 30,
+    }
