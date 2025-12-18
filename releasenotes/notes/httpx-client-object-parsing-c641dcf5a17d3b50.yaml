@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    When creating an HTTP client object from a dictionary, we now convert the `limits` parameter to an `httpx.Limits` object to avoid AttributeError.
