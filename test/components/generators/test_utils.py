@@ -691,34 +691,19 @@ def test_convert_streaming_chunks_to_chat_message_usage_not_in_last_chunk():
     chunks = [
         StreamingChunk(
             content="",
-            meta={
-                "model": "qwen-plus",
-                "index": 0,
-                "finish_reason": None,
-                "received_at": "2025-01-01T00:00:00.000000",
-            },
+            meta={"model": "qwen-plus", "index": 0, "finish_reason": None, "received_at": "2025-01-01T00:00:00.000000"},
             component_info=ComponentInfo(name="test", type="test"),
         ),
         StreamingChunk(
             content="Hello",
-            meta={
-                "model": "qwen-plus",
-                "index": 0,
-                "finish_reason": None,
-                "received_at": "2025-01-01T00:00:00.100000",
-            },
+            meta={"model": "qwen-plus", "index": 0, "finish_reason": None, "received_at": "2025-01-01T00:00:00.100000"},
             component_info=ComponentInfo(name="test", type="test"),
             index=0,
             start=True,
         ),
         StreamingChunk(
             content=" world",
-            meta={
-                "model": "qwen-plus",
-                "index": 0,
-                "finish_reason": None,
-                "received_at": "2025-01-01T00:00:00.200000",
-            },
+            meta={"model": "qwen-plus", "index": 0, "finish_reason": None, "received_at": "2025-01-01T00:00:00.200000"},
             component_info=ComponentInfo(name="test", type="test"),
             index=0,
         ),
@@ -728,11 +713,7 @@ def test_convert_streaming_chunks_to_chat_message_usage_not_in_last_chunk():
             meta={
                 "model": "qwen-plus",
                 "received_at": "2025-01-01T00:00:00.300000",
-                "usage": {
-                    "completion_tokens": 10,
-                    "prompt_tokens": 20,
-                    "total_tokens": 30,
-                },
+                "usage": {"completion_tokens": 10, "prompt_tokens": 20, "total_tokens": 30},
             },
             component_info=ComponentInfo(name="test", type="test"),
             index=None,
@@ -758,8 +739,4 @@ def test_convert_streaming_chunks_to_chat_message_usage_not_in_last_chunk():
     assert result.meta["model"] == "qwen-plus"
     assert result.meta["finish_reason"] == "stop"
     # Usage should be extracted from the chunk that has it, not just the last chunk
-    assert result.meta["usage"] == {
-        "completion_tokens": 10,
-        "prompt_tokens": 20,
-        "total_tokens": 30,
-    }
+    assert result.meta["usage"] == {"completion_tokens": 10, "prompt_tokens": 20, "total_tokens": 30}
