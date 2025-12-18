@@ -39,28 +39,28 @@ class TestRegexTextExtractor:
         extractor = RegexTextExtractor(regex_pattern=pattern)
         text = "This text has no matching pattern"
         result = extractor.run(text_or_messages=text)
-        assert result == {}
+        assert result == {"captured_text": ""}
 
-    def test_extract_from_string_no_match_return_empty_false(self):
+    def test_extract_from_string_no_match_return_empty_true(self):
         pattern = r'<issue url="(.+?)">'
         text = "This text has no matching pattern"
-        extractor = RegexTextExtractor(regex_pattern=pattern, return_empty_on_no_match=False)
+        extractor = RegexTextExtractor(regex_pattern=pattern, return_empty_on_no_match=True)
         result = extractor.run(text_or_messages=text)
-        assert result == {"captured_text": ""}
+        assert result == {}
 
     def test_extract_from_string_empty_input(self):
         pattern = r'<issue url="(.+?)">'
         extractor = RegexTextExtractor(regex_pattern=pattern)
         text = ""
         result = extractor.run(text_or_messages=text)
-        assert result == {}
+        assert result == {"captured_text": ""}
 
-    def test_extract_from_string_empty_input_no_match_return_empty_false(self):
+    def test_extract_from_string_empty_input_return_empty_true(self):
         pattern = r'<issue url="(.+?)">'
-        extractor = RegexTextExtractor(regex_pattern=pattern, return_empty_on_no_match=False)
+        extractor = RegexTextExtractor(regex_pattern=pattern, return_empty_on_no_match=True)
         text = ""
         result = extractor.run(text_or_messages=text)
-        assert result == {"captured_text": ""}
+        assert result == {}
 
     def test_extract_from_chat_messages_single_message(self):
         pattern = r'<issue url="(.+?)">'
@@ -88,7 +88,7 @@ class TestRegexTextExtractor:
             ChatMessage.from_user("Last message with no matching pattern"),
         ]
         result = extractor.run(text_or_messages=messages)
-        assert result == {}
+        assert result == {"captured_text": ""}
 
     def test_extract_from_chat_messages_empty_list(self):
         pattern = r'<issue url="(.+?)">'

@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-import warnings
 from typing import Union
 
 from haystack import component, logging
@@ -38,7 +37,7 @@ class RegexTextExtractor:
     ```
     """
 
-    def __init__(self, regex_pattern: str, return_empty_on_no_match: bool = True):
+    def __init__(self, regex_pattern: str, return_empty_on_no_match: bool = False):
         """
         Creates an instance of the RegexTextExtractor component.
 
@@ -62,7 +61,7 @@ class RegexTextExtractor:
                 regex_pattern=regex_pattern,
             )
 
-    @component.output_types(captured_text=str, captured_texts=list[str])
+    @component.output_types(captured_text=str)
     def run(self, text_or_messages: Union[str, list[ChatMessage]]) -> dict:
         """
         Extracts text from input using the configured regex pattern.
@@ -89,12 +88,6 @@ class RegexTextExtractor:
         """Helper method to build the return dictionary based on configuration."""
         if (isinstance(result, str) and result == "") or (isinstance(result, list) and not result):
             if self.return_empty_on_no_match:
-                msg = (
-                    "Warning: In an upcoming release, the output when no matches are found will change from "
-                    "'{}' to {'captured_text': "
-                    "}"
-                )
-                warnings.warn(msg, DeprecationWarning, stacklevel=2)
                 return {}
             return {"captured_text": ""}
         return {"captured_text": result}
