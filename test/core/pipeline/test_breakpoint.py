@@ -14,19 +14,10 @@ from haystack.core.pipeline.breakpoint import (
     _create_pipeline_snapshot,
     _save_pipeline_snapshot,
     _transform_json_structure,
-    _trigger_chat_generator_breakpoint,
-    _trigger_tool_invoker_breakpoint,
     load_pipeline_snapshot,
 )
-from haystack.dataclasses import ByteStream, ChatMessage, Document, ToolCall
-from haystack.dataclasses.breakpoints import (
-    AgentBreakpoint,
-    AgentSnapshot,
-    Breakpoint,
-    PipelineSnapshot,
-    PipelineState,
-    ToolBreakpoint,
-)
+from haystack.dataclasses import ChatMessage
+from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, Breakpoint, PipelineSnapshot, PipelineState
 
 
 @pytest.fixture
@@ -183,55 +174,6 @@ def test_load_pipeline_snapshot_with_old_pipeline_outputs_format(tmp_path):
 
     loaded_snapshot = load_pipeline_snapshot(pipeline_snapshot_file)
     assert loaded_snapshot == PipelineSnapshot.from_dict(pipeline_snapshot)
-
-
-def test_trigger_tool_invoker_breakpoint(make_pipeline_snapshot_with_agent_snapshot):
-    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot_with_agent_snapshot(
-        break_point=AgentBreakpoint("agent", ToolBreakpoint(component_name="tool_invoker"))
-    )
-    with pytest.raises(BreakpointException):
-        _trigger_tool_invoker_breakpoint(
-            llm_messages=[ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="tool1", arguments={})])],
-            pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint,
-        )
-
-
-def test_trigger_tool_invoker_breakpoint_no_raise(make_pipeline_snapshot_with_agent_snapshot):
-    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot_with_agent_snapshot(
-        break_point=AgentBreakpoint("agent", ToolBreakpoint(component_name="tool_invoker", tool_name="tool2"))
-    )
-    # This should not raise since the tool call is for "tool1", not "tool2"
-    _trigger_tool_invoker_breakpoint(
-        llm_messages=[ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="tool1", arguments={})])],
-        pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint,
-    )
-
-
-def test_trigger_tool_invoker_breakpoint_specific_tool(make_pipeline_snapshot_with_agent_snapshot):
-    """
-    This is to test if a specific tool is set in the ToolBreakpoint, the BreakpointException is raised even when
-    there are multiple tool calls in the message.
-    """
-    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot_with_agent_snapshot(
-        break_point=AgentBreakpoint("agent", ToolBreakpoint(component_name="tool_invoker", tool_name="tool2"))
-    )
-    with pytest.raises(BreakpointException):
-        _trigger_tool_invoker_breakpoint(
-            llm_messages=[
-                ChatMessage.from_assistant(
-                    tool_calls=[ToolCall(tool_name="tool1", arguments={}), ToolCall(tool_name="tool2", arguments={})]
-                )
-            ],
-            pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint,
-        )
-
-
-def test_trigger_chat_generator_breakpoint(make_pipeline_snapshot_with_agent_snapshot):
-    pipeline_snapshot_with_agent_breakpoint = make_pipeline_snapshot_with_agent_snapshot(
-        break_point=AgentBreakpoint("agent", Breakpoint(component_name="chat_generator"))
-    )
-    with pytest.raises(BreakpointException):
-        _trigger_chat_generator_breakpoint(pipeline_snapshot=pipeline_snapshot_with_agent_breakpoint)
 
 
 class TestCreatePipelineSnapshot:

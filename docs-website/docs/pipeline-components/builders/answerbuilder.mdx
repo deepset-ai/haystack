@@ -57,6 +57,7 @@ from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
+from haystack.dataclasses import Document
 
 prompt_template = [
     ChatMessage.from_system("You are a helpful assistant."),
@@ -67,8 +68,12 @@ prompt_template = [
     )
 ]
 
+docs = [Document(content="The capital of France is Paris"), Document(content="The capital of England is London")]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
 p = Pipeline()
-p.add_component(instance=InMemoryBM25Retriever(document_store=InMemoryDocumentStore()), name="retriever")
+p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
 p.add_component(instance=ChatPromptBuilder(template=prompt_template, required_variables={"query", "documents"}), name="prompt_builder")
 p.add_component(instance=OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
 p.add_component(instance=AnswerBuilder(), name="answer_builder")
