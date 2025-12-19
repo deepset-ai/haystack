@@ -92,7 +92,7 @@ def _parse_generic_args(args_str):
     return args
 
 
-def _parse_union_args(union_str: str) -> list[str]:
+def _parse_pep604_union_args(union_str: str) -> list[str]:
     """
     Parse a PEP 604 union string (e.g., "str | int | None") into individual type strings.
 
@@ -138,16 +138,16 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
     :raises DeserializationError:
         If the type cannot be deserialized due to missing module or type.
     """
-    # Handle PEP 604 union syntax (e.g., "str | int", "str | None")
-    # We need to check this before generics because "list[str] | None" contains both
-    # But we must ensure the | is at the top level, not inside brackets like "list[str | int]"
-    union_args = _parse_union_args(type_str)
-    if len(union_args) > 1:
-        deserialized_args = [deserialize_type(arg) for arg in union_args]
-        # Use Union to construct the type, which works for both typing.Union and X | Y
-        return Union[tuple(deserialized_args)]  # noqa: UP007
+    # Handle PEP 604 union syntax at the top level (e.g., "str | int", "str | None")
+    pep604_union_args = _parse_pep604_union_args(type_str)
+    if len(pep604_union_args) > 1:
+        deserialized_args = [deserialize_type(arg) for arg in pep604_union_args]
+        pep604_union_type = deserialized_args[0]
+        for arg in deserialized_args[1:]:
+            pep604_union_type = pep604_union_type | arg
+        return pep604_union_type
 
-    # Handle generics
+    # Handle generics (including Union[X, Y])
     if "[" in type_str and type_str.endswith("]"):
         main_type_str, generics_str = type_str.split("[", 1)
         generics_str = generics_str[:-1]

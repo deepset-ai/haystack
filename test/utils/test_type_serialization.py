@@ -11,7 +11,7 @@ from typing import Any, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Unio
 import pytest
 
 from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
-from haystack.utils.type_serialization import _parse_union_args, deserialize_type, is_union_type, serialize_type
+from haystack.utils.type_serialization import _parse_pep604_union_args, deserialize_type, is_union_type, serialize_type
 
 TYPING_AND_TYPE_TESTS = [
     # dict
@@ -334,17 +334,17 @@ def test_is_union_type():
     assert is_union_type(dict[str, int]) is False
 
 
-def test_parse_union_args():
-    assert _parse_union_args("str | int") == ["str", "int"]
-    assert _parse_union_args("str | None") == ["str", "None"]
-    assert _parse_union_args("str | int | float") == ["str", "int", "float"]
-    assert _parse_union_args("str | int | None") == ["str", "int", "None"]
+def test_parse_pep604_union_args():
+    assert _parse_pep604_union_args("str | int") == ["str", "int"]
+    assert _parse_pep604_union_args("str | None") == ["str", "None"]
+    assert _parse_pep604_union_args("str | int | float") == ["str", "int", "float"]
+    assert _parse_pep604_union_args("str | int | None") == ["str", "int", "None"]
 
     # Nested generics
-    assert _parse_union_args("list[str] | None") == ["list[str]", "None"]
-    assert _parse_union_args("list[str] | dict[str, int]") == ["list[str]", "dict[str, int]"]
-    assert _parse_union_args("list[str] | dict[str, int] | None") == ["list[str]", "dict[str, int]", "None"]
-    assert _parse_union_args("set[int] | None") == ["set[int]", "None"]
-    assert _parse_union_args("tuple[int, str] | None") == ["tuple[int, str]", "None"]
-    assert _parse_union_args("dict[str, list[int]] | set[str]") == ["dict[str, list[int]]", "set[str]"]
-    assert _parse_union_args("list[int] | list[str] | list[float]") == ["list[int]", "list[str]", "list[float]"]
+    assert _parse_pep604_union_args("list[str] | None") == ["list[str]", "None"]
+    assert _parse_pep604_union_args("list[str] | dict[str, int]") == ["list[str]", "dict[str, int]"]
+    assert _parse_pep604_union_args("list[str] | dict[str, int] | None") == ["list[str]", "dict[str, int]", "None"]
+    assert _parse_pep604_union_args("set[int] | None") == ["set[int]", "None"]
+    assert _parse_pep604_union_args("tuple[int, str] | None") == ["tuple[int, str]", "None"]
+    assert _parse_pep604_union_args("dict[str, list[int]] | set[str]") == ["dict[str, list[int]]", "set[str]"]
+    assert _parse_pep604_union_args("list[int] | list[str] | list[float]") == ["list[int]", "list[str]", "list[float]"]
