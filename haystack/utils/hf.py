@@ -13,6 +13,7 @@ from haystack.dataclasses import (
     ChatMessage,
     ComponentInfo,
     ImageContent,
+    ReasoningContent,
     StreamingChunk,
     SyncStreamingCallbackT,
     TextContent,
@@ -256,17 +257,26 @@ def check_valid_model(model_id: str, model_type: HFModelType, token: Secret | No
 def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
     """
     Convert a message to the format expected by Hugging Face.
+
+    Note: ReasoningContent is skipped during conversion because the HuggingFace Inference API
+    (which follows the OpenAI-compatible chat completion format) does not support reasoning
+    in input messages. Reasoning is captured from model outputs for transparency but is not
+    sent back to the API in multi-turn conversations.
     """
     text_contents = message.texts
     tool_calls = message.tool_calls
     tool_call_results = message.tool_call_results
     images = message.images
 
+    # Filter out ReasoningContent from the content list for validation
+    # ReasoningContent is for human transparency only, not sent to the API
+    non_reasoning_content = [c for c in message._content if not isinstance(c, ReasoningContent)]
+
     if not text_contents and not tool_calls and not tool_call_results and not images:
         raise ValueError(
             "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`, or `ImageContent`."
         )
-    if len(tool_call_results) > 0 and len(message._content) > 1:
+    if len(tool_call_results) > 0 and len(non_reasoning_content) > 1:
         raise ValueError(
             "For compatibility with the Hugging Face API, a `ChatMessage` with a `ToolCallResult` "
             "cannot contain any other content."

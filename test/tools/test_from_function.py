@@ -286,3 +286,21 @@ def test_remove_title_from_schema_handle_no_title_in_top_level():
         "properties": {"parameter1": {"type": "string"}, "parameter2": {"type": "integer"}},
         "type": "object",
     }
+
+
+def test_from_function_async_raises_error():
+    async def async_get_weather(city: str) -> str:
+        """Get weather report for a city."""
+        return f"Weather report for {city}: 20°C, sunny"
+
+    with pytest.raises(ValueError, match="Async functions are not supported as tools"):
+        create_tool_from_function(async_get_weather)
+
+
+def test_tool_decorator_async_raises_error():
+    with pytest.raises(ValueError, match="Async functions are not supported as tools"):
+
+        @tool
+        async def async_get_weather(city: str) -> str:
+            """Get weather report for a city."""
+            return f"Weather report for {city}: 20°C, sunny"
