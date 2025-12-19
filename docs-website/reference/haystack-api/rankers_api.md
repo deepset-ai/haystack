@@ -813,8 +813,12 @@ Creates an instance of SentenceTransformersSimilarityRanker.
 - `top_k`: The maximum number of documents to return per query.
 - `query_prefix`: A string to add at the beginning of the query text before ranking.
 Use it to prepend the text with an instruction, as required by reranking models like `bge`.
+- `query_suffix`: A string to add at the end of the query text before ranking.
+Use it to append the text with an instruction, as required by reranking models like `qwen`.
 - `document_prefix`: A string to add at the beginning of each document before ranking. You can use it to prepend the document
 with an instruction, as required by embedding models like `bge`.
+- `document_suffix`: A string to add at the end of each document before ranking. You can use it to append the document
+with an instruction, as required by embedding models like `qwen`.
 - `meta_fields_to_embed`: List of metadata fields to embed with the document.
 - `embedding_separator`: Separator to concatenate metadata fields to the document.
 - `scale_score`: If `True`, scales the raw logit predictions using a Sigmoid activation function.
