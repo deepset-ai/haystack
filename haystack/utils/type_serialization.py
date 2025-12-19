@@ -16,7 +16,7 @@ from haystack.core.errors import DeserializationError
 _import_lock = Lock()
 
 
-def is_union_type(target: Any) -> bool:
+def _is_union_type(target: Any) -> bool:
     """
     Check if target is a Union type.
 
@@ -27,6 +27,14 @@ def is_union_type(target: Any) -> bool:
         return True
     origin = typing.get_origin(target)
     return origin is Union or origin is UnionType
+
+
+def _build_pep604_union_type(types: list) -> Any:
+    """Build a union type from a list of types using PEP 604 syntax (X | Y)."""
+    result = types[0]
+    for t in types[1:]:
+        result = result | t
+    return result
 
 
 def serialize_type(target: Any) -> str:
@@ -142,10 +150,7 @@ def deserialize_type(type_str: str) -> Any:  # pylint: disable=too-many-return-s
     pep604_union_args = _parse_pep604_union_args(type_str)
     if len(pep604_union_args) > 1:
         deserialized_args = [deserialize_type(arg) for arg in pep604_union_args]
-        pep604_union_type = deserialized_args[0]
-        for arg in deserialized_args[1:]:
-            pep604_union_type = pep604_union_type | arg
-        return pep604_union_type
+        return _build_pep604_union_type(deserialized_args)
 
     # Handle generics (including Union[X, Y])
     if "[" in type_str and type_str.endswith("]"):

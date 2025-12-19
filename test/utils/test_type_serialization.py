@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import sys
 import typing
 from collections import deque
 from types import UnionType
@@ -11,7 +10,13 @@ from typing import Any, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Unio
 import pytest
 
 from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
-from haystack.utils.type_serialization import _parse_pep604_union_args, deserialize_type, is_union_type, serialize_type
+from haystack.utils.type_serialization import (
+    _build_pep604_union_type,
+    _is_union_type,
+    _parse_pep604_union_args,
+    deserialize_type,
+    serialize_type,
+)
 
 TYPING_AND_TYPE_TESTS = [
     # dict
@@ -321,17 +326,17 @@ def test_output_type_deserialization_pep_604():
 
 
 def test_is_union_type():
-    assert is_union_type(Union) is True
-    assert is_union_type(UnionType) is True
-    assert is_union_type(Union[str, int]) is True
-    assert is_union_type(str | int) is True
-    assert is_union_type(str | None) is True
-    assert is_union_type(Optional[str]) is True
+    assert _is_union_type(Union) is True
+    assert _is_union_type(UnionType) is True
+    assert _is_union_type(Union[str, int]) is True
+    assert _is_union_type(str | int) is True
+    assert _is_union_type(str | None) is True
+    assert _is_union_type(Optional[str]) is True
 
-    assert is_union_type(str) is False
-    assert is_union_type(None) is False
-    assert is_union_type(list[str]) is False
-    assert is_union_type(dict[str, int]) is False
+    assert _is_union_type(str) is False
+    assert _is_union_type(None) is False
+    assert _is_union_type(list[str]) is False
+    assert _is_union_type(dict[str, int]) is False
 
 
 def test_parse_pep604_union_args():
@@ -348,3 +353,20 @@ def test_parse_pep604_union_args():
     assert _parse_pep604_union_args("tuple[int, str] | None") == ["tuple[int, str]", "None"]
     assert _parse_pep604_union_args("dict[str, list[int]] | set[str]") == ["dict[str, list[int]]", "set[str]"]
     assert _parse_pep604_union_args("list[int] | list[str] | list[float]") == ["list[int]", "list[str]", "list[float]"]
+
+
+def test_build_pep604_union_type():
+    result = _build_pep604_union_type([str])
+    assert result == str
+
+    result = _build_pep604_union_type([str, int])
+    assert result == str | int
+
+    result = _build_pep604_union_type([str, int, float])
+    assert result == str | int | float
+
+    result = _build_pep604_union_type([str, type(None)])
+    assert result == str | None
+
+    result = _build_pep604_union_type([list[str], dict[str, int]])
+    assert result == list[str] | dict[str, int]

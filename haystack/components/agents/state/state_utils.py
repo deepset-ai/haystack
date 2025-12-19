@@ -5,7 +5,7 @@
 import inspect
 from typing import Any, TypeVar, Union, get_origin
 
-from haystack.utils.type_serialization import is_union_type
+from haystack.utils.type_serialization import _is_union_type
 
 T = TypeVar("T")
 
@@ -35,7 +35,7 @@ def _is_valid_type(obj: Any) -> bool:
         False
     """
     # Handle Union types (including Optional)
-    if (origin := get_origin(obj)) and is_union_type(origin):
+    if (origin := get_origin(obj)) and _is_union_type(origin):
         return True
 
     # Handle normal classes and generic types

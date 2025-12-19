@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, create_model
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage
-from haystack.utils.type_serialization import is_union_type
+from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +188,7 @@ def _resolve_type(_type: Any) -> Any:  # noqa: PLR0911  # pylint: disable=too-ma
     if origin is collections.abc.Sequence:
         return Sequence[_resolve_type(args[0]) if args else Any]  # type: ignore[misc]
 
-    if is_union_type(origin):
+    if _is_union_type(origin):
         return Union[tuple(_resolve_type(a) for a in args)]
 
     if origin is dict:
