@@ -5,7 +5,7 @@
 import os
 from dataclasses import replace
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 import pytest
 

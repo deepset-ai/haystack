@@ -18,7 +18,7 @@ from haystack.utils.jinja2_extensions import _extract_template_variables_and_ass
 logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install \"arrow>=1.3.0\"'") as arrow_import:
-    import arrow  # pylint: disable=unused-import
+    import arrow  # pylint: disable=unused-import # noqa: F401
 
 NO_TEXT_ERROR_MESSAGE = "ChatMessages from {role} role must contain text. Received ChatMessage with no text: {message}"
 

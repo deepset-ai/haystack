@@ -15,7 +15,7 @@ from haystack.core.pipeline.utils import (
     args_deprecated,
     parse_connect_string,
 )
-from haystack.tools import ComponentTool, Tool
+from haystack.tools import ComponentTool
 
 
 def get_weather_report(city: str) -> str:

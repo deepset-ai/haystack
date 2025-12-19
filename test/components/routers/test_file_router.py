@@ -9,9 +9,7 @@ from pathlib import PosixPath
 from unittest.mock import mock_open, patch
 
 import pytest
-from packaging import version
 
-import haystack
 from haystack import Pipeline
 from haystack.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.components.routers.file_type_router import FileTypeRouter

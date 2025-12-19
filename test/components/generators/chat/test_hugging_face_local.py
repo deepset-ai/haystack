@@ -3,8 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import gc
-from typing import Optional
 from unittest.mock import Mock, patch
 
 import pytest
@@ -12,12 +10,11 @@ from transformers import PreTrainedTokenizer
 
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
-from haystack.dataclasses.streaming_chunk import AsyncStreamingCallbackT, StreamingChunk
+from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
-from haystack.utils.hf import AsyncHFTokenStreamingHandler
 
 
 # used to test serialization of streaming_callback

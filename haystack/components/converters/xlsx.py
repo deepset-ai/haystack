@@ -15,11 +15,13 @@ from haystack.lazy_imports import LazyImport
 logger = logging.getLogger(__name__)
 
 with LazyImport("Run 'pip install pandas openpyxl'") as pandas_xlsx_import:
-    import openpyxl  # pylint: disable=unused-import # the library is used but not directly referenced
+    import openpyxl  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
     import pandas as pd
 
 with LazyImport("Run 'pip install tabulate'") as tabulate_import:
-    from tabulate import tabulate  # pylint: disable=unused-import # the library is used but not directly referenced
+    from tabulate import (
+        tabulate,  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
+    )
 
 
 @component

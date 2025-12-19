@@ -15,7 +15,7 @@ from haystack.dataclasses import ByteStream
 from haystack.utils.misc import _guess_mime_type  # ruff: isort: skip
 
 # We import CUSTOM_MIMETYPES here to prevent breaking change from moving to haystack.utils.misc
-from haystack.utils.misc import CUSTOM_MIMETYPES  # pylint: disable=unused-import
+from haystack.utils.misc import CUSTOM_MIMETYPES  # pylint: disable=unused-import  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
