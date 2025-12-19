@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Optional
 
@@ -34,6 +35,7 @@ class Tool:
         A JSON schema defining the parameters expected by the Tool.
     :param function:
         The function that will be invoked when the Tool is called.
+        Must be a synchronous function; async functions are not supported.
     :param outputs_to_string:
         Optional dictionary defining how a tool outputs should be converted into a string.
         If the source is provided only the specified output key is sent to the handler.
@@ -74,6 +76,14 @@ class Tool:
     outputs_to_state: Optional[dict[str, dict[str, Any]]] = None
 
     def __post_init__(self):
+        # Check that the function is not a coroutine (async function)
+        if inspect.iscoroutinefunction(self.function):
+            raise ValueError(
+                f"Async functions are not supported as tools. "
+                f"The function '{self.function.__name__}' is a coroutine function. "
+                f"Please use a synchronous function instead."
+            )
+
         # Check that the parameters define a valid JSON schema
         try:
             Draft202012Validator.check_schema(self.parameters)
