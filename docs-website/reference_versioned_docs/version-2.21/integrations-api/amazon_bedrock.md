@@ -344,14 +344,7 @@ print(result['documents'][0].embedding)
 
 ```python
 def __init__(
-        model: Literal[
-            "amazon.titan-embed-text-v1",
-            "amazon.titan-embed-text-v2:0",
-            "amazon.titan-embed-image-v1",
-            "cohere.embed-english-v3",
-            "cohere.embed-multilingual-v3",
-            "cohere.embed-v4:0",
-        ],
+        model: str,
         aws_access_key_id: Optional[Secret] = Secret.from_env_var(
             "AWS_ACCESS_KEY_ID", strict=False),
         aws_secret_access_key: Optional[Secret] = Secret.
@@ -383,8 +376,13 @@ constructor. Aside from model, three required parameters are `aws_access_key_id`
 
 **Arguments**:
 
-- `model`: The embedding model to use. The model has to be specified in the format outlined in the Amazon
-Bedrock [documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
+- `model`: The embedding model to use.
+Amazon Titan and Cohere embedding models are supported, for example:
+"amazon.titan-embed-text-v1", "amazon.titan-embed-text-v2:0", "amazon.titan-embed-image-v1",
+"cohere.embed-english-v3", "cohere.embed-multilingual-v3", "cohere.embed-v4:0".
+To find all supported models, refer to the Amazon Bedrock
+[documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html) and
+filter for "embedding", then select models from the Amazon Titan and Cohere series.
 - `aws_access_key_id`: AWS access key ID.
 - `aws_secret_access_key`: AWS secret access key.
 - `aws_session_token`: AWS session token.
@@ -509,12 +507,7 @@ print(documents_with_embeddings)
 ```python
 def __init__(
         *,
-        model: Literal[
-            "amazon.titan-embed-image-v1",
-            "cohere.embed-english-v3",
-            "cohere.embed-multilingual-v3",
-            "cohere.embed-v4:0",
-        ],
+        model: str,
         aws_access_key_id: Optional[Secret] = Secret.from_env_var(
             "AWS_ACCESS_KEY_ID", strict=False),
         aws_secret_access_key: Optional[Secret] = Secret.
@@ -538,12 +531,13 @@ Creates a AmazonBedrockDocumentImageEmbedder component.
 
 **Arguments**:
 
-- `model`: The Bedrock model to use for calculating embeddings. Pass a valid model ID.
-Supported models:
-- "amazon.titan-embed-image-v1"
-- "cohere.embed-english-v3"
-- "cohere.embed-multilingual-v3"
-- "cohere.embed-v4:0"
+- `model`: The embedding model to use.
+Amazon Titan and Cohere multimodal embedding models are supported, for example:
+"amazon.titan-embed-image-v1", "cohere.embed-english-v3", "cohere.embed-multilingual-v3",
+"cohere.embed-v4:0".
+To find all supported models, refer to the Amazon Bedrock
+[documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html) and
+filter for "embedding", then select multimodal models from the Amazon Titan and Cohere series.
 - `aws_access_key_id`: AWS access key ID.
 - `aws_secret_access_key`: AWS secret access key.
 - `aws_session_token`: AWS session token.
@@ -655,14 +649,7 @@ print(text_embedder.run("I love Paris in the summer."))
 
 ```python
 def __init__(
-        model: Literal[
-            "amazon.titan-embed-text-v1",
-            "amazon.titan-embed-text-v2:0",
-            "amazon.titan-embed-image-v1",
-            "cohere.embed-english-v3",
-            "cohere.embed-multilingual-v3",
-            "cohere.embed-v4:0",
-        ],
+        model: str,
         aws_access_key_id: Optional[Secret] = Secret.from_env_var(
             "AWS_ACCESS_KEY_ID", strict=False),
         aws_secret_access_key: Optional[Secret] = Secret.
@@ -690,8 +677,13 @@ constructor. Aside from model, three required parameters are `aws_access_key_id`
 
 **Arguments**:
 
-- `model`: The embedding model to use. The model has to be specified in the format outlined in the Amazon
-Bedrock [documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html).
+- `model`: The embedding model to use.
+Amazon Titan and Cohere embedding models are supported, for example:
+"amazon.titan-embed-text-v1", "amazon.titan-embed-text-v2:0", "amazon.titan-embed-image-v1",
+"cohere.embed-english-v3", "cohere.embed-multilingual-v3", "cohere.embed-v4:0".
+To find all supported models, refer to the Amazon Bedrock
+[documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html) and
+filter for "embedding", then select models from the Amazon Titan and Cohere series.
 - `aws_access_key_id`: AWS access key ID.
 - `aws_secret_access_key`: AWS secret access key.
 - `aws_session_token`: AWS session token.
