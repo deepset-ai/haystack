@@ -58,7 +58,6 @@ def create_tool_from_function(
     :param function:
         The function to be converted into a Tool.
         The function must include type hints for all parameters.
-        The function must be synchronous (not async).
         The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
         Other input types may work but are not guaranteed.
         If a parameter is annotated using `typing.Annotated`, its metadata will be used as parameter description.
@@ -83,18 +82,10 @@ def create_tool_from_function(
         The Tool created from the function.
 
     :raises ValueError:
-        If any parameter of the function lacks a type hint, or if the function is async.
+        If any parameter of the function lacks a type hint.
     :raises SchemaGenerationError:
         If there is an error generating the JSON schema for the Tool.
     """
-    # Check that the function is not a coroutine (async function)
-    if inspect.iscoroutinefunction(function):
-        raise ValueError(
-            f"Async functions are not supported as tools. "
-            f"The function '{function.__name__}' is a coroutine function. "
-            f"Please use a synchronous function instead."
-        )
-
     tool_description = description if description is not None else (function.__doc__ or "")
 
     signature = inspect.signature(function)
