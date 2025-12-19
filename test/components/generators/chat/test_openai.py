@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest

@@ -4,7 +4,7 @@
 
 import asyncio
 import time
-from typing import Any, Optional
+from typing import Any
 from urllib.error import HTTPError as URLLibHTTPError
 
 import pytest

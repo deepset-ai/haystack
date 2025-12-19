@@ -349,7 +349,6 @@ select = [
 ]
 
 ignore = [
-  "F401",    # unused-import
   "PERF203", # `try`-`except` within a loop incurs performance overhead
   "PERF401", # Use a list comprehension to create a transformed list
   "PLR1714", # repeated-equality-comparison

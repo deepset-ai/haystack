@@ -7,7 +7,7 @@ import re
 
 import pytest
 
-from haystack import Document, Pipeline
+from haystack import Document
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever

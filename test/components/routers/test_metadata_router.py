@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Union
-
 import pytest
 
 from haystack import Pipeline

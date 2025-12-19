@@ -4,7 +4,7 @@
 
 import json
 import os
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 from openai import OpenAIError

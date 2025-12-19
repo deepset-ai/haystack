@@ -12,7 +12,7 @@ from haystack.utils import ComponentDevice, DeviceMap, Secret, deserialize_secre
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_device_map, serialize_hf_model_kwargs
 
 with LazyImport("Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
-    import accelerate  # pylint: disable=unused-import # the library is used but not directly referenced
+    import accelerate  # pylint: disable=unused-import # noqa: F401 # the library is used but not directly referenced
     import torch
     from tokenizers import Encoding
     from transformers import AutoModelForQuestionAnswering, AutoTokenizer
