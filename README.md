@@ -77,12 +77,12 @@ Some examples of what you can do with Haystack:
 
 ## Haystack Enterprise Starter: Best Practices and Expert Support
 
-Get expert support from the Haystack team, build faster with enterprise-grade templates, and scale securely with deployment guides for cloud and on-prem environments - all with **Haystack Enterprise Starter**. Read more about it our [announcement post](https://haystack.deepset.ai/blog/announcing-haystack-enterprise).
+Get expert support from the Haystack team, build faster with enterprise-grade templates, and scale securely with deployment guides for cloud and on-prem environments - all with **Haystack Enterprise Starter**. Read more about it the [announcement post](https://haystack.deepset.ai/blog/announcing-haystack-enterprise).
 
 👉 [Get Haystack Enterprise Starter](https://www.deepset.ai/products-and-services/haystack-enterprise?utm_source=github.com&utm_medium=referral&utm_campaign=haystack_enterprise)
 
 >
-> Are you looking for a managed solution that benefits from Haystack? [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is our fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
+> Are you looking for a managed solution that benefits from Haystack? [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/deepset-ai-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) is a fully managed, end-to-end platform to integrate LLMs with your data, which uses Haystack for the LLM pipelines architecture.
 
 ## Telemetry
 
