@@ -71,7 +71,7 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
             if is_compat and common is not None:
                 compatible_types.append(common)
         if compatible_types:
-            # The constructed Union or single type must be cast to Optional[T]
+            # The constructed Union or single type must be cast to T | None
             # to satisfy mypy, as T is specific to this function's call context.
             result_type = Union[tuple(compatible_types)] if len(compatible_types) > 1 else compatible_types[0]
             return True, cast(T | None, result_type)
@@ -85,7 +85,7 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
             if is_compat and common is not None:
                 compatible_types.append(common)
         if compatible_types:
-            # The constructed Union or single type must be cast to Optional[T]
+            # The constructed Union or single type must be cast to T | None
             # to satisfy mypy, as T is specific to this function's call context.
             result_type = Union[tuple(compatible_types)] if len(compatible_types) > 1 else compatible_types[0]
             return True, cast(T | None, result_type)
@@ -100,7 +100,7 @@ def _check_union_compatibility(type1: T, type2: T, type1_origin: Any, type2_orig
                 compatible_types.append(common)
 
     if compatible_types:
-        # The constructed Union or single type must be cast to Optional[T]
+        # The constructed Union or single type must be cast to T | None
         # to satisfy mypy, as T is specific to this function's call context.
         result_type = Union[tuple(compatible_types)] if len(compatible_types) > 1 else compatible_types[0]
         return True, cast(T | None, result_type)
