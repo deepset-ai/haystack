@@ -1105,7 +1105,7 @@ class TestHuggingFaceAPIChatGenerator:
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
             api_params={"model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"},
-            generation_kwargs={"max_tokens": 100},
+            generation_kwargs={"max_tokens": 300},
         )
 
         # First turn: ask a question
