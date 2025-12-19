@@ -34,11 +34,11 @@ Stores data in-memory. It's ephemeral and cannot be saved to disk.
 def __init__(bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
              bm25_algorithm: Literal["BM25Okapi", "BM25L",
                                      "BM25Plus"] = "BM25L",
-             bm25_parameters: Optional[dict] = None,
+             bm25_parameters: dict | None = None,
              embedding_similarity_function: Literal["dot_product",
                                                     "cosine"] = "dot_product",
-             index: Optional[str] = None,
-             async_executor: Optional[ThreadPoolExecutor] = None,
+             index: str | None = None,
+             async_executor: ThreadPoolExecutor | None = None,
              return_embedding: bool = True)
 ```
 
@@ -172,8 +172,7 @@ Returns the number of how many documents are present in the DocumentStore.
 #### InMemoryDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -222,7 +221,7 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 ```python
 def bm25_retrieval(query: str,
-                   filters: Optional[dict[str, Any]] = None,
+                   filters: dict[str, Any] | None = None,
                    top_k: int = 10,
                    scale_score: bool = False) -> list[Document]
 ```
@@ -247,10 +246,10 @@ A list of the top_k documents most relevant to the query.
 ```python
 def embedding_retrieval(
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         top_k: int = 10,
         scale_score: bool = False,
-        return_embedding: Optional[bool] = False) -> list[Document]
+        return_embedding: bool | None = False) -> list[Document]
 ```
 
 Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -285,7 +284,7 @@ Returns the number of how many documents are present in the DocumentStore.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -335,7 +334,7 @@ Deletes all documents with matching document_ids from the DocumentStore.
 
 ```python
 async def bm25_retrieval_async(query: str,
-                               filters: Optional[dict[str, Any]] = None,
+                               filters: dict[str, Any] | None = None,
                                top_k: int = 10,
                                scale_score: bool = False) -> list[Document]
 ```
@@ -360,7 +359,7 @@ A list of the top_k documents most relevant to the query.
 ```python
 async def embedding_retrieval_async(
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         top_k: int = 10,
         scale_score: bool = False,
         return_embedding: bool = False) -> list[Document]

@@ -92,9 +92,9 @@ and uses them as delimiters to segment the document into smaller tables.
 #### CSVDocumentSplitter.\_\_init\_\_
 
 ```python
-def __init__(row_split_threshold: Optional[int] = 2,
-             column_split_threshold: Optional[int] = 2,
-             read_csv_kwargs: Optional[dict[str, Any]] = None,
+def __init__(row_split_threshold: int | None = 2,
+             column_split_threshold: int | None = 2,
+             read_csv_kwargs: dict[str, Any] | None = None,
              split_mode: SplitMode = "threshold") -> None
 ```
 
@@ -188,10 +188,10 @@ def __init__(remove_empty_lines: bool = True,
              remove_extra_whitespaces: bool = True,
              remove_repeated_substrings: bool = False,
              keep_id: bool = False,
-             remove_substrings: Optional[list[str]] = None,
-             remove_regex: Optional[str] = None,
-             unicode_normalization: Optional[Literal["NFC", "NFKC", "NFD",
-                                                     "NFKD"]] = None,
+             remove_substrings: list[str] | None = None,
+             remove_regex: str | None = None,
+             unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"]
+             | None = None,
              ascii_only: bool = False)
 ```
 
@@ -273,7 +273,7 @@ def __init__(*,
              split_length: int = 250,
              split_overlap: int = 0,
              split_threshold: int = 0,
-             splitting_function: Optional[Callable[[str], list[str]]] = None,
+             splitting_function: Callable[[str], list[str]] | None = None,
              respect_sentence_boundary: bool = False,
              language: Language = "en",
              use_split_rules: bool = True,
@@ -282,10 +282,10 @@ def __init__(*,
              remove_extra_whitespaces: bool = True,
              remove_repeated_substrings: bool = False,
              keep_id: bool = False,
-             remove_substrings: Optional[list[str]] = None,
-             remove_regex: Optional[str] = None,
-             unicode_normalization: Optional[Literal["NFC", "NFKC", "NFD",
-                                                     "NFKD"]] = None,
+             remove_substrings: list[str] | None = None,
+             remove_regex: str | None = None,
+             unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"]
+             | None = None,
              ascii_only: bool = False) -> None
 ```
 
@@ -398,7 +398,7 @@ def __init__(split_by: Literal["function", "page", "passage", "period", "word",
              split_length: int = 200,
              split_overlap: int = 0,
              split_threshold: int = 0,
-             splitting_function: Optional[Callable[[str], list[str]]] = None,
+             splitting_function: Callable[[str], list[str]] | None = None,
              respect_sentence_boundary: bool = False,
              language: Language = "en",
              use_split_rules: bool = True,
@@ -674,8 +674,8 @@ def __init__(*,
              split_length: int = 200,
              split_overlap: int = 0,
              split_unit: Literal["word", "char", "token"] = "word",
-             separators: Optional[list[str]] = None,
-             sentence_splitter_params: Optional[dict[str, Any]] = None)
+             separators: list[str] | None = None,
+             sentence_splitter_params: dict[str, Any] | None = None)
 ```
 
 Initializes a RecursiveDocumentSplitter.
@@ -760,7 +760,7 @@ result = cleaner.run(texts=[text_to_clean])
 #### TextCleaner.\_\_init\_\_
 
 ```python
-def __init__(remove_regexps: Optional[list[str]] = None,
+def __init__(remove_regexps: list[str] | None = None,
              convert_to_lowercase: bool = False,
              remove_punctuation: bool = False,
              remove_numbers: bool = False)

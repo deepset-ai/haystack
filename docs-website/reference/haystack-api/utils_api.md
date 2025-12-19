@@ -85,7 +85,7 @@ Create a token-based secret. Cannot be serialized.
 
 ```python
 @staticmethod
-def from_env_var(env_vars: Union[str, list[str]],
+def from_env_var(env_vars: str | list[str],
                  *,
                  strict: bool = True) -> "Secret"
 ```
@@ -142,7 +142,7 @@ The deserialized secret.
 
 ```python
 @abstractmethod
-def resolve_value() -> Optional[Any]
+def resolve_value() -> Any | None
 ```
 
 Resolve the secret to an atomic value. The semantics of the value is secret-dependent.
@@ -407,7 +407,7 @@ A generic representation of a device.
 #### Device.\_\_init\_\_
 
 ```python
-def __init__(type: DeviceType, id: Optional[int] = None)
+def __init__(type: DeviceType, id: int | None = None)
 ```
 
 Create a generic device.
@@ -544,7 +544,7 @@ The serialized mapping.
 
 ```python
 @property
-def first_device() -> Optional[Device]
+def first_device() -> Device | None
 ```
 
 Return the first device in the mapping, if any.
@@ -715,7 +715,7 @@ The spaCy device representation.
 #### ComponentDevice.to\_hf
 
 ```python
-def to_hf() -> Union[Union[int, str], dict[str, Union[int, str]]]
+def to_hf() -> int | str | dict[str, int | str]
 ```
 
 Convert the component device representation to HuggingFace format.
@@ -835,7 +835,7 @@ The deserialized component device.
 
 ```python
 def raise_on_invalid_filter_syntax(
-        filters: Optional[dict[str, Any]] = None) -> None
+        filters: dict[str, Any] | None = None) -> None
 ```
 
 Raise an error if the filter syntax is invalid.
@@ -846,7 +846,7 @@ Raise an error if the filter syntax is invalid.
 
 ```python
 def document_matches_filter(filters: dict[str, Any],
-                            document: Union[Document, ByteStream]) -> bool
+                            document: Document | ByteStream) -> bool
 ```
 
 Return whether `filters` match the Document or the ByteStream.
@@ -864,9 +864,8 @@ For a detailed specification of the filters, refer to the
 
 ```python
 def init_http_client(
-    http_client_kwargs: Optional[dict[str, Any]] = None,
-    async_client: bool = False
-) -> Union[httpx.Client, httpx.AsyncClient, None]
+        http_client_kwargs: dict[str, Any] | None = None,
+        async_client: bool = False) -> httpx.Client | httpx.AsyncClient | None
 ```
 
 Initialize an httpx client based on the http_client_kwargs.
@@ -925,7 +924,7 @@ Hello! I am {{user_name}}. Please describe the images.
 #### ChatMessageExtension.parse
 
 ```python
-def parse(parser: Any) -> Union[nodes.Node, list[nodes.Node]]
+def parse(parser: Any) -> nodes.Node | list[nodes.Node]
 ```
 
 Parse the message tag and its attributes in the Jinja2 template.
@@ -994,7 +993,7 @@ It provides the context where the extension will operate.
 #### Jinja2TimeExtension.parse
 
 ```python
-def parse(parser: Any) -> Union[nodes.Node, list[nodes.Node]]
+def parse(parser: Any) -> nodes.Node | list[nodes.Node]
 ```
 
 Parse the template expression to determine how to handle the datetime formatting.
@@ -1027,7 +1026,7 @@ Returns `True` if in Jupyter or Google Colab, `False` otherwise.
 #### expand\_page\_range
 
 ```python
-def expand_page_range(page_range: list[Union[str, int]]) -> list[int]
+def expand_page_range(page_range: list[str | int]) -> list[int]
 ```
 
 Takes a list of page numbers and ranges and expands them into a list of page numbers.
@@ -1047,8 +1046,7 @@ An expanded list of page integers
 #### expit
 
 ```python
-def expit(
-        x: Union[float, ndarray[Any, Any]]) -> Union[float, ndarray[Any, Any]]
+def expit(x: float | ndarray[Any, Any]) -> float | ndarray[Any, Any]
 ```
 
 Compute logistic sigmoid function. Maps input values to a range between 0 and 1
@@ -1067,7 +1065,7 @@ Compute logistic sigmoid function. Maps input values to a range between 0 and 1
 
 ```python
 def request_with_retry(attempts: int = 3,
-                       status_codes_to_retry: Optional[list[int]] = None,
+                       status_codes_to_retry: list[int] | None = None,
                        **kwargs: Any) -> requests.Response
 ```
 
@@ -1131,8 +1129,8 @@ The `Response` object.
 
 ```python
 async def async_request_with_retry(attempts: int = 3,
-                                   status_codes_to_retry: Optional[
-                                       list[int]] = None,
+                                   status_codes_to_retry: list[int]
+                                   | None = None,
                                    **kwargs: Any) -> httpx.Response
 ```
 

@@ -49,8 +49,8 @@ expander = QueryExpander(n_expansions=3, include_original_query=False)  # Exactl
 
 ```python
 def __init__(*,
-             chat_generator: Optional[ChatGenerator] = None,
-             prompt_template: Optional[str] = None,
+             chat_generator: ChatGenerator | None = None,
+             prompt_template: str | None = None,
              n_expansions: int = 4,
              include_original_query: bool = True) -> None
 ```
@@ -107,8 +107,7 @@ Deserialized component.
 
 ```python
 @component.output_types(queries=list[str])
-def run(query: str,
-        n_expansions: Optional[int] = None) -> dict[str, list[str]]
+def run(query: str, n_expansions: int | None = None) -> dict[str, list[str]]
 ```
 
 Expand the input query into multiple semantically similar queries.

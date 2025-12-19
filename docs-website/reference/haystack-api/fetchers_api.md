@@ -54,12 +54,12 @@ streams = asyncio.run(fetch_async())
 
 ```python
 def __init__(raise_on_failure: bool = True,
-             user_agents: Optional[list[str]] = None,
+             user_agents: list[str] | None = None,
              retry_attempts: int = 2,
              timeout: int = 3,
              http2: bool = False,
-             client_kwargs: Optional[dict] = None,
-             request_headers: Optional[dict[str, str]] = None)
+             client_kwargs: dict | None = None,
+             request_headers: dict[str, str] | None = None)
 ```
 
 Initializes the component.

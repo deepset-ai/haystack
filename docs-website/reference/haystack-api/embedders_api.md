@@ -36,27 +36,27 @@ print(result['documents'][0].embedding)
 #### AzureOpenAIDocumentEmbedder.\_\_init\_\_
 
 ```python
-def __init__(azure_endpoint: Optional[str] = None,
-             api_version: Optional[str] = "2023-05-15",
+def __init__(azure_endpoint: str | None = None,
+             api_version: str | None = "2023-05-15",
              azure_deployment: str = "text-embedding-ada-002",
-             dimensions: Optional[int] = None,
-             api_key: Optional[Secret] = Secret.from_env_var(
+             dimensions: int | None = None,
+             api_key: Secret | None = Secret.from_env_var(
                  "AZURE_OPENAI_API_KEY", strict=False),
-             azure_ad_token: Optional[Secret] = Secret.from_env_var(
+             azure_ad_token: Secret | None = Secret.from_env_var(
                  "AZURE_OPENAI_AD_TOKEN", strict=False),
-             organization: Optional[str] = None,
+             organization: str | None = None,
              prefix: str = "",
              suffix: str = "",
              batch_size: int = 32,
              progress_bar: bool = True,
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
              *,
-             default_headers: Optional[dict[str, str]] = None,
-             azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None,
+             default_headers: dict[str, str] | None = None,
+             azure_ad_token_provider: AzureADTokenProvider | None = None,
+             http_client_kwargs: dict[str, Any] | None = None,
              raise_on_failure: bool = False)
 ```
 
@@ -205,23 +205,23 @@ print(text_embedder.run(text_to_embed))
 #### AzureOpenAITextEmbedder.\_\_init\_\_
 
 ```python
-def __init__(azure_endpoint: Optional[str] = None,
-             api_version: Optional[str] = "2023-05-15",
+def __init__(azure_endpoint: str | None = None,
+             api_version: str | None = "2023-05-15",
              azure_deployment: str = "text-embedding-ada-002",
-             dimensions: Optional[int] = None,
-             api_key: Optional[Secret] = Secret.from_env_var(
+             dimensions: int | None = None,
+             api_key: Secret | None = Secret.from_env_var(
                  "AZURE_OPENAI_API_KEY", strict=False),
-             azure_ad_token: Optional[Secret] = Secret.from_env_var(
+             azure_ad_token: Secret | None = Secret.from_env_var(
                  "AZURE_OPENAI_AD_TOKEN", strict=False),
-             organization: Optional[str] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
+             organization: str | None = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
              prefix: str = "",
              suffix: str = "",
              *,
-             default_headers: Optional[dict[str, str]] = None,
-             azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
+             default_headers: dict[str, str] | None = None,
+             azure_ad_token_provider: AzureADTokenProvider | None = None,
+             http_client_kwargs: dict[str, Any] | None = None)
 ```
 
 Creates an AzureOpenAITextEmbedder component.
@@ -413,17 +413,17 @@ print(result["documents"][0].embedding)
 #### HuggingFaceAPIDocumentEmbedder.\_\_init\_\_
 
 ```python
-def __init__(api_type: Union[HFEmbeddingAPIType, str],
+def __init__(api_type: HFEmbeddingAPIType | str,
              api_params: dict[str, str],
-             token: Optional[Secret] = Secret.from_env_var(
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
              prefix: str = "",
              suffix: str = "",
-             truncate: Optional[bool] = True,
-             normalize: Optional[bool] = False,
+             truncate: bool | None = True,
+             normalize: bool | None = False,
              batch_size: int = 32,
              progress_bar: bool = True,
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n")
 ```
 
@@ -591,14 +591,14 @@ print(text_embedder.run("I love pizza!"))
 #### HuggingFaceAPITextEmbedder.\_\_init\_\_
 
 ```python
-def __init__(api_type: Union[HFEmbeddingAPIType, str],
+def __init__(api_type: HFEmbeddingAPIType | str,
              api_params: dict[str, str],
-             token: Optional[Secret] = Secret.from_env_var(
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
              prefix: str = "",
              suffix: str = "",
-             truncate: Optional[bool] = True,
-             normalize: Optional[bool] = False)
+             truncate: bool | None = True,
+             normalize: bool | None = False)
 ```
 
 Creates a HuggingFaceAPITextEmbedder component.
@@ -740,22 +740,22 @@ print(documents_with_embeddings)
 ```python
 def __init__(*,
              file_path_meta_field: str = "file_path",
-             root_path: Optional[str] = None,
+             root_path: str | None = None,
              model: str = "sentence-transformers/clip-ViT-B-32",
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
              batch_size: int = 32,
              progress_bar: bool = True,
              normalize_embeddings: bool = False,
              trust_remote_code: bool = False,
              local_files_only: bool = False,
-             model_kwargs: Optional[dict[str, Any]] = None,
-             tokenizer_kwargs: Optional[dict[str, Any]] = None,
-             config_kwargs: Optional[dict[str, Any]] = None,
+             model_kwargs: dict[str, Any] | None = None,
+             tokenizer_kwargs: dict[str, Any] | None = None,
+             config_kwargs: dict[str, Any] | None = None,
              precision: Literal["float32", "int8", "uint8", "binary",
                                 "ubinary"] = "float32",
-             encode_kwargs: Optional[dict[str, Any]] = None,
+             encode_kwargs: dict[str, Any] | None = None,
              backend: Literal["torch", "onnx", "openvino"] = "torch") -> None
 ```
 
@@ -899,18 +899,18 @@ print(result['documents'][0].embedding)
 ```python
 def __init__(api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
              model: str = "text-embedding-ada-002",
-             dimensions: Optional[int] = None,
-             api_base_url: Optional[str] = None,
-             organization: Optional[str] = None,
+             dimensions: int | None = None,
+             api_base_url: str | None = None,
+             organization: str | None = None,
              prefix: str = "",
              suffix: str = "",
              batch_size: int = 32,
              progress_bar: bool = True,
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None,
              *,
              raise_on_failure: bool = False)
 ```
@@ -1059,14 +1059,14 @@ print(text_embedder.run(text_to_embed))
 ```python
 def __init__(api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
              model: str = "text-embedding-ada-002",
-             dimensions: Optional[int] = None,
-             api_base_url: Optional[str] = None,
-             organization: Optional[str] = None,
+             dimensions: int | None = None,
+             api_base_url: str | None = None,
+             organization: str | None = None,
              prefix: str = "",
              suffix: str = "",
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None)
 ```
 
 Creates an OpenAITextEmbedder component.
@@ -1211,27 +1211,27 @@ print(result['documents'][0].embedding)
 
 ```python
 def __init__(model: str = "sentence-transformers/all-mpnet-base-v2",
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
              prefix: str = "",
              suffix: str = "",
              batch_size: int = 32,
              progress_bar: bool = True,
              normalize_embeddings: bool = False,
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
              trust_remote_code: bool = False,
              local_files_only: bool = False,
-             truncate_dim: Optional[int] = None,
-             model_kwargs: Optional[dict[str, Any]] = None,
-             tokenizer_kwargs: Optional[dict[str, Any]] = None,
-             config_kwargs: Optional[dict[str, Any]] = None,
+             truncate_dim: int | None = None,
+             model_kwargs: dict[str, Any] | None = None,
+             tokenizer_kwargs: dict[str, Any] | None = None,
+             config_kwargs: dict[str, Any] | None = None,
              precision: Literal["float32", "int8", "uint8", "binary",
                                 "ubinary"] = "float32",
-             encode_kwargs: Optional[dict[str, Any]] = None,
+             encode_kwargs: dict[str, Any] | None = None,
              backend: Literal["torch", "onnx", "openvino"] = "torch",
-             revision: Optional[str] = None)
+             revision: str | None = None)
 ```
 
 Creates a SentenceTransformersDocumentEmbedder component.
@@ -1378,22 +1378,22 @@ print(result['documents'][0].sparse_embedding)
 ```python
 def __init__(*,
              model: str = "prithivida/Splade_PP_en_v2",
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
              prefix: str = "",
              suffix: str = "",
              batch_size: int = 32,
              progress_bar: bool = True,
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
              trust_remote_code: bool = False,
              local_files_only: bool = False,
-             model_kwargs: Optional[dict[str, Any]] = None,
-             tokenizer_kwargs: Optional[dict[str, Any]] = None,
-             config_kwargs: Optional[dict[str, Any]] = None,
+             model_kwargs: dict[str, Any] | None = None,
+             tokenizer_kwargs: dict[str, Any] | None = None,
+             config_kwargs: dict[str, Any] | None = None,
              backend: Literal["torch", "onnx", "openvino"] = "torch",
-             revision: Optional[str] = None)
+             revision: str | None = None)
 ```
 
 Creates a SentenceTransformersSparseDocumentEmbedder component.
@@ -1523,19 +1523,19 @@ print(text_embedder.run(text_to_embed))
 ```python
 def __init__(*,
              model: str = "prithivida/Splade_PP_en_v2",
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
              prefix: str = "",
              suffix: str = "",
              trust_remote_code: bool = False,
              local_files_only: bool = False,
-             model_kwargs: Optional[dict[str, Any]] = None,
-             tokenizer_kwargs: Optional[dict[str, Any]] = None,
-             config_kwargs: Optional[dict[str, Any]] = None,
-             encode_kwargs: Optional[dict[str, Any]] = None,
+             model_kwargs: dict[str, Any] | None = None,
+             tokenizer_kwargs: dict[str, Any] | None = None,
+             config_kwargs: dict[str, Any] | None = None,
+             encode_kwargs: dict[str, Any] | None = None,
              backend: Literal["torch", "onnx", "openvino"] = "torch",
-             revision: Optional[str] = None)
+             revision: str | None = None)
 ```
 
 Create a SentenceTransformersSparseTextEmbedder component.
@@ -1658,8 +1658,8 @@ print(text_embedder.run(text_to_embed))
 
 ```python
 def __init__(model: str = "sentence-transformers/all-mpnet-base-v2",
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
              prefix: str = "",
              suffix: str = "",
@@ -1668,15 +1668,15 @@ def __init__(model: str = "sentence-transformers/all-mpnet-base-v2",
              normalize_embeddings: bool = False,
              trust_remote_code: bool = False,
              local_files_only: bool = False,
-             truncate_dim: Optional[int] = None,
-             model_kwargs: Optional[dict[str, Any]] = None,
-             tokenizer_kwargs: Optional[dict[str, Any]] = None,
-             config_kwargs: Optional[dict[str, Any]] = None,
+             truncate_dim: int | None = None,
+             model_kwargs: dict[str, Any] | None = None,
+             tokenizer_kwargs: dict[str, Any] | None = None,
+             config_kwargs: dict[str, Any] | None = None,
              precision: Literal["float32", "int8", "uint8", "binary",
                                 "ubinary"] = "float32",
-             encode_kwargs: Optional[dict[str, Any]] = None,
+             encode_kwargs: dict[str, Any] | None = None,
              backend: Literal["torch", "onnx", "openvino"] = "torch",
-             revision: Optional[str] = None)
+             revision: str | None = None)
 ```
 
 Create a SentenceTransformersTextEmbedder component.
