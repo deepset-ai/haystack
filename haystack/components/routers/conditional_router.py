@@ -89,26 +89,30 @@ class ConditionalRouter:
     from haystack.components.routers import ConditionalRouter
 
     routes = [
-        {
-            "condition": "{{streams|length > 2}}",
-            "output": "{{streams}}",
-            "output_name": "enough_streams",
-            "output_type": list[ByteStream],
+        {"condition": "{{count > 5}}",
+            "output": "Processing many items",
+            "output_name": "many_items",
+            "output_type": str,
         },
-        {
-            "condition": "{{streams|length <= 2}}",
-            "output": "{{streams}}",
-            "output_name": "insufficient_streams",
-            "output_type": list[ByteStream],
+        {"condition": "{{count <= 5}}",
+            "output": "Processing few items",
+            "output_name": "few_items",
+            "output_type": str,
         },
     ]
 
     pipe = Pipeline()
-    pipe.add_component("router", router)
-    ...
-    pipe.connect("router.enough_streams", "some_component_a.streams")
-    pipe.connect("router.insufficient_streams", "some_component_b.streams_or_some_other_input")
-    ...
+    pipe.add_component("router", ConditionalRouter(routes))
+
+    # Run with count > 5
+    result = pipe.run({"router": {"count": 10}})
+    print(result)
+    # >> {'router': {'many_items': 'Processing many items'}}
+
+    # Run with count <= 5
+    result = pipe.run({"router": {"count": 3}})
+    print(result)
+    # >> {'router': {'few_items': 'Processing few items'}}
     ```
     """
 

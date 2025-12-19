@@ -15,7 +15,7 @@ on:
       - ".github/workflows/e2e.yml"
 
 env:
-  PYTHON_VERSION: "3.9"
+  PYTHON_VERSION: "3.10"
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   HATCH_VERSION: "1.14.2"
   # we use HF_TOKEN instead of HF_API_TOKEN to work around a Hugging Face bug

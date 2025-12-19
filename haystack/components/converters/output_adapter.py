@@ -4,13 +4,12 @@
 
 import ast
 import contextlib
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, TypeAlias
 
 import jinja2.runtime
 from jinja2 import TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
-from typing_extensions import TypeAlias
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type

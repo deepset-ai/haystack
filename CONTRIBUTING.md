@@ -153,9 +153,7 @@ next contribution!
 
 ### Setting up your development environment
 
-*To run Haystack tests locally, ensure your development environment uses Python >=3.9 and <3.13.*
-Some optional dependencies are not yet compatible with Python 3.13
-(see [this PR](https://github.com/deepset-ai/haystack/pull/8965) for details).
+*To run Haystack tests locally, ensure your development environment uses Python >=3.10 and <3.14.*
 
 Haystack makes heavy use of [Hatch](https://hatch.pypa.io/latest/), a Python project manager that we use to set up the
 virtual environments, build the project, and publish packages. As you can imagine, the first step towards becoming a
