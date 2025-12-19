@@ -42,3 +42,15 @@ def test_http_client_kwargs_with_invalid_params():
     # test http_client_kwargs with invalid keys
     with pytest.raises(TypeError, match="unexpected keyword argument"):
         init_http_client(http_client_kwargs={"invalid_key": "invalid"})
+
+
+def test_init_http_client_with_dict_limits():
+    """Test that dict limits are converted to httpx.Limits objects without AttributeError."""
+    http_client_kwargs = {"limits": {"max_connections": 100, "max_keepalive_connections": 20}}
+
+    # This should not raise AttributeError: 'dict' object has no attribute 'max_connections'
+    client = init_http_client(http_client_kwargs=http_client_kwargs, async_client=False)
+    assert client is not None
+    assert isinstance(client, httpx.Client)
+
+    client.close()
