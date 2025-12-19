@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
@@ -74,13 +74,13 @@ class HuggingFaceAPITextEmbedder:
 
     def __init__(
         self,
-        api_type: Union[HFEmbeddingAPIType, str],
+        api_type: HFEmbeddingAPIType | str,
         api_params: dict[str, str],
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
-        truncate: Optional[bool] = True,
-        normalize: Optional[bool] = False,
+        truncate: bool | None = True,
+        normalize: bool | None = False,
     ):  # pylint: disable=too-many-positional-arguments
         """
         Creates a HuggingFaceAPITextEmbedder component.
@@ -147,7 +147,7 @@ class HuggingFaceAPITextEmbedder:
         self._client = InferenceClient(model_or_url, token=token.resolve_value() if token else None)
         self._async_client = AsyncInferenceClient(model_or_url, token=token.resolve_value() if token else None)
 
-    def _prepare_input(self, text: str) -> tuple[str, Optional[bool], Optional[bool]]:
+    def _prepare_input(self, text: str) -> tuple[str, bool | None, bool | None]:
         if not isinstance(text, str):
             raise TypeError(
                 "HuggingFaceAPITextEmbedder expects a string as an input."

@@ -4,7 +4,7 @@
 
 import inspect
 from dataclasses import dataclass
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
@@ -150,14 +150,14 @@ class Agent:
         self,
         *,
         chat_generator: ChatGenerator,
-        tools: Optional[ToolsType] = None,
-        system_prompt: Optional[str] = None,
-        exit_conditions: Optional[list[str]] = None,
-        state_schema: Optional[dict[str, Any]] = None,
+        tools: ToolsType | None = None,
+        system_prompt: str | None = None,
+        exit_conditions: list[str] | None = None,
+        state_schema: dict[str, Any] | None = None,
         max_agent_steps: int = 100,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         raise_on_tool_invocation_failure: bool = False,
-        tool_invoker_kwargs: Optional[dict[str, Any]] = None,
+        tool_invoker_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -310,12 +310,12 @@ class Agent:
     def _initialize_fresh_execution(
         self,
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT],
+        streaming_callback: StreamingCallbackT | None,
         requires_async: bool,
         *,
-        system_prompt: Optional[str] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        system_prompt: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[str] | None = None,
         **kwargs,
     ) -> _ExecutionContext:
         """
@@ -361,7 +361,7 @@ class Agent:
             tool_invoker_inputs=tool_invoker_inputs,
         )
 
-    def _select_tools(self, tools: Optional[Union[ToolsType, list[str]]] = None) -> ToolsType:
+    def _select_tools(self, tools: ToolsType | list[str] | None = None) -> ToolsType:
         """
         Select tools for the current run based on the provided tools parameter.
 
@@ -393,7 +393,7 @@ class Agent:
             return tools
 
         if isinstance(tools, list):
-            return cast(list[Union[Tool, Toolset]], tools)  # mypy can't narrow the Union type from isinstance check
+            return cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
@@ -402,11 +402,11 @@ class Agent:
     def _initialize_from_snapshot(
         self,
         snapshot: AgentSnapshot,
-        streaming_callback: Optional[StreamingCallbackT],
+        streaming_callback: StreamingCallbackT | None,
         requires_async: bool,
         *,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[str] | None = None,
     ) -> _ExecutionContext:
         """
         Initialize execution context from an AgentSnapshot.
@@ -452,7 +452,7 @@ class Agent:
             skip_chat_generator=skip_chat_generator,
         )
 
-    def _runtime_checks(self, break_point: Optional[AgentBreakpoint]) -> None:
+    def _runtime_checks(self, break_point: AgentBreakpoint | None) -> None:
         """
         Perform runtime checks before running the agent.
 
@@ -469,13 +469,13 @@ class Agent:
     def run(  # noqa: PLR0915
         self,
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        break_point: Optional[AgentBreakpoint] = None,
-        snapshot: Optional[AgentSnapshot] = None,
-        system_prompt: Optional[str] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        break_point: AgentBreakpoint | None = None,
+        snapshot: AgentSnapshot | None = None,
+        system_prompt: str | None = None,
+        tools: ToolsType | list[str] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -655,13 +655,13 @@ class Agent:
     async def run_async(
         self,
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        break_point: Optional[AgentBreakpoint] = None,
-        snapshot: Optional[AgentSnapshot] = None,
-        system_prompt: Optional[str] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        break_point: AgentBreakpoint | None = None,
+        snapshot: AgentSnapshot | None = None,
+        system_prompt: str | None = None,
+        tools: ToolsType | list[str] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 from haystack import AsyncPipeline, Pipeline, SuperComponent, logging
 from haystack.core.serialization import generate_qualified_class_name
@@ -96,16 +96,16 @@ class PipelineTool(ComponentTool):
 
     def __init__(
         self,
-        pipeline: Union[Pipeline, AsyncPipeline],
+        pipeline: Pipeline | AsyncPipeline,
         *,
         name: str,
         description: str,
-        input_mapping: Optional[dict[str, list[str]]] = None,
-        output_mapping: Optional[dict[str, str]] = None,
-        parameters: Optional[dict[str, Any]] = None,
-        outputs_to_string: Optional[dict[str, Union[str, Callable[[Any], str]]]] = None,
-        inputs_from_state: Optional[dict[str, str]] = None,
-        outputs_to_state: Optional[dict[str, dict[str, Union[str, Callable]]]] = None,
+        input_mapping: dict[str, list[str]] | None = None,
+        output_mapping: dict[str, str] | None = None,
+        parameters: dict[str, Any] | None = None,
+        outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
+        inputs_from_state: dict[str, str] | None = None,
+        outputs_to_state: dict[str, dict[str, str | Callable]] | None = None,
     ) -> None:
         """
         Create a Tool instance from a Haystack pipeline.

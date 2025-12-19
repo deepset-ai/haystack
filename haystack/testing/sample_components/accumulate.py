@@ -5,7 +5,7 @@
 import builtins
 import sys
 from importlib import import_module
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from haystack.core.component import component
 from haystack.core.errors import ComponentDeserializationError
@@ -25,7 +25,7 @@ class Accumulate:
     are not directly serializable.
     """
 
-    def __init__(self, function: Optional[Callable] = None):
+    def __init__(self, function: Callable | None = None):
         """
         Class constructor
 

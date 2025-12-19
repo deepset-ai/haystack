@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal, Optional, Union, overload
+from typing import Any, Literal, overload
 
 import httpx
 
@@ -11,21 +11,21 @@ import httpx
 def init_http_client(http_client_kwargs: dict[str, Any], async_client: Literal[False]) -> httpx.Client: ...
 @overload
 def init_http_client(
-    http_client_kwargs: Optional[dict[str, Any]], async_client: Literal[False]
-) -> Union[httpx.Client, None]: ...
+    http_client_kwargs: dict[str, Any] | None, async_client: Literal[False]
+) -> httpx.Client | None: ...
 @overload
 def init_http_client(http_client_kwargs: dict[str, Any], async_client: Literal[True]) -> httpx.AsyncClient: ...
 @overload
 def init_http_client(
-    http_client_kwargs: Optional[dict[str, Any]], async_client: Literal[True]
-) -> Union[httpx.AsyncClient, None]: ...
+    http_client_kwargs: dict[str, Any] | None, async_client: Literal[True]
+) -> httpx.AsyncClient | None: ...
 @overload
 def init_http_client(
-    http_client_kwargs: Optional[dict[str, Any]], async_client: bool
-) -> Union[httpx.Client, httpx.AsyncClient, None]: ...
+    http_client_kwargs: dict[str, Any] | None, async_client: bool
+) -> httpx.Client | httpx.AsyncClient | None: ...
 def init_http_client(
-    http_client_kwargs: Optional[dict[str, Any]] = None, async_client: bool = False
-) -> Union[httpx.Client, httpx.AsyncClient, None]:
+    http_client_kwargs: dict[str, Any] | None = None, async_client: bool = False
+) -> httpx.Client | httpx.AsyncClient | None:
     """
     Initialize an httpx client based on the http_client_kwargs.
 

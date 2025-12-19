@@ -4,7 +4,7 @@
 
 import mimetypes
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from haystack import component, logging
 from haystack.components.converters.image.image_utils import _encode_image_to_base64
@@ -50,9 +50,7 @@ class ImageFileToImageContent:
     ```
     """
 
-    def __init__(
-        self, *, detail: Optional[Literal["auto", "high", "low"]] = None, size: Optional[tuple[int, int]] = None
-    ):
+    def __init__(self, *, detail: Literal["auto", "high", "low"] | None = None, size: tuple[int, int] | None = None):
         """
         Create the ImageFileToImageContent component.
 
@@ -71,11 +69,11 @@ class ImageFileToImageContent:
     @component.output_types(image_contents=list[ImageContent])
     def run(
         self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+        sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
         *,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[tuple[int, int]] = None,
+        detail: Literal["auto", "high", "low"] | None = None,
+        size: tuple[int, int] | None = None,
     ) -> dict[str, list[ImageContent]]:
         """
         Converts files to ImageContent objects.

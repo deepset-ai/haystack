@@ -6,7 +6,7 @@ import asyncio
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from fnmatch import fnmatch
-from typing import Callable, Optional, cast
+from typing import Callable, cast
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -113,12 +113,12 @@ class LinkContentFetcher:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         raise_on_failure: bool = True,
-        user_agents: Optional[list[str]] = None,
+        user_agents: list[str] | None = None,
         retry_attempts: int = 2,
         timeout: int = 3,
         http2: bool = False,
-        client_kwargs: Optional[dict] = None,
-        request_headers: Optional[dict[str, str]] = None,
+        client_kwargs: dict | None = None,
+        request_headers: dict[str, str] | None = None,
     ):
         """
         Initializes the component.
@@ -298,7 +298,7 @@ class LinkContentFetcher:
             # At this point, result is not an exception, so we need to cast it to the correct type for mypy
             if not isinstance(result, Exception):  # Runtime check
                 # Use cast to tell mypy that result is the tuple type returned by _fetch_async
-                result_tuple = cast(tuple[Optional[dict[str, str]], Optional[ByteStream]], result)
+                result_tuple = cast(tuple[dict[str, str] | None, ByteStream | None], result)
                 stream_metadata, stream = result_tuple
                 if stream_metadata is not None and stream is not None:
                     stream.meta.update(stream_metadata)
@@ -341,7 +341,7 @@ class LinkContentFetcher:
 
     async def _fetch_async(
         self, url: str, client: httpx.AsyncClient
-    ) -> tuple[Optional[dict[str, str]], Optional[ByteStream]]:
+    ) -> tuple[dict[str, str] | None, ByteStream | None]:
         """
         Asynchronously fetches content from a URL and returns it as a ByteStream.
 
@@ -350,8 +350,8 @@ class LinkContentFetcher:
         :returns: A tuple containing the ByteStream metadata dict and the corresponding ByteStream.
         """
         content_type: str = "text/html"
-        stream: Optional[ByteStream] = None
-        metadata: Optional[dict[str, str]] = None
+        stream: ByteStream | None = None
+        metadata: dict[str, str] | None = None
 
         try:
             response = await self._get_response_async(url, client)
@@ -371,7 +371,7 @@ class LinkContentFetcher:
 
         return metadata, stream
 
-    def _fetch_with_exception_suppression(self, url: str) -> tuple[Optional[dict[str, str]], Optional[ByteStream]]:
+    def _fetch_with_exception_suppression(self, url: str) -> tuple[dict[str, str] | None, ByteStream | None]:
         """
         Fetches content from a URL and returns it as a ByteStream.
 
@@ -456,7 +456,7 @@ class LinkContentFetcher:
         # default handler
         return self.handlers["text/plain"]
 
-    def _switch_user_agent(self, retry_state: Optional[RetryCallState] = None) -> None:
+    def _switch_user_agent(self, retry_state: RetryCallState | None = None) -> None:
         """
         Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
 

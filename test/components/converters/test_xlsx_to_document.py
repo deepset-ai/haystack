@@ -101,7 +101,7 @@ class TestXLSXToDocument:
         ],
     )
     def test_run_sheet_name(
-        self, sheet_name: Union[int, str], expected_sheet_name: str, expected_content: str, test_files_path
+        self, sheet_name: int | str, expected_sheet_name: str, expected_content: str, test_files_path
     ) -> None:
         converter = XLSXToDocument(sheet_name=sheet_name, store_full_path=True)
         paths = [test_files_path / "xlsx" / "basic_tables_two_sheets.xlsx"]

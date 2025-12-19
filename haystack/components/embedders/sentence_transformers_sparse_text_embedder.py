@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.embedders.backends.sentence_transformers_sparse_backend import (
@@ -40,18 +40,18 @@ class SentenceTransformersSparseTextEmbedder:
         self,
         *,
         model: str = "prithivida/Splade_PP_en_v2",
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
         trust_remote_code: bool = False,
         local_files_only: bool = False,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
-        encode_kwargs: Optional[dict[str, Any]] = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
+        encode_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
-        revision: Optional[str] = None,
+        revision: str | None = None,
     ):
         """
         Create a SentenceTransformersSparseTextEmbedder component.
@@ -100,7 +100,7 @@ class SentenceTransformersSparseTextEmbedder:
         self.model_kwargs = model_kwargs
         self.tokenizer_kwargs = tokenizer_kwargs
         self.config_kwargs = config_kwargs
-        self.embedding_backend: Optional[_SentenceTransformersSparseEncoderEmbeddingBackend] = None
+        self.embedding_backend: _SentenceTransformersSparseEncoderEmbeddingBackend | None = None
         self.backend = backend
 
     def _get_telemetry_data(self) -> dict[str, Any]:

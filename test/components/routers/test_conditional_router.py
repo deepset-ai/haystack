@@ -441,6 +441,29 @@ class TestRouter:
         with pytest.raises(ValueError, match="Route 'streams' type doesn't match expected type"):
             router.run(streams=streams, message=message)
 
+    def test_validate_output_type_with_pep604(self):
+        routes = [
+            {
+                "condition": "{{True}}",
+                "output": "{{value}}",
+                "output_type": list[str] | dict[str, int] | None,
+                "output_name": "result",
+            }
+        ]
+        router = ConditionalRouter(routes, validate_output_type=True)
+
+        result = router.run(value=["a", "b"])
+        assert result == {"result": ["a", "b"]}
+
+        result = router.run(value={"key": 1})
+        assert result == {"result": {"key": 1}}
+
+        result = router.run(value=None)
+        assert result == {"result": None}
+
+        with pytest.raises(ValueError, match="Route 'result' type doesn't match expected type"):
+            router.run(value=42)
+
     def test_router_with_optional_parameters(self):
         """
         Test that the router works with optional parameters, particularly testing the default/fallback route

@@ -92,7 +92,7 @@ class MockHTMLToDocument:
         return {"documents": documents}
 
 
-def add_database_tool_function(name: str, surname: str, job_title: Optional[str], other: Optional[str]):
+def add_database_tool_function(name: str, surname: str, job_title: str | None, other: str | None):
     document_store.write_documents(
         [Document(content=name + " " + surname + " " + (job_title or ""), meta={"other": other})]
     )

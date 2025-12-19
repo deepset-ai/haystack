@@ -6,7 +6,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import Generator, Literal, Optional
+from typing import Generator, Literal
 from unicodedata import normalize
 
 from haystack import Document, component, logging
@@ -44,9 +44,9 @@ class DocumentCleaner:
         remove_extra_whitespaces: bool = True,
         remove_repeated_substrings: bool = False,
         keep_id: bool = False,
-        remove_substrings: Optional[list[str]] = None,
-        remove_regex: Optional[str] = None,
-        unicode_normalization: Optional[Literal["NFC", "NFKC", "NFD", "NFKD"]] = None,
+        remove_substrings: list[str] | None = None,
+        remove_regex: str | None = None,
+        unicode_normalization: Literal["NFC", "NFKC", "NFD", "NFKD"] | None = None,
         ascii_only: bool = False,
     ):
         """
@@ -79,7 +79,7 @@ class DocumentCleaner:
         self.unicode_normalization = unicode_normalization
         self.ascii_only = ascii_only
 
-    def _validate_params(self, unicode_normalization: Optional[str]):
+    def _validate_params(self, unicode_normalization: str | None):
         """
         Validate the parameters of the DocumentCleaner.
 

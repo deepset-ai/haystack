@@ -4,7 +4,7 @@
 
 from copy import copy
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -42,22 +42,22 @@ class SentenceTransformersSimilarityRanker:
     def __init__(  # noqa: PLR0913
         self,
         *,
-        model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 10,
         query_prefix: str = "",
         query_suffix: str = "",
         document_prefix: str = "",
         document_suffix: str = "",
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
-        score_threshold: Optional[float] = None,
+        score_threshold: float | None = None,
         trust_remote_code: bool = False,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
         batch_size: int = 16,
     ):
@@ -219,9 +219,9 @@ class SentenceTransformersSimilarityRanker:
         *,
         query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        score_threshold: Optional[float] = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        score_threshold: float | None = None,
     ) -> dict[str, list[Document]]:
         """
         Returns a list of documents ranked by their similarity to the given query.

@@ -5,7 +5,7 @@
 import io
 import os
 from pathlib import Path
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -46,9 +46,9 @@ class XLSXToDocument:
     def __init__(
         self,
         table_format: Literal["csv", "markdown"] = "csv",
-        sheet_name: Union[str, int, list[Union[str, int]], None] = None,
-        read_excel_kwargs: Optional[dict[str, Any]] = None,
-        table_format_kwargs: Optional[dict[str, Any]] = None,
+        sheet_name: str | int | list[str | int] | None = None,
+        read_excel_kwargs: dict[str, Any] | None = None,
+        table_format_kwargs: dict[str, Any] | None = None,
         *,
         store_full_path: bool = False,
     ):
@@ -81,9 +81,7 @@ class XLSXToDocument:
 
     @component.output_types(documents=list[Document])
     def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+        self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None
     ) -> dict[str, list[Document]]:
         """
         Converts a XLSX file to a Document.

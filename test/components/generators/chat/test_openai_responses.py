@@ -250,7 +250,7 @@ def callback(chunk: StreamingChunk) -> None: ...
 @component
 class MessageExtractor:
     @component.output_types(messages=list[str], meta=dict[str, Any])
-    def run(self, messages: list[ChatMessage], meta: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], meta: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Extracts the text content of ChatMessage objects
 

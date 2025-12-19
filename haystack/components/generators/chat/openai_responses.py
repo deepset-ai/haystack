@@ -5,7 +5,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any
 
 from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.lib._pydantic import to_strict_json_schema
@@ -78,15 +78,15 @@ class OpenAIResponsesChatGenerator:
         *,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "gpt-5-mini",
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        api_base_url: str | None = None,
+        organization: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        tools: ToolsType | list[dict] | None = None,
         tools_strict: bool = False,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        http_client_kwargs: dict[str, Any] | None = None,
     ):
         """
         Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
@@ -236,7 +236,7 @@ class OpenAIResponsesChatGenerator:
             generation_kwargs["text"] = json_schema
 
         # OpenAI/MCP tools are passed as list of dictionaries
-        serialized_tools: Union[dict[str, Any], list[dict[str, Any]], None]
+        serialized_tools: dict[str, Any] | list[dict[str, Any]] | None
         if self.tools and isinstance(self.tools, list) and isinstance(self.tools[0], dict):
             # mypy can't infer that self.tools is list[dict] here
             serialized_tools = self.tools  # type: ignore[assignment]
@@ -293,10 +293,10 @@ class OpenAIResponsesChatGenerator:
         self,
         messages: list[ChatMessage],
         *,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[dict] | None = None,
+        tools_strict: bool | None = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Invokes response generation based on the provided messages and generation parameters.
@@ -335,7 +335,7 @@ class OpenAIResponsesChatGenerator:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
-        responses: Union[Stream[ResponseStreamEvent], Response]
+        responses: Stream[ResponseStreamEvent] | Response
 
         api_args = self._prepare_api_call(
             messages=messages,
@@ -363,10 +363,10 @@ class OpenAIResponsesChatGenerator:
         self,
         messages: list[ChatMessage],
         *,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[dict] | None = None,
+        tools_strict: bool | None = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes response generation based on the provided messages and generation parameters.
@@ -405,7 +405,7 @@ class OpenAIResponsesChatGenerator:
         streaming_callback = select_streaming_callback(
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
-        responses: Union[AsyncStream[ResponseStreamEvent], Response]
+        responses: AsyncStream[ResponseStreamEvent] | Response
 
         if len(messages) == 0:
             return {"replies": []}
@@ -437,10 +437,10 @@ class OpenAIResponsesChatGenerator:
         self,
         *,
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[dict] | None = None,
+        tools_strict: bool | None = None,
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
@@ -513,7 +513,7 @@ class OpenAIResponsesChatGenerator:
         return [chat_message]
 
 
-def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]) -> ChatMessage:
+def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> ChatMessage:
     """
     Converts the non-streaming response from the OpenAI API to a ChatMessage.
 
@@ -583,7 +583,7 @@ def _convert_response_to_chat_message(responses: Union[Response, ParsedResponse]
 
 
 def _convert_response_chunk_to_streaming_chunk(  # pylint: disable=too-many-return-statements
-    chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: Optional[ComponentInfo] = None
+    chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
 ) -> StreamingChunk:
     """
     Converts the streaming response chunk from the OpenAI Responses API to a StreamingChunk.

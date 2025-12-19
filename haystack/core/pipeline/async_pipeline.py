@@ -4,7 +4,7 @@
 
 import asyncio
 import contextvars
-from typing import Any, AsyncIterator, Mapping, Optional
+from typing import Any, AsyncIterator, Mapping
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -37,9 +37,9 @@ class AsyncPipeline(PipelineBase):
         component: dict[str, Any],
         component_inputs: dict[str, Any],
         component_visits: dict[str, int],
-        parent_span: Optional[tracing.Span] = None,
+        parent_span: tracing.Span | None = None,
         *,
-        break_point: Optional[Breakpoint] = None,
+        break_point: Breakpoint | None = None,
     ) -> Mapping[str, Any]:
         """
         Executes a single component asynchronously.
@@ -99,7 +99,7 @@ class AsyncPipeline(PipelineBase):
             return outputs
 
     async def run_async_generator(  # noqa: PLR0915,C901  # pylint: disable=too-many-statements
-        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Executes the pipeline step by step asynchronously, yielding partial outputs when any component finishes.
@@ -474,7 +474,7 @@ class AsyncPipeline(PipelineBase):
             yield _deepcopy_with_exceptions(pipeline_outputs)
 
     async def run_async(
-        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> dict[str, Any]:
         """
         Provides an asynchronous interface to run the pipeline with provided input data.
@@ -591,7 +591,7 @@ class AsyncPipeline(PipelineBase):
         return final or {}
 
     def run(
-        self, data: dict[str, Any], include_outputs_from: Optional[set[str]] = None, concurrency_limit: int = 4
+        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> dict[str, Any]:
         """
         Provides a synchronous interface to run the pipeline with given input data.

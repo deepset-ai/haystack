@@ -50,8 +50,8 @@ class _PipelineResult:
 
 @when("I run the Pipeline", target_fixture="pipeline_result")
 def run_pipeline(
-    pipeline_data: tuple[Union[AsyncPipeline, Pipeline], list[PipelineRunData]], spying_tracer
-) -> Union[list[tuple[_PipelineResult, PipelineRunData]], Exception]:
+    pipeline_data: tuple[AsyncPipeline | Pipeline, list[PipelineRunData]], spying_tracer
+) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     if isinstance(pipeline_data[0], AsyncPipeline):
         return run_async_pipeline(pipeline_data, spying_tracer)
     else:
@@ -59,8 +59,8 @@ def run_pipeline(
 
 
 def run_async_pipeline(
-    pipeline_data: tuple[Union[AsyncPipeline], list[PipelineRunData]], spying_tracer
-) -> Union[list[tuple[_PipelineResult, PipelineRunData]], Exception]:
+    pipeline_data: tuple[AsyncPipeline, list[PipelineRunData]], spying_tracer
+) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     """
     Attempts to run a pipeline with the given inputs.
     `pipeline_data` is a tuple that must contain:
@@ -99,7 +99,7 @@ def run_async_pipeline(
 
 def run_sync_pipeline(
     pipeline_data: tuple[Pipeline, list[PipelineRunData]], spying_tracer
-) -> Union[list[tuple[_PipelineResult, PipelineRunData]], Exception]:
+) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     """
     Attempts to run a pipeline with the given inputs.
     `pipeline_data` is a tuple that must contain:
