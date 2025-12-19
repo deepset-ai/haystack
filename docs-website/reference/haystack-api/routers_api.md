@@ -111,10 +111,10 @@ print(result)
 
 ```python
 def __init__(routes: list[Route],
-             custom_filters: Optional[dict[str, Callable]] = None,
+             custom_filters: dict[str, Callable] | None = None,
              unsafe: bool = False,
              validate_output_type: bool = False,
-             optional_variables: Optional[list[str]] = None)
+             optional_variables: list[str] | None = None)
 ```
 
 Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
@@ -373,9 +373,9 @@ Expected output:
 ```python
 def __init__(*,
              mime_types: list[str],
-             mime_type_meta_field: Optional[str] = None,
-             file_path_meta_field: Optional[str] = None,
-             additional_mimetypes: Optional[dict[str, str]] = None) -> None
+             mime_type_meta_field: str | None = None,
+             file_path_meta_field: str | None = None,
+             additional_mimetypes: dict[str, str] | None = None) -> None
 ```
 
 Initialize the DocumentTypeRouter component.
@@ -465,7 +465,7 @@ print(router_with_regex.run(sources=sources))
 
 ```python
 def __init__(mime_types: list[str],
-             additional_mimetypes: Optional[dict[str, str]] = None,
+             additional_mimetypes: dict[str, str] | None = None,
              raise_on_failure: bool = False)
 ```
 
@@ -520,9 +520,9 @@ The deserialized component.
 
 ```python
 def run(
-    sources: list[Union[str, Path, ByteStream]],
-    meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None
-) -> dict[str, list[Union[ByteStream, Path]]]
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None
+) -> dict[str, list[ByteStream | Path]]
 ```
 
 Categorize files or byte streams according to their MIME types.
@@ -595,7 +595,7 @@ S2',
 def __init__(chat_generator: ChatGenerator,
              output_names: list[str],
              output_patterns: list[str],
-             system_prompt: Optional[str] = None)
+             system_prompt: str | None = None)
 ```
 
 Initialize the LLMMessagesRouter component.
@@ -630,8 +630,7 @@ Warm up the underlying LLM.
 #### LLMMessagesRouter.run
 
 ```python
-def run(messages: list[ChatMessage]
-        ) -> dict[str, Union[str, list[ChatMessage]]]
+def run(messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]
 ```
 
 Classify the messages based on LLM output and route them to the appropriate output connection.
@@ -790,7 +789,7 @@ For example:
 #### MetadataRouter.run
 
 ```python
-def run(documents: Union[list[Document], list[ByteStream]])
+def run(documents: list[Document] | list[ByteStream])
 ```
 
 Routes documents or byte streams to different connections based on their metadata fields.
@@ -882,7 +881,7 @@ assert result["text_language_router"]["unmatched"] == "ένα ελληνικό �
 #### TextLanguageRouter.\_\_init\_\_
 
 ```python
-def __init__(languages: Optional[list[str]] = None)
+def __init__(languages: list[str] | None = None)
 ```
 
 Initialize the TextLanguageRouter component.
@@ -979,11 +978,11 @@ print(p.run({"text_router": {"text": "Was ist die Hauptstadt von Deutschland?"}}
 
 ```python
 def __init__(model: str,
-             labels: Optional[list[str]] = None,
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+             labels: list[str] | None = None,
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None)
+             huggingface_pipeline_kwargs: dict[str, Any] | None = None)
 ```
 
 Initializes the TransformersTextRouter component.
@@ -1151,10 +1150,10 @@ p.run({
 def __init__(labels: list[str],
              multi_label: bool = False,
              model: str = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None)
+             huggingface_pipeline_kwargs: dict[str, Any] | None = None)
 ```
 
 Initializes the TransformersZeroShotTextRouter component.

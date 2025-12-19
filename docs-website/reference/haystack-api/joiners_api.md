@@ -77,8 +77,8 @@ results = pipe.run(data={"llm_1": {"messages": messages},
 #### AnswerJoiner.\_\_init\_\_
 
 ```python
-def __init__(join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
-             top_k: Optional[int] = None,
+def __init__(join_mode: str | JoinMode = JoinMode.CONCATENATE,
+             top_k: int | None = None,
              sort_by_score: bool = False)
 ```
 
@@ -98,7 +98,7 @@ If a document has no score, it is handled as if its score is -infinity.
 
 ```python
 @component.output_types(answers=list[AnswerType])
-def run(answers: Variadic[list[AnswerType]], top_k: Optional[int] = None)
+def run(answers: Variadic[list[AnswerType]], top_k: int | None = None)
 ```
 
 Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
@@ -364,9 +364,9 @@ p.run(data={"query": query, "text": query, "top_k": 1})
 #### DocumentJoiner.\_\_init\_\_
 
 ```python
-def __init__(join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
-             weights: Optional[list[float]] = None,
-             top_k: Optional[int] = None,
+def __init__(join_mode: str | JoinMode = JoinMode.CONCATENATE,
+             weights: list[float] | None = None,
+             top_k: int | None = None,
              sort_by_score: bool = True)
 ```
 
@@ -394,7 +394,7 @@ If a document has no score, it is handled as if its score is -infinity.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(documents: Variadic[list[Document]], top_k: Optional[int] = None)
+def run(documents: Variadic[list[Document]], top_k: int | None = None)
 ```
 
 Joins multiple lists of Documents into a single list depending on the `join_mode` parameter.
@@ -505,7 +505,7 @@ print(ans["list_joiner"]["values"])
 #### ListJoiner.\_\_init\_\_
 
 ```python
-def __init__(list_type_: Optional[type] = None)
+def __init__(list_type_: type | None = None)
 ```
 
 Creates a ListJoiner component.
