@@ -355,6 +355,7 @@ pipeline/agent setup.
 - `description`: Description of the Tool.
 - `parameters`: A JSON schema defining the parameters expected by the Tool.
 - `function`: The function that will be invoked when the Tool is called.
+Must be a synchronous function; async functions are not supported.
 - `outputs_to_string`: Optional dictionary defining how a tool outputs should be converted into a string.
 If the source is provided only the specified output key is sent to the handler.
 If the source is omitted the whole tool result is sent to the handler.
