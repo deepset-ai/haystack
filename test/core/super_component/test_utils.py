@@ -5,7 +5,22 @@
 from typing import Any, Optional, Union
 
 from haystack.core.component.types import GreedyVariadic, Variadic
-from haystack.core.super_component.utils import _is_compatible
+from haystack.core.super_component.utils import _is_compatible, _is_optional_type
+
+
+def test_is_optional_type():
+    assert _is_optional_type(Optional[int]) is True
+    assert _is_optional_type(Union[int, None]) is True
+    assert _is_optional_type(int | None) is True
+
+    assert _is_optional_type(Optional[list[int]]) is True
+    assert _is_optional_type(Union[list[int], None]) is True
+    assert _is_optional_type(list[int] | None) is True
+
+    assert _is_optional_type(None) is False
+    assert _is_optional_type(int) is False
+    assert _is_optional_type(Union[int, str]) is False
+    assert _is_optional_type(list[int]) is False
 
 
 class TestTypeCompatibility:
