@@ -17,6 +17,8 @@ def test_lazy_importer_avoids_importing_unused_modules():
         if original_imported:
             del sys.modules["haystack.components.generators.chat.azure"]
 
+        from haystack.components.generators.chat import OpenAIChatGenerator  # Import the intended class # noqa: F401
+
         assert "haystack.components.generators.chat.openai" in sys.modules.keys()
         assert "haystack.components.generators.chat.azure" not in sys.modules.keys()
 
@@ -27,7 +29,7 @@ def test_lazy_importer_avoids_importing_unused_modules():
 
 def test_import_error_is_suppressed_and_deferred():
     with LazyImport() as lazy_import:
-        pass
+        import a_module  # noqa: F401
 
     assert lazy_import._deferred is not None
     exc_value, message = lazy_import._deferred
