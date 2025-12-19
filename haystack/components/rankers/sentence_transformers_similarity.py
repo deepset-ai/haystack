@@ -75,9 +75,15 @@ class SentenceTransformersSimilarityRanker:
         :param query_prefix:
             A string to add at the beginning of the query text before ranking.
             Use it to prepend the text with an instruction, as required by reranking models like `bge`.
+        :param query_suffix:
+            A string to add at the end of the query text before ranking.
+            Use it to append the text with an instruction, as required by reranking models like `qwen`.
         :param document_prefix:
             A string to add at the beginning of each document before ranking. You can use it to prepend the document
             with an instruction, as required by embedding models like `bge`.
+        :param document_suffix:
+            A string to add at the end of each document before ranking. You can use it to append the document
+            with an instruction, as required by embedding models like `qwen`.
         :param meta_fields_to_embed:
             List of metadata fields to embed with the document.
         :param embedding_separator:
