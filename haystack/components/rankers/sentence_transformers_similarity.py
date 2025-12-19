@@ -47,7 +47,9 @@ class SentenceTransformersSimilarityRanker:
         token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         top_k: int = 10,
         query_prefix: str = "",
+        query_suffix: str = "",
         document_prefix: str = "",
+        document_suffix: str = "",
         meta_fields_to_embed: Optional[list[str]] = None,
         embedding_separator: str = "\n",
         scale_score: bool = True,
@@ -115,7 +117,9 @@ class SentenceTransformersSimilarityRanker:
         self.model = str(model)
         self._cross_encoder = None
         self.query_prefix = query_prefix
+        self.query_suffix = query_suffix
         self.document_prefix = document_prefix
+        self.document_suffix = document_suffix
         self.device = ComponentDevice.resolve_device(device)
         self.top_k = top_k
         self.token = token
@@ -166,7 +170,9 @@ class SentenceTransformersSimilarityRanker:
             token=self.token.to_dict() if self.token else None,
             top_k=self.top_k,
             query_prefix=self.query_prefix,
+            query_suffix=self.query_suffix,
             document_prefix=self.document_prefix,
+            document_suffix=self.document_suffix,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             scale_score=self.scale_score,
@@ -247,14 +253,16 @@ class SentenceTransformersSimilarityRanker:
         if top_k <= 0:
             raise ValueError(f"top_k must be > 0, but got {top_k}")
 
-        prepared_query = self.query_prefix + query
+        prepared_query = self.query_prefix + query + self.query_suffix
         prepared_documents = []
         for doc in documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
             ]
             prepared_documents.append(
-                self.document_prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
+                self.document_prefix
+                + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""])
+                + self.document_suffix
             )
 
         activation_fn = Sigmoid() if scale_score else Identity()

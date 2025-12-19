@@ -93,7 +93,9 @@ class TestSentenceTransformersSimilarityRanker:
                 "top_k": 10,
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "query_prefix": "",
+                "query_suffix": "",
                 "document_prefix": "",
+                "document_suffix": "",
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
@@ -115,7 +117,9 @@ class TestSentenceTransformersSimilarityRanker:
             token=Secret.from_env_var("ENV_VAR", strict=False),
             top_k=5,
             query_prefix="query_instruction: ",
+            query_suffix="\n",
             document_prefix="document_instruction: ",
+            document_suffix="\n",
             scale_score=False,
             score_threshold=0.01,
             trust_remote_code=True,
@@ -132,7 +136,9 @@ class TestSentenceTransformersSimilarityRanker:
                 "token": {"env_vars": ["ENV_VAR"], "strict": False, "type": "env_var"},
                 "top_k": 5,
                 "query_prefix": "query_instruction: ",
+                "query_suffix": "\n",
                 "document_prefix": "document_instruction: ",
+                "document_suffix": "\n",
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
                 "scale_score": False,
@@ -162,7 +168,9 @@ class TestSentenceTransformersSimilarityRanker:
                 "device": ComponentDevice.resolve_device(None).to_dict(),
                 "top_k": 10,
                 "query_prefix": "",
+                "query_suffix": "",
                 "document_prefix": "",
+                "document_suffix": "",
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
                 "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
                 "meta_fields_to_embed": [],
@@ -314,6 +322,30 @@ class TestSentenceTransformersSimilarityRanker:
             "document_instruction: document number 2",
             "document_instruction: document number 3",
             "document_instruction: document number 4",
+        ]
+        assert kwargs["batch_size"] == 16
+        assert isinstance(kwargs["activation_fn"], torch.nn.Sigmoid)
+        assert kwargs["convert_to_numpy"] is True
+
+    def test_suffix(self):
+        ranker = SentenceTransformersSimilarityRanker(
+            model="model", query_suffix="\nquery_suffix", document_suffix="\ndocument_suffix"
+        )
+        mock_cross_encoder = MagicMock()
+        ranker._cross_encoder = mock_cross_encoder
+
+        documents = [Document(content=f"document number {i}", meta={"meta_field": f"meta_value {i}"}) for i in range(5)]
+
+        ranker.run(query="test", documents=documents)
+
+        _, kwargs = mock_cross_encoder.rank.call_args
+        assert kwargs["query"] == "test\nquery_suffix"
+        assert kwargs["documents"] == [
+            "document number 0\ndocument_suffix",
+            "document number 1\ndocument_suffix",
+            "document number 2\ndocument_suffix",
+            "document number 3\ndocument_suffix",
+            "document number 4\ndocument_suffix",
         ]
         assert kwargs["batch_size"] == 16
         assert isinstance(kwargs["activation_fn"], torch.nn.Sigmoid)
