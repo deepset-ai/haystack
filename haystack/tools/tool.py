@@ -35,6 +35,7 @@ class Tool:
         A JSON schema defining the parameters expected by the Tool.
     :param function:
         The function that will be invoked when the Tool is called.
+        Must be a synchronous function; async functions are not supported.
     :param outputs_to_string:
         Optional dictionary defining how a tool outputs should be converted into a string.
         If the source is provided only the specified output key is sent to the handler.
