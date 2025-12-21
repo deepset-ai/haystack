@@ -5,9 +5,8 @@
 import pytest
 
 from haystack.components.agents import Agent
-from haystack.components.tools import ToolInvoker
 from haystack.core.component.component import component
-from haystack.tools import Tool, Toolset, warm_up_tools
+from haystack.tools import Tool, Toolset
 from haystack.tools.toolset import _ToolsetWrapper
 
 

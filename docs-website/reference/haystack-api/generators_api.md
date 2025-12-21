@@ -54,23 +54,23 @@ print(response)
 #### AzureOpenAIGenerator.\_\_init\_\_
 
 ```python
-def __init__(azure_endpoint: Optional[str] = None,
-             api_version: Optional[str] = "2024-12-01-preview",
-             azure_deployment: Optional[str] = "gpt-4.1-mini",
-             api_key: Optional[Secret] = Secret.from_env_var(
+def __init__(azure_endpoint: str | None = None,
+             api_version: str | None = "2024-12-01-preview",
+             azure_deployment: str | None = "gpt-4.1-mini",
+             api_key: Secret | None = Secret.from_env_var(
                  "AZURE_OPENAI_API_KEY", strict=False),
-             azure_ad_token: Optional[Secret] = Secret.from_env_var(
+             azure_ad_token: Secret | None = Secret.from_env_var(
                  "AZURE_OPENAI_AD_TOKEN", strict=False),
-             organization: Optional[str] = None,
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             system_prompt: Optional[str] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             default_headers: Optional[dict[str, str]] = None,
+             organization: str | None = None,
+             streaming_callback: StreamingCallbackT | None = None,
+             system_prompt: str | None = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
+             default_headers: dict[str, str] | None = None,
              *,
-             azure_ad_token_provider: Optional[AzureADTokenProvider] = None)
+             azure_ad_token_provider: AzureADTokenProvider | None = None)
 ```
 
 Initialize the Azure OpenAI Generator.
@@ -160,10 +160,10 @@ The deserialized component instance.
 @component.output_types(replies=list[str], meta=list[dict[str, Any]])
 def run(
     prompt: str,
-    system_prompt: Optional[str] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    generation_kwargs: Optional[dict[str, Any]] = None
-) -> dict[str, Union[list[str], list[dict[str, Any]]]]
+    system_prompt: str | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None
+) -> dict[str, list[str] | list[dict[str, Any]]]
 ```
 
 Invoke the text generation inference based on the provided messages and generation parameters.
@@ -238,25 +238,25 @@ print(response)
 #### AzureOpenAIChatGenerator.\_\_init\_\_
 
 ```python
-def __init__(azure_endpoint: Optional[str] = None,
-             api_version: Optional[str] = "2024-12-01-preview",
-             azure_deployment: Optional[str] = "gpt-4.1-mini",
-             api_key: Optional[Secret] = Secret.from_env_var(
+def __init__(azure_endpoint: str | None = None,
+             api_version: str | None = "2024-12-01-preview",
+             azure_deployment: str | None = "gpt-4.1-mini",
+             api_key: Secret | None = Secret.from_env_var(
                  "AZURE_OPENAI_API_KEY", strict=False),
-             azure_ad_token: Optional[Secret] = Secret.from_env_var(
+             azure_ad_token: Secret | None = Secret.from_env_var(
                  "AZURE_OPENAI_AD_TOKEN", strict=False),
-             organization: Optional[str] = None,
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             default_headers: Optional[dict[str, str]] = None,
-             tools: Optional[ToolsType] = None,
+             organization: str | None = None,
+             streaming_callback: StreamingCallbackT | None = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
+             default_headers: dict[str, str] | None = None,
+             tools: ToolsType | None = None,
              tools_strict: bool = False,
              *,
-             azure_ad_token_provider: Optional[Union[
-                 AzureADTokenProvider, AsyncAzureADTokenProvider]] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
+             azure_ad_token_provider: AzureADTokenProvider
+             | AsyncAzureADTokenProvider | None = None,
+             http_client_kwargs: dict[str, Any] | None = None)
 ```
 
 Initialize the Azure OpenAI Chat Generator component.
@@ -368,11 +368,11 @@ The deserialized component instance.
 ```python
 @component.output_types(replies=list[ChatMessage])
 def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
         *,
-        tools: Optional[ToolsType] = None,
-        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
+        tools: ToolsType | None = None,
+        tools_strict: bool | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes chat completion based on the provided messages and generation parameters.
@@ -403,11 +403,11 @@ A dictionary with the following key:
 @component.output_types(replies=list[ChatMessage])
 async def run_async(
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
         *,
-        tools: Optional[ToolsType] = None,
-        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
+        tools: ToolsType | None = None,
+        tools_strict: bool | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes chat completion based on the provided messages and generation parameters.
@@ -478,20 +478,19 @@ print(response)
 
 ```python
 def __init__(*,
-             api_key: Union[Secret, Callable[[], str],
-                            Callable[[],
-                                     Awaitable[str]]] = Secret.from_env_var(
-                                         "AZURE_OPENAI_API_KEY", strict=False),
-             azure_endpoint: Optional[str] = None,
+             api_key: Secret | Callable[[], str]
+             | Callable[[], Awaitable[str]] = Secret.from_env_var(
+                 "AZURE_OPENAI_API_KEY", strict=False),
+             azure_endpoint: str | None = None,
              azure_deployment: str = "gpt-5-mini",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             organization: Optional[str] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             tools: Optional[ToolsType] = None,
+             streaming_callback: StreamingCallbackT | None = None,
+             organization: str | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             tools: ToolsType | None = None,
              tools_strict: bool = False,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
+             http_client_kwargs: dict[str, Any] | None = None)
 ```
 
 Initialize the AzureOpenAIResponsesChatGenerator component.
@@ -605,10 +604,10 @@ This method is idempotent and will only warm up the tools once.
 @component.output_types(replies=list[ChatMessage])
 def run(messages: list[ChatMessage],
         *,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[dict] | None = None,
+        tools_strict: bool | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes response generation based on the provided messages and generation parameters.
@@ -645,10 +644,10 @@ A dictionary with the following key:
 async def run_async(
         messages: list[ChatMessage],
         *,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[dict] | None = None,
+        tools_strict: bool | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes response generation based on the provided messages and generation parameters.
@@ -768,10 +767,10 @@ This method calls warm_up() on each underlying generator that supports it.
 @component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
 def run(
     messages: list[ChatMessage],
-    generation_kwargs: Union[dict[str, Any], None] = None,
-    tools: Optional[ToolsType] = None,
-    streaming_callback: Union[StreamingCallbackT, None] = None
-) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+    streaming_callback: StreamingCallbackT | None = None
+) -> dict[str, list[ChatMessage] | dict[str, Any]]
 ```
 
 Execute chat generators sequentially until one succeeds.
@@ -802,10 +801,10 @@ A dictionary with:
 @component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
 async def run_async(
     messages: list[ChatMessage],
-    generation_kwargs: Union[dict[str, Any], None] = None,
-    tools: Optional[ToolsType] = None,
-    streaming_callback: Union[StreamingCallbackT, None] = None
-) -> dict[str, Union[list[ChatMessage], dict[str, Any]]]
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+    streaming_callback: StreamingCallbackT | None = None
+) -> dict[str, list[ChatMessage] | dict[str, Any]]
 ```
 
 Asynchronously execute chat generators sequentially until one succeeds.
@@ -935,14 +934,14 @@ print(result)
 #### HuggingFaceAPIChatGenerator.\_\_init\_\_
 
 ```python
-def __init__(api_type: Union[HFGenerationAPIType, str],
+def __init__(api_type: HFGenerationAPIType | str,
              api_params: dict[str, str],
-             token: Optional[Secret] = Secret.from_env_var(
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             stop_words: Optional[list[str]] = None,
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             tools: Optional[ToolsType] = None)
+             generation_kwargs: dict[str, Any] | None = None,
+             stop_words: list[str] | None = None,
+             streaming_callback: StreamingCallbackT | None = None,
+             tools: ToolsType | None = None)
 ```
 
 Initialize the HuggingFaceAPIChatGenerator instance.
@@ -1018,9 +1017,9 @@ Deserialize this component from a dictionary.
 @component.output_types(replies=list[ChatMessage])
 def run(
     messages: list[ChatMessage],
-    generation_kwargs: Optional[dict[str, Any]] = None,
-    tools: Optional[ToolsType] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+    streaming_callback: StreamingCallbackT | None = None
 ) -> dict[str, list[ChatMessage]]
 ```
 
@@ -1049,9 +1048,9 @@ A dictionary with the following keys:
 @component.output_types(replies=list[ChatMessage])
 async def run_async(
     messages: list[ChatMessage],
-    generation_kwargs: Optional[dict[str, Any]] = None,
-    tools: Optional[ToolsType] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None
+    generation_kwargs: dict[str, Any] | None = None,
+    tools: ToolsType | None = None,
+    streaming_callback: StreamingCallbackT | None = None
 ) -> dict[str, list[ChatMessage]]
 ```
 
@@ -1084,7 +1083,7 @@ A dictionary with the following keys:
 #### default\_tool\_parser
 
 ```python
-def default_tool_parser(text: str) -> Optional[list[ToolCall]]
+def default_tool_parser(text: str) -> list[ToolCall] | None
 ```
 
 Default implementation for parsing tool calls from model output text.
@@ -1143,20 +1142,20 @@ print(generator.run(messages))
 
 ```python
 def __init__(model: str = "Qwen/Qwen3-0.6B",
-             task: Optional[Literal["text-generation",
-                                    "text2text-generation"]] = None,
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+             task: Literal["text-generation", "text2text-generation"]
+             | None = None,
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             chat_template: Optional[str] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
-             stop_words: Optional[list[str]] = None,
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             tools: Optional[ToolsType] = None,
-             tool_parsing_function: Optional[Callable[
-                 [str], Optional[list[ToolCall]]]] = None,
-             async_executor: Optional[ThreadPoolExecutor] = None,
+             chat_template: str | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
+             huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+             stop_words: list[str] | None = None,
+             streaming_callback: StreamingCallbackT | None = None,
+             tools: ToolsType | None = None,
+             tool_parsing_function: Callable[[str], list[ToolCall] | None]
+             | None = None,
+             async_executor: ThreadPoolExecutor | None = None,
              *,
              enable_thinking: bool = False) -> None
 ```
@@ -1277,9 +1276,9 @@ The deserialized component.
 ```python
 @component.output_types(replies=list[ChatMessage])
 def run(messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[ToolsType] = None) -> dict[str, list[ChatMessage]]
+        generation_kwargs: dict[str, Any] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        tools: ToolsType | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invoke text generation inference based on the provided messages and generation parameters.
@@ -1334,9 +1333,9 @@ A ChatMessage instance.
 @component.output_types(replies=list[ChatMessage])
 async def run_async(
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[ToolsType] = None) -> dict[str, list[ChatMessage]]
+        generation_kwargs: dict[str, Any] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        tools: ToolsType | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes text generation inference based on the provided messages and generation parameters.
@@ -1412,15 +1411,15 @@ Output:
 ```python
 def __init__(api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
              model: str = "gpt-5-mini",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             api_base_url: Optional[str] = None,
-             organization: Optional[str] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             tools: Optional[ToolsType] = None,
+             streaming_callback: StreamingCallbackT | None = None,
+             api_base_url: str | None = None,
+             organization: str | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             tools: ToolsType | None = None,
              tools_strict: bool = False,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
+             http_client_kwargs: dict[str, Any] | None = None)
 ```
 
 Creates an instance of OpenAIChatGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
@@ -1534,11 +1533,11 @@ The deserialized component instance.
 ```python
 @component.output_types(replies=list[ChatMessage])
 def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
         *,
-        tools: Optional[ToolsType] = None,
-        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
+        tools: ToolsType | None = None,
+        tools_strict: bool | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes chat completion based on the provided messages and generation parameters.
@@ -1569,11 +1568,11 @@ A dictionary with the following key:
 @component.output_types(replies=list[ChatMessage])
 async def run_async(
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
         *,
-        tools: Optional[ToolsType] = None,
-        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
+        tools: ToolsType | None = None,
+        tools_strict: bool | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes chat completion based on the provided messages and generation parameters.
@@ -1643,15 +1642,15 @@ print(response)
 def __init__(*,
              api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
              model: str = "gpt-5-mini",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             api_base_url: Optional[str] = None,
-             organization: Optional[str] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             tools: Optional[Union[ToolsType, list[dict]]] = None,
+             streaming_callback: StreamingCallbackT | None = None,
+             api_base_url: str | None = None,
+             organization: str | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             tools: ToolsType | list[dict] | None = None,
              tools_strict: bool = False,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
+             http_client_kwargs: dict[str, Any] | None = None)
 ```
 
 Creates an instance of OpenAIResponsesChatGenerator. Uses OpenAI's gpt-5-mini by default.
@@ -1772,10 +1771,10 @@ The deserialized component instance.
 @component.output_types(replies=list[ChatMessage])
 def run(messages: list[ChatMessage],
         *,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[dict] | None = None,
+        tools_strict: bool | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes response generation based on the provided messages and generation parameters.
@@ -1812,10 +1811,10 @@ A dictionary with the following key:
 async def run_async(
         messages: list[ChatMessage],
         *,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[dict]]] = None,
-        tools_strict: Optional[bool] = None) -> dict[str, list[ChatMessage]]
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[dict] | None = None,
+        tools_strict: bool | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Asynchronously invokes response generation based on the provided messages and generation parameters.
@@ -1914,13 +1913,13 @@ print(result)
 #### HuggingFaceAPIGenerator.\_\_init\_\_
 
 ```python
-def __init__(api_type: Union[HFGenerationAPIType, str],
+def __init__(api_type: HFGenerationAPIType | str,
              api_params: dict[str, str],
-             token: Optional[Secret] = Secret.from_env_var(
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             stop_words: Optional[list[str]] = None,
-             streaming_callback: Optional[StreamingCallbackT] = None)
+             generation_kwargs: dict[str, Any] | None = None,
+             stop_words: list[str] | None = None,
+             streaming_callback: StreamingCallbackT | None = None)
 ```
 
 Initialize the HuggingFaceAPIGenerator instance.
@@ -1979,8 +1978,8 @@ Deserialize this component from a dictionary.
 ```python
 @component.output_types(replies=list[str], meta=list[dict[str, Any]])
 def run(prompt: str,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None)
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None)
 ```
 
 Invoke the text generation inference for the given prompt and generation parameters.
@@ -2030,15 +2029,15 @@ print(generator.run("Who is the best American actor?"))
 
 ```python
 def __init__(model: str = "google/flan-t5-base",
-             task: Optional[Literal["text-generation",
-                                    "text2text-generation"]] = None,
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+             task: Literal["text-generation", "text2text-generation"]
+             | None = None,
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
-             stop_words: Optional[list[str]] = None,
-             streaming_callback: Optional[StreamingCallbackT] = None)
+             generation_kwargs: dict[str, Any] | None = None,
+             huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+             stop_words: list[str] | None = None,
+             streaming_callback: StreamingCallbackT | None = None)
 ```
 
 Creates an instance of a HuggingFaceLocalGenerator.
@@ -2123,8 +2122,8 @@ The deserialized component.
 ```python
 @component.output_types(replies=list[str])
 def run(prompt: str,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None)
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None)
 ```
 
 Run the text generation model on the given prompt.
@@ -2184,14 +2183,14 @@ print(response)
 ```python
 def __init__(api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
              model: str = "gpt-5-mini",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             api_base_url: Optional[str] = None,
-             organization: Optional[str] = None,
-             system_prompt: Optional[str] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
+             streaming_callback: StreamingCallbackT | None = None,
+             api_base_url: str | None = None,
+             organization: str | None = None,
+             system_prompt: str | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None)
 ```
 
 Creates an instance of OpenAIGenerator. Unless specified otherwise in `model`, uses OpenAI's gpt-5-mini
@@ -2277,10 +2276,10 @@ The deserialized component instance.
 @component.output_types(replies=list[str], meta=list[dict[str, Any]])
 def run(
     prompt: str,
-    system_prompt: Optional[str] = None,
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    generation_kwargs: Optional[dict[str, Any]] = None
-) -> dict[str, Union[list[str], list[dict[str, Any]]]]
+    system_prompt: str | None = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None
+) -> dict[str, list[str] | list[dict[str, Any]]]
 ```
 
 Invoke the text generation inference based on the provided messages and generation parameters.
@@ -2333,11 +2332,11 @@ def __init__(model: str = "dall-e-3",
                            "1024x1792"] = "1024x1024",
              response_format: Literal["url", "b64_json"] = "url",
              api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-             api_base_url: Optional[str] = None,
-             organization: Optional[str] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
+             api_base_url: str | None = None,
+             organization: str | None = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None)
 ```
 
 Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
@@ -2377,11 +2376,10 @@ Warm up the OpenAI client.
 ```python
 @component.output_types(images=list[str], revised_prompt=str)
 def run(prompt: str,
-        size: Optional[Literal["256x256", "512x512", "1024x1024", "1792x1024",
-                               "1024x1792"]] = None,
-        quality: Optional[Literal["standard", "hd"]] = None,
-        response_format: Optional[Optional[Literal["url",
-                                                   "b64_json"]]] = None)
+        size: Literal["256x256", "512x512", "1024x1024", "1792x1024",
+                      "1024x1792"] | None = None,
+        quality: Literal["standard", "hd"] | None = None,
+        response_format: Literal["url", "b64_json"] | None = None)
 ```
 
 Invokes the image generation inference based on the provided prompt and generation parameters.

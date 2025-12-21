@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from jinja2 import Environment, meta, nodes
 from jinja2.ext import Extension
@@ -29,10 +29,7 @@ class Jinja2TimeExtension(Extension):
 
     @staticmethod
     def _get_datetime(
-        timezone: str,
-        operator: Optional[str] = None,
-        offset: Optional[str] = None,
-        datetime_format: Optional[str] = None,
+        timezone: str, operator: str | None = None, offset: str | None = None, datetime_format: str | None = None
     ) -> str:
         """
         Get the current datetime based on timezone, apply any offset if provided, and format the result.
@@ -70,7 +67,7 @@ class Jinja2TimeExtension(Extension):
 
         return dt.strftime(datetime_format)
 
-    def parse(self, parser: Any) -> Union[nodes.Node, list[nodes.Node]]:
+    def parse(self, parser: Any) -> nodes.Node | list[nodes.Node]:
         """
         Parse the template expression to determine how to handle the datetime formatting.
 

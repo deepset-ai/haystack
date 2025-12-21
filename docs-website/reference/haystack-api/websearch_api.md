@@ -33,9 +33,9 @@ assert results["links"]
 
 ```python
 def __init__(api_key: Secret = Secret.from_env_var("SEARCHAPI_API_KEY"),
-             top_k: Optional[int] = 10,
-             allowed_domains: Optional[list[str]] = None,
-             search_params: Optional[dict[str, Any]] = None)
+             top_k: int | None = 10,
+             allowed_domains: list[str] | None = None,
+             search_params: dict[str, Any] | None = None)
 ```
 
 Initialize the SearchApiWebSearch component.
@@ -91,7 +91,7 @@ The deserialized component.
 
 ```python
 @component.output_types(documents=list[Document], links=list[str])
-def run(query: str) -> dict[str, Union[list[Document], list[str]]]
+def run(query: str) -> dict[str, list[Document] | list[str]]
 ```
 
 Uses [SearchApi](https://www.searchapi.io/) to search the web.
@@ -150,9 +150,9 @@ results_filtered = websearch_filtered.run(query="search query")
 
 ```python
 def __init__(api_key: Secret = Secret.from_env_var("SERPERDEV_API_KEY"),
-             top_k: Optional[int] = 10,
-             allowed_domains: Optional[list[str]] = None,
-             search_params: Optional[dict[str, Any]] = None,
+             top_k: int | None = 10,
+             allowed_domains: list[str] | None = None,
+             search_params: dict[str, Any] | None = None,
              *,
              exclude_subdomains: bool = False)
 ```
@@ -206,7 +206,7 @@ Dictionary with serialized data.
 
 ```python
 @component.output_types(documents=list[Document], links=list[str])
-def run(query: str) -> dict[str, Union[list[Document], list[str]]]
+def run(query: str) -> dict[str, list[Document] | list[str]]
 ```
 
 Use [Serper](https://serper.dev/) to search the web.

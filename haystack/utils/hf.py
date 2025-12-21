@@ -5,7 +5,7 @@
 import asyncio
 import copy
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import logging
 from haystack.dataclasses import (
@@ -13,6 +13,7 @@ from haystack.dataclasses import (
     ChatMessage,
     ComponentInfo,
     ImageContent,
+    ReasoningContent,
     StreamingChunk,
     SyncStreamingCallbackT,
     TextContent,
@@ -140,7 +141,7 @@ def deserialize_hf_model_kwargs(kwargs: dict[str, Any]) -> None:
             deserialize_hf_model_kwargs(v)
 
 
-def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optional[dict[str, Any]]) -> dict[str, Any]:
+def resolve_hf_device_map(device: ComponentDevice | None, model_kwargs: dict[str, Any] | None) -> dict[str, Any]:
     """
     Update `model_kwargs` to include the keyword argument `device_map`.
 
@@ -177,10 +178,10 @@ def resolve_hf_device_map(device: Optional[ComponentDevice], model_kwargs: Optio
 def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
     huggingface_pipeline_kwargs: dict[str, Any],
     model: str,
-    task: Optional[str],
+    task: str | None,
     supported_tasks: list[str],
-    device: Optional[ComponentDevice],
-    token: Optional[Secret],
+    device: ComponentDevice | None,
+    token: Secret | None,
 ) -> dict[str, Any]:
     """
     Resolve the HuggingFace pipeline keyword arguments based on explicit user inputs.
@@ -218,7 +219,7 @@ def resolve_hf_pipeline_kwargs(  # pylint: disable=too-many-positional-arguments
     return huggingface_pipeline_kwargs
 
 
-def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Secret]) -> None:
+def check_valid_model(model_id: str, model_type: HFModelType, token: Secret | None) -> None:
     """
     Check if the provided model ID corresponds to a valid model on HuggingFace Hub.
 
@@ -256,17 +257,26 @@ def check_valid_model(model_id: str, model_type: HFModelType, token: Optional[Se
 def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
     """
     Convert a message to the format expected by Hugging Face.
+
+    Note: ReasoningContent is skipped during conversion because the HuggingFace Inference API
+    (which follows the OpenAI-compatible chat completion format) does not support reasoning
+    in input messages. Reasoning is captured from model outputs for transparency but is not
+    sent back to the API in multi-turn conversations.
     """
     text_contents = message.texts
     tool_calls = message.tool_calls
     tool_call_results = message.tool_call_results
     images = message.images
 
+    # Filter out ReasoningContent from the content list for validation
+    # ReasoningContent is for human transparency only, not sent to the API
+    non_reasoning_content = [c for c in message._content if not isinstance(c, ReasoningContent)]
+
     if not text_contents and not tool_calls and not tool_call_results and not images:
         raise ValueError(
             "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`, or `ImageContent`."
         )
-    if len(tool_call_results) > 0 and len(message._content) > 1:
+    if len(tool_call_results) > 0 and len(non_reasoning_content) > 1:
         raise ValueError(
             "For compatibility with the Hugging Face API, a `ChatMessage` with a `ToolCallResult` "
             "cannot contain any other content."
@@ -333,9 +343,9 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
             stop_words: list[str],
-            device: Union[str, torch.device] = "cpu",
+            device: str | torch.device = "cpu",
         ):
             super().__init__()
             # check if tokenizer is a valid tokenizer
@@ -385,10 +395,10 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
             stream_handler: SyncStreamingCallbackT,
-            stop_words: Optional[list[str]] = None,
-            component_info: Optional[ComponentInfo] = None,
+            stop_words: list[str] | None = None,
+            component_info: ComponentInfo | None = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler
@@ -419,10 +429,10 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transfor
 
         def __init__(
             self,
-            tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
             stream_handler: AsyncStreamingCallbackT,
-            stop_words: Optional[list[str]] = None,
-            component_info: Optional[ComponentInfo] = None,
+            stop_words: list[str] | None = None,
+            component_info: ComponentInfo | None = None,
         ):
             super().__init__(tokenizer=tokenizer, skip_prompt=True)  # type: ignore
             self.token_handler = stream_handler

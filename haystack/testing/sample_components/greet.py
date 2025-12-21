@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Optional
 
 import haystack.logging as haystack_logging
 from haystack.core.component import component
@@ -30,7 +29,7 @@ class Greet:
         self.log_level = log_level
 
     @component.output_types(value=int)
-    def run(self, value: int, message: Optional[str] = None, log_level: Optional[str] = None):
+    def run(self, value: int, message: str | None = None, log_level: str | None = None):
         """
         Logs a greeting message without affecting the value passing on the connection.
         """

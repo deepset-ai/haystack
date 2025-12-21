@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from haystack.tools import ToolsType
 
 
-def warm_up_tools(tools: "Optional[ToolsType]" = None) -> None:
+def warm_up_tools(tools: "ToolsType | None" = None) -> None:
     """
     Warm up tools from various formats (Tools, Toolsets, or mixed lists).
 
@@ -37,7 +37,7 @@ def warm_up_tools(tools: "Optional[ToolsType]" = None) -> None:
                 item.warm_up()
 
 
-def flatten_tools_or_toolsets(tools: "Optional[ToolsType]") -> list[Tool]:
+def flatten_tools_or_toolsets(tools: "ToolsType | None") -> list[Tool]:
     """
     Flatten tools from various formats into a list of Tool instances.
 

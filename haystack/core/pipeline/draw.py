@@ -7,7 +7,7 @@ import colorsys
 import json
 import random
 import zlib
-from typing import Any, Optional
+from typing import Any
 
 import networkx
 import requests
@@ -20,7 +20,7 @@ from haystack.core.type_utils import _type_name
 logger = logging.getLogger(__name__)
 
 
-def generate_color_variations(n: int, base_color: Optional[str] = "#3498DB", variation_range: float = 0.4) -> list[str]:
+def generate_color_variations(n: int, base_color: str | None = "#3498DB", variation_range: float = 0.4) -> list[str]:
     """
     Generate n different variations of a base color.
 
@@ -172,9 +172,9 @@ def _validate_mermaid_params(params: dict[str, Any]) -> None:
 def _to_mermaid_image(
     graph: networkx.MultiDiGraph,
     server_url: str = "https://mermaid.ink",
-    params: Optional[dict] = None,
+    params: dict | None = None,
     timeout: int = 30,
-    super_component_mapping: Optional[dict[str, str]] = None,
+    super_component_mapping: dict[str, str] | None = None,
 ) -> bytes:
     """
     Renders a pipeline using a Mermaid server.
@@ -257,7 +257,7 @@ def _to_mermaid_image(
 
 
 def _to_mermaid_text(
-    graph: networkx.MultiDiGraph, init_params: str, super_component_mapping: Optional[dict[str, str]] = None
+    graph: networkx.MultiDiGraph, init_params: str, super_component_mapping: dict[str, str] | None = None
 ) -> str:
     """
     Converts a Networkx graph into Mermaid syntax.

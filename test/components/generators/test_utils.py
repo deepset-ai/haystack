@@ -7,7 +7,14 @@ from unittest.mock import call, patch
 from openai.types.chat import chat_completion_chunk
 
 from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, print_streaming_chunk
-from haystack.dataclasses import ComponentInfo, StreamingChunk, ToolCall, ToolCallDelta, ToolCallResult
+from haystack.dataclasses import (
+    ComponentInfo,
+    ReasoningContent,
+    StreamingChunk,
+    ToolCall,
+    ToolCallDelta,
+    ToolCallResult,
+)
 
 
 def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
@@ -740,3 +747,100 @@ def test_convert_streaming_chunks_to_chat_message_usage_not_in_last_chunk():
     assert result.meta["finish_reason"] == "stop"
     # Usage should be extracted from the chunk that has it, not just the last chunk
     assert result.meta["usage"] == {"completion_tokens": 10, "prompt_tokens": 20, "total_tokens": 30}
+
+
+def test_convert_streaming_chunks_to_chat_message_with_reasoning():
+    """Test that reasoning content is correctly accumulated from streaming chunks."""
+    chunks = [
+        StreamingChunk(
+            content="",
+            meta={"model": "test-model", "received_at": "2025-01-01T00:00:00"},
+            component_info=ComponentInfo(name="test", type="test"),
+            reasoning=ReasoningContent(reasoning_text="Let me think about this..."),
+            index=0,
+        ),
+        StreamingChunk(
+            content="",
+            meta={"model": "test-model", "received_at": "2025-01-01T00:00:01"},
+            component_info=ComponentInfo(name="test", type="test"),
+            reasoning=ReasoningContent(reasoning_text=" The capital of France is Paris."),
+            index=0,
+        ),
+        StreamingChunk(
+            content="Paris",
+            meta={"model": "test-model", "received_at": "2025-01-01T00:00:02"},
+            component_info=ComponentInfo(name="test", type="test"),
+        ),
+        StreamingChunk(
+            content="",
+            meta={"model": "test-model", "received_at": "2025-01-01T00:00:03"},
+            component_info=ComponentInfo(name="test", type="test"),
+            finish_reason="stop",
+        ),
+    ]
+
+    result = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+
+    assert result.text == "Paris"
+    assert result.reasoning is not None
+    assert isinstance(result.reasoning, ReasoningContent)
+    assert result.reasoning.reasoning_text == "Let me think about this... The capital of France is Paris."
+    assert result.meta["finish_reason"] == "stop"
+
+
+def test_convert_streaming_chunks_to_chat_message_without_reasoning():
+    """Test that messages without reasoning work correctly (backward compatibility)."""
+    chunks = [
+        StreamingChunk(
+            content="Hello",
+            meta={"model": "test-model", "received_at": "2025-01-01T00:00:00"},
+            component_info=ComponentInfo(name="test", type="test"),
+        ),
+        StreamingChunk(
+            content=" world",
+            meta={"model": "test-model", "received_at": "2025-01-01T00:00:01"},
+            component_info=ComponentInfo(name="test", type="test"),
+            finish_reason="stop",
+        ),
+    ]
+
+    result = _convert_streaming_chunks_to_chat_message(chunks=chunks)
+
+    assert result.text == "Hello world"
+    assert result.reasoning is None
+
+
+def test_print_streaming_chunk_with_reasoning():
+    """Test that print_streaming_chunk handles reasoning content correctly."""
+    chunk = StreamingChunk(
+        content="",
+        meta={"model": "test-model"},
+        component_info=ComponentInfo(name="test", type="test"),
+        start=True,
+        reasoning=ReasoningContent(reasoning_text="I am thinking about this question."),
+        index=0,
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        expected_calls = [
+            call("[REASONING]\n", flush=True, end=""),
+            call("I am thinking about this question.", flush=True, end=""),
+        ]
+        mock_print.assert_has_calls(expected_calls)
+
+
+def test_print_streaming_chunk_with_reasoning_continuation():
+    """Test that print_streaming_chunk handles reasoning continuation correctly."""
+    chunk = StreamingChunk(
+        content="",
+        meta={"model": "test-model"},
+        component_info=ComponentInfo(name="test", type="test"),
+        start=False,  # Not the first chunk
+        reasoning=ReasoningContent(reasoning_text="continued reasoning..."),
+        index=0,
+    )
+    with patch("builtins.print") as mock_print:
+        print_streaming_chunk(chunk)
+        # Should only print the reasoning text without the header since it's a continuation
+        expected_calls = [call("continued reasoning...", flush=True, end="")]
+        mock_print.assert_has_calls(expected_calls)

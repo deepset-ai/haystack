@@ -53,9 +53,9 @@ def __init__(*,
              chat_generator: ChatGenerator,
              prompt: str = DEFAULT_PROMPT_TEMPLATE,
              file_path_meta_field: str = "file_path",
-             root_path: Optional[str] = None,
-             detail: Optional[Literal["auto", "high", "low"]] = None,
-             size: Optional[tuple[int, int]] = None,
+             root_path: str | None = None,
+             detail: Literal["auto", "high", "low"] | None = None,
+             size: tuple[int, int] | None = None,
              raise_on_failure: bool = False,
              max_workers: int = 3)
 ```
@@ -263,8 +263,8 @@ extractor.run(documents=docs)
 ```python
 def __init__(prompt: str,
              chat_generator: ChatGenerator,
-             expected_keys: Optional[list[str]] = None,
-             page_range: Optional[list[Union[str, int]]] = None,
+             expected_keys: list[str] | None = None,
+             page_range: list[str | int] | None = None,
              raise_on_failure: bool = False,
              max_workers: int = 3)
 ```
@@ -337,8 +337,7 @@ An instance of the component.
 ```python
 @component.output_types(documents=list[Document],
                         failed_documents=list[Document])
-def run(documents: list[Document],
-        page_range: Optional[list[Union[str, int]]] = None)
+def run(documents: list[Document], page_range: list[str | int] | None = None)
 ```
 
 Extract metadata from documents using a Large Language Model.
@@ -449,12 +448,12 @@ print(annotations)
 ```python
 def __init__(
     *,
-    backend: Union[str, NamedEntityExtractorBackend],
+    backend: str | NamedEntityExtractorBackend,
     model: str,
-    pipeline_kwargs: Optional[dict[str, Any]] = None,
-    device: Optional[ComponentDevice] = None,
-    token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"],
-                                                  strict=False)
+    pipeline_kwargs: dict[str, Any] | None = None,
+    device: ComponentDevice | None = None,
+    token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"],
+                                               strict=False)
 ) -> None
 ```
 
@@ -563,7 +562,7 @@ Returns if the extractor is ready to annotate text.
 ```python
 @classmethod
 def get_stored_annotations(
-        cls, document: Document) -> Optional[list[NamedEntityAnnotation]]
+        cls, document: Document) -> list[NamedEntityAnnotation] | None
 ```
 
 Returns the document's named entity annotations stored in its metadata, if any.
@@ -628,7 +627,7 @@ Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue u
 
 ```python
 @component.output_types(captured_text=str, captured_texts=list[str])
-def run(text_or_messages: Union[str, list[ChatMessage]]) -> dict
+def run(text_or_messages: str | list[ChatMessage]) -> dict
 ```
 
 Extracts text from input using the configured regex pattern.

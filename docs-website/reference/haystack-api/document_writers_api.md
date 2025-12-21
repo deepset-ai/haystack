@@ -91,7 +91,7 @@ The deserialized component.
 
 ```python
 @component.output_types(documents_written=int)
-def run(documents: list[Document], policy: Optional[DuplicatePolicy] = None)
+def run(documents: list[Document], policy: DuplicatePolicy | None = None)
 ```
 
 Run the DocumentWriter on the given input data.
@@ -116,7 +116,7 @@ Number of documents written to the document store.
 ```python
 @component.output_types(documents_written=int)
 async def run_async(documents: list[Document],
-                    policy: Optional[DuplicatePolicy] = None)
+                    policy: DuplicatePolicy | None = None)
 ```
 
 Asynchronously run the DocumentWriter on the given input data.

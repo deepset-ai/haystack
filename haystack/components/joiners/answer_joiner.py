@@ -5,13 +5,13 @@
 import itertools
 from enum import Enum
 from math import inf
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
 from haystack.dataclasses.answer import ExtractedAnswer, GeneratedAnswer
 
-AnswerType = Union[GeneratedAnswer, ExtractedAnswer]
+AnswerType = GeneratedAnswer | ExtractedAnswer
 
 
 class JoinMode(Enum):
@@ -84,10 +84,7 @@ class AnswerJoiner:
     """
 
     def __init__(
-        self,
-        join_mode: Union[str, JoinMode] = JoinMode.CONCATENATE,
-        top_k: Optional[int] = None,
-        sort_by_score: bool = False,
+        self, join_mode: str | JoinMode = JoinMode.CONCATENATE, top_k: int | None = None, sort_by_score: bool = False
     ):
         """
         Creates an AnswerJoiner component.
@@ -112,7 +109,7 @@ class AnswerJoiner:
         self.sort_by_score = sort_by_score
 
     @component.output_types(answers=list[AnswerType])
-    def run(self, answers: Variadic[list[AnswerType]], top_k: Optional[int] = None):
+    def run(self, answers: Variadic[list[AnswerType]], top_k: int | None = None):
         """
         Joins multiple lists of Answers into a single list depending on the `join_mode` parameter.
 

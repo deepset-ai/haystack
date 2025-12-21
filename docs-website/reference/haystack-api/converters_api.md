@@ -54,7 +54,7 @@ def __init__(endpoint: str,
              following_context_len: int = 3,
              merge_multiple_column_headers: bool = True,
              page_layout: Literal["natural", "single_column"] = "natural",
-             threshold_y: Optional[float] = 0.05,
+             threshold_y: float | None = 0.05,
              store_full_path: bool = False)
 ```
 
@@ -89,8 +89,8 @@ If False, only the file name is stored.
 ```python
 @component.output_types(documents=list[Document],
                         raw_azure_response=list[dict])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
 ```
 
 Convert a list of files to Documents using Azure's Document Intelligence service.
@@ -201,10 +201,10 @@ If False, only the file name is stored.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
+def run(sources: list[str | Path | ByteStream],
         *,
-        content_column: Optional[str] = None,
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
+        content_column: str | None = None,
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
 ```
 
 Converts CSV files to a Document (file mode) or to one Document per row (row mode).
@@ -314,8 +314,8 @@ print(documents[0].content)
 #### DOCXToDocument.\_\_init\_\_
 
 ```python
-def __init__(table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV,
-             link_format: Union[str, DOCXLinkFormat] = DOCXLinkFormat.NONE,
+def __init__(table_format: str | DOCXTableFormat = DOCXTableFormat.CSV,
+             link_format: str | DOCXLinkFormat = DOCXLinkFormat.NONE,
              store_full_path: bool = False)
 ```
 
@@ -371,8 +371,8 @@ The deserialized component.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
 ```
 
 Converts DOCX files to Documents.
@@ -418,7 +418,7 @@ print(documents[0].content)
 #### HTMLToDocument.\_\_init\_\_
 
 ```python
-def __init__(extraction_kwargs: Optional[dict[str, Any]] = None,
+def __init__(extraction_kwargs: dict[str, Any] | None = None,
              store_full_path: bool = False)
 ```
 
@@ -471,9 +471,9 @@ The deserialized component.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-        extraction_kwargs: Optional[dict[str, Any]] = None)
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+        extraction_kwargs: dict[str, Any] | None = None)
 ```
 
 Converts a list of HTML files to Documents.
@@ -573,9 +573,9 @@ print(documents[1].meta)
 #### JSONConverter.\_\_init\_\_
 
 ```python
-def __init__(jq_schema: Optional[str] = None,
-             content_key: Optional[str] = None,
-             extra_meta_fields: Optional[Union[set[str], Literal["*"]]] = None,
+def __init__(jq_schema: str | None = None,
+             content_key: str | None = None,
+             extra_meta_fields: set[str] | Literal["*"] | None = None,
              store_full_path: bool = False)
 ```
 
@@ -654,8 +654,8 @@ Deserialized component.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
 ```
 
 Converts a list of JSON files to documents.
@@ -721,8 +721,8 @@ If False, only the file name is stored.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
 ```
 
 Converts a list of Markdown files to Documents.
@@ -791,9 +791,9 @@ If False, only the file name is stored.
 ```python
 @component.output_types(documents=list[Document], attachments=list[ByteStream])
 def run(
-    sources: list[Union[str, Path, ByteStream]],
-    meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None
-) -> dict[str, Union[list[Document], list[ByteStream]]]
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None
+) -> dict[str, list[Document] | list[ByteStream]]
 ```
 
 Converts MSG files to Documents.
@@ -905,7 +905,7 @@ Create an OpenAPIServiceToFunctions component.
 ```python
 @component.output_types(functions=list[dict[str, Any]],
                         openapi_specs=list[dict[str, Any]])
-def run(sources: list[Union[str, Path, ByteStream]]) -> dict[str, Any]
+def run(sources: list[str | Path | ByteStream]) -> dict[str, Any]
 ```
 
 Converts OpenAPI definitions in OpenAI function calling format.
@@ -960,7 +960,7 @@ assert result["output"] == "Test content"
 ```python
 def __init__(template: str,
              output_type: TypeAlias,
-             custom_filters: Optional[dict[str, Callable]] = None,
+             custom_filters: dict[str, Callable] | None = None,
              unsafe: bool = False) -> None
 ```
 
@@ -1075,7 +1075,7 @@ def __init__(line_overlap: float = 0.5,
              char_margin: float = 2.0,
              line_margin: float = 0.5,
              word_margin: float = 0.1,
-             boxes_flow: Optional[float] = 0.5,
+             boxes_flow: float | None = 0.5,
              detect_vertical: bool = True,
              all_texts: bool = False,
              store_full_path: bool = False) -> None
@@ -1140,8 +1140,8 @@ see: https://pdfminersix.readthedocs.io/en/latest/faq.html#why-are-there-cid-x-v
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
 ```
 
 Converts PDF files to Documents.
@@ -1203,8 +1203,8 @@ If False, only the file name is stored.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
 ```
 
 Converts PPTX files to Documents.
@@ -1282,8 +1282,8 @@ print(documents[0].content)
 
 ```python
 def __init__(*,
-             extraction_mode: Union[
-                 str, PyPDFExtractionMode] = PyPDFExtractionMode.PLAIN,
+             extraction_mode: str
+             | PyPDFExtractionMode = PyPDFExtractionMode.PLAIN,
              plain_mode_orientations: tuple = (0, 90, 180, 270),
              plain_mode_space_width: float = 200.0,
              layout_mode_space_vertically: bool = True,
@@ -1354,8 +1354,8 @@ Deserialized component.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
 ```
 
 Converts PDF files to documents.
@@ -1462,8 +1462,8 @@ If False, only the file name is stored.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
 ```
 
 Converts files to Documents.
@@ -1533,8 +1533,8 @@ If False, only the file name is stored.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None)
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None)
 ```
 
 Converts text files to documents.
@@ -1587,9 +1587,9 @@ Converts XLSX (Excel) files into Documents.
 
 ```python
 def __init__(table_format: Literal["csv", "markdown"] = "csv",
-             sheet_name: Union[str, int, list[Union[str, int]], None] = None,
-             read_excel_kwargs: Optional[dict[str, Any]] = None,
-             table_format_kwargs: Optional[dict[str, Any]] = None,
+             sheet_name: str | int | list[str | int] | None = None,
+             read_excel_kwargs: dict[str, Any] | None = None,
+             table_format_kwargs: dict[str, Any] | None = None,
              *,
              store_full_path: bool = False)
 ```
@@ -1617,8 +1617,8 @@ If False, only the file name is stored.
 ```python
 @component.output_types(documents=list[Document])
 def run(
-    sources: list[Union[str, Path, ByteStream]],
-    meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None
 ) -> dict[str, list[Document]]
 ```
 

@@ -6,7 +6,6 @@ import mimetypes
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional
 
 from haystack import component
 from haystack.dataclasses import Document
@@ -60,9 +59,9 @@ class DocumentTypeRouter:
         self,
         *,
         mime_types: list[str],
-        mime_type_meta_field: Optional[str] = None,
-        file_path_meta_field: Optional[str] = None,
-        additional_mimetypes: Optional[dict[str, str]] = None,
+        mime_type_meta_field: str | None = None,
+        file_path_meta_field: str | None = None,
+        additional_mimetypes: dict[str, str] | None = None,
     ) -> None:
         """
         Initialize the DocumentTypeRouter component.

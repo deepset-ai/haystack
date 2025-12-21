@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional
-
 from haystack import component, logging
 from haystack.lazy_imports import LazyImport
 
@@ -47,7 +45,7 @@ class TextLanguageRouter:
     ```
     """
 
-    def __init__(self, languages: Optional[list[str]] = None):
+    def __init__(self, languages: list[str] | None = None):
         """
         Initialize the TextLanguageRouter component.
 
@@ -91,7 +89,7 @@ class TextLanguageRouter:
 
         return output
 
-    def _detect_language(self, text: str) -> Optional[str]:
+    def _detect_language(self, text: str) -> str | None:
         language = None
         try:
             language = langdetect.detect(text)

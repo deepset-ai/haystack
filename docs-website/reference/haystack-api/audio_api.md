@@ -35,8 +35,8 @@ transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
 
 ```python
 def __init__(model: WhisperLocalModel = "large",
-             device: Optional[ComponentDevice] = None,
-             whisper_params: Optional[dict[str, Any]] = None)
+             device: ComponentDevice | None = None,
+             whisper_params: dict[str, Any] | None = None)
 ```
 
 Creates an instance of the LocalWhisperTranscriber component.
@@ -98,8 +98,8 @@ The deserialized component.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]],
-        whisper_params: Optional[dict[str, Any]] = None)
+def run(sources: list[str | Path | ByteStream],
+        whisper_params: dict[str, Any] | None = None)
 ```
 
 Transcribes a list of audio files into a list of documents.
@@ -124,7 +124,7 @@ for the transcription.
 #### LocalWhisperTranscriber.transcribe
 
 ```python
-def transcribe(sources: list[Union[str, Path, ByteStream]],
+def transcribe(sources: list[str | Path | ByteStream],
                **kwargs) -> list[Document]
 ```
 
@@ -173,9 +173,9 @@ transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
 ```python
 def __init__(api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
              model: str = "whisper-1",
-             api_base_url: Optional[str] = None,
-             organization: Optional[str] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None,
+             api_base_url: str | None = None,
+             organization: str | None = None,
+             http_client_kwargs: dict[str, Any] | None = None,
              **kwargs)
 ```
 
@@ -250,7 +250,7 @@ The deserialized component.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(sources: list[Union[str, Path, ByteStream]])
+def run(sources: list[str | Path | ByteStream])
 ```
 
 Transcribes the list of audio files into a list of documents.

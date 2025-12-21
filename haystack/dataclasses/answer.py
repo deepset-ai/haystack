@@ -28,9 +28,9 @@ class Answer(Protocol):
 class ExtractedAnswer:
     query: str
     score: float
-    data: Optional[str] = None
-    document: Optional[Document] = None
-    context: Optional[str] = None
+    data: str | None = None
+    document: Document | None = None
+    context: str | None = None
     document_offset: Optional["Span"] = None
     context_offset: Optional["Span"] = None
     meta: dict[str, Any] = field(default_factory=dict)

@@ -96,14 +96,14 @@ print(result["messages"][-1].text)
 ```python
 def __init__(*,
              chat_generator: ChatGenerator,
-             tools: Optional[ToolsType] = None,
-             system_prompt: Optional[str] = None,
-             exit_conditions: Optional[list[str]] = None,
-             state_schema: Optional[dict[str, Any]] = None,
+             tools: ToolsType | None = None,
+             system_prompt: str | None = None,
+             exit_conditions: list[str] | None = None,
+             state_schema: dict[str, Any] | None = None,
              max_agent_steps: int = 100,
-             streaming_callback: Optional[StreamingCallbackT] = None,
+             streaming_callback: StreamingCallbackT | None = None,
              raise_on_tool_invocation_failure: bool = False,
-             tool_invoker_kwargs: Optional[dict[str, Any]] = None) -> None
+             tool_invoker_kwargs: dict[str, Any] | None = None) -> None
 ```
 
 Initialize the agent component.
@@ -179,13 +179,13 @@ Deserialized agent
 
 ```python
 def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        break_point: Optional[AgentBreakpoint] = None,
-        snapshot: Optional[AgentSnapshot] = None,
-        system_prompt: Optional[str] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        break_point: AgentBreakpoint | None = None,
+        snapshot: AgentSnapshot | None = None,
+        system_prompt: str | None = None,
+        tools: ToolsType | list[str] | None = None,
         **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -225,13 +225,13 @@ A dictionary with the following keys:
 
 ```python
 async def run_async(messages: list[ChatMessage],
-                    streaming_callback: Optional[StreamingCallbackT] = None,
+                    streaming_callback: StreamingCallbackT | None = None,
                     *,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    break_point: Optional[AgentBreakpoint] = None,
-                    snapshot: Optional[AgentSnapshot] = None,
-                    system_prompt: Optional[str] = None,
-                    tools: Optional[Union[ToolsType, list[str]]] = None,
+                    generation_kwargs: dict[str, Any] | None = None,
+                    break_point: AgentBreakpoint | None = None,
+                    snapshot: AgentSnapshot | None = None,
+                    system_prompt: str | None = None,
+                    tools: ToolsType | list[str] | None = None,
                     **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -311,7 +311,7 @@ my_state = State(
 #### State.\_\_init\_\_
 
 ```python
-def __init__(schema: dict[str, Any], data: Optional[dict[str, Any]] = None)
+def __init__(schema: dict[str, Any], data: dict[str, Any] | None = None)
 ```
 
 Initialize a State object with a schema and optional data.
@@ -351,7 +351,7 @@ Value associated with key or default if not found
 ```python
 def set(key: str,
         value: Any,
-        handler_override: Optional[Callable[[Any, Any], Any]] = None) -> None
+        handler_override: Callable[[Any, Any], Any] | None = None) -> None
 ```
 
 Set or merge a value in the state according to schema rules.

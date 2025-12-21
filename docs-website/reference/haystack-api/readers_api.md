@@ -43,20 +43,20 @@ assert "Python" in result["answers"][0].data
 #### ExtractiveReader.\_\_init\_\_
 
 ```python
-def __init__(model: Union[Path, str] = "deepset/roberta-base-squad2-distilled",
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+def __init__(model: Path | str = "deepset/roberta-base-squad2-distilled",
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
              top_k: int = 20,
-             score_threshold: Optional[float] = None,
+             score_threshold: float | None = None,
              max_seq_length: int = 384,
              stride: int = 128,
-             max_batch_size: Optional[int] = None,
-             answers_per_seq: Optional[int] = None,
+             max_batch_size: int | None = None,
+             answers_per_seq: int | None = None,
              no_answer: bool = True,
              calibration_factor: float = 0.1,
-             overlap_threshold: Optional[float] = 0.01,
-             model_kwargs: Optional[dict[str, Any]] = None) -> None
+             overlap_threshold: float | None = 0.01,
+             model_kwargs: dict[str, Any] | None = None) -> None
 ```
 
 Creates an instance of ExtractiveReader.
@@ -138,7 +138,7 @@ Initializes the component.
 ```python
 def deduplicate_by_overlap(
         answers: list[ExtractedAnswer],
-        overlap_threshold: Optional[float]) -> list[ExtractedAnswer]
+        overlap_threshold: float | None) -> list[ExtractedAnswer]
 ```
 
 De-duplicates overlapping Extractive Answers.
@@ -168,14 +168,14 @@ List of deduplicated answers.
 @component.output_types(answers=list[ExtractedAnswer])
 def run(query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        score_threshold: Optional[float] = None,
-        max_seq_length: Optional[int] = None,
-        stride: Optional[int] = None,
-        max_batch_size: Optional[int] = None,
-        answers_per_seq: Optional[int] = None,
-        no_answer: Optional[bool] = None,
-        overlap_threshold: Optional[float] = None)
+        top_k: int | None = None,
+        score_threshold: float | None = None,
+        max_seq_length: int | None = None,
+        stride: int | None = None,
+        max_batch_size: int | None = None,
+        answers_per_seq: int | None = None,
+        no_answer: bool | None = None,
+        overlap_threshold: float | None = None)
 ```
 
 Locates and extracts answers from the given Documents using the given query.

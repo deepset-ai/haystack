@@ -59,9 +59,9 @@ Documents are expected to have metadata containing:
 ```python
 def __init__(*,
              file_path_meta_field: str = "file_path",
-             root_path: Optional[str] = None,
-             detail: Optional[Literal["auto", "high", "low"]] = None,
-             size: Optional[tuple[int, int]] = None)
+             root_path: str | None = None,
+             detail: Literal["auto", "high", "low"] | None = None,
+             size: tuple[int, int] | None = None)
 ```
 
 Initialize the DocumentToImageContent component.
@@ -82,8 +82,8 @@ when working with models that have resolution constraints or when transmitting i
 #### DocumentToImageContent.run
 
 ```python
-@component.output_types(image_contents=list[Optional[ImageContent]])
-def run(documents: list[Document]) -> dict[str, list[Optional[ImageContent]]]
+@component.output_types(image_contents=list[ImageContent | None])
+def run(documents: list[Document]) -> dict[str, list[ImageContent | None]]
 ```
 
 Convert documents with image or PDF sources into ImageContent objects.
@@ -164,8 +164,8 @@ If False, only the file name is stored.
 @component.output_types(documents=list[Document])
 def run(
     *,
-    sources: list[Union[str, Path, ByteStream]],
-    meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -223,8 +223,8 @@ print(image_contents)
 
 ```python
 def __init__(*,
-             detail: Optional[Literal["auto", "high", "low"]] = None,
-             size: Optional[tuple[int, int]] = None)
+             detail: Literal["auto", "high", "low"] | None = None,
+             size: tuple[int, int] | None = None)
 ```
 
 Create the ImageFileToImageContent component.
@@ -243,12 +243,11 @@ when working with models that have resolution constraints or when transmitting i
 
 ```python
 @component.output_types(image_contents=list[ImageContent])
-def run(sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+def run(sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
         *,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[tuple[int,
-                             int]] = None) -> dict[str, list[ImageContent]]
+        detail: Literal["auto", "high", "low"] | None = None,
+        size: tuple[int, int] | None = None) -> dict[str, list[ImageContent]]
 ```
 
 Converts files to ImageContent objects.
@@ -308,9 +307,9 @@ print(image_contents)
 
 ```python
 def __init__(*,
-             detail: Optional[Literal["auto", "high", "low"]] = None,
-             size: Optional[tuple[int, int]] = None,
-             page_range: Optional[list[Union[str, int]]] = None)
+             detail: Literal["auto", "high", "low"] | None = None,
+             size: tuple[int, int] | None = None,
+             page_range: list[str | int] | None = None)
 ```
 
 Create the PDFToImageContent component.
@@ -335,12 +334,12 @@ will convert pages 1, 2, 3, 5, 8, 10, 11, 12.
 ```python
 @component.output_types(image_contents=list[ImageContent])
 def run(
-    sources: list[Union[str, Path, ByteStream]],
-    meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
     *,
-    detail: Optional[Literal["auto", "high", "low"]] = None,
-    size: Optional[tuple[int, int]] = None,
-    page_range: Optional[list[Union[str, int]]] = None
+    detail: Literal["auto", "high", "low"] | None = None,
+    size: tuple[int, int] | None = None,
+    page_range: list[str | int] | None = None
 ) -> dict[str, list[ImageContent]]
 ```
 

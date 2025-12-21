@@ -6,7 +6,7 @@ import logging
 import os
 import re
 from datetime import datetime
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -135,9 +135,7 @@ class MockChatGeneratorWithoutRunAsync:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
-    ) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
 
@@ -151,14 +149,12 @@ class MockChatGenerator:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
-    ) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
     ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello from run_async")]}
 
@@ -839,7 +835,7 @@ class TestAgent:
 
             @component.output_types(replies=list[ChatMessage])
             def run(
-                self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+                self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
             ) -> dict[str, Any]:
                 assert tools == [weather_tool]
                 tool_message = ChatMessage.from_assistant(
@@ -865,7 +861,7 @@ class TestAgent:
 
             @component.output_types(replies=list[ChatMessage])
             def run(
-                self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+                self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
             ) -> dict[str, Any]:
                 assert tools == [weather_tool]
                 tool_message = ChatMessage.from_assistant(
@@ -1107,7 +1103,7 @@ class TestAgentTracing:
             "chat_generator",
             "MockChatGeneratorWithoutRunAsync",
             '{"messages": "list", "tools": "list"}',
-            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "typing.Union[list[haystack.tools.tool.Tool], haystack.tools.toolset.Toolset, NoneType]", "senders": []}}',  # noqa: E501
+            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list", "receivers": []}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
             1,
@@ -1167,7 +1163,7 @@ class TestAgentTracing:
             "chat_generator",
             "MockChatGenerator",
             '{"messages": "list", "tools": "list"}',
-            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "typing.Union[list[haystack.tools.tool.Tool], haystack.tools.toolset.Toolset, NoneType]", "senders": []}}',  # noqa: E501
+            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list", "receivers": []}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
             1,

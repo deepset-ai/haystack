@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ComponentInfo, StreamingCallbackT, select_streaming_callback
@@ -58,13 +58,13 @@ class HuggingFaceLocalGenerator:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str = "google/flan-t5-base",
-        task: Optional[Literal["text-generation", "text2text-generation"]] = None,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
-        stop_words: Optional[list[str]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        task: Literal["text-generation", "text2text-generation"] | None = None,
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        generation_kwargs: dict[str, Any] | None = None,
+        huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+        stop_words: list[str] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ):
         """
         Creates an instance of a HuggingFaceLocalGenerator.
@@ -127,8 +127,8 @@ class HuggingFaceLocalGenerator:
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
         self.generation_kwargs = generation_kwargs
         self.stop_words = stop_words
-        self.pipeline: Optional[HfPipeline] = None
-        self.stopping_criteria_list: Optional[StoppingCriteriaList] = None
+        self.pipeline: HfPipeline | None = None
+        self.stopping_criteria_list: StoppingCriteriaList | None = None
         self.streaming_callback = streaming_callback
 
     def _get_telemetry_data(self) -> dict[str, Any]:
@@ -211,8 +211,8 @@ class HuggingFaceLocalGenerator:
     def run(
         self,
         prompt: str,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
     ):
         """
         Run the text generation model on the given prompt.

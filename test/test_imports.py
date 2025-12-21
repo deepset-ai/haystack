@@ -5,8 +5,10 @@
 import sys
 from unittest.mock import patch
 
+from haystack.lazy_imports import LazyImport
 
-def test_lazy_import():
+
+def test_lazy_importer_avoids_importing_unused_modules():
     # Save the original state of the module if it exists
     original_imported = sys.modules.get("haystack.components.generators.chat.azure")
 
@@ -15,7 +17,7 @@ def test_lazy_import():
         if original_imported:
             del sys.modules["haystack.components.generators.chat.azure"]
 
-        from haystack.components.generators.chat import OpenAIChatGenerator  # Import the intended class
+        from haystack.components.generators.chat import OpenAIChatGenerator  # Import the intended class # noqa: F401
 
         assert "haystack.components.generators.chat.openai" in sys.modules.keys()
         assert "haystack.components.generators.chat.azure" not in sys.modules.keys()
@@ -23,3 +25,17 @@ def test_lazy_import():
     # Restore the module if it was previously imported (preserves test isolation)
     if original_imported:
         sys.modules["haystack.components.generators.chat.azure"] = original_imported
+
+
+def test_import_error_is_suppressed_and_deferred():
+    with LazyImport() as lazy_import:
+        import a_module  # noqa: F401
+
+    assert lazy_import._deferred is not None
+    exc_value, message = lazy_import._deferred
+    assert isinstance(exc_value, ImportError)
+    expected_message = (
+        "Haystack failed to import the optional dependency 'a_module'. Try 'pip install a_module'. "
+        "Original error: No module named 'a_module'"
+    )
+    assert expected_message in message

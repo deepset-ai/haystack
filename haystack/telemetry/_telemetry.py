@@ -8,7 +8,7 @@ import os
 import uuid
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import posthog
 import yaml
@@ -96,7 +96,7 @@ class Telemetry:
 
         self.event_properties = collect_system_specs()
 
-    def send_event(self, event_name: str, event_properties: Optional[dict[str, Any]] = None) -> None:
+    def send_event(self, event_name: str, event_properties: dict[str, Any] | None = None) -> None:
         """
         Sends a telemetry event.
 
@@ -135,7 +135,7 @@ def send_telemetry(func):
 
 
 @send_telemetry
-def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> Optional[tuple[str, dict[str, Any]]]:
+def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> tuple[str, dict[str, Any]] | None:
     """
     Collects telemetry data for a pipeline run and sends it to Posthog.
 
