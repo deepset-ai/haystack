@@ -75,7 +75,7 @@ class TestTool:
             pytest.param({"documents": {"handler": "some_string"}}, id="multi-value-handler-not-callable"),
         ],
     )
-    def test_init_invalid_output_to_string_structure(self, outputs_to_string):
+    def test_init_invalid_outputs_to_string_structure(self, outputs_to_string):
         with pytest.raises(ValueError):
             Tool(
                 name="irrelevant",
