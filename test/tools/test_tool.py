@@ -65,6 +65,26 @@ class TestTool:
                 outputs_to_state=outputs_to_state,
             )
 
+    @pytest.mark.parametrize(
+        "outputs_to_string",
+        [
+            pytest.param({"source": get_weather_report}, id="source-not-a-string"),
+            pytest.param({"handler": "some_string"}, id="handler-not-callable"),
+            pytest.param({"documents": ["some_value"]}, id="multi-value-config-not-a-dict"),
+            pytest.param({"documents": {"source": get_weather_report}}, id="multi-value-source-not-a-string"),
+            pytest.param({"documents": {"handler": "some_string"}}, id="multi-value-handler-not-callable"),
+        ],
+    )
+    def test_init_invalid_output_to_string_structure(self, outputs_to_string):
+        with pytest.raises(ValueError):
+            Tool(
+                name="irrelevant",
+                description="irrelevant",
+                parameters={"type": "object", "properties": {"city": {"type": "string"}}},
+                function=get_weather_report,
+                outputs_to_string=outputs_to_string,
+            )
+
     def test_tool_spec(self):
         tool = Tool(
             name="weather", description="Get weather report", parameters=parameters, function=get_weather_report

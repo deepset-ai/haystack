@@ -105,6 +105,22 @@ class Tool:
                 raise ValueError("outputs_to_string source must be a string.")
             if "handler" in self.outputs_to_string and not callable(self.outputs_to_string["handler"]):
                 raise ValueError("outputs_to_string handler must be callable")
+            if "source" in self.outputs_to_string or "handler" in self.outputs_to_string:
+                for key in self.outputs_to_string:
+                    if key not in {"source", "handler"}:
+                        raise ValueError(
+                            "Invalid outputs_to_string config. "
+                            "When using 'source' or 'handler' at the root level, no other keys are allowed. "
+                            "Use individual output configs instead."
+                        )
+            else:
+                for key, config in self.outputs_to_string.items():
+                    if not isinstance(config, dict):
+                        raise ValueError(f"outputs_to_string configuration for key '{key}' must be a dictionary")
+                    if "source" in config and not isinstance(config["source"], str):
+                        raise ValueError(f"outputs_to_string source for key '{key}' must be a string.")
+                    if "handler" in config and not callable(config["handler"]):
+                        raise ValueError(f"outputs_to_string handler for key '{key}' must be callable")
 
     @property
     def tool_spec(self) -> dict[str, Any]:
