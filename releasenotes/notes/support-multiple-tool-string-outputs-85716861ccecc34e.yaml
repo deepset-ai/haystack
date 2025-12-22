@@ -7,6 +7,6 @@ enhancements:
     This allows users to specify how different parts of a tool's output should be converted to strings,
     enhancing flexibility in handling tool results.
 
-    - Updated `ToolInvoker` to handle multiple output configurations.
-    - Updated `Tool` to validate and store multiple output configurations.
+    - Updated ``ToolInvoker`` to handle multiple output configurations.
+    - Updated ``Tool`` to validate and store multiple output configurations.
     - Added tests to verify the functionality of multiple string outputs.
