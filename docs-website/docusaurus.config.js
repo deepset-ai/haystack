@@ -210,6 +210,7 @@ const config = {
             items: [
               { label: 'Integrations',   href: 'https://haystack.deepset.ai/integrations' },
               { label: 'Platform - Try Free', href: 'https://landing.deepset.ai/deepset-studio-signup' },
+              { label: 'Enterprise Support', href: 'https://landing.deepset.ai/deepset-studio-signup' },
             ],
           },
           {
