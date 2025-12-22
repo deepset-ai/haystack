@@ -3,7 +3,7 @@ enhancements:
   - |
     Support Multiple Tool String Outputs
 
-    Added support for tools to define multiple string outputs using the `outputs_to_string` configuration.
+    Added support for tools to define multiple string outputs using the ``outputs_to_string`` configuration.
     This allows users to specify how different parts of a tool's output should be converted to strings,
     enhancing flexibility in handling tool results.
 
