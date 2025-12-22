@@ -790,7 +790,7 @@ class TestToolInvokerErrorHandling:
             description="Provides weather information for a given location.",
             parameters=weather_parameters,
             function=weather_function,
-            # Pass custom handler that will throw an error when trying to convert tool_result
+            # Pass config that selects two of three outputs
             outputs_to_string={"weather": {"source": "weather"}, "temp": {"source": "temperature"}},
         )
         invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
