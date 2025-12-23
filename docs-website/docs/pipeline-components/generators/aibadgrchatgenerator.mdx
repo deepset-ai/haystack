@@ -1,0 +1,157 @@
+---
+title: "AI Badgr (Budget/Utility, OpenAI-compatible)"
+id: aibadgrchatgenerator
+slug: "/aibadgrchatgenerator"
+description: "Use AI Badgr models through OpenAI-compatible API for budget-friendly chat completions."
+---
+
+# AI Badgr (Budget/Utility, OpenAI-compatible)
+
+Use AI Badgr models through OpenAI-compatible API for budget-friendly chat completions.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: An AI Badgr API key. Can be set with `AIBADGR_API_KEY` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **API reference** | [Generators](/reference/generators-api) |
+| **Provider website** | https://aibadgr.com |
+
+</div>
+
+## Overview
+
+AI Badgr is a budget/utility OpenAI-compatible provider. You can use AI Badgr models with Haystack's [`OpenAIChatGenerator`](openaichatgenerator.mdx) component by configuring the `api_base_url` parameter.
+
+AI Badgr uses tier-based model names for simplicity:
+- `basic` - Entry-level model for simple tasks
+- `normal` - Balanced performance for general use
+- `premium` - Best performance and capabilities (recommended)
+
+:::info Power-user Model Names
+AI Badgr also accepts specific model names that map to tiers:
+- `phi-3-mini` → basic
+- `mistral-7b` → normal
+- `llama3-8b-instruct` → premium
+
+OpenAI model names are accepted and mapped automatically.
+:::
+
+### Authentication
+
+To use AI Badgr, you need an API key. You can provide it with:
+
+- The `AIBADGR_API_KEY` environment variable (recommended)
+- The `api_key` init parameter using Haystack [Secret](../../concepts/secret-management.mdx) API: `Secret.from_token("your-api-key-here")`
+
+Optionally, you can override the base URL with the `AIBADGR_BASE_URL` environment variable or `api_base_url` parameter. The default is `https://aibadgr.com/api/v1`.
+
+### Streaming
+
+AI Badgr supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses through the OpenAI-compatible interface. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
+
+## Usage
+
+AI Badgr is OpenAI-compatible, so you use the standard Haystack OpenAI components.
+
+### On its own
+
+Basic usage with tier model name:
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+client = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("AIBADGR_API_KEY"),
+    model="premium",
+    api_base_url="https://aibadgr.com/api/v1"
+)
+
+messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+response = client.run(messages)
+print(response["replies"][0].text)
+```
+
+With streaming:
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+client = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("AIBADGR_API_KEY"),
+    model="premium",
+    api_base_url="https://aibadgr.com/api/v1",
+    streaming_callback=print_streaming_chunk
+)
+
+messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+response = client.run(messages)
+```
+
+### In a Pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+prompt_builder = ChatPromptBuilder()
+llm = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("AIBADGR_API_KEY"),
+    model="premium",
+    api_base_url="https://aibadgr.com/api/v1"
+)
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system("Give brief answers."),
+    ChatMessage.from_user("Tell me about {{city}}"),
+]
+
+response = pipe.run(
+    data={"prompt_builder": {"template": messages, "template_variables": {"city": "Berlin"}}}
+)
+print(response["llm"]["replies"][0].text)
+```
+
+### Using Environment Variables
+
+For convenience, set environment variables:
+
+```bash
+export AIBADGR_API_KEY="your-api-key-here"
+export AIBADGR_BASE_URL="https://aibadgr.com/api/v1"
+```
+
+Then use in code:
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+import os
+
+client = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("AIBADGR_API_KEY"),
+    model="premium",
+    api_base_url=os.getenv("AIBADGR_BASE_URL", "https://aibadgr.com/api/v1")
+)
+
+messages = [ChatMessage.from_user("Hello!")]
+response = client.run(messages)
+print(response["replies"][0].text)
+```
