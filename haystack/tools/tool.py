@@ -37,15 +37,26 @@ class Tool:
         The function that will be invoked when the Tool is called.
         Must be a synchronous function; async functions are not supported.
     :param outputs_to_string:
-        Optional dictionary defining how a tool outputs should be converted into a string.
-        If the source is provided only the specified output key is sent to the handler.
-        If the source is omitted the whole tool result is sent to the handler.
-        Example:
-        ```python
-        {
-            "source": "docs", "handler": format_documents
-        }
-        ```
+        Optional dictionary defining how tool outputs should be converted into string(s).
+        Supports two formats:
+
+        1. Single output format - use "source" and/or "handler" at the root level:
+           ```python
+           {
+               "source": "docs", "handler": format_documents
+           }
+           ```
+           If the source is provided, only the specified output key is sent to the handler.
+           If the source is omitted, the whole tool result is sent to the handler.
+
+        2. Multiple output format - map keys to individual configurations:
+           ```python
+           {
+               "formatted_docs": {"source": "docs", "handler": format_documents},
+               "summary": {"source": "summary_text", "handler": str.upper}
+           }
+           ```
+           Each key maps to a dictionary that can contain "source" and/or "handler".
     :param inputs_from_state:
         Optional dictionary mapping state keys to tool parameter names.
         Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.

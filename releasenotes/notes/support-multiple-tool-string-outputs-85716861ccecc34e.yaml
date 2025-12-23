@@ -10,3 +10,29 @@ enhancements:
     - Updated ``ToolInvoker`` to handle multiple output configurations.
     - Updated ``Tool`` to validate and store multiple output configurations.
     - Added tests to verify the functionality of multiple string outputs.
+
+    **Example:** A search tool that returns ``{"documents": [...], "metadata": {...}, "debug_info": {...}}``
+    can selectively generate string representations for only the outputs you care about:
+
+    .. code-block:: python
+
+        tool = Tool(
+            name="search",
+            description="Search for documents",
+            parameters={...},
+            function=search_func,  # Returns {"documents": [Document(...)], "metadata": {"count": 5}, "debug_info": {...}}
+            outputs_to_string={
+                "formatted_docs": {"source": "documents", "handler": format_documents},
+                "summary": {"source": "metadata", "handler": lambda m: f"Found {m['count']} results"}
+                # Note: "debug_info" is not included, so it won't be converted to a string
+            }
+        )
+
+        # After invocation, the tool result includes:
+        # {
+        #     "formatted_docs": "1. Document Title\n   Content...\n2. ...",
+        #     "summary": "Found 5 results"
+        # }
+
+    This enables tools to provide rich, varied context to language models or downstream components
+    without requiring multiple tool calls, while keeping full control over which outputs are stringified.
