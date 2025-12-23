@@ -313,24 +313,35 @@ class ToolInvoker:
             and `raise_on_failure` is True.
         """
         outputs_config = tool_to_invoke.outputs_to_string or {}
-        source_key = outputs_config.get("source")
-
-        # If no handler is provided, we use the default handler
-        output_to_string_handler = outputs_config.get("handler", self._default_output_to_string_handler)
-
-        # If a source key is provided, we extract the result from the source key
-        result_to_convert = result.get(source_key) if source_key is not None else result
-
         try:
-            tool_result_str = output_to_string_handler(result_to_convert)
-            chat_message = ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
+            # Root level single output configuration
+            if not outputs_config or "source" in outputs_config or "handler" in outputs_config:
+                source_key = outputs_config.get("source", None)
+                # If a source key is provided, we extract the result from the source key
+                value = result.get(source_key) if source_key is not None else result
+                # If no handler is provided, we use the default handler
+                output_to_string_handler = outputs_config.get("handler", self._default_output_to_string_handler)
+                tool_result_str = output_to_string_handler(value)
+                return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
+
+            # Multiple outputs configuration
+            tool_result = {}
+            for output_key, config in outputs_config.items():
+                # If no source key is provided, we use the output key itself
+                source_key = config.get("source", output_key)
+                value = result[source_key]
+                # If no handler is provided, we use the default handler
+                output_to_string_handler = config.get("handler", self._default_output_to_string_handler)
+                key_result_str = output_to_string_handler(value)
+                tool_result[output_key] = key_result_str
+            tool_result_str = self._default_output_to_string_handler(tool_result)
+            return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
         except Exception as e:
             error = StringConversionError(tool_call.tool_name, output_to_string_handler.__name__, e)
             if self.raise_on_failure:
                 raise error from e
             logger.error("{error_exception}", error_exception=error)
-            chat_message = ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
-        return chat_message
+            return ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
 
     @staticmethod
     def _get_func_params(tool: Tool) -> set:
