@@ -135,9 +135,6 @@ Yesterday was: {% now 'UTC' - 'days=1' %}
 builder = PromptBuilder(template=template)
 
 result = builder.run()["prompt"]
-
-now = f"Current date is: {arrow.now('UTC').strftime('%Y-%m-%d %H:%M:%S')}"
-yesterday = f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
 ```
 
 ## Usage
