@@ -134,12 +134,22 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     finish_reasons = [chunk.finish_reason for chunk in chunks if chunk.finish_reason]
     finish_reason = finish_reasons[-1] if finish_reasons else None
 
+    # usage info can appear in different chunks depending on the API provider
+    # (e.g., OpenAI returns it in the last chunk with empty choices, but Qwen3 may return it differently)
+    # so we look for the last non-None usage value across all chunks
+    usage = None
+    for chunk in reversed(chunks):
+        chunk_usage = chunk.meta.get("usage")
+        if chunk_usage is not None:
+            usage = chunk_usage
+            break
+
     meta = {
         "model": chunks[-1].meta.get("model"),
         "index": 0,
         "finish_reason": finish_reason,
         "completion_start_time": chunks[0].meta.get("received_at"),  # first chunk received
-        "usage": chunks[-1].meta.get("usage"),  # last chunk has the final usage data if available
+        "usage": usage,
     }
 
     if logprobs:
