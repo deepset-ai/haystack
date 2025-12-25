@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import copy
 from typing import Any, Callable
 
 from haystack import AsyncPipeline, Pipeline, SuperComponent, logging
@@ -221,6 +221,7 @@ class PipelineTool(ComponentTool):
         :returns:
             The deserialized PipelineTool instance.
         """
+        data = copy.deepcopy(data)
         inner_data = data["data"]
         is_pipeline_async = inner_data.get("is_pipeline_async", False)
         pipeline_class = AsyncPipeline if is_pipeline_async else Pipeline
