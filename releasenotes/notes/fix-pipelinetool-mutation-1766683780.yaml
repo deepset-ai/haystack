@@ -1,0 +1,3 @@
+---
+fixes:
+  - "Prevented `PipelineTool.from_dict` from mutating the input dictionary in-place by using a deep copy."
