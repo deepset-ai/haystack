@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Any, Optional, Union
+from typing import Any
 
 from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
@@ -92,16 +92,16 @@ class HuggingFaceAPIDocumentEmbedder:
 
     def __init__(
         self,
-        api_type: Union[HFEmbeddingAPIType, str],
+        api_type: HFEmbeddingAPIType | str,
         api_params: dict[str, str],
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         prefix: str = "",
         suffix: str = "",
-        truncate: Optional[bool] = True,
-        normalize: Optional[bool] = False,
+        truncate: bool | None = True,
+        normalize: bool | None = False,
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
     ):  # pylint: disable=too-many-positional-arguments
         """
@@ -239,8 +239,8 @@ class HuggingFaceAPIDocumentEmbedder:
 
     @staticmethod
     def _adjust_api_parameters(
-        truncate: Optional[bool], normalize: Optional[bool], api_type: HFEmbeddingAPIType
-    ) -> tuple[Optional[bool], Optional[bool]]:
+        truncate: bool | None, normalize: bool | None, api_type: HFEmbeddingAPIType
+    ) -> tuple[bool | None, bool | None]:
         """
         Adjust the truncate and normalize parameters based on the API type.
         """

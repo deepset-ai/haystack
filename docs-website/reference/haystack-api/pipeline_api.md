@@ -25,7 +25,7 @@ This enables efficient processing of components by minimizing idle time and maxi
 ```python
 async def run_async_generator(
         data: dict[str, Any],
-        include_outputs_from: Optional[set[str]] = None,
+        include_outputs_from: set[str] | None = None,
         concurrency_limit: int = 4) -> AsyncIterator[dict[str, Any]]
 ```
 
@@ -128,7 +128,7 @@ An async iterator containing partial (and final) outputs.
 
 ```python
 async def run_async(data: dict[str, Any],
-                    include_outputs_from: Optional[set[str]] = None,
+                    include_outputs_from: set[str] | None = None,
                     concurrency_limit: int = 4) -> dict[str, Any]
 ```
 
@@ -245,7 +245,7 @@ without outgoing connections.
 
 ```python
 def run(data: dict[str, Any],
-        include_outputs_from: Optional[set[str]] = None,
+        include_outputs_from: set[str] | None = None,
         concurrency_limit: int = 4) -> dict[str, Any]
 ```
 
@@ -360,7 +360,7 @@ without outgoing connections.
 #### AsyncPipeline.\_\_init\_\_
 
 ```python
-def __init__(metadata: Optional[dict[str, Any]] = None,
+def __init__(metadata: dict[str, Any] | None = None,
              max_runs_per_component: int = 100,
              connection_type_validation: bool = True)
 ```
@@ -424,7 +424,7 @@ Dictionary with serialized data.
 @classmethod
 def from_dict(cls: type[T],
               data: dict[str, Any],
-              callbacks: Optional[DeserializationCallbacks] = None,
+              callbacks: DeserializationCallbacks | None = None,
               **kwargs: Any) -> T
 ```
 
@@ -481,9 +481,9 @@ Writes the string representation of this pipeline to the file-like object passed
 ```python
 @classmethod
 def loads(cls: type[T],
-          data: Union[str, bytes, bytearray],
+          data: str | bytes | bytearray,
           marshaller: Marshaller = DEFAULT_MARSHALLER,
-          callbacks: Optional[DeserializationCallbacks] = None) -> T
+          callbacks: DeserializationCallbacks | None = None) -> T
 ```
 
 Creates a `Pipeline` object from the string representation passed in the `data` argument.
@@ -511,7 +511,7 @@ A `Pipeline` object.
 def load(cls: type[T],
          fp: TextIO,
          marshaller: Marshaller = DEFAULT_MARSHALLER,
-         callbacks: Optional[DeserializationCallbacks] = None) -> T
+         callbacks: DeserializationCallbacks | None = None) -> T
 ```
 
 Creates a `Pipeline` object a string representation.
@@ -707,7 +707,7 @@ output sockets of that component.
 ```python
 def show(*,
          server_url: str = "https://mermaid.ink",
-         params: Optional[dict] = None,
+         params: dict | None = None,
          timeout: int = 30,
          super_component_expansion: bool = False) -> None
 ```
@@ -751,7 +751,7 @@ Otherwise, only the super-component itself will be displayed.
 def draw(*,
          path: Path,
          server_url: str = "https://mermaid.ink",
-         params: Optional[dict] = None,
+         params: dict | None = None,
          timeout: int = 30,
          super_component_expansion: bool = False) -> None
 ```
@@ -849,7 +849,7 @@ Validates that data:
 def from_template(
         cls,
         predefined_pipeline: PredefinedPipeline,
-        template_params: Optional[dict[str, Any]] = None) -> "PipelineBase"
+        template_params: dict[str, Any] | None = None) -> "PipelineBase"
 ```
 
 Create a Pipeline from a predefined template. See `PredefinedPipeline` for available options.
@@ -900,11 +900,10 @@ Orchestrates component execution according to the execution graph, one after the
 
 ```python
 def run(data: dict[str, Any],
-        include_outputs_from: Optional[set[str]] = None,
+        include_outputs_from: set[str] | None = None,
         *,
-        break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
-        pipeline_snapshot: Optional[PipelineSnapshot] = None
-        ) -> dict[str, Any]
+        break_point: Breakpoint | AgentBreakpoint | None = None,
+        pipeline_snapshot: PipelineSnapshot | None = None) -> dict[str, Any]
 ```
 
 Runs the Pipeline with given input data.
@@ -1004,7 +1003,7 @@ without outgoing connections.
 #### Pipeline.\_\_init\_\_
 
 ```python
-def __init__(metadata: Optional[dict[str, Any]] = None,
+def __init__(metadata: dict[str, Any] | None = None,
              max_runs_per_component: int = 100,
              connection_type_validation: bool = True)
 ```
@@ -1068,7 +1067,7 @@ Dictionary with serialized data.
 @classmethod
 def from_dict(cls: type[T],
               data: dict[str, Any],
-              callbacks: Optional[DeserializationCallbacks] = None,
+              callbacks: DeserializationCallbacks | None = None,
               **kwargs: Any) -> T
 ```
 
@@ -1125,9 +1124,9 @@ Writes the string representation of this pipeline to the file-like object passed
 ```python
 @classmethod
 def loads(cls: type[T],
-          data: Union[str, bytes, bytearray],
+          data: str | bytes | bytearray,
           marshaller: Marshaller = DEFAULT_MARSHALLER,
-          callbacks: Optional[DeserializationCallbacks] = None) -> T
+          callbacks: DeserializationCallbacks | None = None) -> T
 ```
 
 Creates a `Pipeline` object from the string representation passed in the `data` argument.
@@ -1155,7 +1154,7 @@ A `Pipeline` object.
 def load(cls: type[T],
          fp: TextIO,
          marshaller: Marshaller = DEFAULT_MARSHALLER,
-         callbacks: Optional[DeserializationCallbacks] = None) -> T
+         callbacks: DeserializationCallbacks | None = None) -> T
 ```
 
 Creates a `Pipeline` object a string representation.
@@ -1351,7 +1350,7 @@ output sockets of that component.
 ```python
 def show(*,
          server_url: str = "https://mermaid.ink",
-         params: Optional[dict] = None,
+         params: dict | None = None,
          timeout: int = 30,
          super_component_expansion: bool = False) -> None
 ```
@@ -1395,7 +1394,7 @@ Otherwise, only the super-component itself will be displayed.
 def draw(*,
          path: Path,
          server_url: str = "https://mermaid.ink",
-         params: Optional[dict] = None,
+         params: dict | None = None,
          timeout: int = 30,
          super_component_expansion: bool = False) -> None
 ```
@@ -1493,7 +1492,7 @@ Validates that data:
 def from_template(
         cls,
         predefined_pipeline: PredefinedPipeline,
-        template_params: Optional[dict[str, Any]] = None) -> "PipelineBase"
+        template_params: dict[str, Any] | None = None) -> "PipelineBase"
 ```
 
 Create a Pipeline from a predefined template. See `PredefinedPipeline` for available options.

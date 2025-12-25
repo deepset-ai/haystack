@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional
+from typing import Any
 
 from haystack import DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -53,7 +53,7 @@ class InMemoryEmbeddingRetriever:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         document_store: InMemoryDocumentStore,
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         top_k: int = 10,
         scale_score: bool = False,
         return_embedding: bool = False,
@@ -146,10 +146,10 @@ class InMemoryEmbeddingRetriever:
     def run(  # pylint: disable=too-many-positional-arguments
         self,
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        return_embedding: Optional[bool] = None,
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        return_embedding: bool | None = None,
     ):
         """
         Run the InMemoryEmbeddingRetriever on the given input data.
@@ -197,10 +197,10 @@ class InMemoryEmbeddingRetriever:
     async def run_async(  # pylint: disable=too-many-positional-arguments
         self,
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        return_embedding: Optional[bool] = None,
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        return_embedding: bool | None = None,
     ):
         """
         Run the InMemoryEmbeddingRetriever on the given input data.

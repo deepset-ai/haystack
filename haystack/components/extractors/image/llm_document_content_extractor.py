@@ -4,7 +4,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -90,9 +90,9 @@ class LLMDocumentContentExtractor:
         chat_generator: ChatGenerator,
         prompt: str = DEFAULT_PROMPT_TEMPLATE,
         file_path_meta_field: str = "file_path",
-        root_path: Optional[str] = None,
-        detail: Optional[Literal["auto", "high", "low"]] = None,
-        size: Optional[tuple[int, int]] = None,
+        root_path: str | None = None,
+        detail: Literal["auto", "high", "low"] | None = None,
+        size: tuple[int, int] | None = None,
         raise_on_failure: bool = False,
         max_workers: int = 3,
     ):
@@ -180,7 +180,7 @@ class LLMDocumentContentExtractor:
         deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
         return default_from_dict(cls, data)
 
-    def _run_on_thread(self, message: Optional[ChatMessage]) -> dict[str, Any]:
+    def _run_on_thread(self, message: ChatMessage | None) -> dict[str, Any]:
         """
         Execute the LLM inference in a separate thread for each document.
 
@@ -228,7 +228,7 @@ class LLMDocumentContentExtractor:
 
         # Create ChatMessage prompts for each document
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
-        all_messages: list[Union[ChatMessage, None]] = []
+        all_messages: list[ChatMessage | None] = []
         for image_content in image_contents:
             if image_content is None:
                 # If the image content is None, it means the document could not be converted to an image.

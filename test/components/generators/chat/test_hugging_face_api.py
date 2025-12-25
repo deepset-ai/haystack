@@ -30,7 +30,7 @@ from haystack.components.generators.chat.hugging_face_api import (
     _convert_hfapi_tool_calls,
     _convert_tools_to_hfapi_tools,
 )
-from haystack.dataclasses import ChatMessage, ImageContent, StreamingChunk, ToolCall
+from haystack.dataclasses import ChatMessage, ImageContent, ReasoningContent, StreamingChunk, ToolCall
 from haystack.tools import Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils.auth import Secret
@@ -1084,6 +1084,54 @@ class TestHuggingFaceAPIChatGenerator:
         finally:
             await generator._async_client.close()
 
+    @pytest.mark.integration
+    @pytest.mark.slow
+    @pytest.mark.skipif(
+        not os.environ.get("HF_API_TOKEN", None),
+        reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
+    )
+    @pytest.mark.flaky(reruns=2, reruns_delay=10)
+    def test_live_run_multi_turn_with_reasoning_model(self):
+        """
+        Test multi-turn conversation with a reasoning model.
+
+        This test verifies that:
+        1. Reasoning content is captured from the model's response
+        2. When the assistant message (with reasoning) is sent back in a multi-turn conversation,
+           the API call succeeds (reasoning is dropped during conversion since HF API doesn't support it)
+        """
+        # Note: Using a model that supports reasoning. DeepSeek-R1-Distill models are available
+        # via serverless inference and support reasoning output.
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"},
+            generation_kwargs={"max_tokens": 300},
+        )
+
+        # First turn: ask a question
+        messages = [ChatMessage.from_user("What is 2 + 2? Answer briefly.")]
+        response = generator.run(messages=messages)
+
+        assert "replies" in response
+        assert len(response["replies"]) > 0
+        first_reply = response["replies"][0]
+        assert first_reply.text is not None
+
+        # Second turn: send a follow-up including the assistant's previous response
+        # This tests that convert_message_to_hf_format properly handles messages
+        # that may contain ReasoningContent (it should skip it)
+        follow_up_messages = [
+            ChatMessage.from_user("What is 2 + 2? Answer briefly."),
+            first_reply,  # Include the assistant's response (may contain reasoning)
+            ChatMessage.from_user("Now what is 3 + 3? Answer briefly."),
+        ]
+        follow_up_response = generator.run(messages=follow_up_messages)
+
+        # Verify the second turn succeeds
+        assert "replies" in follow_up_response
+        assert len(follow_up_response["replies"]) > 0
+        assert follow_up_response["replies"][0].text is not None
+
     def test_hugging_face_api_generator_with_toolset_initialization(self, mock_check_valid_model, tools):
         """Test that the HuggingFaceAPIChatGenerator can be initialized with a Toolset."""
         toolset = Toolset(tools)
@@ -1285,3 +1333,323 @@ class TestHuggingFaceAPIChatGenerator:
         # Verify idempotency
         component.warm_up()
         assert len(warm_up_calls) == call_count
+
+    def test_run_with_reasoning_non_streaming(self, mock_check_valid_model, chat_messages):
+        """Test that reasoning content is correctly extracted from non-streaming responses."""
+        with patch("huggingface_hub.InferenceClient.chat_completion", autospec=True) as mock_chat_completion:
+            reasoning_text = "Let me think about this. France is a country in Europe. Its capital city is Paris."
+            completion = ChatCompletionOutput(
+                choices=[
+                    ChatCompletionOutputComplete(
+                        finish_reason="eos_token",
+                        index=0,
+                        message=ChatCompletionOutputMessage(
+                            content="The capital of France is Paris.", role="assistant", reasoning=reasoning_text
+                        ),
+                    )
+                ],
+                id="some_id",
+                model="some_model",
+                system_fingerprint="some_fingerprint",
+                usage=ChatCompletionOutputUsage(completion_tokens=20, prompt_tokens=17, total_tokens=37),
+                created=1710498360,
+            )
+            mock_chat_completion.return_value = completion
+
+            generator = HuggingFaceAPIChatGenerator(
+                api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+            )
+
+            response = generator.run(chat_messages)
+
+            assert "replies" in response
+            assert len(response["replies"]) == 1
+            reply = response["replies"][0]
+            assert reply.text == "The capital of France is Paris."
+            assert reply.reasoning is not None
+            assert isinstance(reply.reasoning, ReasoningContent)
+            assert reply.reasoning.reasoning_text == reasoning_text
+
+    def test_run_without_reasoning_non_streaming(self, mock_check_valid_model, mock_chat_completion, chat_messages):
+        """Test that responses without reasoning work correctly (backward compatibility)."""
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+        )
+
+        response = generator.run(chat_messages)
+
+        assert "replies" in response
+        assert len(response["replies"]) == 1
+        reply = response["replies"][0]
+        assert reply.text == "The capital of France is Paris."
+        assert reply.reasoning is None
+
+    def test_run_with_reasoning_streaming(self, mock_check_valid_model, chat_messages):
+        """Test that reasoning content is correctly extracted from streaming responses."""
+        streaming_chunks_received = []
+
+        def streaming_callback_fn(chunk: StreamingChunk):
+            streaming_chunks_received.append(chunk)
+
+        with patch("huggingface_hub.InferenceClient.chat_completion", autospec=True) as mock_chat_completion:
+            # Create a fake streamed response with reasoning
+            def mock_iter(self):
+                # First chunk with reasoning
+                yield ChatCompletionStreamOutput(
+                    choices=[
+                        ChatCompletionStreamOutputChoice(
+                            delta=ChatCompletionStreamOutputDelta(
+                                role="assistant", content=None, reasoning="Let me think..."
+                            ),
+                            index=0,
+                            finish_reason=None,
+                        )
+                    ],
+                    id="some_id",
+                    model="some_model",
+                    system_fingerprint="some_fingerprint",
+                    created=1710498504,
+                )
+                # Second chunk with more reasoning
+                yield ChatCompletionStreamOutput(
+                    choices=[
+                        ChatCompletionStreamOutputChoice(
+                            delta=ChatCompletionStreamOutputDelta(
+                                role=None, content=None, reasoning=" The capital of France is Paris."
+                            ),
+                            index=0,
+                            finish_reason=None,
+                        )
+                    ],
+                    id="some_id",
+                    model="some_model",
+                    system_fingerprint="some_fingerprint",
+                    created=1710498504,
+                )
+                # Third chunk with actual content
+                yield ChatCompletionStreamOutput(
+                    choices=[
+                        ChatCompletionStreamOutputChoice(
+                            delta=ChatCompletionStreamOutputDelta(role=None, content="Paris", reasoning=None),
+                            index=0,
+                            finish_reason=None,
+                        )
+                    ],
+                    id="some_id",
+                    model="some_model",
+                    system_fingerprint="some_fingerprint",
+                    created=1710498504,
+                )
+                # Final chunk with finish reason
+                yield ChatCompletionStreamOutput(
+                    choices=[
+                        ChatCompletionStreamOutputChoice(
+                            delta=ChatCompletionStreamOutputDelta(role=None, content=None, reasoning=None),
+                            index=0,
+                            finish_reason="stop",
+                        )
+                    ],
+                    id="some_id",
+                    model="some_model",
+                    system_fingerprint="some_fingerprint",
+                    created=1710498504,
+                )
+
+            mock_response = Mock(**{"__iter__": mock_iter})
+            mock_chat_completion.return_value = mock_response
+
+            generator = HuggingFaceAPIChatGenerator(
+                api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+                streaming_callback=streaming_callback_fn,
+            )
+
+            response = generator.run(chat_messages)
+
+            # Check streaming chunks received with reasoning
+            assert len(streaming_chunks_received) == 4
+            assert streaming_chunks_received[0].reasoning is not None
+            assert streaming_chunks_received[0].reasoning.reasoning_text == "Let me think..."
+            assert streaming_chunks_received[1].reasoning is not None
+            assert streaming_chunks_received[1].reasoning.reasoning_text == " The capital of France is Paris."
+
+            # Check final message
+            assert "replies" in response
+            assert len(response["replies"]) == 1
+            reply = response["replies"][0]
+            assert reply.text == "Paris"
+            assert reply.reasoning is not None
+            assert isinstance(reply.reasoning, ReasoningContent)
+            assert reply.reasoning.reasoning_text == "Let me think... The capital of France is Paris."
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_reasoning_non_streaming(self, mock_check_valid_model, chat_messages):
+        """Test that reasoning content is correctly extracted from async non-streaming responses."""
+        with patch(
+            "huggingface_hub.AsyncInferenceClient.chat_completion", new_callable=AsyncMock
+        ) as mock_chat_completion:
+            completion = ChatCompletionOutput(
+                choices=[
+                    ChatCompletionOutputComplete(
+                        finish_reason="eos_token",
+                        index=0,
+                        message=ChatCompletionOutputMessage(
+                            content="The capital of France is Paris.",
+                            role="assistant",
+                            reasoning="Let me reason about this question step by step.",
+                        ),
+                    )
+                ],
+                id="some_id",
+                model="some_model",
+                system_fingerprint="some_fingerprint",
+                usage=ChatCompletionOutputUsage(completion_tokens=20, prompt_tokens=17, total_tokens=37),
+                created=1710498360,
+            )
+            mock_chat_completion.return_value = completion
+
+            generator = HuggingFaceAPIChatGenerator(
+                api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+            )
+
+            response = await generator.run_async(chat_messages)
+
+            assert "replies" in response
+            assert len(response["replies"]) == 1
+            reply = response["replies"][0]
+            assert reply.text == "The capital of France is Paris."
+            assert reply.reasoning is not None
+            assert isinstance(reply.reasoning, ReasoningContent)
+            assert reply.reasoning.reasoning_text == "Let me reason about this question step by step."
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_reasoning_streaming(self, mock_check_valid_model, chat_messages):
+        """Test that reasoning content is correctly extracted from async streaming responses."""
+        streaming_chunks_received = []
+
+        async def streaming_callback_fn(chunk: StreamingChunk):
+            streaming_chunks_received.append(chunk)
+
+        with patch(
+            "huggingface_hub.AsyncInferenceClient.chat_completion", new_callable=AsyncMock
+        ) as mock_chat_completion:
+            # Create async iterable for streaming
+            async def mock_aiter():
+                # First chunk with reasoning
+                yield ChatCompletionStreamOutput(
+                    choices=[
+                        ChatCompletionStreamOutputChoice(
+                            delta=ChatCompletionStreamOutputDelta(
+                                role="assistant", content=None, reasoning="Thinking..."
+                            ),
+                            index=0,
+                            finish_reason=None,
+                        )
+                    ],
+                    id="some_id",
+                    model="some_model",
+                    system_fingerprint="some_fingerprint",
+                    created=1710498504,
+                )
+                # Second chunk with content
+                yield ChatCompletionStreamOutput(
+                    choices=[
+                        ChatCompletionStreamOutputChoice(
+                            delta=ChatCompletionStreamOutputDelta(role=None, content="Paris", reasoning=None),
+                            index=0,
+                            finish_reason=None,
+                        )
+                    ],
+                    id="some_id",
+                    model="some_model",
+                    system_fingerprint="some_fingerprint",
+                    created=1710498504,
+                )
+                # Final chunk
+                yield ChatCompletionStreamOutput(
+                    choices=[
+                        ChatCompletionStreamOutputChoice(
+                            delta=ChatCompletionStreamOutputDelta(role=None, content=None, reasoning=None),
+                            index=0,
+                            finish_reason="stop",
+                        )
+                    ],
+                    id="some_id",
+                    model="some_model",
+                    system_fingerprint="some_fingerprint",
+                    created=1710498504,
+                )
+
+            mock_chat_completion.return_value = mock_aiter()
+
+            generator = HuggingFaceAPIChatGenerator(
+                api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+                api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+                streaming_callback=streaming_callback_fn,
+            )
+
+            response = await generator.run_async(chat_messages)
+
+            # Check streaming chunks
+            assert len(streaming_chunks_received) == 3
+            assert streaming_chunks_received[0].reasoning is not None
+            assert streaming_chunks_received[0].reasoning.reasoning_text == "Thinking..."
+
+            # Check final message
+            assert "replies" in response
+            assert len(response["replies"]) == 1
+            reply = response["replies"][0]
+            assert reply.text == "Paris"
+            assert reply.reasoning is not None
+            assert isinstance(reply.reasoning, ReasoningContent)
+            assert reply.reasoning.reasoning_text == "Thinking..."
+
+    def test_convert_chat_completion_stream_output_to_streaming_chunk_with_reasoning(self):
+        """Test that reasoning is correctly extracted from streaming chunks."""
+        # In streaming mode, reasoning and content come in separate chunks
+        chunk = ChatCompletionStreamOutput(
+            choices=[
+                ChatCompletionStreamOutputChoice(
+                    delta=ChatCompletionStreamOutputDelta(
+                        role="assistant", content=None, reasoning="Let me think about this."
+                    ),
+                    index=0,
+                    finish_reason=None,
+                )
+            ],
+            id="some_id",
+            model="some_model",
+            system_fingerprint="some_fingerprint",
+            created=1710498504,
+        )
+
+        streaming_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(chunk=chunk, previous_chunks=[])
+
+        assert streaming_chunk.content == ""
+        assert streaming_chunk.reasoning is not None
+        assert isinstance(streaming_chunk.reasoning, ReasoningContent)
+        assert streaming_chunk.reasoning.reasoning_text == "Let me think about this."
+
+    def test_convert_chat_completion_stream_output_to_streaming_chunk_without_reasoning(self):
+        """Test that chunks without reasoning still work correctly."""
+        chunk = ChatCompletionStreamOutput(
+            choices=[
+                ChatCompletionStreamOutputChoice(
+                    delta=ChatCompletionStreamOutputDelta(role="assistant", content="Hello"),
+                    index=0,
+                    finish_reason=None,
+                )
+            ],
+            id="some_id",
+            model="some_model",
+            system_fingerprint="some_fingerprint",
+            created=1710498504,
+        )
+
+        streaming_chunk = _convert_chat_completion_stream_output_to_streaming_chunk(chunk=chunk, previous_chunks=[])
+
+        assert streaming_chunk.content == "Hello"
+        assert streaming_chunk.reasoning is None

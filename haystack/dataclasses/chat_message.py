@@ -5,7 +5,7 @@
 import json
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence
 
 from haystack import logging
 from haystack.dataclasses.image_content import ImageContent
@@ -60,8 +60,8 @@ class ToolCall:
 
     tool_name: str
     arguments: dict[str, Any]
-    id: Optional[str] = None  # noqa: A003
-    extra: Optional[dict[str, Any]] = None
+    id: str | None = None  # noqa: A003
+    extra: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -182,7 +182,7 @@ class ReasoningContent:
         return ReasoningContent(**data)
 
 
-ChatMessageContentT = Union[TextContent, ToolCall, ToolCallResult, ImageContent, ReasoningContent]
+ChatMessageContentT = TextContent | ToolCall | ToolCallResult | ImageContent | ReasoningContent
 
 _CONTENT_PART_CLASSES_TO_SERIALIZATION_KEYS: dict[type[ChatMessageContentT], str] = {
     TextContent: "text",
@@ -257,7 +257,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
 
     _role: ChatRole
     _content: Sequence[ChatMessageContentT]
-    _name: Optional[str] = None
+    _name: str | None = None
     _meta: dict[str, Any] = field(default_factory=dict, hash=False)
 
     def __new__(cls, *args, **kwargs):
@@ -312,7 +312,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return self._meta
 
     @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str | None:
         """
         Returns the name associated with the message.
         """
@@ -326,7 +326,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return [content.text for content in self._content if isinstance(content, TextContent)]
 
     @property
-    def text(self) -> Optional[str]:
+    def text(self) -> str | None:
         """
         Returns the first text contained in the message.
         """
@@ -342,7 +342,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return [content for content in self._content if isinstance(content, ToolCall)]
 
     @property
-    def tool_call(self) -> Optional[ToolCall]:
+    def tool_call(self) -> ToolCall | None:
         """
         Returns the first Tool call contained in the message.
         """
@@ -358,7 +358,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return [content for content in self._content if isinstance(content, ToolCallResult)]
 
     @property
-    def tool_call_result(self) -> Optional[ToolCallResult]:
+    def tool_call_result(self) -> ToolCallResult | None:
         """
         Returns the first Tool call result contained in the message.
         """
@@ -374,7 +374,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return [content for content in self._content if isinstance(content, ImageContent)]
 
     @property
-    def image(self) -> Optional[ImageContent]:
+    def image(self) -> ImageContent | None:
         """
         Returns the first image contained in the message.
         """
@@ -390,7 +390,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return [content for content in self._content if isinstance(content, ReasoningContent)]
 
     @property
-    def reasoning(self) -> Optional[ReasoningContent]:
+    def reasoning(self) -> ReasoningContent | None:
         """
         Returns the first reasoning content contained in the message.
         """
@@ -398,7 +398,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
             return reasonings[0]
         return None
 
-    def is_from(self, role: Union[ChatRole, str]) -> bool:
+    def is_from(self, role: ChatRole | str) -> bool:
         """
         Check if the message is from a specific role.
 
@@ -412,11 +412,11 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
     @classmethod
     def from_user(
         cls,
-        text: Optional[str] = None,
-        meta: Optional[dict[str, Any]] = None,
-        name: Optional[str] = None,
+        text: str | None = None,
+        meta: dict[str, Any] | None = None,
+        name: str | None = None,
         *,
-        content_parts: Optional[Sequence[Union[TextContent, str, ImageContent]]] = None,
+        content_parts: Sequence[TextContent | str | ImageContent] | None = None,
     ) -> "ChatMessage":
         """
         Create a message from the user.
@@ -432,7 +432,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         if text is not None and content_parts is not None:
             raise ValueError("Only one of text or content_parts can be provided.")
 
-        content: list[Union[TextContent, ImageContent]] = []
+        content: list[TextContent | ImageContent] = []
 
         if text is not None:
             content = [TextContent(text=text)]
@@ -452,7 +452,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         return cls(_role=ChatRole.USER, _content=content, _meta=meta or {}, _name=name)
 
     @classmethod
-    def from_system(cls, text: str, meta: Optional[dict[str, Any]] = None, name: Optional[str] = None) -> "ChatMessage":
+    def from_system(cls, text: str, meta: dict[str, Any] | None = None, name: str | None = None) -> "ChatMessage":
         """
         Create a message from the system.
 
@@ -466,12 +466,12 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
     @classmethod
     def from_assistant(
         cls,
-        text: Optional[str] = None,
-        meta: Optional[dict[str, Any]] = None,
-        name: Optional[str] = None,
-        tool_calls: Optional[list[ToolCall]] = None,
+        text: str | None = None,
+        meta: dict[str, Any] | None = None,
+        name: str | None = None,
+        tool_calls: list[ToolCall] | None = None,
         *,
-        reasoning: Optional[Union[str, ReasoningContent]] = None,
+        reasoning: str | ReasoningContent | None = None,
     ) -> "ChatMessage":
         """
         Create a message from the assistant.
@@ -500,7 +500,7 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
 
     @classmethod
     def from_tool(
-        cls, tool_result: str, origin: ToolCall, error: bool = False, meta: Optional[dict[str, Any]] = None
+        cls, tool_result: str, origin: ToolCall, error: bool = False, meta: dict[str, Any] | None = None
     ) -> "ChatMessage":
         """
         Create a message from a Tool.

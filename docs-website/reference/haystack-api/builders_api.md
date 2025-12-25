@@ -69,8 +69,8 @@ for doc in result.documents:
 #### AnswerBuilder.\_\_init\_\_
 
 ```python
-def __init__(pattern: Optional[str] = None,
-             reference_pattern: Optional[str] = None,
+def __init__(pattern: str | None = None,
+             reference_pattern: str | None = None,
              last_message_only: bool = False,
              *,
              return_only_referenced_documents: bool = True)
@@ -107,11 +107,11 @@ If `reference_pattern` is not provided, this parameter has no effect, and all do
 ```python
 @component.output_types(answers=list[GeneratedAnswer])
 def run(query: str,
-        replies: Union[list[str], list[ChatMessage]],
-        meta: Optional[list[dict[str, Any]]] = None,
-        documents: Optional[list[Document]] = None,
-        pattern: Optional[str] = None,
-        reference_pattern: Optional[str] = None)
+        replies: list[str] | list[ChatMessage],
+        meta: list[dict[str, Any]] | None = None,
+        documents: list[Document] | None = None,
+        pattern: str | None = None,
+        reference_pattern: str | None = None)
 ```
 
 Turns the output of a Generator into `GeneratedAnswer` objects using regular expressions.
@@ -264,10 +264,9 @@ builder.run(user_name="John", images=images)
 #### ChatPromptBuilder.\_\_init\_\_
 
 ```python
-def __init__(template: Optional[Union[list[ChatMessage], str]] = None,
-             required_variables: Optional[Union[list[str],
-                                                Literal["*"]]] = None,
-             variables: Optional[list[str]] = None)
+def __init__(template: list[ChatMessage] | str | None = None,
+             required_variables: list[str] | Literal["*"] | None = None,
+             variables: list[str] | None = None)
 ```
 
 Constructs a ChatPromptBuilder component.
@@ -290,8 +289,8 @@ in the default template, you can provide them here.
 
 ```python
 @component.output_types(prompt=list[ChatMessage])
-def run(template: Optional[Union[list[ChatMessage], str]] = None,
-        template_variables: Optional[dict[str, Any]] = None,
+def run(template: list[ChatMessage] | str | None = None,
+        template_variables: dict[str, Any] | None = None,
         **kwargs)
 ```
 
@@ -484,9 +483,8 @@ Use `template_variables` to overwrite pipeline variables (such as documents) as 
 
 ```python
 def __init__(template: str,
-             required_variables: Optional[Union[list[str],
-                                                Literal["*"]]] = None,
-             variables: Optional[list[str]] = None)
+             required_variables: list[str] | Literal["*"] | None = None,
+             variables: list[str] | None = None)
 ```
 
 Constructs a PromptBuilder component.
@@ -526,8 +524,8 @@ Serialized dictionary representation of the component.
 
 ```python
 @component.output_types(prompt=str)
-def run(template: Optional[str] = None,
-        template_variables: Optional[dict[str, Any]] = None,
+def run(template: str | None = None,
+        template_variables: dict[str, Any] | None = None,
         **kwargs)
 ```
 

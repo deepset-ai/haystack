@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Awaitable, Callable, Optional, Union
+from typing import Any, Awaitable, Callable
 
 from openai.lib._pydantic import to_strict_json_schema
 from pydantic import BaseModel
@@ -53,19 +53,19 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
     def __init__(
         self,
         *,
-        api_key: Union[Secret, Callable[[], str], Callable[[], Awaitable[str]]] = Secret.from_env_var(
+        api_key: Secret | Callable[[], str] | Callable[[], Awaitable[str]] = Secret.from_env_var(
             "AZURE_OPENAI_API_KEY", strict=False
         ),
-        azure_endpoint: Optional[str] = None,
+        azure_endpoint: str | None = None,
         azure_deployment: str = "gpt-5-mini",
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        organization: Optional[str] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        tools: Optional[ToolsType] = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        organization: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        tools: ToolsType | None = None,
         tools_strict: bool = False,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        http_client_kwargs: dict[str, Any] | None = None,
     ):
         """
         Initialize the AzureOpenAIResponsesChatGenerator component.
@@ -181,7 +181,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
             generation_kwargs["text"] = json_schema
 
         # OpenAI/MCP tools are passed as list of dictionaries
-        serialized_tools: Union[dict[str, Any], list[dict[str, Any]], None]
+        serialized_tools: dict[str, Any] | list[dict[str, Any]] | None
         if self.tools and isinstance(self.tools, list) and isinstance(self.tools[0], dict):
             # mypy can't infer that self.tools is list[dict] here
             serialized_tools = self.tools  # type: ignore[assignment]

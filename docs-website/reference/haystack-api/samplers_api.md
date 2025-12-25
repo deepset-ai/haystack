@@ -43,8 +43,8 @@ assert docs[0].content == "Sarajevo"
 
 ```python
 def __init__(top_p: float = 1.0,
-             score_field: Optional[str] = None,
-             min_top_k: Optional[int] = None)
+             score_field: str | None = None,
+             min_top_k: int | None = None)
 ```
 
 Creates an instance of TopPSampler.
@@ -64,7 +64,7 @@ fewer documents, additional ones with the next highest scores are added to the s
 
 ```python
 @component.output_types(documents=list[Document])
-def run(documents: list[Document], top_p: Optional[float] = None)
+def run(documents: list[Document], top_p: float | None = None)
 ```
 
 Filters documents using top-p sampling based on their scores.

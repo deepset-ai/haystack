@@ -193,7 +193,7 @@ print(result["documents"])
 
 ```python
 def __init__(document_store: DocumentStore,
-             filters: Optional[dict[str, Any]] = None)
+             filters: dict[str, Any] | None = None)
 ```
 
 Create the FilterRetriever component.
@@ -242,7 +242,7 @@ The deserialized component.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(filters: Optional[dict[str, Any]] = None)
+def run(filters: dict[str, Any] | None = None)
 ```
 
 Run the FilterRetriever on the given input data.
@@ -262,7 +262,7 @@ A list of retrieved documents.
 
 ```python
 @component.output_types(documents=list[Document])
-async def run_async(filters: Optional[dict[str, Any]] = None)
+async def run_async(filters: dict[str, Any] | None = None)
 ```
 
 Asynchronously run the FilterRetriever on the given input data.
@@ -315,7 +315,7 @@ print(result["documents"])
 
 ```python
 def __init__(document_store: InMemoryDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
              scale_score: bool = False,
              filter_policy: FilterPolicy = FilterPolicy.REPLACE)
@@ -380,9 +380,9 @@ The deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query: str,
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None)
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None)
 ```
 
 Run the InMemoryBM25Retriever on the given input data.
@@ -410,9 +410,9 @@ The retrieved documents.
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query: str,
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None,
-                    scale_score: Optional[bool] = None)
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None,
+                    scale_score: bool | None = None)
 ```
 
 Run the InMemoryBM25Retriever on the given input data.
@@ -484,7 +484,7 @@ print(result["documents"])
 
 ```python
 def __init__(document_store: InMemoryDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
              scale_score: bool = False,
              return_embedding: bool = False,
@@ -552,10 +552,10 @@ The deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        return_embedding: Optional[bool] = None)
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        return_embedding: bool | None = None)
 ```
 
 Run the InMemoryEmbeddingRetriever on the given input data.
@@ -585,10 +585,10 @@ The retrieved documents.
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query_embedding: list[float],
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None,
-                    scale_score: Optional[bool] = None,
-                    return_embedding: Optional[bool] = None)
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None,
+                    scale_score: bool | None = None,
+                    return_embedding: bool | None = None)
 ```
 
 Run the InMemoryEmbeddingRetriever on the given input data.
@@ -713,7 +713,7 @@ Warm up the query embedder and the retriever if any has a warm_up method.
 @component.output_types(documents=list[Document])
 def run(
     queries: list[str],
-    retriever_kwargs: Optional[dict[str, Any]] = None
+    retriever_kwargs: dict[str, Any] | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -844,7 +844,7 @@ Warm up the retriever if it has a warm_up method.
 @component.output_types(documents=list[Document])
 def run(
     queries: list[str],
-    retriever_kwargs: Optional[dict[str, Any]] = None
+    retriever_kwargs: dict[str, Any] | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -976,7 +976,7 @@ rag.run({'bm25_retriever': {"query":"third"}})
 def __init__(document_store: DocumentStore,
              window_size: int = 3,
              *,
-             source_id_meta_field: Union[str, list[str]] = "source_id",
+             source_id_meta_field: str | list[str] = "source_id",
              split_id_meta_field: str = "split_id",
              raise_on_missing_meta_fields: bool = True)
 ```
@@ -1050,8 +1050,7 @@ Deserialized component.
 ```python
 @component.output_types(context_windows=list[str],
                         context_documents=list[Document])
-def run(retrieved_documents: list[Document],
-        window_size: Optional[int] = None)
+def run(retrieved_documents: list[Document], window_size: int | None = None)
 ```
 
 Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.
@@ -1082,7 +1081,7 @@ A dictionary with the following keys:
 @component.output_types(context_windows=list[str],
                         context_documents=list[Document])
 async def run_async(retrieved_documents: list[Document],
-                    window_size: Optional[int] = None)
+                    window_size: int | None = None)
 ```
 
 Based on the `source_id` and on the `doc.meta['split_id']` get surrounding documents from the document store.

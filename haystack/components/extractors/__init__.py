@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from .named_entity_extractor import NamedEntityAnnotation as NamedEntityAnnotation
     from .named_entity_extractor import NamedEntityExtractor as NamedEntityExtractor
     from .named_entity_extractor import NamedEntityExtractorBackend as NamedEntityExtractorBackend
-    from .regex_text_extractor import RegexTextExtractor
+    from .regex_text_extractor import RegexTextExtractor as RegexTextExtractor
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

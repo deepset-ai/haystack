@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Optional, Union
+from typing import Any
 
 from openai.lib._pydantic import to_strict_json_schema
 from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
@@ -74,22 +74,22 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     # ruff: noqa: PLR0913
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        azure_endpoint: Optional[str] = None,
-        api_version: Optional[str] = "2024-12-01-preview",
-        azure_deployment: Optional[str] = "gpt-4.1-mini",
-        api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
-        azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
-        organization: Optional[str] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        default_headers: Optional[dict[str, str]] = None,
-        tools: Optional[ToolsType] = None,
+        azure_endpoint: str | None = None,
+        api_version: str | None = "2024-12-01-preview",
+        azure_deployment: str | None = "gpt-4.1-mini",
+        api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
+        azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
+        organization: str | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        default_headers: dict[str, str] | None = None,
+        tools: ToolsType | None = None,
         tools_strict: bool = False,
         *,
-        azure_ad_token_provider: Optional[Union[AzureADTokenProvider, AsyncAzureADTokenProvider]] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        azure_ad_token_provider: AzureADTokenProvider | AsyncAzureADTokenProvider | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
     ):
         """
         Initialize the Azure OpenAI Chat Generator component.

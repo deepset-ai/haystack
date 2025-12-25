@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot, ToolBreakpoint
 
@@ -14,12 +14,12 @@ class PipelineError(Exception):
 class PipelineRuntimeError(Exception):
     def __init__(
         self,
-        component_name: Optional[str],
-        component_type: Optional[type],
+        component_name: str | None,
+        component_type: type | None,
         message: str,
-        pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
         *,
-        pipeline_snapshot_file_path: Optional[str] = None,
+        pipeline_snapshot_file_path: str | None = None,
     ) -> None:
         self.component_name = component_name
         self.component_type = component_type
@@ -111,11 +111,11 @@ class BreakpointException(Exception):
     def __init__(
         self,
         message: str,
-        component: Optional[str] = None,
-        pipeline_snapshot: Optional[PipelineSnapshot] = None,
-        pipeline_snapshot_file_path: Optional[str] = None,
+        component: str | None = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
+        pipeline_snapshot_file_path: str | None = None,
         *,
-        break_point: Optional[Union[AgentBreakpoint, Breakpoint, ToolBreakpoint]] = None,
+        break_point: AgentBreakpoint | Breakpoint | ToolBreakpoint | None = None,
     ):
         super().__init__(message)
         self.component = component
@@ -127,7 +127,7 @@ class BreakpointException(Exception):
             raise ValueError("Either pipeline_snapshot or break_point must be provided.")
 
     @classmethod
-    def from_triggered_breakpoint(cls, break_point: Union[Breakpoint, ToolBreakpoint]) -> "BreakpointException":
+    def from_triggered_breakpoint(cls, break_point: Breakpoint | ToolBreakpoint) -> "BreakpointException":
         """
         Create a BreakpointException from a triggered breakpoint.
         """
@@ -165,7 +165,7 @@ class BreakpointException(Exception):
         return self.pipeline_snapshot.pipeline_state.pipeline_outputs
 
     @property
-    def break_point(self) -> Union[AgentBreakpoint, Breakpoint, ToolBreakpoint]:
+    def break_point(self) -> AgentBreakpoint | Breakpoint | ToolBreakpoint:
         """
         Returns the Breakpoint or AgentBreakpoint that caused this exception, if available.
 

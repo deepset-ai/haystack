@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Optional
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -61,7 +60,7 @@ class DocumentLanguageClassifier:
     ```
     """
 
-    def __init__(self, languages: Optional[list[str]] = None):
+    def __init__(self, languages: list[str] | None = None):
         """
         Initializes the DocumentLanguageClassifier component.
 
@@ -110,7 +109,7 @@ class DocumentLanguageClassifier:
 
         return {"documents": new_documents}
 
-    def _detect_language(self, document: Document) -> Optional[str]:
+    def _detect_language(self, document: Document) -> str | None:
         language = None
         try:
             language = langdetect.detect(document.content)

@@ -63,11 +63,11 @@ def __init__(
     url: str,
     top_k: int = 10,
     raw_scores: bool = False,
-    timeout: Optional[int] = 30,
+    timeout: int | None = 30,
     max_retries: int = 3,
-    retry_status_codes: Optional[list[int]] = None,
-    token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"],
-                                                  strict=False)
+    retry_status_codes: list[int] | None = None,
+    token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"],
+                                               strict=False)
 ) -> None
 ```
 
@@ -128,8 +128,8 @@ Deserialized component.
 def run(
     query: str,
     documents: list[Document],
-    top_k: Optional[int] = None,
-    truncation_direction: Optional[TruncationDirection] = None
+    top_k: int | None = None,
+    truncation_direction: TruncationDirection | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -161,8 +161,8 @@ A dictionary with the following keys:
 async def run_async(
     query: str,
     documents: list[Document],
-    top_k: Optional[int] = None,
-    truncation_direction: Optional[TruncationDirection] = None
+    top_k: int | None = None,
+    truncation_direction: TruncationDirection | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -224,8 +224,8 @@ for doc in result["documents"]:
 #### LostInTheMiddleRanker.\_\_init\_\_
 
 ```python
-def __init__(word_count_threshold: Optional[int] = None,
-             top_k: Optional[int] = None)
+def __init__(word_count_threshold: int | None = None,
+             top_k: int | None = None)
 ```
 
 Initialize the LostInTheMiddleRanker.
@@ -247,9 +247,8 @@ discarded.
 ```python
 @component.output_types(documents=list[Document])
 def run(documents: list[Document],
-        top_k: Optional[int] = None,
-        word_count_threshold: Optional[int] = None
-        ) -> dict[str, list[Document]]
+        top_k: int | None = None,
+        word_count_threshold: int | None = None) -> dict[str, list[Document]]
 ```
 
 Reranks documents based on the "lost in the middle" order.
@@ -306,13 +305,12 @@ assert docs[0].content == "Barcelona"
 ```python
 def __init__(meta_field: str,
              weight: float = 1.0,
-             top_k: Optional[int] = None,
+             top_k: int | None = None,
              ranking_mode: Literal["reciprocal_rank_fusion",
                                    "linear_score"] = "reciprocal_rank_fusion",
              sort_order: Literal["ascending", "descending"] = "descending",
              missing_meta: Literal["drop", "top", "bottom"] = "bottom",
-             meta_value_type: Optional[Literal["float", "int",
-                                               "date"]] = None)
+             meta_value_type: Literal["float", "int", "date"] | None = None)
 ```
 
 Creates an instance of MetaFieldRanker.
@@ -355,13 +353,13 @@ The available options are:
 ```python
 @component.output_types(documents=list[Document])
 def run(documents: list[Document],
-        top_k: Optional[int] = None,
-        weight: Optional[float] = None,
-        ranking_mode: Optional[Literal["reciprocal_rank_fusion",
-                                       "linear_score"]] = None,
-        sort_order: Optional[Literal["ascending", "descending"]] = None,
-        missing_meta: Optional[Literal["drop", "top", "bottom"]] = None,
-        meta_value_type: Optional[Literal["float", "int", "date"]] = None)
+        top_k: int | None = None,
+        weight: float | None = None,
+        ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"]
+        | None = None,
+        sort_order: Literal["ascending", "descending"] | None = None,
+        missing_meta: Literal["drop", "top", "bottom"] | None = None,
+        meta_value_type: Literal["float", "int", "date"] | None = None)
 ```
 
 Ranks a list of Documents based on the selected meta field by:
@@ -477,8 +475,8 @@ print(result["documents"])
 
 ```python
 def __init__(group_by: str,
-             subgroup_by: Optional[str] = None,
-             sort_docs_by: Optional[str] = None)
+             subgroup_by: str | None = None,
+             sort_docs_by: str | None = None)
 ```
 
 Creates an instance of MetaFieldGroupingRanker.
@@ -617,26 +615,25 @@ docs = output["documents"]
 #### SentenceTransformersDiversityRanker.\_\_init\_\_
 
 ```python
-def __init__(
-        model: str = "sentence-transformers/all-MiniLM-L6-v2",
-        top_k: int = 10,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(
-            ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        similarity: Union[str, DiversityRankingSimilarity] = "cosine",
-        query_prefix: str = "",
-        query_suffix: str = "",
-        document_prefix: str = "",
-        document_suffix: str = "",
-        meta_fields_to_embed: Optional[list[str]] = None,
-        embedding_separator: str = "\n",
-        strategy: Union[str,
-                        DiversityRankingStrategy] = "greedy_diversity_order",
-        lambda_threshold: float = 0.5,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
-        backend: Literal["torch", "onnx", "openvino"] = "torch")
+def __init__(model: str = "sentence-transformers/all-MiniLM-L6-v2",
+             top_k: int = 10,
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
+                 ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+             similarity: str | DiversityRankingSimilarity = "cosine",
+             query_prefix: str = "",
+             query_suffix: str = "",
+             document_prefix: str = "",
+             document_suffix: str = "",
+             meta_fields_to_embed: list[str] | None = None,
+             embedding_separator: str = "\n",
+             strategy: str
+             | DiversityRankingStrategy = "greedy_diversity_order",
+             lambda_threshold: float = 0.5,
+             model_kwargs: dict[str, Any] | None = None,
+             tokenizer_kwargs: dict[str, Any] | None = None,
+             config_kwargs: dict[str, Any] | None = None,
+             backend: Literal["torch", "onnx", "openvino"] = "torch")
 ```
 
 Initialize a SentenceTransformersDiversityRanker.
@@ -726,8 +723,8 @@ The deserialized component.
 @component.output_types(documents=list[Document])
 def run(query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        lambda_threshold: Optional[float] = None) -> dict[str, list[Document]]
+        top_k: int | None = None,
+        lambda_threshold: float | None = None) -> dict[str, list[Document]]
 ```
 
 Rank the documents based on their diversity.
@@ -782,21 +779,23 @@ print(docs[0].content)
 
 ```python
 def __init__(*,
-             model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+             model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
              top_k: int = 10,
              query_prefix: str = "",
+             query_suffix: str = "",
              document_prefix: str = "",
-             meta_fields_to_embed: Optional[list[str]] = None,
+             document_suffix: str = "",
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
              scale_score: bool = True,
-             score_threshold: Optional[float] = None,
+             score_threshold: float | None = None,
              trust_remote_code: bool = False,
-             model_kwargs: Optional[dict[str, Any]] = None,
-             tokenizer_kwargs: Optional[dict[str, Any]] = None,
-             config_kwargs: Optional[dict[str, Any]] = None,
+             model_kwargs: dict[str, Any] | None = None,
+             tokenizer_kwargs: dict[str, Any] | None = None,
+             config_kwargs: dict[str, Any] | None = None,
              backend: Literal["torch", "onnx", "openvino"] = "torch",
              batch_size: int = 16)
 ```
@@ -811,8 +810,12 @@ Creates an instance of SentenceTransformersSimilarityRanker.
 - `top_k`: The maximum number of documents to return per query.
 - `query_prefix`: A string to add at the beginning of the query text before ranking.
 Use it to prepend the text with an instruction, as required by reranking models like `bge`.
+- `query_suffix`: A string to add at the end of the query text before ranking.
+Use it to append the text with an instruction, as required by reranking models like `qwen`.
 - `document_prefix`: A string to add at the beginning of each document before ranking. You can use it to prepend the document
 with an instruction, as required by embedding models like `bge`.
+- `document_suffix`: A string to add at the end of each document before ranking. You can use it to append the document
+with an instruction, as required by embedding models like `qwen`.
 - `meta_fields_to_embed`: List of metadata fields to embed with the document.
 - `embedding_separator`: Separator to concatenate metadata fields to the document.
 - `scale_score`: If `True`, scales the raw logit predictions using a Sigmoid activation function.
@@ -888,9 +891,9 @@ Deserialized component.
 def run(*,
         query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        score_threshold: Optional[float] = None) -> dict[str, list[Document]]
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        score_threshold: float | None = None) -> dict[str, list[Document]]
 ```
 
 Returns a list of documents ranked by their similarity to the given query.
@@ -954,20 +957,20 @@ print(docs[0].content)
 #### TransformersSimilarityRanker.\_\_init\_\_
 
 ```python
-def __init__(model: Union[str, Path] = "cross-encoder/ms-marco-MiniLM-L-6-v2",
-             device: Optional[ComponentDevice] = None,
-             token: Optional[Secret] = Secret.from_env_var(
+def __init__(model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+             device: ComponentDevice | None = None,
+             token: Secret | None = Secret.from_env_var(
                  ["HF_API_TOKEN", "HF_TOKEN"], strict=False),
              top_k: int = 10,
              query_prefix: str = "",
              document_prefix: str = "",
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
              scale_score: bool = True,
-             calibration_factor: Optional[float] = 1.0,
-             score_threshold: Optional[float] = None,
-             model_kwargs: Optional[dict[str, Any]] = None,
-             tokenizer_kwargs: Optional[dict[str, Any]] = None,
+             calibration_factor: float | None = 1.0,
+             score_threshold: float | None = None,
+             model_kwargs: dict[str, Any] | None = None,
+             tokenizer_kwargs: dict[str, Any] | None = None,
              batch_size: int = 16)
 ```
 
@@ -1053,10 +1056,10 @@ Deserialized component.
 @component.output_types(documents=list[Document])
 def run(query: str,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        scale_score: Optional[bool] = None,
-        calibration_factor: Optional[float] = None,
-        score_threshold: Optional[float] = None)
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        calibration_factor: float | None = None,
+        score_threshold: float | None = None)
 ```
 
 Returns a list of documents ranked by their similarity to the given query.

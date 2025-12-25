@@ -5,7 +5,7 @@
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional, TypeVar
+from typing import Any, Iterable, TypeVar
 
 from haystack import logging
 from haystack.core.component.component import _hook_component_init
@@ -32,7 +32,7 @@ class DeserializationCallbacks:
         are passed to the component's constructor.
     """
 
-    component_pre_init: Optional[Callable] = None
+    component_pre_init: Callable | None = None
 
 
 def component_to_dict(obj: Any, name: str) -> dict[str, Any]:
@@ -134,7 +134,7 @@ def generate_qualified_class_name(cls: type[object]) -> str:
 
 
 def component_from_dict(
-    cls: type[object], data: dict[str, Any], name: str, callbacks: Optional[DeserializationCallbacks] = None
+    cls: type[object], data: dict[str, Any], name: str, callbacks: DeserializationCallbacks | None = None
 ) -> Any:
     """
     Creates a component instance from a dictionary.

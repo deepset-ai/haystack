@@ -49,8 +49,8 @@ response = connector.run(
 
 ```python
 def __init__(openapi_spec: str,
-             credentials: Optional[Secret] = None,
-             service_kwargs: Optional[dict[str, Any]] = None)
+             credentials: Secret | None = None,
+             service_kwargs: dict[str, Any] | None = None)
 ```
 
 Initialize the OpenAPIConnector with a specification and optional credentials.
@@ -90,7 +90,7 @@ Deserialize this component from a dictionary.
 ```python
 @component.output_types(response=dict[str, Any])
 def run(operation_id: str,
-        arguments: Optional[dict[str, Any]] = None) -> dict[str, Any]
+        arguments: dict[str, Any] | None = None) -> dict[str, Any]
 ```
 
 Invokes a REST endpoint specified in the OpenAPI specification.
@@ -165,7 +165,7 @@ print(result)
 #### OpenAPIServiceConnector.\_\_init\_\_
 
 ```python
-def __init__(ssl_verify: Optional[Union[bool, str]] = None)
+def __init__(ssl_verify: bool | str | None = None)
 ```
 
 Initializes the OpenAPIServiceConnector instance
@@ -184,7 +184,7 @@ in case a string is passed, will be used as the CA.
 def run(
     messages: list[ChatMessage],
     service_openapi_spec: dict[str, Any],
-    service_credentials: Optional[Union[dict, str]] = None
+    service_credentials: dict | str | None = None
 ) -> dict[str, list[ChatMessage]]
 ```
 

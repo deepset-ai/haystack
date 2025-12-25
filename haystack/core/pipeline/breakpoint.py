@@ -5,7 +5,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from networkx import MultiDiGraph
 
@@ -31,9 +31,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _validate_break_point_against_pipeline(
-    break_point: Union[Breakpoint, AgentBreakpoint], graph: MultiDiGraph
-) -> None:
+def _validate_break_point_against_pipeline(break_point: Breakpoint | AgentBreakpoint, graph: MultiDiGraph) -> None:
     """
     Validates the breakpoints passed to the pipeline.
 
@@ -112,7 +110,7 @@ def _validate_pipeline_snapshot_against_pipeline(pipeline_snapshot: PipelineSnap
     )
 
 
-def load_pipeline_snapshot(file_path: Union[str, Path]) -> PipelineSnapshot:
+def load_pipeline_snapshot(file_path: str | Path) -> PipelineSnapshot:
     """
     Load a saved pipeline snapshot.
 
@@ -142,7 +140,7 @@ def load_pipeline_snapshot(file_path: Union[str, Path]) -> PipelineSnapshot:
     return pipeline_snapshot
 
 
-def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failure: bool = True) -> Optional[str]:
+def _save_pipeline_snapshot(pipeline_snapshot: PipelineSnapshot, raise_on_failure: bool = True) -> str | None:
     """
     Save the pipeline snapshot dictionary to a JSON file.
 
@@ -208,7 +206,7 @@ def _create_pipeline_snapshot(
     *,
     inputs: dict[str, Any],
     component_inputs: dict[str, Any],
-    break_point: Union[AgentBreakpoint, Breakpoint],
+    break_point: AgentBreakpoint | Breakpoint,
     component_visits: dict[str, int],
     original_input_data: dict[str, Any],
     ordered_component_names: list[str],
@@ -282,7 +280,7 @@ def _create_pipeline_snapshot(
     return pipeline_snapshot
 
 
-def _transform_json_structure(data: Union[dict[str, Any], list[Any], Any]) -> Any:
+def _transform_json_structure(data: dict[str, Any] | list[Any] | Any) -> Any:
     """
     Transforms a JSON structure by removing the 'sender' key and moving the 'value' to the top level.
 
@@ -356,10 +354,7 @@ def _validate_tool_breakpoint_is_valid(agent_breakpoint: AgentBreakpoint, tools:
 
 
 def _create_pipeline_snapshot_from_chat_generator(
-    *,
-    execution_context: "_ExecutionContext",
-    agent_name: Optional[str] = None,
-    break_point: Optional[AgentBreakpoint] = None,
+    *, execution_context: "_ExecutionContext", agent_name: str | None = None, break_point: AgentBreakpoint | None = None
 ) -> PipelineSnapshot:
     """
     Create a pipeline snapshot when a chat generator breakpoint is raised or an exception during execution occurs.
@@ -402,9 +397,9 @@ def _create_pipeline_snapshot_from_chat_generator(
 def _create_pipeline_snapshot_from_tool_invoker(
     *,
     execution_context: "_ExecutionContext",
-    tool_name: Optional[str] = None,
-    agent_name: Optional[str] = None,
-    break_point: Optional[AgentBreakpoint] = None,
+    tool_name: str | None = None,
+    agent_name: str | None = None,
+    break_point: AgentBreakpoint | None = None,
 ) -> PipelineSnapshot:
     """
     Create a pipeline snapshot when a tool invoker breakpoint is raised or an exception during execution occurs.

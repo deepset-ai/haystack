@@ -4,7 +4,7 @@
 
 import re
 import string
-from typing import Any, Optional
+from typing import Any
 
 from haystack import component
 
@@ -32,7 +32,7 @@ class TextCleaner:
 
     def __init__(
         self,
-        remove_regexps: Optional[list[str]] = None,
+        remove_regexps: list[str] | None = None,
         convert_to_lowercase: bool = False,
         remove_punctuation: bool = False,
         remove_numbers: bool = False,

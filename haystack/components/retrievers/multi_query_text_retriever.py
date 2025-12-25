@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Optional
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types import TextRetriever
@@ -77,7 +77,7 @@ class MultiQueryTextRetriever:
             self._is_warmed_up = True
 
     @component.output_types(documents=list[Document])
-    def run(self, queries: list[str], retriever_kwargs: Optional[dict[str, Any]] = None) -> dict[str, list[Document]]:
+    def run(self, queries: list[str], retriever_kwargs: dict[str, Any] | None = None) -> dict[str, list[Document]]:
         """
         Retrieve documents using multiple queries in parallel.
 
@@ -105,7 +105,7 @@ class MultiQueryTextRetriever:
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
         return {"documents": docs}
 
-    def _run_on_thread(self, query: str, retriever_kwargs: Optional[dict[str, Any]] = None) -> Optional[list[Document]]:
+    def _run_on_thread(self, query: str, retriever_kwargs: dict[str, Any] | None = None) -> list[Document] | None:
         """
         Process a single query on a separate thread.
 

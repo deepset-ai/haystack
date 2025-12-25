@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from haystack.dataclasses.sparse_embedding import SparseEmbedding
 from haystack.lazy_imports import LazyImport
@@ -24,14 +24,14 @@ class _SentenceTransformersSparseEmbeddingBackendFactory:
     def get_embedding_backend(
         *,
         model: str,
-        device: Optional[str] = None,
-        auth_token: Optional[Secret] = None,
+        device: str | None = None,
+        auth_token: Secret | None = None,
         trust_remote_code: bool = False,
-        revision: Optional[str] = None,
+        revision: str | None = None,
         local_files_only: bool = False,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         cache_params = {
@@ -78,14 +78,14 @@ class _SentenceTransformersSparseEncoderEmbeddingBackend:
         self,
         *,
         model: str,
-        device: Optional[str] = None,
-        auth_token: Optional[Secret] = None,
+        device: str | None = None,
+        auth_token: Secret | None = None,
         trust_remote_code: bool = False,
-        revision: Optional[str] = None,
+        revision: str | None = None,
         local_files_only: bool = False,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         sentence_transformers_import.check()
