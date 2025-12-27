@@ -1,4 +1,4 @@
 ---
 enhancements:
   - |
-    Added `BrightDataWebSearch`, a web search component using Bright Data SERP API, supporting Google search with pagination.
+    Added ``BrightDataWebSearch``, a web search component using Bright Data SERP API, supporting Google search with pagination.
