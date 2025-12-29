@@ -350,7 +350,7 @@ class EmbeddingBasedDocumentSplitter:
         embedding-based approach. This is done recursively until all splits are within the max_length limit or no
         further splitting is possible.
 
-        This is works because the threshold for splits is calculated dynamically based on the provided of embeddings.
+        This works because the threshold for splits is calculated dynamically based on the provided of embeddings.
         """
         final_splits = []
 
@@ -409,6 +409,9 @@ class EmbeddingBasedDocumentSplitter:
     def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
+
+        :returns:
+            Serialized dictionary representation of the component.
         """
         return default_to_dict(
             self,
@@ -426,6 +429,12 @@ class EmbeddingBasedDocumentSplitter:
     def from_dict(cls, data: dict[str, Any]) -> "EmbeddingBasedDocumentSplitter":
         """
         Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize and create the component.
+
+        :returns:
+            The deserialized component.
         """
         deserialize_component_inplace(data["init_parameters"], key="document_embedder")
         return default_from_dict(cls, data)
