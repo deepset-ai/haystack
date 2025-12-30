@@ -94,33 +94,28 @@ class EmbeddingBasedDocumentSplitter:
             If False, the default abbreviations are used.
         """
         self.document_embedder = document_embedder
+
+        if sentences_per_group <= 0:
+            raise ValueError("sentences_per_group must be greater than 0.")
         self.sentences_per_group = sentences_per_group
+
+        if not 0.0 <= percentile <= 1.0:
+            raise ValueError("percentile must be between 0.0 and 1.0.")
         self.percentile = percentile
+
+        if min_length < 0:
+            raise ValueError("min_length must be greater than or equal to 0.")
         self.min_length = min_length
+
+        if max_length <= min_length:
+            raise ValueError("max_length must be greater than min_length.")
         self.max_length = max_length
+
         self.language = language
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
-
-        self._init_validation()
         self.sentence_splitter: SentenceSplitter | None = None
         self._is_warmed_up = False
-
-    def _init_validation(self) -> None:
-        """
-        Validates initialization parameters.
-        """
-        if self.sentences_per_group <= 0:
-            raise ValueError("sentences_per_group must be greater than 0.")
-
-        if not 0.0 <= self.percentile <= 1.0:
-            raise ValueError("percentile must be between 0.0 and 1.0.")
-
-        if self.min_length < 0:
-            raise ValueError("min_length must be greater than or equal to 0.")
-
-        if self.max_length <= self.min_length:
-            raise ValueError("max_length must be greater than min_length.")
 
     def warm_up(self) -> None:
         """
