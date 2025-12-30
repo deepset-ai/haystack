@@ -27,7 +27,7 @@ messages = [
 ]
 message_store = InMemoryChatMessageStore()
 writer = ChatMessageWriter(message_store)
-writer.run(messages)
+writer.run(chat_history_id="user_456_session_123", messages=messages)
 ```
 
 <a id="haystack_experimental.components.writers.chat_message_writer.ChatMessageWriter.__init__"></a>
@@ -35,21 +35,21 @@ writer.run(messages)
 #### ChatMessageWriter.\_\_init\_\_
 
 ```python
-def __init__(message_store: ChatMessageStore)
+def __init__(chat_message_store: ChatMessageStore) -> None
 ```
 
 Create a ChatMessageWriter component.
 
 **Arguments**:
 
-- `message_store`: The ChatMessageStore where the chat messages are to be written.
+- `chat_message_store`: The ChatMessageStore where the chat messages are to be written.
 
 <a id="haystack_experimental.components.writers.chat_message_writer.ChatMessageWriter.to_dict"></a>
 
 #### ChatMessageWriter.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -64,7 +64,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "ChatMessageWriter"
+def from_dict(cls, data: dict[str, Any]) -> "ChatMessageWriter"
 ```
 
 Deserializes the component from a dictionary.
@@ -87,18 +87,17 @@ The deserialized component.
 
 ```python
 @component.output_types(messages_written=int)
-def run(messages: List[ChatMessage]) -> Dict[str, int]
+def run(chat_history_id: str, messages: list[ChatMessage]) -> dict[str, int]
 ```
 
 Run the ChatMessageWriter on the given input data.
 
 **Arguments**:
 
+- `chat_history_id`: A unique identifier for the chat session or conversation whose messages should be retrieved.
+Each `chat_history_id` corresponds to a distinct chat history stored in the underlying ChatMessageStore.
+For example, use a session ID or conversation ID to isolate messages from different chat sessions.
 - `messages`: A list of chat messages to write to the store.
-
-**Raises**:
-
-- `ValueError`: If the specified message store is not found.
 
 **Returns**:
 

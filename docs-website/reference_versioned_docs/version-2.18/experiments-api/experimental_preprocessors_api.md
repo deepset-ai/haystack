@@ -106,8 +106,8 @@ Warm up the component by initializing the sentence splitter.
 #### EmbeddingBasedDocumentSplitter.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(documents: List[Document]) -> Dict[str, List[Document]]
+@component.output_types(documents=list[Document])
+def run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Split documents based on embedding similarity.
@@ -136,7 +136,7 @@ A dictionary with the following key:
 #### EmbeddingBasedDocumentSplitter.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -147,7 +147,7 @@ Serializes the component to a dictionary.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "EmbeddingBasedDocumentSplitter"
+def from_dict(cls, data: dict[str, Any]) -> "EmbeddingBasedDocumentSplitter"
 ```
 
 Deserializes the component from a dictionary.
