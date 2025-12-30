@@ -14,9 +14,8 @@ Use this component to split documents based on embedding similarity using cosine
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx)   and [`DocumentCleaner`](documentcleaner.mdx)              |
-| **Mandatory init variables**           | `block_sizes`: Set of block sizes to split the document into. The blocks are split in descending order.                 |
-| **Mandatory run variables**            | `documents`: A list of documents to split into hierarchical blocks                                                      |
-| **Output variables**                   | `documents`: A list of hierarchical documents                                                                           |
+| **Mandatory run variables**            | `documents`: A list of documents to split each into smaller documents based on embedding similarity.                    |
+| **Output variables**                   | `documents`: A list of documents                                                                                        |
 | **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                           |
 | **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/embedding_based_document_splitter.py |
 
