@@ -76,7 +76,7 @@ result = builder.run(name="Alice")
 ## Output: "Hello, Alice. How can I assist you with ?"
 ```
 
-The components only waits for the required inputs before running.
+The component only waits for the required inputs before running.
 
 ### Roles
 
@@ -170,9 +170,6 @@ template = [
 builder = ChatPromptBuilder(template=template)
 
 result = builder.run()["prompt"]
-
-now = f"Current date is: {arrow.now('UTC').strftime('%Y-%m-%d %H:%M:%S')}"
-yesterday = f"Yesterday was: {(arrow.now('UTC').shift(days=-1)).strftime('%Y-%m-%d %H:%M:%S')}"
 ```
 
 ## Usage
