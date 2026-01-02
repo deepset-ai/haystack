@@ -4,7 +4,7 @@
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -21,7 +21,7 @@ class Breakpoint:
 
     component_name: str
     visit_count: int = 0
-    snapshot_file_path: Optional[str] = None
+    snapshot_file_path: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -53,7 +53,7 @@ class ToolBreakpoint(Breakpoint):
     :param tool_name: The name of the tool to target within the Agent component. If None, applies to all tools.
     """
 
-    tool_name: Optional[str] = None
+    tool_name: str | None = None
 
     def __str__(self) -> str:
         tool_str = f", tool_name={self.tool_name}" if self.tool_name else ", tool_name=ALL_TOOLS"
@@ -77,7 +77,7 @@ class AgentBreakpoint:
     """
 
     agent_name: str
-    break_point: Union[Breakpoint, ToolBreakpoint]
+    break_point: Breakpoint | ToolBreakpoint
 
     def __post_init__(self):
         if (
@@ -105,7 +105,7 @@ class AgentBreakpoint:
         :return: An instance of AgentBreakpoint.
         """
         break_point_data = data["break_point"]
-        break_point: Union[Breakpoint, ToolBreakpoint]
+        break_point: Breakpoint | ToolBreakpoint
         if "tool_name" in break_point_data:
             break_point = ToolBreakpoint(**break_point_data)
         else:
@@ -118,7 +118,7 @@ class AgentSnapshot:
     component_inputs: dict[str, Any]
     component_visits: dict[str, int]
     break_point: AgentBreakpoint
-    timestamp: Optional[datetime] = None
+    timestamp: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -201,9 +201,9 @@ class PipelineSnapshot:
     original_input_data: dict[str, Any]
     ordered_component_names: list[str]
     pipeline_state: PipelineState
-    break_point: Union[AgentBreakpoint, Breakpoint]
-    agent_snapshot: Optional[AgentSnapshot] = None
-    timestamp: Optional[datetime] = None
+    break_point: AgentBreakpoint | Breakpoint
+    agent_snapshot: AgentSnapshot | None = None
+    timestamp: datetime | None = None
     include_outputs_from: set[str] = field(default_factory=set)
 
     def __post_init__(self):

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, Awaitable, Callable, Literal, Optional, Union, overload
+from typing import Any, Awaitable, Callable, Literal, overload
 
 from haystack.core.component import Component
 from haystack.dataclasses.chat_message import ReasoningContent, ToolCallResult
@@ -28,10 +28,10 @@ class ToolCallDelta:
     """
 
     index: int
-    tool_name: Optional[str] = field(default=None)
-    arguments: Optional[str] = field(default=None)
-    id: Optional[str] = field(default=None)
-    extra: Optional[dict[str, Any]] = field(default=None)
+    tool_name: str | None = field(default=None)
+    arguments: str | None = field(default=None)
+    id: str | None = field(default=None)
+    extra: dict[str, Any] | None = field(default=None)
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -63,7 +63,7 @@ class ComponentInfo:
     """
 
     type: str
-    name: Optional[str] = field(default=None)
+    name: str | None = field(default=None)
 
     @classmethod
     def from_component(cls, component: Component) -> "ComponentInfo":
@@ -123,13 +123,13 @@ class StreamingChunk:
 
     content: str
     meta: dict[str, Any] = field(default_factory=dict, hash=False)
-    component_info: Optional[ComponentInfo] = field(default=None)
-    index: Optional[int] = field(default=None)
-    tool_calls: Optional[list[ToolCallDelta]] = field(default=None)
-    tool_call_result: Optional[ToolCallResult] = field(default=None)
+    component_info: ComponentInfo | None = field(default=None)
+    index: int | None = field(default=None)
+    tool_calls: list[ToolCallDelta] | None = field(default=None)
+    tool_call_result: ToolCallResult | None = field(default=None)
     start: bool = field(default=False)
-    finish_reason: Optional[FinishReason] = field(default=None)
-    reasoning: Optional[ReasoningContent] = field(default=None)
+    finish_reason: FinishReason | None = field(default=None)
+    reasoning: ReasoningContent | None = field(default=None)
 
     def __post_init__(self):
         fields_set = sum(bool(x) for x in (self.content, self.tool_calls, self.tool_call_result, self.reasoning))
@@ -191,26 +191,24 @@ class StreamingChunk:
 SyncStreamingCallbackT = Callable[[StreamingChunk], None]
 AsyncStreamingCallbackT = Callable[[StreamingChunk], Awaitable[None]]
 
-StreamingCallbackT = Union[SyncStreamingCallbackT, AsyncStreamingCallbackT]
+StreamingCallbackT = SyncStreamingCallbackT | AsyncStreamingCallbackT
 
 
 @overload
 def select_streaming_callback(
-    init_callback: Optional[StreamingCallbackT],
-    runtime_callback: Optional[StreamingCallbackT],
+    init_callback: StreamingCallbackT | None,
+    runtime_callback: StreamingCallbackT | None,
     requires_async: Literal[False],
-) -> Optional[SyncStreamingCallbackT]: ...
+) -> SyncStreamingCallbackT | None: ...
 @overload
 def select_streaming_callback(
-    init_callback: Optional[StreamingCallbackT],
-    runtime_callback: Optional[StreamingCallbackT],
-    requires_async: Literal[True],
-) -> Optional[AsyncStreamingCallbackT]: ...
+    init_callback: StreamingCallbackT | None, runtime_callback: StreamingCallbackT | None, requires_async: Literal[True]
+) -> AsyncStreamingCallbackT | None: ...
 
 
 def select_streaming_callback(
-    init_callback: Optional[StreamingCallbackT], runtime_callback: Optional[StreamingCallbackT], requires_async: bool
-) -> Optional[StreamingCallbackT]:
+    init_callback: StreamingCallbackT | None, runtime_callback: StreamingCallbackT | None, requires_async: bool
+) -> StreamingCallbackT | None:
     """
     Picks the correct streaming callback given an optional initial and runtime callback.
 

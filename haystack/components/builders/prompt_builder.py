@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from jinja2.sandbox import SandboxedEnvironment
 
@@ -141,8 +141,8 @@ class PromptBuilder:
     def __init__(
         self,
         template: str,
-        required_variables: Optional[Union[list[str], Literal["*"]]] = None,
-        variables: Optional[list[str]] = None,
+        required_variables: list[str] | Literal["*"] | None = None,
+        variables: list[str] | None = None,
     ):
         """
         Constructs a PromptBuilder component.
@@ -212,7 +212,7 @@ class PromptBuilder:
         )
 
     @component.output_types(prompt=str)
-    def run(self, template: Optional[str] = None, template_variables: Optional[dict[str, Any]] = None, **kwargs):
+    def run(self, template: str | None = None, template_variables: dict[str, Any] | None = None, **kwargs):
         """
         Renders the prompt template with the provided variables.
 

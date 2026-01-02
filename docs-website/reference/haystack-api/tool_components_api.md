@@ -156,7 +156,7 @@ print(result)
 def __init__(tools: ToolsType,
              raise_on_failure: bool = True,
              convert_result_to_json_string: bool = False,
-             streaming_callback: Optional[StreamingCallbackT] = None,
+             streaming_callback: StreamingCallbackT | None = None,
              *,
              enable_streaming_callback_passthrough: bool = False,
              max_workers: int = 4)
@@ -207,11 +207,11 @@ This method is idempotent and will only warm up the tools once.
 ```python
 @component.output_types(tool_messages=list[ChatMessage], state=State)
 def run(messages: list[ChatMessage],
-        state: Optional[State] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        state: State | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[ToolsType] = None) -> dict[str, Any]
+        enable_streaming_callback_passthrough: bool | None = None,
+        tools: ToolsType | None = None) -> dict[str, Any]
 ```
 
 Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
@@ -249,13 +249,12 @@ Each ChatMessage objects wraps the result of a tool invocation.
 
 ```python
 @component.output_types(tool_messages=list[ChatMessage], state=State)
-async def run_async(
-        messages: list[ChatMessage],
-        state: Optional[State] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        *,
-        enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[ToolsType] = None) -> dict[str, Any]
+async def run_async(messages: list[ChatMessage],
+                    state: State | None = None,
+                    streaming_callback: StreamingCallbackT | None = None,
+                    *,
+                    enable_streaming_callback_passthrough: bool | None = None,
+                    tools: ToolsType | None = None) -> dict[str, Any]
 ```
 
 Asynchronously processes ChatMessage objects containing tool calls.

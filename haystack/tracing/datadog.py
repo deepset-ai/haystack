@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
-from typing import Any, Iterator, Optional
+from typing import Any, Iterator
 
 from haystack.lazy_imports import LazyImport
 from haystack.tracing import Span, Tracer
@@ -56,7 +56,7 @@ class DatadogTracer(Tracer):
         self._tracer = tracer
 
     @staticmethod
-    def _get_span_resource_name(operation_name: str, tags: Optional[dict[str, Any]]) -> Optional[str]:
+    def _get_span_resource_name(operation_name: str, tags: dict[str, Any] | None) -> str | None:
         """
         Get the resource name for the Datadog span.
         """
@@ -70,7 +70,7 @@ class DatadogTracer(Tracer):
 
     @contextlib.contextmanager
     def trace(
-        self, operation_name: str, tags: Optional[dict[str, Any]] = None, parent_span: Optional[Span] = None
+        self, operation_name: str, tags: dict[str, Any] | None = None, parent_span: Span | None = None
     ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         resource_name = self._get_span_resource_name(operation_name, tags)
@@ -82,7 +82,7 @@ class DatadogTracer(Tracer):
 
             yield custom_span
 
-    def current_span(self) -> Optional[Span]:
+    def current_span(self) -> Span | None:
         """Return the current active span"""
         current_span = self._tracer.current_span()
         if current_span is None:

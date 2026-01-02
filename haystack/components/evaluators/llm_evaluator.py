@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from tqdm import tqdm
 
@@ -59,7 +59,7 @@ class LLMEvaluator:
         progress_bar: bool = True,
         *,
         raise_on_failure: bool = True,
-        chat_generator: Optional[ChatGenerator] = None,
+        chat_generator: ChatGenerator | None = None,
     ):
         """
         Creates an instance of LLMEvaluator.
@@ -202,7 +202,7 @@ class LLMEvaluator:
         input_names, values = inputs.keys(), list(zip(*inputs.values()))
         list_of_input_names_to_values = [dict(zip(input_names, v)) for v in values]
 
-        results: list[Optional[dict[str, Any]]] = []
+        results: list[dict[str, Any] | None] = []
         metadata = []
         errors = 0
         for input_names_to_values in tqdm(list_of_input_names_to_values, disable=not self.progress_bar):

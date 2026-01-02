@@ -4,7 +4,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -34,7 +34,7 @@ class HTMLToDocument:
     ```
     """
 
-    def __init__(self, extraction_kwargs: Optional[dict[str, Any]] = None, store_full_path: bool = False):
+    def __init__(self, extraction_kwargs: dict[str, Any] | None = None, store_full_path: bool = False):
         """
         Create an HTMLToDocument component.
 
@@ -74,9 +74,9 @@ class HTMLToDocument:
     @component.output_types(documents=list[Document])
     def run(
         self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-        extraction_kwargs: Optional[dict[str, Any]] = None,
+        sources: list[str | Path | ByteStream],
+        meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+        extraction_kwargs: dict[str, Any] | None = None,
     ):
         """
         Converts a list of HTML files to Documents.

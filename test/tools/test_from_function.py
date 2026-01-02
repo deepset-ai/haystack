@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal
 
 import pytest
 
@@ -56,7 +56,7 @@ def test_from_function_annotated():
     def function_with_annotations(
         city: Annotated[str, "the city for which to get the weather"] = "Munich",
         unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius",
-        nullable_param: Annotated[Optional[str], "a nullable parameter"] = None,
+        nullable_param: Annotated[str | None, "a nullable parameter"] = None,
     ) -> str:
         """A simple function to get the current weather for a location."""
         return f"Weather report for {city}: 20 {unit}, sunny"
@@ -286,3 +286,21 @@ def test_remove_title_from_schema_handle_no_title_in_top_level():
         "properties": {"parameter1": {"type": "string"}, "parameter2": {"type": "integer"}},
         "type": "object",
     }
+
+
+def test_from_function_async_raises_error():
+    async def async_get_weather(city: str) -> str:
+        """Get weather report for a city."""
+        return f"Weather report for {city}: 20°C, sunny"
+
+    with pytest.raises(ValueError, match="Async functions are not supported as tools"):
+        create_tool_from_function(async_get_weather)
+
+
+def test_tool_decorator_async_raises_error():
+    with pytest.raises(ValueError, match="Async functions are not supported as tools"):
+
+        @tool
+        async def async_get_weather(city: str) -> str:
+            """Get weather report for a city."""
+            return f"Weather report for {city}: 20°C, sunny"

@@ -43,7 +43,7 @@ of the metric and its value is dictionary with the following keys:
 ```python
 def aggregated_report(
     output_format: Literal["json", "csv", "df"] = "json",
-    csv_file: Optional[str] = None
+    csv_file: str | None = None
 ) -> Union[dict[str, list[Any]], "DataFrame", str]
 ```
 
@@ -66,7 +66,7 @@ successful write or an error message.
 ```python
 def detailed_report(
     output_format: Literal["json", "csv", "df"] = "json",
-    csv_file: Optional[str] = None
+    csv_file: str | None = None
 ) -> Union[dict[str, list[Any]], "DataFrame", str]
 ```
 
@@ -89,9 +89,9 @@ the successful write or an error message.
 ```python
 def comparative_detailed_report(
         other: "EvaluationRunResult",
-        keep_columns: Optional[list[str]] = None,
+        keep_columns: list[str] | None = None,
         output_format: Literal["json", "csv", "df"] = "json",
-        csv_file: Optional[str] = None) -> Union[str, "DataFrame", None]
+        csv_file: str | None = None) -> Union[str, "DataFrame", None]
 ```
 
 Generates a report with detailed scores for each metric from two evaluation runs for comparison.

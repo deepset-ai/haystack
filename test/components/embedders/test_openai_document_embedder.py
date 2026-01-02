@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import random
 from unittest.mock import Mock, patch
 
 import pytest

@@ -77,7 +77,8 @@ def __init__(*,
              raise_on_tool_invocation_failure: bool = False,
              confirmation_strategies: Optional[dict[
                  str, ConfirmationStrategy]] = None,
-             tool_invoker_kwargs: Optional[dict[str, Any]] = None) -> None
+             tool_invoker_kwargs: Optional[dict[str, Any]] = None,
+             chat_message_store: Optional[ChatMessageStore] = None) -> None
 ```
 
 Initialize the agent component.
@@ -117,6 +118,8 @@ def run(messages: list[ChatMessage],
         snapshot: Optional[AgentSnapshot] = None,
         system_prompt: Optional[str] = None,
         tools: Optional[Union[ToolsType, list[str]]] = None,
+        confirmation_strategy_context: Optional[dict[str, Any]] = None,
+        chat_message_store_kwargs: Optional[dict[str, Any]] = None,
         **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -136,6 +139,12 @@ the relevant information to restart the Agent execution from where it left off.
 - `system_prompt`: System prompt for the agent. If provided, it overrides the default system prompt.
 - `tools`: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
 When passing tool names, tools are selected from the Agent's originally configured tools.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources
+to confirmation strategies. Useful in web/server environments to provide per-request
+objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
+can use for non-blocking user interaction.
+- `chat_message_store_kwargs`: Optional dictionary of keyword arguments to pass to the ChatMessageStore.
+For example, it can include the `chat_history_id` and `last_k` parameters for retrieving chat history.
 - `kwargs`: Additional data to pass to the State schema used by the Agent.
 The keys must match the schema defined in the Agent's `state_schema`.
 
@@ -164,6 +173,9 @@ async def run_async(messages: list[ChatMessage],
                     snapshot: Optional[AgentSnapshot] = None,
                     system_prompt: Optional[str] = None,
                     tools: Optional[Union[ToolsType, list[str]]] = None,
+                    confirmation_strategy_context: Optional[dict[str,
+                                                                 Any]] = None,
+                    chat_message_store_kwargs: Optional[dict[str, Any]] = None,
                     **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -186,6 +198,12 @@ for "tool_invoker".
 the relevant information to restart the Agent execution from where it left off.
 - `system_prompt`: System prompt for the agent. If provided, it overrides the default system prompt.
 - `tools`: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources
+to confirmation strategies. Useful in web/server environments to provide per-request
+objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
+can use for non-blocking user interaction.
+- `chat_message_store_kwargs`: Optional dictionary of keyword arguments to pass to the ChatMessageStore.
+For example, it can include the `chat_history_id` and `last_k` parameters for retrieving chat history.
 - `kwargs`: Additional data to pass to the State schema used by the Agent.
 The keys must match the schema defined in the Agent's `state_schema`.
 
@@ -509,10 +527,14 @@ Initialize the BlockingConfirmationStrategy with a confirmation policy and UI.
 #### BlockingConfirmationStrategy.run
 
 ```python
-def run(tool_name: str,
-        tool_description: str,
-        tool_params: dict[str, Any],
-        tool_call_id: Optional[str] = None) -> ToolExecutionDecision
+def run(
+    *,
+    tool_name: str,
+    tool_description: str,
+    tool_params: dict[str, Any],
+    tool_call_id: Optional[str] = None,
+    confirmation_strategy_context: Optional[dict[str, Any]] = None
+) -> ToolExecutionDecision
 ```
 
 Run the human-in-the-loop strategy for a given tool and its parameters.
@@ -524,11 +546,43 @@ Run the human-in-the-loop strategy for a given tool and its parameters.
 - `tool_params`: The parameters to be passed to the tool.
 - `tool_call_id`: Optional unique identifier for the tool call. This can be used to track and correlate the decision with a
 specific tool invocation.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources. Useful in web/server environments
+to provide per-request objects (e.g., WebSocket connections, async queues, Redis pub/sub clients)
+that strategies can use for non-blocking user interaction.
 
 **Returns**:
 
 A ToolExecutionDecision indicating whether to execute the tool with the given parameters, or a
 feedback message if rejected.
+
+<a id="haystack_experimental.components.agents.human_in_the_loop.strategies.BlockingConfirmationStrategy.run_async"></a>
+
+#### BlockingConfirmationStrategy.run\_async
+
+```python
+async def run_async(
+    *,
+    tool_name: str,
+    tool_description: str,
+    tool_params: dict[str, Any],
+    tool_call_id: Optional[str] = None,
+    confirmation_strategy_context: Optional[dict[str, Any]] = None
+) -> ToolExecutionDecision
+```
+
+Async version of run. Calls the sync run() method by default.
+
+**Arguments**:
+
+- `tool_name`: The name of the tool to be executed.
+- `tool_description`: The description of the tool.
+- `tool_params`: The parameters to be passed to the tool.
+- `tool_call_id`: Optional unique identifier for the tool call.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources.
+
+**Returns**:
+
+A ToolExecutionDecision indicating whether to execute the tool with the given parameters.
 
 <a id="haystack_experimental.components.agents.human_in_the_loop.strategies.BlockingConfirmationStrategy.to_dict"></a>
 
@@ -593,10 +647,14 @@ Initialize the BreakpointConfirmationStrategy.
 #### BreakpointConfirmationStrategy.run
 
 ```python
-def run(tool_name: str,
-        tool_description: str,
-        tool_params: dict[str, Any],
-        tool_call_id: Optional[str] = None) -> ToolExecutionDecision
+def run(
+    *,
+    tool_name: str,
+    tool_description: str,
+    tool_params: dict[str, Any],
+    tool_call_id: Optional[str] = None,
+    confirmation_strategy_context: Optional[dict[str, Any]] = None
+) -> ToolExecutionDecision
 ```
 
 Run the breakpoint confirmation strategy for a given tool and its parameters.
@@ -608,6 +666,41 @@ Run the breakpoint confirmation strategy for a given tool and its parameters.
 - `tool_params`: The parameters to be passed to the tool.
 - `tool_call_id`: Optional unique identifier for the tool call. This can be used to track and correlate the decision with a
 specific tool invocation.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources. Not used by this strategy but included for
+interface compatibility.
+
+**Raises**:
+
+- `HITLBreakpointException`: Always raises an `HITLBreakpointException` exception to signal that user confirmation is required.
+
+**Returns**:
+
+This method does not return; it always raises an exception.
+
+<a id="haystack_experimental.components.agents.human_in_the_loop.strategies.BreakpointConfirmationStrategy.run_async"></a>
+
+#### BreakpointConfirmationStrategy.run\_async
+
+```python
+async def run_async(
+    *,
+    tool_name: str,
+    tool_description: str,
+    tool_params: dict[str, Any],
+    tool_call_id: Optional[str] = None,
+    confirmation_strategy_context: Optional[dict[str, Any]] = None
+) -> ToolExecutionDecision
+```
+
+Async version of run. Calls the sync run() method.
+
+**Arguments**:
+
+- `tool_name`: The name of the tool to be executed.
+- `tool_description`: The description of the tool.
+- `tool_params`: The parameters to be passed to the tool.
+- `tool_call_id`: Optional unique identifier for the tool call.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources.
 
 **Raises**:
 
@@ -750,7 +843,8 @@ Deserialize the policy from a dictionary.
 def run(tool_name: str,
         tool_description: str,
         tool_params: dict[str, Any],
-        tool_call_id: Optional[str] = None) -> ToolExecutionDecision
+        tool_call_id: Optional[str] = None,
+        **kwargs: Optional[dict[str, Any]]) -> ToolExecutionDecision
 ```
 
 Run the confirmation strategy for a given tool and its parameters.
@@ -762,6 +856,41 @@ Run the confirmation strategy for a given tool and its parameters.
 - `tool_params`: The parameters to be passed to the tool.
 - `tool_call_id`: Optional unique identifier for the tool call. This can be used to track and correlate
 the decision with a specific tool invocation.
+- `kwargs`: Additional keyword arguments. Implementations may accept `confirmation_strategy_context`
+for passing request-scoped resources (e.g., WebSocket connections, async queues) in web/server
+environments.
+
+**Returns**:
+
+The result of the confirmation strategy (e.g., tool output, rejection message, etc.).
+
+<a id="haystack_experimental.components.agents.human_in_the_loop.types.ConfirmationStrategy.run_async"></a>
+
+#### ConfirmationStrategy.run\_async
+
+```python
+async def run_async(
+        tool_name: str,
+        tool_description: str,
+        tool_params: dict[str, Any],
+        tool_call_id: Optional[str] = None,
+        **kwargs: Optional[dict[str, Any]]) -> ToolExecutionDecision
+```
+
+Async version of run. Run the confirmation strategy for a given tool and its parameters.
+
+Default implementation calls the sync run() method. Override for true async behavior.
+
+**Arguments**:
+
+- `tool_name`: The name of the tool to be executed.
+- `tool_description`: The description of the tool.
+- `tool_params`: The parameters to be passed to the tool.
+- `tool_call_id`: Optional unique identifier for the tool call. This can be used to track and correlate
+the decision with a specific tool invocation.
+- `kwargs`: Additional keyword arguments. Implementations may accept `confirmation_strategy_context`
+for passing request-scoped resources (e.g., WebSocket connections, async queues) in web/server
+environments.
 
 **Returns**:
 

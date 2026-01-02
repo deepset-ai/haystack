@@ -78,15 +78,13 @@ print(result)
 ```python
 def __init__(
     component: Component,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    parameters: Optional[dict[str, Any]] = None,
+    name: str | None = None,
+    description: str | None = None,
+    parameters: dict[str, Any] | None = None,
     *,
-    outputs_to_string: Optional[dict[str, Union[str, Callable[[Any],
-                                                              str]]]] = None,
-    inputs_from_state: Optional[dict[str, str]] = None,
-    outputs_to_state: Optional[dict[str, dict[str, Union[str,
-                                                         Callable]]]] = None
+    outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
+    inputs_from_state: dict[str, str] | None = None,
+    outputs_to_state: dict[str, dict[str, str | Callable]] | None = None
 ) -> None
 ```
 
@@ -193,11 +191,10 @@ Invoke the Tool with the provided keyword arguments.
 ```python
 def create_tool_from_function(
         function: Callable,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        inputs_from_state: Optional[dict[str, str]] = None,
-        outputs_to_state: Optional[dict[str, dict[str,
-                                                  Any]]] = None) -> "Tool"
+        name: str | None = None,
+        description: str | None = None,
+        inputs_from_state: dict[str, str] | None = None,
+        outputs_to_state: dict[str, dict[str, Any]] | None = None) -> "Tool"
 ```
 
 Create a Tool instance from a function.
@@ -272,13 +269,13 @@ The Tool created from the function.
 
 ```python
 def tool(
-    function: Optional[Callable] = None,
+    function: Callable | None = None,
     *,
-    name: Optional[str] = None,
-    description: Optional[str] = None,
-    inputs_from_state: Optional[dict[str, str]] = None,
-    outputs_to_state: Optional[dict[str, dict[str, Any]]] = None
-) -> Union[Tool, Callable[[Callable], Tool]]
+    name: str | None = None,
+    description: str | None = None,
+    inputs_from_state: dict[str, str] | None = None,
+    outputs_to_state: dict[str, dict[str, Any]] | None = None
+) -> Tool | Callable[[Callable], Tool]
 ```
 
 Decorator to convert a function into a Tool.
@@ -355,6 +352,7 @@ pipeline/agent setup.
 - `description`: Description of the Tool.
 - `parameters`: A JSON schema defining the parameters expected by the Tool.
 - `function`: The function that will be invoked when the Tool is called.
+Must be a synchronous function; async functions are not supported.
 - `outputs_to_string`: Optional dictionary defining how a tool outputs should be converted into a string.
 If the source is provided only the specified output key is sent to the handler.
 If the source is omitted the whole tool result is sent to the handler.

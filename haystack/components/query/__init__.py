@@ -10,7 +10,7 @@ from lazy_imports import LazyImporter
 _import_structure = {"query_expander": ["QueryExpander"]}
 
 if TYPE_CHECKING:
-    from .query_expander import QueryExpander
+    from .query_expander import QueryExpander as QueryExpander
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

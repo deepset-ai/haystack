@@ -5,7 +5,6 @@
 # NOTE: we do not use LazyImporter here because it creates conflicts between the tool module and the tool decorator
 
 # ruff: noqa: I001 (ignore import order as we need to import Tool before ComponentTool and PipelineTool)
-from typing import Union
 
 from haystack.tools.from_function import create_tool_from_function, tool
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
@@ -21,7 +20,7 @@ from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
 # - list[Toolset]: Less common pattern - list of Toolset objects
 # - list[Union[Tool, Toolset]]: Mixing Tools and Toolsets in one list
 # - Toolset: Single Toolset (not in a list)
-ToolsType = Union[list[Tool], list[Toolset], list[Union[Tool, Toolset]], Toolset]
+ToolsType = list[Tool] | list[Toolset] | list[Tool | Toolset] | Toolset
 
 __all__ = [
     "_check_duplicate_tool_names",

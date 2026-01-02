@@ -3,9 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import collections.abc
+from types import NoneType, UnionType
 from typing import Any, TypeVar, Union, get_args, get_origin
-
-from haystack.utils.type_serialization import _UnionType
 
 T = TypeVar("T")
 
@@ -39,7 +38,7 @@ def _safe_get_origin(_type: type[T]) -> Union[type[T], None]:
     origin = get_origin(_type) or (_type if isinstance(_type, type) else None)
     # We want to treat typing.Union and UnionType as the same for compatibility checks.
     # So we convert UnionType to Union if it is detected.
-    if origin is _UnionType:
+    if origin is UnionType:
         origin = Union
     return origin
 
@@ -126,12 +125,12 @@ def _type_name(type_: Any) -> str:
     if isinstance(type_, str):
         return f"'{type_}'"
 
-    if type_ is type(None):
+    if type_ is NoneType:
         return "None"
 
     args = get_args(type_)
 
-    if isinstance(type_, _UnionType):
+    if isinstance(type_, UnionType):
         return " | ".join([_type_name(a) for a in args])
 
     name = getattr(type_, "__name__", str(type_))
@@ -140,13 +139,13 @@ def _type_name(type_: Any) -> str:
     if "[" in name:
         name = name.split("[")[0]
 
-    if name == "Union" and type(None) in args and len(args) == 2:
+    if name == "Union" and NoneType in args and len(args) == 2:
         # Optional is technically a Union of type and None
         # but we want to display it as Optional
         name = "Optional"
 
     if args:
-        args_str = ", ".join([_type_name(a) for a in args if a is not type(None)])
+        args_str = ", ".join([_type_name(a) for a in args if a is not NoneType])
         return f"{name}[{args_str}]"
 
     return f"{name}"

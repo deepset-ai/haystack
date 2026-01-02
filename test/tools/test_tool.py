@@ -21,6 +21,10 @@ def format_string(text: str) -> str:
 parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
 
 
+async def async_get_weather(city: str) -> str:
+    return f"Weather report for {city}: 20°C, sunny"
+
+
 class TestTool:
     def test_init(self):
         tool = Tool(
@@ -38,6 +42,10 @@ class TestTool:
         params = {"type": "invalid", "properties": {"city": {"type": "string"}}}
         with pytest.raises(ValueError):
             Tool(name="irrelevant", description="irrelevant", parameters=params, function=get_weather_report)
+
+    def test_init_async_function_raises_error(self):
+        with pytest.raises(ValueError, match="Async functions are not supported as tools"):
+            Tool(name="weather", description="Get weather report", parameters=parameters, function=async_get_weather)
 
     @pytest.mark.parametrize(
         "outputs_to_state",

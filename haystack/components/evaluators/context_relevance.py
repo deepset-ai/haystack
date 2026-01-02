@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from statistics import mean
-from typing import Any, Optional
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
@@ -99,10 +99,10 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
-        examples: Optional[list[dict[str, Any]]] = None,
+        examples: list[dict[str, Any]] | None = None,
         progress_bar: bool = True,
         raise_on_failure: bool = True,
-        chat_generator: Optional[ChatGenerator] = None,
+        chat_generator: ChatGenerator | None = None,
     ):
         """
         Creates an instance of ContextRelevanceEvaluator.

@@ -121,8 +121,8 @@ Write the ByteStream to a file. Note: the metadata will be lost.
 @classmethod
 def from_file_path(cls,
                    filepath: Path,
-                   mime_type: Optional[str] = None,
-                   meta: Optional[dict[str, Any]] = None,
+                   mime_type: str | None = None,
+                   meta: dict[str, Any] | None = None,
                    guess_mime_type: bool = False) -> "ByteStream"
 ```
 
@@ -144,8 +144,8 @@ Create a ByteStream from the contents read from a file.
 def from_string(cls,
                 text: str,
                 encoding: str = "utf-8",
-                mime_type: Optional[str] = None,
-                meta: Optional[dict[str, Any]] = None) -> "ByteStream"
+                mime_type: str | None = None,
+                meta: dict[str, Any] | None = None) -> "ByteStream"
 ```
 
 Create a ByteStream encoding a string.
@@ -497,7 +497,7 @@ Returns the metadata associated with the message.
 
 ```python
 @property
-def name() -> Optional[str]
+def name() -> str | None
 ```
 
 Returns the name associated with the message.
@@ -519,7 +519,7 @@ Returns the list of all texts contained in the message.
 
 ```python
 @property
-def text() -> Optional[str]
+def text() -> str | None
 ```
 
 Returns the first text contained in the message.
@@ -541,7 +541,7 @@ Returns the list of all Tool calls contained in the message.
 
 ```python
 @property
-def tool_call() -> Optional[ToolCall]
+def tool_call() -> ToolCall | None
 ```
 
 Returns the first Tool call contained in the message.
@@ -563,7 +563,7 @@ Returns the list of all Tool call results contained in the message.
 
 ```python
 @property
-def tool_call_result() -> Optional[ToolCallResult]
+def tool_call_result() -> ToolCallResult | None
 ```
 
 Returns the first Tool call result contained in the message.
@@ -585,7 +585,7 @@ Returns the list of all images contained in the message.
 
 ```python
 @property
-def image() -> Optional[ImageContent]
+def image() -> ImageContent | None
 ```
 
 Returns the first image contained in the message.
@@ -607,7 +607,7 @@ Returns the list of all reasoning contents contained in the message.
 
 ```python
 @property
-def reasoning() -> Optional[ReasoningContent]
+def reasoning() -> ReasoningContent | None
 ```
 
 Returns the first reasoning content contained in the message.
@@ -617,7 +617,7 @@ Returns the first reasoning content contained in the message.
 #### ChatMessage.is\_from
 
 ```python
-def is_from(role: Union[ChatRole, str]) -> bool
+def is_from(role: ChatRole | str) -> bool
 ```
 
 Check if the message is from a specific role.
@@ -638,12 +638,11 @@ True if the message is from the specified role, False otherwise.
 @classmethod
 def from_user(
     cls,
-    text: Optional[str] = None,
-    meta: Optional[dict[str, Any]] = None,
-    name: Optional[str] = None,
+    text: str | None = None,
+    meta: dict[str, Any] | None = None,
+    name: str | None = None,
     *,
-    content_parts: Optional[Sequence[Union[TextContent, str,
-                                           ImageContent]]] = None
+    content_parts: Sequence[TextContent | str | ImageContent] | None = None
 ) -> "ChatMessage"
 ```
 
@@ -668,8 +667,8 @@ A new ChatMessage instance.
 @classmethod
 def from_system(cls,
                 text: str,
-                meta: Optional[dict[str, Any]] = None,
-                name: Optional[str] = None) -> "ChatMessage"
+                meta: dict[str, Any] | None = None,
+                name: str | None = None) -> "ChatMessage"
 ```
 
 Create a message from the system.
@@ -692,13 +691,12 @@ A new ChatMessage instance.
 @classmethod
 def from_assistant(
         cls,
-        text: Optional[str] = None,
-        meta: Optional[dict[str, Any]] = None,
-        name: Optional[str] = None,
-        tool_calls: Optional[list[ToolCall]] = None,
+        text: str | None = None,
+        meta: dict[str, Any] | None = None,
+        name: str | None = None,
+        tool_calls: list[ToolCall] | None = None,
         *,
-        reasoning: Optional[Union[str,
-                                  ReasoningContent]] = None) -> "ChatMessage"
+        reasoning: str | ReasoningContent | None = None) -> "ChatMessage"
 ```
 
 Create a message from the assistant.
@@ -725,7 +723,7 @@ def from_tool(cls,
               tool_result: str,
               origin: ToolCall,
               error: bool = False,
-              meta: Optional[dict[str, Any]] = None) -> "ChatMessage"
+              meta: dict[str, Any] | None = None) -> "ChatMessage"
 ```
 
 Create a message from a Tool.
@@ -1005,11 +1003,11 @@ Create an ImageContent from a dictionary.
 ```python
 @classmethod
 def from_file_path(cls,
-                   file_path: Union[str, Path],
+                   file_path: str | Path,
                    *,
-                   size: Optional[tuple[int, int]] = None,
-                   detail: Optional[Literal["auto", "high", "low"]] = None,
-                   meta: Optional[dict[str, Any]] = None) -> "ImageContent"
+                   size: tuple[int, int] | None = None,
+                   detail: Literal["auto", "high", "low"] | None = None,
+                   meta: dict[str, Any] | None = None) -> "ImageContent"
 ```
 
 Create an ImageContent object from a file path.
@@ -1042,9 +1040,9 @@ def from_url(cls,
              *,
              retry_attempts: int = 2,
              timeout: int = 10,
-             size: Optional[tuple[int, int]] = None,
-             detail: Optional[Literal["auto", "high", "low"]] = None,
-             meta: Optional[dict[str, Any]] = None) -> "ImageContent"
+             size: tuple[int, int] | None = None,
+             detail: Literal["auto", "high", "low"] | None = None,
+             meta: dict[str, Any] | None = None) -> "ImageContent"
 ```
 
 Create an ImageContent object from a URL. The image is downloaded and converted to a base64 string.
@@ -1310,9 +1308,9 @@ A StreamingChunk instance.
 
 ```python
 def select_streaming_callback(
-        init_callback: Optional[StreamingCallbackT],
-        runtime_callback: Optional[StreamingCallbackT],
-        requires_async: bool) -> Optional[StreamingCallbackT]
+        init_callback: StreamingCallbackT | None,
+        runtime_callback: StreamingCallbackT | None,
+        requires_async: bool) -> StreamingCallbackT | None
 ```
 
 Picks the correct streaming callback given an optional initial and runtime callback.
