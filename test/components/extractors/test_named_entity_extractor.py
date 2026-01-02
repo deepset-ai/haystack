@@ -28,6 +28,42 @@ def test_named_entity_extractor_backend():
         NamedEntityExtractor(backend="random_backend", model="dslim/bert-base-NER")
 
 
+def test_named_entity_extractor_to_dict():
+    extractor = NamedEntityExtractor(
+        backend=NamedEntityExtractorBackend.HUGGING_FACE,
+        model="dslim/bert-base-NER",
+        device=ComponentDevice.from_str("cuda:1"),
+    )
+
+    serde_data = extractor.to_dict()
+    assert serde_data == {
+        "type": "haystack.components.extractors.named_entity_extractor.NamedEntityExtractor",
+        "init_parameters": {
+            "backend": "HUGGING_FACE",
+            "model": "dslim/bert-base-NER",
+            "device": {"type": "single", "device": "cuda:1"},
+            "pipeline_kwargs": {"model": "dslim/bert-base-NER", "device": "cuda:1", "task": "ner"},
+            "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
+        },
+    }
+
+
+def test_named_entity_extractor_from_dict():
+    data = {
+        "type": "haystack.components.extractors.named_entity_extractor.NamedEntityExtractor",
+        "init_parameters": {
+            "backend": "HUGGING_FACE",
+            "model": "dslim/bert-base-NER",
+            "device": None,
+            "pipeline_kwargs": None,
+            "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
+        },
+    }
+    extractor = NamedEntityExtractor.from_dict(data)
+
+    assert extractor._backend.model_name == "dslim/bert-base-NER"
+
+
 def test_named_entity_extractor_serde():
     extractor = NamedEntityExtractor(
         backend=NamedEntityExtractorBackend.HUGGING_FACE,
