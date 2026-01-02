@@ -123,7 +123,7 @@ class Tool:
 
         # Validate that outputs_to_state source keys exist as valid tool outputs
         if self.outputs_to_state is not None:
-            valid_outputs: Optional[set[str]] = self._get_valid_outputs()
+            valid_outputs: set[str] | None = self._get_valid_outputs()
             if valid_outputs is not None:
                 for state_key, config in self.outputs_to_state.items():
                     source = config.get("source")
@@ -165,7 +165,7 @@ class Tool:
 
         return valid_params
 
-    def _get_valid_outputs(self) -> Optional[set[str]]:
+    def _get_valid_outputs(self) -> set[str] | None:
         """
         Return the set of valid output names that this tool produces.
 
