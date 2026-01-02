@@ -349,3 +349,63 @@ class TestPipelineTool:
 
         assert len(result["messages"]) == 5  # System msg, User msg, Agent msg, Tool call result, Agent mgs
         assert "nikola" in result["messages"][-1].text.lower()
+
+    def test_pipeline_tool_with_valid_inputs_from_state(self, sample_pipeline):
+        """Test that PipelineTool accepts valid inputs_from_state mapping"""
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+            inputs_from_state={"user_query": "query"},
+        )
+        assert tool.inputs_from_state == {"user_query": "query"}
+
+    def test_pipeline_tool_with_invalid_inputs_from_state(self, sample_pipeline):
+        """Test that PipelineTool validates inputs_from_state against pipeline inputs"""
+        with pytest.raises(ValueError, match="unknown parameter 'nonexistent'"):
+            PipelineTool(
+                pipeline=sample_pipeline,
+                input_mapping={"query": ["bm25_retriever.query"]},
+                output_mapping={"ranker.documents": "documents"},
+                name="test_tool",
+                description="A test tool",
+                inputs_from_state={"user_query": "nonexistent"},
+            )
+
+    def test_pipeline_tool_with_invalid_inputs_from_state_nested_dict(self, sample_pipeline):
+        """Test that PipelineTool rejects nested dict format for inputs_from_state"""
+        with pytest.raises(ValueError, match="must be str, not dict"):
+            PipelineTool(
+                pipeline=sample_pipeline,
+                input_mapping={"query": ["bm25_retriever.query"]},
+                output_mapping={"ranker.documents": "documents"},
+                name="test_tool",
+                description="A test tool",
+                inputs_from_state={"user_query": {"source": "query"}},
+            )
+
+    def test_pipeline_tool_with_valid_outputs_to_state(self, sample_pipeline):
+        """Test that PipelineTool accepts valid outputs_to_state mapping"""
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+            outputs_to_state={"result_docs": {"source": "documents"}},
+        )
+        assert tool.outputs_to_state == {"result_docs": {"source": "documents"}}
+
+    def test_pipeline_tool_with_invalid_outputs_to_state(self, sample_pipeline):
+        """Test that PipelineTool validates outputs_to_state against pipeline outputs"""
+        with pytest.raises(ValueError, match="unknown output"):
+            PipelineTool(
+                pipeline=sample_pipeline,
+                input_mapping={"query": ["bm25_retriever.query"]},
+                output_mapping={"ranker.documents": "documents"},
+                name="test_tool",
+                description="A test tool",
+                outputs_to_state={"result": {"source": "nonexistent"}},
+            )
