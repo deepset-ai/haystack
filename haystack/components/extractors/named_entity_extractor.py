@@ -249,8 +249,8 @@ class NamedEntityExtractor:
                 init_params["device"] = ComponentDevice.from_dict(init_params["device"])
             init_params["backend"] = NamedEntityExtractorBackend[init_params["backend"]]
 
-            hf_pipeline_kwargs = init_params.get("pipeline_kwargs", {})
-            deserialize_hf_model_kwargs(hf_pipeline_kwargs)
+            hf_pipeline_kwargs = init_params.get("pipeline_kwargs")
+            deserialize_hf_model_kwargs(hf_pipeline_kwargs or {})
             return default_from_dict(cls, data)
         except Exception as e:
             raise DeserializationError(f"Couldn't deserialize {cls.__name__} instance") from e
