@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    When an Agent runs as part of a Pipeline, the agent's tracing span now correctly
+    uses the component span as its parent. This enables proper nested trace visualization
+    in tracing tools like Datadog, Braintrust, or OpenTelemetry backends.
