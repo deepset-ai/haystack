@@ -1084,6 +1084,7 @@ class TestAgentTracing:
         expected_tag_names = [
             "haystack.component.name",
             "haystack.component.type",
+            "haystack.component.fully_qualified_type",
             "haystack.component.input_types",
             "haystack.component.input_spec",
             "haystack.component.output_spec",
@@ -1102,6 +1103,7 @@ class TestAgentTracing:
         expected_tag_values = [
             "chat_generator",
             "MockChatGeneratorWithoutRunAsync",
+            "test_agent.MockChatGeneratorWithoutRunAsync",
             '{"messages": "list", "tools": "list"}',
             '{"messages": {"type": "list", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list", "receivers": []}}',
@@ -1144,6 +1146,7 @@ class TestAgentTracing:
         expected_tag_names = [
             "haystack.component.name",
             "haystack.component.type",
+            "haystack.component.fully_qualified_type",
             "haystack.component.input_types",
             "haystack.component.input_spec",
             "haystack.component.output_spec",
@@ -1162,6 +1165,7 @@ class TestAgentTracing:
         expected_tag_values = [
             "chat_generator",
             "MockChatGenerator",
+            "test_agent.MockChatGenerator",
             '{"messages": "list", "tools": "list"}',
             '{"messages": {"type": "list", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list", "receivers": []}}',
@@ -1207,6 +1211,7 @@ class TestAgentTracing:
         expected_tag_names = [
             "haystack.component.name",
             "haystack.component.type",
+            "haystack.component.fully_qualified_type",
             "haystack.component.input_types",
             "haystack.component.input_spec",
             "haystack.component.output_spec",
@@ -1215,6 +1220,7 @@ class TestAgentTracing:
             "haystack.component.output",
             "haystack.component.name",
             "haystack.component.type",
+            "haystack.component.fully_qualified_type",
             "haystack.component.input_types",
             "haystack.component.input_spec",
             "haystack.component.output_spec",
@@ -1230,6 +1236,7 @@ class TestAgentTracing:
             "haystack.agent.steps_taken",
             "haystack.component.name",
             "haystack.component.type",
+            "haystack.component.fully_qualified_type",
             "haystack.component.input_types",
             "haystack.component.input_spec",
             "haystack.component.output_spec",

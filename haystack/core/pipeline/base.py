@@ -34,7 +34,12 @@ from haystack.core.pipeline.component_checks import (
     is_socket_lazy_variadic,
 )
 from haystack.core.pipeline.utils import FIFOPriorityQueue, _deepcopy_with_exceptions, parse_connect_string
-from haystack.core.serialization import DeserializationCallbacks, component_from_dict, component_to_dict
+from haystack.core.serialization import (
+    DeserializationCallbacks,
+    component_from_dict,
+    component_to_dict,
+    generate_qualified_class_name,
+)
 from haystack.core.type_utils import _type_name, _types_are_compatible
 from haystack.marshal import Marshaller, YamlMarshaller
 from haystack.utils import is_in_jupyter, type_serialization
@@ -842,6 +847,7 @@ class PipelineBase:  # noqa: PLW1641
             tags={
                 "haystack.component.name": component_name,
                 "haystack.component.type": instance.__class__.__name__,
+                "haystack.component.fully_qualified_type": generate_qualified_class_name(type(instance)),
                 "haystack.component.input_types": {k: type(v).__name__ for k, v in inputs.items()},
                 "haystack.component.input_spec": {
                     key: {

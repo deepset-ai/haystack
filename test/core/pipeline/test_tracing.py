@@ -55,6 +55,7 @@ class TestTracing:
                 tags={
                     "haystack.component.name": "hello",
                     "haystack.component.type": "Hello",
+                    "haystack.component.fully_qualified_type": "test.core.pipeline.test_tracing.Hello",
                     "haystack.component.input_types": {"word": "str"},
                     "haystack.component.input_spec": {"word": {"type": ANY, "senders": []}},
                     "haystack.component.input": {"word": "world"},
@@ -71,6 +72,7 @@ class TestTracing:
                 tags={
                     "haystack.component.name": "hello2",
                     "haystack.component.type": "Hello",
+                    "haystack.component.fully_qualified_type": "test.core.pipeline.test_tracing.Hello",
                     "haystack.component.input_types": {"word": "str"},
                     "haystack.component.input_spec": {"word": {"type": ANY, "senders": ["hello"]}},
                     "haystack.component.input": {"word": "Hello, world!"},
@@ -118,6 +120,7 @@ class TestTracing:
                 tags={
                     "haystack.component.name": "hello",
                     "haystack.component.type": "Hello",
+                    "haystack.component.fully_qualified_type": "test.core.pipeline.test_tracing.Hello",
                     "haystack.component.input_types": {"word": "str"},
                     "haystack.component.input_spec": {"word": {"type": ANY, "senders": []}},
                     "haystack.component.output_spec": {"output": {"type": "str", "receivers": ["hello2"]}},
@@ -134,6 +137,7 @@ class TestTracing:
                 tags={
                     "haystack.component.name": "hello2",
                     "haystack.component.type": "Hello",
+                    "haystack.component.fully_qualified_type": "test.core.pipeline.test_tracing.Hello",
                     "haystack.component.input_types": {"word": "str"},
                     "haystack.component.input_spec": {"word": {"type": ANY, "senders": ["hello"]}},
                     "haystack.component.output_spec": {"output": {"type": "str", "receivers": []}},
