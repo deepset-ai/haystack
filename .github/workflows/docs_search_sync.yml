@@ -4,7 +4,6 @@ on:
   workflow_dispatch: # Activate this workflow manually
   schedule:
     - cron: "0 1 * * *"
-  pull_request:
 
 # Running this workflow multiple times in parallel can cause issues with files uploads and deletions.
 concurrency:
