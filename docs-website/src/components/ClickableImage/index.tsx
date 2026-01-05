@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useState } from 'react';
-import useBaseUrl from '@docusaurus/useBaseUrl';
+import Image from '@theme/IdealImage';
 import styles from './styles.module.css';
 
 interface ClickableImageProps {
@@ -13,6 +13,8 @@ interface ClickableImageProps {
   size?: 'standard' | 'large';
 }
 
+const images = require.context('@site/static/img', false, /\.(png|jpe?g)$/);
+
 export default function ClickableImage({
   src,
   alt = '',
@@ -20,31 +22,24 @@ export default function ClickableImage({
   size = 'standard',
 }: ClickableImageProps) {
   const [isZoomed, setZoomed] = useState(false);
-  const imageUrl = useBaseUrl(src);
-
-  const toggleZoom = () => setZoomed(!isZoomed);
-
+  const img = images('./' + src.replace(/^\/img\//, ''));
   const sizeClass = size === 'large' ? styles.imgLarge : styles.imgStandard;
 
   return (
     <>
       <div
         className={`${styles.imageWrapper} ${className || ''}`}
-        onClick={toggleZoom}
+        onClick={() => setZoomed(!isZoomed)}
         role="button"
         aria-pressed={isZoomed}
         title="Click to enlarge"
       >
-        <img
-          src={imageUrl}
-          alt={alt}
-          className={`${styles.zoomable} ${sizeClass}`}
-        />
+        <Image img={img} alt={alt} className={`${styles.zoomable} ${sizeClass}`} />
       </div>
 
       {isZoomed && (
-        <div className={styles.overlay} onClick={toggleZoom}>
-          <img src={imageUrl} alt={alt} className={styles.zoomedImage} />
+        <div className={styles.overlay} onClick={() => setZoomed(false)}>
+          <img src={img.default} alt={alt} className={styles.zoomedImage} />
         </div>
       )}
     </>
