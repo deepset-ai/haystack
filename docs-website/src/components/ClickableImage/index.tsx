@@ -22,24 +22,30 @@ export default function ClickableImage({
   size = 'standard',
 }: ClickableImageProps) {
   const [isZoomed, setZoomed] = useState(false);
-  const img = images('./' + src.replace(/^\/img\//, ''));
+
+  const toggleZoom = () => setZoomed(!isZoomed);
+
   const sizeClass = size === 'large' ? styles.imgLarge : styles.imgStandard;
 
   return (
     <>
       <div
         className={`${styles.imageWrapper} ${className || ''}`}
-        onClick={() => setZoomed(!isZoomed)}
+        onClick={toggleZoom}
         role="button"
         aria-pressed={isZoomed}
         title="Click to enlarge"
       >
-        <Image img={img} alt={alt} className={`${styles.zoomable} ${sizeClass}`} />
+        <Image
+          img={images('./' + src.replace(/^\/img\//, ''))}
+          alt={alt}
+          className={`${styles.zoomable} ${sizeClass}`}
+        />
       </div>
 
       {isZoomed && (
-        <div className={styles.overlay} onClick={() => setZoomed(false)}>
-          <img src={img.default} alt={alt} className={styles.zoomedImage} />
+        <div className={styles.overlay} onClick={toggleZoom}>
+          <img src={src} alt={alt} className={styles.zoomedImage} />
         </div>
       )}
     </>
