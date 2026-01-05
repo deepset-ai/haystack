@@ -100,6 +100,17 @@ class Tool:
                 if "handler" in config and not callable(config["handler"]):
                     raise ValueError(f"outputs_to_state handler for key '{key}' must be callable")
 
+            # Validate that outputs_to_state source keys exist as valid tool outputs
+            valid_outputs: set[str] | None = self._get_valid_outputs()
+            if valid_outputs is not None:
+                for state_key, config in self.outputs_to_state.items():
+                    source = config.get("source")
+                    if source is not None and source not in valid_outputs:
+                        raise ValueError(
+                            f"outputs_to_state: '{self.name}' maps state key '{state_key}' to unknown output '{source}'"
+                            f"Valid outputs are: {valid_outputs}."
+                        )
+
         if self.outputs_to_string is not None:
             if "source" in self.outputs_to_string and not isinstance(self.outputs_to_string["source"], str):
                 raise ValueError("outputs_to_string source must be a string.")
@@ -120,18 +131,6 @@ class Tool:
                         f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
                         f"Valid parameters are: {valid_inputs}."
                     )
-
-        # Validate that outputs_to_state source keys exist as valid tool outputs
-        if self.outputs_to_state is not None:
-            valid_outputs: set[str] | None = self._get_valid_outputs()
-            if valid_outputs is not None:
-                for state_key, config in self.outputs_to_state.items():
-                    source = config.get("source")
-                    if source is not None and source not in valid_outputs:
-                        raise ValueError(
-                            f"outputs_to_state: '{self.name}' maps state key '{state_key}' to unknown output '{source}'"
-                            f"Valid outputs are: {valid_outputs}."
-                        )
 
     def _get_valid_inputs(self) -> set[str]:
         """
