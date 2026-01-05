@@ -86,7 +86,7 @@ class Tool:
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self):  # noqa: C901, PLR0912  # pylint: disable=too-many-branches
         # Check that the function is not a coroutine (async function)
         if inspect.iscoroutinefunction(self.function):
             raise ValueError(
