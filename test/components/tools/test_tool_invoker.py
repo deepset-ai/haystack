@@ -784,6 +784,25 @@ class TestToolInvokerErrorHandling:
         assert tool_message.tool_call_results[0].error
         assert "Failed to invoke" in tool_message.tool_call_results[0].result
 
+    def test_outputs_to_string_with_multiple_outputs(self):
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            # Pass config that selects two of three outputs
+            outputs_to_string={"weather": {"source": "weather"}, "temp": {"source": "temperature"}},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        tool_result = {"weather": "sunny", "temperature": 25, "unit": "celsius"}
+        chat_message = invoker._prepare_tool_result_message(
+            result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool
+        )
+        assert chat_message.tool_call_results[0].result == "{'weather': 'sunny', 'temp': '25'}"
+
     def test_string_conversion_error(self):
         weather_tool = Tool(
             name="weather_tool",
