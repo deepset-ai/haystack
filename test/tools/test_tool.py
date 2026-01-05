@@ -99,7 +99,7 @@ class TestTool:
             parameters=parameters,
             function=get_weather_report,
             outputs_to_string={"handler": format_string},
-            inputs_from_state={"state_key": "tool_input_key"},
+            inputs_from_state={"location": "city"},
             outputs_to_state={"documents": {"handler": get_weather_report, "source": "docs"}},
         )
 
@@ -111,7 +111,7 @@ class TestTool:
                 "parameters": parameters,
                 "function": "test_tool.get_weather_report",
                 "outputs_to_string": {"handler": "test_tool.format_string"},
-                "inputs_from_state": {"state_key": "tool_input_key"},
+                "inputs_from_state": {"location": "city"},
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
             },
         }
@@ -125,7 +125,7 @@ class TestTool:
                 "parameters": parameters,
                 "function": "test_tool.get_weather_report",
                 "outputs_to_string": {"handler": "test_tool.format_string"},
-                "inputs_from_state": {"state_key": "tool_input_key"},
+                "inputs_from_state": {"location": "city"},
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
             },
         }
@@ -137,8 +137,89 @@ class TestTool:
         assert tool.parameters == parameters
         assert tool.function == get_weather_report
         assert tool.outputs_to_string == {"handler": format_string}
-        assert tool.inputs_from_state == {"state_key": "tool_input_key"}
+        assert tool.inputs_from_state == {"location": "city"}
         assert tool.outputs_to_state == {"documents": {"source": "docs", "handler": get_weather_report}}
+
+    def test_inputs_from_state_validation_with_invalid_parameter(self):
+        """Test that inputs_from_state is validated against the parameters schema"""
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "inputs_from_state maps 'state_key' to unknown parameter 'nonexistent'. Valid parameters are: {'city'}."
+            ),
+        ):
+            Tool(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                function=get_weather_report,
+                inputs_from_state={"state_key": "nonexistent"},
+            )
+
+    def test_inputs_from_state_validation_with_non_string_value(self):
+        """Test that inputs_from_state values must be strings"""
+        with pytest.raises(ValueError, match=re.escape("inputs_from_state values must be str, not dict")):
+            Tool(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                function=get_weather_report,
+                inputs_from_state={"state_key": {"source": "city"}},
+            )
+
+    def test_inputs_from_state_validation_with_valid_parameter(self):
+        """Test that inputs_from_state works with valid parameter names"""
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            inputs_from_state={"location": "city"},
+        )
+        assert tool.inputs_from_state == {"location": "city"}
+
+    def test_outputs_to_state_no_validation_when_get_valid_outputs_returns_none(self):
+        """Test that outputs_to_state is not validated when _get_valid_outputs returns None"""
+        # This should not raise an error even though "nonexistent" is not a valid output
+        # because the base Tool class returns None from _get_valid_outputs()
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            outputs_to_state={"result": {"source": "nonexistent"}},
+        )
+        assert tool.outputs_to_state == {"result": {"source": "nonexistent"}}
+
+    def test_outputs_to_state_validation_when_subclass_provides_valid_outputs(self):
+        """Test that outputs_to_state is validated when subclass overrides _get_valid_outputs"""
+
+        class ToolWithOutputs(Tool):
+            def _get_valid_outputs(self):
+                return {"report", "temperature"}
+
+        # Valid output should work
+        tool = ToolWithOutputs(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            outputs_to_state={"result": {"source": "report"}},
+        )
+        assert tool.outputs_to_state == {"result": {"source": "report"}}
+
+        # Invalid output should raise an error
+        with pytest.raises(
+            ValueError,
+            match=re.escape("outputs_to_state: 'weather' maps state key 'result' to unknown output 'nonexistent'"),
+        ):
+            ToolWithOutputs(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                function=get_weather_report,
+                outputs_to_state={"result": {"source": "nonexistent"}},
+            )
 
 
 def test_check_duplicate_tool_names():
