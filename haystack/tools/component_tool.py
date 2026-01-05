@@ -200,6 +200,10 @@ class ComponentTool(Tool):
 
         description = description or component.__doc__ or name
 
+        # Store component before calling super().__init__() so _get_valid_outputs() can access it
+        self._component = component
+        self._is_warmed_up = False
+
         # Create the Tool instance with the component invoker as the function to be called and the schema
         super().__init__(
             name=name,
@@ -210,8 +214,28 @@ class ComponentTool(Tool):
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,
         )
-        self._component = component
-        self._is_warmed_up = False
+
+    def _get_valid_inputs(self) -> set[str]:
+        """
+        Return valid input parameter names from the component's input sockets.
+
+        Used to validate `inputs_from_state` against the component's actual inputs.
+        This ensures users don't reference non-existent component inputs.
+
+        :returns: Set of component input socket names.
+        """
+        return set(self._component.__haystack_input__._sockets_dict.keys())  # type: ignore[attr-defined]
+
+    def _get_valid_outputs(self) -> set[str]:
+        """
+        Return valid output names from the component's output sockets.
+
+        Used to validate `outputs_to_state` against the component's actual outputs.
+        This ensures users don't reference non-existent component outputs.
+
+        :returns: Set of component output socket names.
+        """
+        return set(self._component.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
 
     def warm_up(self):
         """

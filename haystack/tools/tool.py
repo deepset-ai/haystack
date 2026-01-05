@@ -100,11 +100,86 @@ class Tool:
                 if "handler" in config and not callable(config["handler"]):
                     raise ValueError(f"outputs_to_state handler for key '{key}' must be callable")
 
+            # Validate that outputs_to_state source keys exist as valid tool outputs
+            valid_outputs: set[str] | None = self._get_valid_outputs()
+            if valid_outputs is not None:
+                for state_key, config in self.outputs_to_state.items():
+                    source = config.get("source")
+                    if source is not None and source not in valid_outputs:
+                        raise ValueError(
+                            f"outputs_to_state: '{self.name}' maps state key '{state_key}' to unknown output '{source}'"
+                            f"Valid outputs are: {valid_outputs}."
+                        )
+
         if self.outputs_to_string is not None:
             if "source" in self.outputs_to_string and not isinstance(self.outputs_to_string["source"], str):
                 raise ValueError("outputs_to_string source must be a string.")
             if "handler" in self.outputs_to_string and not callable(self.outputs_to_string["handler"]):
                 raise ValueError("outputs_to_string handler must be callable")
+
+        # Validate that inputs_from_state parameter names exist as valid tool parameters
+        if self.inputs_from_state is not None:
+            valid_inputs = self._get_valid_inputs()
+            for state_key, param_name in self.inputs_from_state.items():
+                if not isinstance(param_name, str):
+                    raise ValueError(
+                        f"inputs_from_state values must be str, not {type(param_name).__name__}. "
+                        f"Got {param_name!r} for key '{state_key}'."
+                    )
+                if valid_inputs and param_name not in valid_inputs:
+                    raise ValueError(
+                        f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
+                        f"Valid parameters are: {valid_inputs}."
+                    )
+
+    def _get_valid_inputs(self) -> set[str]:
+        """
+        Return the set of valid input parameter names that this tool accepts.
+
+        Used to validate that `inputs_from_state` only references parameters that actually exist.
+        This prevents typos and catches configuration errors at tool construction time.
+
+        By default, introspects the function signature to get ALL parameters, including those
+        that may be excluded from the JSON schema (e.g., parameters mapped from state).
+        Falls back to schema properties if introspection fails.
+
+        Subclasses like ComponentTool override this to return component input socket names.
+
+        :returns: Set of valid input parameter names for validation.
+        """
+        # Combine parameters from both function signature and schema for robustness
+        # Function signature includes all parameters (even those excluded from schema)
+        # Schema properties provide the validated parameter set
+        valid_params: set[str] = set()
+
+        # Try to get parameters from function introspection
+        try:
+            sig = inspect.signature(self.function)
+            valid_params.update(sig.parameters.keys())
+        except (ValueError, TypeError):
+            pass  # Introspection failed, will rely on schema
+
+        # Add parameters from schema (union with function params)
+        valid_params.update(self.parameters.get("properties", {}).keys())
+
+        return valid_params
+
+    def _get_valid_outputs(self) -> set[str] | None:
+        """
+        Return the set of valid output names that this tool produces.
+
+        Used to validate that `outputs_to_state` only references outputs that actually exist.
+        This prevents typos and catches configuration errors at tool construction time.
+
+        By default, returns None because regular function-based tools don't have a formal
+        output schema. When None is returned, output validation is skipped.
+
+        Subclasses like ComponentTool override this to return component output socket names,
+        enabling validation for tools where outputs are known.
+
+        :returns: Set of valid output names for validation, or None to skip validation.
+        """
+        return None
 
     @property
     def tool_spec(self) -> dict[str, Any]:
