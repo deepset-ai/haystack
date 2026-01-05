@@ -1255,6 +1255,39 @@ class TestAgentTracing:
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
 
+    def test_agent_span_has_parent_when_in_pipeline(self, spying_tracer, weather_tool):
+        """Test that the agent's span has the component span as its parent when running in a pipeline."""
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        agent.warm_up()
+
+        pipeline = Pipeline()
+        pipeline.add_component(
+            "prompt_builder", ChatPromptBuilder(template=[ChatMessage.from_user("Hello {{location}}")])
+        )
+        pipeline.add_component("agent", agent)
+        pipeline.connect("prompt_builder.prompt", "agent.messages")
+
+        pipeline.run(data={"prompt_builder": {"location": "Berlin"}})
+
+        # Find the agent span (haystack.agent.run)
+        agent_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.run"]
+        assert len(agent_spans) == 1
+        agent_span = agent_spans[0]
+
+        # Find the agent's component span (the outer span for the Agent component)
+        agent_component_spans = [
+            s
+            for s in spying_tracer.spans
+            if s.operation_name == "haystack.component.run" and s.tags.get("haystack.component.name") == "agent"
+        ]
+        assert len(agent_component_spans) == 1
+        agent_component_span = agent_component_spans[0]
+
+        # Verify the agent span has the component span as its parent
+        assert agent_span.parent_span is not None
+        assert agent_span.parent_span == agent_component_span
+
 
 class TestAgentToolSelection:
     def test_tool_selection_by_name(self, weather_tool: Tool, component_tool: Tool):
