@@ -666,9 +666,11 @@ class TestHuggingFaceLocalChatGeneratorAsync:
     async def test_run_async_with_tools(self, model_info_mock, mock_pipeline_with_tokenizer, tools):
         """Test async functionality with tools"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model", tools=tools)
-        generator.pipeline = mock_pipeline_with_tokenizer
-        # Mock the pipeline to return a tool call format
-        generator.pipeline.return_value = [{"generated_text": '{"name": "weather", "arguments": {"city": "Berlin"}}'}]
+        # Create a new mock with return_value set in constructor to avoid thread-safety issues
+        mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Berlin"}}'}])
+        # Copy the tokenizer from the fixture to the new mock
+        mock_pipeline.tokenizer = mock_pipeline_with_tokenizer.tokenizer
+        generator.pipeline = mock_pipeline
 
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         results = await generator.run_async(messages=messages)
