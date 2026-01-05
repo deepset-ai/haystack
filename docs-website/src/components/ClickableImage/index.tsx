@@ -8,7 +8,7 @@ import useBaseUrl from '@docusaurus/useBaseUrl';
 import styles from './styles.module.css';
 
 interface ClickableImageProps {
-  src: string;
+  src: string; // must start with /img/
   alt?: string;
   className?: string;
   size?: 'standard' | 'large';
