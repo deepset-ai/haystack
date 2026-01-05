@@ -296,7 +296,13 @@ class Agent:
         return default_from_dict(cls, data)
 
     def _create_agent_span(self) -> Any:
-        """Create a span for the agent run."""
+        """
+        Create a span for the agent run.
+
+        If the agent is running as part of a pipeline, this span will be nested
+        under the current active span (the pipeline's component span).
+        """
+        parent_span = tracing.tracer.current_span()
         return tracing.tracer.trace(
             "haystack.agent.run",
             tags={
@@ -305,6 +311,7 @@ class Agent:
                 "haystack.agent.exit_conditions": self.exit_conditions,
                 "haystack.agent.state_schema": _schema_to_dict(self.state_schema),
             },
+            parent_span=parent_span,
         )
 
     def _initialize_fresh_execution(
