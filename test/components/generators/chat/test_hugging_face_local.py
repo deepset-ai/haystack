@@ -46,18 +46,17 @@ def model_info_mock():
 
 @pytest.fixture
 def mock_pipeline_with_tokenizer():
-    def _factory(return_value):
-        mock_pipeline = Mock(return_value=return_value)
+    # Mocking the pipeline
+    mock_pipeline = Mock(return_value=[{"generated_text": "Berlin is cool"}])
 
-        mock_tokenizer = Mock(spec=PreTrainedTokenizer)
-        mock_tokenizer.encode.return_value = ["Berlin", "is", "cool"]
-        mock_tokenizer.apply_chat_template.return_value = "Berlin is cool"
-        mock_tokenizer.pad_token_id = 100
+    # Mocking the tokenizer
+    mock_tokenizer = Mock(spec=PreTrainedTokenizer)
+    mock_tokenizer.encode.return_value = ["Berlin", "is", "cool"]
+    mock_tokenizer.apply_chat_template.return_value = "Berlin is cool"
+    mock_tokenizer.pad_token_id = 100
+    mock_pipeline.tokenizer = mock_tokenizer
 
-        mock_pipeline.tokenizer = mock_tokenizer
-        return mock_pipeline
-
-    return _factory
+    return mock_pipeline
 
 
 @pytest.fixture
