@@ -4,6 +4,8 @@
 
 import React, { useState } from 'react';
 import Image from '@theme/IdealImage';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+import ExecutionEnvironment from '@docusaurus/ExecutionEnvironment';
 import styles from './styles.module.css';
 
 interface ClickableImageProps {
@@ -13,7 +15,11 @@ interface ClickableImageProps {
   size?: 'standard' | 'large';
 }
 
-const images = require.context('@site/static/img', false, /\.(png|jpe?g)$/);
+// Only use webpack context in the browser, not during Server Side Rendering
+// This avoids "Cannot find module" errors during CI builds
+const images = ExecutionEnvironment.canUseDOM
+  ? require.context('@site/static/img', false, /\.(png|jpe?g)$/)
+  : null;
 
 export default function ClickableImage({
   src,
@@ -22,10 +28,13 @@ export default function ClickableImage({
   size = 'standard',
 }: ClickableImageProps) {
   const [isZoomed, setZoomed] = useState(false);
-
   const toggleZoom = () => setZoomed(!isZoomed);
-
   const sizeClass = size === 'large' ? styles.imgLarge : styles.imgStandard;
+
+  // Get the image module: optimized webpack version in browser, or fallback URL for SSR
+  const img = images
+    ? images('./' + src.replace(/^\/img\//, ''))
+    : { default: useBaseUrl(src) };
 
   return (
     <>
@@ -37,7 +46,7 @@ export default function ClickableImage({
         title="Click to enlarge"
       >
         <Image
-          img={images('./' + src.replace(/^\/img\//, ''))}
+          img={img}
           alt={alt}
           className={`${styles.zoomable} ${sizeClass}`}
         />
@@ -45,7 +54,7 @@ export default function ClickableImage({
 
       {isZoomed && (
         <div className={styles.overlay} onClick={toggleZoom}>
-          <img src={src} alt={alt} className={styles.zoomedImage} />
+          <img src={img.default} alt={alt} className={styles.zoomedImage} />
         </div>
       )}
     </>
