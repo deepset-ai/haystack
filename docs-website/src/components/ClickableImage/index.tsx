@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { useState } from 'react';
-import Image from '@theme/IdealImage';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import styles from './styles.module.css';
 
 interface ClickableImageProps {
@@ -20,6 +20,7 @@ export default function ClickableImage({
   size = 'standard',
 }: ClickableImageProps) {
   const [isZoomed, setZoomed] = useState(false);
+  const imageUrl = useBaseUrl(src);
 
   const toggleZoom = () => setZoomed(!isZoomed);
 
@@ -34,8 +35,8 @@ export default function ClickableImage({
         aria-pressed={isZoomed}
         title="Click to enlarge"
       >
-        <Image
-          img={require('@site/static' + src)}
+        <img
+          src={imageUrl}
           alt={alt}
           className={`${styles.zoomable} ${sizeClass}`}
         />
@@ -43,7 +44,7 @@ export default function ClickableImage({
 
       {isZoomed && (
         <div className={styles.overlay} onClick={toggleZoom}>
-          <img src={src} alt={alt} className={styles.zoomedImage} />
+          <img src={imageUrl} alt={alt} className={styles.zoomedImage} />
         </div>
       )}
     </>
