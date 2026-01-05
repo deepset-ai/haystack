@@ -117,6 +117,7 @@ class Tool:
             if "handler" in self.outputs_to_string and not callable(self.outputs_to_string["handler"]):
                 raise ValueError("outputs_to_string handler must be callable")
             if "source" in self.outputs_to_string or "handler" in self.outputs_to_string:
+                # Single output configuration
                 for key in self.outputs_to_string:
                     if key not in {"source", "handler"}:
                         raise ValueError(
@@ -125,9 +126,15 @@ class Tool:
                             "Use individual output configs instead."
                         )
             else:
+                # Multiple outputs configuration
                 for key, config in self.outputs_to_string.items():
                     if not isinstance(config, dict):
                         raise ValueError(f"outputs_to_string configuration for key '{key}' must be a dictionary")
+                    if "source" not in config:
+                        raise ValueError(
+                            f"Invalid outputs_to_string configuration for key '{key}': "
+                            f"each output must have a 'source' defined."
+                        )
                     if "source" in config and not isinstance(config["source"], str):
                         raise ValueError(f"outputs_to_string source for key '{key}' must be a string.")
                     if "handler" in config and not callable(config["handler"]):

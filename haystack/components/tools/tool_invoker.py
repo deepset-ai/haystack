@@ -296,6 +296,25 @@ class ToolInvoker:
 
         return str(serializable)
 
+    def _output_to_string(self, config: dict[str, Any], result: Any, tool_call: ToolCall) -> str:
+        """
+        Converts a tool result to a string based on the provided configuration.
+
+        :param config: Configuration dictionary that may contain "source" and "handler" keys.
+        :param result: The tool result to convert to a string.
+        :returns: The converted tool result as a string.
+        """
+        source_key = config.get("source")
+        # If a source key is provided, we extract the result from the source key
+        value = result.get(source_key) if source_key is not None else result
+        # If no handler is provided, we use the default handler
+        output_to_string_handler = config.get("handler", self._default_output_to_string_handler)
+
+        try:
+            return output_to_string_handler(value)
+        except Exception as e:
+            raise StringConversionError(tool_call.tool_name, output_to_string_handler.__name__, e)
+
     def _prepare_tool_result_message(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> ChatMessage:
         """
         Prepares a ChatMessage with the result of a tool invocation.
@@ -316,32 +335,21 @@ class ToolInvoker:
         try:
             # Root level single output configuration
             if not outputs_config or "source" in outputs_config or "handler" in outputs_config:
-                source_key = outputs_config.get("source", None)
-                # If a source key is provided, we extract the result from the source key
-                value = result.get(source_key) if source_key is not None else result
-                # If no handler is provided, we use the default handler
-                output_to_string_handler = outputs_config.get("handler", self._default_output_to_string_handler)
-                tool_result_str = output_to_string_handler(value)
+                tool_result_str = self._output_to_string(outputs_config, result, tool_call)
                 return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
 
             # Multiple outputs configuration
             tool_result = {}
             for output_key, config in outputs_config.items():
-                # If no source key is provided, we use the output key itself
-                source_key = config.get("source", output_key)
-                value = result[source_key]
-                # If no handler is provided, we use the default handler
-                output_to_string_handler = config.get("handler", self._default_output_to_string_handler)
-                key_result_str = output_to_string_handler(value)
+                key_result_str = self._output_to_string(config, result, tool_call)
                 tool_result[output_key] = key_result_str
             tool_result_str = self._default_output_to_string_handler(tool_result)
             return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
-        except Exception as e:
-            error = StringConversionError(tool_call.tool_name, output_to_string_handler.__name__, e)
+        except StringConversionError as e:
             if self.raise_on_failure:
-                raise error from e
-            logger.error("{error_exception}", error_exception=error)
-            return ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
+                raise e
+            logger.error("{error_exception}", error_exception=e)
+            return ChatMessage.from_tool(tool_result=str(e), origin=tool_call, error=True)
 
     @staticmethod
     def _get_func_params(tool: Tool) -> set:

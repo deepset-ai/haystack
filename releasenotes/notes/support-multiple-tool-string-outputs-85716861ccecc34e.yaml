@@ -16,6 +16,12 @@ enhancements:
 
     .. code-block:: python
 
+        def format_documents(documents):
+            return "\n".join(f"{i+1}. Document: {doc.content}" for i, doc in enumerate(documents))
+
+        def format_summary(metadata):
+            return f"Found {metadata['count']} results"
+
         tool = Tool(
             name="search",
             description="Search for documents",
@@ -23,7 +29,7 @@ enhancements:
             function=search_func,  # Returns {"documents": [Document(...)], "metadata": {"count": 5}, "debug_info": {...}}
             outputs_to_string={
                 "formatted_docs": {"source": "documents", "handler": format_documents},
-                "summary": {"source": "metadata", "handler": lambda m: f"Found {m['count']} results"}
+                "summary": {"source": "metadata", "handler": format_summary}
                 # Note: "debug_info" is not included, so it won't be converted to a string
             }
         )
