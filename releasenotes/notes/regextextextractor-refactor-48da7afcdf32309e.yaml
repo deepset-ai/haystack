@@ -1,6 +1,8 @@
 ---
-upgrade:
+deprecations:
   - |
     The ``return_empty_on_no_match`` parameter has been removed from the ``RegexTextExtractor`` component.
     This component now always returns a dictionary with the key "captured_text"; the value can be an empty string
     if no match is found or the captured text.
+    Currently, the ``return_empty_on_no_match`` parameter is ignored. Starting from Haystack 2.23.0, initializing the
+    component with this parameter will raise an error.

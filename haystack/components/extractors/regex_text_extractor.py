@@ -19,8 +19,9 @@ def _backward_compatible(cls):
     original_init = cls.__init__
 
     msg = (
-        "The `return_empty_on_no_match` has been removed and will be ignored. "
-        "This component now always returns {'captured_text': ''} when no match is found."
+        "The `return_empty_on_no_match` init parameter has been removed and will be ignored. "
+        "RegexTextExtractor now always returns {'captured_text': ''} when no match is found. "
+        "Starting from Haystack 2.23.0, initializing the component with `return_empty_on_no_match` will raise an error."
     )
 
     def __init__(self, *args, **kwargs):
