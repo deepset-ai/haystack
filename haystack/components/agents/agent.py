@@ -13,6 +13,7 @@ from haystack.core.component.component import component
 from haystack.core.errors import BreakpointException, PipelineRuntimeError
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.breakpoint import (
+    SnapshotCallback,
     _create_pipeline_snapshot_from_chat_generator,
     _create_pipeline_snapshot_from_tool_invoker,
     _save_pipeline_snapshot,
@@ -483,6 +484,7 @@ class Agent:
         snapshot: AgentSnapshot | None = None,
         system_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -500,6 +502,9 @@ class Agent:
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
+        :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
+            The callback receives a `PipelineSnapshot` object and can return an optional string.
+            If provided, the callback is used instead of the default file-saving behavior.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -575,7 +580,9 @@ class Agent:
                         # If Agent is not in a pipeline, we save the snapshot to a file.
                         # Checked by __component_name__ not being set.
                         if getattr(self, "__component_name__", None) is None:
-                            full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                            full_file_path = _save_pipeline_snapshot(
+                                pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
+                            )
                             e.pipeline_snapshot_file_path = full_file_path
                         raise e
 
@@ -630,7 +637,9 @@ class Agent:
                     # If Agent is not in a pipeline, we save the snapshot to a file.
                     # Checked by __component_name__ not being set.
                     if getattr(self, "__component_name__", None) is None:
-                        full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                        full_file_path = _save_pipeline_snapshot(
+                            pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
+                        )
                         e.pipeline_snapshot_file_path = full_file_path
                     raise e
 
@@ -669,6 +678,7 @@ class Agent:
         snapshot: AgentSnapshot | None = None,
         system_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -689,6 +699,9 @@ class Agent:
             the relevant information to restart the Agent execution from where it left off.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+        :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
+            The callback receives a `PipelineSnapshot` object and can return an optional string.
+            If provided, the callback is used instead of the default file-saving behavior.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -759,7 +772,9 @@ class Agent:
                         # If it is not in a pipeline, we save the snapshot to a file.
                         in_pipeline = getattr(self, "__component_name__", None) is not None
                         if not in_pipeline:
-                            full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                            full_file_path = _save_pipeline_snapshot(
+                                pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
+                            )
                             e.pipeline_snapshot_file_path = full_file_path
                         raise e
 
@@ -807,7 +822,9 @@ class Agent:
                     # If Agent is not in a pipeline, we save the snapshot to a file.
                     # Checked by __component_name__ not being set.
                     if getattr(self, "__component_name__", None) is None:
-                        full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                        full_file_path = _save_pipeline_snapshot(
+                            pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
+                        )
                         e.pipeline_snapshot_file_path = full_file_path
                     raise e
 
