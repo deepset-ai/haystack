@@ -28,14 +28,14 @@ class TestRegexTextExtractor:
         pattern = r'<issue url="(.+?)">'
         extractor = RegexTextExtractor(regex_pattern=pattern, return_empty_on_no_match=False)
         assert extractor.regex_pattern == pattern
-        assert "The `return_empty_on_no_match` has been removed" in caplog.text
+        assert "The `return_empty_on_no_match` init parameter has been removed" in caplog.text
 
     def test_init_with_removed_parameter_args(self, caplog):
         caplog.set_level(logging.WARNING)
         pattern = r'<issue url="(.+?)">'
         extractor = RegexTextExtractor(pattern, False)
         assert extractor.regex_pattern == pattern
-        assert "The `return_empty_on_no_match` has been removed" in caplog.text
+        assert "The `return_empty_on_no_match` init parameter has been removed" in caplog.text
 
     def test_from_dict_with_removed_parameter(self, caplog):
         caplog.set_level(logging.WARNING)
@@ -46,7 +46,7 @@ class TestRegexTextExtractor:
         }
         extractor = component_from_dict(cls=RegexTextExtractor, data=data, name="extractor")
         assert extractor.regex_pattern == r'<issue url="(.+?)">'
-        assert "The `return_empty_on_no_match` has been removed" in caplog.text
+        assert "The `return_empty_on_no_match` init parameter has been removed" in caplog.text
 
     def test_extract_from_string_with_capture_group(self):
         pattern = r'<issue url="(.+?)">'
