@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from lazy_imports import LazyImporter
 
 _import_structure = {
-    "azure": ["AzureOCRDocumentConverter"],
+    "azure": ["AzureOCRDocumentConverter", "AzureDocumentIntelligenceConverter"],
     "csv": ["CSVToDocument"],
     "docx": ["DOCXToDocument"],
     "html": ["HTMLToDocument"],
@@ -27,6 +27,7 @@ _import_structure = {
 }
 
 if TYPE_CHECKING:
+    from .azure import AzureDocumentIntelligenceConverter as AzureDocumentIntelligenceConverter
     from .azure import AzureOCRDocumentConverter as AzureOCRDocumentConverter
     from .csv import CSVToDocument as CSVToDocument
     from .docx import DOCXToDocument as DOCXToDocument

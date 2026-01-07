@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Added `AzureDocumentIntelligenceConverter` component that uses the new
+    azure-ai-documentintelligence package (v1.0.0). Supports markdown output
+    for better LLM/RAG integration. Key features:
+    - Markdown output with inline tables using Azure's native support
+    - Improved layout analysis and table extraction
+    - Simplified API (removes layout complexity)
+    - Backward compatible text mode with CSV tables
+deprecations:
+  - |
+    `AzureOCRDocumentConverter` is deprecated and will be removed in
+    Haystack 2.25. Migrate to `AzureDocumentIntelligenceConverter`.
