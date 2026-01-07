@@ -591,7 +591,7 @@ It can be configured to search through all messages or only the last message in 
 ### Usage example
 
 ```python
-from haystack_experimental.components.extractors import RegexTextExtractor
+from haystack.components.extractors import RegexTextExtractor
 from haystack.dataclasses import ChatMessage
 
 # Using with a string
@@ -610,7 +610,7 @@ result = parser.run(text_or_messages=messages)
 #### RegexTextExtractor.\_\_init\_\_
 
 ```python
-def __init__(regex_pattern: str, return_empty_on_no_match: bool = True)
+def __init__(regex_pattern: str)
 ```
 
 Creates an instance of the RegexTextExtractor component.
@@ -626,8 +626,8 @@ Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue u
 #### RegexTextExtractor.run
 
 ```python
-@component.output_types(captured_text=str, captured_texts=list[str])
-def run(text_or_messages: str | list[ChatMessage]) -> dict
+@component.output_types(captured_text=str)
+def run(text_or_messages: str | list[ChatMessage]) -> dict[str, str]
 ```
 
 Extracts text from input using the configured regex pattern.
@@ -643,6 +643,5 @@ Extracts text from input using the configured regex pattern.
 **Returns**:
 
 - `{"captured_text": "matched text"}` if a match is found
-- `{}` if no match is found and self.return_empty_on_no_match=True (default behavior)
-- `{"captured_text": ""}` if no match is found and self.return_empty_on_no_match=False
+- `{"captured_text": ""}` if no match is found
 
