@@ -17,25 +17,7 @@ from haystack.core.pipeline.breakpoint import (
     load_pipeline_snapshot,
 )
 from haystack.dataclasses import ChatMessage
-from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, Breakpoint, PipelineSnapshot, PipelineState
-
-
-@pytest.fixture
-def make_pipeline_snapshot_with_agent_snapshot():
-    def _make(break_point: AgentBreakpoint) -> PipelineSnapshot:
-        return PipelineSnapshot(
-            break_point=break_point,
-            pipeline_state=PipelineState(inputs={}, component_visits={"agent": 0}, pipeline_outputs={}),
-            original_input_data={},
-            ordered_component_names=["agent"],
-            agent_snapshot=AgentSnapshot(
-                break_point=break_point,
-                component_inputs={"chat_generator": {}, "tool_invoker": {"serialized_data": {"state": {}}}},
-                component_visits={"chat_generator": 0, "tool_invoker": 0},
-            ),
-        )
-
-    return _make
+from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot, PipelineState
 
 
 def test_transform_json_structure_unwraps_sender_value():
