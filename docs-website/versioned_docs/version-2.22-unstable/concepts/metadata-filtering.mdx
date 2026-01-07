@@ -1,0 +1,145 @@
+---
+title: "Metadata Filtering"
+id: metadata-filtering
+slug: "/metadata-filtering"
+description: "This page provides a detailed explanation of how to apply metadata filters at query time."
+---
+
+# Metadata Filtering
+
+This page provides a detailed explanation of how to apply metadata filters at query time.
+
+When you index documents into your Document Store, you can attach metadata to them. One example is the `DocumentLanguageClassifier`, which adds the language of the document's content to its metadata. Components like `MetadataRouter` can then route documents based on their metadata.
+
+You can then use the metadata to filter your search queries, allowing you to narrow down the results by focusing on specific criteria. This ensures your Retriever fetches answers from the most relevant subset of your data.
+
+To illustrate how metadata filters work, imagine you have a set of annual reports from various companies. You may want to perform a search on just a specific year and just on a small selection of companies. This can reduce the workload of the Retriever and also ensure that you get more relevant results.
+
+## Filtering Types
+
+Filters are defined as a dictionary or nested dictionaries that can be of two types: Comparison or Logic.
+
+### Comparison
+
+Comparison operators help search your metadata fields according the specified conditions.
+
+Comparison dictionaries must contain the following keys:
+
+\-`field`: the name of one of the meta fields of a document, such as `meta.years`.
+
+\-`operator`: must be one of the following:
+
+```
+    - `==`
+    - `!=`
+    - `>`
+    - `>=`
+    - `<`
+    - `<=`
+    - `in`
+    - `not in`
+```
+
+:::info
+The available comparison operators may vary depending on the specific Document Store integration. For example, the `ChromaDocumentStore` supports two additional operators: `contains` and `not contains`. Find the details about the supported filters in the specific integration’s API reference.
+:::
+
+\-`value`: takes a single value or (in the case of "in" and “not in”) a list of values.
+
+#### Example
+
+Here is an example of a simple filter in the form of a dictionary. The filter selects documents classified as “article” in the `type` meta field of the document:
+
+```python
+filters = {"field": "meta.type", "operator": "==", "value": "article"}
+```
+
+### Logic
+
+Logical operators can be used to create a nested dictionary, allowing you to apply multiple `fields` as filter conditions. Logic dictionaries must contain the following keys:
+
+\-`operator`: usually one of the following:
+
+```
+    - `NOT`
+    - `OR`
+    - `AND`
+```
+
+:::info
+The available logic operators may vary depending on the specific Document Store integration. For example, the `ChromaDocumentStore` doesn’t support the `NOT` operator. Find the details about the supported filters in the specific integration’s API reference.
+:::
+
+\-`conditions`: must be a list of dictionaries, either of type Comparison or Logic.
+
+#### Nested Filter Example
+
+Here is a more complex filter that uses both Comparison and Logic to find documents where:
+
+- Meta field `type` is "article",
+- Meta field `date` is between 1420066800 and 1609455600 (a specific date range),
+- Meta field `rating` is greater than or equal to 3,
+- Documents are either classified as `genre`  ["economy", "politics"] `OR` the meta field `publisher` is "nytimes".
+
+```python
+filters = {
+    "operator": "AND",
+    "conditions": [
+        {"field": "meta.type", "operator": "==", "value": "article"},
+        {"field": "meta.date", "operator": ">=", "value": 1420066800},
+        {"field": "meta.date", "operator": "<", "value": 1609455600},
+        {"field": "meta.rating", "operator": ">=", "value": 3},
+        {
+            "operator": "OR",
+            "conditions": [
+                {"field": "meta.genre", "operator": "in", "value": ["economy", "politics"]},
+                {"field": "meta.publisher", "operator": "==", "value": "nytimes"},
+            ],
+        },
+    ],
+}
+```
+
+## Filters Usage
+
+Filters can be applied either through the `Retriever` class or directly within Document Stores.
+
+In the `Retriever` class, filters are passed through the `filters` argument. When working with a pipeline, filters can be provided to `Pipeline.run()`, which will automatically route them to the `Retriever` class (refer to the [pipelines documentation](pipelines.mdx) for more information on working with pipelines).
+
+The example below shows how filters can be passed to Retrievers within a pipeline:
+
+```python
+pipeline.run(
+  data={"retriever": {
+    		"query": "Why did the revenue increase?",
+    		"filters": { "operator": "AND",
+      			"conditions": [
+        			{"field": "meta.years", "operator": "==", "value": "2019"},
+        			{"field": "meta.companies", "operator": "in", "value": ["BMW", "Mercedes"]},
+      					]
+    			   }
+  		      }
+       }
+)
+```
+
+In Document Stores, the `filter_documents` method is used to apply filters to stored documents, if the specific integration supports filtering.
+
+The example below shows how filters can be passed to the `QdrantDocumentStore`:
+
+```python
+filters = {
+    "operator": "AND",
+    "conditions": [
+        {"field": "meta.type", "operator": "==", "value": "article"},
+        {"field": "meta.genre", "operator": "in", "value": ["economy", "politics"]},
+    ],
+}
+results = QdrantDocumentStore.filter_documents(filters=filters)
+```
+
+## Additional References
+
+:notebook: Tutorial: [Filtering Documents with Metadata](https://haystack.deepset.ai/tutorials/31_metadata_filtering)
+
+🧑‍🍳 Cookbook: [Extracting Metadata Filters from a Query](https://haystack.deepset.ai/cookbook/extracting_metadata_filters_from_a_user_query)

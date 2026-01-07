@@ -1,0 +1,101 @@
+---
+title: "DocumentLanguageClassifier"
+id: documentlanguageclassifier
+slug: "/documentlanguageclassifier"
+description: "Use this component to classify documents by language and add language information to metadata."
+---
+
+# DocumentLanguageClassifier
+
+Use this component to classify documents by language and add language information to metadata.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [`MetadataRouter`](../routers/metadatarouter.mdx)                                                                    |
+| **Mandatory run variables**            | `documents`:  A list of documents                                                                                  |
+| **Output variables**                   | `documents`:  A list of documents                                                                                  |
+| **API reference**                      | [Classifiers](/reference/classifiers-api)                                                                                 |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/classifiers/document_language_classifier.py |
+
+</div>
+
+## Overview
+
+`DocumentLanguageClassifier` classifies the language of documents and adds the detected language to their metadata. If a document's text does not match any of the languages specified at initialization, it is classified as "unmatched". By default, the classifier classifies for English (”en”) documents, with the rest being classified as “unmatched”.
+
+The set of supported languages can be specified in the init method with the `languages` variable, using ISO codes.
+
+To route your documents to various branches of the pipeline based on the language, use `MetadataRouter` component right after `DocumentLanguageClassifier`.
+
+For classifying and then routing plain text using the same logic, use the `TextLanguageRouter` component instead.
+
+## Usage
+
+Install the `langdetect`package to use the `DocumentLanguageClassifier`component:
+
+```shell shell
+pip install langdetect
+```
+
+### On its own
+
+Below, we are using the `DocumentLanguageClassifier` to classify English and German documents:
+
+```python
+from haystack.components.classifiers import DocumentLanguageClassifier
+from haystack import Document
+
+documents = [
+    Document(content="Mein Name ist Jean und ich wohne in Paris."),
+    Document(content="Mein Name ist Mark und ich wohne in Berlin."),
+    Document(content="Mein Name ist Giorgio und ich wohne in Rome."),
+    Document(content="My name is Pierre and I live in Paris"),
+    Document(content="My name is Paul and I live in Berlin."),
+    Document(content="My name is Alessia and I live in Rome."),
+]
+
+document_classifier = DocumentLanguageClassifier(languages = ["en", "de"])
+document_classifier.run(documents = documents)
+```
+
+### In a pipeline
+
+Below, we are using the `DocumentLanguageClassifier` in an indexing pipeline that indexes English and German documents into two difference indexes in an `InMemoryDocumentStore`, using embedding models for each language.
+
+```python
+from haystack import Pipeline
+from haystack import Document
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.classifiers import DocumentLanguageClassifier
+from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.writers import DocumentWriter
+from haystack.components.routers import MetadataRouter
+
+document_store_en = InMemoryDocumentStore()
+document_store_de = InMemoryDocumentStore()
+
+document_classifier = DocumentLanguageClassifier(languages = ["en", "de"])
+metadata_router = MetadataRouter(rules={"en": {"language": {"$eq": "en"}}, "de": {"language": {"$eq": "de"}}})
+english_embedder = SentenceTransformersDocumentEmbedder()
+german_embedder = SentenceTransformersDocumentEmbedder(model="PM-AI/bi-encoder_msmarco_bert-base_german")
+en_writer = DocumentWriter(document_store = document_store_en)
+de_writer = DocumentWriter(document_store = document_store_de)
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(instance=document_classifier, name="document_classifier")
+indexing_pipeline.add_component(instance=metadata_router, name="metadata_router")
+indexing_pipeline.add_component(instance=english_embedder, name="english_embedder")
+indexing_pipeline.add_component(instance=german_embedder, name="german_embedder")
+indexing_pipeline.add_component(instance=en_writer, name="en_writer")
+indexing_pipeline.add_component(instance=de_writer, name="de_writer")
+
+indexing_pipeline.connect("document_classifier.documents", "metadata_router.documents")
+indexing_pipeline.connect("metadata_router.en", "english_embedder.documents")
+indexing_pipeline.connect("metadata_router.de", "german_embedder.documents")
+indexing_pipeline.connect("english_embedder", "en_writer")
+indexing_pipeline.connect("german_embedder", "de_writer")
+
+indexing_pipeline.run({"document_classifier": {"documents": [Document(content="This is an English sentence."), Document(content="Dies ist ein deutscher Satz.")]}})
+```
