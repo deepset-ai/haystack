@@ -850,6 +850,93 @@ Asynchronously deletes documents that match the provided `document_ids` from the
 
 - `document_ids`: the document ids to delete
 
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.delete_by_filter"></a>
+
+#### QdrantDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: dict[str, Any]) -> None
+```
+
+Deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.delete_by_filter_async"></a>
+
+#### QdrantDocumentStore.delete\_by\_filter\_async
+
+```python
+async def delete_by_filter_async(filters: dict[str, Any]) -> None
+```
+
+Asynchronously deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.update_by_filter"></a>
+
+#### QdrantDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Note**: This operation is not atomic. Documents matching the filter are fetched first,
+then updated. If documents are modified between the fetch and update operations,
+those changes may be lost.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update. This will be merged with existing metadata.
+
+**Returns**:
+
+The number of documents updated.
+
+<a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.update_by_filter_async"></a>
+
+#### QdrantDocumentStore.update\_by\_filter\_async
+
+```python
+async def update_by_filter_async(filters: dict[str, Any],
+                                 meta: dict[str, Any]) -> int
+```
+
+Asynchronously updates the metadata of all documents that match the provided filters.
+
+**Note**: This operation is not atomic. Documents matching the filter are fetched first,
+then updated. If documents are modified between the fetch and update operations,
+those changes may be lost.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update. This will be merged with existing metadata.
+
+**Returns**:
+
+The number of documents updated.
+
 <a id="haystack_integrations.document_stores.qdrant.document_store.QdrantDocumentStore.delete_all_documents"></a>
 
 #### QdrantDocumentStore.delete\_all\_documents
