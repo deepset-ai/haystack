@@ -24,13 +24,13 @@ BM25 computes a weighted word overlap between the query string and a document to
 ```python
 def __init__(*,
              document_store: OpenSearchDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
+             filters: Optional[dict[str, Any]] = None,
              fuzziness: Union[int, str] = "AUTO",
              top_k: int = 10,
              scale_score: bool = False,
              all_terms_must_match: bool = False,
              filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query: Optional[Dict[str, Any]] = None,
+             custom_query: Optional[dict[str, Any]] = None,
              raise_on_failure: bool = True)
 ```
 
@@ -100,7 +100,7 @@ retriever.run(
 #### OpenSearchBM25Retriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -115,7 +115,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "OpenSearchBM25Retriever"
+def from_dict(cls, data: dict[str, Any]) -> "OpenSearchBM25Retriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -133,17 +133,17 @@ Deserialized component.
 #### OpenSearchBM25Retriever.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(
     query: str,
-    filters: Optional[Dict[str, Any]] = None,
+    filters: Optional[dict[str, Any]] = None,
     all_terms_must_match: Optional[bool] = None,
     top_k: Optional[int] = None,
     fuzziness: Optional[Union[int, str]] = None,
     scale_score: Optional[bool] = None,
-    custom_query: Optional[Dict[str, Any]] = None,
+    custom_query: Optional[dict[str, Any]] = None,
     document_store: Optional[OpenSearchDocumentStore] = None
-) -> Dict[str, List[Document]]
+) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using BM25 retrieval.
@@ -205,17 +205,17 @@ A dictionary containing the retrieved documents with the following structure:
 #### OpenSearchBM25Retriever.run\_async
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 async def run_async(
     query: str,
-    filters: Optional[Dict[str, Any]] = None,
+    filters: Optional[dict[str, Any]] = None,
     all_terms_must_match: Optional[bool] = None,
     top_k: Optional[int] = None,
     fuzziness: Optional[Union[int, str]] = None,
     scale_score: Optional[bool] = None,
-    custom_query: Optional[Dict[str, Any]] = None,
+    custom_query: Optional[dict[str, Any]] = None,
     document_store: Optional[OpenSearchDocumentStore] = None
-) -> Dict[str, List[Document]]
+) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents using BM25 retrieval.
@@ -260,10 +260,10 @@ Retrieves documents from the OpenSearchDocumentStore using a vector similarity m
 ```python
 def __init__(*,
              document_store: OpenSearchDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
+             filters: Optional[dict[str, Any]] = None,
              top_k: int = 10,
              filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query: Optional[Dict[str, Any]] = None,
+             custom_query: Optional[dict[str, Any]] = None,
              raise_on_failure: bool = True,
              efficient_filtering: bool = False)
 ```
@@ -333,7 +333,7 @@ This is only supported for knn engines "faiss" and "lucene" and does not work wi
 #### OpenSearchEmbeddingRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -348,7 +348,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "OpenSearchEmbeddingRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "OpenSearchEmbeddingRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -366,15 +366,15 @@ Deserialized component.
 #### OpenSearchEmbeddingRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(
-    query_embedding: List[float],
-    filters: Optional[Dict[str, Any]] = None,
+    query_embedding: list[float],
+    filters: Optional[dict[str, Any]] = None,
     top_k: Optional[int] = None,
-    custom_query: Optional[Dict[str, Any]] = None,
+    custom_query: Optional[dict[str, Any]] = None,
     efficient_filtering: Optional[bool] = None,
     document_store: Optional[OpenSearchDocumentStore] = None
-) -> Dict[str, List[Document]]
+) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using a vector similarity metric.
@@ -440,15 +440,15 @@ Dictionary with key "documents" containing the retrieved Documents.
 #### OpenSearchEmbeddingRetriever.run\_async
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 async def run_async(
-    query_embedding: List[float],
-    filters: Optional[Dict[str, Any]] = None,
+    query_embedding: list[float],
+    filters: Optional[dict[str, Any]] = None,
     top_k: Optional[int] = None,
-    custom_query: Optional[Dict[str, Any]] = None,
+    custom_query: Optional[dict[str, Any]] = None,
     efficient_filtering: Optional[bool] = None,
     document_store: Optional[OpenSearchDocumentStore] = None
-) -> Dict[str, List[Document]]
+) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents using a vector similarity metric.
@@ -589,21 +589,21 @@ results = retriever.run(query="What is reinforcement learning?", filters_bm25=No
 def __init__(document_store: OpenSearchDocumentStore,
              *,
              embedder: TextEmbedder,
-             filters_bm25: Optional[Dict[str, Any]] = None,
+             filters_bm25: Optional[dict[str, Any]] = None,
              fuzziness: Union[int, str] = "AUTO",
              top_k_bm25: int = 10,
              scale_score: bool = False,
              all_terms_must_match: bool = False,
              filter_policy_bm25: Union[str,
                                        FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query_bm25: Optional[Dict[str, Any]] = None,
-             filters_embedding: Optional[Dict[str, Any]] = None,
+             custom_query_bm25: Optional[dict[str, Any]] = None,
+             filters_embedding: Optional[dict[str, Any]] = None,
              top_k_embedding: int = 10,
              filter_policy_embedding: Union[
                  str, FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query_embedding: Optional[Dict[str, Any]] = None,
+             custom_query_embedding: Optional[dict[str, Any]] = None,
              join_mode: Union[str, JoinMode] = JoinMode.RECIPROCAL_RANK_FUSION,
-             weights: Optional[List[float]] = None,
+             weights: Optional[list[float]] = None,
              top_k: Optional[int] = None,
              sort_by_score: bool = True,
              **kwargs: Any) -> None
@@ -707,9 +707,9 @@ def __init__(
         max_chunk_bytes: int = DEFAULT_MAX_CHUNK_BYTES,
         embedding_dim: int = 768,
         return_embedding: bool = False,
-        method: Optional[Dict[str, Any]] = None,
-        mappings: Optional[Dict[str, Any]] = None,
-        settings: Optional[Dict[str, Any]] = DEFAULT_SETTINGS,
+        method: Optional[dict[str, Any]] = None,
+        mappings: Optional[dict[str, Any]] = None,
+        settings: Optional[dict[str, Any]] = DEFAULT_SETTINGS,
         create_index: bool = True,
         http_auth: Any = (
             Secret.from_env_var("OPENSEARCH_USERNAME",
@@ -767,8 +767,8 @@ see the [official OpenSearch reference](https://opensearch-project.github.io/ope
 
 ```python
 def create_index(index: Optional[str] = None,
-                 mappings: Optional[Dict[str, Any]] = None,
-                 settings: Optional[Dict[str, Any]] = None) -> None
+                 mappings: Optional[dict[str, Any]] = None,
+                 settings: Optional[dict[str, Any]] = None) -> None
 ```
 
 Creates an index in OpenSearch.
@@ -788,7 +788,7 @@ for more information. If None, the settings from the constructor are used.
 #### OpenSearchDocumentStore.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -803,7 +803,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "OpenSearchDocumentStore"
+def from_dict(cls, data: dict[str, Any]) -> "OpenSearchDocumentStore"
 ```
 
 Deserializes the component from a dictionary.
@@ -842,7 +842,7 @@ Asynchronously returns the total number of documents in the document store.
 
 ```python
 def filter_documents(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+        filters: Optional[dict[str, Any]] = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -864,7 +864,7 @@ A list of Documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+        filters: Optional[dict[str, Any]] = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
@@ -885,8 +885,10 @@ A list of Documents that match the given filters.
 #### OpenSearchDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: List[Document],
-                    policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+def write_documents(
+        documents: list[Document],
+        policy: DuplicatePolicy = DuplicatePolicy.NONE,
+        refresh: Literal["wait_for", True, False] = "wait_for") -> int
 ```
 
 Writes documents to the document store.
@@ -895,6 +897,11 @@ Writes documents to the document store.
 
 - `documents`: A list of Documents to write to the document store.
 - `policy`: The duplicate policy to use when writing documents.
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [OpenSearch refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/index-document/).
 
 **Raises**:
 
@@ -911,8 +918,9 @@ The number of documents written to the document store.
 
 ```python
 async def write_documents_async(
-        documents: List[Document],
-        policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+        documents: list[Document],
+        policy: DuplicatePolicy = DuplicatePolicy.NONE,
+        refresh: Literal["wait_for", True, False] = "wait_for") -> int
 ```
 
 Asynchronously writes documents to the document store.
@@ -921,6 +929,11 @@ Asynchronously writes documents to the document store.
 
 - `documents`: A list of Documents to write to the document store.
 - `policy`: The duplicate policy to use when writing documents.
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [OpenSearch refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/index-document/).
 
 **Returns**:
 
@@ -931,7 +944,9 @@ The number of documents written to the document store.
 #### OpenSearchDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: List[str]) -> None
+def delete_documents(
+        document_ids: list[str],
+        refresh: Literal["wait_for", True, False] = "wait_for") -> None
 ```
 
 Deletes documents that match the provided `document_ids` from the document store.
@@ -939,13 +954,20 @@ Deletes documents that match the provided `document_ids` from the document store
 **Arguments**:
 
 - `document_ids`: the document ids to delete
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [OpenSearch refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/index-document/).
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_documents_async"></a>
 
 #### OpenSearchDocumentStore.delete\_documents\_async
 
 ```python
-async def delete_documents_async(document_ids: List[str]) -> None
+async def delete_documents_async(
+        document_ids: list[str],
+        refresh: Literal["wait_for", True, False] = "wait_for") -> None
 ```
 
 Asynchronously deletes documents that match the provided `document_ids` from the document store.
@@ -953,13 +975,19 @@ Asynchronously deletes documents that match the provided `document_ids` from the
 **Arguments**:
 
 - `document_ids`: the document ids to delete
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [OpenSearch refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/index-document/).
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_all_documents"></a>
 
 #### OpenSearchDocumentStore.delete\_all\_documents
 
 ```python
-def delete_all_documents(recreate_index: bool = False) -> None
+def delete_all_documents(recreate_index: bool = False,
+                         refresh: bool = True) -> None
 ```
 
 Deletes all documents in the document store.
@@ -968,13 +996,17 @@ Deletes all documents in the document store.
 
 - `recreate_index`: If True, the index will be deleted and recreated with the original mappings and
 settings. If False, all documents will be deleted using the `delete_by_query` API.
+- `refresh`: If True, OpenSearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_all_documents_async"></a>
 
 #### OpenSearchDocumentStore.delete\_all\_documents\_async
 
 ```python
-async def delete_all_documents_async(recreate_index: bool = False) -> None
+async def delete_all_documents_async(recreate_index: bool = False,
+                                     refresh: bool = True) -> None
 ```
 
 Asynchronously deletes all documents in the document store.
@@ -983,13 +1015,16 @@ Asynchronously deletes all documents in the document store.
 
 - `recreate_index`: If True, the index will be deleted and recreated with the original mappings and
 settings. If False, all documents will be deleted using the `delete_by_query` API.
+- `refresh`: If True, OpenSearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_by_filter"></a>
 
 #### OpenSearchDocumentStore.delete\_by\_filter
 
 ```python
-def delete_by_filter(filters: Dict[str, Any]) -> int
+def delete_by_filter(filters: dict[str, Any], refresh: bool = False) -> int
 ```
 
 Deletes all documents that match the provided filters.
@@ -998,6 +1033,9 @@ Deletes all documents that match the provided filters.
 
 - `filters`: The filters to apply to select documents for deletion.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `refresh`: If True, OpenSearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).
 
 **Returns**:
 
@@ -1008,7 +1046,8 @@ The number of documents deleted.
 #### OpenSearchDocumentStore.delete\_by\_filter\_async
 
 ```python
-async def delete_by_filter_async(filters: Dict[str, Any]) -> int
+async def delete_by_filter_async(filters: dict[str, Any],
+                                 refresh: bool = False) -> int
 ```
 
 Asynchronously deletes all documents that match the provided filters.
@@ -1017,6 +1056,9 @@ Asynchronously deletes all documents that match the provided filters.
 
 - `filters`: The filters to apply to select documents for deletion.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `refresh`: If True, OpenSearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).
 
 **Returns**:
 
@@ -1027,7 +1069,9 @@ The number of documents deleted.
 #### OpenSearchDocumentStore.update\_by\_filter
 
 ```python
-def update_by_filter(filters: Dict[str, Any], meta: Dict[str, Any]) -> int
+def update_by_filter(filters: dict[str, Any],
+                     meta: dict[str, Any],
+                     refresh: bool = False) -> int
 ```
 
 Updates the metadata of all documents that match the provided filters.
@@ -1037,6 +1081,9 @@ Updates the metadata of all documents that match the provided filters.
 - `filters`: The filters to apply to select documents for updating.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 - `meta`: The metadata fields to update.
+- `refresh`: If True, OpenSearch refreshes all shards involved in the update by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch update_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/update-by-query/).
 
 **Returns**:
 
@@ -1047,8 +1094,9 @@ The number of documents updated.
 #### OpenSearchDocumentStore.update\_by\_filter\_async
 
 ```python
-async def update_by_filter_async(filters: Dict[str, Any],
-                                 meta: Dict[str, Any]) -> int
+async def update_by_filter_async(filters: dict[str, Any],
+                                 meta: dict[str, Any],
+                                 refresh: bool = False) -> int
 ```
 
 Asynchronously updates the metadata of all documents that match the provided filters.
@@ -1058,6 +1106,9 @@ Asynchronously updates the metadata of all documents that match the provided fil
 - `filters`: The filters to apply to select documents for updating.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 - `meta`: The metadata fields to update.
+- `refresh`: If True, OpenSearch refreshes all shards involved in the update by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch update_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/update-by-query/).
 
 **Returns**:
 
@@ -1072,7 +1123,7 @@ The number of documents updated.
 #### normalize\_filters
 
 ```python
-def normalize_filters(filters: Dict[str, Any]) -> Dict[str, Any]
+def normalize_filters(filters: dict[str, Any]) -> dict[str, Any]
 ```
 
 Converts Haystack filters in OpenSearch compatible filters.

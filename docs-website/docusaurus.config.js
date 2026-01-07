@@ -53,7 +53,7 @@ const config = {
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.22-unstable',
+              label: '2.23-unstable',
               path: 'next',
               banner: 'unreleased',
             },
@@ -97,7 +97,7 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.22-unstable',
+            label: '2.23-unstable',
             path: 'next',
             banner: 'unreleased',
           },
@@ -210,6 +210,7 @@ const config = {
             items: [
               { label: 'Integrations',   href: 'https://haystack.deepset.ai/integrations' },
               { label: 'Platform - Try Free', href: 'https://landing.deepset.ai/deepset-studio-signup' },
+              { label: 'Enterprise Support', href: 'https://landing.deepset.ai/deepset-studio-signup' },
             ],
           },
           {
