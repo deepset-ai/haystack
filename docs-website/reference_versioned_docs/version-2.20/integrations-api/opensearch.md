@@ -885,8 +885,10 @@ A list of Documents that match the given filters.
 #### OpenSearchDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: list[Document],
-                    policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+def write_documents(
+        documents: list[Document],
+        policy: DuplicatePolicy = DuplicatePolicy.NONE,
+        refresh: Literal["wait_for", True, False] = "wait_for") -> int
 ```
 
 Writes documents to the document store.
@@ -895,6 +897,11 @@ Writes documents to the document store.
 
 - `documents`: A list of Documents to write to the document store.
 - `policy`: The duplicate policy to use when writing documents.
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [OpenSearch refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/index-document/).
 
 **Raises**:
 
@@ -912,7 +919,8 @@ The number of documents written to the document store.
 ```python
 async def write_documents_async(
         documents: list[Document],
-        policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+        policy: DuplicatePolicy = DuplicatePolicy.NONE,
+        refresh: Literal["wait_for", True, False] = "wait_for") -> int
 ```
 
 Asynchronously writes documents to the document store.
@@ -921,6 +929,11 @@ Asynchronously writes documents to the document store.
 
 - `documents`: A list of Documents to write to the document store.
 - `policy`: The duplicate policy to use when writing documents.
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [OpenSearch refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/index-document/).
 
 **Returns**:
 
@@ -931,7 +944,9 @@ The number of documents written to the document store.
 #### OpenSearchDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: list[str]) -> None
+def delete_documents(
+        document_ids: list[str],
+        refresh: Literal["wait_for", True, False] = "wait_for") -> None
 ```
 
 Deletes documents that match the provided `document_ids` from the document store.
@@ -939,13 +954,20 @@ Deletes documents that match the provided `document_ids` from the document store
 **Arguments**:
 
 - `document_ids`: the document ids to delete
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [OpenSearch refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/index-document/).
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_documents_async"></a>
 
 #### OpenSearchDocumentStore.delete\_documents\_async
 
 ```python
-async def delete_documents_async(document_ids: list[str]) -> None
+async def delete_documents_async(
+        document_ids: list[str],
+        refresh: Literal["wait_for", True, False] = "wait_for") -> None
 ```
 
 Asynchronously deletes documents that match the provided `document_ids` from the document store.
@@ -953,13 +975,19 @@ Asynchronously deletes documents that match the provided `document_ids` from the
 **Arguments**:
 
 - `document_ids`: the document ids to delete
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [OpenSearch refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/index-document/).
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_all_documents"></a>
 
 #### OpenSearchDocumentStore.delete\_all\_documents
 
 ```python
-def delete_all_documents(recreate_index: bool = False) -> None
+def delete_all_documents(recreate_index: bool = False,
+                         refresh: bool = True) -> None
 ```
 
 Deletes all documents in the document store.
@@ -968,13 +996,17 @@ Deletes all documents in the document store.
 
 - `recreate_index`: If True, the index will be deleted and recreated with the original mappings and
 settings. If False, all documents will be deleted using the `delete_by_query` API.
+- `refresh`: If True, OpenSearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_all_documents_async"></a>
 
 #### OpenSearchDocumentStore.delete\_all\_documents\_async
 
 ```python
-async def delete_all_documents_async(recreate_index: bool = False) -> None
+async def delete_all_documents_async(recreate_index: bool = False,
+                                     refresh: bool = True) -> None
 ```
 
 Asynchronously deletes all documents in the document store.
@@ -983,13 +1015,16 @@ Asynchronously deletes all documents in the document store.
 
 - `recreate_index`: If True, the index will be deleted and recreated with the original mappings and
 settings. If False, all documents will be deleted using the `delete_by_query` API.
+- `refresh`: If True, OpenSearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_by_filter"></a>
 
 #### OpenSearchDocumentStore.delete\_by\_filter
 
 ```python
-def delete_by_filter(filters: dict[str, Any]) -> int
+def delete_by_filter(filters: dict[str, Any], refresh: bool = False) -> int
 ```
 
 Deletes all documents that match the provided filters.
@@ -998,6 +1033,9 @@ Deletes all documents that match the provided filters.
 
 - `filters`: The filters to apply to select documents for deletion.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `refresh`: If True, OpenSearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).
 
 **Returns**:
 
@@ -1008,7 +1046,8 @@ The number of documents deleted.
 #### OpenSearchDocumentStore.delete\_by\_filter\_async
 
 ```python
-async def delete_by_filter_async(filters: dict[str, Any]) -> int
+async def delete_by_filter_async(filters: dict[str, Any],
+                                 refresh: bool = False) -> int
 ```
 
 Asynchronously deletes all documents that match the provided filters.
@@ -1017,6 +1056,9 @@ Asynchronously deletes all documents that match the provided filters.
 
 - `filters`: The filters to apply to select documents for deletion.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `refresh`: If True, OpenSearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch delete_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/delete-by-query/).
 
 **Returns**:
 
@@ -1027,7 +1069,9 @@ The number of documents deleted.
 #### OpenSearchDocumentStore.update\_by\_filter
 
 ```python
-def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+def update_by_filter(filters: dict[str, Any],
+                     meta: dict[str, Any],
+                     refresh: bool = False) -> int
 ```
 
 Updates the metadata of all documents that match the provided filters.
@@ -1037,6 +1081,9 @@ Updates the metadata of all documents that match the provided filters.
 - `filters`: The filters to apply to select documents for updating.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 - `meta`: The metadata fields to update.
+- `refresh`: If True, OpenSearch refreshes all shards involved in the update by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch update_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/update-by-query/).
 
 **Returns**:
 
@@ -1048,7 +1095,8 @@ The number of documents updated.
 
 ```python
 async def update_by_filter_async(filters: dict[str, Any],
-                                 meta: dict[str, Any]) -> int
+                                 meta: dict[str, Any],
+                                 refresh: bool = False) -> int
 ```
 
 Asynchronously updates the metadata of all documents that match the provided filters.
@@ -1058,6 +1106,9 @@ Asynchronously updates the metadata of all documents that match the provided fil
 - `filters`: The filters to apply to select documents for updating.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 - `meta`: The metadata fields to update.
+- `refresh`: If True, OpenSearch refreshes all shards involved in the update by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[OpenSearch update_by_query refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/update-by-query/).
 
 **Returns**:
 
