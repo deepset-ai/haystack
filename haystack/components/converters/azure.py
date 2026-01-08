@@ -26,7 +26,10 @@ with LazyImport(message="Run 'pip install pandas'") as pandas_import:
     from pandas import DataFrame
 
 with LazyImport(message="Run 'pip install \"azure-ai-documentintelligence>=1.0.0\"'") as azure_di_import:
-    from azure.ai.documentintelligence.models import AnalyzeDocumentRequest, DocumentContentFormat
+    from azure.ai.documentintelligence.models import (  # pylint: disable=ungrouped-imports
+        AnalyzeDocumentRequest,
+        DocumentContentFormat,
+    )
     from azure.ai.documentintelligence.models import AnalyzeResult as DIAnalyzeResult
 
 
@@ -571,6 +574,7 @@ class AzureDocumentIntelligenceConverter:
     def __init__(
         self,
         endpoint: str,
+        *,
         api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"),
         model_id: str = "prebuilt-read",
         output_format: Literal["text", "markdown"] = "markdown",
