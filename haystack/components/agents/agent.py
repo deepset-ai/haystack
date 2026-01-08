@@ -769,7 +769,7 @@ class Agent:
                         )
                         e._break_point = e.pipeline_snapshot.break_point
                         # We check if the agent is part of a pipeline by checking for __component_name__
-                        # If it is not in a pipeline, we save the snapshot to a file.
+                        # If it is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
                         in_pipeline = getattr(self, "__component_name__", None) is not None
                         if not in_pipeline:
                             full_file_path = _save_pipeline_snapshot(
