@@ -577,7 +577,7 @@ class Agent:
                         )
                         if isinstance(e, BreakpointException):
                             e._break_point = e.pipeline_snapshot.break_point
-                        # If Agent is not in a pipeline, we save the snapshot to a file.
+                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
                         # Checked by __component_name__ not being set.
                         if getattr(self, "__component_name__", None) is None:
                             full_file_path = _save_pipeline_snapshot(
