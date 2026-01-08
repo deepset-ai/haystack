@@ -903,7 +903,8 @@ def run(data: dict[str, Any],
         include_outputs_from: set[str] | None = None,
         *,
         break_point: Breakpoint | AgentBreakpoint | None = None,
-        pipeline_snapshot: PipelineSnapshot | None = None) -> dict[str, Any]
+        pipeline_snapshot: PipelineSnapshot | None = None,
+        snapshot_callback: SnapshotCallback | None = None) -> dict[str, Any]
 ```
 
 Runs the Pipeline with given input data.
@@ -981,6 +982,12 @@ invoked multiple times (in a loop), only the last-produced
 output is included.
 - `break_point`: A set of breakpoints that can be used to debug the pipeline execution.
 - `pipeline_snapshot`: A dictionary containing a snapshot of a previously saved pipeline execution.
+- `snapshot_callback`: Optional callback function that is invoked when a pipeline snapshot is created.
+The callback receives a `PipelineSnapshot` object and can return an optional string
+(e.g., a file path or identifier).
+If provided, the callback is used instead of the default file-saving behavior,
+allowing custom handling of snapshots (e.g., saving to a database, sending to a remote service).
+If not provided, the default behavior saves snapshots to a JSON file.
 
 **Raises**:
 
