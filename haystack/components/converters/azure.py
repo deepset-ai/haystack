@@ -26,7 +26,8 @@ with LazyImport(message="Run 'pip install pandas'") as pandas_import:
     from pandas import DataFrame
 
 with LazyImport(message="Run 'pip install \"azure-ai-documentintelligence>=1.0.0\"'") as azure_di_import:
-    from azure.ai.documentintelligence.models import AnalyzeDocumentRequest, AnalyzeResult, DocumentContentFormat
+    from azure.ai.documentintelligence.models import AnalyzeDocumentRequest, DocumentContentFormat
+    from azure.ai.documentintelligence.models import AnalyzeResult as DIAnalyzeResult
 
 
 @component
@@ -212,11 +213,11 @@ class AzureOCRDocumentConverter:
         """
         Converts the tables and text extracted by Azure's Document Intelligence service into Haystack Documents.
 
-        :param result: The AnalyzeResult object returned by the `begin_analyze_document` method. Docs on Analyze result
-            can be found [here](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-ai-formrecognizer/3.3.0/azure.ai.formrecognizer.html?highlight=read#azure.ai.formrecognizer.AnalyzeResult).
+        :param result: The AnalyzeResult object returned by the `begin_analyze_document` method.
+            Docs on AnalyzeResult can be found in the Azure FormRecognizer documentation.
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
             Can be any custom keys and values.
-        :returns: List of Documents containing the tables and text extracted from the AnalyzeResult object.
+        :returns: List of Documents containing the tables and text extracted from the DIAnalyzeResult object.
         """
         tables = self._convert_tables(result=result, meta=meta)
         if self.page_layout == "natural":
@@ -231,10 +232,10 @@ class AzureOCRDocumentConverter:
         """
         Converts the tables extracted by Azure's Document Intelligence service into Haystack Documents.
 
-        :param result: The AnalyzeResult Azure object
+        :param result: The DIAnalyzeResult Azure object
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
 
-        :returns: List of Documents containing the tables extracted from the AnalyzeResult object.
+        :returns: List of Documents containing the tables extracted from the DIAnalyzeResult object.
         """
         converted_tables: list[Document] = []
 
@@ -336,16 +337,16 @@ class AzureOCRDocumentConverter:
 
     def _convert_to_natural_text(self, result: "AnalyzeResult", meta: dict[str, Any] | None) -> Document:
         """
-        This converts the `AnalyzeResult` object into a single document.
+        This converts the `DIAnalyzeResult` object into a single document.
 
         We add "\f" separators between to differentiate between the text on separate pages. This is the expected format
         for the PreProcessor.
 
-        :param result: The AnalyzeResult object returned by the `begin_analyze_document` method. Docs on Analyze result
-            can be found [here](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-ai-formrecognizer/3.3.0/azure.ai.formrecognizer.html?highlight=read#azure.ai.formrecognizer.AnalyzeResult).
+        :param result: The AnalyzeResult object returned by the `begin_analyze_document` method.
+            Docs on AnalyzeResult can be found in the Azure FormRecognizer documentation.
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
             Can be any custom keys and values.
-        :returns: A single Document containing all the text extracted from the AnalyzeResult object.
+        :returns: A single Document containing all the text extracted from the DIAnalyzeResult object.
         """
         table_spans_by_page = self._collect_table_spans(result=result)
 
@@ -382,17 +383,17 @@ class AzureOCRDocumentConverter:
         self, result: "AnalyzeResult", meta: dict[str, str] | None, threshold_y: float = 0.05
     ) -> Document:
         """
-        This converts the `AnalyzeResult` object into a single Haystack Document.
+        This converts the `DIAnalyzeResult` object into a single Haystack Document.
 
         We add "\f" separators between to differentiate between the text on separate pages. This is the expected format
         for the PreProcessor.
 
-        :param result: The AnalyzeResult object returned by the `begin_analyze_document` method. Docs on Analyze result
-            can be found [here](https://azuresdkdocs.blob.core.windows.net/$web/python/azure-ai-formrecognizer/3.3.0/azure.ai.formrecognizer.html?highlight=read#azure.ai.formrecognizer.AnalyzeResult).
+        :param result: The AnalyzeResult object returned by the `begin_analyze_document` method.
+            Docs on AnalyzeResult can be found in the Azure FormRecognizer documentation.
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
             Can be any custom keys and values.
         :param threshold_y: height threshold in inches for PDF and pixels for images
-        :returns: A single Document containing all the text extracted from the AnalyzeResult object.
+        :returns: A single Document containing all the text extracted from the DIAnalyzeResult object.
         """
         table_spans_by_page = self._collect_table_spans(result=result)
 
@@ -472,7 +473,7 @@ class AzureOCRDocumentConverter:
         """
         Collect the spans of all tables by page number.
 
-        :param result: The AnalyzeResult object returned by the `begin_analyze_document` method.
+        :param result: The DIAnalyzeResult object returned by the `begin_analyze_document` method.
         :returns: A dictionary with the page number as key and a list of table spans as value.
         """
         table_spans_by_page = defaultdict(list)
@@ -718,11 +719,11 @@ class AzureDocumentIntelligenceConverter:
         deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
-    def _process_markdown_result(self, result: "AnalyzeResult", meta: dict[str, Any]) -> Document:
+    def _process_markdown_result(self, result: "DIAnalyzeResult", meta: dict[str, Any]) -> Document:
         """
         Process result when output_format='markdown'.
 
-        :param result: The AnalyzeResult from Azure Document Intelligence.
+        :param result: The DIAnalyzeResult from Azure Document Intelligence.
         :param meta: Metadata dictionary to attach to the document.
         :returns: A single Document with markdown content.
         """
@@ -739,11 +740,11 @@ class AzureDocumentIntelligenceConverter:
 
         return Document(content=markdown_content, meta=doc_meta)
 
-    def _process_text_result(self, result: "AnalyzeResult", meta: dict[str, Any]) -> list[Document]:
+    def _process_text_result(self, result: "DIAnalyzeResult", meta: dict[str, Any]) -> list[Document]:
         """
         Process result when output_format='text'.
 
-        :param result: The AnalyzeResult from Azure Document Intelligence.
+        :param result: The DIAnalyzeResult from Azure Document Intelligence.
         :param meta: Metadata dictionary to attach to the documents.
         :returns: List of Documents (text + optional table documents).
         """
@@ -760,11 +761,11 @@ class AzureDocumentIntelligenceConverter:
 
         return documents
 
-    def _extract_text_content(self, result: "AnalyzeResult", meta: dict[str, Any]) -> Document:
+    def _extract_text_content(self, result: "DIAnalyzeResult", meta: dict[str, Any]) -> Document:
         """
         Extract text from paragraphs.
 
-        :param result: The AnalyzeResult from Azure Document Intelligence.
+        :param result: The DIAnalyzeResult from Azure Document Intelligence.
         :param meta: Metadata dictionary to attach to the document.
         :returns: A single Document with all text.
         """
@@ -788,15 +789,15 @@ class AzureDocumentIntelligenceConverter:
         all_text = "\f".join(pages_text)
         return Document(content=all_text, meta={**meta, "content_format": "text"})
 
-    def _extract_csv_tables(self, result: "AnalyzeResult", meta: dict[str, Any]) -> list[Document]:
+    def _extract_csv_tables(self, result: "DIAnalyzeResult", meta: dict[str, Any]) -> list[Document]:
         """
         Extract tables as CSV (backward compatibility mode).
 
-        :param result: The AnalyzeResult from Azure Document Intelligence.
+        :param result: The DIAnalyzeResult from Azure Document Intelligence.
         :param meta: Metadata dictionary to attach to the documents.
         :returns: List of Documents containing table CSV content.
         """
-        table_documents = []
+        table_documents: list[Document] = []
 
         if not result.tables:
             return table_documents
