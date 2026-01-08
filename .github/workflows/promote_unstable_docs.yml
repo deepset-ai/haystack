@@ -55,6 +55,7 @@ jobs:
             It is expected to run at the time of the release.
             You can inspect the docs preview and merge it. There should now be only one unstable version representing the next (main) branch.
           # This workflow is triggered by a tag pushed by the HaystackBot in release.yml > create-release-tag.
-          # Setting the github.actor as reviewer fails: it would attempt to request a review from the HaystackBot itself.
+          # GitHub requires reviewers to be different from the PR author, so setting `github.actor`
+          # would fail (it would request a review from the HaystackBot itself).
           # So we don't set any reviewers and instead notify the Release Manager
           # (see .github/utils/prepare_release_notification.sh).
