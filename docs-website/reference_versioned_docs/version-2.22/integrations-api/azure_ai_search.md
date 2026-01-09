@@ -23,9 +23,9 @@ Must be connected to the AzureAISearchDocumentStore to run.
 ```python
 def __init__(*,
              document_store: AzureAISearchDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
              **kwargs: Any)
 ```
 
@@ -86,8 +86,8 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the AzureAISearchDocumentStore.
@@ -125,9 +125,8 @@ def __init__(*,
                  "AZURE_AI_SEARCH_ENDPOINT", strict=True),
              index_name: str = "default",
              embedding_dimension: int = 768,
-             metadata_fields: Optional[dict[str, Union[SearchField,
-                                                       type]]] = None,
-             vector_search_configuration: Optional[VectorSearch] = None,
+             metadata_fields: dict[str, SearchField | type] | None = None,
+             vector_search_configuration: VectorSearch | None = None,
              include_search_metadata: bool = False,
              **index_creation_kwargs: Any)
 ```
@@ -349,8 +348,7 @@ A list of Documents that match the given search_text.
 #### AzureAISearchDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the provided filters.
