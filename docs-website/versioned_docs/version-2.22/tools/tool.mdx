@@ -30,12 +30,18 @@ class Tool:
     description: str
     parameters: Dict[str, Any]
     function: Callable
+    outputs_to_string: dict[str, Any] | None = None
+    inputs_from_state: dict[str, str] | None = None
+    outputs_to_state: dict[str, dict[str, Any]] | None = None
 ```
 
 - `name` is the name of the Tool.
 - `description` is a string describing what the Tool does.
 - `parameters` is a JSON schema describing the expected parameters.
 - `function` is invoked when the Tool is called.
+- `outputs_to_string` (optional) controls how parts of the tool’s output are converted into one or more strings (e.g. for LLM consumption).
+- `inputs_from_state` (optional) maps values from the agent state to the tool’s input parameters (e.g. to share info between tools)
+- `outputs_to_state` (optional) specifies how tool outputs are written back into the agent state, with optional handlers.
 
 Keep in mind that the accurate definitions of `name` and `description` are important for the Language Model to prepare the call correctly.
 
@@ -81,6 +87,41 @@ print(add_tool.invoke(a=15, b=10))
 
 25
 ```
+
+### Advanced Tool Configuration
+
+`outputs_to_string` and `outputs_to_state` let you control how a tool’s outputs are surfaced to the LLM and stored in the agent state.
+
+Use them to format structured outputs for the LLM while keeping raw data available for later steps.
+
+```python
+from haystack.tools import Tool
+
+def format_documents(documents):
+    return "\n".join(f"{i+1}. Document: {doc.content}" for i, doc in enumerate(documents))
+
+def format_summary(metadata):
+    return f"Found {metadata['count']} results"
+
+tool = Tool(
+    name="search",
+    description="Search for documents",
+    parameters={...},
+    function=search_func,  # Returns {"documents": [Document(...)], "metadata": {"count": 5}, "debug_info": {...}}
+    outputs_to_string={
+        "formatted_docs": {"source": "documents", "handler": format_documents},
+        "summary": {"source": "metadata", "handler": format_summary}
+    }
+    outputs_to_state={"documents": {"source": "documents"}}, # Save Documents into Agent's state
+)
+
+# After the tool invocation, the tool result includes:
+# {
+#     "formatted_docs": "1. Document Title\n   Content...\n2. ...",
+#     "summary": "Found 5 results"
+# }
+```
+After invocation, only the configured string outputs are returned to the LLM, while selected fields through `outputs_to_state` (like documents) are saved in the agent state.
 
 ### @tool decorator
 
