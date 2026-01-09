@@ -46,7 +46,7 @@ print(retrieved_messages)
 
 ```python
 def __init__(skip_system_messages: bool = True,
-             last_k: Optional[int] = 10) -> None
+             last_k: int | None = 10) -> None
 ```
 
 Create an InMemoryChatMessageStore.
@@ -136,7 +136,7 @@ The number of messages written.
 
 ```python
 def retrieve_messages(chat_history_id: str,
-                      last_k: Optional[int] = None) -> list[ChatMessage]
+                      last_k: int | None = None) -> list[ChatMessage]
 ```
 
 Retrieves all stored chat messages.

@@ -40,7 +40,7 @@ print(result["messages"])
 #### ChatMessageRetriever.\_\_init\_\_
 
 ```python
-def __init__(chat_message_store: ChatMessageStore, last_k: Optional[int] = 10)
+def __init__(chat_message_store: ChatMessageStore, last_k: int | None = 10)
 ```
 
 Create the ChatMessageRetriever component.
@@ -92,8 +92,8 @@ The deserialized component.
 def run(
     chat_history_id: str,
     *,
-    last_k: Optional[int] = None,
-    current_messages: Optional[list[ChatMessage]] = None
+    last_k: int | None = None,
+    current_messages: list[ChatMessage] | None = None
 ) -> dict[str, list[ChatMessage]]
 ```
 

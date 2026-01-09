@@ -68,17 +68,17 @@ assert "messages" in result  # Contains conversation history
 ```python
 def __init__(*,
              chat_generator: ChatGenerator,
-             tools: Optional[ToolsType] = None,
-             system_prompt: Optional[str] = None,
-             exit_conditions: Optional[list[str]] = None,
-             state_schema: Optional[dict[str, Any]] = None,
+             tools: ToolsType | None = None,
+             system_prompt: str | None = None,
+             exit_conditions: list[str] | None = None,
+             state_schema: dict[str, Any] | None = None,
              max_agent_steps: int = 100,
-             streaming_callback: Optional[StreamingCallbackT] = None,
+             streaming_callback: StreamingCallbackT | None = None,
              raise_on_tool_invocation_failure: bool = False,
-             confirmation_strategies: Optional[dict[
-                 str, ConfirmationStrategy]] = None,
-             tool_invoker_kwargs: Optional[dict[str, Any]] = None,
-             chat_message_store: Optional[ChatMessageStore] = None) -> None
+             confirmation_strategies: dict[str, ConfirmationStrategy]
+             | None = None,
+             tool_invoker_kwargs: dict[str, Any] | None = None,
+             chat_message_store: ChatMessageStore | None = None) -> None
 ```
 
 Initialize the agent component.
@@ -111,15 +111,15 @@ If set to False, the exception will be turned into a chat message and passed to 
 
 ```python
 def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        break_point: Optional[AgentBreakpoint] = None,
-        snapshot: Optional[AgentSnapshot] = None,
-        system_prompt: Optional[str] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
-        confirmation_strategy_context: Optional[dict[str, Any]] = None,
-        chat_message_store_kwargs: Optional[dict[str, Any]] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        break_point: AgentBreakpoint | None = None,
+        snapshot: AgentSnapshot | None = None,
+        system_prompt: str | None = None,
+        tools: ToolsType | list[str] | None = None,
+        confirmation_strategy_context: dict[str, Any] | None = None,
+        chat_message_store_kwargs: dict[str, Any] | None = None,
         **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -166,16 +166,16 @@ A dictionary with the following keys:
 
 ```python
 async def run_async(messages: list[ChatMessage],
-                    streaming_callback: Optional[StreamingCallbackT] = None,
+                    streaming_callback: StreamingCallbackT | None = None,
                     *,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    break_point: Optional[AgentBreakpoint] = None,
-                    snapshot: Optional[AgentSnapshot] = None,
-                    system_prompt: Optional[str] = None,
-                    tools: Optional[Union[ToolsType, list[str]]] = None,
-                    confirmation_strategy_context: Optional[dict[str,
-                                                                 Any]] = None,
-                    chat_message_store_kwargs: Optional[dict[str, Any]] = None,
+                    generation_kwargs: dict[str, Any] | None = None,
+                    break_point: AgentBreakpoint | None = None,
+                    snapshot: AgentSnapshot | None = None,
+                    system_prompt: str | None = None,
+                    tools: ToolsType | list[str] | None = None,
+                    confirmation_strategy_context: dict[str, Any]
+                    | None = None,
+                    chat_message_store_kwargs: dict[str, Any] | None = None,
                     **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -376,7 +376,7 @@ Exception raised when a tool execution is paused by a ConfirmationStrategy (e.g.
 def __init__(message: str,
              tool_name: str,
              snapshot_file_path: str,
-             tool_call_id: Optional[str] = None) -> None
+             tool_call_id: str | None = None) -> None
 ```
 
 Initialize the HITLBreakpointException.
@@ -532,8 +532,8 @@ def run(
     tool_name: str,
     tool_description: str,
     tool_params: dict[str, Any],
-    tool_call_id: Optional[str] = None,
-    confirmation_strategy_context: Optional[dict[str, Any]] = None
+    tool_call_id: str | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None
 ) -> ToolExecutionDecision
 ```
 
@@ -565,8 +565,8 @@ async def run_async(
     tool_name: str,
     tool_description: str,
     tool_params: dict[str, Any],
-    tool_call_id: Optional[str] = None,
-    confirmation_strategy_context: Optional[dict[str, Any]] = None
+    tool_call_id: str | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None
 ) -> ToolExecutionDecision
 ```
 
@@ -652,8 +652,8 @@ def run(
     tool_name: str,
     tool_description: str,
     tool_params: dict[str, Any],
-    tool_call_id: Optional[str] = None,
-    confirmation_strategy_context: Optional[dict[str, Any]] = None
+    tool_call_id: str | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None
 ) -> ToolExecutionDecision
 ```
 
@@ -687,8 +687,8 @@ async def run_async(
     tool_name: str,
     tool_description: str,
     tool_params: dict[str, Any],
-    tool_call_id: Optional[str] = None,
-    confirmation_strategy_context: Optional[dict[str, Any]] = None
+    tool_call_id: str | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None
 ) -> ToolExecutionDecision
 ```
 
@@ -843,8 +843,8 @@ Deserialize the policy from a dictionary.
 def run(tool_name: str,
         tool_description: str,
         tool_params: dict[str, Any],
-        tool_call_id: Optional[str] = None,
-        **kwargs: Optional[dict[str, Any]]) -> ToolExecutionDecision
+        tool_call_id: str | None = None,
+        **kwargs: dict[str, Any] | None) -> ToolExecutionDecision
 ```
 
 Run the confirmation strategy for a given tool and its parameters.
@@ -869,12 +869,11 @@ The result of the confirmation strategy (e.g., tool output, rejection message, e
 #### ConfirmationStrategy.run\_async
 
 ```python
-async def run_async(
-        tool_name: str,
-        tool_description: str,
-        tool_params: dict[str, Any],
-        tool_call_id: Optional[str] = None,
-        **kwargs: Optional[dict[str, Any]]) -> ToolExecutionDecision
+async def run_async(tool_name: str,
+                    tool_description: str,
+                    tool_params: dict[str, Any],
+                    tool_call_id: str | None = None,
+                    **kwargs: dict[str, Any] | None) -> ToolExecutionDecision
 ```
 
 Async version of run. Run the confirmation strategy for a given tool and its parameters.
