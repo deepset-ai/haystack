@@ -45,14 +45,14 @@ summarizer.run(documents=[doc])
 #### LLMSummarizer.\_\_init\_\_
 
 ```python
-def __init__(
-        chat_generator: ChatGenerator,
-        system_prompt: Optional[str] = "Rewrite this text in summarized form.",
-        summary_detail: float = 0,
-        minimum_chunk_size: Optional[int] = 500,
-        chunk_delimiter: str = ".",
-        summarize_recursively: bool = False,
-        split_overlap: int = 0)
+def __init__(chat_generator: ChatGenerator,
+             system_prompt: str
+             | None = "Rewrite this text in summarized form.",
+             summary_detail: float = 0,
+             minimum_chunk_size: int | None = 500,
+             chunk_delimiter: str = ".",
+             summarize_recursively: bool = False,
+             split_overlap: int = 0)
 ```
 
 Initialize the Summarizer component.
@@ -174,10 +174,10 @@ The textual content summarized by the LLM.
 @component.output_types(summary=list[Document])
 def run(*,
         documents: list[Document],
-        detail: Optional[float] = None,
-        minimum_chunk_size: Optional[int] = None,
-        summarize_recursively: Optional[bool] = None,
-        system_prompt: Optional[str] = None) -> dict[str, list[Document]]
+        detail: float | None = None,
+        minimum_chunk_size: int | None = None,
+        summarize_recursively: bool | None = None,
+        system_prompt: str | None = None) -> dict[str, list[Document]]
 ```
 
 Run the summarizer on a list of documents.
