@@ -11,9 +11,11 @@ Learn how to deploy your Haystack pipelines through Docker starting from the bas
 
 ## Running Haystack in Docker
 
+It's easy to run Haystack in containers, e.g. in Docker containers.
+
 The most basic form of Haystack deployment happens through Docker containers. Becoming familiar with running and customizing Haystack Docker images is useful as they form the basis for more advanced deployment.
 
-Haystack releases are officially distributed through the [`deepset/haystack`](https://hub.docker.com/r/deepset/haystack) Docker image. Haystack images come in different flavors depending on the specific components they ship and the Haystack version. 
+Haystack releases are officially distributed through the [`deepset/haystack`](https://hub.docker.com/r/deepset/haystack) Docker image. Haystack images come in different flavors depending on the specific components they ship and the Haystack version.
 
 :::info
 At the moment, the only flavor available for Haystack is `base`, which ships exactly what you would get by installing Haystack locally with `pip install haystack-ai`.
@@ -35,9 +37,9 @@ docker run -it --rm deepset/haystack:base-v2.12.1 python -c"from haystack.versio
 
 Chances are your application will be more complex than a simple script, and you’ll need to install additional dependencies inside the Docker image along with Haystack.
 
-For example, you might want to run a simple indexing pipeline using [Chroma](../../document-stores/chromadocumentstore.mdx) as your Document Store using a Docker container. The `base` image only contains a basic install of Haystack, but you need to install the Chroma integration (`chroma-haystack`) package additionally. The best approach would be to create a custom Docker image shipping the extra dependency. 
+For example, you might want to run a simple indexing pipeline using [Chroma](../../document-stores/chromadocumentstore.mdx) as your Document Store using a Docker container. The `base` image only contains a basic install of Haystack, but you need to install the Chroma integration (`chroma-haystack`) package additionally. The best approach would be to create a custom Docker image shipping the extra dependency.
 
-Assuming you have a `main.py` script in your current folder, the Dockerfile would look like this: 
+Assuming you have a `main.py` script in your current folder, the Dockerfile would look like this:
 
 ```shell
 FROM deepset/haystack:base-v2.12.1
