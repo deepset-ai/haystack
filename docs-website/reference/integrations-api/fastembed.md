@@ -73,8 +73,8 @@ def __init__(model: str = "BAAI/bge-small-en-v1.5",
              progress_bar: bool = True,
              parallel: Optional[int] = None,
              local_files_only: bool = False,
-             meta_fields_to_embed: Optional[List[str]] = None,
-             embedding_separator: str = "\n")
+             meta_fields_to_embed: Optional[list[str]] = None,
+             embedding_separator: str = "\n") -> None
 ```
 
 Create an FastembedDocumentEmbedder component.
@@ -103,7 +103,7 @@ If None, don't use data-parallel processing, use default onnxruntime threading i
 #### FastembedDocumentEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -117,7 +117,7 @@ Dictionary with serialized data.
 #### FastembedDocumentEmbedder.warm\_up
 
 ```python
-def warm_up()
+def warm_up() -> None
 ```
 
 Initializes the component.
@@ -127,8 +127,8 @@ Initializes the component.
 #### FastembedDocumentEmbedder.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(documents: List[Document]) -> Dict[str, List[Document]]
+@component.output_types(documents=list[Document])
+def run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Embeds a list of Documents.
@@ -137,116 +137,14 @@ Embeds a list of Documents.
 
 - `documents`: List of Documents to embed.
 
+**Raises**:
+
+- `TypeError`: If the input is not a list of Documents.
+
 **Returns**:
 
 A dictionary with the following keys:
 - `documents`: List of Documents with each Document's `embedding` field set to the computed embeddings.
-
-<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder"></a>
-
-## Module haystack\_integrations.components.embedders.fastembed.fastembed\_text\_embedder
-
-<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder"></a>
-
-### FastembedTextEmbedder
-
-FastembedTextEmbedder computes string embedding using fastembed embedding models.
-
-Usage example:
-```python
-from haystack_integrations.components.embedders.fastembed import FastembedTextEmbedder
-
-text = ("It clearly says online this will work on a Mac OS system. "
-        "The disk comes and it does not, only Windows. Do Not order this if you have a Mac!!")
-
-text_embedder = FastembedTextEmbedder(
-    model="BAAI/bge-small-en-v1.5"
-)
-text_embedder.warm_up()
-
-embedding = text_embedder.run(text)["embedding"]
-```
-
-<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder.__init__"></a>
-
-#### FastembedTextEmbedder.\_\_init\_\_
-
-```python
-def __init__(model: str = "BAAI/bge-small-en-v1.5",
-             cache_dir: Optional[str] = None,
-             threads: Optional[int] = None,
-             prefix: str = "",
-             suffix: str = "",
-             progress_bar: bool = True,
-             parallel: Optional[int] = None,
-             local_files_only: bool = False)
-```
-
-Create a FastembedTextEmbedder component.
-
-**Arguments**:
-
-- `model`: Local path or name of the model in Fastembed's model hub, such as `BAAI/bge-small-en-v1.5`
-- `cache_dir`: The path to the cache directory.
-Can be set using the `FASTEMBED_CACHE_PATH` env variable.
-Defaults to `fastembed_cache` in the system's temp directory.
-- `threads`: The number of threads single onnxruntime session can use. Defaults to None.
-- `prefix`: A string to add to the beginning of each text.
-- `suffix`: A string to add to the end of each text.
-- `progress_bar`: If `True`, displays progress bar during embedding.
-- `parallel`: If > 1, data-parallel encoding will be used, recommended for offline encoding of large datasets.
-If 0, use all available cores.
-If None, don't use data-parallel processing, use default onnxruntime threading instead.
-- `local_files_only`: If `True`, only use the model files in the `cache_dir`.
-
-<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder.to_dict"></a>
-
-#### FastembedTextEmbedder.to\_dict
-
-```python
-def to_dict() -> Dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder.warm_up"></a>
-
-#### FastembedTextEmbedder.warm\_up
-
-```python
-def warm_up()
-```
-
-Initializes the component.
-
-<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder.run"></a>
-
-#### FastembedTextEmbedder.run
-
-```python
-@component.output_types(embedding=List[float])
-def run(text: str) -> Dict[str, List[float]]
-```
-
-Embeds text using the Fastembed model.
-
-**Arguments**:
-
-- `text`: A string to embed.
-
-**Raises**:
-
-- `TypeError`: If the input is not a string.
-- `RuntimeError`: If the embedding model has not been loaded.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `embedding`: A list of floats representing the embedding of the input text.
 
 <a id="haystack_integrations.components.embedders.fastembed.fastembed_sparse_document_embedder"></a>
 
@@ -310,9 +208,9 @@ def __init__(model: str = "prithivida/Splade_PP_en_v1",
              progress_bar: bool = True,
              parallel: Optional[int] = None,
              local_files_only: bool = False,
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: Optional[list[str]] = None,
              embedding_separator: str = "\n",
-             model_kwargs: Optional[Dict[str, Any]] = None)
+             model_kwargs: Optional[dict[str, Any]] = None) -> None
 ```
 
 Create an FastembedDocumentEmbedder component.
@@ -340,7 +238,7 @@ If None, don't use data-parallel processing, use default onnxruntime threading i
 #### FastembedSparseDocumentEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -354,7 +252,7 @@ Dictionary with serialized data.
 #### FastembedSparseDocumentEmbedder.warm\_up
 
 ```python
-def warm_up()
+def warm_up() -> None
 ```
 
 Initializes the component.
@@ -364,8 +262,8 @@ Initializes the component.
 #### FastembedSparseDocumentEmbedder.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(documents: List[Document]) -> Dict[str, List[Document]]
+@component.output_types(documents=list[Document])
+def run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Embeds a list of Documents.
@@ -373,6 +271,10 @@ Embeds a list of Documents.
 **Arguments**:
 
 - `documents`: List of Documents to embed.
+
+**Raises**:
+
+- `TypeError`: If the input is not a list of Documents.
 
 **Returns**:
 
@@ -416,7 +318,7 @@ def __init__(model: str = "prithivida/Splade_PP_en_v1",
              progress_bar: bool = True,
              parallel: Optional[int] = None,
              local_files_only: bool = False,
-             model_kwargs: Optional[Dict[str, Any]] = None)
+             model_kwargs: Optional[dict[str, Any]] = None) -> None
 ```
 
 Create a FastembedSparseTextEmbedder component.
@@ -440,7 +342,7 @@ If None, don't use data-parallel processing, use default onnxruntime threading i
 #### FastembedSparseTextEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -454,7 +356,7 @@ Dictionary with serialized data.
 #### FastembedSparseTextEmbedder.warm\_up
 
 ```python
-def warm_up()
+def warm_up() -> None
 ```
 
 Initializes the component.
@@ -465,7 +367,7 @@ Initializes the component.
 
 ```python
 @component.output_types(sparse_embedding=SparseEmbedding)
-def run(text: str) -> Dict[str, SparseEmbedding]
+def run(text: str) -> dict[str, SparseEmbedding]
 ```
 
 Embeds text using the Fastembed model.
@@ -477,7 +379,111 @@ Embeds text using the Fastembed model.
 **Raises**:
 
 - `TypeError`: If the input is not a string.
-- `RuntimeError`: If the embedding model has not been loaded.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `embedding`: A list of floats representing the embedding of the input text.
+
+<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder"></a>
+
+## Module haystack\_integrations.components.embedders.fastembed.fastembed\_text\_embedder
+
+<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder"></a>
+
+### FastembedTextEmbedder
+
+FastembedTextEmbedder computes string embedding using fastembed embedding models.
+
+Usage example:
+```python
+from haystack_integrations.components.embedders.fastembed import FastembedTextEmbedder
+
+text = ("It clearly says online this will work on a Mac OS system. "
+        "The disk comes and it does not, only Windows. Do Not order this if you have a Mac!!")
+
+text_embedder = FastembedTextEmbedder(
+    model="BAAI/bge-small-en-v1.5"
+)
+text_embedder.warm_up()
+
+embedding = text_embedder.run(text)["embedding"]
+```
+
+<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder.__init__"></a>
+
+#### FastembedTextEmbedder.\_\_init\_\_
+
+```python
+def __init__(model: str = "BAAI/bge-small-en-v1.5",
+             cache_dir: Optional[str] = None,
+             threads: Optional[int] = None,
+             prefix: str = "",
+             suffix: str = "",
+             progress_bar: bool = True,
+             parallel: Optional[int] = None,
+             local_files_only: bool = False) -> None
+```
+
+Create a FastembedTextEmbedder component.
+
+**Arguments**:
+
+- `model`: Local path or name of the model in Fastembed's model hub, such as `BAAI/bge-small-en-v1.5`
+- `cache_dir`: The path to the cache directory.
+Can be set using the `FASTEMBED_CACHE_PATH` env variable.
+Defaults to `fastembed_cache` in the system's temp directory.
+- `threads`: The number of threads single onnxruntime session can use. Defaults to None.
+- `prefix`: A string to add to the beginning of each text.
+- `suffix`: A string to add to the end of each text.
+- `progress_bar`: If `True`, displays progress bar during embedding.
+- `parallel`: If > 1, data-parallel encoding will be used, recommended for offline encoding of large datasets.
+If 0, use all available cores.
+If None, don't use data-parallel processing, use default onnxruntime threading instead.
+- `local_files_only`: If `True`, only use the model files in the `cache_dir`.
+
+<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder.to_dict"></a>
+
+#### FastembedTextEmbedder.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder.warm_up"></a>
+
+#### FastembedTextEmbedder.warm\_up
+
+```python
+def warm_up() -> None
+```
+
+Initializes the component.
+
+<a id="haystack_integrations.components.embedders.fastembed.fastembed_text_embedder.FastembedTextEmbedder.run"></a>
+
+#### FastembedTextEmbedder.run
+
+```python
+@component.output_types(embedding=list[float])
+def run(text: str) -> dict[str, list[float]]
+```
+
+Embeds text using the Fastembed model.
+
+**Arguments**:
+
+- `text`: A string to embed.
+
+**Raises**:
+
+- `TypeError`: If the input is not a string.
 
 **Returns**:
 
@@ -524,7 +530,7 @@ def __init__(model_name: str = "Xenova/ms-marco-MiniLM-L-6-v2",
              batch_size: int = 64,
              parallel: Optional[int] = None,
              local_files_only: bool = False,
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: Optional[list[str]] = None,
              meta_data_separator: str = "\n")
 ```
 
@@ -553,7 +559,7 @@ to the Document content.
 #### FastembedRanker.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -568,7 +574,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "FastembedRanker"
+def from_dict(cls, data: dict[str, Any]) -> "FastembedRanker"
 ```
 
 Deserializes the component from a dictionary.
@@ -596,10 +602,10 @@ Initializes the component.
 #### FastembedRanker.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(query: str,
-        documents: List[Document],
-        top_k: Optional[int] = None) -> Dict[str, List[Document]]
+        documents: list[Document],
+        top_k: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Returns a list of documents ranked by their similarity to the given query, using FastEmbed.
@@ -618,3 +624,4 @@ Returns a list of documents ranked by their similarity to the given query, using
 
 A dictionary with the following keys:
 - `documents`: A list of documents closest to the query, sorted from most similar to least similar.
+
