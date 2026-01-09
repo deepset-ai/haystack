@@ -40,19 +40,19 @@ print(response)
 ```python
 def __init__(
         model: str,
-        aws_access_key_id: Optional[Secret] = Secret.from_env_var(
+        aws_access_key_id: Secret | None = Secret.from_env_var(
             ["AWS_ACCESS_KEY_ID"], strict=False),
-        aws_secret_access_key: Optional[Secret] = Secret.
-    from_env_var(  # noqa: B008
+        aws_secret_access_key: Secret
+    | None = Secret.from_env_var(  # noqa: B008
         ["AWS_SECRET_ACCESS_KEY"], strict=False),
-        aws_session_token: Optional[Secret] = Secret.from_env_var(
+        aws_session_token: Secret | None = Secret.from_env_var(
             ["AWS_SESSION_TOKEN"], strict=False),
-        aws_region_name: Optional[Secret] = Secret.from_env_var(
+        aws_region_name: Secret | None = Secret.from_env_var(
             ["AWS_DEFAULT_REGION"], strict=False),
-        aws_profile_name: Optional[Secret] = Secret.from_env_var(
-            ["AWS_PROFILE"], strict=False),
-        aws_custom_attributes: Optional[Dict[str, Any]] = None,
-        generation_kwargs: Optional[Dict[str, Any]] = None)
+        aws_profile_name: Secret | None = Secret.from_env_var(["AWS_PROFILE"],
+                                                              strict=False),
+        aws_custom_attributes: dict[str, Any] | None = None,
+        generation_kwargs: dict[str, Any] | None = None)
 ```
 
 Instantiates the session with SageMaker.
@@ -88,7 +88,7 @@ Specifically, Llama-2 models support the following inference payload parameters:
 #### SagemakerGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -103,7 +103,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "SagemakerGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "SagemakerGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -121,11 +121,11 @@ Deserialized component.
 #### SagemakerGenerator.run
 
 ```python
-@component.output_types(replies=List[str], meta=List[Dict[str, Any]])
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
 def run(
     prompt: str,
-    generation_kwargs: Optional[Dict[str, Any]] = None
-) -> Dict[str, Union[List[str], List[Dict[str, Any]]]]
+    generation_kwargs: dict[str, Any] | None = None
+) -> dict[str, list[str] | list[dict[str, Any]]]
 ```
 
 Invoke the text generation inference based on the provided prompt and generation parameters.
@@ -147,3 +147,4 @@ potentially override the parameters passed in the `__init__` method.
 A dictionary with the following keys:
 - `replies`: A list of strings containing the generated responses
 - `meta`: A list of dictionaries containing the metadata for each response.
+
