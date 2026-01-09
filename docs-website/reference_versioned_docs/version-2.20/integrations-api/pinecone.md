@@ -56,7 +56,7 @@ assert res['retriever']['documents'][0].content == "There are over 7,000 languag
 ```python
 def __init__(*,
              document_store: PineconeDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
+             filters: Optional[dict[str, Any]] = None,
              top_k: int = 10,
              filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
 ```
@@ -77,7 +77,7 @@ def __init__(*,
 #### PineconeEmbeddingRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -92,7 +92,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "PineconeEmbeddingRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "PineconeEmbeddingRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -110,10 +110,10 @@ Deserialized component.
 #### PineconeEmbeddingRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(query_embedding: List[float],
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> Dict[str, List[Document]]
+@component.output_types(documents=list[Document])
+def run(query_embedding: list[float],
+        filters: Optional[dict[str, Any]] = None,
+        top_k: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the `PineconeDocumentStore`, based on their dense embeddings.
@@ -135,10 +135,10 @@ List of Document similar to `query_embedding`.
 #### PineconeEmbeddingRetriever.run\_async
 
 ```python
-@component.output_types(documents=List[Document])
-async def run_async(query_embedding: List[float],
-                    filters: Optional[Dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> Dict[str, List[Document]]
+@component.output_types(documents=list[Document])
+async def run_async(query_embedding: list[float],
+                    filters: Optional[dict[str, Any]] = None,
+                    top_k: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents from the `PineconeDocumentStore`, based on their dense embeddings.
@@ -182,7 +182,7 @@ def __init__(*,
              namespace: str = "default",
              batch_size: int = 100,
              dimension: int = 768,
-             spec: Optional[Dict[str, Any]] = None,
+             spec: Optional[dict[str, Any]] = None,
              metric: Literal["cosine", "euclidean", "dotproduct"] = "cosine")
 ```
 
@@ -233,7 +233,7 @@ Close the associated asynchronous resources. To be invoked manually when the Doc
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "PineconeDocumentStore"
+def from_dict(cls, data: dict[str, Any]) -> "PineconeDocumentStore"
 ```
 
 Deserializes the component from a dictionary.
@@ -251,7 +251,7 @@ Deserialized component.
 #### PineconeDocumentStore.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -285,7 +285,7 @@ Asynchronously returns how many documents are present in the document store.
 #### PineconeDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: List[Document],
+def write_documents(documents: list[Document],
                     policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
 ```
 
@@ -307,7 +307,7 @@ The number of documents written to the document store.
 
 ```python
 async def write_documents_async(
-        documents: List[Document],
+        documents: list[Document],
         policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
 ```
 
@@ -329,13 +329,13 @@ The number of documents written to the document store.
 
 ```python
 def filter_documents(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+        filters: Optional[dict[str, Any]] = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
 
 For a detailed specification of the filters,
-refer to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering)
+refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
 **Arguments**:
 
@@ -351,7 +351,7 @@ A list of Documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+        filters: Optional[dict[str, Any]] = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
@@ -369,7 +369,7 @@ A list of Documents that match the given filters.
 #### PineconeDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: List[str]) -> None
+def delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes documents that match the provided `document_ids` from the document store.
@@ -383,7 +383,7 @@ Deletes documents that match the provided `document_ids` from the document store
 #### PineconeDocumentStore.delete\_documents\_async
 
 ```python
-async def delete_documents_async(document_ids: List[str]) -> None
+async def delete_documents_async(document_ids: list[str]) -> None
 ```
 
 Asynchronously deletes documents that match the provided `document_ids` from the document store.
@@ -411,4 +411,95 @@ async def delete_all_documents_async() -> None
 ```
 
 Asynchronously deletes all documents in the document store.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.delete_by_filter"></a>
+
+#### PineconeDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+Pinecone does not support server-side delete by filter, so this method
+first searches for matching documents, then deletes them by ID.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.delete_by_filter_async"></a>
+
+#### PineconeDocumentStore.delete\_by\_filter\_async
+
+```python
+async def delete_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously deletes all documents that match the provided filters.
+
+Pinecone does not support server-side delete by filter, so this method
+first searches for matching documents, then deletes them by ID.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.update_by_filter"></a>
+
+#### PineconeDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+Pinecone does not support server-side update by filter, so this method
+first searches for matching documents, then updates their metadata and re-writes them.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update. This will be merged with existing metadata.
+
+**Returns**:
+
+The number of documents updated.
+
+<a id="haystack_integrations.document_stores.pinecone.document_store.PineconeDocumentStore.update_by_filter_async"></a>
+
+#### PineconeDocumentStore.update\_by\_filter\_async
+
+```python
+async def update_by_filter_async(filters: dict[str, Any],
+                                 meta: dict[str, Any]) -> int
+```
+
+Asynchronously updates the metadata of all documents that match the provided filters.
+
+Pinecone does not support server-side update by filter, so this method
+first searches for matching documents, then updates their metadata and re-writes them.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update. This will be merged with existing metadata.
+
+**Returns**:
+
+The number of documents updated.
 

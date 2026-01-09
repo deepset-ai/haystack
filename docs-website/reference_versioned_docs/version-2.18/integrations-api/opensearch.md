@@ -676,7 +676,9 @@ It allows you to store and retrieve documents from an OpenSearch index.
 
 Usage example:
 ```python
-from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
+from haystack_integrations.document_stores.opensearch import (
+    OpenSearchDocumentStore,
+)
 from haystack import Document
 
 document_store = OpenSearchDocumentStore(hosts="localhost:9200")
@@ -944,9 +946,9 @@ The number of documents written to the document store.
 #### OpenSearchDocumentStore.delete\_documents
 
 ```python
-def delete_documents(
-        document_ids: list[str],
-        refresh: Literal["wait_for", True, False] = "wait_for") -> None
+def delete_documents(document_ids: list[str],
+                     refresh: Literal["wait_for", True, False] = "wait_for",
+                     routing: Optional[dict[str, str]] = None) -> None
 ```
 
 Deletes documents that match the provided `document_ids` from the document store.
@@ -959,6 +961,9 @@ Deletes documents that match the provided `document_ids` from the document store
 - `False`: Do not refresh (better performance for bulk operations).
 - `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
 For more details, see the [OpenSearch refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/index-document/).
+- `routing`: A dictionary mapping document IDs to their routing values.
+Routing values are used to determine the shard where documents are stored.
+If provided, the routing value for each document will be used during deletion.
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_documents_async"></a>
 
@@ -967,7 +972,8 @@ For more details, see the [OpenSearch refresh documentation](https://opensearch.
 ```python
 async def delete_documents_async(
         document_ids: list[str],
-        refresh: Literal["wait_for", True, False] = "wait_for") -> None
+        refresh: Literal["wait_for", True, False] = "wait_for",
+        routing: Optional[dict[str, str]] = None) -> None
 ```
 
 Asynchronously deletes documents that match the provided `document_ids` from the document store.
@@ -980,6 +986,9 @@ Asynchronously deletes documents that match the provided `document_ids` from the
 - `False`: Do not refresh (better performance for bulk operations).
 - `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
 For more details, see the [OpenSearch refresh documentation](https://opensearch.org/docs/latest/api-reference/document-apis/index-document/).
+- `routing`: A dictionary mapping document IDs to their routing values.
+Routing values are used to determine the shard where documents are stored.
+If provided, the routing value for each document will be used during deletion.
 
 <a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.delete_all_documents"></a>
 

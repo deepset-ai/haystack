@@ -155,7 +155,7 @@ Warm up the component by initializing the authenticator handler and testing the 
 #### SnowflakeTableRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -170,7 +170,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "SnowflakeTableRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "SnowflakeTableRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -189,7 +189,10 @@ Deserialized component.
 
 ```python
 @component.output_types(dataframe=DataFrame, table=str)
-def run(query: str, return_markdown: Optional[bool] = None) -> Dict[str, Any]
+def run(
+    query: str,
+    return_markdown: Optional[bool] = None
+) -> dict[str, Union[DataFrame, str]]
 ```
 
 Executes a SQL query against a Snowflake database using ADBC and Polars.
@@ -205,3 +208,4 @@ If not provided, uses the value set during initialization.
 A dictionary containing:
 - `"dataframe"`: A Pandas DataFrame with the query results.
 - `"table"`: A Markdown-formatted string representation of the DataFrame.
+

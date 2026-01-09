@@ -16,6 +16,7 @@ from haystack.core.pipeline.base import (
     PipelineBase,
 )
 from haystack.core.pipeline.breakpoint import (
+    SnapshotCallback,
     _create_pipeline_snapshot,
     _save_pipeline_snapshot,
     _validate_break_point_against_pipeline,
@@ -112,6 +113,7 @@ class Pipeline(PipelineBase):
         *,
         break_point: Breakpoint | AgentBreakpoint | None = None,
         pipeline_snapshot: PipelineSnapshot | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
     ) -> dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -193,6 +195,14 @@ class Pipeline(PipelineBase):
 
         :param pipeline_snapshot:
             A dictionary containing a snapshot of a previously saved pipeline execution.
+
+        :param snapshot_callback:
+            Optional callback function that is invoked when a pipeline snapshot is created.
+            The callback receives a `PipelineSnapshot` object and can return an optional string
+            (e.g., a file path or identifier).
+            If provided, the callback is used instead of the default file-saving behavior,
+            allowing custom handling of snapshots (e.g., saving to a database, sending to a remote service).
+            If not provided, the default behavior saves snapshots to a JSON file.
 
         :returns:
             A dictionary where each entry corresponds to a component name
@@ -363,6 +373,7 @@ class Pipeline(PipelineBase):
                 # If AgentBreakpoint is provided pass onto Agent's inputs
                 if isinstance(break_point, AgentBreakpoint) and component_name == break_point.agent_name:
                     component_inputs["break_point"] = break_point
+                    component_inputs["snapshot_callback"] = snapshot_callback
 
                 try:
                     component_outputs = self._run_component(
@@ -407,7 +418,9 @@ class Pipeline(PipelineBase):
                     # Attach the pipeline snapshot to the error before re-raising
                     error.pipeline_snapshot = pipeline_snapshot
                     full_file_path = _save_pipeline_snapshot(
-                        pipeline_snapshot=pipeline_snapshot, raise_on_failure=isinstance(error, BreakpointException)
+                        pipeline_snapshot=pipeline_snapshot,
+                        raise_on_failure=isinstance(error, BreakpointException),
+                        snapshot_callback=snapshot_callback,
                     )
                     error.pipeline_snapshot_file_path = full_file_path
                     raise error

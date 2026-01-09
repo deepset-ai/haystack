@@ -1156,7 +1156,7 @@ If the AWS environment is configured correctly, the AWS credentials are not requ
 automatically from the environment or the AWS configuration file.
 If the AWS environment is not configured, set `aws_access_key_id`, `aws_secret_access_key`,
   and `aws_region_name` as environment variables or pass them as
- [Secret](https://docs.haystack.deepset.ai/v2.0/docs/secret-management) arguments. Make sure the region you set
+ [Secret](https://docs.haystack.deepset.ai/docs/secret-management) arguments. Make sure the region you set
 supports Amazon Bedrock.
 
 <a id="haystack_integrations.components.generators.amazon_bedrock.chat.chat_generator.AmazonBedrockChatGenerator.__init__"></a>
@@ -1374,7 +1374,7 @@ If the AWS environment is configured correctly, the AWS credentials are not requ
 automatically from the environment or the AWS configuration file.
 If the AWS environment is not configured, set `aws_access_key_id`, `aws_secret_access_key`,
 `aws_session_token`, and `aws_region_name` as environment variables or pass them as
- [Secret](https://docs.haystack.deepset.ai/v2.0/docs/secret-management) arguments. Make sure the region you set
+ [Secret](https://docs.haystack.deepset.ai/docs/secret-management) arguments. Make sure the region you set
 supports Amazon Bedrock.
 
 <a id="haystack_integrations.components.generators.amazon_bedrock.generator.AmazonBedrockGenerator.__init__"></a>
@@ -1570,7 +1570,7 @@ If the AWS environment is configured correctly, the AWS credentials are not requ
 automatically from the environment or the AWS configuration file.
 If the AWS environment is not configured, set `aws_access_key_id`, `aws_secret_access_key`,
 and `aws_region_name` as environment variables or pass them as
-[Secret](https://docs.haystack.deepset.ai/v2.0/docs/secret-management) arguments. Make sure the region you set
+[Secret](https://docs.haystack.deepset.ai/docs/secret-management) arguments. Make sure the region you set
 supports Amazon Bedrock.
 
 <a id="haystack_integrations.components.rankers.amazon_bedrock.ranker.AmazonBedrockRanker.to_dict"></a>
