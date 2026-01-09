@@ -108,9 +108,9 @@ This class provides a storage class for downloading files from an AWS S3 bucket.
 ```python
 def __init__(s3_bucket: str,
              session: Session,
-             s3_prefix: Optional[str] = None,
-             endpoint_url: Optional[str] = None,
-             config: Optional[Config] = None) -> None
+             s3_prefix: str | None = None,
+             endpoint_url: str | None = None,
+             config: Config | None = None) -> None
 ```
 
 Initializes the S3Storage object with the provided parameters.
@@ -179,24 +179,23 @@ Supports filtering by file extensions.
 ```python
 def __init__(
     *,
-    aws_access_key_id: Optional[Secret] = Secret.from_env_var(
-        "AWS_ACCESS_KEY_ID", strict=False),
-    aws_secret_access_key: Optional[Secret] = Secret.
-    from_env_var(  # noqa: B008
+    aws_access_key_id: Secret | None = Secret.from_env_var("AWS_ACCESS_KEY_ID",
+                                                           strict=False),
+    aws_secret_access_key: Secret | None = Secret.from_env_var(  # noqa: B008
         "AWS_SECRET_ACCESS_KEY", strict=False),
-    aws_session_token: Optional[Secret] = Secret.from_env_var(
-        "AWS_SESSION_TOKEN", strict=False),
-    aws_region_name: Optional[Secret] = Secret.from_env_var(
-        "AWS_DEFAULT_REGION", strict=False),
-    aws_profile_name: Optional[Secret] = Secret.from_env_var("AWS_PROFILE",
-                                                             strict=False),
-    boto3_config: Optional[dict[str, Any]] = None,
-    file_root_path: Optional[str] = None,
-    file_extensions: Optional[list[str]] = None,
+    aws_session_token: Secret | None = Secret.from_env_var("AWS_SESSION_TOKEN",
+                                                           strict=False),
+    aws_region_name: Secret | None = Secret.from_env_var("AWS_DEFAULT_REGION",
+                                                         strict=False),
+    aws_profile_name: Secret | None = Secret.from_env_var("AWS_PROFILE",
+                                                          strict=False),
+    boto3_config: dict[str, Any] | None = None,
+    file_root_path: str | None = None,
+    file_extensions: list[str] | None = None,
     file_name_meta_key: str = "file_name",
     max_workers: int = 32,
     max_cache_size: int = 100,
-    s3_key_generation_function: Optional[Callable[[Document], str]] = None
+    s3_key_generation_function: Callable[[Document], str] | None = None
 ) -> None
 ```
 
@@ -345,22 +344,22 @@ print(result['documents'][0].embedding)
 ```python
 def __init__(
         model: str,
-        aws_access_key_id: Optional[Secret] = Secret.from_env_var(
+        aws_access_key_id: Secret | None = Secret.from_env_var(
             "AWS_ACCESS_KEY_ID", strict=False),
-        aws_secret_access_key: Optional[Secret] = Secret.
-    from_env_var(  # noqa: B008
+        aws_secret_access_key: Secret
+    | None = Secret.from_env_var(  # noqa: B008
         "AWS_SECRET_ACCESS_KEY", strict=False),
-        aws_session_token: Optional[Secret] = Secret.from_env_var(
+        aws_session_token: Secret | None = Secret.from_env_var(
             "AWS_SESSION_TOKEN", strict=False),
-        aws_region_name: Optional[Secret] = Secret.from_env_var(
+        aws_region_name: Secret | None = Secret.from_env_var(
             "AWS_DEFAULT_REGION", strict=False),
-        aws_profile_name: Optional[Secret] = Secret.from_env_var("AWS_PROFILE",
-                                                                 strict=False),
+        aws_profile_name: Secret | None = Secret.from_env_var("AWS_PROFILE",
+                                                              strict=False),
         batch_size: int = 32,
         progress_bar: bool = True,
-        meta_fields_to_embed: Optional[list[str]] = None,
+        meta_fields_to_embed: list[str] | None = None,
         embedding_separator: str = "\n",
-        boto3_config: Optional[dict[str, Any]] = None,
+        boto3_config: dict[str, Any] | None = None,
         **kwargs: Any) -> None
 ```
 
@@ -508,22 +507,22 @@ print(documents_with_embeddings)
 def __init__(
         *,
         model: str,
-        aws_access_key_id: Optional[Secret] = Secret.from_env_var(
+        aws_access_key_id: Secret | None = Secret.from_env_var(
             "AWS_ACCESS_KEY_ID", strict=False),
-        aws_secret_access_key: Optional[Secret] = Secret.
-    from_env_var(  # noqa: B008
+        aws_secret_access_key: Secret
+    | None = Secret.from_env_var(  # noqa: B008
         "AWS_SECRET_ACCESS_KEY", strict=False),
-        aws_session_token: Optional[Secret] = Secret.from_env_var(
+        aws_session_token: Secret | None = Secret.from_env_var(
             "AWS_SESSION_TOKEN", strict=False),
-        aws_region_name: Optional[Secret] = Secret.from_env_var(
+        aws_region_name: Secret | None = Secret.from_env_var(
             "AWS_DEFAULT_REGION", strict=False),
-        aws_profile_name: Optional[Secret] = Secret.from_env_var("AWS_PROFILE",
-                                                                 strict=False),
+        aws_profile_name: Secret | None = Secret.from_env_var("AWS_PROFILE",
+                                                              strict=False),
         file_path_meta_field: str = "file_path",
-        root_path: Optional[str] = None,
-        image_size: Optional[tuple[int, int]] = None,
+        root_path: str | None = None,
+        image_size: tuple[int, int] | None = None,
         progress_bar: bool = True,
-        boto3_config: Optional[dict[str, Any]] = None,
+        boto3_config: dict[str, Any] | None = None,
         **kwargs: Any) -> None
 ```
 
@@ -650,18 +649,18 @@ print(text_embedder.run("I love Paris in the summer."))
 ```python
 def __init__(
         model: str,
-        aws_access_key_id: Optional[Secret] = Secret.from_env_var(
+        aws_access_key_id: Secret | None = Secret.from_env_var(
             "AWS_ACCESS_KEY_ID", strict=False),
-        aws_secret_access_key: Optional[Secret] = Secret.
-    from_env_var(  # noqa: B008
+        aws_secret_access_key: Secret
+    | None = Secret.from_env_var(  # noqa: B008
         "AWS_SECRET_ACCESS_KEY", strict=False),
-        aws_session_token: Optional[Secret] = Secret.from_env_var(
+        aws_session_token: Secret | None = Secret.from_env_var(
             "AWS_SESSION_TOKEN", strict=False),
-        aws_region_name: Optional[Secret] = Secret.from_env_var(
+        aws_region_name: Secret | None = Secret.from_env_var(
             "AWS_DEFAULT_REGION", strict=False),
-        aws_profile_name: Optional[Secret] = Secret.from_env_var("AWS_PROFILE",
-                                                                 strict=False),
-        boto3_config: Optional[dict[str, Any]] = None,
+        aws_profile_name: Secret | None = Secret.from_env_var("AWS_PROFILE",
+                                                              strict=False),
+        boto3_config: dict[str, Any] | None = None,
         **kwargs: Any) -> None
 ```
 
@@ -1166,23 +1165,23 @@ supports Amazon Bedrock.
 ```python
 def __init__(
         model: str,
-        aws_access_key_id: Optional[Secret] = Secret.from_env_var(
+        aws_access_key_id: Secret | None = Secret.from_env_var(
             ["AWS_ACCESS_KEY_ID"], strict=False),
-        aws_secret_access_key: Optional[Secret] = Secret.
-    from_env_var(  # noqa: B008
+        aws_secret_access_key: Secret
+    | None = Secret.from_env_var(  # noqa: B008
         ["AWS_SECRET_ACCESS_KEY"], strict=False),
-        aws_session_token: Optional[Secret] = Secret.from_env_var(
+        aws_session_token: Secret | None = Secret.from_env_var(
             ["AWS_SESSION_TOKEN"], strict=False),
-        aws_region_name: Optional[Secret] = Secret.from_env_var(
+        aws_region_name: Secret | None = Secret.from_env_var(
             ["AWS_DEFAULT_REGION"], strict=False),
-        aws_profile_name: Optional[Secret] = Secret.from_env_var(
-            ["AWS_PROFILE"], strict=False),
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        boto3_config: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
+        aws_profile_name: Secret | None = Secret.from_env_var(["AWS_PROFILE"],
+                                                              strict=False),
+        generation_kwargs: dict[str, Any] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        boto3_config: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
         *,
-        guardrail_config: Optional[dict[str, str]] = None) -> None
+        guardrail_config: dict[str, str] | None = None) -> None
 ```
 
 Initializes the `AmazonBedrockChatGenerator` with the provided parameters. The parameters are passed to the
@@ -1274,9 +1273,9 @@ Instance of `AmazonBedrockChatGenerator`.
 ```python
 @component.output_types(replies=list[ChatMessage])
 def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None) -> dict[str, list[ChatMessage]]
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Executes a synchronous inference call to the Amazon Bedrock model using the Converse API.
@@ -1311,9 +1310,9 @@ A dictionary containing the model-generated replies under the `"replies"` key.
 @component.output_types(replies=list[ChatMessage])
 async def run_async(
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None) -> dict[str, list[ChatMessage]]
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Executes an asynchronous inference call to the Amazon Bedrock model using the Converse API.
@@ -1384,22 +1383,22 @@ supports Amazon Bedrock.
 ```python
 def __init__(
         model: str,
-        aws_access_key_id: Optional[Secret] = Secret.from_env_var(
+        aws_access_key_id: Secret | None = Secret.from_env_var(
             "AWS_ACCESS_KEY_ID", strict=False),
-        aws_secret_access_key: Optional[Secret] = Secret.
-    from_env_var(  # noqa: B008
+        aws_secret_access_key: Secret
+    | None = Secret.from_env_var(  # noqa: B008
         "AWS_SECRET_ACCESS_KEY", strict=False),
-        aws_session_token: Optional[Secret] = Secret.from_env_var(
+        aws_session_token: Secret | None = Secret.from_env_var(
             "AWS_SESSION_TOKEN", strict=False),
-        aws_region_name: Optional[Secret] = Secret.from_env_var(
+        aws_region_name: Secret | None = Secret.from_env_var(
             "AWS_DEFAULT_REGION", strict=False),
-        aws_profile_name: Optional[Secret] = Secret.from_env_var("AWS_PROFILE",
-                                                                 strict=False),
-        max_length: Optional[int] = None,
-        truncate: Optional[bool] = None,
-        streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
-        boto3_config: Optional[dict[str, Any]] = None,
-        model_family: Optional[MODEL_FAMILIES] = None,
+        aws_profile_name: Secret | None = Secret.from_env_var("AWS_PROFILE",
+                                                              strict=False),
+        max_length: int | None = None,
+        truncate: bool | None = None,
+        streaming_callback: Callable[[StreamingChunk], None] | None = None,
+        boto3_config: dict[str, Any] | None = None,
+        model_family: MODEL_FAMILIES | None = None,
         **kwargs: Any) -> None
 ```
 
@@ -1440,9 +1439,9 @@ not supported.
 @component.output_types(replies=list[str], meta=dict[str, Any])
 def run(
     prompt: str,
-    streaming_callback: Optional[Callable[[StreamingChunk], None]] = None,
-    generation_kwargs: Optional[dict[str, Any]] = None
-) -> dict[str, Union[list[str], dict[str, Any]]]
+    streaming_callback: Callable[[StreamingChunk], None] | None = None,
+    generation_kwargs: dict[str, Any] | None = None
+) -> dict[str, list[str] | dict[str, Any]]
 ```
 
 Generates a list of string response to the given prompt.
@@ -1473,7 +1472,7 @@ A dictionary with the following keys:
 def get_model_adapter(
         cls,
         model: str,
-        model_family: Optional[str] = None) -> type[BedrockModelAdapter]
+        model_family: str | None = None) -> type[BedrockModelAdapter]
 ```
 
 Gets the model adapter for the given model.
@@ -1614,7 +1613,7 @@ The deserialized component.
 @component.output_types(documents=list[Document])
 def run(query: str,
         documents: list[Document],
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Use the Amazon Bedrock Reranker to re-rank the list of documents based on the query.
