@@ -5,123 +5,6 @@ description: "Anthropic integration for Haystack"
 slug: "/integrations-anthropic"
 ---
 
-<a id="haystack_integrations.components.generators.anthropic.generator"></a>
-
-## Module haystack\_integrations.components.generators.anthropic.generator
-
-<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator"></a>
-
-### AnthropicGenerator
-
-```python
-@component
-class AnthropicGenerator()
-```
-
-Enables text generation using Anthropic large language models (LLMs). It supports the Claude family of models.
-
-Although Anthropic natively supports a much richer messaging API, we have intentionally simplified it in this
-component so that the main input/output interface is string-based.
-For more complete support, consider using the AnthropicChatGenerator.
-
-```python
-from haystack_integrations.components.generators.anthropic import AnthropicGenerator
-
-client = AnthropicGenerator(model="claude-sonnet-4-20250514")
-response = client.run("What's Natural Language Processing? Be brief.")
-print(response)
->>{'replies': ['Natural language processing (NLP) is a branch of artificial intelligence focused on enabling
->>computers to understand, interpret, and manipulate human language. The goal of NLP is to read, decipher,
->> understand, and make sense of the human languages in a manner that is valuable.'], 'meta': {'model':
->> 'claude-2.1', 'index': 0, 'finish_reason': 'end_turn', 'usage': {'input_tokens': 18, 'output_tokens': 58}}}
-```
-
-<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.__init__"></a>
-
-#### AnthropicGenerator.\_\_init\_\_
-
-```python
-def __init__(api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
-             model: str = "claude-sonnet-4-20250514",
-             streaming_callback: Optional[Callable[[StreamingChunk],
-                                                   None]] = None,
-             system_prompt: Optional[str] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             *,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None)
-```
-
-Initialize the AnthropicGenerator.
-
-**Arguments**:
-
-- `api_key`: The Anthropic API key.
-- `model`: The name of the Anthropic model to use.
-- `streaming_callback`: An optional callback function to handle streaming chunks.
-- `system_prompt`: An optional system prompt to use for generation.
-- `generation_kwargs`: Additional keyword arguments for generation.
-
-<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.to_dict"></a>
-
-#### AnthropicGenerator.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Serialize this component to a dictionary.
-
-**Returns**:
-
-The serialized component as a dictionary.
-
-<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.from_dict"></a>
-
-#### AnthropicGenerator.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "AnthropicGenerator"
-```
-
-Deserialize this component from a dictionary.
-
-**Arguments**:
-
-- `data`: The dictionary representation of this component.
-
-**Returns**:
-
-The deserialized component instance.
-
-<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.run"></a>
-
-#### AnthropicGenerator.run
-
-```python
-@component.output_types(replies=list[str], meta=list[dict[str, Any]])
-def run(
-    prompt: str,
-    generation_kwargs: Optional[dict[str, Any]] = None,
-    streaming_callback: Optional[Callable[[StreamingChunk], None]] = None
-) -> dict[str, Union[list[str], list[dict[str, Any]]]]
-```
-
-Generate replies using the Anthropic API.
-
-**Arguments**:
-
-- `prompt`: The input prompt for generation.
-- `generation_kwargs`: Additional keyword arguments for generation.
-- `streaming_callback`: An optional callback function to handle streaming chunks.
-
-**Returns**:
-
-A dictionary containing:
-- `replies`: A list of generated replies.
-- `meta`: A list of metadata dictionaries for each reply.
-
 <a id="haystack_integrations.components.generators.anthropic.chat.chat_generator"></a>
 
 ## Module haystack\_integrations.components.generators.anthropic.chat.chat\_generator
@@ -192,13 +75,13 @@ result = generator.run(messages)
 ```python
 def __init__(api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
              model: str = "claude-sonnet-4-5",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
+             streaming_callback: StreamingCallbackT | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
              ignore_tools_thinking_messages: bool = True,
-             tools: Optional[ToolsType] = None,
+             tools: ToolsType | None = None,
              *,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None)
+             timeout: float | None = None,
+             max_retries: int | None = None)
 ```
 
 Creates an instance of AnthropicChatGenerator.
@@ -276,9 +159,9 @@ The deserialized component instance.
 ```python
 @component.output_types(replies=list[ChatMessage])
 def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None) -> dict[str, list[ChatMessage]]
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Invokes the Anthropic API with the given messages and generation kwargs.
@@ -305,9 +188,9 @@ A dictionary with the following keys:
 @component.output_types(replies=list[ChatMessage])
 async def run_async(
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None) -> dict[str, list[ChatMessage]]
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None) -> dict[str, list[ChatMessage]]
 ```
 
 Async version of the run method. Invokes the Anthropic API with the given messages and generation kwargs.
@@ -387,14 +270,14 @@ For more details on supported models and their capabilities, refer to the Anthro
 def __init__(region: str,
              project_id: str,
              model: str = "claude-sonnet-4@20250514",
-             streaming_callback: Optional[Callable[[StreamingChunk],
-                                                   None]] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
+             streaming_callback: Callable[[StreamingChunk], None]
+             | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
              ignore_tools_thinking_messages: bool = True,
-             tools: Optional[ToolsType] = None,
+             tools: ToolsType | None = None,
              *,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None)
+             timeout: float | None = None,
+             max_retries: int | None = None)
 ```
 
 Creates an instance of AnthropicVertexChatGenerator.
@@ -462,4 +345,121 @@ Deserialize this component from a dictionary.
 **Returns**:
 
 The deserialized component instance.
+
+<a id="haystack_integrations.components.generators.anthropic.generator"></a>
+
+## Module haystack\_integrations.components.generators.anthropic.generator
+
+<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator"></a>
+
+### AnthropicGenerator
+
+```python
+@component
+class AnthropicGenerator()
+```
+
+Enables text generation using Anthropic large language models (LLMs). It supports the Claude family of models.
+
+Although Anthropic natively supports a much richer messaging API, we have intentionally simplified it in this
+component so that the main input/output interface is string-based.
+For more complete support, consider using the AnthropicChatGenerator.
+
+```python
+from haystack_integrations.components.generators.anthropic import AnthropicGenerator
+
+client = AnthropicGenerator(model="claude-sonnet-4-20250514")
+response = client.run("What's Natural Language Processing? Be brief.")
+print(response)
+>>{'replies': ['Natural language processing (NLP) is a branch of artificial intelligence focused on enabling
+>>computers to understand, interpret, and manipulate human language. The goal of NLP is to read, decipher,
+>> understand, and make sense of the human languages in a manner that is valuable.'], 'meta': {'model':
+>> 'claude-2.1', 'index': 0, 'finish_reason': 'end_turn', 'usage': {'input_tokens': 18, 'output_tokens': 58}}}
+```
+
+<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.__init__"></a>
+
+#### AnthropicGenerator.\_\_init\_\_
+
+```python
+def __init__(api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
+             model: str = "claude-sonnet-4-20250514",
+             streaming_callback: Callable[[StreamingChunk], None]
+             | None = None,
+             system_prompt: str | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
+             *,
+             timeout: float | None = None,
+             max_retries: int | None = None)
+```
+
+Initialize the AnthropicGenerator.
+
+**Arguments**:
+
+- `api_key`: The Anthropic API key.
+- `model`: The name of the Anthropic model to use.
+- `streaming_callback`: An optional callback function to handle streaming chunks.
+- `system_prompt`: An optional system prompt to use for generation.
+- `generation_kwargs`: Additional keyword arguments for generation.
+
+<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.to_dict"></a>
+
+#### AnthropicGenerator.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns**:
+
+The serialized component as a dictionary.
+
+<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.from_dict"></a>
+
+#### AnthropicGenerator.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "AnthropicGenerator"
+```
+
+Deserialize this component from a dictionary.
+
+**Arguments**:
+
+- `data`: The dictionary representation of this component.
+
+**Returns**:
+
+The deserialized component instance.
+
+<a id="haystack_integrations.components.generators.anthropic.generator.AnthropicGenerator.run"></a>
+
+#### AnthropicGenerator.run
+
+```python
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
+def run(
+    prompt: str,
+    generation_kwargs: dict[str, Any] | None = None,
+    streaming_callback: Callable[[StreamingChunk], None] | None = None
+) -> dict[str, list[str] | list[dict[str, Any]]]
+```
+
+Generate replies using the Anthropic API.
+
+**Arguments**:
+
+- `prompt`: The input prompt for generation.
+- `generation_kwargs`: Additional keyword arguments for generation.
+- `streaming_callback`: An optional callback function to handle streaming chunks.
+
+**Returns**:
+
+A dictionary containing:
+- `replies`: A list of generated replies.
+- `meta`: A list of metadata dictionaries for each reply.
 
