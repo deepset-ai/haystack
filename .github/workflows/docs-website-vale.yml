@@ -3,11 +3,7 @@ name: Vale Lint
 on:
   pull_request:
     paths:
-      - 'docs-website/**'
-  push:
-    branches: [ main ]
-    paths:
-      - 'docs-website/**'
+      - 'docs-website/docs/**'
 
 permissions:
   contents: read
@@ -26,6 +22,7 @@ jobs:
         with:
           node-version: '20'
 
+      # mdx2vast is needed to support mdx files: https://vale.sh/docs/formats/mdx
       - name: Install mdx2vast
         run: npm install -g mdx2vast
 
