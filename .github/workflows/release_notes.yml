@@ -17,15 +17,20 @@ on:
 
 jobs:
   reno:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    env:
+      PYTHON_VERSION: "3.10"
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           # With the default value of 1, there are corner cases where tj-actions/changed-files
           # fails with a `no merge base` error
           fetch-depth: 0
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
       - name: Get release note files
         id: changed-files
         uses: tj-actions/changed-files@v47
@@ -48,3 +53,28 @@ jobs:
         run: |
           pip install "reno<5"
           reno lint .  # it is not possible to pass a list of files to reno lint
+
+      - name: Check reStructuredText code formatting
+        if: steps.changed-files.outputs.any_changed == 'true' && !contains( github.event.pull_request.labels.*.name, 'ignore-for-release-notes')
+        shell: python
+        run: |
+          files = "${{ steps.changed-files.outputs.all_changed_files }}".split()
+          errors = []
+
+          for filepath in files:
+            with open(filepath) as f:
+              for line_no, line in enumerate(f, start=1):
+                # Check for triple backticks (Markdown code blocks)
+                if "```" in line:
+                  err = (f"Format error in {filepath}:{line_no}: "
+                         "Found triple backticks. Use reStructuredText code block directive instead: .. code:: python")
+                  errors.append(err)
+
+                # Check for single backticks (Markdown inline code)
+                if "`" in line.replace("```", "").replace("``", ""):
+                  err = (f"Format error in {filepath}:{line_no}: "
+                         "Found single backticks. Use double backticks (``code``) for inline code.")
+                  errors.append(err)
+
+          if errors:
+              raise Exception("\n".join(errors))

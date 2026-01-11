@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any
 
 import requests
 
@@ -39,9 +39,9 @@ class SearchApiWebSearch:
     def __init__(
         self,
         api_key: Secret = Secret.from_env_var("SEARCHAPI_API_KEY"),
-        top_k: Optional[int] = 10,
-        allowed_domains: Optional[list[str]] = None,
-        search_params: Optional[dict[str, Any]] = None,
+        top_k: int | None = 10,
+        allowed_domains: list[str] | None = None,
+        search_params: dict[str, Any] | None = None,
     ):
         """
         Initialize the SearchApiWebSearch component.
@@ -96,7 +96,7 @@ class SearchApiWebSearch:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document], links=list[str])
-    def run(self, query: str) -> dict[str, Union[list[Document], list[str]]]:
+    def run(self, query: str) -> dict[str, list[Document] | list[str]]:
         """
         Uses [SearchApi](https://www.searchapi.io/) to search the web.
 

@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - "docs/pydoc/config_docusaurus/**"
+      - "pydoc/**"
       - "haystack/**"
       - ".github/workflows/docusaurus_sync.yml"
 
@@ -16,13 +16,13 @@ env:
 
 jobs:
   sync:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: write
 
     steps:
       - name: Checkout Haystack repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -33,12 +33,11 @@ jobs:
         run: pip install hatch==${{ env.HATCH_VERSION }}
 
       - name: Generate API reference for Docusaurus
-        # This command simply runs ./.github/utils/pydoc-markdown.sh with a specific config path
-        run: hatch run readme:sync "../config_docusaurus/*"
+        run: hatch run docs
 
       - name: Sync generated API reference to docs folder
         run: |
-          SOURCE_PATH="docs/pydoc/temp"
+          SOURCE_PATH="pydoc/temp"
           DEST_PATH="docs-website/reference/haystack-api"
 
           echo "Syncing from $SOURCE_PATH to $DEST_PATH"
@@ -47,7 +46,7 @@ jobs:
           rsync -av --delete --exclude='.git/' "$SOURCE_PATH/" "$DEST_PATH/"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Sync Haystack API reference on Docusaurus"
@@ -58,3 +57,4 @@ jobs:
             docs-website/reference/haystack-api
           body: |
             This PR syncs the Haystack API reference on Docusaurus. Just approve and merge it.
+          reviewers: "${{ github.actor }}"

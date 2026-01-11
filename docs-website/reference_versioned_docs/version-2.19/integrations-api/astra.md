@@ -37,7 +37,7 @@ retriever = AstraEmbeddingRetriever(document_store=document_store)
 
 ```python
 def __init__(document_store: AstraDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
+             filters: Optional[dict[str, Any]] = None,
              top_k: int = 10,
              filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
 ```
@@ -54,10 +54,10 @@ def __init__(document_store: AstraDocumentStore,
 #### AstraEmbeddingRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(query_embedding: List[float],
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> Dict[str, List[Document]]
+@component.output_types(documents=list[Document])
+def run(query_embedding: list[float],
+        filters: Optional[dict[str, Any]] = None,
+        top_k: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the AstraDocumentStore.
@@ -80,7 +80,7 @@ a dictionary with the following keys:
 #### AstraEmbeddingRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -95,7 +95,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "AstraEmbeddingRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "AstraEmbeddingRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -177,7 +177,7 @@ Parameter options : (`SKIP`, `OVERWRITE`, `FAIL`, `NONE`)
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "AstraDocumentStore"
+def from_dict(cls, data: dict[str, Any]) -> "AstraDocumentStore"
 ```
 
 Deserializes the component from a dictionary.
@@ -195,7 +195,7 @@ Deserialized component.
 #### AstraDocumentStore.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -209,7 +209,7 @@ Dictionary with serialized data.
 #### AstraDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: List[Document],
+def write_documents(documents: list[Document],
                     policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
 ```
 
@@ -257,7 +257,7 @@ the number of documents in the document store.
 
 ```python
 def filter_documents(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+        filters: Optional[dict[str, Any]] = None) -> list[Document]
 ```
 
 Returns at most 1000 documents that match the filter.
@@ -279,7 +279,7 @@ matching documents.
 #### AstraDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(ids: List[str]) -> List[Document]
+def get_documents_by_id(ids: list[str]) -> list[Document]
 ```
 
 Gets documents by their IDs.
@@ -319,9 +319,9 @@ the found document
 #### AstraDocumentStore.search
 
 ```python
-def search(query_embedding: List[float],
+def search(query_embedding: list[float],
            top_k: int,
-           filters: Optional[Dict[str, Any]] = None) -> List[Document]
+           filters: Optional[dict[str, Any]] = None) -> list[Document]
 ```
 
 Perform a search for a list of queries.
@@ -341,7 +341,7 @@ matching documents.
 #### AstraDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: List[str]) -> None
+def delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes documents from the document store.
@@ -349,7 +349,6 @@ Deletes documents from the document store.
 **Arguments**:
 
 - `document_ids`: IDs of the documents to delete.
-- `delete_all`: if `True`, delete all documents.
 
 **Raises**:
 
@@ -364,6 +363,51 @@ def delete_all_documents() -> None
 ```
 
 Deletes all documents from the document store.
+
+<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.delete_by_filter"></a>
+
+#### AstraDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to find documents to delete.
+
+**Raises**:
+
+- `AstraDocumentStoreFilterError`: if the filter is invalid or not supported.
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.astra.document_store.AstraDocumentStore.update_by_filter"></a>
+
+#### AstraDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates documents that match the provided filters with the given metadata.
+
+**Arguments**:
+
+- `filters`: The filters to apply to find documents to update.
+- `meta`: The metadata fields to update. This will be merged with existing metadata.
+
+**Raises**:
+
+- `None`: AstraDocumentStoreFilterError: if the filter is invalid or not supported.
+
+**Returns**:
+
+The number of documents updated.
 
 <a id="haystack_integrations.document_stores.astra.errors"></a>
 
@@ -386,3 +430,4 @@ Raised when an invalid filter is passed to AstraDocumentStore.
 ### AstraDocumentStoreConfigError
 
 Raised when an invalid configuration is passed to AstraDocumentStore.
+

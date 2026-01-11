@@ -62,7 +62,7 @@ assert res['retriever']['documents'][0].content == "There are over 7,000 languag
 ```python
 def __init__(*,
              document_store: PgvectorDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
+             filters: Optional[dict[str, Any]] = None,
              top_k: int = 10,
              vector_function: Optional[Literal["cosine_similarity",
                                                "inner_product",
@@ -95,7 +95,7 @@ is not one of the valid options.
 #### PgvectorEmbeddingRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -110,7 +110,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "PgvectorEmbeddingRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "PgvectorEmbeddingRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -128,14 +128,14 @@ Deserialized component.
 #### PgvectorEmbeddingRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(
-    query_embedding: List[float],
-    filters: Optional[Dict[str, Any]] = None,
+    query_embedding: list[float],
+    filters: Optional[dict[str, Any]] = None,
     top_k: Optional[int] = None,
     vector_function: Optional[Literal["cosine_similarity", "inner_product",
                                       "l2_distance"]] = None
-) -> Dict[str, List[Document]]
+) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the `PgvectorDocumentStore`, based on their embeddings.
@@ -159,14 +159,14 @@ A dictionary with the following keys:
 #### PgvectorEmbeddingRetriever.run\_async
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 async def run_async(
-    query_embedding: List[float],
-    filters: Optional[Dict[str, Any]] = None,
+    query_embedding: list[float],
+    filters: Optional[dict[str, Any]] = None,
     top_k: Optional[int] = None,
     vector_function: Optional[Literal["cosine_similarity", "inner_product",
                                       "l2_distance"]] = None
-) -> Dict[str, List[Document]]
+) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents from the `PgvectorDocumentStore`, based on their embeddings.
@@ -233,7 +233,7 @@ assert res['retriever']['documents'][0].content == "There are over 7,000 languag
 ```python
 def __init__(*,
              document_store: PgvectorDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
+             filters: Optional[dict[str, Any]] = None,
              top_k: int = 10,
              filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
 ```
@@ -254,7 +254,7 @@ def __init__(*,
 #### PgvectorKeywordRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -269,7 +269,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "PgvectorKeywordRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "PgvectorKeywordRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -287,10 +287,10 @@ Deserialized component.
 #### PgvectorKeywordRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(query: str,
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> Dict[str, List[Document]]
+        filters: Optional[dict[str, Any]] = None,
+        top_k: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the `PgvectorDocumentStore`, based on keywords.
@@ -313,10 +313,10 @@ A dictionary with the following keys:
 #### PgvectorKeywordRetriever.run\_async
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 async def run_async(query: str,
-                    filters: Optional[Dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> Dict[str, List[Document]]
+                    filters: Optional[dict[str, Any]] = None,
+                    top_k: Optional[int] = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents from the `PgvectorDocumentStore`, based on keywords.
@@ -363,7 +363,7 @@ def __init__(*,
              search_strategy: Literal["exact_nearest_neighbor",
                                       "hnsw"] = "exact_nearest_neighbor",
              hnsw_recreate_index_if_exists: bool = False,
-             hnsw_index_creation_kwargs: Optional[Dict[str, int]] = None,
+             hnsw_index_creation_kwargs: Optional[dict[str, int]] = None,
              hnsw_index_name: str = "haystack_hnsw_index",
              hnsw_ef_search: Optional[int] = None,
              keyword_index_name: str = "haystack_keyword_index")
@@ -377,9 +377,10 @@ A specific table to store Haystack documents will be created if it doesn't exist
 **Arguments**:
 
 - `connection_string`: The connection string to use to connect to the PostgreSQL database, defined as an
-environment variable. It can be provided in either URI format
-e.g.: `PG_CONN_STR="postgresql://USER:PASSWORD@HOST:PORT/DB_NAME"`, or keyword/value format
-e.g.: `PG_CONN_STR="host=HOST port=PORT dbname=DBNAME user=USER password=PASSWORD"`
+environment variable. Supported formats:
+- URI, e.g. `PG_CONN_STR="postgresql://USER:PASSWORD@HOST:PORT/DB_NAME"` (use percent-encoding for special
+    characters)
+- keyword/value format, e.g. `PG_CONN_STR="host=HOST port=PORT dbname=DBNAME user=USER password=PASSWORD"`
 See [PostgreSQL Documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
 for more details.
 - `create_extension`: Whether to create the pgvector extension if it doesn't exist.
@@ -430,7 +431,7 @@ Only used if search_strategy is set to `"hnsw"`. You can find the list of valid 
 #### PgvectorDocumentStore.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -445,7 +446,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "PgvectorDocumentStore"
+def from_dict(cls, data: dict[str, Any]) -> "PgvectorDocumentStore"
 ```
 
 Deserializes the component from a dictionary.
@@ -514,7 +515,7 @@ Number of documents in the document store.
 
 ```python
 def filter_documents(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+        filters: Optional[dict[str, Any]] = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -541,7 +542,7 @@ A list of Documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+        filters: Optional[dict[str, Any]] = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
@@ -567,7 +568,7 @@ A list of Documents that match the given filters.
 #### PgvectorDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: List[Document],
+def write_documents(documents: list[Document],
                     policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
 ```
 
@@ -595,7 +596,7 @@ The number of documents written to the document store.
 
 ```python
 async def write_documents_async(
-        documents: List[Document],
+        documents: list[Document],
         policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
 ```
 
@@ -622,7 +623,7 @@ The number of documents written to the document store.
 #### PgvectorDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: List[str]) -> None
+def delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes documents that match the provided `document_ids` from the document store.
@@ -636,7 +637,7 @@ Deletes documents that match the provided `document_ids` from the document store
 #### PgvectorDocumentStore.delete\_documents\_async
 
 ```python
-async def delete_documents_async(document_ids: List[str]) -> None
+async def delete_documents_async(document_ids: list[str]) -> None
 ```
 
 Asynchronously deletes documents that match the provided `document_ids` from the document store.
@@ -664,3 +665,83 @@ async def delete_all_documents_async() -> None
 ```
 
 Asynchronously deletes all documents in the document store.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_by_filter"></a>
+
+#### PgvectorDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_by_filter_async"></a>
+
+#### PgvectorDocumentStore.delete\_by\_filter\_async
+
+```python
+async def delete_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.update_by_filter"></a>
+
+#### PgvectorDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update.
+
+**Returns**:
+
+The number of documents updated.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.update_by_filter_async"></a>
+
+#### PgvectorDocumentStore.update\_by\_filter\_async
+
+```python
+async def update_by_filter_async(filters: dict[str, Any],
+                                 meta: dict[str, Any]) -> int
+```
+
+Asynchronously updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update.
+
+**Returns**:
+
+The number of documents updated.
+

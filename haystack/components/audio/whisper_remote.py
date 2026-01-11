@@ -4,7 +4,7 @@
 
 import io
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from openai import OpenAI
 
@@ -31,8 +31,8 @@ class RemoteWhisperTranscriber:
     ```python
     from haystack.components.audio import RemoteWhisperTranscriber
 
-    whisper = RemoteWhisperTranscriber(api_key=Secret.from_token("<your-api-key>"), model="tiny")
-    transcription = whisper.run(sources=["path/to/audio/file"])
+    whisper = RemoteWhisperTranscriber(model="whisper-1")
+    transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
     ```
     """
 
@@ -40,9 +40,9 @@ class RemoteWhisperTranscriber:
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "whisper-1",
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        api_base_url: str | None = None,
+        organization: str | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
         **kwargs,
     ):
         """
@@ -136,7 +136,7 @@ class RemoteWhisperTranscriber:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(self, sources: list[Union[str, Path, ByteStream]]):
+    def run(self, sources: list[str | Path | ByteStream]):
         """
         Transcribes the list of audio files into a list of documents.
 

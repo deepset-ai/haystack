@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from haystack.dataclasses import Document
 from haystack.document_stores.types.policy import DuplicatePolicy
@@ -41,7 +41,7 @@ class DocumentStore(Protocol):
         """
         ...
 
-    def filter_documents(self, filters: Optional[dict[str, Any]] = None) -> list[Document]:
+    def filter_documents(self, filters: dict[str, Any] | None = None) -> list[Document]:
         """
         Returns the documents that match the filters provided.
 

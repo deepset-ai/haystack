@@ -17,9 +17,10 @@
 
 ### Checklist
 
-- I have read the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) and the [code of conduct](https://github.com/deepset-ai/haystack/blob/main/code_of_conduct.txt)
-- I have updated the related issue with new insights and changes
-- I added unit tests and updated the docstrings
+- I have read the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) and the [code of conduct](https://github.com/deepset-ai/haystack/blob/main/code_of_conduct.txt).
+- I have updated the related issue with new insights and changes.
+- I have added unit tests and updated the docstrings.
 - I've used one of the [conventional commit types](https://www.conventionalcommits.org/en/v1.0.0/) for my PR title: `fix:`, `feat:`, `build:`, `chore:`, `ci:`, `docs:`, `style:`, `refactor:`, `perf:`, `test:` and added `!` in case the PR includes breaking changes.
-- I documented my code
-- I ran [pre-commit hooks](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md#installation) and fixed any issue
+- I have documented my code.
+- I have added a release note file, following the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md#release-notes).
+- I have run [pre-commit hooks](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md#installation) and fixed any issue.

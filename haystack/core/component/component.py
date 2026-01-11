@@ -34,7 +34,11 @@ Components should take only "basic" Python types as parameters of their `__init_
 dictionaries containing only such values. Anything else (objects, functions, etc) will raise an exception at init
 time. If there's the need for such values, consider serializing them to a string.
 
-_(TODO explain how to use classes and functions in init. In the meantime see `test/components/test_accumulate.py`)_
+If you need to accept classes or callables, accept either a string import path or the callable itself. Resolve strings
+to objects in `__init__`, and serialize objects back to importable strings in `to_dict()` so that `from_dict()` can load
+them (for example, store `"module_path.symbol_name"` and load it via `importlib`). This keeps init parameters JSON
+serializable for pipeline save/load. See `haystack.testing.sample_components.accumulate.Accumulate` for a reference
+implementation.
 
 The `__init__` must be extremely lightweight, because it's a frequent operation during the construction and
 validation of the pipeline. If a component has some heavy state to initialize (models, backends, etc...) refer to
@@ -76,9 +80,7 @@ from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass
 from types import new_class
-from typing import Any, Iterator, Mapping, Optional, Protocol, TypeVar, Union, overload, runtime_checkable
-
-from typing_extensions import ParamSpec
+from typing import Any, Iterator, Mapping, ParamSpec, Protocol, TypeVar, overload, runtime_checkable
 
 from haystack import logging
 from haystack.core.errors import ComponentError
@@ -89,7 +91,7 @@ from .types import InputSocket, OutputSocket, _empty
 logger = logging.getLogger(__name__)
 
 RunParamsT = ParamSpec("RunParamsT")
-RunReturnT = TypeVar("RunReturnT", bound=Union[Mapping[str, Any], Coroutine[Any, Any, Mapping[str, Any]]])
+RunReturnT = TypeVar("RunReturnT", bound=Mapping[str, Any] | Coroutine[Any, Any, Mapping[str, Any]])
 
 
 @dataclass
@@ -109,7 +111,7 @@ class PreInitHookPayload:
     in_progress: bool = False
 
 
-_COMPONENT_PRE_INIT_HOOK: ContextVar[Optional[PreInitHookPayload]] = ContextVar("component_pre_init_hook", default=None)
+_COMPONENT_PRE_INIT_HOOK: ContextVar[PreInitHookPayload | None] = ContextVar("component_pre_init_hook", default=None)
 
 
 @contextmanager
@@ -613,7 +615,7 @@ class _Component:
     @overload
     def __call__(self) -> Callable[[type[T]], type[T]]: ...
 
-    def __call__(self, cls: Optional[type[T]] = None) -> Union[type[T], Callable[[type[T]], type[T]]]:
+    def __call__(self, cls: type[T] | None = None) -> type[T] | Callable[[type[T]], type[T]]:
         # We must wrap the call to the decorator in a function for it to work
         # correctly with or without parens
         def wrap(cls: type[T]) -> type[T]:

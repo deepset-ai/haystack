@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Any, Optional
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -77,10 +77,10 @@ class TransformersZeroShotDocumentClassifier:
         model: str,
         labels: list[str],
         multi_label: bool = False,
-        classification_field: Optional[str] = None,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
+        classification_field: str | None = None,
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        huggingface_pipeline_kwargs: dict[str, Any] | None = None,
     ):
         """
         Initializes the TransformersZeroShotDocumentClassifier.
@@ -131,7 +131,7 @@ class TransformersZeroShotDocumentClassifier:
         )
 
         self.huggingface_pipeline_kwargs = huggingface_pipeline_kwargs
-        self.pipeline: Optional[HfPipeline] = None
+        self.pipeline: HfPipeline | None = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -203,10 +203,7 @@ class TransformersZeroShotDocumentClassifier:
         """
 
         if self.pipeline is None:
-            raise RuntimeError(
-                "The component TransformerZeroShotDocumentClassifier wasn't warmed up. "
-                "Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
             raise TypeError(
@@ -231,7 +228,10 @@ class TransformersZeroShotDocumentClassifier:
             for doc in documents
         ]
 
-        predictions = self.pipeline(texts, self.labels, multi_label=self.multi_label, batch_size=batch_size)
+        # mypy doesn't know this is set in warm_up
+        predictions = self.pipeline(  # type: ignore[misc]
+            texts, self.labels, multi_label=self.multi_label, batch_size=batch_size
+        )
 
         new_documents = []
         for prediction, document in zip(predictions, documents):

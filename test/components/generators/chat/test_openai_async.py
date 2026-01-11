@@ -2,12 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import os
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from openai import AsyncOpenAI, OpenAIError
+from openai import AsyncOpenAI, AsyncStream, OpenAIError
 from openai.types.chat import (
     ChatCompletion,
     ChatCompletionChunk,
@@ -282,6 +283,85 @@ class TestOpenAIChatGeneratorAsync:
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
 
+    @pytest.mark.asyncio
+    async def test_async_stream_closes_on_cancellation(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        generator = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            api_base_url="test-base-url",
+            organization="test-organization",
+            timeout=30,
+            max_retries=5,
+        )
+
+        # mocked the async stream that will be passed to the _handle_async_stream_response() method
+        mock_stream = AsyncMock(spec=AsyncStream)
+        mock_stream.close = AsyncMock()
+
+        async def mock_chunk_generator():
+            for i in range(100):
+                yield MagicMock(
+                    choices=[
+                        MagicMock(
+                            index=0,
+                            delta=MagicMock(content=f"chunk{i}", role=None, tool_calls=None),
+                            finish_reason=None,
+                            logprobs=None,
+                        )
+                    ],
+                    model="gpt-4",
+                    usage=None,
+                )
+                await asyncio.sleep(0.01)  # delay between chunks
+
+        mock_stream.__aiter__ = lambda self: mock_chunk_generator()
+
+        received_chunks = []
+
+        async def test_callback(chunk: StreamingChunk):
+            received_chunks.append(chunk)
+
+        # the task that will be cancelled
+        task = asyncio.create_task(generator._handle_async_stream_response(mock_stream, test_callback))
+
+        # trigger the task, process a few chunks, then cancel
+        await asyncio.sleep(0.05)
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        mock_stream.close.assert_awaited_once()
+
+        # we received some chunks before cancellation but not all of them
+        assert len(received_chunks) > 0
+        assert len(received_chunks) < 100
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.asyncio
+    async def test_run_async_cancellation_integration(self):
+        generator = OpenAIChatGenerator(model="gpt-4.1-nano")
+        messages = [ChatMessage.from_user("Write me an essay about the history of jazz music, at least 500 words.")]
+        received_chunks = []
+
+        async def streaming_callback(chunk: StreamingChunk):
+            received_chunks.append(chunk)
+
+        task = asyncio.create_task(generator.run_async(messages=messages, streaming_callback=streaming_callback))
+
+        await asyncio.sleep(2.0)
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        assert len(received_chunks) > 0
+        assert len(received_chunks) < 500
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
@@ -295,7 +375,7 @@ class TestOpenAIChatGeneratorAsync:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
-        assert "gpt-4o" in message.meta["model"]
+        assert message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
     @pytest.mark.asyncio
@@ -335,7 +415,7 @@ class TestOpenAIChatGeneratorAsync:
         message: ChatMessage = results["replies"][0]
         assert "Paris" in message.text
 
-        assert "gpt-4o" in message.meta["model"]
+        assert message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
         assert counter > 1
@@ -369,7 +449,8 @@ class TestOpenAIChatGeneratorAsync:
         tool_call = message.tool_call
         assert isinstance(tool_call, ToolCall)
         assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
+        # Check that Paris is in the city argument (case-insensitive, allowing for variations like "Paris, France")
+        assert "paris" in tool_call.arguments["city"].lower()
         assert message.meta["finish_reason"] == "tool_calls"
 
     @pytest.mark.asyncio

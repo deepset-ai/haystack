@@ -60,12 +60,12 @@ This is based on the paper
 @component.output_types(replies=list[ChatMessage])
 def run(
     messages: list[ChatMessage],
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    generation_kwargs: Optional[dict[str, Any]] = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
     *,
-    tools: Optional[ToolsType] = None,
-    tools_strict: Optional[bool] = None,
-    hallucination_score_config: Optional[HallucinationScoreConfig] = None
+    tools: ToolsType | None = None,
+    tools_strict: bool | None = None,
+    hallucination_score_config: HallucinationScoreConfig | None = None
 ) -> dict[str, list[ChatMessage]]
 ```
 
@@ -107,12 +107,12 @@ scoring is enabled, each message will include additional metadata:
 @component.output_types(replies=list[ChatMessage])
 async def run_async(
     messages: list[ChatMessage],
-    streaming_callback: Optional[StreamingCallbackT] = None,
-    generation_kwargs: Optional[dict[str, Any]] = None,
+    streaming_callback: StreamingCallbackT | None = None,
+    generation_kwargs: dict[str, Any] | None = None,
     *,
-    tools: Optional[ToolsType] = None,
-    tools_strict: Optional[bool] = None,
-    hallucination_score_config: Optional[HallucinationScoreConfig] = None
+    tools: ToolsType | None = None,
+    tools_strict: bool | None = None,
+    hallucination_score_config: HallucinationScoreConfig | None = None
 ) -> dict[str, list[ChatMessage]]
 ```
 

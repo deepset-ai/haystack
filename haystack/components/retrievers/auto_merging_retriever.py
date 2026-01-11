@@ -42,24 +42,26 @@ class AutoMergingRetriever:
     # create a hierarchical document structure with 3 levels, where the parent document has 3 children
     text = "The sun rose early in the morning. It cast a warm glow over the trees. Birds began to sing."
     original_document = Document(content=text)
-    builder = HierarchicalDocumentSplitter(block_sizes=[10, 3], split_overlap=0, split_by="word")
+    builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
     docs = builder.run([original_document])["documents"]
 
     # store level-1 parent documents and initialize the retriever
     doc_store_parents = InMemoryDocumentStore()
-    for doc in docs["documents"]:
-        if doc.meta["children_ids"] and doc.meta["level"] == 1:
+    for doc in docs:
+        if doc.meta["__children_ids"] and doc.meta["__level"] in [0,1]:  # store the root document and level 1 documents
             doc_store_parents.write_documents([doc])
+
     retriever = AutoMergingRetriever(doc_store_parents, threshold=0.5)
 
     # assume we retrieved 2 leaf docs from the same parent, the parent document should be returned,
     # since it has 3 children and the threshold=0.5, and we retrieved 2 children (2/3 > 0.66(6))
-    leaf_docs = [doc for doc in docs["documents"] if not doc.meta["children_ids"]]
-    docs = retriever.run(leaf_docs[4:6])
-    >> {'documents': [Document(id=538..),
-    >> content: 'warm glow over the trees. Birds began to sing.',
-    >> meta: {'block_size': 10, 'parent_id': '835..', 'children_ids': ['c17...', '3ff...', '352...'], 'level': 1, 'source_id': '835...',
-    >> 'page_number': 1, 'split_id': 1, 'split_idx_start': 45})]}
+    leaf_docs = [doc for doc in docs if not doc.meta["__children_ids"]]
+    retrieved_docs = retriever.run(leaf_docs[4:6])
+    print(retrieved_docs["documents"])
+    # [Document(id=538..),
+    # content: 'warm glow over the trees. Birds began to sing.',
+    # meta: {'block_size': 10, 'parent_id': '835..', 'children_ids': ['c17...', '3ff...', '352...'], 'level': 1, 'source_id': '835...',
+    # 'page_number': 1, 'split_id': 1, 'split_idx_start': 45})]}
     ```
     """  # noqa: E501
 
@@ -167,3 +169,62 @@ class AutoMergingRetriever:
             return _try_merge_level(merged_docs, docs_to_return)
 
         return {"documents": _try_merge_level(documents, [])}
+
+    @component.output_types(documents=list[Document])
+    async def run_async(self, documents: list[Document]):
+        """
+        Asynchronously run the AutoMergingRetriever.
+
+        Recursively groups documents by their parents and merges them if they meet the threshold,
+        continuing up the hierarchy until no more merges are possible.
+
+        :param documents: List of leaf documents that were matched by a retriever
+        :returns:
+            List of documents (could be a mix of different hierarchy levels)
+        """
+
+        AutoMergingRetriever._check_valid_documents(documents)
+
+        async def _get_parent_doc(parent_id: str) -> Document:
+            # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
+            parent_docs = await self.document_store.filter_documents_async(  # type: ignore[attr-defined]
+                {"field": "id", "operator": "==", "value": parent_id}
+            )
+            if len(parent_docs) != 1:
+                raise ValueError(f"Expected 1 parent document with id {parent_id}, found {len(parent_docs)}")
+
+            parent_doc = parent_docs[0]
+            if not parent_doc.meta.get("__children_ids"):
+                raise ValueError(f"Parent document with id {parent_id} does not have any children.")
+
+            return parent_doc
+
+        async def _try_merge_level(docs_to_merge: list[Document], docs_to_return: list[Document]) -> list[Document]:
+            parent_doc_id_to_child_docs: dict[str, list[Document]] = defaultdict(list)  # to group documents by parent
+
+            for doc in docs_to_merge:
+                if doc.meta.get("__parent_id"):  # only docs that have parents
+                    parent_doc_id_to_child_docs[doc.meta["__parent_id"]].append(doc)
+                else:
+                    docs_to_return.append(doc)  # keep docs that have no parents
+
+            # Process each parent group
+            merged_docs = []
+            for parent_doc_id, child_docs in parent_doc_id_to_child_docs.items():
+                parent_doc = await _get_parent_doc(parent_doc_id)
+
+                # Calculate merge score
+                score = len(child_docs) / len(parent_doc.meta["__children_ids"])
+                if score > self.threshold:
+                    merged_docs.append(parent_doc)  # Merge into parent
+                else:
+                    docs_to_return.extend(child_docs)  # Keep children separate
+
+            # if no new merges were made, we're done
+            if not merged_docs:
+                return merged_docs + docs_to_return
+
+            # Recursively try to merge the next level
+            return await _try_merge_level(merged_docs, docs_to_return)
+
+        return {"documents": await _try_merge_level(documents, [])}

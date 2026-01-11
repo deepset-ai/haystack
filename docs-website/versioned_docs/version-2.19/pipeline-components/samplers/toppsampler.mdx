@@ -51,6 +51,74 @@ print(docs)
 
 ### In a pipeline
 
-To best understand how can you use a `TopPSampler` and which components to pair it with, have a look at this recipe:
+To best understand how can you use a `TopPSampler` and which components to pair it with, explore the following example.
 
-RECIPE MISSING
+```python
+# import necessary dependencies
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.fetchers import LinkContentFetcher
+from haystack.components.converters import HTMLToDocument
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.rankers import SentenceTransformersSimilarityRanker
+from haystack.components.routers.file_type_router import FileTypeRouter
+from haystack.components.samplers import TopPSampler
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.utils import Secret
+from haystack.dataclasses import ChatMessage
+
+# initialize the components
+web_search = SerperDevWebSearch(
+    api_key=Secret.from_token("<your-api-key>"),
+    top_k=10
+)
+
+lcf = LinkContentFetcher()
+html_converter = HTMLToDocument()
+router = FileTypeRouter(["text/html", "application/pdf", "application/octet-stream"])
+
+# ChatPromptBuilder uses a different template format with ChatMessage
+template = [
+    ChatMessage.from_user("Given these paragraphs below: \n {% for doc in documents %}{{ doc.content }}{% endfor %}\n\nAnswer the question: {{ query }}")
+]
+# set required_variables to avoid warnings in multi-branch pipelines
+prompt_builder = ChatPromptBuilder(template=template, required_variables=["documents", "query"])
+
+# The Ranker plays an important role, as it will assign the scores to the top 10 found documents based on our query. We will need these scores to work with the TopPSampler.
+similarity_ranker = SentenceTransformersSimilarityRanker(top_k=10)
+splitter = DocumentSplitter()
+# We are setting the top_p parameter to 0.95. This will help identify the most relevant documents to our query.
+top_p_sampler = TopPSampler(top_p=0.95)
+
+llm = OpenAIChatGenerator(api_key=Secret.from_token("<your-api-key>"))
+
+# create the pipeline and add the components to it
+pipe = Pipeline()
+pipe.add_component("search", web_search)
+pipe.add_component("fetcher", lcf)
+pipe.add_component("router", router)
+pipe.add_component("converter", html_converter)
+pipe.add_component("splitter", splitter)
+pipe.add_component("ranker", similarity_ranker)
+pipe.add_component("sampler", top_p_sampler)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+# Arrange pipeline components in the order you need them. If a component has more than one inputs or outputs, indicate which input you want to connect to which output using the format ("component_name.output_name", "component_name, input_name").
+pipe.connect("search.links", "fetcher.urls")
+pipe.connect("fetcher.streams", "router.sources")
+pipe.connect("router.text/html", "converter.sources")
+pipe.connect("converter.documents", "splitter.documents")
+pipe.connect("splitter.documents", "ranker.documents")
+pipe.connect("ranker.documents", "sampler.documents")
+pipe.connect("sampler.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+# run the pipeline
+question = "Why are cats afraid of cucumbers?"
+query_dict = {"query": question}
+
+result = pipe.run(data={"search": query_dict, "prompt_builder": query_dict, "ranker": query_dict})
+print(result)
+```

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 from haystack import AsyncPipeline, Pipeline, SuperComponent, logging
 from haystack.core.serialization import generate_qualified_class_name
@@ -96,16 +96,16 @@ class PipelineTool(ComponentTool):
 
     def __init__(
         self,
-        pipeline: Union[Pipeline, AsyncPipeline],
+        pipeline: Pipeline | AsyncPipeline,
         *,
         name: str,
         description: str,
-        input_mapping: Optional[dict[str, list[str]]] = None,
-        output_mapping: Optional[dict[str, str]] = None,
-        parameters: Optional[dict[str, Any]] = None,
-        outputs_to_string: Optional[dict[str, Union[str, Callable[[Any], str]]]] = None,
-        inputs_from_state: Optional[dict[str, str]] = None,
-        outputs_to_state: Optional[dict[str, dict[str, Union[str, Callable]]]] = None,
+        input_mapping: dict[str, list[str]] | None = None,
+        output_mapping: dict[str, str] | None = None,
+        parameters: dict[str, Any] | None = None,
+        outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
+        inputs_from_state: dict[str, str] | None = None,
+        outputs_to_state: dict[str, dict[str, str | Callable]] | None = None,
     ) -> None:
         """
         Create a Tool instance from a Haystack pipeline.
@@ -134,15 +134,26 @@ class PipelineTool(ComponentTool):
             A JSON schema defining the parameters expected by the Tool.
             Will fall back to the parameters defined in the component's run method signature if not provided.
         :param outputs_to_string:
-            Optional dictionary defining how a tool outputs should be converted into a string.
-            If the source is provided only the specified output key is sent to the handler.
-            If the source is omitted the whole tool result is sent to the handler.
-            Example:
-            ```python
-            {
-                "source": "docs", "handler": format_documents
-            }
-            ```
+            Optional dictionary defining how tool outputs should be converted into string(s).
+            Supports two formats:
+
+            1. Single output format - use "source" and/or "handler" at the root level:
+                ```python
+                {
+                    "source": "docs", "handler": format_documents
+                }
+                ```
+                If the source is provided, only the specified output key is sent to the handler.
+                If the source is omitted, the whole tool result is sent to the handler.
+
+            2. Multiple output format - map keys to individual configurations:
+                ```python
+                {
+                    "formatted_docs": {"source": "docs", "handler": format_documents},
+                    "summary": {"source": "summary_text", "handler": str.upper}
+                }
+                ```
+                Each key maps to a dictionary that can contain "source" and/or "handler".
         :param inputs_from_state:
             Optional dictionary mapping state keys to tool parameter names.
             Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.

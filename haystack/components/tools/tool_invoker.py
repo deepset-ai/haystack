@@ -8,7 +8,7 @@ import inspect
 import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from haystack.components.agents import State
 from haystack.core.component.component import component
@@ -176,7 +176,7 @@ class ToolInvoker:
         tools: ToolsType,
         raise_on_failure: bool = True,
         convert_result_to_json_string: bool = False,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
         enable_streaming_callback_passthrough: bool = False,
         max_workers: int = 4,
@@ -277,7 +277,7 @@ class ToolInvoker:
         # - If using convert_result_to_json_string we'd rather convert Haystack objects to JSON serializable dicts
         # - If using default str() we prefer converting Haystack objects to dicts rather than relying on the
         #   __repr__ method
-        serializable = _serializable_value(result)
+        serializable = _serializable_value(value=result, use_placeholders=False)
 
         if self.convert_result_to_json_string:
             try:
@@ -296,6 +296,25 @@ class ToolInvoker:
 
         return str(serializable)
 
+    def _output_to_string(self, config: dict[str, Any], result: Any, tool_call: ToolCall) -> str:
+        """
+        Converts a tool result to a string based on the provided configuration.
+
+        :param config: Configuration dictionary that may contain "source" and "handler" keys.
+        :param result: The tool result to convert to a string.
+        :returns: The converted tool result as a string.
+        """
+        source_key = config.get("source")
+        # If a source key is provided, we extract the result from the source key
+        value = result.get(source_key) if source_key is not None else result
+        # If no handler is provided, we use the default handler
+        output_to_string_handler = config.get("handler", self._default_output_to_string_handler)
+
+        try:
+            return output_to_string_handler(value)
+        except Exception as e:
+            raise StringConversionError(tool_call.tool_name, output_to_string_handler.__name__, e)
+
     def _prepare_tool_result_message(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> ChatMessage:
         """
         Prepares a ChatMessage with the result of a tool invocation.
@@ -313,24 +332,24 @@ class ToolInvoker:
             and `raise_on_failure` is True.
         """
         outputs_config = tool_to_invoke.outputs_to_string or {}
-        source_key = outputs_config.get("source")
-
-        # If no handler is provided, we use the default handler
-        output_to_string_handler = outputs_config.get("handler", self._default_output_to_string_handler)
-
-        # If a source key is provided, we extract the result from the source key
-        result_to_convert = result.get(source_key) if source_key is not None else result
-
         try:
-            tool_result_str = output_to_string_handler(result_to_convert)
-            chat_message = ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
-        except Exception as e:
-            error = StringConversionError(tool_call.tool_name, output_to_string_handler.__name__, e)
+            # Root level single output configuration
+            if not outputs_config or "source" in outputs_config or "handler" in outputs_config:
+                tool_result_str = self._output_to_string(outputs_config, result, tool_call)
+                return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
+
+            # Multiple outputs configuration
+            tool_result = {}
+            for output_key, config in outputs_config.items():
+                key_result_str = self._output_to_string(config, result, tool_call)
+                tool_result[output_key] = key_result_str
+            tool_result_str = self._default_output_to_string_handler(tool_result)
+            return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
+        except StringConversionError as e:
             if self.raise_on_failure:
-                raise error from e
-            logger.error("{error_exception}", error_exception=error)
-            chat_message = ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
-        return chat_message
+                raise e
+            logger.error("{error_exception}", error_exception=e)
+            return ChatMessage.from_tool(tool_result=str(e), origin=tool_call, error=True)
 
     @staticmethod
     def _get_func_params(tool: Tool) -> set:
@@ -437,7 +456,7 @@ class ToolInvoker:
         *,
         messages_with_tool_calls: list[ChatMessage],
         state: State,
-        streaming_callback: Optional[StreamingCallbackT],
+        streaming_callback: StreamingCallbackT | None,
         enable_streaming_passthrough: bool,
         tools_with_names: dict[str, Tool],
     ) -> tuple[list[ToolCall], list[dict[str, Any]], list[ChatMessage]]:
@@ -496,17 +515,19 @@ class ToolInvoker:
         """
         if not self._is_warmed_up:
             warm_up_tools(self.tools)
+            # tools could have been updated by the warm_up, validate/prepare for invocation
+            self._tools_with_names = self._validate_and_prepare_tools(self.tools)
             self._is_warmed_up = True
 
     @component.output_types(tool_messages=list[ChatMessage], state=State)
     def run(
         self,
         messages: list[ChatMessage],
-        state: Optional[State] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        state: State | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[ToolsType] = None,
+        enable_streaming_callback_passthrough: bool | None = None,
+        tools: ToolsType | None = None,
     ) -> dict[str, Any]:
         """
         Processes ChatMessage objects containing tool calls and invokes the corresponding tools, if available.
@@ -538,6 +559,9 @@ class ToolInvoker:
         :raises ToolOutputMergeError:
             If merging tool outputs into state fails and `raise_on_failure` is True.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         tools_with_names = self._tools_with_names
         if tools is not None:
             tools_with_names = self._validate_and_prepare_tools(tools)
@@ -633,11 +657,11 @@ class ToolInvoker:
     async def run_async(
         self,
         messages: list[ChatMessage],
-        state: Optional[State] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        state: State | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        enable_streaming_callback_passthrough: Optional[bool] = None,
-        tools: Optional[ToolsType] = None,
+        enable_streaming_callback_passthrough: bool | None = None,
+        tools: ToolsType | None = None,
     ) -> dict[str, Any]:
         """
         Asynchronously processes ChatMessage objects containing tool calls.
@@ -670,6 +694,8 @@ class ToolInvoker:
         :raises ToolOutputMergeError:
             If merging tool outputs into state fails and `raise_on_failure` is True.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
 
         tools_with_names = self._tools_with_names
         if tools is not None:

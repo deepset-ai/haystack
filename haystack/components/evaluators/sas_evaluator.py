@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from numpy import mean as np_mean
 
@@ -57,7 +57,7 @@ class SASEvaluator:
         self,
         model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
         batch_size: int = 32,
-        device: Optional[ComponentDevice] = None,
+        device: ComponentDevice | None = None,
         token: Secret = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
     ):
         """
@@ -80,7 +80,7 @@ class SASEvaluator:
         self._batch_size = batch_size
         self._device = device
         self._token = token
-        self._similarity_model: Union[SentenceTransformer, CrossEncoder, None] = None
+        self._similarity_model: SentenceTransformer | CrossEncoder | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -164,8 +164,7 @@ class SASEvaluator:
             return {"score": 0.0, "individual_scores": [0.0]}
 
         if not self._similarity_model:
-            msg = "The model has not been initialized. Call warm_up() before running the evaluator."
-            raise RuntimeError(msg)
+            self.warm_up()
 
         if isinstance(self._similarity_model, CrossEncoder):
             # For Cross Encoders we create a list of pairs of predictions and labels

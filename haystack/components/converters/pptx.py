@@ -5,7 +5,7 @@
 import io
 import os
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -63,11 +63,7 @@ class PPTXToDocument:
         return text
 
     @component.output_types(documents=list[Document])
-    def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
         """
         Converts PPTX files to Documents.
 

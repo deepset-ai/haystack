@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 
@@ -40,7 +40,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     client = AzureOpenAIGenerator(
         azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
         api_key=Secret.from_token("<your-api-key>"),
-        azure_deployment="<this a model name, e.g.  gpt-4o-mini>")
+        azure_deployment="<this a model name, e.g.  gpt-4.1-mini>")
     response = client.run("What's Natural Language Processing? Be brief.")
     print(response)
     ```
@@ -49,7 +49,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
     >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
     >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
-    >> 'gpt-4o-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
+    >> 'gpt-4.1-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 16,
     >> 'completion_tokens': 49, 'total_tokens': 65}}]}
     ```
     """
@@ -57,27 +57,27 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     # pylint: disable=super-init-not-called
     def __init__(  # pylint: disable=too-many-positional-arguments  # noqa: PLR0913
         self,
-        azure_endpoint: Optional[str] = None,
-        api_version: Optional[str] = "2023-05-15",
-        azure_deployment: Optional[str] = "gpt-4o-mini",
-        api_key: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
-        azure_ad_token: Optional[Secret] = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
-        organization: Optional[str] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        system_prompt: Optional[str] = None,
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        default_headers: Optional[dict[str, str]] = None,
+        azure_endpoint: str | None = None,
+        api_version: str | None = "2024-12-01-preview",
+        azure_deployment: str | None = "gpt-4.1-mini",
+        api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
+        azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
+        organization: str | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        system_prompt: str | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        default_headers: dict[str, str] | None = None,
         *,
-        azure_ad_token_provider: Optional[AzureADTokenProvider] = None,
+        azure_ad_token_provider: AzureADTokenProvider | None = None,
     ):
         """
         Initialize the Azure OpenAI Generator.
 
         :param azure_endpoint: The endpoint of the deployed model, for example `https://example-resource.azure.openai.com/`.
-        :param api_version: The version of the API to use. Defaults to 2023-05-15.
+        :param api_version: The version of the API to use. Defaults to 2024-12-01-preview.
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
         :param azure_ad_token: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
@@ -144,7 +144,7 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         self.azure_endpoint = azure_endpoint
         self.azure_deployment = azure_deployment
         self.organization = organization
-        self.model: str = azure_deployment or "gpt-4o-mini"
+        self.model: str = azure_deployment or "gpt-4.1-mini"
         self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.http_client_kwargs = http_client_kwargs

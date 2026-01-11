@@ -291,7 +291,14 @@ class TestToolInvokerSerde:
         pipeline.connect("invoker", "chatgenerator")
 
         pipeline_dict = pipeline.to_dict()
-        assert pipeline_dict == {
+        # Verify the chatgenerator component structure (model will be whatever the default is)
+        chatgen = pipeline_dict["components"]["chatgenerator"]
+        assert chatgen["type"] == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
+        assert "model" in chatgen["init_parameters"]
+        model_name = chatgen["init_parameters"]["model"]
+
+        # Build expected dict with dynamic model value
+        expected = {
             "metadata": {},
             "connection_type_validation": True,
             "max_runs_per_component": 100,
@@ -327,7 +334,7 @@ class TestToolInvokerSerde:
                 "chatgenerator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
                     "init_parameters": {
-                        "model": "gpt-4o-mini",
+                        "model": model_name,
                         "streaming_callback": None,
                         "api_base_url": None,
                         "organization": None,
@@ -343,6 +350,7 @@ class TestToolInvokerSerde:
             },
             "connections": [{"sender": "invoker.tool_messages", "receiver": "chatgenerator.messages"}],
         }
+        assert pipeline_dict == expected
 
         pipeline_yaml = pipeline.dumps()
 
@@ -776,6 +784,25 @@ class TestToolInvokerErrorHandling:
         assert tool_message.tool_call_results[0].error
         assert "Failed to invoke" in tool_message.tool_call_results[0].result
 
+    def test_outputs_to_string_with_multiple_outputs(self):
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=weather_function,
+            # Pass config that selects two of three outputs
+            outputs_to_string={"weather": {"source": "weather"}, "temp": {"source": "temperature"}},
+        )
+        invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+
+        tool_result = {"weather": "sunny", "temperature": 25, "unit": "celsius"}
+        chat_message = invoker._prepare_tool_result_message(
+            result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool
+        )
+        assert chat_message.tool_call_results[0].result == "{'weather': 'sunny', 'temp': '25'}"
+
     def test_string_conversion_error(self):
         weather_tool = Tool(
             name="weather_tool",
@@ -1171,3 +1198,54 @@ class TestWarmUpTools:
 
         # Should only be warmed up once
         assert tool.warm_up_count == 1
+
+    def test_warm_up_refreshes_tools_with_names(self):
+        """
+        Test that ToolInvoker.warm_up() refreshes _tools_with_names when using a toolset with lazy connection.
+        """
+        # Create placeholder tool that simulates MCPToolset behavior of lazy connection
+        placeholder_tool = Tool(
+            name="mcp_not_connected_placeholder_123",
+            description="Placeholder tool before connection",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: "placeholder",
+        )
+
+        # Create the actual tool that will replace the placeholder during warmup
+        # This simulates what mcp-server-time mcp would provide
+        actual_tool = Tool(
+            name="get_time",
+            description="Get the current time in ISO format",
+            parameters={"type": "object", "properties": {}, "required": []},
+            function=lambda: "2024-12-01T12:00:00Z",
+        )
+
+        # Create a toolset that simulates MCPToolset with eager_connect=False (lazy connection)
+        class MockMCPToolset(Toolset):
+            """Simulates MCPToolset behavior with eager_connect=False."""
+
+            def __init__(self):
+                # Start with placeholder tools (like MCPToolset does when not eagerly connected)
+                super().__init__([placeholder_tool])
+                self._warmed_up = False
+
+            def warm_up(self):
+                """Simulate connecting to MCP server and replacing placeholder tools with actual tools."""
+                if not self._warmed_up:
+                    # Replace placeholder tools with actual tools (simulating MCP connection)
+                    self.tools = [actual_tool]
+                    self._warmed_up = True
+
+        mcp_toolset = MockMCPToolset()
+        invoker = ToolInvoker(tools=mcp_toolset)
+
+        # Before warmup: _tools_with_names should contain the placeholder tool
+        assert "mcp_not_connected_placeholder_123" in invoker._tools_with_names
+        assert "get_time" not in invoker._tools_with_names
+
+        # Call warm_up() directly to trigger tool refresh
+        invoker.warm_up()
+
+        # After warmup: _tools_with_names should be refreshed with actual tool names
+        assert "mcp_not_connected_placeholder_123" not in invoker._tools_with_names
+        assert "get_time" in invoker._tools_with_names

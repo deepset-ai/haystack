@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Optional
+from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
@@ -72,10 +72,10 @@ class TransformersTextRouter:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str,
-        labels: Optional[list[str]] = None,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
+        labels: list[str] | None = None,
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        huggingface_pipeline_kwargs: dict[str, Any] | None = None,
     ):
         """
         Initializes the TransformersTextRouter component.
@@ -115,7 +115,7 @@ class TransformersTextRouter:
             self.labels = labels
         component.set_output_types(self, **dict.fromkeys(self.labels, str))
 
-        self.pipeline: Optional["Pipeline"] = None
+        self.pipeline: "Pipeline" | None = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -188,17 +188,16 @@ class TransformersTextRouter:
 
         :raises TypeError:
             If the input is not a str.
-        :raises RuntimeError:
-            If the pipeline has not been loaded because warm_up() was not called before.
         """
         if self.pipeline is None:
-            raise RuntimeError(
-                "The component TextTransformersRouter wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         if not isinstance(text, str):
             raise TypeError("TransformersTextRouter expects a str as input.")
 
-        prediction = self.pipeline([text], return_all_scores=False, function_to_apply="none")
+        # mypy doesn't know this is set in warm_up
+        prediction = self.pipeline(  # type: ignore[misc]
+            [text], return_all_scores=False, function_to_apply="none"
+        )
         label = prediction[0]["label"]
         return {label: text}

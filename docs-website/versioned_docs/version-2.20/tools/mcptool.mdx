@@ -1,0 +1,169 @@
+---
+title: "MCPTool"
+id: mcptool
+slug: "/mcptool"
+description: "MCPTool enables integration with external tools and services through the Model Context Protocol (MCP)."
+---
+
+# MCPTool
+
+MCPTool enables integration with external tools and services through the Model Context Protocol (MCP).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `name`: The name of the tool<br />`server_info`: Information about the MCP server to connect to |
+| **API reference**            | [MCP](/reference/integrations-mcp)                                                                   |
+| **GitHub link**              | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mcp         |
+
+</div>
+
+## Overview
+
+`MCPTool` is a Tool that allows Haystack to communicate with external tools and services using the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). MCP is an open protocol that standardizes how applications provide context to LLMs, similar to how USB-C provides a standardized way to connect devices.
+
+The `MCPTool` supports multiple transport options:
+
+- Streamable HTTP for connecting to HTTP servers,
+- SSE (Server-Sent Events) for connecting to HTTP servers **(deprecated)**,
+- StdIO for direct execution of local programs.
+
+Learn more about the MCP protocol and its architecture at the [official MCP website](https://modelcontextprotocol.io/).
+
+### Parameters
+
+- `name` is _mandatory_ and specifies the name of the tool.
+- `server_info` is _mandatory_ and needs to be either an `SSEServerInfo`, `StreamableHttpServerInfo` or `StdioServerInfo` object that contains connection information.
+- `description` is _optional_ and provides context to the LLM about what the tool does.
+
+### Results
+
+The Tool return results as a list of JSON objects, representing `TextContent`, `ImageContent`, or `EmbeddedResource` types from the mcp-sdk.
+
+## Usage
+
+Install the MCP-Haystack integration to use the `MCPTool`:
+
+```shell
+pip install mcp-haystack
+```
+
+### With Streamable HTTP Transport
+
+You can create an `MCPTool` that connects to an external HTTP server using streamable-http transport:
+
+```python
+from haystack_integrations.tools.mcp import MCPTool, StreamableHttpServerInfo
+
+## Create an MCP tool that connects to an HTTP server
+server_info = StreamableHttpServerInfo(url="http://localhost:8000/mcp")
+tool = MCPTool(name="my_tool", server_info=server_info)
+
+## Use the tool
+result = tool.invoke(param1="value1", param2="value2")
+```
+
+### With SSE Transport (deprecated)
+
+You can create an `MCPTool` that connects to an external HTTP server using SSE transport:
+
+```python
+from haystack_integrations.tools.mcp import MCPTool, SSEServerInfo
+
+## Create an MCP tool that connects to an HTTP server
+server_info = SSEServerInfo(url="http://localhost:8000/sse")
+tool = MCPTool(name="my_tool", server_info=server_info)
+
+## Use the tool
+result = tool.invoke(param1="value1", param2="value2")
+```
+
+### With StdIO Transport
+
+You can also create an `MCPTool` that executes a local program directly and connects to it through stdio transport:
+
+```python
+from haystack_integrations.tools.mcp import MCPTool, StdioServerInfo
+
+## Create an MCP tool that uses stdio transport
+server_info = StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"])
+tool = MCPTool(name="get_current_time", server_info=server_info)
+
+## Get the current time in New York
+result = tool.invoke(timezone="America/New_York")
+```
+
+### In a pipeline
+
+You can integrate an `MCPTool` into a pipeline with a `ChatGenerator` and a `ToolInvoker`:
+
+```python
+from haystack import Pipeline
+from haystack.components.converters import OutputAdapter
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.tools import ToolInvoker
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.tools.mcp import MCPTool, StdioServerInfo
+
+time_tool = MCPTool(
+    name="get_current_time",
+    server_info=StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"]),
+)
+pipeline = Pipeline()
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[time_tool]))
+pipeline.add_component("tool_invoker", ToolInvoker(tools=[time_tool]))
+pipeline.add_component(
+    "adapter",
+    OutputAdapter(
+        template="{{ initial_msg + initial_tool_messages + tool_messages }}",
+        output_type=list[ChatMessage],
+        unsafe=True,
+    ),
+)
+pipeline.add_component("response_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+pipeline.connect("llm.replies", "tool_invoker.messages")
+pipeline.connect("llm.replies", "adapter.initial_tool_messages")
+pipeline.connect("tool_invoker.tool_messages", "adapter.tool_messages")
+pipeline.connect("adapter.output", "response_llm.messages")
+
+user_input = "What is the time in New York? Be brief."  # can be any city
+user_input_msg = ChatMessage.from_user(text=user_input)
+
+result = pipeline.run({"llm": {"messages": [user_input_msg]}, "adapter": {"initial_msg": [user_input_msg]}})
+
+print(result["response_llm"]["replies"][0].text)
+## The current time in New York is 1:57 PM.
+```
+
+### With the Agent Component
+
+You can  use `MCPTool` with the [Agent](../pipeline-components/agents-1/agent.mdx) component. Internally, the `Agent` component includes a `ToolInvoker` and the ChatGenerator of your choice to execute tool calls and process tool results.
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.components.agents import Agent
+
+from haystack_integrations.tools.mcp import MCPTool, StdioServerInfo
+
+time_tool = MCPTool(
+    name="get_current_time",
+    server_info=StdioServerInfo(command="uvx", args=["mcp-server-time", "--local-timezone=Europe/Berlin"]),
+)
+
+## Agent Setup
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[time_tool],
+    exit_conditions=["text"]
+)
+
+## Run the Agent
+agent.warm_up()
+response = agent.run(messages=[ChatMessage.from_user("What is the time in New York? Be brief.")])
+
+## Output
+print(response["messages"][-1].text)
+```

@@ -7,76 +7,79 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  /* Primary Color Scale (Teal) - Light Mode */
-  --ifm-color-primary: #2A9383;
-  --ifm-color-primary-dark: #23867A;
-  --ifm-color-primary-darker: #1C6E65;
-  --ifm-color-primary-darkest: #155650;
-  --ifm-color-primary-light: #68E5E9;
-  --ifm-color-primary-lighter: #A0F4EB;
-  --ifm-color-primary-lightest: #C7F9F1;
+  /* Primary Color Scale (Blue) - Light Mode */
+  --ifm-color-primary: #2558FF;
+  --ifm-color-primary-dark: #1F49D4;
+  --ifm-color-primary-darker: #193BAA;
+  --ifm-color-primary-darkest: #132C80;
+  --ifm-color-primary-light: #4974FF;
+  --ifm-color-primary-lighter: #6E90FF;
+  --ifm-color-primary-lightest: #92ABFF;
 
-  /* Secondary Color Scale (Lilac) - Light Mode */
-  --ifm-color-secondary: #8BA5FF;
-  --ifm-color-secondary-dark: #6A8BFF;
-  --ifm-color-secondary-darker: #5077FF;
-  --ifm-color-secondary-darkest: #3562FF;
-  --ifm-color-secondary-light: #B5C8FF;
-  --ifm-color-secondary-lighter: #D5E9FF;
-  --ifm-color-secondary-lightest: #EBF3FF;
+  /* Secondary Color Scale (Blue Tints) - Light Mode */
+  --ifm-color-secondary: #B6C7FF;
+  --ifm-color-secondary-dark: #92ABFF;
+  --ifm-color-secondary-darker: #6E90FF;
+  --ifm-color-secondary-darkest: #4974FF;
+  --ifm-color-secondary-light: #D3DEFF;
+  --ifm-color-secondary-lighter: #E6ECFF;
+  --ifm-color-secondary-lightest: #F0F4FF;
 
   /* Brand Colors for Reference */
-  --haystack-teal-main: #C7F9F1;
-  --haystack-teal-soft: #A0F4EB;
-  --haystack-teal-medium: #68E5E9;
-  --haystack-teal-strong: #2A9383;
-  --haystack-lilac: #D5E9FF;
+  --haystack-blue-main: #2558FF;
+  --haystack-blue-soft: #B6C7FF;
+  --haystack-blue-medium: #6E90FF;
+  --haystack-blue-strong: #193BAA;
+  --haystack-blue-light: #E6ECFF;
 
   /* Code and Typography */
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(104, 229, 233, 0.15);
+  --docusaurus-highlighted-code-line-bg: rgba(37, 88, 255, 0.12);
   --ifm-font-family-base:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --ifm-font-family-heading: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Admonition Custom Colors */
-  --docusaurus-admonition-tip-bg: rgba(104, 229, 233, 0.15);
+  --docusaurus-admonition-tip-bg: rgba(37, 88, 255, 0.08);
   --docusaurus-admonition-tip-border: var(--ifm-color-primary);
-  --docusaurus-admonition-note-bg: rgba(213, 233, 255, 0.15);
-  --docusaurus-admonition-note-border: #8BA5FF;
-  --docusaurus-admonition-info-bg: rgba(160, 244, 235, 0.1);
-  --docusaurus-admonition-info-border: #A0F4EB;
+  --docusaurus-admonition-note-bg: rgba(182, 199, 255, 0.15);
+  --docusaurus-admonition-note-border: #6E90FF;
+  --docusaurus-admonition-info-bg: rgba(110, 144, 255, 0.1);
+  --docusaurus-admonition-info-border: #92ABFF;
+
+  /* Content Width - wider for long class names */
+  --ifm-container-width: 1024px;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  /* Primary Color Scale (Teal) - Dark Mode */
-  --ifm-color-primary: #68E5E9;
-  --ifm-color-primary-dark: #4DD3D8;
-  --ifm-color-primary-darker: #3CBDB5;
-  --ifm-color-primary-darkest: #2A9383;
-  --ifm-color-primary-light: #A0F4EB;
-  --ifm-color-primary-lighter: #C7F9F1;
-  --ifm-color-primary-lightest: #E0F9F6;
+  /* Primary Color Scale (Blue) - Dark Mode */
+  --ifm-color-primary: #6E90FF;
+  --ifm-color-primary-dark: #4974FF;
+  --ifm-color-primary-darker: #2558FF;
+  --ifm-color-primary-darkest: #1F49D4;
+  --ifm-color-primary-light: #92ABFF;
+  --ifm-color-primary-lighter: #B6C7FF;
+  --ifm-color-primary-lightest: #D3DEFF;
 
-  /* Secondary Color Scale (Lilac) - Dark Mode */
-  --ifm-color-secondary: #A5B8FF;
-  --ifm-color-secondary-dark: #8BA5FF;
-  --ifm-color-secondary-darker: #6A8BFF;
-  --ifm-color-secondary-darkest: #5077FF;
-  --ifm-color-secondary-light: #C5D5FF;
-  --ifm-color-secondary-lighter: #D5E9FF;
-  --ifm-color-secondary-lightest: #E8EFFF;
+  /* Secondary Color Scale (Blue Tints) - Dark Mode */
+  --ifm-color-secondary: #92ABFF;
+  --ifm-color-secondary-dark: #6E90FF;
+  --ifm-color-secondary-darker: #4974FF;
+  --ifm-color-secondary-darkest: #2558FF;
+  --ifm-color-secondary-light: #B6C7FF;
+  --ifm-color-secondary-lighter: #D3DEFF;
+  --ifm-color-secondary-lightest: #E6ECFF;
 
   /* Code and Typography */
-  --docusaurus-highlighted-code-line-bg: rgba(104, 229, 233, 0.2);
+  --docusaurus-highlighted-code-line-bg: rgba(110, 144, 255, 0.2);
 
   /* Admonition Custom Colors - Dark Mode */
-  --docusaurus-admonition-tip-bg: rgba(104, 229, 233, 0.15);
-  --docusaurus-admonition-tip-border: #68E5E9;
-  --docusaurus-admonition-note-bg: rgba(165, 184, 255, 0.15);
-  --docusaurus-admonition-note-border: #A5B8FF;
-  --docusaurus-admonition-info-bg: rgba(160, 244, 235, 0.12);
-  --docusaurus-admonition-info-border: #A0F4EB;
+  --docusaurus-admonition-tip-bg: rgba(110, 144, 255, 0.15);
+  --docusaurus-admonition-tip-border: #6E90FF;
+  --docusaurus-admonition-note-bg: rgba(146, 171, 255, 0.15);
+  --docusaurus-admonition-note-border: #92ABFF;
+  --docusaurus-admonition-info-bg: rgba(182, 199, 255, 0.12);
+  --docusaurus-admonition-info-border: #B6C7FF;
 }
 
 body {
@@ -89,13 +92,30 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
+/* Heading sizes */
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+h4 {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
 /* 6) Buttons, spacing, etc. (optional) */
 button, .button {
   border-radius: 8px;
-}
-
-.container {
-  max-width: 1200px;
 }
 
 
@@ -129,7 +149,7 @@ button, .button {
 }
 
 /* ========================================
-   BREADCRUMBS - Neutral Grey with Teal Active
+   BREADCRUMBS - Neutral Grey with Blue Active
    ======================================== */
 
 /* Breadcrumb links - grey for non-active items */
@@ -142,7 +162,7 @@ button, .button {
   background: transparent;
 }
 
-/* Active breadcrumb item - teal */
+/* Active breadcrumb item - blue */
 .breadcrumbs__item--active .breadcrumbs__link {
   color: var(--ifm-color-primary);
   font-weight: 500;
@@ -172,13 +192,13 @@ button, .button {
   letter-spacing: 0.5px !important;
 }
 
-/* Footer links - use teal colors, no lilac */
+/* Footer links - white on hover for better contrast on green background */
 .footer__link-item {
   color: rgba(255, 255, 255, 0.7);
 }
 
 .footer__link-item:hover {
-  color: var(--ifm-color-primary-light);
+  color: #ffffff !important;
   text-decoration: underline;
 }
 
@@ -188,7 +208,7 @@ button, .button {
 }
 
 .footer a:hover {
-  color: var(--ifm-color-primary-light);
+  color: #ffffff !important;
 }
 
 /* Footer copyright - same color as other footer text */
@@ -196,10 +216,76 @@ button, .button {
   color: rgba(255, 255, 255, 0.7) !important;
 }
 
+/* Footer - Haystack Blue Background */
+.footer.footer--dark {
+  background-color: #193BAA !important;
+}
+
+[data-theme='dark'] .footer.footer--dark {
+  background-color: #132C80 !important;
+}
+
+/* Footer Social Media Icons */
+.footer-social-icons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-left: -0.25rem;
+}
+
+.footer-social-row {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-start;
+}
+
+.footer-social-icon {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
+  opacity: 0.7;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.footer-social-icon:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.footer__link-item:has(.footer-social-icon) {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem;
+}
+
+.footer__link-item:has(.footer-social-icon):hover {
+  text-decoration: none;
+}
+
 /* Sidebar navigation - top-level items bold */
 .menu__list > .menu__list-item > .menu__link {
   font-weight: 600;
   font-size: 0.95rem;
+}
+
+.menu__link {
+  color: #4B5563;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  position: relative;
+}
+
+/* Truncate only single-word items (like class names: SentenceTransformersDocumentImageEmbedder) */
+/* Multi-word phrases (like "Migrating from LangGraph to Haystack") will wrap normally */
+.menu__link--single-word {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme='dark'] .menu__link {
+  color: #E5E7EB;
 }
 
 /* Sidebar navigation - sub-items normal weight */
@@ -217,31 +303,33 @@ button, .button {
 
 /* Add background highlight only to the actual page (leaf node) */
 .theme-doc-sidebar-item-link .menu__link--active {
-  background-color: rgba(104, 229, 233, 0.15);
+  background-color: rgba(37, 88, 255, 0.1);
   border-left: 3px solid var(--ifm-color-primary);
   padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 3px);
 }
 
 /* Hover state for sidebar links */
 .menu__link:hover {
-  background-color: rgba(104, 229, 233, 0.08);
+  background-color: rgba(37, 88, 255, 0.06);
+  color: var(--ifm-color-primary);
   transition: background-color 0.2s ease;
 }
 
 /* Active link hover - keep stronger background */
 .theme-doc-sidebar-item-link .menu__link--active:hover {
-  background-color: rgba(104, 229, 233, 0.15);
+  background-color: rgba(37, 88, 255, 0.1);
 }
 
 /* Dark mode adjustments for sidebar */
 [data-theme='dark'] .theme-doc-sidebar-item-link .menu__link--active {
-  background-color: rgba(104, 229, 233, 0.2);
+  background-color: rgba(110, 144, 255, 0.2);
   border-left: 3px solid var(--ifm-color-primary);
   color: var(--ifm-color-primary-light) !important;
 }
 
 [data-theme='dark'] .menu__link:hover {
-  background-color: rgba(104, 229, 233, 0.1);
+  background-color: rgba(110, 144, 255, 0.1);
+  color: var(--ifm-color-primary-light);
 }
 
 [data-theme='dark'] .menu__link--active {
@@ -254,7 +342,7 @@ button, .button {
 
 /* Tip Admonitions - Match sidebar navigation color */
 .theme-admonition.alert.alert--success {
-  background-color: rgba(104, 229, 233, 0.15);
+  background-color: rgba(37, 88, 255, 0.08);
   border-left: 4px solid var(--ifm-color-primary);
 }
 
@@ -266,7 +354,7 @@ button, .button {
   color: var(--ifm-color-primary-dark);
 }
 
-/* Note Admonitions - Lilac */
+/* Note Admonitions - Blue Tint */
 .theme-admonition.alert.alert--secondary {
   background-color: var(--docusaurus-admonition-note-bg);
   border-left: 4px solid var(--docusaurus-admonition-note-border);
@@ -280,7 +368,7 @@ button, .button {
   color: var(--ifm-color-secondary-dark);
 }
 
-/* Info Admonitions - Teal Soft */
+/* Info Admonitions - Blue Soft */
 .theme-admonition.alert.alert--info {
   background-color: var(--docusaurus-admonition-info-bg);
   border-left: 4px solid var(--docusaurus-admonition-info-border);
@@ -298,14 +386,70 @@ button, .button {
    INTERACTIVE ELEMENTS - Enhanced Colors
    ======================================== */
 
-/* Primary Links */
-a {
+/* Primary Links - only underline content links, not navigation */
+article a {
   color: var(--ifm-color-primary);
   transition: text-decoration 0.2s ease;
 }
 
-a:hover {
+article a:hover {
   text-decoration: underline;
+}
+
+/* Reset general link behavior - no underline by default */
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* Navbar links - keep neutral color until hovered/active */
+.navbar__link {
+  color: var(--ifm-navbar-link-color) !important;
+}
+
+.navbar__link:hover,
+.navbar__link:focus-visible {
+  color: var(--ifm-navbar-link-hover-color, var(--ifm-color-primary)) !important;
+}
+
+.navbar__link:active {
+  color: var(--ifm-navbar-link-active-color, var(--ifm-color-primary)) !important;
+}
+
+/* Navbar logo title - default to neutral, blue on hover */
+.navbar__title {
+  color: var(--ifm-navbar-link-color) !important;
+}
+
+.navbar__title:hover {
+  color: var(--ifm-navbar-link-hover-color, var(--ifm-color-primary)) !important;
+}
+
+/* Hide navbar title on mobile/tablet to prevent overlap with search bar */
+@media (max-width: 996px) {
+  .navbar__title {
+    display: none !important;
+  }
+
+  /* Ensure navbar brand doesn't grow too large */
+  .navbar__brand {
+    flex-shrink: 0;
+    max-width: fit-content;
+  }
+}
+
+/* Remove underline from navbar logo link */
+.navbar__logo,
+.navbar__brand {
+  text-decoration: none !important;
+}
+
+.navbar__logo:hover,
+.navbar__brand:hover {
+  text-decoration: none !important;
 }
 
 /* Inline Code - Neutral Grey Background */
@@ -323,7 +467,7 @@ code:not([class*="language-"]) {
   color: #E8E8E8;
 }
 
-/* Links inside inline code - use teal for distinction */
+/* Links inside inline code - use blue for distinction */
 a code:not([class*="language-"]),
 code:not([class*="language-"]) a {
   color: var(--ifm-color-primary-dark);
@@ -354,7 +498,7 @@ code:not([class*="language-"]) a:hover {
   color: #ffffff;
 }
 
-/* Secondary Buttons - Teal Outline */
+/* Secondary Buttons - Blue Outline */
 .button--secondary {
   background-color: transparent;
   border: 2px solid var(--ifm-color-primary);
@@ -388,8 +532,8 @@ code:not([class*="language-"]) a:hover {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
-  background: #E0F2F1;
-  color: #1C6E65;
+  background: #E6ECFF;
+  color: #193BAA;
   font-weight: 600;
   font-size: 0.6em;
   text-transform: uppercase;
@@ -407,9 +551,9 @@ code:not([class*="language-"]) a:hover {
 }
 
 [data-theme='dark'] .code-block-language-badge {
-  background: rgba(96, 125, 139, 0.3);
-  color: #B2DFDB;
-  border: 1px solid rgba(96, 125, 139, 0.4);
+  background: rgba(110, 144, 255, 0.2);
+  color: #B6C7FF;
+  border: 1px solid rgba(110, 144, 255, 0.3);
 }
 
 /* Copy Button Styling */
@@ -423,7 +567,7 @@ code:not([class*="language-"]) a:hover {
 }
 
 [data-theme='dark'] .clean-btn.copy-button:hover {
-  background-color: rgba(104, 229, 233, 0.2);
+  background-color: rgba(110, 144, 255, 0.2);
 }
 
 /* Hide language badge for single-line code blocks */
@@ -440,33 +584,106 @@ code:not([class*="language-"]) a:hover {
    VERSION BADGE & BANNER - Brand Colors
    ======================================== */
 
-/* Version Badge - Neutral grey (metadata, not interactive) */
+/* Version Badge - Lighter grey for better blue contrast */
 .badge--secondary,
 .theme-doc-version-badge {
-  background-color: #6B7280 !important;
-  border-color: #6B7280 !important;
+  background-color: #9CA3AF !important;
+  border-color: #9CA3AF !important;
   color: #ffffff !important;
 }
 
 [data-theme='dark'] .badge--secondary,
 [data-theme='dark'] .theme-doc-version-badge {
-  background-color: #4B5563 !important;
-  border-color: #4B5563 !important;
-  color: #E5E7EB !important;
+  background-color: #6B7280 !important;
+  border-color: #6B7280 !important;
+  color: #ffffff !important;
+}
+
+/* Navbar Version Dropdown - Badge Style with lighter grey */
+.navbar-version-badge-dropdown {
+  background-color: #9CA3AF !important;
+  border-radius: 12px !important;
+  padding: 3px 10px !important;
+  font-size: 13px !important;
+  margin-right: 10px !important;
+  color: #ffffff !important;
+}
+
+.navbar-version-badge-dropdown .navbar__link,
+.navbar-version-badge-dropdown .navbar__link *,
+.navbar-version-badge-dropdown button,
+.navbar-version-badge-dropdown a,
+.navbar-version-badge-dropdown span,
+.navbar__item.navbar-version-badge-dropdown > .navbar__link {
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  padding: 0 !important;
+  transition: color 0.2s ease !important;
+}
+
+/* Light mode: blue TEXT color on hover */
+.navbar-version-badge-dropdown:hover .navbar__link,
+.navbar-version-badge-dropdown:hover .navbar__link *,
+.navbar-version-badge-dropdown:hover button,
+.navbar-version-badge-dropdown:hover a,
+.navbar-version-badge-dropdown:hover span,
+.navbar-version-badge-dropdown .navbar__link:hover,
+.navbar-version-badge-dropdown .navbar__link:hover * {
+  color: var(--ifm-color-primary-dark) !important;
+  background-color: transparent !important;
+}
+
+/* Force white color on the dropdown caret/arrow */
+.navbar-version-badge-dropdown::after,
+.navbar-version-badge-dropdown .navbar__link::after {
+  filter: brightness(0) invert(1) !important;
+  transition: filter 0.2s ease !important;
+}
+
+/* Teal arrow on hover */
+.navbar-version-badge-dropdown:hover::after,
+.navbar-version-badge-dropdown:hover .navbar__link::after {
+  filter: none !important;
+}
+
+[data-theme='dark'] .navbar-version-badge-dropdown {
+  background-color: #6B7280 !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link,
+[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link *,
+[data-theme='dark'] .navbar-version-badge-dropdown button,
+[data-theme='dark'] .navbar-version-badge-dropdown a,
+[data-theme='dark'] .navbar-version-badge-dropdown span,
+[data-theme='dark'] .navbar__item.navbar-version-badge-dropdown > .navbar__link {
+  color: #ffffff !important;
+}
+
+/* Dark mode: blue TEXT color on hover - higher specificity */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link *,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover button,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover a,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover span,
+html[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown .navbar__link:hover *,
+html[data-theme='dark'] .navbar__item.navbar-version-badge-dropdown:hover > .navbar__link {
+  color: #6E90FF !important;
 }
 
 /* Unreleased Version Banner */
 .theme-doc-version-banner.alert--warning {
   background: linear-gradient(135deg,
-    rgba(42, 147, 131, 0.1) 0%,
-    rgba(104, 229, 233, 0.1) 100%);
+    rgba(25, 59, 170, 0.1) 0%,
+    rgba(110, 144, 255, 0.1) 100%);
   border-left: 4px solid var(--ifm-color-primary);
 }
 
 [data-theme='dark'] .theme-doc-version-banner.alert--warning {
   background: linear-gradient(135deg,
-    rgba(104, 229, 233, 0.15) 0%,
-    rgba(160, 244, 235, 0.1) 100%);
+    rgba(110, 144, 255, 0.15) 0%,
+    rgba(182, 199, 255, 0.1) 100%);
   border-left: 4px solid var(--ifm-color-primary);
 }
 
@@ -474,8 +691,34 @@ code:not([class*="language-"]) a:hover {
    TABLE OF CONTENTS - Enhanced Styling
    ======================================== */
 
+.table-of-contents__link {
+  color: #4B5563;
+  position: relative;
+}
+
+[data-theme='dark'] .table-of-contents__link {
+  color: #E5E7EB;
+}
+
 .table-of-contents__link--active {
   color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+/* Active indicator line */
+.table-of-contents__link--active::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--ifm-color-primary);
+  border-radius: 2px;
+}
+
+[data-theme='dark'] .table-of-contents__link--active {
+  color: var(--ifm-color-primary) !important;
   font-weight: 600;
 }
 
@@ -483,8 +726,16 @@ code:not([class*="language-"]) a:hover {
   color: var(--ifm-color-primary);
 }
 
+[data-theme='dark'] .table-of-contents__link--active code {
+  color: var(--ifm-color-primary) !important;
+}
+
 .table-of-contents__link:hover {
-  color: var(--ifm-color-primary-light);
+  color: var(--ifm-color-primary) !important;
+}
+
+[data-theme='dark'] .table-of-contents__link:hover {
+  color: var(--ifm-color-primary) !important;
 }
 
 /* ========================================
@@ -496,23 +747,46 @@ code:not([class*="language-"]) a:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+.dropdown__link {
+  color: #374151;
+}
+
+[data-theme='dark'] .dropdown__link {
+  color: #E5E7EB;
+}
+
+/* Active state - keep the color highlight */
 .dropdown__link--active {
   background-color: var(--ifm-color-primary-lightest);
   color: var(--ifm-color-primary);
 }
 
+/* Hover state - gray background only, no color */
 .dropdown__link:hover {
+  background-color: #F3F4F6;
+  color: #374151;
+}
+
+/* Active item on hover - keep the active color */
+.dropdown__link--active:hover {
   background-color: var(--ifm-color-primary-lightest);
   color: var(--ifm-color-primary);
 }
 
 [data-theme='dark'] .dropdown__link--active {
-  background-color: rgba(104, 229, 233, 0.15);
+  background-color: rgba(110, 144, 255, 0.15);
   color: var(--ifm-color-primary);
 }
 
+/* Dark mode hover - neutral gray */
 [data-theme='dark'] .dropdown__link:hover {
-  background-color: rgba(104, 229, 233, 0.1);
+  background-color: #374151;
+  color: #E5E7EB;
+}
+
+/* Dark mode active item on hover - keep the active color */
+[data-theme='dark'] .dropdown__link--active:hover {
+  background-color: rgba(110, 144, 255, 0.15);
   color: var(--ifm-color-primary);
 }
 
@@ -534,7 +808,7 @@ code:not([class*="language-"]) a:hover {
 
 .navbar__search-input:focus {
   border-color: var(--ifm-color-primary);
-  box-shadow: 0 0 0 0.2rem rgba(104, 229, 233, 0.25);
+  box-shadow: 0 0 0 0.2rem rgba(37, 88, 255, 0.2);
 }
 
 /* ========================================
@@ -633,4 +907,53 @@ code:not([class*="language-"]) a:hover {
 /* Add subtle spacing between rows for readability */
 .key-value-table tr + tr td {
   padding-top: 0.4rem;
+}
+
+/* ========================================
+   SIDE-BY-SIDE CODE COMPARISON
+   ======================================== */
+
+.code-comparison {
+  display: flex;
+  gap: 1.5rem;
+  align-items: stretch;
+  margin: 1rem 0 2rem;
+}
+
+.code-comparison__column {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.code-comparison .theme-code-block {
+  height: 100%;
+}
+
+@media (max-width: 996px) {
+  .code-comparison {
+    flex-direction: column;
+  }
+}
+
+/* ========================================= */
+/* CRITICAL: Version badge hover color fix  */
+/* These rules MUST be at the end to ensure */
+/* they override all other hover styles     */
+/* ========================================= */
+
+/* Dark mode version badge - blue text on hover */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a.navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover .navbar__link,
+html[data-theme='dark'] .navbar-version-badge-dropdown > a:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown > a.navbar__link:hover,
+html[data-theme='dark'] .navbar-version-badge-dropdown a.navbar__link:hover {
+  color: #6E90FF !important;
+}
+
+/* Also target the dropdown arrow/caret in dark mode on hover */
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover::after,
+html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
+  filter: none !important;
 }

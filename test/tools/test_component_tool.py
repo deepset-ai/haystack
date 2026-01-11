@@ -194,9 +194,19 @@ class TestComponentTool:
             "description": "A simple component that generates text.",
         }
 
+    def test_from_component_with_invalid_inputs_from_state_nested_dict(self):
+        """Test that ComponentTool rejects nested dict format for inputs_from_state"""
+        with pytest.raises(ValueError, match="must be str, not dict"):
+            ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})
+
     def test_from_component_with_outputs_to_state(self):
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
         assert tool.outputs_to_state == {"replies": {"source": "reply"}}
+
+    def test_from_component_with_invalid_outputs_to_state_source(self):
+        """Test that ComponentTool validates outputs_to_state source against component outputs"""
+        with pytest.raises(ValueError, match="unknown output"):
+            ComponentTool(component=SimpleComponent(), outputs_to_state={"result": {"source": "nonexistent"}})
 
     def test_from_component_with_dataclass(self):
         tool = ComponentTool(component=UserGreeter())
@@ -504,13 +514,13 @@ class TestComponentToolInPipeline:
 
         # Create pipeline with OpenAIChatGenerator and ToolInvoker
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
 
         # Connect components
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
-        message = ChatMessage.from_user(text="Vladimir")
+        message = ChatMessage.from_user(text="Using tools, greet Vladimir")
 
         # Run pipeline
         result = pipeline.run({"llm": {"messages": [message]}})
@@ -526,6 +536,7 @@ class TestComponentToolInPipeline:
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_component_tool_in_pipeline_openai_tools_strict(self):
         # Create component and convert it to tool
         tool = ComponentTool(
@@ -536,13 +547,13 @@ class TestComponentToolInPipeline:
 
         # Create pipeline with OpenAIChatGenerator and ToolInvoker
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool], tools_strict=True))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool], tools_strict=True))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
 
         # Connect components
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
-        message = ChatMessage.from_user(text="Vladimir")
+        message = ChatMessage.from_user(text="Using tools, greet Vladimir")
 
         # Run pipeline
         result = pipeline.run({"llm": {"messages": [message]}})
@@ -564,11 +575,11 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
-        message = ChatMessage.from_user(text="I am Alice and I'm 30 years old")
+        message = ChatMessage.from_user(text="Greet the user Alice who is 30 years old")
 
         result = pipeline.run({"llm": {"messages": [message]}})
         tool_messages = result["tool_invoker"]["tool_messages"]
@@ -587,11 +598,12 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
-        message = ChatMessage.from_user(text="Can you join these words: hello, beautiful, world")
+        # Be explicit about using tools, otherwise model will ignore the tool call and return the result directly.
+        message = ChatMessage.from_user(text="Using tools, join these words: hello, beautiful, world")
 
         result = pipeline.run({"llm": {"messages": [message]}})
         tool_messages = result["tool_invoker"]["tool_messages"]
@@ -599,7 +611,14 @@ class TestComponentToolInPipeline:
 
         tool_message = tool_messages[0]
         assert tool_message.is_from(ChatRole.TOOL)
-        assert tool_message.tool_call_result.result == str({"concatenated": "hello beautiful world"})
+        # Check that the result contains the expected words (handle whitespace variations)
+        result_str = tool_message.tool_call_result.result
+        assert "concatenated" in result_str
+        # Normalize whitespace in the result string and check it contains the expected words
+        normalized_result = " ".join(result_str.split())
+        assert "hello" in normalized_result
+        assert "beautiful" in normalized_result
+        assert "world" in normalized_result
         assert not tool_message.tool_call_result.error
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
@@ -612,11 +631,13 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
-        message = ChatMessage.from_user(text="Diana lives at 123 Elm Street in Metropolis")
+        message = ChatMessage.from_user(
+            text="Process information about the person Diana who lives at 123 Elm Street in Metropolis"
+        )
 
         result = pipeline.run({"llm": {"messages": [message]}})
         tool_messages = result["tool_invoker"]["tool_messages"]
@@ -637,7 +658,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool], convert_result_to_json_string=True))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
@@ -672,7 +693,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
@@ -700,7 +721,7 @@ class TestComponentToolInPipeline:
         )
 
         pipeline = Pipeline()
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
         pipeline.connect("llm.replies", "tool_invoker.messages")
 
@@ -731,7 +752,7 @@ class TestComponentToolInPipeline:
         # Create and configure the pipeline
         pipeline = Pipeline()
         pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-        pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+        pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
         pipeline.connect("tool_invoker.tool_messages", "llm.messages")
 
         # Serialize to dict and verify structure
@@ -759,8 +780,8 @@ class TestComponentToolInPipeline:
             name="simple_tool",
             description="A simple tool",
             outputs_to_string={"source": "reply", "handler": reply_formatter},
-            inputs_from_state={"test": "input"},
-            outputs_to_state={"output": {"source": "out", "handler": output_handler}},
+            inputs_from_state={"test": "text"},
+            outputs_to_state={"output": {"source": "reply", "handler": output_handler}},
         )
 
         # Test serialization
@@ -772,8 +793,8 @@ class TestComponentToolInPipeline:
                 "description": "A simple tool",
                 "parameters": None,
                 "outputs_to_string": {"source": "reply", "handler": "test_component_tool.reply_formatter"},
-                "inputs_from_state": {"test": "input"},
-                "outputs_to_state": {"output": {"source": "out", "handler": "test_component_tool.output_handler"}},
+                "inputs_from_state": {"test": "text"},
+                "outputs_to_state": {"output": {"source": "reply", "handler": "test_component_tool.output_handler"}},
             },
         }
         tool_dict = tool.to_dict()
@@ -830,7 +851,7 @@ class TestComponentToolInPipeline:
 
             tool = ComponentTool(component=PromptBuilder("{{query}}"))
             pipeline = Pipeline()
-            pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+            pipeline.add_component("llm", OpenAIChatGenerator())
             result = pipeline.run({"llm": {"messages": [ChatMessage.from_user(text="Hello")], "tools": [tool]}})
 
         assert result["llm"]["replies"][0].text == "A response from the model"

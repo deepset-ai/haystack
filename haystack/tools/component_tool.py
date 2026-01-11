@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Callable, Optional, Union, get_args, get_origin
+from typing import Any, Callable, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
 
@@ -70,7 +70,7 @@ class ComponentTool(Tool):
 
     # Create pipeline with OpenAIChatGenerator and ToolInvoker
     pipeline = Pipeline()
-    pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=[tool]))
+    pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
     pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
 
     # Connect components
@@ -89,13 +89,13 @@ class ComponentTool(Tool):
     def __init__(
         self,
         component: Component,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        parameters: Optional[dict[str, Any]] = None,
+        name: str | None = None,
+        description: str | None = None,
+        parameters: dict[str, Any] | None = None,
         *,
-        outputs_to_string: Optional[dict[str, Union[str, Callable[[Any], str]]]] = None,
-        inputs_from_state: Optional[dict[str, str]] = None,
-        outputs_to_state: Optional[dict[str, dict[str, Union[str, Callable]]]] = None,
+        outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
+        inputs_from_state: dict[str, str] | None = None,
+        outputs_to_state: dict[str, dict[str, str | Callable]] | None = None,
     ) -> None:
         """
         Create a Tool instance from a Haystack component.
@@ -107,15 +107,26 @@ class ComponentTool(Tool):
             A JSON schema defining the parameters expected by the Tool.
             Will fall back to the parameters defined in the component's run method signature if not provided.
         :param outputs_to_string:
-            Optional dictionary defining how a tool outputs should be converted into a string.
-            If the source is provided only the specified output key is sent to the handler.
-            If the source is omitted the whole tool result is sent to the handler.
-            Example:
-            ```python
-            {
-                "source": "docs", "handler": format_documents
-            }
-            ```
+            Optional dictionary defining how tool outputs should be converted into string(s).
+            Supports two formats:
+
+            1. Single output format - use "source" and/or "handler" at the root level:
+                ```python
+                {
+                    "source": "docs", "handler": format_documents
+                }
+                ```
+                If the source is provided, only the specified output key is sent to the handler.
+                If the source is omitted, the whole tool result is sent to the handler.
+
+            2. Multiple output format - map keys to individual configurations:
+                ```python
+                {
+                    "formatted_docs": {"source": "docs", "handler": format_documents},
+                    "summary": {"source": "summary_text", "handler": str.upper}
+                }
+                ```
+                Each key maps to a dictionary that can contain "source" and/or "handler".
         :param inputs_from_state:
             Optional dictionary mapping state keys to tool parameter names.
             Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
@@ -200,6 +211,10 @@ class ComponentTool(Tool):
 
         description = description or component.__doc__ or name
 
+        # Store component before calling super().__init__() so _get_valid_outputs() can access it
+        self._component = component
+        self._is_warmed_up = False
+
         # Create the Tool instance with the component invoker as the function to be called and the schema
         super().__init__(
             name=name,
@@ -210,8 +225,28 @@ class ComponentTool(Tool):
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,
         )
-        self._component = component
-        self._is_warmed_up = False
+
+    def _get_valid_inputs(self) -> set[str]:
+        """
+        Return valid input parameter names from the component's input sockets.
+
+        Used to validate `inputs_from_state` against the component's actual inputs.
+        This ensures users don't reference non-existent component inputs.
+
+        :returns: Set of component input socket names.
+        """
+        return set(self._component.__haystack_input__._sockets_dict.keys())  # type: ignore[attr-defined]
+
+    def _get_valid_outputs(self) -> set[str]:
+        """
+        Return valid output names from the component's output sockets.
+
+        Used to validate `outputs_to_state` against the component's actual outputs.
+        This ensures users don't reference non-existent component outputs.
+
+        :returns: Set of component output socket names.
+        """
+        return set(self._component.__haystack_output__._sockets_dict.keys())  # type: ignore[attr-defined]
 
     def warm_up(self):
         """

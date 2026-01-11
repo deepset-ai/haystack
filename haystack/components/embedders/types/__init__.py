@@ -2,6 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .protocol import TextEmbedder
+from .protocol import DocumentEmbedder, TextEmbedder
 
-__all__ = ["TextEmbedder"]
+__all__ = ["DocumentEmbedder", "TextEmbedder"]

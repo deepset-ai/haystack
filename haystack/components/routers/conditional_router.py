@@ -4,14 +4,16 @@
 
 import ast
 import contextlib
-from typing import Any, Callable, Mapping, Optional, Sequence, TypedDict, Union, get_args, get_origin
+from typing import Any, Callable, Mapping, Sequence, TypedDict, get_args, get_origin
 
-from jinja2 import Environment, TemplateSyntaxError, meta
+from jinja2 import Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
+from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
+from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +28,9 @@ class RouteConditionException(Exception):
 
 class Route(TypedDict):
     condition: str
-    output: Union[str, list[str]]
-    output_name: Union[str, list[str]]
-    output_type: Union[type, list[type]]
+    output: str | list[str]
+    output_name: str | list[str]
+    output_type: type | list[type]
 
 
 @component
@@ -88,36 +90,40 @@ class ConditionalRouter:
     from haystack.components.routers import ConditionalRouter
 
     routes = [
-        {
-            "condition": "{{streams|length > 2}}",
-            "output": "{{streams}}",
-            "output_name": "enough_streams",
-            "output_type": list[ByteStream],
+        {"condition": "{{count > 5}}",
+            "output": "Processing many items",
+            "output_name": "many_items",
+            "output_type": str,
         },
-        {
-            "condition": "{{streams|length <= 2}}",
-            "output": "{{streams}}",
-            "output_name": "insufficient_streams",
-            "output_type": list[ByteStream],
+        {"condition": "{{count <= 5}}",
+            "output": "Processing few items",
+            "output_name": "few_items",
+            "output_type": str,
         },
     ]
 
     pipe = Pipeline()
-    pipe.add_component("router", router)
-    ...
-    pipe.connect("router.enough_streams", "some_component_a.streams")
-    pipe.connect("router.insufficient_streams", "some_component_b.streams_or_some_other_input")
-    ...
+    pipe.add_component("router", ConditionalRouter(routes))
+
+    # Run with count > 5
+    result = pipe.run({"router": {"count": 10}})
+    print(result)
+    # >> {'router': {'many_items': 'Processing many items'}}
+
+    # Run with count <= 5
+    result = pipe.run({"router": {"count": 3}})
+    print(result)
+    # >> {'router': {'few_items': 'Processing few items'}}
     ```
     """
 
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         routes: list[Route],
-        custom_filters: Optional[dict[str, Callable]] = None,
+        custom_filters: dict[str, Callable] | None = None,
         unsafe: bool = False,
         validate_output_type: bool = False,
-        optional_variables: Optional[list[str]] = None,
+        optional_variables: list[str] | None = None,
     ):
         """
         Initializes the `ConditionalRouter` with a list of routes detailing the conditions for routing.
@@ -204,7 +210,7 @@ class ConditionalRouter:
         self._validate_routes(routes)
         # Inspect the routes to determine input and output types.
         input_types: set[str] = set()  # let's just store the name, type will always be Any
-        output_types: dict[str, Union[type, list[type]]] = {}
+        output_types: dict[str, type | list[type]] = {}
 
         for route in routes:
             # extract inputs
@@ -397,13 +403,27 @@ class ConditionalRouter:
 
             # Validate templates
             if not self._validate_template(self._env, route["condition"]):
-                raise ValueError(f"Invalid template for condition: {route['condition']}")
+                condition_value = route["condition"]
+                if not isinstance(condition_value, str):
+                    raise ValueError(
+                        f"Invalid template for condition: {condition_value!r} (type: {type(condition_value).__name__})."
+                        f"Condition must be a string representing a valid Jinja2 template. "
+                        f"For example, use {str(condition_value)!r} instead of {condition_value!r}."
+                    )
+                raise ValueError(f"Invalid template for condition: {condition_value}")
 
             for output in outputs:
                 if not self._validate_template(self._env, output):
+                    if not isinstance(output, str):
+                        raise ValueError(
+                            f"Invalid template for output: {output!r} (type: {type(output).__name__}). "
+                            f"Output must be a string representing a valid Jinja2 template. "
+                            f"For example, use {str(output)!r} instead of {output!r}."
+                        )
                     raise ValueError(f"Invalid template for output: {output}")
 
-    def _extract_variables(self, env: Environment, templates: list[str]) -> set[str]:
+    @staticmethod
+    def _extract_variables(env: Environment, templates: list[str]) -> set[str]:
         """
         Extracts all variables from a list of Jinja template strings.
 
@@ -413,7 +433,10 @@ class ConditionalRouter:
         """
         variables = set()
         for template in templates:
-            variables.update(meta.find_undeclared_variables(env.parse(template)))
+            assigned_variables, template_variables = _extract_template_variables_and_assignments(
+                env=env, template=template
+            )
+            variables.update(template_variables - assigned_variables)
         return variables
 
     def _validate_template(self, env: Environment, template_text: str):
@@ -424,6 +447,9 @@ class ConditionalRouter:
         :param template_text: A Jinja template string.
         :returns: `True` if the template is valid, `False` otherwise.
         """
+        # Check if template_text is a string before attempting to parse
+        if not isinstance(template_text, str):
+            return False
         try:
             env.parse(template_text)
             return True
@@ -474,8 +500,8 @@ class ConditionalRouter:
                 for k, v in value.items()
             )
 
-        # Handle Union types (including Optional)
-        if origin is Union:
+        # Handle Union types (including Optional and X | Y syntax)
+        if _is_union_type(origin):
             return any(self._output_matches_type(value, arg) for arg in args)
 
         return False

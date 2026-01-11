@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from io import StringIO
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
@@ -54,13 +54,13 @@ class DOCXMetadata:
     category: str
     comments: str
     content_status: str
-    created: Optional[str]
+    created: str | None
     identifier: str
     keywords: str
     language: str
     last_modified_by: str
-    last_printed: Optional[str]
-    modified: Optional[str]
+    last_printed: str | None
+    modified: str | None
     revision: int
     subject: str
     title: str
@@ -138,8 +138,8 @@ class DOCXToDocument:
 
     def __init__(
         self,
-        table_format: Union[str, DOCXTableFormat] = DOCXTableFormat.CSV,
-        link_format: Union[str, DOCXLinkFormat] = DOCXLinkFormat.NONE,
+        table_format: str | DOCXTableFormat = DOCXTableFormat.CSV,
+        link_format: str | DOCXLinkFormat = DOCXLinkFormat.NONE,
         store_full_path: bool = False,
     ):
         """
@@ -191,11 +191,7 @@ class DOCXToDocument:
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
-    def run(
-        self,
-        sources: list[Union[str, Path, ByteStream]],
-        meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None,
-    ):
+    def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
         """
         Converts DOCX files to Documents.
 

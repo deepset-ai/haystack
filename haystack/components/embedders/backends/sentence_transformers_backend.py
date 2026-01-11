@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
@@ -26,15 +26,15 @@ class _SentenceTransformersEmbeddingBackendFactory:
     def get_embedding_backend(  # pylint: disable=too-many-positional-arguments
         *,
         model: str,
-        device: Optional[str] = None,
-        auth_token: Optional[Secret] = None,
+        device: str | None = None,
+        auth_token: Secret | None = None,
         trust_remote_code: bool = False,
-        revision: Optional[str] = None,
+        revision: str | None = None,
         local_files_only: bool = False,
-        truncate_dim: Optional[int] = None,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        truncate_dim: int | None = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         cache_params = {
@@ -83,15 +83,15 @@ class _SentenceTransformersEmbeddingBackend:
         self,
         *,
         model: str,
-        device: Optional[str] = None,
-        auth_token: Optional[Secret] = None,
+        device: str | None = None,
+        auth_token: Secret | None = None,
         trust_remote_code: bool = False,
-        revision: Optional[str] = None,
+        revision: str | None = None,
         local_files_only: bool = False,
-        truncate_dim: Optional[int] = None,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        tokenizer_kwargs: Optional[dict[str, Any]] = None,
-        config_kwargs: Optional[dict[str, Any]] = None,
+        truncate_dim: int | None = None,
+        model_kwargs: dict[str, Any] | None = None,
+        tokenizer_kwargs: dict[str, Any] | None = None,
+        config_kwargs: dict[str, Any] | None = None,
         backend: Literal["torch", "onnx", "openvino"] = "torch",
     ):
         sentence_transformers_import.check()
@@ -110,7 +110,7 @@ class _SentenceTransformersEmbeddingBackend:
             backend=backend,
         )
 
-    def embed(self, data: Union[list[str], list["Image"]], **kwargs: Any) -> list[list[float]]:
+    def embed(self, data: list[str] | list["Image"], **kwargs: Any) -> list[list[float]]:
         # Sentence Transformers encode can work with Images, but the type hint does not reflect that
         # https://sbert.net/examples/sentence_transformer/applications/image-search
         embeddings = self.model.encode(data, **kwargs).tolist()  # type: ignore[arg-type]

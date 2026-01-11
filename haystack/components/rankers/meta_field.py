@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections import defaultdict
-from typing import Any, Callable, Literal, Optional
+from typing import Any, Callable, Literal
 
 from dateutil.parser import parse as date_parse
 
@@ -42,11 +42,11 @@ class MetaFieldRanker:
         self,
         meta_field: str,
         weight: float = 1.0,
-        top_k: Optional[int] = None,
+        top_k: int | None = None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] = "reciprocal_rank_fusion",
         sort_order: Literal["ascending", "descending"] = "descending",
         missing_meta: Literal["drop", "top", "bottom"] = "bottom",
-        meta_value_type: Optional[Literal["float", "int", "date"]] = None,
+        meta_value_type: Literal["float", "int", "date"] | None = None,
     ):
         """
         Creates an instance of MetaFieldRanker.
@@ -108,11 +108,11 @@ class MetaFieldRanker:
         self,
         *,
         weight: float,
-        top_k: Optional[int],
+        top_k: int | None,
         ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"],
         sort_order: Literal["ascending", "descending"],
         missing_meta: Literal["drop", "top", "bottom"],
-        meta_value_type: Optional[Literal["float", "int", "date"]],
+        meta_value_type: Literal["float", "int", "date"] | None,
     ):
         if top_k is not None and top_k <= 0:
             raise ValueError("top_k must be > 0, but got %s" % top_k)
@@ -160,12 +160,12 @@ class MetaFieldRanker:
     def run(  # pylint: disable=too-many-positional-arguments
         self,
         documents: list[Document],
-        top_k: Optional[int] = None,
-        weight: Optional[float] = None,
-        ranking_mode: Optional[Literal["reciprocal_rank_fusion", "linear_score"]] = None,
-        sort_order: Optional[Literal["ascending", "descending"]] = None,
-        missing_meta: Optional[Literal["drop", "top", "bottom"]] = None,
-        meta_value_type: Optional[Literal["float", "int", "date"]] = None,
+        top_k: int | None = None,
+        weight: float | None = None,
+        ranking_mode: Literal["reciprocal_rank_fusion", "linear_score"] | None = None,
+        sort_order: Literal["ascending", "descending"] | None = None,
+        missing_meta: Literal["drop", "top", "bottom"] | None = None,
+        meta_value_type: Literal["float", "int", "date"] | None = None,
     ):
         """
         Ranks a list of Documents based on the selected meta field by:
@@ -320,7 +320,7 @@ class MetaFieldRanker:
         return {"documents": sorted_documents[:top_k]}
 
     def _parse_meta(
-        self, docs_with_meta_field: list[Document], meta_value_type: Optional[Literal["float", "int", "date"]]
+        self, docs_with_meta_field: list[Document], meta_value_type: Literal["float", "int", "date"] | None
     ) -> list[Any]:
         """
         Parse the meta values stored under `self.meta_field` for the Documents provided in `docs_with_meta_field`.

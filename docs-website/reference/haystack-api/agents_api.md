@@ -96,14 +96,14 @@ print(result["messages"][-1].text)
 ```python
 def __init__(*,
              chat_generator: ChatGenerator,
-             tools: Optional[ToolsType] = None,
-             system_prompt: Optional[str] = None,
-             exit_conditions: Optional[list[str]] = None,
-             state_schema: Optional[dict[str, Any]] = None,
+             tools: ToolsType | None = None,
+             system_prompt: str | None = None,
+             exit_conditions: list[str] | None = None,
+             state_schema: dict[str, Any] | None = None,
              max_agent_steps: int = 100,
-             streaming_callback: Optional[StreamingCallbackT] = None,
+             streaming_callback: StreamingCallbackT | None = None,
              raise_on_tool_invocation_failure: bool = False,
-             tool_invoker_kwargs: Optional[dict[str, Any]] = None) -> None
+             tool_invoker_kwargs: dict[str, Any] | None = None) -> None
 ```
 
 Initialize the agent component.
@@ -179,13 +179,14 @@ Deserialized agent
 
 ```python
 def run(messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        break_point: Optional[AgentBreakpoint] = None,
-        snapshot: Optional[AgentSnapshot] = None,
-        system_prompt: Optional[str] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        break_point: AgentBreakpoint | None = None,
+        snapshot: AgentSnapshot | None = None,
+        system_prompt: str | None = None,
+        tools: ToolsType | list[str] | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
         **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -205,12 +206,14 @@ the relevant information to restart the Agent execution from where it left off.
 - `system_prompt`: System prompt for the agent. If provided, it overrides the default system prompt.
 - `tools`: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
 When passing tool names, tools are selected from the Agent's originally configured tools.
+- `snapshot_callback`: Optional callback function that is invoked when a pipeline snapshot is created.
+The callback receives a `PipelineSnapshot` object and can return an optional string.
+If provided, the callback is used instead of the default file-saving behavior.
 - `kwargs`: Additional data to pass to the State schema used by the Agent.
 The keys must match the schema defined in the Agent's `state_schema`.
 
 **Raises**:
 
-- `RuntimeError`: If the Agent component wasn't warmed up before calling `run()`.
 - `BreakpointException`: If an agent breakpoint is triggered.
 
 **Returns**:
@@ -226,13 +229,14 @@ A dictionary with the following keys:
 
 ```python
 async def run_async(messages: list[ChatMessage],
-                    streaming_callback: Optional[StreamingCallbackT] = None,
+                    streaming_callback: StreamingCallbackT | None = None,
                     *,
-                    generation_kwargs: Optional[dict[str, Any]] = None,
-                    break_point: Optional[AgentBreakpoint] = None,
-                    snapshot: Optional[AgentSnapshot] = None,
-                    system_prompt: Optional[str] = None,
-                    tools: Optional[Union[ToolsType, list[str]]] = None,
+                    generation_kwargs: dict[str, Any] | None = None,
+                    break_point: AgentBreakpoint | None = None,
+                    snapshot: AgentSnapshot | None = None,
+                    system_prompt: str | None = None,
+                    tools: ToolsType | list[str] | None = None,
+                    snapshot_callback: SnapshotCallback | None = None,
                     **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -255,12 +259,14 @@ for "tool_invoker".
 the relevant information to restart the Agent execution from where it left off.
 - `system_prompt`: System prompt for the agent. If provided, it overrides the default system prompt.
 - `tools`: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+- `snapshot_callback`: Optional callback function that is invoked when a pipeline snapshot is created.
+The callback receives a `PipelineSnapshot` object and can return an optional string.
+If provided, the callback is used instead of the default file-saving behavior.
 - `kwargs`: Additional data to pass to the State schema used by the Agent.
 The keys must match the schema defined in the Agent's `state_schema`.
 
 **Raises**:
 
-- `RuntimeError`: If the Agent component wasn't warmed up before calling `run_async()`.
 - `BreakpointException`: If an agent breakpoint is triggered.
 
 **Returns**:
@@ -313,7 +319,7 @@ my_state = State(
 #### State.\_\_init\_\_
 
 ```python
-def __init__(schema: dict[str, Any], data: Optional[dict[str, Any]] = None)
+def __init__(schema: dict[str, Any], data: dict[str, Any] | None = None)
 ```
 
 Initialize a State object with a schema and optional data.
@@ -353,7 +359,7 @@ Value associated with key or default if not found
 ```python
 def set(key: str,
         value: Any,
-        handler_override: Optional[Callable[[Any, Any], Any]] = None) -> None
+        handler_override: Callable[[Any, Any], Any] | None = None) -> None
 ```
 
 Set or merge a value in the state according to schema rules.

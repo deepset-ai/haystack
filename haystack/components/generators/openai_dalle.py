@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from openai import OpenAI
 from openai.types.image import Image
@@ -38,11 +38,11 @@ class DALLEImageGenerator:
         size: Literal["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"] = "1024x1024",
         response_format: Literal["url", "b64_json"] = "url",
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        api_base_url: str | None = None,
+        organization: str | None = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
     ):
         """
         Creates an instance of DALLEImageGenerator. Unless specified otherwise in `model`, uses OpenAI's dall-e-3.
@@ -78,7 +78,7 @@ class DALLEImageGenerator:
         self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
         self.http_client_kwargs = http_client_kwargs
 
-        self.client: Optional[OpenAI] = None
+        self.client: OpenAI | None = None
 
     def warm_up(self) -> None:
         """
@@ -98,9 +98,9 @@ class DALLEImageGenerator:
     def run(
         self,
         prompt: str,
-        size: Optional[Literal["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"]] = None,
-        quality: Optional[Literal["standard", "hd"]] = None,
-        response_format: Optional[Optional[Literal["url", "b64_json"]]] = None,
+        size: Literal["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"] | None = None,
+        quality: Literal["standard", "hd"] | None = None,
+        response_format: Literal["url", "b64_json"] | None = None,
     ):
         """
         Invokes the image generation inference based on the provided prompt and generation parameters.
@@ -117,14 +117,12 @@ class DALLEImageGenerator:
             to the prompt made by OpenAI.
         """
         if self.client is None:
-            raise RuntimeError(
-                "The component DALLEImageGenerator wasn't warmed up. Run 'warm_up()' before calling 'run()'."
-            )
+            self.warm_up()
 
         size = size or self.size
         quality = quality or self.quality
         response_format = response_format or self.response_format
-        response = self.client.images.generate(
+        response = self.client.images.generate(  # type: ignore[union-attr]
             model=self.model, prompt=prompt, size=size, quality=quality, response_format=response_format, n=1
         )
         if response.data is not None:

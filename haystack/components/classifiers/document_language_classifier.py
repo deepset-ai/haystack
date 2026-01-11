@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Optional
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -40,7 +39,15 @@ class DocumentLanguageClassifier:
 
     p = Pipeline()
     p.add_component(instance=DocumentLanguageClassifier(languages=["en"]), name="language_classifier")
-    p.add_component(instance=MetadataRouter(rules={"en": {"language": {"$eq": "en"}}}), name="router")
+    p.add_component(
+    instance=MetadataRouter(rules={
+        "en": {
+            "field": "meta.language",
+            "operator": "==",
+            "value": "en"
+        }
+    }),
+    name="router")
     p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
     p.connect("language_classifier.documents", "router.documents")
     p.connect("router.en", "writer.documents")
@@ -53,7 +60,7 @@ class DocumentLanguageClassifier:
     ```
     """
 
-    def __init__(self, languages: Optional[list[str]] = None):
+    def __init__(self, languages: list[str] | None = None):
         """
         Initializes the DocumentLanguageClassifier component.
 
@@ -102,7 +109,7 @@ class DocumentLanguageClassifier:
 
         return {"documents": new_documents}
 
-    def _detect_language(self, document: Document) -> Optional[str]:
+    def _detect_language(self, document: Document) -> str | None:
         language = None
         try:
             language = langdetect.detect(document.content)

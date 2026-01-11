@@ -13,6 +13,7 @@ _import_structure = {
     "document_cleaner": ["DocumentCleaner"],
     "document_preprocessor": ["DocumentPreprocessor"],
     "document_splitter": ["DocumentSplitter"],
+    "embedding_based_document_splitter": ["EmbeddingBasedDocumentSplitter"],
     "hierarchical_document_splitter": ["HierarchicalDocumentSplitter"],
     "recursive_splitter": ["RecursiveDocumentSplitter"],
     "text_cleaner": ["TextCleaner"],
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
     from .document_cleaner import DocumentCleaner as DocumentCleaner
     from .document_preprocessor import DocumentPreprocessor as DocumentPreprocessor
     from .document_splitter import DocumentSplitter as DocumentSplitter
+    from .embedding_based_document_splitter import EmbeddingBasedDocumentSplitter as EmbeddingBasedDocumentSplitter
     from .hierarchical_document_splitter import HierarchicalDocumentSplitter as HierarchicalDocumentSplitter
     from .recursive_splitter import RecursiveDocumentSplitter as RecursiveDocumentSplitter
     from .text_cleaner import TextCleaner as TextCleaner

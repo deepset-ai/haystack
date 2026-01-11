@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed a bug where components explicitly listed in `include_outputs_from` would not appear
+    in the pipeline results if they returned an empty dictionary.
+    Now, any component specified in `include_outputs_from` will be included in the results
+    regardless of whether its output is empty.

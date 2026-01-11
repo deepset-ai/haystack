@@ -6,7 +6,7 @@
 import json
 import re
 from copy import deepcopy
-from typing import Any, Optional, Union
+from typing import Any
 from unittest.mock import ANY
 
 import pytest
@@ -685,7 +685,7 @@ def pipeline_that_has_a_component_with_mutable_output_sent_to_multiple_inputs(pi
     @component
     class MessageMerger:
         @component.output_types(merged_message=str)
-        def run(self, messages: list[ChatMessage], metadata: Optional[dict] = None) -> dict[str, str]:
+        def run(self, messages: list[ChatMessage], metadata: dict | None = None) -> dict[str, str]:
             return {"merged_message": "\n".join(t.text or "" for t in messages)}
 
     @component
@@ -1039,7 +1039,7 @@ def pipeline_that_has_a_component_with_only_default_inputs_as_first_to_run_and_r
     """
 
     def fake_generator_run(
-        self: Any, generation_kwargs: Optional[dict[str, Any]] = None, **kwargs: dict[str, Any]
+        self: Any, generation_kwargs: dict[str, Any] | None = None, **kwargs: dict[str, Any]
     ) -> dict[str, list[str]]:
         # Simple hack to simulate a model returning a different reply after the
         # the first time it's called
@@ -1694,9 +1694,7 @@ def pipeline_that_has_a_loop_and_a_component_with_default_inputs_that_doesnt_rec
 
     @component
     class FakeOutputValidator:
-        @component.output_types(
-            valid_replies=list[str], invalid_replies=Optional[list[str]], error_message=Optional[str]
-        )
+        @component.output_types(valid_replies=list[str], invalid_replies=list[str] | None, error_message=str | None)
         def run(self, replies: list[str]) -> dict[str, Any]:
             if not getattr(self, "called", False):
                 self.called = True
@@ -1875,9 +1873,9 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
         def run(
             self,
             query: str,
-            filters: Optional[dict[str, Any]] = None,
-            top_k: Optional[int] = None,
-            scale_score: Optional[bool] = None,
+            filters: dict[str, Any] | None = None,
+            top_k: int | None = None,
+            scale_score: bool | None = None,
         ) -> dict[str, list[Document]]:
             return {"documents": [Document(content="This is a document")]}
 
@@ -1888,17 +1886,17 @@ def pipeline_that_has_multiple_components_with_only_default_inputs_and_are_added
             self,
             query: str,
             documents: list[Document],
-            top_k: Optional[int] = None,
-            scale_score: Optional[bool] = None,
-            calibration_factor: Optional[float] = None,
-            score_threshold: Optional[float] = None,
+            top_k: int | None = None,
+            scale_score: bool | None = None,
+            calibration_factor: float | None = None,
+            score_threshold: float | None = None,
         ) -> dict[str, list[Document]]:
             return {"documents": documents}
 
     @component
     class FakeGenerator:
         @component.output_types(replies=list[str], meta=dict[str, Any])
-        def run(self, prompt: str, generation_kwargs: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+        def run(self, prompt: str, generation_kwargs: dict[str, Any] | None = None) -> dict[str, Any]:
             return {"replies": ["This is a reply"], "meta": {"meta_key": "meta_value"}}
 
     pipeline = pipeline_class(max_runs_per_component=1)
@@ -2175,7 +2173,7 @@ def that_is_a_simple_agent(pipeline_class):
 
         @component.output_types(replies=list[ChatMessage])
         def run(
-            self, messages: list[ChatMessage], generation_kwargs: Optional[dict[str, Any]] = None
+            self, messages: list[ChatMessage], generation_kwargs: dict[str, Any] | None = None
         ) -> dict[str, list[ChatMessage]]:
             if self.run_counter == 0:
                 self.run_counter += 1
@@ -2193,7 +2191,7 @@ def that_is_a_simple_agent(pipeline_class):
     class FakeConclusionOpenAIChatGenerator:
         @component.output_types(replies=list[ChatMessage])
         def run(
-            self, messages: list[ChatMessage], generation_kwargs: Optional[dict[str, Any]] = None
+            self, messages: list[ChatMessage], generation_kwargs: dict[str, Any] | None = None
         ) -> dict[str, list[ChatMessage]]:
             return {"replies": [ChatMessage.from_assistant("Tower of Pisa is 55 meters tall\n")]}
 
@@ -2216,8 +2214,8 @@ def that_is_a_simple_agent(pipeline_class):
 
     @component
     class ToolExtractor:
-        @component.output_types(output=list[Optional[str]])
-        def run(self, messages: list[ChatMessage]) -> dict[str, list[Optional[str]]]:
+        @component.output_types(output=list[str | None])
+        def run(self, messages: list[ChatMessage]) -> dict[str, list[str | None]]:
             prompt = messages[-1].text
             assert isinstance(prompt, str)
             lines = prompt.strip().split("\n")
@@ -2574,7 +2572,7 @@ def that_has_a_variadic_component_that_receives_partial_inputs(pipeline_class):
             self._content = content
 
         @component.output_types(documents=list[Document], noop=None)
-        def run(self, create_document: bool = False) -> dict[str, Union[list[Document], None]]:
+        def run(self, create_document: bool = False) -> dict[str, list[Document] | None]:
             if create_document:
                 return {"documents": [Document(id=self._content, content=self._content)]}
             return {"noop": None}
@@ -2655,7 +2653,7 @@ def that_has_a_variadic_component_that_receives_partial_inputs_different_order(p
             self._content = content
 
         @component.output_types(documents=list[Document], noop=None)
-        def run(self, create_document: bool = False) -> dict[str, Union[list[Document], None]]:
+        def run(self, create_document: bool = False) -> dict[str, list[Document] | None]:
             if create_document:
                 return {"documents": [Document(id=self._content, content=self._content)]}
             return {"noop": None}
@@ -2949,7 +2947,7 @@ def that_has_a_cycle_that_would_get_it_stuck(pipeline_class):
     @component
     class FakeOutputValidator:
         @component.output_types(valid_replies=list[str], invalid_replies=list[str], error_message=str)
-        def run(self, replies: list[str]) -> dict[str, Union[list[str], str]]:
+        def run(self, replies: list[str]) -> dict[str, list[str] | str]:
             if not getattr(self, "called", False):
                 self.called = True
                 return {"invalid_replies": ["This is an invalid reply"], "error_message": "this is an error message"}
@@ -4765,7 +4763,7 @@ def passes_outputs_outside_cycle(pipeline_class):
     @component
     class AnswerBuilderWithPrompt:
         @component.output_types(answers=list[GeneratedAnswer])
-        def run(self, replies: list[str], query: str, prompt: Optional[str] = None) -> dict[str, Any]:
+        def run(self, replies: list[str], query: str, prompt: str | None = None) -> dict[str, Any]:
             answer = GeneratedAnswer(data=replies[0], query=query, documents=[], meta={"all_messages": replies})
 
             if prompt is not None:
