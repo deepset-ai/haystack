@@ -5,281 +5,6 @@ description: "Mistral integration for Haystack"
 slug: "/integrations-mistral"
 ---
 
-<a id="haystack_integrations.components.embedders.mistral.document_embedder"></a>
-
-## Module haystack\_integrations.components.embedders.mistral.document\_embedder
-
-<a id="haystack_integrations.components.embedders.mistral.document_embedder.MistralDocumentEmbedder"></a>
-
-### MistralDocumentEmbedder
-
-A component for computing Document embeddings using Mistral models.
-The embedding of each Document is stored in the `embedding` field of the Document.
-
-Usage example:
-```python
-from haystack import Document
-from haystack_integrations.components.embedders.mistral import MistralDocumentEmbedder
-
-doc = Document(content="I love pizza!")
-
-document_embedder = MistralDocumentEmbedder()
-
-result = document_embedder.run([doc])
-print(result['documents'][0].embedding)
-
-# [0.017020374536514282, -0.023255806416273117, ...]
-```
-
-<a id="haystack_integrations.components.embedders.mistral.document_embedder.MistralDocumentEmbedder.__init__"></a>
-
-#### MistralDocumentEmbedder.\_\_init\_\_
-
-```python
-def __init__(api_key: Secret = Secret.from_env_var("MISTRAL_API_KEY"),
-             model: str = "mistral-embed",
-             api_base_url: Optional[str] = "https://api.mistral.ai/v1",
-             prefix: str = "",
-             suffix: str = "",
-             batch_size: int = 32,
-             progress_bar: bool = True,
-             meta_fields_to_embed: Optional[List[str]] = None,
-             embedding_separator: str = "\n",
-             *,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[Dict[str, Any]] = None)
-```
-
-Creates a MistralDocumentEmbedder component.
-
-**Arguments**:
-
-- `api_key`: The Mistral API key.
-- `model`: The name of the model to use.
-- `api_base_url`: The Mistral API Base url. For more details, see Mistral [docs](https://docs.mistral.ai/api/).
-- `prefix`: A string to add to the beginning of each text.
-- `suffix`: A string to add to the end of each text.
-- `batch_size`: Number of Documents to encode at once.
-- `progress_bar`: Whether to show a progress bar or not. Can be helpful to disable in production deployments to keep
-the logs clean.
-- `meta_fields_to_embed`: List of meta fields that should be embedded along with the Document text.
-- `embedding_separator`: Separator used to concatenate the meta fields to the Document text.
-- `timeout`: Timeout for Mistral client calls. If not set, it defaults to either the `OPENAI_TIMEOUT` environment
-variable, or 30 seconds.
-- `max_retries`: Maximum number of retries to contact Mistral after an internal error.
-If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
-- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
-For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
-
-<a id="haystack_integrations.components.embedders.mistral.document_embedder.MistralDocumentEmbedder.to_dict"></a>
-
-#### MistralDocumentEmbedder.to\_dict
-
-```python
-def to_dict() -> Dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="haystack_integrations.components.embedders.mistral.text_embedder"></a>
-
-## Module haystack\_integrations.components.embedders.mistral.text\_embedder
-
-<a id="haystack_integrations.components.embedders.mistral.text_embedder.MistralTextEmbedder"></a>
-
-### MistralTextEmbedder
-
-A component for embedding strings using Mistral models.
-
-Usage example:
- ```python
-from haystack_integrations.components.embedders.mistral.text_embedder import MistralTextEmbedder
-
-text_to_embed = "I love pizza!"
-text_embedder = MistralTextEmbedder()
-print(text_embedder.run(text_to_embed))
-
-__output:__
-
-__{'embedding': [0.017020374536514282, -0.023255806416273117, ...],__
-
-__'meta': {'model': 'mistral-embed',__
-
-__         'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}__
-
-```
-
-<a id="haystack_integrations.components.embedders.mistral.text_embedder.MistralTextEmbedder.__init__"></a>
-
-#### MistralTextEmbedder.\_\_init\_\_
-
-```python
-def __init__(api_key: Secret = Secret.from_env_var("MISTRAL_API_KEY"),
-             model: str = "mistral-embed",
-             api_base_url: Optional[str] = "https://api.mistral.ai/v1",
-             prefix: str = "",
-             suffix: str = "",
-             *,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[Dict[str, Any]] = None)
-```
-
-Creates an MistralTextEmbedder component.
-
-**Arguments**:
-
-- `api_key`: The Mistral API key.
-- `model`: The name of the Mistral embedding model to be used.
-- `api_base_url`: The Mistral API Base url.
-For more details, see Mistral [docs](https://docs.mistral.ai/api/).
-- `prefix`: A string to add to the beginning of each text.
-- `suffix`: A string to add to the end of each text.
-- `timeout`: Timeout for Mistral client calls. If not set, it defaults to either the `OPENAI_TIMEOUT` environment
-variable, or 30 seconds.
-- `max_retries`: Maximum number of retries to contact Mistral after an internal error.
-If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
-- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
-For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
-
-<a id="haystack_integrations.components.embedders.mistral.text_embedder.MistralTextEmbedder.to_dict"></a>
-
-#### MistralTextEmbedder.to\_dict
-
-```python
-def to_dict() -> Dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="haystack_integrations.components.generators.mistral.chat.chat_generator"></a>
-
-## Module haystack\_integrations.components.generators.mistral.chat.chat\_generator
-
-<a id="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator"></a>
-
-### MistralChatGenerator
-
-Enables text generation using Mistral AI generative models.
-For supported models, see [Mistral AI docs](https://docs.mistral.ai/platform/endpoints/`operation`/listModels).
-
-Users can pass any text generation parameters valid for the Mistral Chat Completion API
-directly to this component via the `generation_kwargs` parameter in `__init__` or the `generation_kwargs`
-parameter in `run` method.
-
-Key Features and Compatibility:
-- **Primary Compatibility**: Designed to work seamlessly with the Mistral API Chat Completion endpoint.
-- **Streaming Support**: Supports streaming responses from the Mistral API Chat Completion endpoint.
-- **Customizability**: Supports all parameters supported by the Mistral API Chat Completion endpoint.
-
-This component uses the ChatMessage format for structuring both input and output,
-ensuring coherent and contextually relevant responses in chat-based text generation scenarios.
-Details on the ChatMessage format can be found in the
-[Haystack docs](https://docs.haystack.deepset.ai/v2.0/docs/data-classes#chatmessage)
-
-For more details on the parameters supported by the Mistral API, refer to the
-[Mistral API Docs](https://docs.mistral.ai/api/).
-
-Usage example:
-```python
-from haystack_integrations.components.generators.mistral import MistralChatGenerator
-from haystack.dataclasses import ChatMessage
-
-messages = [ChatMessage.from_user("What's Natural Language Processing?")]
-
-client = MistralChatGenerator()
-response = client.run(messages)
-print(response)
-
->>{'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
->> "Natural Language Processing (NLP) is a branch of artificial intelligence
->> that focuses on enabling computers to understand, interpret, and generate human language in a way that is
->> meaningful and useful.")], _name=None,
->> _meta={'model': 'mistral-small-latest', 'index': 0, 'finish_reason': 'stop',
->> 'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
-```
-
-<a id="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator.__init__"></a>
-
-#### MistralChatGenerator.\_\_init\_\_
-
-```python
-def __init__(api_key: Secret = Secret.from_env_var("MISTRAL_API_KEY"),
-             model: str = "mistral-small-latest",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             api_base_url: Optional[str] = "https://api.mistral.ai/v1",
-             generation_kwargs: Optional[Dict[str, Any]] = None,
-             tools: Optional[ToolsType] = None,
-             *,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[Dict[str, Any]] = None)
-```
-
-Creates an instance of MistralChatGenerator. Unless specified otherwise in the `model`, this is for Mistral's
-
-`mistral-small-latest` model.
-
-**Arguments**:
-
-- `api_key`: The Mistral API key.
-- `model`: The name of the Mistral chat completion model to use.
-- `streaming_callback`: A callback function that is called when a new token is received from the stream.
-The callback function accepts StreamingChunk as an argument.
-- `api_base_url`: The Mistral API Base url.
-For more details, see Mistral [docs](https://docs.mistral.ai/api/).
-- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
-the Mistral endpoint. See [Mistral API docs](https://docs.mistral.ai/api/) for more details.
-Some of the supported parameters:
-- `max_tokens`: The maximum number of tokens the output text can have.
-- `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
-    Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
-- `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
-    considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
-    comprising the top 10% probability mass are considered.
-- `stream`: Whether to stream back partial progress. If set, tokens will be sent as data-only server-sent
-    events as they become available, with the stream terminated by a data: [DONE] message.
-- `safe_prompt`: Whether to inject a safety prompt before all conversations.
-- `random_seed`: The seed to use for random sampling.
- - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
-    If provided, the output will always be validated against this
-    format (unless the model returns a tool call).
-    For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
-    Notes:
-    - For structured outputs with streaming,
-      the `response_format` must be a JSON schema and not a Pydantic model.
-- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
-Each tool should have a unique name.
-- `timeout`: The timeout for the Mistral API call. If not set, it defaults to either the `OPENAI_TIMEOUT`
-environment variable, or 30 seconds.
-- `max_retries`: Maximum number of retries to contact OpenAI after an internal error.
-If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
-- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
-For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
-
-<a id="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator.to_dict"></a>
-
-#### MistralChatGenerator.to\_dict
-
-```python
-def to_dict() -> Dict[str, Any]
-```
-
-Serialize this component to a dictionary.
-
-**Returns**:
-
-The serialized component as a dictionary.
-
 <a id="haystack_integrations.components.converters.mistral.ocr_document_converter"></a>
 
 ## Module haystack\_integrations.components.converters.mistral.ocr\_document\_converter
@@ -367,9 +92,9 @@ raw_responses = result["raw_mistral_response"]
 def __init__(api_key: Secret = Secret.from_env_var("MISTRAL_API_KEY"),
              model: str = "mistral-ocr-2505",
              include_image_base64: bool = False,
-             pages: Optional[List[int]] = None,
-             image_limit: Optional[int] = None,
-             image_min_size: Optional[int] = None,
+             pages: list[int] | None = None,
+             image_limit: int | None = None,
+             image_min_size: int | None = None,
              cleanup_uploaded_files: bool = True)
 ```
 
@@ -394,7 +119,7 @@ Files provided as FileChunk are not deleted. Default is True.
 #### MistralOCRDocumentConverter.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -409,7 +134,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "MistralOCRDocumentConverter"
+def from_dict(cls, data: dict[str, Any]) -> "MistralOCRDocumentConverter"
 ```
 
 Deserializes the component from a dictionary.
@@ -427,15 +152,15 @@ Deserialized component.
 #### MistralOCRDocumentConverter.run
 
 ```python
-@component.output_types(documents=List[Document],
-                        raw_mistral_response=List[Dict[str, Any]])
+@component.output_types(documents=list[Document],
+                        raw_mistral_response=list[dict[str, Any]])
 def run(
-    sources: List[Union[str, Path, ByteStream, DocumentURLChunk, FileChunk,
-                        ImageURLChunk]],
-    meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-    bbox_annotation_schema: Optional[Type[BaseModel]] = None,
-    document_annotation_schema: Optional[Type[BaseModel]] = None
-) -> Dict[str, Any]
+    sources: list[str | Path | ByteStream | DocumentURLChunk | FileChunk
+                  | ImageURLChunk],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
+    bbox_annotation_schema: type[BaseModel] | None = None,
+    document_annotation_schema: type[BaseModel] | None = None
+) -> dict[str, Any]
 ```
 
 Extract text from documents using Mistral OCR.
@@ -473,4 +198,279 @@ A dictionary with the following keys:
 - `raw_mistral_response`:
     List of dictionaries containing raw OCR responses from Mistral API (one per source).
     Each response includes per-page details, images, annotations, and usage info.
+
+<a id="haystack_integrations.components.embedders.mistral.document_embedder"></a>
+
+## Module haystack\_integrations.components.embedders.mistral.document\_embedder
+
+<a id="haystack_integrations.components.embedders.mistral.document_embedder.MistralDocumentEmbedder"></a>
+
+### MistralDocumentEmbedder
+
+A component for computing Document embeddings using Mistral models.
+The embedding of each Document is stored in the `embedding` field of the Document.
+
+Usage example:
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.mistral import MistralDocumentEmbedder
+
+doc = Document(content="I love pizza!")
+
+document_embedder = MistralDocumentEmbedder()
+
+result = document_embedder.run([doc])
+print(result['documents'][0].embedding)
+
+# [0.017020374536514282, -0.023255806416273117, ...]
+```
+
+<a id="haystack_integrations.components.embedders.mistral.document_embedder.MistralDocumentEmbedder.__init__"></a>
+
+#### MistralDocumentEmbedder.\_\_init\_\_
+
+```python
+def __init__(api_key: Secret = Secret.from_env_var("MISTRAL_API_KEY"),
+             model: str = "mistral-embed",
+             api_base_url: str | None = "https://api.mistral.ai/v1",
+             prefix: str = "",
+             suffix: str = "",
+             batch_size: int = 32,
+             progress_bar: bool = True,
+             meta_fields_to_embed: list[str] | None = None,
+             embedding_separator: str = "\n",
+             *,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None)
+```
+
+Creates a MistralDocumentEmbedder component.
+
+**Arguments**:
+
+- `api_key`: The Mistral API key.
+- `model`: The name of the model to use.
+- `api_base_url`: The Mistral API Base url. For more details, see Mistral [docs](https://docs.mistral.ai/api/).
+- `prefix`: A string to add to the beginning of each text.
+- `suffix`: A string to add to the end of each text.
+- `batch_size`: Number of Documents to encode at once.
+- `progress_bar`: Whether to show a progress bar or not. Can be helpful to disable in production deployments to keep
+the logs clean.
+- `meta_fields_to_embed`: List of meta fields that should be embedded along with the Document text.
+- `embedding_separator`: Separator used to concatenate the meta fields to the Document text.
+- `timeout`: Timeout for Mistral client calls. If not set, it defaults to either the `OPENAI_TIMEOUT` environment
+variable, or 30 seconds.
+- `max_retries`: Maximum number of retries to contact Mistral after an internal error.
+If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
+
+<a id="haystack_integrations.components.embedders.mistral.document_embedder.MistralDocumentEmbedder.to_dict"></a>
+
+#### MistralDocumentEmbedder.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="haystack_integrations.components.embedders.mistral.text_embedder"></a>
+
+## Module haystack\_integrations.components.embedders.mistral.text\_embedder
+
+<a id="haystack_integrations.components.embedders.mistral.text_embedder.MistralTextEmbedder"></a>
+
+### MistralTextEmbedder
+
+A component for embedding strings using Mistral models.
+
+Usage example:
+ ```python
+from haystack_integrations.components.embedders.mistral.text_embedder import MistralTextEmbedder
+
+text_to_embed = "I love pizza!"
+text_embedder = MistralTextEmbedder()
+print(text_embedder.run(text_to_embed))
+
+__output:__
+
+__{'embedding': [0.017020374536514282, -0.023255806416273117, ...],__
+
+__'meta': {'model': 'mistral-embed',__
+
+__         'usage': {'prompt_tokens': 4, 'total_tokens': 4}}}__
+
+```
+
+<a id="haystack_integrations.components.embedders.mistral.text_embedder.MistralTextEmbedder.__init__"></a>
+
+#### MistralTextEmbedder.\_\_init\_\_
+
+```python
+def __init__(api_key: Secret = Secret.from_env_var("MISTRAL_API_KEY"),
+             model: str = "mistral-embed",
+             api_base_url: str | None = "https://api.mistral.ai/v1",
+             prefix: str = "",
+             suffix: str = "",
+             *,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None)
+```
+
+Creates an MistralTextEmbedder component.
+
+**Arguments**:
+
+- `api_key`: The Mistral API key.
+- `model`: The name of the Mistral embedding model to be used.
+- `api_base_url`: The Mistral API Base url.
+For more details, see Mistral [docs](https://docs.mistral.ai/api/).
+- `prefix`: A string to add to the beginning of each text.
+- `suffix`: A string to add to the end of each text.
+- `timeout`: Timeout for Mistral client calls. If not set, it defaults to either the `OPENAI_TIMEOUT` environment
+variable, or 30 seconds.
+- `max_retries`: Maximum number of retries to contact Mistral after an internal error.
+If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
+
+<a id="haystack_integrations.components.embedders.mistral.text_embedder.MistralTextEmbedder.to_dict"></a>
+
+#### MistralTextEmbedder.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="haystack_integrations.components.generators.mistral.chat.chat_generator"></a>
+
+## Module haystack\_integrations.components.generators.mistral.chat.chat\_generator
+
+<a id="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator"></a>
+
+### MistralChatGenerator
+
+Enables text generation using Mistral AI generative models.
+For supported models, see [Mistral AI docs](https://docs.mistral.ai/platform/endpoints/`operation`/listModels).
+
+Users can pass any text generation parameters valid for the Mistral Chat Completion API
+directly to this component via the `generation_kwargs` parameter in `__init__` or the `generation_kwargs`
+parameter in `run` method.
+
+Key Features and Compatibility:
+- **Primary Compatibility**: Designed to work seamlessly with the Mistral API Chat Completion endpoint.
+- **Streaming Support**: Supports streaming responses from the Mistral API Chat Completion endpoint.
+- **Customizability**: Supports all parameters supported by the Mistral API Chat Completion endpoint.
+
+This component uses the ChatMessage format for structuring both input and output,
+ensuring coherent and contextually relevant responses in chat-based text generation scenarios.
+Details on the ChatMessage format can be found in the
+[Haystack docs](https://docs.haystack.deepset.ai/docs/data-classes#chatmessage)
+
+For more details on the parameters supported by the Mistral API, refer to the
+[Mistral API Docs](https://docs.mistral.ai/api/).
+
+Usage example:
+```python
+from haystack_integrations.components.generators.mistral import MistralChatGenerator
+from haystack.dataclasses import ChatMessage
+
+messages = [ChatMessage.from_user("What's Natural Language Processing?")]
+
+client = MistralChatGenerator()
+response = client.run(messages)
+print(response)
+
+>>{'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text=
+>> "Natural Language Processing (NLP) is a branch of artificial intelligence
+>> that focuses on enabling computers to understand, interpret, and generate human language in a way that is
+>> meaningful and useful.")], _name=None,
+>> _meta={'model': 'mistral-small-latest', 'index': 0, 'finish_reason': 'stop',
+>> 'usage': {'prompt_tokens': 15, 'completion_tokens': 36, 'total_tokens': 51}})]}
+```
+
+<a id="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator.__init__"></a>
+
+#### MistralChatGenerator.\_\_init\_\_
+
+```python
+def __init__(api_key: Secret = Secret.from_env_var("MISTRAL_API_KEY"),
+             model: str = "mistral-small-latest",
+             streaming_callback: StreamingCallbackT | None = None,
+             api_base_url: str | None = "https://api.mistral.ai/v1",
+             generation_kwargs: dict[str, Any] | None = None,
+             tools: ToolsType | None = None,
+             *,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None)
+```
+
+Creates an instance of MistralChatGenerator. Unless specified otherwise in the `model`, this is for Mistral's
+
+`mistral-small-latest` model.
+
+**Arguments**:
+
+- `api_key`: The Mistral API key.
+- `model`: The name of the Mistral chat completion model to use.
+- `streaming_callback`: A callback function that is called when a new token is received from the stream.
+The callback function accepts StreamingChunk as an argument.
+- `api_base_url`: The Mistral API Base url.
+For more details, see Mistral [docs](https://docs.mistral.ai/api/).
+- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
+the Mistral endpoint. See [Mistral API docs](https://docs.mistral.ai/api/) for more details.
+Some of the supported parameters:
+- `max_tokens`: The maximum number of tokens the output text can have.
+- `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
+    Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
+- `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
+    considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
+    comprising the top 10% probability mass are considered.
+- `stream`: Whether to stream back partial progress. If set, tokens will be sent as data-only server-sent
+    events as they become available, with the stream terminated by a data: [DONE] message.
+- `safe_prompt`: Whether to inject a safety prompt before all conversations.
+- `random_seed`: The seed to use for random sampling.
+ - `response_format`: A JSON schema or a Pydantic model that enforces the structure of the model's response.
+    If provided, the output will always be validated against this
+    format (unless the model returns a tool call).
+    For details, see the [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs).
+    Notes:
+    - For structured outputs with streaming,
+      the `response_format` must be a JSON schema and not a Pydantic model.
+- `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
+Each tool should have a unique name.
+- `timeout`: The timeout for the Mistral API call. If not set, it defaults to either the `OPENAI_TIMEOUT`
+environment variable, or 30 seconds.
+- `max_retries`: Maximum number of retries to contact OpenAI after an internal error.
+If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
+
+<a id="haystack_integrations.components.generators.mistral.chat.chat_generator.MistralChatGenerator.to_dict"></a>
+
+#### MistralChatGenerator.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns**:
+
+The serialized component as a dictionary.
 
