@@ -75,7 +75,7 @@ result = editor.run(
 ```python
 def __init__(*,
              github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
-             repo: Optional[str] = None,
+             repo: str | None = None,
              branch: str = "main",
              raise_on_failure: bool = True)
 ```
@@ -99,10 +99,10 @@ Initialize the component.
 
 ```python
 @component.output_types(result=str)
-def run(command: Union[Command, str],
-        payload: Dict[str, Any],
-        repo: Optional[str] = None,
-        branch: Optional[str] = None) -> Dict[str, str]
+def run(command: Command | str,
+        payload: dict[str, Any],
+        repo: str | None = None,
+        branch: str | None = None) -> dict[str, str]
 ```
 
 Process GitHub file operations.
@@ -127,7 +127,7 @@ Dictionary containing operation result
 #### GitHubFileEditor.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
@@ -138,7 +138,7 @@ Serialize the component to a dictionary.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GitHubFileEditor"
+def from_dict(cls, data: dict[str, Any]) -> "GitHubFileEditor"
 ```
 
 Deserialize the component from a dictionary.
@@ -194,7 +194,7 @@ Initialize the component.
 #### GitHubIssueCommenter.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
@@ -209,7 +209,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GitHubIssueCommenter"
+def from_dict(cls, data: dict[str, Any]) -> "GitHubIssueCommenter"
 ```
 
 Deserialize the component from a dictionary.
@@ -274,7 +274,7 @@ print(docs)
 
 ```python
 def __init__(*,
-             github_token: Optional[Secret] = None,
+             github_token: Secret | None = None,
              raise_on_failure: bool = True,
              retry_attempts: int = 2)
 ```
@@ -292,7 +292,7 @@ Initialize the component.
 #### GitHubIssueViewer.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
@@ -307,7 +307,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GitHubIssueViewer"
+def from_dict(cls, data: dict[str, Any]) -> "GitHubIssueViewer"
 ```
 
 Deserialize the component from a dictionary.
@@ -325,7 +325,7 @@ Deserialized component.
 #### GitHubIssueViewer.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(url: str) -> dict
 ```
 
@@ -398,7 +398,7 @@ def run(issue_url: str,
         branch: str,
         base: str,
         body: str = "",
-        draft: bool = False) -> Dict[str, str]
+        draft: bool = False) -> dict[str, str]
 ```
 
 Create a new pull request from your fork to the original repository, linked to the specified issue.
@@ -421,7 +421,7 @@ Dictionary containing operation result
 #### GitHubPRCreator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
@@ -432,10 +432,119 @@ Serialize the component to a dictionary.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GitHubPRCreator"
+def from_dict(cls, data: dict[str, Any]) -> "GitHubPRCreator"
 ```
 
 Deserialize the component from a dictionary.
+
+<a id="haystack_integrations.components.connectors.github.repo_forker"></a>
+
+## Module haystack\_integrations.components.connectors.github.repo\_forker
+
+<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker"></a>
+
+### GitHubRepoForker
+
+Forks a GitHub repository from an issue URL.
+
+The component takes a GitHub issue URL, extracts the repository information,
+creates or syncs a fork of that repository, and optionally creates an issue-specific branch.
+
+### Usage example
+```python
+from haystack_integrations.components.connectors.github import GitHubRepoForker
+from haystack.utils import Secret
+
+# Using direct token with auto-sync and branch creation
+forker = GitHubRepoForker(
+    github_token=Secret.from_env_var("GITHUB_TOKEN"),
+    auto_sync=True,
+    create_branch=True
+)
+
+result = forker.run(url="https://github.com/owner/repo/issues/123")
+print(result)
+# Will create or sync fork and create branch "fix-123"
+```
+
+<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.__init__"></a>
+
+#### GitHubRepoForker.\_\_init\_\_
+
+```python
+def __init__(*,
+             github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
+             raise_on_failure: bool = True,
+             wait_for_completion: bool = False,
+             max_wait_seconds: int = 300,
+             poll_interval: int = 2,
+             auto_sync: bool = True,
+             create_branch: bool = True)
+```
+
+Initialize the component.
+
+**Arguments**:
+
+- `github_token`: GitHub personal access token for API authentication
+- `raise_on_failure`: If True, raises exceptions on API errors
+- `wait_for_completion`: If True, waits until fork is fully created
+- `max_wait_seconds`: Maximum time to wait for fork completion in seconds
+- `poll_interval`: Time between status checks in seconds
+- `auto_sync`: If True, syncs fork with original repository if it already exists
+- `create_branch`: If True, creates a fix branch based on the issue number
+
+<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.to_dict"></a>
+
+#### GitHubRepoForker.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.from_dict"></a>
+
+#### GitHubRepoForker.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "GitHubRepoForker"
+```
+
+Deserialize the component from a dictionary.
+
+**Arguments**:
+
+- `data`: Dictionary to deserialize from.
+
+**Returns**:
+
+Deserialized component.
+
+<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.run"></a>
+
+#### GitHubRepoForker.run
+
+```python
+@component.output_types(repo=str, issue_branch=str)
+def run(url: str) -> dict
+```
+
+Process a GitHub issue URL and create or sync a fork of the repository.
+
+**Arguments**:
+
+- `url`: GitHub issue URL
+
+**Returns**:
+
+Dictionary containing repository path in owner/repo format
 
 <a id="haystack_integrations.components.connectors.github.repo_viewer"></a>
 
@@ -503,10 +612,10 @@ print(result)
 
 ```python
 def __init__(*,
-             github_token: Optional[Secret] = None,
+             github_token: Secret | None = None,
              raise_on_failure: bool = True,
              max_file_size: int = 1_000_000,
-             repo: Optional[str] = None,
+             repo: str | None = None,
              branch: str = "main")
 ```
 
@@ -525,7 +634,7 @@ Initialize the component.
 #### GitHubRepoViewer.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize the component to a dictionary.
@@ -540,7 +649,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GitHubRepoViewer"
+def from_dict(cls, data: dict[str, Any]) -> "GitHubRepoViewer"
 ```
 
 Deserialize the component from a dictionary.
@@ -558,10 +667,10 @@ Deserialized component.
 #### GitHubRepoViewer.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(path: str,
-        repo: Optional[str] = None,
-        branch: Optional[str] = None) -> Dict[str, List[Document]]
+        repo: str | None = None,
+        branch: str | None = None) -> dict[str, list[Document]]
 ```
 
 Process a GitHub repository path and return documents.
@@ -575,113 +684,4 @@ Process a GitHub repository path and return documents.
 **Returns**:
 
 Dictionary containing list of documents
-
-<a id="haystack_integrations.components.connectors.github.repo_forker"></a>
-
-## Module haystack\_integrations.components.connectors.github.repo\_forker
-
-<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker"></a>
-
-### GitHubRepoForker
-
-Forks a GitHub repository from an issue URL.
-
-The component takes a GitHub issue URL, extracts the repository information,
-creates or syncs a fork of that repository, and optionally creates an issue-specific branch.
-
-### Usage example
-```python
-from haystack_integrations.components.connectors.github import GitHubRepoForker
-from haystack.utils import Secret
-
-# Using direct token with auto-sync and branch creation
-forker = GitHubRepoForker(
-    github_token=Secret.from_env_var("GITHUB_TOKEN"),
-    auto_sync=True,
-    create_branch=True
-)
-
-result = forker.run(url="https://github.com/owner/repo/issues/123")
-print(result)
-# Will create or sync fork and create branch "fix-123"
-```
-
-<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.__init__"></a>
-
-#### GitHubRepoForker.\_\_init\_\_
-
-```python
-def __init__(*,
-             github_token: Secret = Secret.from_env_var("GITHUB_TOKEN"),
-             raise_on_failure: bool = True,
-             wait_for_completion: bool = False,
-             max_wait_seconds: int = 300,
-             poll_interval: int = 2,
-             auto_sync: bool = True,
-             create_branch: bool = True)
-```
-
-Initialize the component.
-
-**Arguments**:
-
-- `github_token`: GitHub personal access token for API authentication
-- `raise_on_failure`: If True, raises exceptions on API errors
-- `wait_for_completion`: If True, waits until fork is fully created
-- `max_wait_seconds`: Maximum time to wait for fork completion in seconds
-- `poll_interval`: Time between status checks in seconds
-- `auto_sync`: If True, syncs fork with original repository if it already exists
-- `create_branch`: If True, creates a fix branch based on the issue number
-
-<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.to_dict"></a>
-
-#### GitHubRepoForker.to\_dict
-
-```python
-def to_dict() -> Dict[str, Any]
-```
-
-Serialize the component to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.from_dict"></a>
-
-#### GitHubRepoForker.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "GitHubRepoForker"
-```
-
-Deserialize the component from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized component.
-
-<a id="haystack_integrations.components.connectors.github.repo_forker.GitHubRepoForker.run"></a>
-
-#### GitHubRepoForker.run
-
-```python
-@component.output_types(repo=str, issue_branch=str)
-def run(url: str) -> dict
-```
-
-Process a GitHub issue URL and create or sync a fork of the repository.
-
-**Arguments**:
-
-- `url`: GitHub issue URL
-
-**Returns**:
-
-Dictionary containing repository path in owner/repo format
 
