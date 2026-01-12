@@ -1241,7 +1241,8 @@ def __init__(
     batch_size: int = 32,
     device: ComponentDevice | None = None,
     token: Secret = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"],
-                                        strict=False))
+                                        strict=False)
+) -> None
 ```
 
 Creates a new instance of SASEvaluator.
@@ -1293,7 +1294,7 @@ The deserialized component instance.
 #### SASEvaluator.warm\_up
 
 ```python
-def warm_up()
+def warm_up() -> None
 ```
 
 Initializes the component.
@@ -1305,7 +1306,7 @@ Initializes the component.
 ```python
 @component.output_types(score=float, individual_scores=list[float])
 def run(ground_truth_answers: list[str],
-        predicted_answers: list[str]) -> dict[str, Any]
+        predicted_answers: list[str]) -> dict[str, float | list[float]]
 ```
 
 SASEvaluator component run method.
