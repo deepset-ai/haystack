@@ -115,15 +115,15 @@ connector = LangfuseConnector(span_handler=CustomSpanHandler())
 ```python
 def __init__(name: str,
              public: bool = False,
-             public_key: Optional[Secret] = Secret.from_env_var(
-                 "LANGFUSE_PUBLIC_KEY"),
-             secret_key: Optional[Secret] = Secret.from_env_var(
-                 "LANGFUSE_SECRET_KEY"),
-             httpx_client: Optional[httpx.Client] = None,
-             span_handler: Optional[SpanHandler] = None,
+             public_key: Secret
+             | None = Secret.from_env_var("LANGFUSE_PUBLIC_KEY"),
+             secret_key: Secret
+             | None = Secret.from_env_var("LANGFUSE_SECRET_KEY"),
+             httpx_client: httpx.Client | None = None,
+             span_handler: SpanHandler | None = None,
              *,
-             host: Optional[str] = None,
-             langfuse_client_kwargs: Optional[dict[str, Any]] = None) -> None
+             host: str | None = None,
+             langfuse_client_kwargs: dict[str, Any] | None = None) -> None
 ```
 
 Initialize the LangfuseConnector component.
@@ -156,7 +156,7 @@ for more details on available configuration options.
 
 ```python
 @component.output_types(name=str, trace_url=str, trace_id=str)
-def run(invocation_context: Optional[dict[str, Any]] = None) -> dict[str, str]
+def run(invocation_context: dict[str, Any] | None = None) -> dict[str, str]
 ```
 
 Runs the LangfuseConnector component.
@@ -388,7 +388,7 @@ A new LangfuseSpan instance configured according to the context
 
 ```python
 @abstractmethod
-def handle(span: LangfuseSpan, component_type: Optional[str]) -> None
+def handle(span: LangfuseSpan, component_type: str | None) -> None
 ```
 
 Process a span after component execution by attaching metadata and metrics.
@@ -426,7 +426,7 @@ Internal class representing a bridge between the Haystack tracer and Langfuse.
 def __init__(tracer: langfuse.Langfuse,
              name: str = "Haystack",
              public: bool = False,
-             span_handler: Optional[SpanHandler] = None) -> None
+             span_handler: SpanHandler | None = None) -> None
 ```
 
 Initialize a LangfuseTracer instance.
@@ -446,7 +446,7 @@ and only accessible to the Langfuse account owner.
 #### LangfuseTracer.current\_span
 
 ```python
-def current_span() -> Optional[Span]
+def current_span() -> Span | None
 ```
 
 Return the current active span.
