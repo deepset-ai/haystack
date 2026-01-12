@@ -33,10 +33,10 @@ print(generator.run("Who is the best American actor?", generation_kwargs={"max_t
 
 ```python
 def __init__(model: str,
-             n_ctx: Optional[int] = 0,
-             n_batch: Optional[int] = 512,
-             model_kwargs: Optional[Dict[str, Any]] = None,
-             generation_kwargs: Optional[Dict[str, Any]] = None)
+             n_ctx: int | None = 0,
+             n_batch: int | None = 512,
+             model_kwargs: dict[str, Any] | None = None,
+             generation_kwargs: dict[str, Any] | None = None)
 ```
 
 **Arguments**:
@@ -59,11 +59,11 @@ For more information on the available kwargs, see
 #### LlamaCppGenerator.run
 
 ```python
-@component.output_types(replies=List[str], meta=List[Dict[str, Any]])
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
 def run(
     prompt: str,
-    generation_kwargs: Optional[Dict[str, Any]] = None
-) -> Dict[str, Union[List[str], List[Dict[str, Any]]]]
+    generation_kwargs: dict[str, Any] | None = None
+) -> dict[str, list[str] | list[dict[str, Any]]]
 ```
 
 Run the text generation model on the given prompt.
