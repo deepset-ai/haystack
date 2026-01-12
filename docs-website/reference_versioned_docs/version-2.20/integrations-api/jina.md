@@ -5,6 +5,112 @@ description: "Jina integration for Haystack"
 slug: "/integrations-jina"
 ---
 
+<a id="haystack_integrations.components.connectors.jina.reader"></a>
+
+## Module haystack\_integrations.components.connectors.jina.reader
+
+<a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector"></a>
+
+### JinaReaderConnector
+
+A component that interacts with Jina AI's reader service to process queries and return documents.
+
+This component supports different modes of operation: `read`, `search`, and `ground`.
+
+Usage example:
+```python
+from haystack_integrations.components.connectors.jina import JinaReaderConnector
+
+reader = JinaReaderConnector(mode="read")
+query = "https://example.com"
+result = reader.run(query=query)
+document = result["documents"][0]
+print(document.content)
+
+>>> "This domain is for use in illustrative examples..."
+```
+
+<a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector.__init__"></a>
+
+#### JinaReaderConnector.\_\_init\_\_
+
+```python
+def __init__(mode: JinaReaderMode | str,
+             api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
+             json_response: bool = True)
+```
+
+Initialize a JinaReader instance.
+
+**Arguments**:
+
+- `mode`: The operation mode for the reader (`read`, `search` or `ground`).
+- `read`: process a URL and return the textual content of the page.
+- `search`: search the web and return textual content of the most relevant pages.
+- `ground`: call the grounding engine to perform fact checking.
+For more information on the modes, see the [Jina Reader documentation](https://jina.ai/reader/).
+- `api_key`: The Jina API key. It can be explicitly provided or automatically read from the
+environment variable JINA_API_KEY (recommended).
+- `json_response`: Controls the response format from the Jina Reader API.
+If `True`, requests a JSON response, resulting in Documents with rich structured metadata.
+If `False`, requests a raw response, resulting in one Document with minimal metadata.
+
+<a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector.to_dict"></a>
+
+#### JinaReaderConnector.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector.from_dict"></a>
+
+#### JinaReaderConnector.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "JinaReaderConnector"
+```
+
+Deserializes the component from a dictionary.
+
+**Arguments**:
+
+- `data`: Dictionary to deserialize from.
+
+**Returns**:
+
+Deserialized component.
+
+<a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector.run"></a>
+
+#### JinaReaderConnector.run
+
+```python
+@component.output_types(documents=list[Document])
+def run(query: str,
+        headers: dict[str, str] | None = None) -> dict[str, list[Document]]
+```
+
+Process the query/URL using the Jina AI reader service.
+
+**Arguments**:
+
+- `query`: The query string or URL to process.
+- `headers`: Optional headers to include in the request for customization. Refer to the
+[Jina Reader documentation](https://jina.ai/reader/) for more information.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `documents`: A list of `Document` objects.
+
 <a id="haystack_integrations.components.embedders.jina.document_embedder"></a>
 
 ## Module haystack\_integrations.components.embedders.jina.document\_embedder
@@ -44,11 +150,11 @@ def __init__(api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
              suffix: str = "",
              batch_size: int = 32,
              progress_bar: bool = True,
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
-             task: Optional[str] = None,
-             dimensions: Optional[int] = None,
-             late_chunking: Optional[bool] = None)
+             task: str | None = None,
+             dimensions: int | None = None,
+             late_chunking: bool | None = None)
 ```
 
 Create a JinaDocumentEmbedder component.
@@ -81,7 +187,7 @@ The support of `task` and `late_chunking` parameters is only available for jina-
 #### JinaDocumentEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -96,7 +202,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "JinaDocumentEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "JinaDocumentEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -114,8 +220,8 @@ Deserialized component.
 #### JinaDocumentEmbedder.run
 
 ```python
-@component.output_types(documents=List[Document], meta=Dict[str, Any])
-def run(documents: List[Document]) -> Dict[str, Any]
+@component.output_types(documents=list[Document], meta=dict[str, Any])
+def run(documents: list[Document]) -> dict[str, Any]
 ```
 
 Compute the embeddings for a list of Documents.
@@ -179,9 +285,9 @@ def __init__(*,
              api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
              model: str = "jina-clip-v2",
              file_path_meta_field: str = "file_path",
-             root_path: Optional[str] = None,
-             embedding_dimension: Optional[int] = None,
-             image_size: Optional[Tuple[int, int]] = None,
+             root_path: str | None = None,
+             embedding_dimension: int | None = None,
+             image_size: tuple[int, int] | None = None,
              batch_size: int = 5)
 ```
 
@@ -212,7 +318,7 @@ maintaining aspect ratio. This reduces file size, memory usage, and processing t
 #### JinaDocumentImageEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -227,7 +333,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "JinaDocumentImageEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "JinaDocumentImageEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -245,8 +351,8 @@ Deserialized component.
 #### JinaDocumentImageEmbedder.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(documents: List[Document]) -> Dict[str, List[Document]]
+@component.output_types(documents=list[Document])
+def run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Embed a list of image documents.
@@ -296,9 +402,9 @@ def __init__(api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
              model: str = "jina-embeddings-v3",
              prefix: str = "",
              suffix: str = "",
-             task: Optional[str] = None,
-             dimensions: Optional[int] = None,
-             late_chunking: Optional[bool] = None)
+             task: str | None = None,
+             dimensions: int | None = None,
+             late_chunking: bool | None = None)
 ```
 
 Create a JinaTextEmbedder component.
@@ -327,7 +433,7 @@ The support of `task` and `late_chunking` parameters is only available for jina-
 #### JinaTextEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -342,7 +448,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "JinaTextEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "JinaTextEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -360,8 +466,8 @@ Deserialized component.
 #### JinaTextEmbedder.run
 
 ```python
-@component.output_types(embedding=List[float], meta=Dict[str, Any])
-def run(text: str) -> Dict[str, Any]
+@component.output_types(embedding=list[float], meta=dict[str, Any])
+def run(text: str) -> dict[str, Any]
 ```
 
 Embed a string.
@@ -410,8 +516,8 @@ print(docs[0].content)
 ```python
 def __init__(model: str = "jina-reranker-v1-base-en",
              api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
-             top_k: Optional[int] = None,
-             score_threshold: Optional[float] = None)
+             top_k: int | None = None,
+             score_threshold: float | None = None)
 ```
 
 Creates an instance of JinaRanker.
@@ -433,7 +539,7 @@ environment variable JINA_API_KEY (recommended).
 #### JinaRanker.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -448,7 +554,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "JinaRanker"
+def from_dict(cls, data: dict[str, Any]) -> "JinaRanker"
 ```
 
 Deserializes the component from a dictionary.
@@ -466,11 +572,11 @@ Deserialized component.
 #### JinaRanker.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(query: str,
-        documents: List[Document],
-        top_k: Optional[int] = None,
-        score_threshold: Optional[float] = None)
+        documents: list[Document],
+        top_k: int | None = None,
+        score_threshold: float | None = None)
 ```
 
 Returns a list of Documents ranked by their similarity to the given query.
@@ -491,108 +597,3 @@ Returns a list of Documents ranked by their similarity to the given query.
 A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given query in descending order of similarity.
 
-<a id="haystack_integrations.components.connectors.jina.reader"></a>
-
-## Module haystack\_integrations.components.connectors.jina.reader
-
-<a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector"></a>
-
-### JinaReaderConnector
-
-A component that interacts with Jina AI's reader service to process queries and return documents.
-
-This component supports different modes of operation: `read`, `search`, and `ground`.
-
-Usage example:
-```python
-from haystack_integrations.components.connectors.jina import JinaReaderConnector
-
-reader = JinaReaderConnector(mode="read")
-query = "https://example.com"
-result = reader.run(query=query)
-document = result["documents"][0]
-print(document.content)
-
->>> "This domain is for use in illustrative examples..."
-```
-
-<a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector.__init__"></a>
-
-#### JinaReaderConnector.\_\_init\_\_
-
-```python
-def __init__(mode: Union[JinaReaderMode, str],
-             api_key: Secret = Secret.from_env_var("JINA_API_KEY"),
-             json_response: bool = True)
-```
-
-Initialize a JinaReader instance.
-
-**Arguments**:
-
-- `mode`: The operation mode for the reader (`read`, `search` or `ground`).
-- `read`: process a URL and return the textual content of the page.
-- `search`: search the web and return textual content of the most relevant pages.
-- `ground`: call the grounding engine to perform fact checking.
-For more information on the modes, see the [Jina Reader documentation](https://jina.ai/reader/).
-- `api_key`: The Jina API key. It can be explicitly provided or automatically read from the
-environment variable JINA_API_KEY (recommended).
-- `json_response`: Controls the response format from the Jina Reader API.
-If `True`, requests a JSON response, resulting in Documents with rich structured metadata.
-If `False`, requests a raw response, resulting in one Document with minimal metadata.
-
-<a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector.to_dict"></a>
-
-#### JinaReaderConnector.to\_dict
-
-```python
-def to_dict() -> Dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector.from_dict"></a>
-
-#### JinaReaderConnector.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "JinaReaderConnector"
-```
-
-Deserializes the component from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized component.
-
-<a id="haystack_integrations.components.connectors.jina.reader.JinaReaderConnector.run"></a>
-
-#### JinaReaderConnector.run
-
-```python
-@component.output_types(documents=List[Document])
-def run(query: str,
-        headers: Optional[Dict[str, str]] = None) -> Dict[str, List[Document]]
-```
-
-Process the query/URL using the Jina AI reader service.
-
-**Arguments**:
-
-- `query`: The query string or URL to process.
-- `headers`: Optional headers to include in the request for customization. Refer to the
-[Jina Reader documentation](https://jina.ai/reader/) for more information.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `documents`: A list of `Document` objects.
