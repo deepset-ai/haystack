@@ -56,14 +56,14 @@ is a branch of artificial intelligence
 def __init__(*,
              model: str,
              api_base_url: str = "http://localhost:8321/v1/openai/v1",
-             organization: Optional[str] = None,
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             timeout: Optional[int] = None,
-             tools: Optional[ToolsType] = None,
+             organization: str | None = None,
+             streaming_callback: StreamingCallbackT | None = None,
+             generation_kwargs: dict[str, Any] | None = None,
+             timeout: int | None = None,
+             tools: ToolsType | None = None,
              tools_strict: bool = False,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None)
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None)
 ```
 
 Creates an instance of LlamaStackChatGenerator. To use this chat generator,
