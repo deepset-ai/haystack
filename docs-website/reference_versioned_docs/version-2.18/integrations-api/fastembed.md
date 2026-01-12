@@ -65,15 +65,15 @@ print(f"Embedding Dimension: {len(result['documents'][0].embedding)}")
 
 ```python
 def __init__(model: str = "BAAI/bge-small-en-v1.5",
-             cache_dir: Optional[str] = None,
-             threads: Optional[int] = None,
+             cache_dir: str | None = None,
+             threads: int | None = None,
              prefix: str = "",
              suffix: str = "",
              batch_size: int = 256,
              progress_bar: bool = True,
-             parallel: Optional[int] = None,
+             parallel: int | None = None,
              local_files_only: bool = False,
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n") -> None
 ```
 
@@ -202,15 +202,15 @@ print(f"Sparse Embedding Dimension: {len(result['documents'][0].sparse_embedding
 
 ```python
 def __init__(model: str = "prithivida/Splade_PP_en_v1",
-             cache_dir: Optional[str] = None,
-             threads: Optional[int] = None,
+             cache_dir: str | None = None,
+             threads: int | None = None,
              batch_size: int = 32,
              progress_bar: bool = True,
-             parallel: Optional[int] = None,
+             parallel: int | None = None,
              local_files_only: bool = False,
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
-             model_kwargs: Optional[dict[str, Any]] = None) -> None
+             model_kwargs: dict[str, Any] | None = None) -> None
 ```
 
 Create an FastembedDocumentEmbedder component.
@@ -313,12 +313,12 @@ sparse_embedding = sparse_text_embedder.run(text)["sparse_embedding"]
 
 ```python
 def __init__(model: str = "prithivida/Splade_PP_en_v1",
-             cache_dir: Optional[str] = None,
-             threads: Optional[int] = None,
+             cache_dir: str | None = None,
+             threads: int | None = None,
              progress_bar: bool = True,
-             parallel: Optional[int] = None,
+             parallel: int | None = None,
              local_files_only: bool = False,
-             model_kwargs: Optional[dict[str, Any]] = None) -> None
+             model_kwargs: dict[str, Any] | None = None) -> None
 ```
 
 Create a FastembedSparseTextEmbedder component.
@@ -416,12 +416,12 @@ embedding = text_embedder.run(text)["embedding"]
 
 ```python
 def __init__(model: str = "BAAI/bge-small-en-v1.5",
-             cache_dir: Optional[str] = None,
-             threads: Optional[int] = None,
+             cache_dir: str | None = None,
+             threads: int | None = None,
              prefix: str = "",
              suffix: str = "",
              progress_bar: bool = True,
-             parallel: Optional[int] = None,
+             parallel: int | None = None,
              local_files_only: bool = False) -> None
 ```
 
@@ -525,12 +525,12 @@ print(output["documents"][0].content)
 ```python
 def __init__(model_name: str = "Xenova/ms-marco-MiniLM-L-6-v2",
              top_k: int = 10,
-             cache_dir: Optional[str] = None,
-             threads: Optional[int] = None,
+             cache_dir: str | None = None,
+             threads: int | None = None,
              batch_size: int = 64,
-             parallel: Optional[int] = None,
+             parallel: int | None = None,
              local_files_only: bool = False,
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              meta_data_separator: str = "\n")
 ```
 
@@ -605,7 +605,7 @@ Initializes the component.
 @component.output_types(documents=list[Document])
 def run(query: str,
         documents: list[Document],
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Returns a list of documents ranked by their similarity to the given query, using FastEmbed.
