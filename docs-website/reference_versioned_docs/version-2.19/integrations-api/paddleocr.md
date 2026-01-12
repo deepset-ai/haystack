@@ -48,27 +48,26 @@ def __init__(
         *,
         api_url: str,
         access_token: Secret = Secret.from_env_var("AISTUDIO_ACCESS_TOKEN"),
-        file_type: Optional[FileTypeInput] = None,
-        use_doc_orientation_classify: Optional[bool] = None,
-        use_doc_unwarping: Optional[bool] = None,
-        use_layout_detection: Optional[bool] = None,
-        use_chart_recognition: Optional[bool] = None,
-        layout_threshold: Optional[Union[float, dict]] = None,
-        layout_nms: Optional[bool] = None,
-        layout_unclip_ratio: Optional[Union[float, tuple[float, float],
-                                            dict]] = None,
-        layout_merge_bboxes_mode: Optional[Union[str, dict]] = None,
-        prompt_label: Optional[str] = None,
-        format_block_content: Optional[bool] = None,
-        repetition_penalty: Optional[float] = None,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        min_pixels: Optional[int] = None,
-        max_pixels: Optional[int] = None,
-        prettify_markdown: Optional[bool] = None,
-        show_formula_number: Optional[bool] = None,
-        visualize: Optional[bool] = None,
-        additional_params: Optional[dict[str, Any]] = None)
+        file_type: FileTypeInput = None,
+        use_doc_orientation_classify: bool | None = None,
+        use_doc_unwarping: bool | None = None,
+        use_layout_detection: bool | None = None,
+        use_chart_recognition: bool | None = None,
+        layout_threshold: float | dict | None = None,
+        layout_nms: bool | None = None,
+        layout_unclip_ratio: float | tuple[float, float] | dict | None = None,
+        layout_merge_bboxes_mode: str | dict | None = None,
+        prompt_label: str | None = None,
+        format_block_content: bool | None = None,
+        repetition_penalty: float | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        min_pixels: int | None = None,
+        max_pixels: int | None = None,
+        prettify_markdown: bool | None = None,
+        show_formula_number: bool | None = None,
+        visualize: bool | None = None,
+        additional_params: dict[str, Any] | None = None)
 ```
 
 Create a `PaddleOCRVLDocumentConverter` component.
@@ -153,8 +152,8 @@ Deserialized component.
 @component.output_types(documents=list[Document],
                         raw_paddleocr_responses=list[dict[str, Any]])
 def run(
-    sources: list[Union[str, Path, ByteStream]],
-    meta: Optional[Union[dict[str, Any], list[dict[str, Any]]]] = None
+    sources: list[str | Path | ByteStream],
+    meta: dict[str, Any] | list[dict[str, Any]] | None = None
 ) -> dict[str, Any]
 ```
 
