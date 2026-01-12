@@ -128,14 +128,9 @@ class SASEvaluator:
         # Based on the Model string we can load either Bi-Encoders or Cross Encoders.
         # Similarity computation changes for both approaches
         if cross_encoder_used:
-            self._similarity_model = CrossEncoder(
-                self._model,
-                device=device,
-                tokenizer_args={"use_auth_token": token},
-                automodel_args={"use_auth_token": token},
-            )
+            self._similarity_model = CrossEncoder(self._model, device=device, token=token)
         else:
-            self._similarity_model = SentenceTransformer(self._model, device=device, use_auth_token=token)
+            self._similarity_model = SentenceTransformer(self._model, device=device, token=token)
 
     @component.output_types(score=float, individual_scores=list[float])
     def run(self, ground_truth_answers: list[str], predicted_answers: list[str]) -> dict[str, float | list[float]]:
