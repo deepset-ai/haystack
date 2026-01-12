@@ -59,7 +59,7 @@ class SASEvaluator:
         batch_size: int = 32,
         device: ComponentDevice | None = None,
         token: Secret = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-    ):
+    ) -> None:
         """
         Creates a new instance of SASEvaluator.
 
@@ -112,7 +112,7 @@ class SASEvaluator:
             data["init_parameters"]["device"] = ComponentDevice.from_dict(device)
         return default_from_dict(cls, data)
 
-    def warm_up(self):
+    def warm_up(self) -> None:
         """
         Initializes the component.
         """
@@ -138,7 +138,7 @@ class SASEvaluator:
             self._similarity_model = SentenceTransformer(self._model, device=device, use_auth_token=token)
 
     @component.output_types(score=float, individual_scores=list[float])
-    def run(self, ground_truth_answers: list[str], predicted_answers: list[str]) -> dict[str, Any]:
+    def run(self, ground_truth_answers: list[str], predicted_answers: list[str]) -> dict[str, float | list[float]]:
         """
         SASEvaluator component run method.
 
@@ -192,7 +192,8 @@ class SASEvaluator:
 
             # Compute cosine-similarities
             similarity_scores = [
-                float(util.cos_sim(p, l).cpu().numpy()) for p, l in zip(predictions_embeddings, label_embeddings)
+                float(util.cos_sim(p, l).cpu().squeeze().numpy())
+                for p, l in zip(predictions_embeddings, label_embeddings)
             ]
 
         sas_score = np_mean(similarity_scores)
