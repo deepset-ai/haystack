@@ -54,7 +54,7 @@ def __init__(split_by: Literal["word", "sentence", "passage", "page", "line",
              split_overlap: int = 200,
              split_threshold: int = 0,
              respect_sentence_boundary: bool = False,
-             splitting_function: Optional[Callable] = None,
+             splitting_function: Callable | None = None,
              granularity: Literal["coarse", "fine"] = "coarse")
 ```
 
@@ -90,7 +90,7 @@ representing the chunks after splitting.
 
 ```python
 @component.output_types(documents=list[Document])
-def run(documents: List[Document]) -> Dict[str, List[Document]]
+def run(documents: list[Document]) -> dict[str, list[Document]]
 ```
 
 Split documents into smaller chunks.
@@ -122,7 +122,7 @@ Warm up the component by loading the necessary models.
 #### ChineseDocumentSplitter.chinese\_sentence\_split
 
 ```python
-def chinese_sentence_split(text: str) -> List[Dict[str, Any]]
+def chinese_sentence_split(text: str) -> list[dict[str, Any]]
 ```
 
 Split Chinese text into sentences.
@@ -140,7 +140,7 @@ A list of split sentences.
 #### ChineseDocumentSplitter.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -151,7 +151,7 @@ Serializes the component to a dictionary.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "ChineseDocumentSplitter"
+def from_dict(cls, data: dict[str, Any]) -> "ChineseDocumentSplitter"
 ```
 
 Deserializes the component from a dictionary.
