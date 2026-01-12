@@ -49,9 +49,9 @@ for d in results["retriever"]["documents"]:
 
 ```python
 def __init__(document_store: ChromaDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 **Arguments**:
@@ -68,8 +68,8 @@ def __init__(document_store: ChromaDocumentStore,
 ```python
 @component.output_types(documents=list[Document])
 def run(query: str,
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, Any]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, Any]
 ```
 
 Run the retriever on the given input data.
@@ -99,8 +99,8 @@ A dictionary with the following keys:
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query: str,
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> dict[str, Any]
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, Any]
 ```
 
 Asynchronously run the retriever on the given input data.
@@ -170,9 +170,9 @@ A component for retrieving documents from a [Chroma database](https://docs.trych
 
 ```python
 def __init__(document_store: ChromaDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 **Arguments**:
@@ -189,8 +189,8 @@ def __init__(document_store: ChromaDocumentStore,
 ```python
 @component.output_types(documents=list[Document])
 def run(query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, Any]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, Any]
 ```
 
 Run the retriever on the given input data.
@@ -216,8 +216,8 @@ a dictionary with the following keys:
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query_embedding: list[float],
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> dict[str, Any]
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, Any]
 ```
 
 Asynchronously run the retriever on the given input data.
@@ -291,11 +291,12 @@ the `collection.search` API will be used in the retriever instead.
 ```python
 def __init__(collection_name: str = "documents",
              embedding_function: str = "default",
-             persist_path: Optional[str] = None,
-             host: Optional[str] = None,
-             port: Optional[int] = None,
+             persist_path: str | None = None,
+             host: str | None = None,
+             port: int | None = None,
              distance_function: Literal["l2", "cosine", "ip"] = "l2",
-             metadata: Optional[dict] = None,
+             metadata: dict | None = None,
+             client_settings: dict[str, Any] | None = None,
              **embedding_function_params: Any)
 ```
 
@@ -326,6 +327,11 @@ To change the distance metric of an existing collection, consider cloning the co
 - `metadata`: a dictionary of chromadb collection parameters passed directly to chromadb's client
 method `create_collection`. If it contains the key `"hnsw:space"`, the value will take precedence over the
 `distance_function` parameter above.
+- `client_settings`: a dictionary of Chroma Settings configuration options passed to
+`chromadb.config.Settings`. These settings configure the underlying Chroma client behavior.
+For available options, see [Chroma's config.py](https://github.com/chroma-core/chroma/blob/main/chromadb/config.py).
+**Note**: specifying these settings may interfere with standard client initialization parameters.
+This option is intended for advanced customization.
 - `embedding_function_params`: additional parameters to pass to the embedding function.
 
 <a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_documents"></a>
@@ -363,14 +369,13 @@ how many documents are present in the document store.
 #### ChromaDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
 
 For a detailed specification of the filters,
-refer to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering).
+refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
 
 **Arguments**:
 
@@ -386,7 +391,7 @@ a list of Documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
@@ -394,7 +399,7 @@ Asynchronously returns the documents that match the filters provided.
 Asynchronous methods are only supported for HTTP connections.
 
 For a detailed specification of the filters,
-refer to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering).
+refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
 
 **Arguments**:
 
@@ -498,7 +503,7 @@ Deletes all documents that match the provided filters.
 **Arguments**:
 
 - `filters`: The filters to apply to select documents for deletion.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering)
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
 **Returns**:
 
@@ -519,7 +524,7 @@ Asynchronous methods are only supported for HTTP connections.
 **Arguments**:
 
 - `filters`: The filters to apply to select documents for deletion.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering)
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
 **Returns**:
 
@@ -542,7 +547,7 @@ those changes may be lost.
 **Arguments**:
 
 - `filters`: The filters to apply to select documents for updating.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering)
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 - `meta`: The metadata fields to update. This will be merged with existing metadata.
 
 **Returns**:
@@ -569,7 +574,7 @@ those changes may be lost.
 **Arguments**:
 
 - `filters`: The filters to apply to select documents for updating.
-For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering)
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 - `meta`: The metadata fields to update. This will be merged with existing metadata.
 
 **Returns**:
@@ -615,7 +620,7 @@ A fast way to clear all documents from the document store while preserving any c
 ```python
 def search(queries: list[str],
            top_k: int,
-           filters: Optional[dict[str, Any]] = None) -> list[list[Document]]
+           filters: dict[str, Any] | None = None) -> list[list[Document]]
 ```
 
 Search the documents in the store using the provided text queries.
@@ -638,7 +643,7 @@ matching documents for each query.
 async def search_async(
         queries: list[str],
         top_k: int,
-        filters: Optional[dict[str, Any]] = None) -> list[list[Document]]
+        filters: dict[str, Any] | None = None) -> list[list[Document]]
 ```
 
 Asynchronously search the documents in the store using the provided text queries.
@@ -663,7 +668,7 @@ matching documents for each query.
 def search_embeddings(
         query_embeddings: list[list[float]],
         top_k: int,
-        filters: Optional[dict[str, Any]] = None) -> list[list[Document]]
+        filters: dict[str, Any] | None = None) -> list[list[Document]]
 ```
 
 Perform vector search on the stored document, pass the embeddings of the queries instead of their text.
@@ -686,7 +691,7 @@ a list of lists of documents that match the given filters.
 async def search_embeddings_async(
         query_embeddings: list[list[float]],
         top_k: int,
-        filters: Optional[dict[str, Any]] = None) -> list[list[Document]]
+        filters: dict[str, Any] | None = None) -> list[list[Document]]
 ```
 
 Asynchronously perform vector search on the stored document, pass the embeddings of the queries instead of
