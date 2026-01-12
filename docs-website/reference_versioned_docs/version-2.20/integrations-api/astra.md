@@ -37,9 +37,9 @@ retriever = AstraEmbeddingRetriever(document_store=document_store)
 
 ```python
 def __init__(document_store: AstraDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 **Arguments**:
@@ -56,8 +56,8 @@ def __init__(document_store: AstraDocumentStore,
 ```python
 @component.output_types(documents=list[Document])
 def run(query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the AstraDocumentStore.
@@ -143,7 +143,7 @@ def __init__(
         embedding_dimension: int = 768,
         duplicates_policy: DuplicatePolicy = DuplicatePolicy.NONE,
         similarity: str = "cosine",
-        namespace: Optional[str] = None)
+        namespace: str | None = None)
 ```
 
 The connection to Astra DB is established and managed through the JSON API.
@@ -256,8 +256,7 @@ the number of documents in the document store.
 #### AstraDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns at most 1000 documents that match the filter.
@@ -321,7 +320,7 @@ the found document
 ```python
 def search(query_embedding: list[float],
            top_k: int,
-           filters: Optional[dict[str, Any]] = None) -> list[Document]
+           filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Perform a search for a list of queries.
