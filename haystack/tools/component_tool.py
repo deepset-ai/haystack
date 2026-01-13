@@ -17,7 +17,11 @@ from haystack.core.serialization import (
 from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema
-from haystack.tools.parameters_schema_utils import _get_component_param_descriptions, _resolve_type
+from haystack.tools.parameters_schema_utils import (
+    _contains_callable_type,
+    _get_component_param_descriptions,
+    _resolve_type,
+)
 from haystack.tools.tool import _deserialize_outputs_to_state, _serialize_outputs_to_state
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
@@ -326,6 +330,11 @@ class ComponentTool(Tool):
             if inputs_from_state is not None and input_name in list(inputs_from_state.values()):
                 continue
             input_type = socket.type
+
+            # Skip Callable types since Pydantic cannot generate JSON schemas for them
+            if _contains_callable_type(input_type):
+                continue
+
             description = param_descriptions.get(input_name, f"Input '{input_name}' for the component.")
 
             # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
