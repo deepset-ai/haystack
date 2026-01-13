@@ -501,8 +501,8 @@ class TestComponentTool:
         # Component's warm_up should only be called once
         component.warm_up.assert_called_once()
 
-    def test_from_component_with_callable_params_skipped(self, monkeypath):
-    monkeypatch.setenv("OPENAI_API_KEY", "test")
+    def test_from_component_with_callable_params_skipped(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"))
 
         tool = ComponentTool(
