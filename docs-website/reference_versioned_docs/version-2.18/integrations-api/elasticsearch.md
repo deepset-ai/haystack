@@ -48,11 +48,11 @@ for doc in result["documents"]:
 ```python
 def __init__(*,
              document_store: ElasticsearchDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              fuzziness: str = "AUTO",
              top_k: int = 10,
              scale_score: bool = False,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 Initialize ElasticsearchBM25Retriever with an instance ElasticsearchDocumentStore.
@@ -113,8 +113,8 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query: str,
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using the BM25 keyword-based algorithm.
@@ -139,8 +139,8 @@ A dictionary with the following keys:
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query: str,
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> dict[str, list[Document]]
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents using the BM25 keyword-based algorithm.
@@ -203,10 +203,10 @@ for doc in result["documents"]:
 ```python
 def __init__(*,
              document_store: ElasticsearchDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             num_candidates: Optional[int] = None,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             num_candidates: int | None = None,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 Create the ElasticsearchEmbeddingRetriever component.
@@ -267,8 +267,8 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using a vector similarity metric.
@@ -294,8 +294,8 @@ A dictionary with the following keys:
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query_embedding: list[float],
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> dict[str, list[Document]]
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents using a vector similarity metric.
@@ -355,8 +355,8 @@ All extra keyword arguments will be passed to the Elasticsearch client.
 ```python
 def __init__(
         *,
-        hosts: Optional[Hosts] = None,
-        custom_mapping: Optional[dict[str, Any]] = None,
+        hosts: Hosts | None = None,
+        custom_mapping: dict[str, Any] | None = None,
         index: str = "default",
         api_key: Secret = Secret.from_env_var("ELASTIC_API_KEY", strict=False),
         api_key_id: Secret = Secret.from_env_var("ELASTIC_API_KEY_ID",
@@ -487,8 +487,7 @@ Number of documents in the document store.
 #### ElasticsearchDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 The main query method for the document store. It retrieves all documents that match the filters.
@@ -509,7 +508,7 @@ List of `Document`s that match the filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously retrieves all documents that match the filters.
