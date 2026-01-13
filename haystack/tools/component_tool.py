@@ -2,9 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import types
-from collections.abc import Callable as ABCCallable
-from typing import Any, Callable, Union, get_args, get_origin
+from typing import Any, Callable, get_args, get_origin
 
 from pydantic import Field, TypeAdapter, create_model
 
@@ -19,34 +17,15 @@ from haystack.core.serialization import (
 from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema
-from haystack.tools.parameters_schema_utils import _get_component_param_descriptions, _resolve_type
+from haystack.tools.parameters_schema_utils import (
+    _contains_callable_type,
+    _get_component_param_descriptions,
+    _resolve_type,
+)
 from haystack.tools.tool import _deserialize_outputs_to_state, _serialize_outputs_to_state
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
-
-
-def _contains_callable_type(type_hint: Any) -> bool:
-    """
-    Check if a type hint contains a Callable type, including within Union types.
-
-    The purpose of this function is to help identify Callable types so they can
-    be skipped during schema generation.
-
-    :param type_hint: The type hint to check.
-    :returns: True if the type contains a Callable, False otherwise.
-    """
-    origin = get_origin(type_hint)
-
-    # Check if it's a Callable type (direct or parameterized)
-    if type_hint in (Callable, ABCCallable) or origin in (Callable, ABCCallable):
-        return True
-
-    # Recursively check Union types (both typing.Union and types.UnionType for `X | Y` syntax)
-    if origin in (Union, types.UnionType):
-        return any(_contains_callable_type(arg) for arg in get_args(type_hint))
-
-    return False
 
 
 class ComponentTool(Tool):

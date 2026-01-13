@@ -8,6 +8,7 @@ from typing import Any, Callable
 from pydantic import create_model
 
 from .errors import SchemaGenerationError
+from .parameters_schema_utils import _contains_callable_type
 from .tool import Tool
 
 
@@ -101,6 +102,10 @@ def create_tool_from_function(
 
         if param.annotation is param.empty:
             raise ValueError(f"Function '{function.__name__}': parameter '{param_name}' does not have a type hint.")
+
+        # Skip Callable types since Pydantic cannot generate JSON schemas for them
+        if _contains_callable_type(param.annotation):
+            continue
 
         # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
         # to explicitly indicate that the parameter is required
