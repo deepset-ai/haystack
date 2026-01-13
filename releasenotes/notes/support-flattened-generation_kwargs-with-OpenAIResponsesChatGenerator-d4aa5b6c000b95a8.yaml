@@ -1,5 +1,5 @@
 ---
-enhancement:
+enhancements:
   - |
       Support for flattened `generation_kwargs` in `OpenAIResponsesChatGenerator`
 
