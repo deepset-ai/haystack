@@ -523,6 +523,15 @@ For Gemini 2.5 series, supports `thinking_budget` to configure thinking behavior
   - `-1`: Dynamic (default for most models)
   - `0`: Disable thinking (Flash/Flash-Lite only)
   - Positive integer: Set explicit budget
+For Gemini 3 series and newer, supports `thinking_level` to configure thinking depth:
+- `thinking_level`: str, controls thinking (https://ai.google.dev/gemini-api/docs/thinking#levels-budgets)
+  - `minimal`: Matches the "no thinking" setting for most queries. The model may think very minimally for
+        complex coding tasks. Minimizes latency for chat or high throughput applications.
+  - `low`: Minimizes latency and cost. Best for simple instruction following, chat, or high-throughput
+        applications.
+  - `medium`: Balanced thinking for most tasks.
+  - `high`: (Default, dynamic): Maximizes reasoning depth. The model may take significantly longer to reach
+        a first token, but the output will be more carefully reasoned.
 - `safety_settings`: Safety settings for content filtering
 - `streaming_callback`: A callback function that is called when a new token is received from the stream.
 - `tools`: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
