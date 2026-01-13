@@ -56,9 +56,9 @@ assert res['retriever']['documents'][0].content == "There are over 7,000 languag
 ```python
 def __init__(*,
              document_store: PineconeDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 **Arguments**:
@@ -112,8 +112,8 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the `PineconeDocumentStore`, based on their dense embeddings.
@@ -137,8 +137,8 @@ List of Document similar to `query_embedding`.
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query_embedding: list[float],
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> dict[str, list[Document]]
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents from the `PineconeDocumentStore`, based on their dense embeddings.
@@ -182,7 +182,7 @@ def __init__(*,
              namespace: str = "default",
              batch_size: int = 100,
              dimension: int = 768,
-             spec: Optional[dict[str, Any]] = None,
+             spec: dict[str, Any] | None = None,
              metric: Literal["cosine", "euclidean", "dotproduct"] = "cosine")
 ```
 
@@ -328,8 +328,7 @@ The number of documents written to the document store.
 #### PineconeDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -351,7 +350,7 @@ A list of Documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
