@@ -34,17 +34,17 @@ print(result["documents"][0].embedding)
 #### NvidiaDocumentEmbedder.\_\_init\_\_
 
 ```python
-def __init__(model: Optional[str] = None,
-             api_key: Optional[Secret] = Secret.from_env_var("NVIDIA_API_KEY"),
+def __init__(model: str | None = None,
+             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
              api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
              prefix: str = "",
              suffix: str = "",
              batch_size: int = 32,
              progress_bar: bool = True,
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
-             truncate: Optional[Union[EmbeddingTruncateMode, str]] = None,
-             timeout: Optional[float] = None) -> None
+             truncate: EmbeddingTruncateMode | str | None = None,
+             timeout: float | None = None) -> None
 ```
 
 Create a NvidiaTextEmbedder component.
@@ -139,9 +139,8 @@ The deserialized component.
 
 ```python
 @component.output_types(documents=list[Document], meta=dict[str, Any])
-def run(
-    documents: list[Document]
-) -> dict[str, Union[list[Document], dict[str, Any]]]
+def run(documents: list[Document]
+        ) -> dict[str, list[Document] | dict[str, Any]]
 ```
 
 Embed a list of Documents.
@@ -193,13 +192,13 @@ print(text_embedder.run(text_to_embed))
 #### NvidiaTextEmbedder.\_\_init\_\_
 
 ```python
-def __init__(model: Optional[str] = None,
-             api_key: Optional[Secret] = Secret.from_env_var("NVIDIA_API_KEY"),
+def __init__(model: str | None = None,
+             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
              api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
              prefix: str = "",
              suffix: str = "",
-             truncate: Optional[Union[EmbeddingTruncateMode, str]] = None,
-             timeout: Optional[float] = None)
+             truncate: EmbeddingTruncateMode | str | None = None,
+             timeout: float | None = None)
 ```
 
 Create a NvidiaTextEmbedder component.
@@ -289,7 +288,7 @@ The deserialized component.
 
 ```python
 @component.output_types(embedding=list[float], meta=dict[str, Any])
-def run(text: str) -> dict[str, Union[list[float], dict[str, Any]]]
+def run(text: str) -> dict[str, list[float] | dict[str, Any]]
 ```
 
 Embed a string.
@@ -384,14 +383,14 @@ print(response)
 def __init__(*,
              api_key: Secret = Secret.from_env_var("NVIDIA_API_KEY"),
              model: str = "meta/llama-3.1-8b-instruct",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             api_base_url: Optional[str] = os.getenv("NVIDIA_API_URL",
-                                                     DEFAULT_API_URL),
-             generation_kwargs: Optional[dict[str, Any]] = None,
-             tools: Optional[ToolsType] = None,
-             timeout: Optional[float] = None,
-             max_retries: Optional[int] = None,
-             http_client_kwargs: Optional[dict[str, Any]] = None) -> None
+             streaming_callback: StreamingCallbackT | None = None,
+             api_base_url: str | None = os.getenv("NVIDIA_API_URL",
+                                                  DEFAULT_API_URL),
+             generation_kwargs: dict[str, Any] | None = None,
+             tools: ToolsType | None = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None) -> None
 ```
 
 Creates an instance of NvidiaChatGenerator.
@@ -492,11 +491,11 @@ You need an NVIDIA API key for this component to work.
 #### NvidiaGenerator.\_\_init\_\_
 
 ```python
-def __init__(model: Optional[str] = None,
+def __init__(model: str | None = None,
              api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
-             api_key: Optional[Secret] = Secret.from_env_var("NVIDIA_API_KEY"),
-             model_arguments: Optional[dict[str, Any]] = None,
-             timeout: Optional[float] = None) -> None
+             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
+             model_arguments: dict[str, Any] | None = None,
+             timeout: float | None = None) -> None
 ```
 
 Create a NvidiaGenerator component.
@@ -589,7 +588,7 @@ Deserialized component.
 
 ```python
 @component.output_types(replies=list[str], meta=list[dict[str, Any]])
-def run(prompt: str) -> dict[str, Union[list[str], list[dict[str, Any]]]]
+def run(prompt: str) -> dict[str, list[str] | list[dict[str, Any]]]
 ```
 
 Queries the model with the provided prompt.
@@ -643,16 +642,16 @@ print(result["documents"])
 #### NvidiaRanker.\_\_init\_\_
 
 ```python
-def __init__(model: Optional[str] = None,
-             truncate: Optional[Union[RankerTruncateMode, str]] = None,
+def __init__(model: str | None = None,
+             truncate: RankerTruncateMode | str | None = None,
              api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
-             api_key: Optional[Secret] = Secret.from_env_var("NVIDIA_API_KEY"),
+             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
              top_k: int = 5,
              query_prefix: str = "",
              document_prefix: str = "",
-             meta_fields_to_embed: Optional[list[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
-             timeout: Optional[float] = None) -> None
+             timeout: float | None = None) -> None
 ```
 
 Create a NvidiaRanker component.
@@ -728,7 +727,7 @@ Initialize the ranker.
 @component.output_types(documents=list[Document])
 def run(query: str,
         documents: list[Document],
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Rank a list of documents based on a given query.
