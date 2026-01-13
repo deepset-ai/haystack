@@ -9,14 +9,13 @@ enhancements:
       and improves usability.
 
       Example:
-       ```python
-       from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+       .. code:: python
+          from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 
-       generator = OpenAIResponsesChatGenerator(
-           model="gpt-4",
-           generation_kwargs={
-               "reasoning_effort": "low",
-               "reasoning_summary": "auto"
-           }
-       )
-       ```
+          generator = OpenAIResponsesChatGenerator(
+              model="gpt-4",
+              generation_kwargs={
+                  "reasoning_effort": "low",
+                  "reasoning_summary": "auto"
+              }
+          )
