@@ -803,6 +803,16 @@ class TestOpenAIResponsesChatGenerator:
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
 
+    def test_run_with_flattened_generation_kwargs(self, openai_mock_responses, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-4", generation_kwargs={"reasoning_effort": "low", "reasoning_summary": "auto"}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert openai_mock_responses.call_args.kwargs["reasoning"] == {"effort": "low", "summary": "auto"}
+
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
