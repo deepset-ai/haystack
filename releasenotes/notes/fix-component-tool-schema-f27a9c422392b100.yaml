@@ -1,6 +1,6 @@
 ---
 fixes:
   - |
-    Fix `ComponentTool` failing to create a tool schema from components with `Callable` type parameters
-    (such as `snapshot_callback`). This enables using `Agent` as a `ComponentTool` without raising
-    `SchemaGenerationError`.
+    Fix ``ComponentTool`` failing to create a tool schema from components with ``Callable`` type parameters
+    (such as ``snapshot_callback``). This enables using ``Agent`` as a ``ComponentTool`` without raising
+    ``SchemaGenerationError``.
