@@ -24,13 +24,13 @@ BM25 computes a weighted word overlap between the query string and a document to
 ```python
 def __init__(*,
              document_store: OpenSearchDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
-             fuzziness: Union[int, str] = "AUTO",
+             filters: dict[str, Any] | None = None,
+             fuzziness: int | str = "AUTO",
              top_k: int = 10,
              scale_score: bool = False,
              all_terms_must_match: bool = False,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query: Optional[dict[str, Any]] = None,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+             custom_query: dict[str, Any] | None = None,
              raise_on_failure: bool = True)
 ```
 
@@ -136,13 +136,13 @@ Deserialized component.
 @component.output_types(documents=list[Document])
 def run(
     query: str,
-    filters: Optional[dict[str, Any]] = None,
-    all_terms_must_match: Optional[bool] = None,
-    top_k: Optional[int] = None,
-    fuzziness: Optional[Union[int, str]] = None,
-    scale_score: Optional[bool] = None,
-    custom_query: Optional[dict[str, Any]] = None,
-    document_store: Optional[OpenSearchDocumentStore] = None
+    filters: dict[str, Any] | None = None,
+    all_terms_must_match: bool | None = None,
+    top_k: int | None = None,
+    fuzziness: int | str | None = None,
+    scale_score: bool | None = None,
+    custom_query: dict[str, Any] | None = None,
+    document_store: OpenSearchDocumentStore | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -208,13 +208,13 @@ A dictionary containing the retrieved documents with the following structure:
 @component.output_types(documents=list[Document])
 async def run_async(
     query: str,
-    filters: Optional[dict[str, Any]] = None,
-    all_terms_must_match: Optional[bool] = None,
-    top_k: Optional[int] = None,
-    fuzziness: Optional[Union[int, str]] = None,
-    scale_score: Optional[bool] = None,
-    custom_query: Optional[dict[str, Any]] = None,
-    document_store: Optional[OpenSearchDocumentStore] = None
+    filters: dict[str, Any] | None = None,
+    all_terms_must_match: bool | None = None,
+    top_k: int | None = None,
+    fuzziness: int | str | None = None,
+    scale_score: bool | None = None,
+    custom_query: dict[str, Any] | None = None,
+    document_store: OpenSearchDocumentStore | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -260,10 +260,10 @@ Retrieves documents from the OpenSearchDocumentStore using a vector similarity m
 ```python
 def __init__(*,
              document_store: OpenSearchDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query: Optional[dict[str, Any]] = None,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+             custom_query: dict[str, Any] | None = None,
              raise_on_failure: bool = True,
              efficient_filtering: bool = False)
 ```
@@ -369,11 +369,11 @@ Deserialized component.
 @component.output_types(documents=list[Document])
 def run(
     query_embedding: list[float],
-    filters: Optional[dict[str, Any]] = None,
-    top_k: Optional[int] = None,
-    custom_query: Optional[dict[str, Any]] = None,
-    efficient_filtering: Optional[bool] = None,
-    document_store: Optional[OpenSearchDocumentStore] = None
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    custom_query: dict[str, Any] | None = None,
+    efficient_filtering: bool | None = None,
+    document_store: OpenSearchDocumentStore | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -443,11 +443,11 @@ Dictionary with key "documents" containing the retrieved Documents.
 @component.output_types(documents=list[Document])
 async def run_async(
     query_embedding: list[float],
-    filters: Optional[dict[str, Any]] = None,
-    top_k: Optional[int] = None,
-    custom_query: Optional[dict[str, Any]] = None,
-    efficient_filtering: Optional[bool] = None,
-    document_store: Optional[OpenSearchDocumentStore] = None
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    custom_query: dict[str, Any] | None = None,
+    efficient_filtering: bool | None = None,
+    document_store: OpenSearchDocumentStore | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -589,22 +589,21 @@ results = retriever.run(query="What is reinforcement learning?", filters_bm25=No
 def __init__(document_store: OpenSearchDocumentStore,
              *,
              embedder: TextEmbedder,
-             filters_bm25: Optional[dict[str, Any]] = None,
-             fuzziness: Union[int, str] = "AUTO",
+             filters_bm25: dict[str, Any] | None = None,
+             fuzziness: int | str = "AUTO",
              top_k_bm25: int = 10,
              scale_score: bool = False,
              all_terms_must_match: bool = False,
-             filter_policy_bm25: Union[str,
-                                       FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query_bm25: Optional[dict[str, Any]] = None,
-             filters_embedding: Optional[dict[str, Any]] = None,
+             filter_policy_bm25: str | FilterPolicy = FilterPolicy.REPLACE,
+             custom_query_bm25: dict[str, Any] | None = None,
+             filters_embedding: dict[str, Any] | None = None,
              top_k_embedding: int = 10,
-             filter_policy_embedding: Union[
-                 str, FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query_embedding: Optional[dict[str, Any]] = None,
-             join_mode: Union[str, JoinMode] = JoinMode.RECIPROCAL_RANK_FUSION,
-             weights: Optional[list[float]] = None,
-             top_k: Optional[int] = None,
+             filter_policy_embedding: str
+             | FilterPolicy = FilterPolicy.REPLACE,
+             custom_query_embedding: dict[str, Any] | None = None,
+             join_mode: str | JoinMode = JoinMode.RECIPROCAL_RANK_FUSION,
+             weights: list[float] | None = None,
+             top_k: int | None = None,
              sort_by_score: bool = True,
              **kwargs: Any) -> None
 ```
@@ -704,14 +703,14 @@ print(document_store.filter_documents())
 ```python
 def __init__(
         *,
-        hosts: Optional[Hosts] = None,
+        hosts: Hosts | None = None,
         index: str = "default",
         max_chunk_bytes: int = DEFAULT_MAX_CHUNK_BYTES,
         embedding_dim: int = 768,
         return_embedding: bool = False,
-        method: Optional[dict[str, Any]] = None,
-        mappings: Optional[dict[str, Any]] = None,
-        settings: Optional[dict[str, Any]] = DEFAULT_SETTINGS,
+        method: dict[str, Any] | None = None,
+        mappings: dict[str, Any] | None = None,
+        settings: dict[str, Any] | None = DEFAULT_SETTINGS,
         create_index: bool = True,
         http_auth: Any = (
             Secret.from_env_var("OPENSEARCH_USERNAME",
@@ -719,9 +718,9 @@ def __init__(
             Secret.from_env_var("OPENSEARCH_PASSWORD",
                                 strict=False),  # noqa: B008
         ),
-        use_ssl: Optional[bool] = None,
-        verify_certs: Optional[bool] = None,
-        timeout: Optional[int] = None,
+        use_ssl: bool | None = None,
+        verify_certs: bool | None = None,
+        timeout: int | None = None,
         **kwargs: Any) -> None
 ```
 
@@ -768,9 +767,9 @@ see the [official OpenSearch reference](https://opensearch-project.github.io/ope
 #### OpenSearchDocumentStore.create\_index
 
 ```python
-def create_index(index: Optional[str] = None,
-                 mappings: Optional[dict[str, Any]] = None,
-                 settings: Optional[dict[str, Any]] = None) -> None
+def create_index(index: str | None = None,
+                 mappings: dict[str, Any] | None = None,
+                 settings: dict[str, Any] | None = None) -> None
 ```
 
 Creates an index in OpenSearch.
@@ -843,8 +842,7 @@ Asynchronously returns the total number of documents in the document store.
 #### OpenSearchDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -866,7 +864,7 @@ A list of Documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
@@ -948,7 +946,7 @@ The number of documents written to the document store.
 ```python
 def delete_documents(document_ids: list[str],
                      refresh: Literal["wait_for", True, False] = "wait_for",
-                     routing: Optional[dict[str, str]] = None) -> None
+                     routing: dict[str, str] | None = None) -> None
 ```
 
 Deletes documents that match the provided `document_ids` from the document store.
@@ -973,7 +971,7 @@ If provided, the routing value for each document will be used during deletion.
 async def delete_documents_async(
         document_ids: list[str],
         refresh: Literal["wait_for", True, False] = "wait_for",
-        routing: Optional[dict[str, str]] = None) -> None
+        routing: dict[str, str] | None = None) -> None
 ```
 
 Asynchronously deletes documents that match the provided `document_ids` from the document store.
