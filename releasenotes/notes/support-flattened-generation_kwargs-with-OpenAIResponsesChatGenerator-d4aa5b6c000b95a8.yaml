@@ -1,9 +1,9 @@
 ---
 enhancements:
   - |
-      Support for flattened `generation_kwargs` in `OpenAIResponsesChatGenerator`
+      Support for flattened ``generation_kwargs`` in ``OpenAIResponsesChatGenerator``
 
-      The `OpenAIResponsesChatGenerator` component now supports flattened generation
+      The ``OpenAIResponsesChatGenerator`` component now supports flattened generation
       keyword arguments, allowing users to specify reasoning parameters directly
       without nesting them. This enhancement simplifies the configuration process
       and improves usability.
