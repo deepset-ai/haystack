@@ -621,6 +621,39 @@ Creates an instance of the RegexTextExtractor component.
 The pattern should include a capture group to extract the desired text.
 Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue url="github.com/hahahaha">'`.
 
+<a id="regex_text_extractor.RegexTextExtractor.to_dict"></a>
+
+#### RegexTextExtractor.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="regex_text_extractor.RegexTextExtractor.from_dict"></a>
+
+#### RegexTextExtractor.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "RegexTextExtractor"
+```
+
+Deserializes the component from a dictionary.
+
+**Arguments**:
+
+- `data`: The dictionary to deserialize from.
+
+**Returns**:
+
+The deserialized component.
+
 <a id="regex_text_extractor.RegexTextExtractor.run"></a>
 
 #### RegexTextExtractor.run
