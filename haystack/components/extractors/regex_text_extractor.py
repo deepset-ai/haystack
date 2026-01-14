@@ -80,7 +80,7 @@ class RegexTextExtractor:
         # return_empty_on_no_match is an old parameter. We'd like to avoid that pipelines break if it's still present.
         if "return_empty_on_no_match" in data["init_parameters"]:
             logger.warning("The `return_empty_on_no_match` init parameter has been removed and will be ignored.")
-            data["init_parameters"].pop("return_empty_on_no_match", None)
+            data["init_parameters"].pop("return_empty_on_no_match")
 
         return default_from_dict(cls, data)
 
