@@ -7,9 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG haystack_version
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    # build-essential \
-    git
+    apt-get install -y --no-install-recommends git
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
