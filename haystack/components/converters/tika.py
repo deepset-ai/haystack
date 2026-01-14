@@ -74,7 +74,7 @@ class TikaDocumentConverter:
     ```
     """
 
-    def __init__(self, tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False):
+    def __init__(self, tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False, timeout: int = 60):
         """
         Create a TikaDocumentConverter component.
 
@@ -83,10 +83,13 @@ class TikaDocumentConverter:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param timeout:
+            Timeout for Tika server requests.
         """
         tika_import.check()
         self.tika_url = tika_url
         self.store_full_path = store_full_path
+        self.timeout = timeout
 
     @component.output_types(documents=list[Document])
     def run(self, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None):
@@ -119,8 +122,14 @@ class TikaDocumentConverter:
             try:
                 # we extract the content as XHTML to preserve the structure of the document as much as possible
                 # this works for PDFs, but does not work for other file types (DOCX)
+
+                requestOptions = {"headers": {}, "timeout": self.timeout, "verify": False}
+
                 xhtml_content = tika_parser.from_buffer(
-                    io.BytesIO(bytestream.data), serverEndpoint=self.tika_url, xmlContent=True
+                    io.BytesIO(bytestream.data),
+                    serverEndpoint=self.tika_url,
+                    xmlContent=True,
+                    requestOptions=requestOptions,
                 )["content"]
                 xhtml_parser = XHTMLParser()
                 xhtml_parser.feed(xhtml_content)
