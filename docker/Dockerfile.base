@@ -16,7 +16,9 @@ RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-
 WORKDIR /opt/haystack
 
 # Use a virtualenv we can copy over the next build stage
-RUN uv venv /opt/venv
+# Note: we use venv and not uv to create the virtualenv to make sure that the created virtualenv is accessible by pip
+# and prevent breaking changes in the image. uv can still be used to speed up installation.
+RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Upgrade setuptools due to https://nvd.nist.gov/vuln/detail/CVE-2022-40897
