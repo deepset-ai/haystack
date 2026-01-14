@@ -3,41 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from typing import Any
 
 from haystack import component, logging
+from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage
 
 logger = logging.getLogger(__name__)
 
 
-def _backward_compatible(cls):
-    """
-    Decorator for backward compatibility with the removed `return_empty_on_no_match` parameter.
-
-    Using __new__ or a metaclass does not work because of interference with the @component decorator.
-    """
-    original_init = cls.__init__
-
-    msg = (
-        "The `return_empty_on_no_match` init parameter has been removed and will be ignored. "
-        "RegexTextExtractor now always returns `{'captured_text': ''}` when no match is found. "
-        "Starting from Haystack 2.23.0, initializing the component with `return_empty_on_no_match` will raise an error."
-    )
-
-    def __init__(self, *args, **kwargs):
-        if "return_empty_on_no_match" in kwargs:
-            logger.warning(msg)
-            kwargs.pop("return_empty_on_no_match")
-        elif len(args) > 1:
-            logger.warning(msg)
-            args = args[:1]
-        original_init(self, *args, **kwargs)
-
-    cls.__init__ = __init__
-    return cls
-
-
-@_backward_compatible
 @component
 class RegexTextExtractor:
     """
@@ -83,6 +57,32 @@ class RegexTextExtractor:
                 "The entire match will be returned instead.",
                 regex_pattern=regex_pattern,
             )
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(self, regex_pattern=self.regex_pattern)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "RegexTextExtractor":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize from.
+        :returns:
+            The deserialized component.
+        """
+        # return_empty_on_no_match is an old parameter. We'd like to avoid that pipelines break if it's still present.
+        if "return_empty_on_no_match" in data["init_parameters"]:
+            logger.warning("The `return_empty_on_no_match` init parameter has been removed and will be ignored.")
+            data["init_parameters"].pop("return_empty_on_no_match")
+
+        return default_from_dict(cls, data)
 
     @component.output_types(captured_text=str)
     def run(self, text_or_messages: str | list[ChatMessage]) -> dict[str, str]:
