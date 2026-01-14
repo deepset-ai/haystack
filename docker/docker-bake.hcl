@@ -33,5 +33,5 @@ target "base" {
     base_image = "python:3.12-slim"
     haystack_version = "${HAYSTACK_VERSION}"
   }
-  platforms = ["linux/amd64", "linux/arm64"]
+  #platforms = ["linux/amd64", "linux/arm64"]
 }
