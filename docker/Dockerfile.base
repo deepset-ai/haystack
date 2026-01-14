@@ -11,18 +11,19 @@ RUN apt-get update && \
     # build-essential \
     git
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 # Shallow clone Haystack repo, we'll install from the local sources
 RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
 WORKDIR /opt/haystack
 
 # Use a virtualenv we can copy over the next build stage
-RUN python3 -m venv --system-site-packages /opt/venv
+RUN uv venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Upgrade setuptools due to https://nvd.nist.gov/vuln/detail/CVE-2022-40897
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -U setuptools && \
-    pip install --no-cache-dir .
+RUN uv pip install --no-cache-dir -U setuptools && \
+    uv pip install --no-cache-dir .
 
 FROM $base_image AS final
 
