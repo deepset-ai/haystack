@@ -8,7 +8,6 @@ import pytest
 
 from haystack import Pipeline
 from haystack.components.extractors.regex_text_extractor import RegexTextExtractor
-from haystack.core.serialization import component_from_dict
 from haystack.dataclasses import ChatMessage
 
 
@@ -37,7 +36,7 @@ class TestRegexTextExtractor:
             "type": "haystack.components.extractors.regex_text_extractor.RegexTextExtractor",
             "init_parameters": {"regex_pattern": r'<issue url="(.+?)">'},
         }
-        extractor = component_from_dict(cls=RegexTextExtractor, data=data, name="extractor")
+        extractor = RegexTextExtractor.from_dict(data=data)
         assert extractor.regex_pattern == r'<issue url="(.+?)">'
 
     def test_from_dict_with_removed_parameter(self, caplog):
@@ -47,7 +46,7 @@ class TestRegexTextExtractor:
             "type": "haystack.components.extractors.regex_text_extractor.RegexTextExtractor",
             "init_parameters": {"regex_pattern": r'<issue url="(.+?)">', "return_empty_on_no_match": False},
         }
-        extractor = component_from_dict(cls=RegexTextExtractor, data=data, name="extractor")
+        extractor = RegexTextExtractor.from_dict(data=data)
         assert extractor.regex_pattern == r'<issue url="(.+?)">'
         assert "The `return_empty_on_no_match` init parameter has been removed" in caplog.text
 
