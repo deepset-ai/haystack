@@ -38,7 +38,6 @@ doc = Document(content=
 splitter = ChineseDocumentSplitter(
     split_by="word", split_length=10, split_overlap=3, respect_sentence_boundary=True
 )
-splitter.warm_up()
 result = splitter.run(documents=[doc])
 print(result["documents"])
 ```
@@ -55,7 +54,7 @@ def __init__(split_by: Literal["word", "sentence", "passage", "page", "line",
              split_threshold: int = 0,
              respect_sentence_boundary: bool = False,
              splitting_function: Callable | None = None,
-             granularity: Literal["coarse", "fine"] = "coarse")
+             granularity: Literal["coarse", "fine"] = "coarse") -> None
 ```
 
 Initialize the ChineseDocumentSplitter component.
