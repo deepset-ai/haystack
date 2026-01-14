@@ -444,6 +444,7 @@ class OpenAIResponsesChatGenerator:
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+        generation_kwargs = self._resolve_flattened_kwargs(generation_kwargs)
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages: list[dict[str, Any]] = []
@@ -484,6 +485,20 @@ class OpenAIResponsesChatGenerator:
         # we pass a key `openai_endpoint` as a hint to the run method to use the create or parse endpoint
         # this key will be removed before the API call is made
         return {**base_args, "stream": streaming_callback is not None, "openai_endpoint": "create"}
+
+    def _resolve_flattened_kwargs(self, generation_kwargs: dict[str, Any]) -> dict[str, Any]:
+        generation_kwargs = generation_kwargs.copy()
+        if "reasoning_effort" in generation_kwargs:
+            effort = generation_kwargs.pop("reasoning_effort")
+            reasoning = generation_kwargs.setdefault("reasoning", {})
+            reasoning["effort"] = effort
+
+        if "reasoning_summary" in generation_kwargs:
+            reasoning_summary = generation_kwargs.pop("reasoning_summary")
+            reasoning = generation_kwargs.setdefault("reasoning", {})
+            reasoning["summary"] = reasoning_summary
+
+        return generation_kwargs
 
     def _handle_stream_response(self, responses: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
