@@ -51,15 +51,16 @@ jobs:
       - name: Detect stable version
         id: is-stable
         run: |
-          [[ "${{ steps.meta.outputs.version }}" =~ ^2\.[0-9]+\.[0-9]+$ ]] && echo "is_stable=true" >> "$GITHUB_OUTPUT"
-
+          if [[ "${{ steps.meta.outputs.version }}" =~ ^2\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_stable=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build base images
         uses: docker/bake-action@v6
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           HAYSTACK_VERSION: "main"
-          IS_STABLE: ${{ steps.is-stable.outputs.stable }}
+          IS_STABLE: ${{ steps.is-stable.outputs.is_stable }}
         with:
           workdir: docker
           targets: base
