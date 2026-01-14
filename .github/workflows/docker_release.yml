@@ -70,6 +70,7 @@ jobs:
           targets: base
 
           # REVERT BEFORE MERGING
+          source: .
           push: false
           load: true
           set: |
