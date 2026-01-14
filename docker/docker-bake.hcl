@@ -26,7 +26,7 @@ target "base" {
   dockerfile = "Dockerfile.base"
   tags = concat(
     ["${IMAGE_NAME}:base-${IMAGE_TAG_SUFFIX}"],
-    var.IS_STABLE ? ["${IMAGE_NAME}:stable"] : []
+    ${IS_STABLE == "true" ? ["${IMAGE_NAME}:stable"] : []}
   )
   args = {
     build_image = "python:3.12-slim"
