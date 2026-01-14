@@ -312,7 +312,38 @@ output:
 
         doc_store = InMemoryDocumentStore()
         extractor = LLMMetadataExtractor(
-            prompt=ner_prompt, expected_keys=["entities"], chat_generator=OpenAIChatGenerator()
+            prompt=ner_prompt,
+            expected_keys=["entities"],
+            chat_generator=OpenAIChatGenerator(
+                model="gpt-4.1-mini",
+                generation_kwargs={
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "entity_extraction",
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "entities": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "entity": {"type": "string"},
+                                                "entity_type": {"type": "string"},
+                                            },
+                                            "required": ["entity", "entity_type"],
+                                            "additionalProperties": False,
+                                        },
+                                    }
+                                },
+                                "required": ["entities"],
+                                "additionalProperties": False,
+                            },
+                        },
+                    }
+                },
+            ),
         )
         writer = DocumentWriter(document_store=doc_store)
         pipeline = Pipeline()
