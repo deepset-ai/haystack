@@ -54,9 +54,7 @@ jobs:
           echo ${{ steps.meta.outputs.version }}
           VERSION="${{ steps.meta.outputs.version }}"
           if [[ "$VERSION" =~ ^2\.[0-9]+\.[0-9]+$ ]]; then
-            echo "stable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "stable=false" >> "$GITHUB_OUTPUT"
+            echo "is_stable=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build base images
