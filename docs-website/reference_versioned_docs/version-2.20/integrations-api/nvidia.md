@@ -34,17 +34,17 @@ print(result["documents"][0].embedding)
 #### NvidiaDocumentEmbedder.\_\_init\_\_
 
 ```python
-def __init__(model: Optional[str] = None,
-             api_key: Optional[Secret] = Secret.from_env_var("NVIDIA_API_KEY"),
+def __init__(model: str | None = None,
+             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
              api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
              prefix: str = "",
              suffix: str = "",
              batch_size: int = 32,
              progress_bar: bool = True,
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
-             truncate: Optional[Union[EmbeddingTruncateMode, str]] = None,
-             timeout: Optional[float] = None)
+             truncate: EmbeddingTruncateMode | str | None = None,
+             timeout: float | None = None) -> None
 ```
 
 Create a NvidiaTextEmbedder component.
@@ -74,7 +74,7 @@ or set to 60 by default.
 #### NvidiaDocumentEmbedder.default\_model
 
 ```python
-def default_model()
+def default_model() -> None
 ```
 
 Set default model in local NIM mode.
@@ -84,7 +84,7 @@ Set default model in local NIM mode.
 #### NvidiaDocumentEmbedder.warm\_up
 
 ```python
-def warm_up()
+def warm_up() -> None
 ```
 
 Initializes the component.
@@ -94,7 +94,7 @@ Initializes the component.
 #### NvidiaDocumentEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -109,7 +109,7 @@ Dictionary with serialized data.
 
 ```python
 @property
-def available_models() -> List[Model]
+def available_models() -> list[Model]
 ```
 
 Get a list of available models that work with NvidiaDocumentEmbedder.
@@ -120,7 +120,7 @@ Get a list of available models that work with NvidiaDocumentEmbedder.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "NvidiaDocumentEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "NvidiaDocumentEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -138,10 +138,9 @@ The deserialized component.
 #### NvidiaDocumentEmbedder.run
 
 ```python
-@component.output_types(documents=List[Document], meta=Dict[str, Any])
-def run(
-    documents: List[Document]
-) -> Dict[str, Union[List[Document], Dict[str, Any]]]
+@component.output_types(documents=list[Document], meta=dict[str, Any])
+def run(documents: list[Document]
+        ) -> dict[str, list[Document] | dict[str, Any]]
 ```
 
 Embed a list of Documents.
@@ -154,8 +153,7 @@ The embedding of each Document is stored in the `embedding` field of the Documen
 
 **Raises**:
 
-- `RuntimeError`: If the component was not initialized.
-- `TypeError`: If the input is not a string.
+- `TypeError`: If the input is not a list of Documents.
 
 **Returns**:
 
@@ -194,13 +192,13 @@ print(text_embedder.run(text_to_embed))
 #### NvidiaTextEmbedder.\_\_init\_\_
 
 ```python
-def __init__(model: Optional[str] = None,
-             api_key: Optional[Secret] = Secret.from_env_var("NVIDIA_API_KEY"),
+def __init__(model: str | None = None,
+             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
              api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
              prefix: str = "",
              suffix: str = "",
-             truncate: Optional[Union[EmbeddingTruncateMode, str]] = None,
-             timeout: Optional[float] = None)
+             truncate: EmbeddingTruncateMode | str | None = None,
+             timeout: float | None = None)
 ```
 
 Create a NvidiaTextEmbedder component.
@@ -245,7 +243,7 @@ Initializes the component.
 #### NvidiaTextEmbedder.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -260,7 +258,7 @@ Dictionary with serialized data.
 
 ```python
 @property
-def available_models() -> List[Model]
+def available_models() -> list[Model]
 ```
 
 Get a list of available models that work with NvidiaTextEmbedder.
@@ -271,7 +269,7 @@ Get a list of available models that work with NvidiaTextEmbedder.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "NvidiaTextEmbedder"
+def from_dict(cls, data: dict[str, Any]) -> "NvidiaTextEmbedder"
 ```
 
 Deserializes the component from a dictionary.
@@ -289,8 +287,8 @@ The deserialized component.
 #### NvidiaTextEmbedder.run
 
 ```python
-@component.output_types(embedding=List[float], meta=Dict[str, Any])
-def run(text: str) -> Dict[str, Union[List[float], Dict[str, Any]]]
+@component.output_types(embedding=list[float], meta=dict[str, Any])
+def run(text: str) -> dict[str, list[float] | dict[str, Any]]
 ```
 
 Embed a string.
@@ -301,8 +299,8 @@ Embed a string.
 
 **Raises**:
 
-- `RuntimeError`: If the component was not initialized.
 - `TypeError`: If the input is not a string.
+- `ValueError`: If the input string is empty.
 
 **Returns**:
 
@@ -341,6 +339,118 @@ Create an truncate mode from a string.
 **Returns**:
 
 Truncate mode.
+
+<a id="haystack_integrations.components.generators.nvidia.chat.chat_generator"></a>
+
+## Module haystack\_integrations.components.generators.nvidia.chat.chat\_generator
+
+<a id="haystack_integrations.components.generators.nvidia.chat.chat_generator.NvidiaChatGenerator"></a>
+
+### NvidiaChatGenerator
+
+Enables text generation using NVIDIA generative models.
+For supported models, see [NVIDIA Docs](https://build.nvidia.com/models).
+
+Users can pass any text generation parameters valid for the NVIDIA Chat Completion API
+directly to this component via the `generation_kwargs` parameter in `__init__` or the `generation_kwargs`
+parameter in `run` method.
+
+This component uses the ChatMessage format for structuring both input and output,
+ensuring coherent and contextually relevant responses in chat-based text generation scenarios.
+Details on the ChatMessage format can be found in the
+[Haystack docs](https://docs.haystack.deepset.ai/docs/data-classes#chatmessage)
+
+For more details on the parameters supported by the NVIDIA API, refer to the
+[NVIDIA Docs](https://build.nvidia.com/models).
+
+Usage example:
+```python
+from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
+from haystack.dataclasses import ChatMessage
+
+messages = [ChatMessage.from_user("What's Natural Language Processing?")]
+
+client = NvidiaChatGenerator()
+response = client.run(messages)
+print(response)
+```
+
+<a id="haystack_integrations.components.generators.nvidia.chat.chat_generator.NvidiaChatGenerator.__init__"></a>
+
+#### NvidiaChatGenerator.\_\_init\_\_
+
+```python
+def __init__(*,
+             api_key: Secret = Secret.from_env_var("NVIDIA_API_KEY"),
+             model: str = "meta/llama-3.1-8b-instruct",
+             streaming_callback: StreamingCallbackT | None = None,
+             api_base_url: str | None = os.getenv("NVIDIA_API_URL",
+                                                  DEFAULT_API_URL),
+             generation_kwargs: dict[str, Any] | None = None,
+             tools: ToolsType | None = None,
+             timeout: float | None = None,
+             max_retries: int | None = None,
+             http_client_kwargs: dict[str, Any] | None = None) -> None
+```
+
+Creates an instance of NvidiaChatGenerator.
+
+**Arguments**:
+
+- `api_key`: The NVIDIA API key.
+- `model`: The name of the NVIDIA chat completion model to use.
+- `streaming_callback`: A callback function that is called when a new token is received from the stream.
+The callback function accepts StreamingChunk as an argument.
+- `api_base_url`: The NVIDIA API Base url.
+- `generation_kwargs`: Other parameters to use for the model. These parameters are all sent directly to
+the NVIDIA API endpoint. See [NVIDIA API docs](https://docs.nvcf.nvidia.com/ai/generative-models/)
+for more details.
+Some of the supported parameters:
+- `max_tokens`: The maximum number of tokens the output text can have.
+- `temperature`: What sampling temperature to use. Higher values mean the model will take more risks.
+    Try 0.9 for more creative applications and 0 (argmax sampling) for ones with a well-defined answer.
+- `top_p`: An alternative to sampling with temperature, called nucleus sampling, where the model
+    considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens
+    comprising the top 10% probability mass are considered.
+- `stream`: Whether to stream back partial progress. If set, tokens will be sent as data-only server-sent
+    events as they become available, with the stream terminated by a data: [DONE] message.
+- `response_format`: For NVIDIA NIM servers, this parameter has limited support.
+    - The basic JSON mode with `{"type": "json_object"}` is supported by compatible models, to produce
+    valid JSON output.
+    To pass the JSON schema to the model, use the `guided_json` parameter in `extra_body`.
+    For example:
+    ```python
+    generation_kwargs={
+        "extra_body": {
+            "nvext": {
+                "guided_json": {
+                    json_schema
+            }
+        }
+    }
+    ```
+    For more details, see the [NVIDIA NIM documentation](https://docs.nvidia.com/nim/large-language-models/latest/structured-generation.html).
+- `tools`: A list of tools or a Toolset for which the model can prepare calls. This parameter can accept either a
+list of `Tool` objects or a `Toolset` instance.
+- `timeout`: The timeout for the NVIDIA API call.
+- `max_retries`: Maximum number of retries to contact NVIDIA after an internal error.
+If not set, it defaults to either the `NVIDIA_MAX_RETRIES` environment variable, or set to 5.
+- `http_client_kwargs`: A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
+For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/`client`).
+
+<a id="haystack_integrations.components.generators.nvidia.chat.chat_generator.NvidiaChatGenerator.to_dict"></a>
+
+#### NvidiaChatGenerator.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns**:
+
+The serialized component as a dictionary.
 
 <a id="haystack_integrations.components.generators.nvidia.generator"></a>
 
@@ -381,11 +491,11 @@ You need an NVIDIA API key for this component to work.
 #### NvidiaGenerator.\_\_init\_\_
 
 ```python
-def __init__(model: Optional[str] = None,
+def __init__(model: str | None = None,
              api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
-             api_key: Optional[Secret] = Secret.from_env_var("NVIDIA_API_KEY"),
-             model_arguments: Optional[Dict[str, Any]] = None,
-             timeout: Optional[float] = None)
+             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
+             model_arguments: dict[str, Any] | None = None,
+             timeout: float | None = None) -> None
 ```
 
 Create a NvidiaGenerator component.
@@ -413,7 +523,7 @@ or set to 60 by default.
 #### NvidiaGenerator.default\_model
 
 ```python
-def default_model()
+def default_model() -> None
 ```
 
 Set default model in local NIM mode.
@@ -423,7 +533,7 @@ Set default model in local NIM mode.
 #### NvidiaGenerator.warm\_up
 
 ```python
-def warm_up()
+def warm_up() -> None
 ```
 
 Initializes the component.
@@ -433,7 +543,7 @@ Initializes the component.
 #### NvidiaGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -448,7 +558,7 @@ Dictionary with serialized data.
 
 ```python
 @property
-def available_models() -> List[Model]
+def available_models() -> list[Model]
 ```
 
 Get a list of available models that work with ChatNVIDIA.
@@ -459,7 +569,7 @@ Get a list of available models that work with ChatNVIDIA.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "NvidiaGenerator"
+def from_dict(cls, data: dict[str, Any]) -> "NvidiaGenerator"
 ```
 
 Deserializes the component from a dictionary.
@@ -477,8 +587,8 @@ Deserialized component.
 #### NvidiaGenerator.run
 
 ```python
-@component.output_types(replies=List[str], meta=List[Dict[str, Any]])
-def run(prompt: str) -> Dict[str, Union[List[str], List[Dict[str, Any]]]]
+@component.output_types(replies=list[str], meta=list[dict[str, Any]])
+def run(prompt: str) -> dict[str, list[str] | list[dict[str, Any]]]
 ```
 
 Queries the model with the provided prompt.
@@ -532,16 +642,16 @@ print(result["documents"])
 #### NvidiaRanker.\_\_init\_\_
 
 ```python
-def __init__(model: Optional[str] = None,
-             truncate: Optional[Union[RankerTruncateMode, str]] = None,
+def __init__(model: str | None = None,
+             truncate: RankerTruncateMode | str | None = None,
              api_url: str = os.getenv("NVIDIA_API_URL", DEFAULT_API_URL),
-             api_key: Optional[Secret] = Secret.from_env_var("NVIDIA_API_KEY"),
+             api_key: Secret | None = Secret.from_env_var("NVIDIA_API_KEY"),
              top_k: int = 5,
              query_prefix: str = "",
              document_prefix: str = "",
-             meta_fields_to_embed: Optional[List[str]] = None,
+             meta_fields_to_embed: list[str] | None = None,
              embedding_separator: str = "\n",
-             timeout: Optional[float] = None)
+             timeout: float | None = None) -> None
 ```
 
 Create a NvidiaRanker component.
@@ -567,7 +677,7 @@ or set to 60 by default.
 #### NvidiaRanker.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize the ranker to a dictionary.
@@ -582,7 +692,7 @@ A dictionary containing the ranker's attributes.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "NvidiaRanker"
+def from_dict(cls, data: dict[str, Any]) -> "NvidiaRanker"
 ```
 
 Deserialize the ranker from a dictionary.
@@ -600,7 +710,7 @@ The deserialized ranker.
 #### NvidiaRanker.warm\_up
 
 ```python
-def warm_up()
+def warm_up() -> None
 ```
 
 Initialize the ranker.
@@ -614,10 +724,10 @@ Initialize the ranker.
 #### NvidiaRanker.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(query: str,
-        documents: List[Document],
-        top_k: Optional[int] = None) -> Dict[str, List[Document]]
+        documents: list[Document],
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Rank a list of documents based on a given query.
@@ -630,7 +740,6 @@ Rank a list of documents based on a given query.
 
 **Raises**:
 
-- `RuntimeError`: If the ranker has not been loaded.
 - `TypeError`: If the arguments are of the wrong type.
 
 **Returns**:

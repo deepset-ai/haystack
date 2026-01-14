@@ -6,7 +6,7 @@ import logging
 import os
 import re
 from datetime import datetime
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -135,9 +135,7 @@ class MockChatGeneratorWithoutRunAsync:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
-    ) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
 
@@ -151,14 +149,12 @@ class MockChatGenerator:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
-    ) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello")]}
 
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
-        self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
     ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Hello from run_async")]}
 
@@ -839,7 +835,7 @@ class TestAgent:
 
             @component.output_types(replies=list[ChatMessage])
             def run(
-                self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+                self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
             ) -> dict[str, Any]:
                 assert tools == [weather_tool]
                 tool_message = ChatMessage.from_assistant(
@@ -865,7 +861,7 @@ class TestAgent:
 
             @component.output_types(replies=list[ChatMessage])
             def run(
-                self, messages: list[ChatMessage], tools: Optional[Union[list[Tool], Toolset]] = None, **kwargs
+                self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
             ) -> dict[str, Any]:
                 assert tools == [weather_tool]
                 tool_message = ChatMessage.from_assistant(
@@ -1088,6 +1084,7 @@ class TestAgentTracing:
         expected_tag_names = [
             "haystack.component.name",
             "haystack.component.type",
+            "haystack.component.fully_qualified_type",
             "haystack.component.input_types",
             "haystack.component.input_spec",
             "haystack.component.output_spec",
@@ -1106,8 +1103,9 @@ class TestAgentTracing:
         expected_tag_values = [
             "chat_generator",
             "MockChatGeneratorWithoutRunAsync",
+            "test_agent.MockChatGeneratorWithoutRunAsync",
             '{"messages": "list", "tools": "list"}',
-            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "typing.Union[list[haystack.tools.tool.Tool], haystack.tools.toolset.Toolset, NoneType]", "senders": []}}',  # noqa: E501
+            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list", "receivers": []}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
             1,
@@ -1148,6 +1146,7 @@ class TestAgentTracing:
         expected_tag_names = [
             "haystack.component.name",
             "haystack.component.type",
+            "haystack.component.fully_qualified_type",
             "haystack.component.input_types",
             "haystack.component.input_spec",
             "haystack.component.output_spec",
@@ -1166,8 +1165,9 @@ class TestAgentTracing:
         expected_tag_values = [
             "chat_generator",
             "MockChatGenerator",
+            "test_agent.MockChatGenerator",
             '{"messages": "list", "tools": "list"}',
-            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "typing.Union[list[haystack.tools.tool.Tool], haystack.tools.toolset.Toolset, NoneType]", "senders": []}}',  # noqa: E501
+            '{"messages": {"type": "list", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list", "receivers": []}}',
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
             1,
@@ -1211,6 +1211,7 @@ class TestAgentTracing:
         expected_tag_names = [
             "haystack.component.name",
             "haystack.component.type",
+            "haystack.component.fully_qualified_type",
             "haystack.component.input_types",
             "haystack.component.input_spec",
             "haystack.component.output_spec",
@@ -1219,6 +1220,7 @@ class TestAgentTracing:
             "haystack.component.output",
             "haystack.component.name",
             "haystack.component.type",
+            "haystack.component.fully_qualified_type",
             "haystack.component.input_types",
             "haystack.component.input_spec",
             "haystack.component.output_spec",
@@ -1234,6 +1236,7 @@ class TestAgentTracing:
             "haystack.agent.steps_taken",
             "haystack.component.name",
             "haystack.component.type",
+            "haystack.component.fully_qualified_type",
             "haystack.component.input_types",
             "haystack.component.input_spec",
             "haystack.component.output_spec",
@@ -1251,6 +1254,39 @@ class TestAgentTracing:
         # Clean up
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
+
+    def test_agent_span_has_parent_when_in_pipeline(self, spying_tracer, weather_tool):
+        """Test that the agent's span has the component span as its parent when running in a pipeline."""
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        agent.warm_up()
+
+        pipeline = Pipeline()
+        pipeline.add_component(
+            "prompt_builder", ChatPromptBuilder(template=[ChatMessage.from_user("Hello {{location}}")])
+        )
+        pipeline.add_component("agent", agent)
+        pipeline.connect("prompt_builder.prompt", "agent.messages")
+
+        pipeline.run(data={"prompt_builder": {"location": "Berlin"}})
+
+        # Find the agent span (haystack.agent.run)
+        agent_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.run"]
+        assert len(agent_spans) == 1
+        agent_span = agent_spans[0]
+
+        # Find the agent's component span (the outer span for the Agent component)
+        agent_component_spans = [
+            s
+            for s in spying_tracer.spans
+            if s.operation_name == "haystack.component.run" and s.tags.get("haystack.component.name") == "agent"
+        ]
+        assert len(agent_component_spans) == 1
+        agent_component_span = agent_component_spans[0]
+
+        # Verify the agent span has the component span as its parent
+        assert agent_span.parent_span is not None
+        assert agent_span.parent_span == agent_component_span
 
 
 class TestAgentToolSelection:

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from io import StringIO
-from typing import Any, Literal, Optional, get_args
+from typing import Any, Literal, get_args
 
 from haystack import Document, component, logging
 from haystack.lazy_imports import LazyImport
@@ -30,9 +30,9 @@ class CSVDocumentSplitter:
 
     def __init__(
         self,
-        row_split_threshold: Optional[int] = 2,
-        column_split_threshold: Optional[int] = 2,
-        read_csv_kwargs: Optional[dict[str, Any]] = None,
+        row_split_threshold: int | None = 2,
+        column_split_threshold: int | None = 2,
+        read_csv_kwargs: dict[str, Any] | None = None,
         split_mode: SplitMode = "threshold",
     ) -> None:
         """

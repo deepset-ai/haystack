@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
-
 from haystack.core.component import component
 from haystack.dataclasses import Document
 from haystack.testing.factory import component_class, document_store_class

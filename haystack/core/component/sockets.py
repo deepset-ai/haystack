@@ -2,14 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Optional, Union
-
 from haystack.core.type_utils import _type_name
 
 from .types import InputSocket, OutputSocket
 
-SocketsDict = dict[str, Union[InputSocket, OutputSocket]]
-SocketsIOType = Union[type[InputSocket], type[OutputSocket]]
+SocketsDict = dict[str, InputSocket | OutputSocket]
+SocketsIOType = type[InputSocket] | type[OutputSocket]
 
 
 class Sockets:  # noqa: PLW1641
@@ -87,7 +85,7 @@ class Sockets:  # noqa: PLW1641
             and self._sockets_dict == value._sockets_dict
         )
 
-    def __setitem__(self, key: str, socket: Union[InputSocket, OutputSocket]) -> None:
+    def __setitem__(self, key: str, socket: InputSocket | OutputSocket) -> None:
         """
         Adds a new socket to this Sockets object.
 
@@ -100,9 +98,7 @@ class Sockets:  # noqa: PLW1641
     def __contains__(self, key: str) -> bool:
         return key in self._sockets_dict
 
-    def get(
-        self, key: str, default: Optional[Union[InputSocket, OutputSocket]] = None
-    ) -> Optional[Union[InputSocket, OutputSocket]]:
+    def get(self, key: str, default: InputSocket | OutputSocket | None = None) -> InputSocket | OutputSocket | None:
         """
         Get a socket from the Sockets object.
 

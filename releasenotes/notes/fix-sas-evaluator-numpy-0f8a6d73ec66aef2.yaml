@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix ``SASEvaluator`` to work when using numpy>=2.4 by manually squeezing a PyTorch tensor to the correct dimension.

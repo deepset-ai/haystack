@@ -6,7 +6,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -146,7 +146,7 @@ def mock_parsed_chat_completion():
 @component
 class MessageExtractor:
     @component.output_types(messages=list[str], meta=dict[str, Any])
-    def run(self, messages: list[ChatMessage], meta: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], meta: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Extracts the text content of ChatMessage objects
 

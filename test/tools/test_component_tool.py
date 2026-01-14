@@ -12,6 +12,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 
 from haystack import Pipeline, SuperComponent, component
+from haystack.components.agents import Agent
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
@@ -194,9 +195,19 @@ class TestComponentTool:
             "description": "A simple component that generates text.",
         }
 
+    def test_from_component_with_invalid_inputs_from_state_nested_dict(self):
+        """Test that ComponentTool rejects nested dict format for inputs_from_state"""
+        with pytest.raises(ValueError, match="must be str, not dict"):
+            ComponentTool(component=SimpleComponent(), inputs_from_state={"documents": {"source": "documents"}})
+
     def test_from_component_with_outputs_to_state(self):
         tool = ComponentTool(component=SimpleComponent(), outputs_to_state={"replies": {"source": "reply"}})
         assert tool.outputs_to_state == {"replies": {"source": "reply"}}
+
+    def test_from_component_with_invalid_outputs_to_state_source(self):
+        """Test that ComponentTool validates outputs_to_state source against component outputs"""
+        with pytest.raises(ValueError, match="unknown output"):
+            ComponentTool(component=SimpleComponent(), outputs_to_state={"result": {"source": "nonexistent"}})
 
     def test_from_component_with_dataclass(self):
         tool = ComponentTool(component=UserGreeter())
@@ -490,6 +501,25 @@ class TestComponentTool:
         # Component's warm_up should only be called once
         component.warm_up.assert_called_once()
 
+    def test_from_component_with_callable_params_skipped(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"))
+
+        tool = ComponentTool(
+            component=agent,
+            name="agent_tool",
+            description="An agent tool",
+            outputs_to_string={"source": "last_message"},
+        )
+
+        assert tool.name == "agent_tool"
+        assert tool.description == "An agent tool"
+
+        param_names = list(tool.parameters.get("properties", {}).keys())
+        assert "snapshot_callback" not in param_names
+        assert "streaming_callback" not in param_names
+        assert "messages" in param_names
+
 
 class TestComponentToolInPipeline:
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
@@ -770,8 +800,8 @@ class TestComponentToolInPipeline:
             name="simple_tool",
             description="A simple tool",
             outputs_to_string={"source": "reply", "handler": reply_formatter},
-            inputs_from_state={"test": "input"},
-            outputs_to_state={"output": {"source": "out", "handler": output_handler}},
+            inputs_from_state={"test": "text"},
+            outputs_to_state={"output": {"source": "reply", "handler": output_handler}},
         )
 
         # Test serialization
@@ -783,8 +813,8 @@ class TestComponentToolInPipeline:
                 "description": "A simple tool",
                 "parameters": None,
                 "outputs_to_string": {"source": "reply", "handler": "test_component_tool.reply_formatter"},
-                "inputs_from_state": {"test": "input"},
-                "outputs_to_state": {"output": {"source": "out", "handler": "test_component_tool.output_handler"}},
+                "inputs_from_state": {"test": "text"},
+                "outputs_to_state": {"output": {"source": "reply", "handler": "test_component_tool.output_handler"}},
             },
         }
         tool_dict = tool.to_dict()

@@ -49,9 +49,9 @@ for d in results["retriever"]["documents"]:
 
 ```python
 def __init__(document_store: ChromaDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 **Arguments**:
@@ -66,10 +66,10 @@ def __init__(document_store: ChromaDocumentStore,
 #### ChromaQueryTextRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 def run(query: str,
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> Dict[str, Any]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, Any]
 ```
 
 Run the retriever on the given input data.
@@ -97,10 +97,10 @@ A dictionary with the following keys:
 #### ChromaQueryTextRetriever.run\_async
 
 ```python
-@component.output_types(documents=List[Document])
+@component.output_types(documents=list[Document])
 async def run_async(query: str,
-                    filters: Optional[Dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> Dict[str, Any]
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, Any]
 ```
 
 Asynchronously run the retriever on the given input data.
@@ -131,7 +131,7 @@ A dictionary with the following keys:
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "ChromaQueryTextRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "ChromaQueryTextRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -149,7 +149,7 @@ Deserialized component.
 #### ChromaQueryTextRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -170,9 +170,9 @@ A component for retrieving documents from a [Chroma database](https://docs.trych
 
 ```python
 def __init__(document_store: ChromaDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 **Arguments**:
@@ -187,10 +187,10 @@ def __init__(document_store: ChromaDocumentStore,
 #### ChromaEmbeddingRetriever.run
 
 ```python
-@component.output_types(documents=List[Document])
-def run(query_embedding: List[float],
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> Dict[str, Any]
+@component.output_types(documents=list[Document])
+def run(query_embedding: list[float],
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, Any]
 ```
 
 Run the retriever on the given input data.
@@ -214,10 +214,10 @@ a dictionary with the following keys:
 #### ChromaEmbeddingRetriever.run\_async
 
 ```python
-@component.output_types(documents=List[Document])
-async def run_async(query_embedding: List[float],
-                    filters: Optional[Dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> Dict[str, Any]
+@component.output_types(documents=list[Document])
+async def run_async(query_embedding: list[float],
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, Any]
 ```
 
 Asynchronously run the retriever on the given input data.
@@ -244,7 +244,7 @@ a dictionary with the following keys:
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "ChromaEmbeddingRetriever"
+def from_dict(cls, data: dict[str, Any]) -> "ChromaEmbeddingRetriever"
 ```
 
 Deserializes the component from a dictionary.
@@ -262,7 +262,7 @@ Deserialized component.
 #### ChromaEmbeddingRetriever.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -291,11 +291,12 @@ the `collection.search` API will be used in the retriever instead.
 ```python
 def __init__(collection_name: str = "documents",
              embedding_function: str = "default",
-             persist_path: Optional[str] = None,
-             host: Optional[str] = None,
-             port: Optional[int] = None,
+             persist_path: str | None = None,
+             host: str | None = None,
+             port: int | None = None,
              distance_function: Literal["l2", "cosine", "ip"] = "l2",
-             metadata: Optional[dict] = None,
+             metadata: dict | None = None,
+             client_settings: dict[str, Any] | None = None,
              **embedding_function_params: Any)
 ```
 
@@ -326,6 +327,11 @@ To change the distance metric of an existing collection, consider cloning the co
 - `metadata`: a dictionary of chromadb collection parameters passed directly to chromadb's client
 method `create_collection`. If it contains the key `"hnsw:space"`, the value will take precedence over the
 `distance_function` parameter above.
+- `client_settings`: a dictionary of Chroma Settings configuration options passed to
+`chromadb.config.Settings`. These settings configure the underlying Chroma client behavior.
+For available options, see [Chroma's config.py](https://github.com/chroma-core/chroma/blob/main/chromadb/config.py).
+**Note**: specifying these settings may interfere with standard client initialization parameters.
+This option is intended for advanced customization.
 - `embedding_function_params`: additional parameters to pass to the embedding function.
 
 <a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.count_documents"></a>
@@ -363,14 +369,13 @@ how many documents are present in the document store.
 #### ChromaDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
 
 For a detailed specification of the filters,
-refer to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering).
+refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
 
 **Arguments**:
 
@@ -386,7 +391,7 @@ a list of Documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
@@ -394,7 +399,7 @@ Asynchronously returns the documents that match the filters provided.
 Asynchronous methods are only supported for HTTP connections.
 
 For a detailed specification of the filters,
-refer to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering).
+refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
 
 **Arguments**:
 
@@ -409,7 +414,7 @@ a list of Documents that match the given filters.
 #### ChromaDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: List[Document],
+def write_documents(documents: list[Document],
                     policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int
 ```
 
@@ -434,7 +439,7 @@ The number of documents written
 
 ```python
 async def write_documents_async(
-        documents: List[Document],
+        documents: list[Document],
         policy: DuplicatePolicy = DuplicatePolicy.FAIL) -> int
 ```
 
@@ -460,7 +465,7 @@ The number of documents written
 #### ChromaDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: List[str]) -> None
+def delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes all documents with a matching document_ids from the document store.
@@ -474,7 +479,7 @@ Deletes all documents with a matching document_ids from the document store.
 #### ChromaDocumentStore.delete\_documents\_async
 
 ```python
-async def delete_documents_async(document_ids: List[str]) -> None
+async def delete_documents_async(document_ids: list[str]) -> None
 ```
 
 Asynchronously deletes all documents with a matching document_ids from the document store.
@@ -484,6 +489,97 @@ Asynchronous methods are only supported for HTTP connections.
 **Arguments**:
 
 - `document_ids`: the document ids to delete
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_by_filter"></a>
+
+#### ChromaDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_by_filter_async"></a>
+
+#### ChromaDocumentStore.delete\_by\_filter\_async
+
+```python
+async def delete_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously deletes all documents that match the provided filters.
+
+Asynchronous methods are only supported for HTTP connections.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.update_by_filter"></a>
+
+#### ChromaDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Note**: This operation is not atomic. Documents matching the filter are fetched first,
+then updated. If documents are modified between the fetch and update operations,
+those changes may be lost.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update. This will be merged with existing metadata.
+
+**Returns**:
+
+The number of documents updated.
+
+<a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.update_by_filter_async"></a>
+
+#### ChromaDocumentStore.update\_by\_filter\_async
+
+```python
+async def update_by_filter_async(filters: dict[str, Any],
+                                 meta: dict[str, Any]) -> int
+```
+
+Asynchronously updates the metadata of all documents that match the provided filters.
+
+Asynchronous methods are only supported for HTTP connections.
+
+**Note**: This operation is not atomic. Documents matching the filter are fetched first,
+then updated. If documents are modified between the fetch and update operations,
+those changes may be lost.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update. This will be merged with existing metadata.
+
+**Returns**:
+
+The number of documents updated.
 
 <a id="haystack_integrations.document_stores.chroma.document_store.ChromaDocumentStore.delete_all_documents"></a>
 
@@ -522,9 +618,9 @@ A fast way to clear all documents from the document store while preserving any c
 #### ChromaDocumentStore.search
 
 ```python
-def search(queries: List[str],
+def search(queries: list[str],
            top_k: int,
-           filters: Optional[Dict[str, Any]] = None) -> List[List[Document]]
+           filters: dict[str, Any] | None = None) -> list[list[Document]]
 ```
 
 Search the documents in the store using the provided text queries.
@@ -545,9 +641,9 @@ matching documents for each query.
 
 ```python
 async def search_async(
-        queries: List[str],
+        queries: list[str],
         top_k: int,
-        filters: Optional[Dict[str, Any]] = None) -> List[List[Document]]
+        filters: dict[str, Any] | None = None) -> list[list[Document]]
 ```
 
 Asynchronously search the documents in the store using the provided text queries.
@@ -570,9 +666,9 @@ matching documents for each query.
 
 ```python
 def search_embeddings(
-        query_embeddings: List[List[float]],
+        query_embeddings: list[list[float]],
         top_k: int,
-        filters: Optional[Dict[str, Any]] = None) -> List[List[Document]]
+        filters: dict[str, Any] | None = None) -> list[list[Document]]
 ```
 
 Perform vector search on the stored document, pass the embeddings of the queries instead of their text.
@@ -593,9 +689,9 @@ a list of lists of documents that match the given filters.
 
 ```python
 async def search_embeddings_async(
-        query_embeddings: List[List[float]],
+        query_embeddings: list[list[float]],
         top_k: int,
-        filters: Optional[Dict[str, Any]] = None) -> List[List[Document]]
+        filters: dict[str, Any] | None = None) -> list[list[Document]]
 ```
 
 Asynchronously perform vector search on the stored document, pass the embeddings of the queries instead of
@@ -620,7 +716,7 @@ a list of lists of documents that match the given filters.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "ChromaDocumentStore"
+def from_dict(cls, data: dict[str, Any]) -> "ChromaDocumentStore"
 ```
 
 Deserializes the component from a dictionary.
@@ -638,7 +734,7 @@ Deserialized component.
 #### ChromaDocumentStore.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.

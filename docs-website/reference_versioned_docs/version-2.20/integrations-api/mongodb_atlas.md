@@ -5,6 +5,329 @@ description: "MongoDB Atlas integration for Haystack"
 slug: "/integrations-mongodb-atlas"
 ---
 
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever"></a>
+
+## Module haystack\_integrations.components.retrievers.mongodb\_atlas.embedding\_retriever
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever"></a>
+
+### MongoDBAtlasEmbeddingRetriever
+
+Retrieves documents from the MongoDBAtlasDocumentStore by embedding similarity.
+
+The similarity is dependent on the vector_search_index used in the MongoDBAtlasDocumentStore and the chosen metric
+during the creation of the index (i.e. cosine, dot product, or euclidean). See MongoDBAtlasDocumentStore for more
+information.
+
+Usage example:
+```python
+import numpy as np
+from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
+from haystack_integrations.components.retrievers.mongodb_atlas import MongoDBAtlasEmbeddingRetriever
+
+store = MongoDBAtlasDocumentStore(database_name="haystack_integration_test",
+                                  collection_name="test_embeddings_collection",
+                                  vector_search_index="cosine_index",
+                                  full_text_search_index="full_text_index")
+retriever = MongoDBAtlasEmbeddingRetriever(document_store=store)
+
+results = retriever.run(query_embedding=np.random.random(768).tolist())
+print(results["documents"])
+```
+
+The example above retrieves the 10 most similar documents to a random query embedding from the
+MongoDBAtlasDocumentStore. Note that dimensions of the query_embedding must match the dimensions of the embeddings
+stored in the MongoDBAtlasDocumentStore.
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever.__init__"></a>
+
+#### MongoDBAtlasEmbeddingRetriever.\_\_init\_\_
+
+```python
+def __init__(*,
+             document_store: MongoDBAtlasDocumentStore,
+             filters: dict[str, Any] | None = None,
+             top_k: int = 10,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
+```
+
+Create the MongoDBAtlasDocumentStore component.
+
+**Arguments**:
+
+- `document_store`: An instance of MongoDBAtlasDocumentStore.
+- `filters`: Filters applied to the retrieved Documents. Make sure that the fields used in the filters are
+included in the configuration of the `vector_search_index`. The configuration must be done manually
+in the Web UI of MongoDB Atlas.
+- `top_k`: Maximum number of Documents to return.
+- `filter_policy`: Policy to determine how filters are applied.
+
+**Raises**:
+
+- `ValueError`: If `document_store` is not an instance of `MongoDBAtlasDocumentStore`.
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever.to_dict"></a>
+
+#### MongoDBAtlasEmbeddingRetriever.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever.from_dict"></a>
+
+#### MongoDBAtlasEmbeddingRetriever.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "MongoDBAtlasEmbeddingRetriever"
+```
+
+Deserializes the component from a dictionary.
+
+**Arguments**:
+
+- `data`: Dictionary to deserialize from.
+
+**Returns**:
+
+Deserialized component.
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever.run"></a>
+
+#### MongoDBAtlasEmbeddingRetriever.run
+
+```python
+@component.output_types(documents=list[Document])
+def run(query_embedding: list[float],
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
+```
+
+Retrieve documents from the MongoDBAtlasDocumentStore, based on the provided embedding similarity.
+
+**Arguments**:
+
+- `query_embedding`: Embedding of the query.
+- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+the `filter_policy` chosen at retriever initialization. See init method docstring for more
+details.
+- `top_k`: Maximum number of Documents to return. Overrides the value specified at initialization.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `documents`: List of Documents most similar to the given `query_embedding`
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever.run_async"></a>
+
+#### MongoDBAtlasEmbeddingRetriever.run\_async
+
+```python
+@component.output_types(documents=list[Document])
+async def run_async(query_embedding: list[float],
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, list[Document]]
+```
+
+Asynchronously retrieve documents from the MongoDBAtlasDocumentStore, based on the provided embedding
+
+similarity.
+
+**Arguments**:
+
+- `query_embedding`: Embedding of the query.
+- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+the `filter_policy` chosen at retriever initialization. See init method docstring for more
+details.
+- `top_k`: Maximum number of Documents to return. Overrides the value specified at initialization.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `documents`: List of Documents most similar to the given `query_embedding`
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever"></a>
+
+## Module haystack\_integrations.components.retrievers.mongodb\_atlas.full\_text\_retriever
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever"></a>
+
+### MongoDBAtlasFullTextRetriever
+
+Retrieves documents from the MongoDBAtlasDocumentStore by full-text search.
+
+The full-text search is dependent on the full_text_search_index used in the MongoDBAtlasDocumentStore.
+See MongoDBAtlasDocumentStore for more information.
+
+Usage example:
+```python
+from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
+from haystack_integrations.components.retrievers.mongodb_atlas import MongoDBAtlasFullTextRetriever
+
+store = MongoDBAtlasDocumentStore(database_name="your_existing_db",
+                                  collection_name="your_existing_collection",
+                                  vector_search_index="your_existing_index",
+                                  full_text_search_index="your_existing_index")
+retriever = MongoDBAtlasFullTextRetriever(document_store=store)
+
+results = retriever.run(query="Lorem ipsum")
+print(results["documents"])
+```
+
+The example above retrieves the 10 most similar documents to the query "Lorem ipsum" from the
+MongoDBAtlasDocumentStore.
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever.__init__"></a>
+
+#### MongoDBAtlasFullTextRetriever.\_\_init\_\_
+
+```python
+def __init__(*,
+             document_store: MongoDBAtlasDocumentStore,
+             filters: dict[str, Any] | None = None,
+             top_k: int = 10,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
+```
+
+**Arguments**:
+
+- `document_store`: An instance of MongoDBAtlasDocumentStore.
+- `filters`: Filters applied to the retrieved Documents. Make sure that the fields used in the filters are
+included in the configuration of the `full_text_search_index`. The configuration must be done manually
+in the Web UI of MongoDB Atlas.
+- `top_k`: Maximum number of Documents to return.
+- `filter_policy`: Policy to determine how filters are applied.
+
+**Raises**:
+
+- `ValueError`: If `document_store` is not an instance of MongoDBAtlasDocumentStore.
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever.to_dict"></a>
+
+#### MongoDBAtlasFullTextRetriever.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever.from_dict"></a>
+
+#### MongoDBAtlasFullTextRetriever.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "MongoDBAtlasFullTextRetriever"
+```
+
+Deserializes the component from a dictionary.
+
+**Arguments**:
+
+- `data`: Dictionary to deserialize from.
+
+**Returns**:
+
+Deserialized component.
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever.run"></a>
+
+#### MongoDBAtlasFullTextRetriever.run
+
+```python
+@component.output_types(documents=list[Document])
+def run(query: str | list[str],
+        fuzzy: dict[str, int] | None = None,
+        match_criteria: Literal["any", "all"] | None = None,
+        score: dict[str, dict] | None = None,
+        synonyms: str | None = None,
+        filters: dict[str, Any] | None = None,
+        top_k: int = 10) -> dict[str, list[Document]]
+```
+
+Retrieve documents from the MongoDBAtlasDocumentStore by full-text search.
+
+**Arguments**:
+
+- `query`: The query string or a list of query strings to search for.
+If the query contains multiple terms, Atlas Search evaluates each term separately for matches.
+- `fuzzy`: Enables finding strings similar to the search term(s).
+Note, `fuzzy` cannot be used with `synonyms`. Configurable options include `maxEdits`, `prefixLength`,
+and `maxExpansions`. For more details refer to MongoDB Atlas
+[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
+- `match_criteria`: Defines how terms in the query are matched. Supported options are `"any"` and `"all"`.
+For more details refer to MongoDB Atlas
+[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
+- `score`: Specifies the scoring method for matching results. Supported options include `boost`, `constant`,
+and `function`. For more details refer to MongoDB Atlas
+[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
+- `synonyms`: The name of the synonym mapping definition in the index. This value cannot be an empty string.
+Note, `synonyms` can not be used with `fuzzy`.
+- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+the `filter_policy` chosen at retriever initialization. See init method docstring for more
+details.
+- `top_k`: Maximum number of Documents to return. Overrides the value specified at initialization.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `documents`: List of Documents most similar to the given `query`
+
+<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever.run_async"></a>
+
+#### MongoDBAtlasFullTextRetriever.run\_async
+
+```python
+@component.output_types(documents=list[Document])
+async def run_async(query: str | list[str],
+                    fuzzy: dict[str, int] | None = None,
+                    match_criteria: Literal["any", "all"] | None = None,
+                    score: dict[str, dict] | None = None,
+                    synonyms: str | None = None,
+                    filters: dict[str, Any] | None = None,
+                    top_k: int = 10) -> dict[str, list[Document]]
+```
+
+Asynchronously retrieve documents from the MongoDBAtlasDocumentStore by full-text search.
+
+**Arguments**:
+
+- `query`: The query string or a list of query strings to search for.
+If the query contains multiple terms, Atlas Search evaluates each term separately for matches.
+- `fuzzy`: Enables finding strings similar to the search term(s).
+Note, `fuzzy` cannot be used with `synonyms`. Configurable options include `maxEdits`, `prefixLength`,
+and `maxExpansions`. For more details refer to MongoDB Atlas
+[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
+- `match_criteria`: Defines how terms in the query are matched. Supported options are `"any"` and `"all"`.
+For more details refer to MongoDB Atlas
+[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
+- `score`: Specifies the scoring method for matching results. Supported options include `boost`, `constant`,
+and `function`. For more details refer to MongoDB Atlas
+[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
+- `synonyms`: The name of the synonym mapping definition in the index. This value cannot be an empty string.
+Note, `synonyms` can not be used with `fuzzy`.
+- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+the `filter_policy` chosen at retriever initialization. See init method docstring for more
+details.
+- `top_k`: Maximum number of Documents to return. Overrides the value specified at initialization.
+
+**Returns**:
+
+A dictionary with the following keys:
+- `documents`: List of Documents most similar to the given `query`
+
 <a id="haystack_integrations.document_stores.mongodb_atlas.document_store"></a>
 
 ## Module haystack\_integrations.document\_stores.mongodb\_atlas.document\_store
@@ -106,7 +429,7 @@ Destructor method to close MongoDB connections when the instance is destroyed.
 #### MongoDBAtlasDocumentStore.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serializes the component to a dictionary.
@@ -121,7 +444,7 @@ Dictionary with serialized data.
 
 ```python
 @classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "MongoDBAtlasDocumentStore"
+def from_dict(cls, data: dict[str, Any]) -> "MongoDBAtlasDocumentStore"
 ```
 
 Deserializes the component from a dictionary.
@@ -167,14 +490,13 @@ The number of documents in the document store.
 #### MongoDBAtlasDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
 
 For a detailed specification of the filters,
-refer to the Haystack [documentation](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering).
+refer to the Haystack [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
 
 **Arguments**:
 
@@ -190,13 +512,13 @@ A list of Documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[Dict[str, Any]] = None) -> List[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
 
 For a detailed specification of the filters,
-refer to the Haystack [documentation](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering).
+refer to the Haystack [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
 
 **Arguments**:
 
@@ -211,7 +533,7 @@ A list of Documents that match the given filters.
 #### MongoDBAtlasDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: List[Document],
+def write_documents(documents: list[Document],
                     policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
 ```
 
@@ -238,7 +560,7 @@ The number of documents written to the document store.
 
 ```python
 async def write_documents_async(
-        documents: List[Document],
+        documents: list[Document],
         policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
 ```
 
@@ -264,7 +586,7 @@ The number of documents written to the document store.
 #### MongoDBAtlasDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: List[str]) -> None
+def delete_documents(document_ids: list[str]) -> None
 ```
 
 Deletes all documents with a matching document_ids from the document store.
@@ -278,7 +600,7 @@ Deletes all documents with a matching document_ids from the document store.
 #### MongoDBAtlasDocumentStore.delete\_documents\_async
 
 ```python
-async def delete_documents_async(document_ids: List[str]) -> None
+async def delete_documents_async(document_ids: list[str]) -> None
 ```
 
 Asynchronously deletes all documents with a matching document_ids from the document store.
@@ -292,7 +614,7 @@ Asynchronously deletes all documents with a matching document_ids from the docum
 #### MongoDBAtlasDocumentStore.delete\_by\_filter
 
 ```python
-def delete_by_filter(filters: Dict[str, Any]) -> int
+def delete_by_filter(filters: dict[str, Any]) -> int
 ```
 
 Deletes all documents that match the provided filters.
@@ -311,7 +633,7 @@ The number of documents deleted.
 #### MongoDBAtlasDocumentStore.delete\_by\_filter\_async
 
 ```python
-async def delete_by_filter_async(filters: Dict[str, Any]) -> int
+async def delete_by_filter_async(filters: dict[str, Any]) -> int
 ```
 
 Asynchronously deletes all documents that match the provided filters.
@@ -330,7 +652,7 @@ The number of documents deleted.
 #### MongoDBAtlasDocumentStore.update\_by\_filter
 
 ```python
-def update_by_filter(filters: Dict[str, Any], meta: Dict[str, Any]) -> int
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
 ```
 
 Updates the metadata of all documents that match the provided filters.
@@ -350,8 +672,8 @@ The number of documents updated.
 #### MongoDBAtlasDocumentStore.update\_by\_filter\_async
 
 ```python
-async def update_by_filter_async(filters: Dict[str, Any],
-                                 meta: Dict[str, Any]) -> int
+async def update_by_filter_async(filters: dict[str, Any],
+                                 meta: dict[str, Any]) -> int
 ```
 
 Asynchronously updates the metadata of all documents that match the provided filters.
@@ -399,327 +721,4 @@ Asynchronously deletes all documents in the document store.
 - `recreate_collection`: If True, the collection will be dropped and recreated with the original
 configuration and indexes. If False, all documents will be deleted while preserving the collection.
 Recreating the collection is faster for very large collections.
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever"></a>
-
-## Module haystack\_integrations.components.retrievers.mongodb\_atlas.embedding\_retriever
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever"></a>
-
-### MongoDBAtlasEmbeddingRetriever
-
-Retrieves documents from the MongoDBAtlasDocumentStore by embedding similarity.
-
-The similarity is dependent on the vector_search_index used in the MongoDBAtlasDocumentStore and the chosen metric
-during the creation of the index (i.e. cosine, dot product, or euclidean). See MongoDBAtlasDocumentStore for more
-information.
-
-Usage example:
-```python
-import numpy as np
-from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
-from haystack_integrations.components.retrievers.mongodb_atlas import MongoDBAtlasEmbeddingRetriever
-
-store = MongoDBAtlasDocumentStore(database_name="haystack_integration_test",
-                                  collection_name="test_embeddings_collection",
-                                  vector_search_index="cosine_index",
-                                  full_text_search_index="full_text_index")
-retriever = MongoDBAtlasEmbeddingRetriever(document_store=store)
-
-results = retriever.run(query_embedding=np.random.random(768).tolist())
-print(results["documents"])
-```
-
-The example above retrieves the 10 most similar documents to a random query embedding from the
-MongoDBAtlasDocumentStore. Note that dimensions of the query_embedding must match the dimensions of the embeddings
-stored in the MongoDBAtlasDocumentStore.
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever.__init__"></a>
-
-#### MongoDBAtlasEmbeddingRetriever.\_\_init\_\_
-
-```python
-def __init__(*,
-             document_store: MongoDBAtlasDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
-             top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
-```
-
-Create the MongoDBAtlasDocumentStore component.
-
-**Arguments**:
-
-- `document_store`: An instance of MongoDBAtlasDocumentStore.
-- `filters`: Filters applied to the retrieved Documents. Make sure that the fields used in the filters are
-included in the configuration of the `vector_search_index`. The configuration must be done manually
-in the Web UI of MongoDB Atlas.
-- `top_k`: Maximum number of Documents to return.
-- `filter_policy`: Policy to determine how filters are applied.
-
-**Raises**:
-
-- `ValueError`: If `document_store` is not an instance of `MongoDBAtlasDocumentStore`.
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever.to_dict"></a>
-
-#### MongoDBAtlasEmbeddingRetriever.to\_dict
-
-```python
-def to_dict() -> Dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever.from_dict"></a>
-
-#### MongoDBAtlasEmbeddingRetriever.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "MongoDBAtlasEmbeddingRetriever"
-```
-
-Deserializes the component from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized component.
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever.run"></a>
-
-#### MongoDBAtlasEmbeddingRetriever.run
-
-```python
-@component.output_types(documents=List[Document])
-def run(query_embedding: List[float],
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> Dict[str, List[Document]]
-```
-
-Retrieve documents from the MongoDBAtlasDocumentStore, based on the provided embedding similarity.
-
-**Arguments**:
-
-- `query_embedding`: Embedding of the query.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: Maximum number of Documents to return. Overrides the value specified at initialization.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `documents`: List of Documents most similar to the given `query_embedding`
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.embedding_retriever.MongoDBAtlasEmbeddingRetriever.run_async"></a>
-
-#### MongoDBAtlasEmbeddingRetriever.run\_async
-
-```python
-@component.output_types(documents=List[Document])
-async def run_async(query_embedding: List[float],
-                    filters: Optional[Dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> Dict[str, List[Document]]
-```
-
-Asynchronously retrieve documents from the MongoDBAtlasDocumentStore, based on the provided embedding
-
-similarity.
-
-**Arguments**:
-
-- `query_embedding`: Embedding of the query.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: Maximum number of Documents to return. Overrides the value specified at initialization.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `documents`: List of Documents most similar to the given `query_embedding`
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever"></a>
-
-## Module haystack\_integrations.components.retrievers.mongodb\_atlas.full\_text\_retriever
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever"></a>
-
-### MongoDBAtlasFullTextRetriever
-
-Retrieves documents from the MongoDBAtlasDocumentStore by full-text search.
-
-The full-text search is dependent on the full_text_search_index used in the MongoDBAtlasDocumentStore.
-See MongoDBAtlasDocumentStore for more information.
-
-Usage example:
-```python
-from haystack_integrations.document_stores.mongodb_atlas import MongoDBAtlasDocumentStore
-from haystack_integrations.components.retrievers.mongodb_atlas import MongoDBAtlasFullTextRetriever
-
-store = MongoDBAtlasDocumentStore(database_name="your_existing_db",
-                                  collection_name="your_existing_collection",
-                                  vector_search_index="your_existing_index",
-                                  full_text_search_index="your_existing_index")
-retriever = MongoDBAtlasFullTextRetriever(document_store=store)
-
-results = retriever.run(query="Lorem ipsum")
-print(results["documents"])
-```
-
-The example above retrieves the 10 most similar documents to the query "Lorem ipsum" from the
-MongoDBAtlasDocumentStore.
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever.__init__"></a>
-
-#### MongoDBAtlasFullTextRetriever.\_\_init\_\_
-
-```python
-def __init__(*,
-             document_store: MongoDBAtlasDocumentStore,
-             filters: Optional[Dict[str, Any]] = None,
-             top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
-```
-
-**Arguments**:
-
-- `document_store`: An instance of MongoDBAtlasDocumentStore.
-- `filters`: Filters applied to the retrieved Documents. Make sure that the fields used in the filters are
-included in the configuration of the `full_text_search_index`. The configuration must be done manually
-in the Web UI of MongoDB Atlas.
-- `top_k`: Maximum number of Documents to return.
-- `filter_policy`: Policy to determine how filters are applied.
-
-**Raises**:
-
-- `ValueError`: If `document_store` is not an instance of MongoDBAtlasDocumentStore.
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever.to_dict"></a>
-
-#### MongoDBAtlasFullTextRetriever.to\_dict
-
-```python
-def to_dict() -> Dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns**:
-
-Dictionary with serialized data.
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever.from_dict"></a>
-
-#### MongoDBAtlasFullTextRetriever.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: Dict[str, Any]) -> "MongoDBAtlasFullTextRetriever"
-```
-
-Deserializes the component from a dictionary.
-
-**Arguments**:
-
-- `data`: Dictionary to deserialize from.
-
-**Returns**:
-
-Deserialized component.
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever.run"></a>
-
-#### MongoDBAtlasFullTextRetriever.run
-
-```python
-@component.output_types(documents=List[Document])
-def run(query: Union[str, List[str]],
-        fuzzy: Optional[Dict[str, int]] = None,
-        match_criteria: Optional[Literal["any", "all"]] = None,
-        score: Optional[Dict[str, Dict]] = None,
-        synonyms: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: int = 10) -> Dict[str, List[Document]]
-```
-
-Retrieve documents from the MongoDBAtlasDocumentStore by full-text search.
-
-**Arguments**:
-
-- `query`: The query string or a list of query strings to search for.
-If the query contains multiple terms, Atlas Search evaluates each term separately for matches.
-- `fuzzy`: Enables finding strings similar to the search term(s).
-Note, `fuzzy` cannot be used with `synonyms`. Configurable options include `maxEdits`, `prefixLength`,
-and `maxExpansions`. For more details refer to MongoDB Atlas
-[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
-- `match_criteria`: Defines how terms in the query are matched. Supported options are `"any"` and `"all"`.
-For more details refer to MongoDB Atlas
-[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
-- `score`: Specifies the scoring method for matching results. Supported options include `boost`, `constant`,
-and `function`. For more details refer to MongoDB Atlas
-[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
-- `synonyms`: The name of the synonym mapping definition in the index. This value cannot be an empty string.
-Note, `synonyms` can not be used with `fuzzy`.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: Maximum number of Documents to return. Overrides the value specified at initialization.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `documents`: List of Documents most similar to the given `query`
-
-<a id="haystack_integrations.components.retrievers.mongodb_atlas.full_text_retriever.MongoDBAtlasFullTextRetriever.run_async"></a>
-
-#### MongoDBAtlasFullTextRetriever.run\_async
-
-```python
-@component.output_types(documents=List[Document])
-async def run_async(query: Union[str, List[str]],
-                    fuzzy: Optional[Dict[str, int]] = None,
-                    match_criteria: Optional[Literal["any", "all"]] = None,
-                    score: Optional[Dict[str, Dict]] = None,
-                    synonyms: Optional[str] = None,
-                    filters: Optional[Dict[str, Any]] = None,
-                    top_k: int = 10) -> Dict[str, List[Document]]
-```
-
-Asynchronously retrieve documents from the MongoDBAtlasDocumentStore by full-text search.
-
-**Arguments**:
-
-- `query`: The query string or a list of query strings to search for.
-If the query contains multiple terms, Atlas Search evaluates each term separately for matches.
-- `fuzzy`: Enables finding strings similar to the search term(s).
-Note, `fuzzy` cannot be used with `synonyms`. Configurable options include `maxEdits`, `prefixLength`,
-and `maxExpansions`. For more details refer to MongoDB Atlas
-[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
-- `match_criteria`: Defines how terms in the query are matched. Supported options are `"any"` and `"all"`.
-For more details refer to MongoDB Atlas
-[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
-- `score`: Specifies the scoring method for matching results. Supported options include `boost`, `constant`,
-and `function`. For more details refer to MongoDB Atlas
-[documentation](https://www.mongodb.com/docs/atlas/atlas-search/text/`fields`).
-- `synonyms`: The name of the synonym mapping definition in the index. This value cannot be an empty string.
-Note, `synonyms` can not be used with `fuzzy`.
-- `filters`: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-the `filter_policy` chosen at retriever initialization. See init method docstring for more
-details.
-- `top_k`: Maximum number of Documents to return. Overrides the value specified at initialization.
-
-**Returns**:
-
-A dictionary with the following keys:
-- `documents`: List of Documents most similar to the given `query`
 

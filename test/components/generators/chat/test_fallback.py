@@ -4,7 +4,7 @@
 
 import asyncio
 import time
-from typing import Any, Optional
+from typing import Any
 from urllib.error import HTTPError as URLLibHTTPError
 
 import pytest
@@ -17,7 +17,7 @@ from haystack.tools import ToolsType
 
 @component
 class _DummySuccessGen:
-    def __init__(self, text: str = "ok", delay: float = 0.0, streaming_callback: Optional[StreamingCallbackT] = None):
+    def __init__(self, text: str = "ok", delay: float = 0.0, streaming_callback: StreamingCallbackT | None = None):
         self.text = text
         self.delay = delay
         self.streaming_callback = streaming_callback
@@ -32,9 +32,9 @@ class _DummySuccessGen:
     def run(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, Any]:
         if self.delay:
             time.sleep(self.delay)
@@ -45,9 +45,9 @@ class _DummySuccessGen:
     async def run_async(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, Any]:
         if self.delay:
             await asyncio.sleep(self.delay)
@@ -59,7 +59,7 @@ class _DummySuccessGen:
 
 @component
 class _DummyFailGen:
-    def __init__(self, exc: Optional[Exception] = None, delay: float = 0.0):
+    def __init__(self, exc: Exception | None = None, delay: float = 0.0):
         self.exc = exc or RuntimeError("boom")
         self.delay = delay
 
@@ -77,9 +77,9 @@ class _DummyFailGen:
     def run(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, Any]:
         if self.delay:
             time.sleep(self.delay)
@@ -88,9 +88,9 @@ class _DummyFailGen:
     async def run_async(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, Any]:
         if self.delay:
             await asyncio.sleep(self.delay)
@@ -223,7 +223,7 @@ def create_http_error(status_code: int, message: str) -> URLLibHTTPError:
 
 @component
 class _DummyHTTPErrorGen:
-    def __init__(self, text: str = "success", error: Optional[Exception] = None):
+    def __init__(self, text: str = "success", error: Exception | None = None):
         self.text = text
         self.error = error
 
@@ -241,9 +241,9 @@ class _DummyHTTPErrorGen:
     def run(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, Any]:
         if self.error:
             raise self.error
@@ -370,9 +370,9 @@ class _DummyGenWithWarmUp:
     def run(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[ToolsType] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant(self.text)], "meta": {}}
 

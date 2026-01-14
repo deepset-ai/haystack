@@ -48,11 +48,11 @@ for doc in result["documents"]:
 ```python
 def __init__(*,
              document_store: ElasticsearchDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              fuzziness: str = "AUTO",
              top_k: int = 10,
              scale_score: bool = False,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 Initialize ElasticsearchBM25Retriever with an instance ElasticsearchDocumentStore.
@@ -113,8 +113,8 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query: str,
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using the BM25 keyword-based algorithm.
@@ -139,8 +139,8 @@ A dictionary with the following keys:
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query: str,
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> dict[str, list[Document]]
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents using the BM25 keyword-based algorithm.
@@ -203,10 +203,10 @@ for doc in result["documents"]:
 ```python
 def __init__(*,
              document_store: ElasticsearchDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             num_candidates: Optional[int] = None,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             num_candidates: int | None = None,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 Create the ElasticsearchEmbeddingRetriever component.
@@ -267,8 +267,8 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents using a vector similarity metric.
@@ -294,8 +294,8 @@ A dictionary with the following keys:
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query_embedding: list[float],
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> dict[str, list[Document]]
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents using a vector similarity metric.
@@ -355,8 +355,8 @@ All extra keyword arguments will be passed to the Elasticsearch client.
 ```python
 def __init__(
         *,
-        hosts: Optional[Hosts] = None,
-        custom_mapping: Optional[dict[str, Any]] = None,
+        hosts: Hosts | None = None,
+        custom_mapping: dict[str, Any] | None = None,
         index: str = "default",
         api_key: Secret = Secret.from_env_var("ELASTIC_API_KEY", strict=False),
         api_key_id: Secret = Secret.from_env_var("ELASTIC_API_KEY_ID",
@@ -487,8 +487,7 @@ Number of documents in the document store.
 #### ElasticsearchDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 The main query method for the document store. It retrieves all documents that match the filters.
@@ -509,7 +508,7 @@ List of `Document`s that match the filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously retrieves all documents that match the filters.
@@ -529,8 +528,10 @@ List of `Document`s that match the filters.
 #### ElasticsearchDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: list[Document],
-                    policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+def write_documents(
+        documents: list[Document],
+        policy: DuplicatePolicy = DuplicatePolicy.NONE,
+        refresh: Literal["wait_for", True, False] = "wait_for") -> int
 ```
 
 Writes `Document`s to Elasticsearch.
@@ -539,6 +540,11 @@ Writes `Document`s to Elasticsearch.
 
 - `documents`: List of Documents to write to the document store.
 - `policy`: DuplicatePolicy to apply when a document with the same ID already exists in the document store.
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [Elasticsearch refresh documentation](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter).
 
 **Raises**:
 
@@ -558,7 +564,8 @@ Number of documents written to the document store.
 ```python
 async def write_documents_async(
         documents: list[Document],
-        policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int
+        policy: DuplicatePolicy = DuplicatePolicy.NONE,
+        refresh: Literal["wait_for", True, False] = "wait_for") -> int
 ```
 
 Asynchronously writes `Document`s to Elasticsearch.
@@ -567,6 +574,11 @@ Asynchronously writes `Document`s to Elasticsearch.
 
 - `documents`: List of Documents to write to the document store.
 - `policy`: DuplicatePolicy to apply when a document with the same ID already exists in the document store.
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [Elasticsearch refresh documentation](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter).
 
 **Raises**:
 
@@ -584,7 +596,9 @@ Number of documents written to the document store.
 #### ElasticsearchDocumentStore.delete\_documents
 
 ```python
-def delete_documents(document_ids: list[str]) -> None
+def delete_documents(
+        document_ids: list[str],
+        refresh: Literal["wait_for", True, False] = "wait_for") -> None
 ```
 
 Deletes all documents with a matching document_ids from the document store.
@@ -592,13 +606,20 @@ Deletes all documents with a matching document_ids from the document store.
 **Arguments**:
 
 - `document_ids`: the document ids to delete
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [Elasticsearch refresh documentation](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter).
 
 <a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.delete_documents_async"></a>
 
 #### ElasticsearchDocumentStore.delete\_documents\_async
 
 ```python
-async def delete_documents_async(document_ids: list[str]) -> None
+async def delete_documents_async(
+        document_ids: list[str],
+        refresh: Literal["wait_for", True, False] = "wait_for") -> None
 ```
 
 Asynchronously deletes all documents with a matching document_ids from the document store.
@@ -606,13 +627,19 @@ Asynchronously deletes all documents with a matching document_ids from the docum
 **Arguments**:
 
 - `document_ids`: the document ids to delete
+- `refresh`: Controls when changes are made visible to search operations.
+- `True`: Force refresh immediately after the operation.
+- `False`: Do not refresh (better performance for bulk operations).
+- `"wait_for"`: Wait for the next refresh cycle (default, ensures read-your-writes consistency).
+For more details, see the [Elasticsearch refresh documentation](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter).
 
 <a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.delete_all_documents"></a>
 
 #### ElasticsearchDocumentStore.delete\_all\_documents
 
 ```python
-def delete_all_documents(recreate_index: bool = False) -> None
+def delete_all_documents(recreate_index: bool = False,
+                         refresh: bool = True) -> None
 ```
 
 Deletes all documents in the document store.
@@ -623,13 +650,17 @@ A fast way to clear all documents from the document store while preserving any i
 
 - `recreate_index`: If True, the index will be deleted and recreated with the original mappings and
 settings. If False, all documents will be deleted using the `delete_by_query` API.
+- `refresh`: If True, Elasticsearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[Elasticsearch delete_by_query refresh documentation](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-delete-by-query#operation-delete-by-query-refresh).
 
 <a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.delete_all_documents_async"></a>
 
 #### ElasticsearchDocumentStore.delete\_all\_documents\_async
 
 ```python
-async def delete_all_documents_async(recreate_index: bool = False) -> None
+async def delete_all_documents_async(recreate_index: bool = False,
+                                     refresh: bool = True) -> None
 ```
 
 Asynchronously deletes all documents in the document store.
@@ -640,13 +671,16 @@ A fast way to clear all documents from the document store while preserving any i
 
 - `recreate_index`: If True, the index will be deleted and recreated with the original mappings and
 settings. If False, all documents will be deleted using the `delete_by_query` API.
+- `refresh`: If True, Elasticsearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[Elasticsearch delete_by_query refresh documentation](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-delete-by-query#operation-delete-by-query-refresh).
 
 <a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.delete_by_filter"></a>
 
 #### ElasticsearchDocumentStore.delete\_by\_filter
 
 ```python
-def delete_by_filter(filters: dict[str, Any]) -> int
+def delete_by_filter(filters: dict[str, Any], refresh: bool = False) -> int
 ```
 
 Deletes all documents that match the provided filters.
@@ -655,6 +689,9 @@ Deletes all documents that match the provided filters.
 
 - `filters`: The filters to apply to select documents for deletion.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `refresh`: If True, Elasticsearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[Elasticsearch delete_by_query refresh documentation](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-delete-by-query#operation-delete-by-query-refresh).
 
 **Returns**:
 
@@ -665,7 +702,8 @@ The number of documents deleted.
 #### ElasticsearchDocumentStore.delete\_by\_filter\_async
 
 ```python
-async def delete_by_filter_async(filters: dict[str, Any]) -> int
+async def delete_by_filter_async(filters: dict[str, Any],
+                                 refresh: bool = False) -> int
 ```
 
 Asynchronously deletes all documents that match the provided filters.
@@ -674,6 +712,9 @@ Asynchronously deletes all documents that match the provided filters.
 
 - `filters`: The filters to apply to select documents for deletion.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `refresh`: If True, Elasticsearch refreshes all shards involved in the delete by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[Elasticsearch refresh documentation](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter).
 
 **Returns**:
 
@@ -684,7 +725,9 @@ The number of documents deleted.
 #### ElasticsearchDocumentStore.update\_by\_filter
 
 ```python
-def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+def update_by_filter(filters: dict[str, Any],
+                     meta: dict[str, Any],
+                     refresh: bool = False) -> int
 ```
 
 Updates the metadata of all documents that match the provided filters.
@@ -694,6 +737,9 @@ Updates the metadata of all documents that match the provided filters.
 - `filters`: The filters to apply to select documents for updating.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 - `meta`: The metadata fields to update.
+- `refresh`: If True, Elasticsearch refreshes all shards involved in the update by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[Elasticsearch update_by_query refresh documentation](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-update-by-query#operation-update-by-query-refresh).
 
 **Returns**:
 
@@ -705,7 +751,8 @@ The number of documents updated.
 
 ```python
 async def update_by_filter_async(filters: dict[str, Any],
-                                 meta: dict[str, Any]) -> int
+                                 meta: dict[str, Any],
+                                 refresh: bool = False) -> int
 ```
 
 Asynchronously updates the metadata of all documents that match the provided filters.
@@ -715,6 +762,9 @@ Asynchronously updates the metadata of all documents that match the provided fil
 - `filters`: The filters to apply to select documents for updating.
 For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 - `meta`: The metadata fields to update.
+- `refresh`: If True, Elasticsearch refreshes all shards involved in the update by query after the request
+completes. If False, no refresh is performed. For more details, see the
+[Elasticsearch update_by_query refresh documentation](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-update-by-query#operation-update-by-query-refresh).
 
 **Returns**:
 

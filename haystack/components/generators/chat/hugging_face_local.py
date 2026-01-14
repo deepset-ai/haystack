@@ -8,7 +8,7 @@ import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
-from typing import Any, Callable, Literal, Optional, Union
+from typing import Any, Callable, Literal, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
@@ -60,7 +60,7 @@ DEFAULT_TOOL_PATTERN = (
 )
 
 
-def default_tool_parser(text: str) -> Optional[list[ToolCall]]:
+def default_tool_parser(text: str) -> list[ToolCall] | None:
     """
     Default implementation for parsing tool calls from model output text.
 
@@ -130,17 +130,17 @@ class HuggingFaceLocalChatGenerator:
     def __init__(  # pylint: disable=too-many-positional-arguments
         self,
         model: str = "Qwen/Qwen3-0.6B",
-        task: Optional[Literal["text-generation", "text2text-generation"]] = None,
-        device: Optional[ComponentDevice] = None,
-        token: Optional[Secret] = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
-        chat_template: Optional[str] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        huggingface_pipeline_kwargs: Optional[dict[str, Any]] = None,
-        stop_words: Optional[list[str]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[ToolsType] = None,
-        tool_parsing_function: Optional[Callable[[str], Optional[list[ToolCall]]]] = None,
-        async_executor: Optional[ThreadPoolExecutor] = None,
+        task: Literal["text-generation", "text2text-generation"] | None = None,
+        device: ComponentDevice | None = None,
+        token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
+        chat_template: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        huggingface_pipeline_kwargs: dict[str, Any] | None = None,
+        stop_words: list[str] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        tools: ToolsType | None = None,
+        tool_parsing_function: Callable[[str], list[ToolCall] | None] | None = None,
+        async_executor: ThreadPoolExecutor | None = None,
         *,
         enable_thinking: bool = False,
     ) -> None:
@@ -246,7 +246,7 @@ class HuggingFaceLocalChatGenerator:
         self.generation_kwargs = generation_kwargs
         self.chat_template = chat_template
         self.streaming_callback = streaming_callback
-        self.pipeline: Optional[HfPipeline] = None
+        self.pipeline: HfPipeline | None = None
         self.tools = tools
         self.enable_thinking = enable_thinking
 
@@ -353,9 +353,9 @@ class HuggingFaceLocalChatGenerator:
     def run(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[ToolsType] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        tools: ToolsType | None = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Invoke text generation inference based on the provided messages and generation parameters.
@@ -446,7 +446,7 @@ class HuggingFaceLocalChatGenerator:
         return ChatMessage.from_assistant(tool_calls=tool_calls, text=None if tool_calls else text, meta=meta)
 
     @staticmethod
-    def _validate_stop_words(stop_words: Optional[list[str]]) -> Optional[list[str]]:
+    def _validate_stop_words(stop_words: list[str] | None) -> list[str] | None:
         """
         Validates the provided stop words.
 
@@ -467,9 +467,9 @@ class HuggingFaceLocalChatGenerator:
     async def run_async(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[ToolsType] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        tools: ToolsType | None = None,
     ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously invokes text generation inference based on the provided messages and generation parameters.
@@ -543,9 +543,9 @@ class HuggingFaceLocalChatGenerator:
     def _prepare_inputs(
         self,
         messages: list[ChatMessage],
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        streaming_callback: Optional[StreamingCallbackT] = None,
-        tools: Optional[ToolsType] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        tools: ToolsType | None = None,
     ) -> dict[str, Any]:
         """
         Prepares the inputs for the Hugging Face pipeline.
@@ -633,8 +633,8 @@ class HuggingFaceLocalChatGenerator:
         prepared_prompt: str,
         tokenizer: Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"],
         generation_kwargs: dict[str, Any],
-        stop_words: Optional[list[str]],
-        tools: Optional[Union[list[Tool], Toolset]] = None,
+        stop_words: list[str] | None,
+        tools: list[Tool] | Toolset | None = None,
     ) -> list[ChatMessage]:
         """
         Converts the HuggingFace pipeline output into a List of ChatMessages

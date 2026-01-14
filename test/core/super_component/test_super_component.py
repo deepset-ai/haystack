@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Union
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -396,14 +396,14 @@ class TestSuperComponent:
 
         @component
         class UnionTypeComponent1:
-            @component.output_types(result=Union[int, str])
-            def run(self, inp: Union[int, str]):
+            @component.output_types(result=int | str)
+            def run(self, inp: int | str):
                 return {"result": inp}
 
         @component
         class UnionTypeComponent2:
-            @component.output_types(result=Union[float, str])
-            def run(self, inp: Union[float, str]):
+            @component.output_types(result=float | str)
+            def run(self, inp: float | str):
                 return {"result": inp}
 
         pipeline = Pipeline()
@@ -416,7 +416,7 @@ class TestSuperComponent:
 
         input_sockets = wrapper.__haystack_input__._sockets_dict
         assert "data" in input_sockets
-        assert input_sockets["data"].type == Union[str]
+        assert input_sockets["data"].type == str
 
     def test_input_types_with_any(self):
         """Test that Any type is properly handled when reconciling types."""

@@ -3,8 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import gc
-from typing import Optional
 from unittest.mock import Mock, patch
 
 import pytest
@@ -12,12 +10,11 @@ from transformers import PreTrainedTokenizer
 
 from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
-from haystack.dataclasses.streaming_chunk import AsyncStreamingCallbackT, StreamingChunk
+from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.tools import Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils import ComponentDevice
 from haystack.utils.auth import Secret
-from haystack.utils.hf import AsyncHFTokenStreamingHandler
 
 
 # used to test serialization of streaming_callback
@@ -75,7 +72,7 @@ def tools():
     return [tool]
 
 
-def custom_tool_parser(text: str) -> Optional[list[ToolCall]]:
+def custom_tool_parser(text: str) -> list[ToolCall] | None:
     """Test implementation of a custom tool parser."""
     return [ToolCall(tool_name="weather", arguments={"city": "Berlin"})]
 
@@ -669,9 +666,11 @@ class TestHuggingFaceLocalChatGeneratorAsync:
     async def test_run_async_with_tools(self, model_info_mock, mock_pipeline_with_tokenizer, tools):
         """Test async functionality with tools"""
         generator = HuggingFaceLocalChatGenerator(model="mocked-model", tools=tools)
-        generator.pipeline = mock_pipeline_with_tokenizer
-        # Mock the pipeline to return a tool call format
-        generator.pipeline.return_value = [{"generated_text": '{"name": "weather", "arguments": {"city": "Berlin"}}'}]
+        # Create a new mock with return_value set in constructor to avoid thread-safety issues
+        mock_pipeline = Mock(return_value=[{"generated_text": '{"name": "weather", "arguments": {"city": "Berlin"}}'}])
+        # Copy the tokenizer from the fixture to the new mock
+        mock_pipeline.tokenizer = mock_pipeline_with_tokenizer.tokenizer
+        generator.pipeline = mock_pipeline
 
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         results = await generator.run_async(messages=messages)
@@ -712,15 +711,6 @@ class TestHuggingFaceLocalChatGeneratorAsync:
                 streaming_callback=lambda x: None,
                 tools=[Tool(name="test", description="test", parameters={}, function=lambda: None)],
             )
-
-    def test_executor_shutdown(self, model_info_mock, mock_pipeline_with_tokenizer):
-        with patch("haystack.components.generators.chat.hugging_face_local.pipeline"):
-            generator = HuggingFaceLocalChatGenerator(model="mocked-model")
-            executor = generator.executor
-            with patch.object(executor, "shutdown", wraps=executor.shutdown) as mock_shutdown:
-                del generator
-                gc.collect()
-                mock_shutdown.assert_called_once_with(wait=True)
 
     def test_hugging_face_local_generator_with_toolset_initialization(
         self, model_info_mock, mock_pipeline_with_tokenizer, tools

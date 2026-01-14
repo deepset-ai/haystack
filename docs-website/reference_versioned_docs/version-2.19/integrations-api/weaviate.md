@@ -32,9 +32,9 @@ retriever.run(query="How to make a pizza", top_k=3)
 ```python
 def __init__(*,
              document_store: WeaviateDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 Create a new instance of WeaviateBM25Retriever.
@@ -86,8 +86,8 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query: str,
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieves documents from Weaviate using the BM25 algorithm.
@@ -112,8 +112,8 @@ A dictionary with the following keys:
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query: str,
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> dict[str, list[Document]]
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieves documents from Weaviate using the BM25 algorithm.
@@ -148,11 +148,11 @@ A retriever that uses Weaviate's vector search to find similar documents based o
 ```python
 def __init__(*,
              document_store: WeaviateDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             distance: Optional[float] = None,
-             certainty: Optional[float] = None,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             distance: float | None = None,
+             certainty: float | None = None,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 Creates a new instance of WeaviateEmbeddingRetriever.
@@ -212,10 +212,10 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-        distance: Optional[float] = None,
-        certainty: Optional[float] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        distance: float | None = None,
+        certainty: float | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieves documents from Weaviate using the vector search.
@@ -249,10 +249,10 @@ A dictionary with the following keys:
 @component.output_types(documents=list[Document])
 async def run_async(
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-        distance: Optional[float] = None,
-        certainty: Optional[float] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        distance: float | None = None,
+        certainty: float | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieves documents from Weaviate using the vector search.
@@ -295,11 +295,11 @@ A retriever that uses Weaviate's hybrid search to find similar documents based o
 ```python
 def __init__(*,
              document_store: WeaviateDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             alpha: Optional[float] = None,
-             max_vector_distance: Optional[float] = None,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             alpha: float | None = None,
+             max_vector_distance: float | None = None,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 Creates a new instance of WeaviateHybridRetriever.
@@ -375,11 +375,10 @@ Deserialized component.
 @component.output_types(documents=list[Document])
 def run(query: str,
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-        alpha: Optional[float] = None,
-        max_vector_distance: Optional[float] = None
-        ) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        alpha: float | None = None,
+        max_vector_distance: float | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieves documents from Weaviate using hybrid search.
@@ -430,11 +429,10 @@ A dictionary with the following keys:
 async def run_async(
         query: str,
         query_embedding: list[float],
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None,
-        alpha: Optional[float] = None,
-        max_vector_distance: Optional[float] = None
-) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None,
+        alpha: float | None = None,
+        max_vector_distance: float | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieves documents from Weaviate using hybrid search.
@@ -602,12 +600,12 @@ document_store = WeaviateDocumentStore(url="http://localhost:8080")
 
 ```python
 def __init__(*,
-             url: Optional[str] = None,
-             collection_settings: Optional[dict[str, Any]] = None,
-             auth_client_secret: Optional[AuthCredentials] = None,
-             additional_headers: Optional[dict] = None,
-             embedded_options: Optional[EmbeddedOptions] = None,
-             additional_config: Optional[AdditionalConfig] = None,
+             url: str | None = None,
+             collection_settings: dict[str, Any] | None = None,
+             auth_client_secret: AuthCredentials | None = None,
+             additional_headers: dict | None = None,
+             embedded_options: EmbeddedOptions | None = None,
+             additional_config: AdditionalConfig | None = None,
              grpc_port: int = 50051,
              grpc_secure: bool = False)
 ```
@@ -696,8 +694,7 @@ Returns the number of documents present in the DocumentStore.
 #### WeaviateDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -766,4 +763,83 @@ This is recommended for performance reasons.
 Note that this parameter needs to be less or equal to the set `QUERY_MAXIMUM_RESULTS` variable
 set for the weaviate deployment (default is 10000).
 Reference: https://docs.weaviate.io/weaviate/manage-objects/delete#delete-all-objects
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.delete_by_filter"></a>
+
+#### WeaviateDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.delete_by_filter_async"></a>
+
+#### WeaviateDocumentStore.delete\_by\_filter\_async
+
+```python
+async def delete_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.update_by_filter"></a>
+
+#### WeaviateDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update. These will be merged with existing metadata.
+
+**Returns**:
+
+The number of documents updated.
+
+<a id="haystack_integrations.document_stores.weaviate.document_store.WeaviateDocumentStore.update_by_filter_async"></a>
+
+#### WeaviateDocumentStore.update\_by\_filter\_async
+
+```python
+async def update_by_filter_async(filters: dict[str, Any],
+                                 meta: dict[str, Any]) -> int
+```
+
+Asynchronously updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update. These will be merged with existing metadata.
+
+**Returns**:
+
+The number of documents updated.
 

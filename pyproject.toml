@@ -77,7 +77,7 @@ dependencies = [
 
 [tool.hatch.envs.default.scripts]
 release-note = "reno new {args}"
-fmt = "ruff check --fix {args} && ruff format {args}"
+fmt = "ruff check --fix {args}; ruff format {args}"
 fmt-check = "ruff check {args} && ruff format --check {args}"
 docs = "./.github/utils/pydoc-markdown.sh"
 
@@ -293,12 +293,22 @@ skip-magic-trailing-comma = true
   "SIM105", # try-except-pass instead of contextlib-suppress
   "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
 ]
-# in the following files, we still allow type hints like typing.List because we want to test both old and new types
-"test/core/test_type_utils.py" = ["UP006"]
-"test/utils/test_type_serialization.py" = ["UP006"]
-"test/components/agents/test_state_class.py" = ["UP006"]
+# in the following files, we still allow old type hints to handle and test them
+# UP006: generics like typing.List, typing.Dict
+# UP007: Union[X, Y] syntax
+# UP045: Optional[X] syntax
+"haystack/components/agents/state/state_utils.py" = ["UP007"]
+"haystack/core/super_component/utils.py" = ["UP007"]
+"haystack/core/type_utils.py" = ["UP007"]
+"haystack/tools/parameters_schema_utils.py" = ["UP007"]
+"test/components/agents/test_state_class.py" = ["UP006", "UP007", "UP045"]
 "test/components/converters/test_output_adapter.py" = ["UP006"]
 "test/components/joiners/test_list_joiner.py" = ["UP006"]
+"test/core/test_type_utils.py" = ["UP006", "UP007", "UP045"]
+"test/core/pipeline/test_type_syntax_compatibility.py" = ["UP007", "UP045"]
+"test/core/super_component/test_utils.py" = ["UP007", "UP045"]
+"test/tools/test_parameters_schema_utils.py" = ["UP007"]
+"test/utils/test_type_serialization.py" = ["UP006", "UP007", "UP045"]
 
 
 [tool.ruff.lint]
@@ -318,7 +328,9 @@ select = [
   "SIM",   # flake8-simplify
   "SLOT",  # flake8-slots
   "T10",   # flake8-debugger
-  "UP006", # non-pep585-annotation
+  "UP006", # non-pep585-annotation (enforce list, dict, etc.)
+  "UP007", # non-pep604-annotation-union (enforce X | Y syntax)
+  "UP045", # non-pep604-annotation-optional (enforce X | None syntax)
   "W",     # pycodestyle
   "YTT",   # flake8-2020
   "I",     # isort
@@ -337,7 +349,6 @@ select = [
 ]
 
 ignore = [
-  "F401",    # unused-import
   "PERF203", # `try`-`except` within a loop incurs performance overhead
   "PERF401", # Use a list comprehension to create a transformed list
   "PLR1714", # repeated-equality-comparison

@@ -62,12 +62,11 @@ assert res['retriever']['documents'][0].content == "There are over 7,000 languag
 ```python
 def __init__(*,
              document_store: PgvectorDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             vector_function: Optional[Literal["cosine_similarity",
-                                               "inner_product",
-                                               "l2_distance"]] = None,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             vector_function: Literal["cosine_similarity", "inner_product",
+                                      "l2_distance"] | None = None,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 **Arguments**:
@@ -131,10 +130,10 @@ Deserialized component.
 @component.output_types(documents=list[Document])
 def run(
     query_embedding: list[float],
-    filters: Optional[dict[str, Any]] = None,
-    top_k: Optional[int] = None,
-    vector_function: Optional[Literal["cosine_similarity", "inner_product",
-                                      "l2_distance"]] = None
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    vector_function: Literal["cosine_similarity", "inner_product",
+                             "l2_distance"] | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -162,10 +161,10 @@ A dictionary with the following keys:
 @component.output_types(documents=list[Document])
 async def run_async(
     query_embedding: list[float],
-    filters: Optional[dict[str, Any]] = None,
-    top_k: Optional[int] = None,
-    vector_function: Optional[Literal["cosine_similarity", "inner_product",
-                                      "l2_distance"]] = None
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    vector_function: Literal["cosine_similarity", "inner_product",
+                             "l2_distance"] | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -233,9 +232,9 @@ assert res['retriever']['documents'][0].content == "There are over 7,000 languag
 ```python
 def __init__(*,
              document_store: PgvectorDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE)
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE)
 ```
 
 **Arguments**:
@@ -289,8 +288,8 @@ Deserialized component.
 ```python
 @component.output_types(documents=list[Document])
 def run(query: str,
-        filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None) -> dict[str, list[Document]]
+        filters: dict[str, Any] | None = None,
+        top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Retrieve documents from the `PgvectorDocumentStore`, based on keywords.
@@ -315,8 +314,8 @@ A dictionary with the following keys:
 ```python
 @component.output_types(documents=list[Document])
 async def run_async(query: str,
-                    filters: Optional[dict[str, Any]] = None,
-                    top_k: Optional[int] = None) -> dict[str, list[Document]]
+                    filters: dict[str, Any] | None = None,
+                    top_k: int | None = None) -> dict[str, list[Document]]
 ```
 
 Asynchronously retrieve documents from the `PgvectorDocumentStore`, based on keywords.
@@ -363,9 +362,9 @@ def __init__(*,
              search_strategy: Literal["exact_nearest_neighbor",
                                       "hnsw"] = "exact_nearest_neighbor",
              hnsw_recreate_index_if_exists: bool = False,
-             hnsw_index_creation_kwargs: Optional[dict[str, int]] = None,
+             hnsw_index_creation_kwargs: dict[str, int] | None = None,
              hnsw_index_name: str = "haystack_hnsw_index",
-             hnsw_ef_search: Optional[int] = None,
+             hnsw_ef_search: int | None = None,
              keyword_index_name: str = "haystack_keyword_index")
 ```
 
@@ -514,14 +513,13 @@ Number of documents in the document store.
 #### PgvectorDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
 
 For a detailed specification of the filters,
-refer to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering)
+refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
 **Arguments**:
 
@@ -542,13 +540,13 @@ A list of Documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
 
 For a detailed specification of the filters,
-refer to the [documentation](https://docs.haystack.deepset.ai/v2.0/docs/metadata-filtering)
+refer to the [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering)
 
 **Arguments**:
 
@@ -665,4 +663,83 @@ async def delete_all_documents_async() -> None
 ```
 
 Asynchronously deletes all documents in the document store.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_by_filter"></a>
+
+#### PgvectorDocumentStore.delete\_by\_filter
+
+```python
+def delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.delete_by_filter_async"></a>
+
+#### PgvectorDocumentStore.delete\_by\_filter\_async
+
+```python
+async def delete_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously deletes all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for deletion.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents deleted.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.update_by_filter"></a>
+
+#### PgvectorDocumentStore.update\_by\_filter
+
+```python
+def update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update.
+
+**Returns**:
+
+The number of documents updated.
+
+<a id="haystack_integrations.document_stores.pgvector.document_store.PgvectorDocumentStore.update_by_filter_async"></a>
+
+#### PgvectorDocumentStore.update\_by\_filter\_async
+
+```python
+async def update_by_filter_async(filters: dict[str, Any],
+                                 meta: dict[str, Any]) -> int
+```
+
+Asynchronously updates the metadata of all documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to select documents for updating.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `meta`: The metadata fields to update.
+
+**Returns**:
+
+The number of documents updated.
 

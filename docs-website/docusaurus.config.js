@@ -53,12 +53,12 @@ const config = {
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.22-unstable',
+              label: '2.23-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.21',
+          lastVersion: '2.22',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -97,12 +97,12 @@ const config = {
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.22-unstable',
+            label: '2.23-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.21',
+        lastVersion: '2.22',
       },
     ],
     [
@@ -209,7 +209,8 @@ const config = {
             title: 'More',
             items: [
               { label: 'Integrations',   href: 'https://haystack.deepset.ai/integrations' },
-              { label: 'Studio', href: 'https://landing.deepset.ai/deepset-studio-signup' },
+              { label: 'Platform - Try Free', href: 'https://landing.deepset.ai/deepset-studio-signup' },
+              { label: 'Enterprise Support', href: 'https://landing.deepset.ai/deepset-studio-signup' },
             ],
           },
           {

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any, Optional
+from typing import Any
 
 from openai import AsyncOpenAI, OpenAI
 from openai.types import CreateEmbeddingResponse
@@ -41,14 +41,14 @@ class OpenAITextEmbedder:
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
         model: str = "text-embedding-ada-002",
-        dimensions: Optional[int] = None,
-        api_base_url: Optional[str] = None,
-        organization: Optional[str] = None,
+        dimensions: int | None = None,
+        api_base_url: str | None = None,
+        organization: str | None = None,
         prefix: str = "",
         suffix: str = "",
-        timeout: Optional[float] = None,
-        max_retries: Optional[int] = None,
-        http_client_kwargs: Optional[dict[str, Any]] = None,
+        timeout: float | None = None,
+        max_retries: int | None = None,
+        http_client_kwargs: dict[str, Any] | None = None,
     ):
         """
         Creates an OpenAITextEmbedder component.

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from copy import deepcopy
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Mapping
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -16,6 +16,7 @@ from haystack.core.pipeline.base import (
     PipelineBase,
 )
 from haystack.core.pipeline.breakpoint import (
+    SnapshotCallback,
     _create_pipeline_snapshot,
     _save_pipeline_snapshot,
     _validate_break_point_against_pipeline,
@@ -43,9 +44,9 @@ class Pipeline(PipelineBase):
         component: dict[str, Any],
         inputs: dict[str, Any],
         component_visits: dict[str, int],
-        parent_span: Optional[tracing.Span] = None,
+        parent_span: tracing.Span | None = None,
         *,
-        break_point: Optional[Breakpoint] = None,
+        break_point: Breakpoint | None = None,
     ) -> Mapping[str, Any]:
         """
         Runs a Component with the given inputs.
@@ -108,10 +109,11 @@ class Pipeline(PipelineBase):
     def run(  # noqa: PLR0915, PLR0912, C901, pylint: disable=too-many-branches
         self,
         data: dict[str, Any],
-        include_outputs_from: Optional[set[str]] = None,
+        include_outputs_from: set[str] | None = None,
         *,
-        break_point: Optional[Union[Breakpoint, AgentBreakpoint]] = None,
-        pipeline_snapshot: Optional[PipelineSnapshot] = None,
+        break_point: Breakpoint | AgentBreakpoint | None = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
     ) -> dict[str, Any]:
         """
         Runs the Pipeline with given input data.
@@ -193,6 +195,14 @@ class Pipeline(PipelineBase):
 
         :param pipeline_snapshot:
             A dictionary containing a snapshot of a previously saved pipeline execution.
+
+        :param snapshot_callback:
+            Optional callback function that is invoked when a pipeline snapshot is created.
+            The callback receives a `PipelineSnapshot` object and can return an optional string
+            (e.g., a file path or identifier).
+            If provided, the callback is used instead of the default file-saving behavior,
+            allowing custom handling of snapshots (e.g., saving to a database, sending to a remote service).
+            If not provided, the default behavior saves snapshots to a JSON file.
 
         :returns:
             A dictionary where each entry corresponds to a component name
@@ -358,6 +368,7 @@ class Pipeline(PipelineBase):
                 # If AgentBreakpoint is provided pass onto Agent's inputs
                 if isinstance(break_point, AgentBreakpoint) and component_name == break_point.agent_name:
                     component_inputs["break_point"] = break_point
+                    component_inputs["snapshot_callback"] = snapshot_callback
 
                 try:
                     component_outputs = self._run_component(
@@ -370,7 +381,7 @@ class Pipeline(PipelineBase):
                         break_point=break_point if isinstance(break_point, Breakpoint) else None,
                     )
                 except (BreakpointException, PipelineRuntimeError) as error:
-                    saved_break_point: Union[Breakpoint, AgentBreakpoint]
+                    saved_break_point: Breakpoint | AgentBreakpoint
                     if isinstance(error, PipelineRuntimeError):
                         saved_break_point = Breakpoint(
                             component_name=component_name,
@@ -402,7 +413,9 @@ class Pipeline(PipelineBase):
                     # Attach the pipeline snapshot to the error before re-raising
                     error.pipeline_snapshot = pipeline_snapshot
                     full_file_path = _save_pipeline_snapshot(
-                        pipeline_snapshot=pipeline_snapshot, raise_on_failure=isinstance(error, BreakpointException)
+                        pipeline_snapshot=pipeline_snapshot,
+                        raise_on_failure=isinstance(error, BreakpointException),
+                        snapshot_callback=snapshot_callback,
                     )
                     error.pipeline_snapshot_file_path = full_file_path
                     raise error

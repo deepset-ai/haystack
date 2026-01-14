@@ -4,7 +4,7 @@
 
 import inspect
 from dataclasses import dataclass
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 from haystack import logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
@@ -13,6 +13,7 @@ from haystack.core.component.component import component
 from haystack.core.errors import BreakpointException, PipelineRuntimeError
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.breakpoint import (
+    SnapshotCallback,
     _create_pipeline_snapshot_from_chat_generator,
     _create_pipeline_snapshot_from_tool_invoker,
     _save_pipeline_snapshot,
@@ -150,14 +151,14 @@ class Agent:
         self,
         *,
         chat_generator: ChatGenerator,
-        tools: Optional[ToolsType] = None,
-        system_prompt: Optional[str] = None,
-        exit_conditions: Optional[list[str]] = None,
-        state_schema: Optional[dict[str, Any]] = None,
+        tools: ToolsType | None = None,
+        system_prompt: str | None = None,
+        exit_conditions: list[str] | None = None,
+        state_schema: dict[str, Any] | None = None,
         max_agent_steps: int = 100,
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         raise_on_tool_invocation_failure: bool = False,
-        tool_invoker_kwargs: Optional[dict[str, Any]] = None,
+        tool_invoker_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -296,7 +297,13 @@ class Agent:
         return default_from_dict(cls, data)
 
     def _create_agent_span(self) -> Any:
-        """Create a span for the agent run."""
+        """
+        Create a span for the agent run.
+
+        If the agent is running as part of a pipeline, this span will be nested
+        under the current active span (the pipeline's component span).
+        """
+        parent_span = tracing.tracer.current_span()
         return tracing.tracer.trace(
             "haystack.agent.run",
             tags={
@@ -305,17 +312,18 @@ class Agent:
                 "haystack.agent.exit_conditions": self.exit_conditions,
                 "haystack.agent.state_schema": _schema_to_dict(self.state_schema),
             },
+            parent_span=parent_span,
         )
 
     def _initialize_fresh_execution(
         self,
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT],
+        streaming_callback: StreamingCallbackT | None,
         requires_async: bool,
         *,
-        system_prompt: Optional[str] = None,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        system_prompt: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[str] | None = None,
         **kwargs,
     ) -> _ExecutionContext:
         """
@@ -361,7 +369,7 @@ class Agent:
             tool_invoker_inputs=tool_invoker_inputs,
         )
 
-    def _select_tools(self, tools: Optional[Union[ToolsType, list[str]]] = None) -> ToolsType:
+    def _select_tools(self, tools: ToolsType | list[str] | None = None) -> ToolsType:
         """
         Select tools for the current run based on the provided tools parameter.
 
@@ -393,7 +401,7 @@ class Agent:
             return tools
 
         if isinstance(tools, list):
-            return cast(list[Union[Tool, Toolset]], tools)  # mypy can't narrow the Union type from isinstance check
+            return cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
@@ -402,11 +410,11 @@ class Agent:
     def _initialize_from_snapshot(
         self,
         snapshot: AgentSnapshot,
-        streaming_callback: Optional[StreamingCallbackT],
+        streaming_callback: StreamingCallbackT | None,
         requires_async: bool,
         *,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | list[str] | None = None,
     ) -> _ExecutionContext:
         """
         Initialize execution context from an AgentSnapshot.
@@ -452,7 +460,7 @@ class Agent:
             skip_chat_generator=skip_chat_generator,
         )
 
-    def _runtime_checks(self, break_point: Optional[AgentBreakpoint]) -> None:
+    def _runtime_checks(self, break_point: AgentBreakpoint | None) -> None:
         """
         Perform runtime checks before running the agent.
 
@@ -469,13 +477,14 @@ class Agent:
     def run(  # noqa: PLR0915
         self,
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        break_point: Optional[AgentBreakpoint] = None,
-        snapshot: Optional[AgentSnapshot] = None,
-        system_prompt: Optional[str] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        break_point: AgentBreakpoint | None = None,
+        snapshot: AgentSnapshot | None = None,
+        system_prompt: str | None = None,
+        tools: ToolsType | list[str] | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -493,6 +502,9 @@ class Agent:
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
+        :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
+            The callback receives a `PipelineSnapshot` object and can return an optional string.
+            If provided, the callback is used instead of the default file-saving behavior.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -565,10 +577,12 @@ class Agent:
                         )
                         if isinstance(e, BreakpointException):
                             e._break_point = e.pipeline_snapshot.break_point
-                        # If Agent is not in a pipeline, we save the snapshot to a file.
+                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
                         # Checked by __component_name__ not being set.
                         if getattr(self, "__component_name__", None) is None:
-                            full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                            full_file_path = _save_pipeline_snapshot(
+                                pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
+                            )
                             e.pipeline_snapshot_file_path = full_file_path
                         raise e
 
@@ -623,7 +637,9 @@ class Agent:
                     # If Agent is not in a pipeline, we save the snapshot to a file.
                     # Checked by __component_name__ not being set.
                     if getattr(self, "__component_name__", None) is None:
-                        full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                        full_file_path = _save_pipeline_snapshot(
+                            pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
+                        )
                         e.pipeline_snapshot_file_path = full_file_path
                     raise e
 
@@ -655,13 +671,14 @@ class Agent:
     async def run_async(
         self,
         messages: list[ChatMessage],
-        streaming_callback: Optional[StreamingCallbackT] = None,
+        streaming_callback: StreamingCallbackT | None = None,
         *,
-        generation_kwargs: Optional[dict[str, Any]] = None,
-        break_point: Optional[AgentBreakpoint] = None,
-        snapshot: Optional[AgentSnapshot] = None,
-        system_prompt: Optional[str] = None,
-        tools: Optional[Union[ToolsType, list[str]]] = None,
+        generation_kwargs: dict[str, Any] | None = None,
+        break_point: AgentBreakpoint | None = None,
+        snapshot: AgentSnapshot | None = None,
+        system_prompt: str | None = None,
+        tools: ToolsType | list[str] | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -682,6 +699,9 @@ class Agent:
             the relevant information to restart the Agent execution from where it left off.
         :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
+        :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
+            The callback receives a `PipelineSnapshot` object and can return an optional string.
+            If provided, the callback is used instead of the default file-saving behavior.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -749,10 +769,12 @@ class Agent:
                         )
                         e._break_point = e.pipeline_snapshot.break_point
                         # We check if the agent is part of a pipeline by checking for __component_name__
-                        # If it is not in a pipeline, we save the snapshot to a file.
+                        # If it is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
                         in_pipeline = getattr(self, "__component_name__", None) is not None
                         if not in_pipeline:
-                            full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                            full_file_path = _save_pipeline_snapshot(
+                                pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
+                            )
                             e.pipeline_snapshot_file_path = full_file_path
                         raise e
 
@@ -797,10 +819,12 @@ class Agent:
                         break_point=break_point,
                     )
                     e._break_point = e.pipeline_snapshot.break_point
-                    # If Agent is not in a pipeline, we save the snapshot to a file.
+                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
                     # Checked by __component_name__ not being set.
                     if getattr(self, "__component_name__", None) is None:
-                        full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                        full_file_path = _save_pipeline_snapshot(
+                            pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
+                        )
                         e.pipeline_snapshot_file_path = full_file_path
                     raise e
 

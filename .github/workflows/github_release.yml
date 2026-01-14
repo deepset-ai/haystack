@@ -72,7 +72,7 @@ jobs:
           END: ${{ github.ref_name }}
         run: |
           JQ_EXPR='[.commits[].author.login]
-            | map(select(. != null and . != "HaystackBot" and . != "dependabot[bot]"))
+            | map(select(. != null and . != "HaystackBot" and . != "dependabot[bot]" and . != "github-actions[bot]"))
             | unique
             | sort_by(ascii_downcase)
             | map("@\(.)")

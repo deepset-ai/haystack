@@ -132,10 +132,10 @@ print(result["results"])
 #### ContextRelevanceEvaluator.\_\_init\_\_
 
 ```python
-def __init__(examples: Optional[list[dict[str, Any]]] = None,
+def __init__(examples: list[dict[str, Any]] | None = None,
              progress_bar: bool = True,
              raise_on_failure: bool = True,
-             chat_generator: Optional[ChatGenerator] = None)
+             chat_generator: ChatGenerator | None = None)
 ```
 
 Creates an instance of ContextRelevanceEvaluator.
@@ -641,7 +641,7 @@ print(result["score"])
 #### DocumentRecallEvaluator.\_\_init\_\_
 
 ```python
-def __init__(mode: Union[str, RecallMode] = RecallMode.SINGLE_HIT)
+def __init__(mode: str | RecallMode = RecallMode.SINGLE_HIT)
 ```
 
 Create a DocumentRecallEvaluator component.
@@ -733,10 +733,10 @@ print(result["results"])
 #### FaithfulnessEvaluator.\_\_init\_\_
 
 ```python
-def __init__(examples: Optional[list[dict[str, Any]]] = None,
+def __init__(examples: list[dict[str, Any]] | None = None,
              progress_bar: bool = True,
              raise_on_failure: bool = True,
-             chat_generator: Optional[ChatGenerator] = None)
+             chat_generator: ChatGenerator | None = None)
 ```
 
 Creates an instance of FaithfulnessEvaluator.
@@ -990,7 +990,7 @@ def __init__(instructions: str,
              progress_bar: bool = True,
              *,
              raise_on_failure: bool = True,
-             chat_generator: Optional[ChatGenerator] = None)
+             chat_generator: ChatGenerator | None = None)
 ```
 
 Creates an instance of LLMEvaluator.
@@ -1239,9 +1239,10 @@ print(result["individual_scores"])
 def __init__(
     model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
     batch_size: int = 32,
-    device: Optional[ComponentDevice] = None,
+    device: ComponentDevice | None = None,
     token: Secret = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"],
-                                        strict=False))
+                                        strict=False)
+) -> None
 ```
 
 Creates a new instance of SASEvaluator.
@@ -1293,7 +1294,7 @@ The deserialized component instance.
 #### SASEvaluator.warm\_up
 
 ```python
-def warm_up()
+def warm_up() -> None
 ```
 
 Initializes the component.
@@ -1305,7 +1306,7 @@ Initializes the component.
 ```python
 @component.output_types(score=float, individual_scores=list[float])
 def run(ground_truth_answers: list[str],
-        predicted_answers: list[str]) -> dict[str, Any]
+        predicted_answers: list[str]) -> dict[str, float | list[float]]
 ```
 
 SASEvaluator component run method.

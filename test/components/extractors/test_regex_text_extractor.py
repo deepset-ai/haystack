@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 import pytest
 
 from haystack import Pipeline
@@ -19,6 +21,34 @@ class TestRegexTextExtractor:
         pattern = r"<issue>"
         extractor = RegexTextExtractor(regex_pattern=pattern)
         assert extractor.regex_pattern == pattern
+
+    def test_to_dict(self):
+        pattern = r'<issue url="(.+?)">'
+        extractor = RegexTextExtractor(regex_pattern=pattern)
+        data = extractor.to_dict()
+        assert data == {
+            "type": "haystack.components.extractors.regex_text_extractor.RegexTextExtractor",
+            "init_parameters": {"regex_pattern": pattern},
+        }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.extractors.regex_text_extractor.RegexTextExtractor",
+            "init_parameters": {"regex_pattern": r'<issue url="(.+?)">'},
+        }
+        extractor = RegexTextExtractor.from_dict(data=data)
+        assert extractor.regex_pattern == r'<issue url="(.+?)">'
+
+    def test_from_dict_with_removed_parameter(self, caplog):
+        caplog.set_level(logging.WARNING)
+
+        data = {
+            "type": "haystack.components.extractors.regex_text_extractor.RegexTextExtractor",
+            "init_parameters": {"regex_pattern": r'<issue url="(.+?)">', "return_empty_on_no_match": False},
+        }
+        extractor = RegexTextExtractor.from_dict(data=data)
+        assert extractor.regex_pattern == r'<issue url="(.+?)">'
+        assert "The `return_empty_on_no_match` init parameter has been removed" in caplog.text
 
     def test_extract_from_string_with_capture_group(self):
         pattern = r'<issue url="(.+?)">'
@@ -39,25 +69,11 @@ class TestRegexTextExtractor:
         extractor = RegexTextExtractor(regex_pattern=pattern)
         text = "This text has no matching pattern"
         result = extractor.run(text_or_messages=text)
-        assert result == {}
-
-    def test_extract_from_string_no_match_return_empty_false(self):
-        pattern = r'<issue url="(.+?)">'
-        text = "This text has no matching pattern"
-        extractor = RegexTextExtractor(regex_pattern=pattern, return_empty_on_no_match=False)
-        result = extractor.run(text_or_messages=text)
         assert result == {"captured_text": ""}
 
     def test_extract_from_string_empty_input(self):
         pattern = r'<issue url="(.+?)">'
         extractor = RegexTextExtractor(regex_pattern=pattern)
-        text = ""
-        result = extractor.run(text_or_messages=text)
-        assert result == {}
-
-    def test_extract_from_string_empty_input_no_match_return_empty_false(self):
-        pattern = r'<issue url="(.+?)">'
-        extractor = RegexTextExtractor(regex_pattern=pattern, return_empty_on_no_match=False)
         text = ""
         result = extractor.run(text_or_messages=text)
         assert result == {"captured_text": ""}
@@ -88,14 +104,14 @@ class TestRegexTextExtractor:
             ChatMessage.from_user("Last message with no matching pattern"),
         ]
         result = extractor.run(text_or_messages=messages)
-        assert result == {}
+        assert result == {"captured_text": ""}
 
     def test_extract_from_chat_messages_empty_list(self):
         pattern = r'<issue url="(.+?)">'
         extractor = RegexTextExtractor(regex_pattern=pattern)
         messages = []
         result = extractor.run(text_or_messages=messages)
-        assert result == {}
+        assert result == {"captured_text": ""}
 
     def test_extract_from_chat_messages_invalid_type(self):
         pattern = r'<issue url="(.+?)">'
@@ -103,6 +119,13 @@ class TestRegexTextExtractor:
         messages = ["not a ChatMessage object"]
         with pytest.raises(ValueError, match="Expected ChatMessage object, got <class 'str'>"):
             extractor.run(text_or_messages=messages)
+
+    def test_extract_from_chat_messages_last_message_no_text(self):
+        pattern = r'<issue url="(.+?)">'
+        extractor = RegexTextExtractor(regex_pattern=pattern)
+        messages = [ChatMessage.from_assistant(text=None)]
+        result = extractor.run(text_or_messages=messages)
+        assert result == {"captured_text": ""}
 
     def test_multiple_capture_groups(self):
         pattern = r"(\w+)@(\w+)\.(\w+)"
