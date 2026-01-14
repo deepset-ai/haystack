@@ -18,13 +18,16 @@ variable "BASE_IMAGE_TAG_SUFFIX" {
   default = "local"
 }
 
-variable "HAYSTACK_EXTRAS" {
-  default = ""
+variable "IS_STABLE" {
+  default = "false"
 }
 
 target "base" {
   dockerfile = "Dockerfile.base"
-  tags = ["${IMAGE_NAME}:base-${IMAGE_TAG_SUFFIX}"]
+  tags = concat(
+    ["${IMAGE_NAME}:base-${IMAGE_TAG_SUFFIX}"],
+    var.IS_STABLE ? ["${IMAGE_NAME}:stable"] : []
+  )
   args = {
     build_image = "python:3.12-slim"
     base_image = "python:3.12-slim"
