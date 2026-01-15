@@ -776,9 +776,11 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     if logprobs:
         final_response["logprobs"] = logprobs
 
-    # Add reasoning content if both id and text are available
+    # Add reasoning content if id is available
+    # Note: the API expects a reasoning id even if there is no reasoning text
+    # function calls without reasoning ids are not supported by the API
     reasoning = None
-    if reasoning_id and reasoning_text:
+    if reasoning_id:
         reasoning = ReasoningContent(reasoning_text=reasoning_text, extra={"id": reasoning_id, "type": "reasoning"})
 
     return ChatMessage.from_assistant(
@@ -862,10 +864,9 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     if reasonings:
         formatted_reasonings = []
         for reasoning in reasonings:
-            reasoning_item = {
-                **(reasoning.extra),
-                "summary": [{"text": reasoning.reasoning_text, "type": "summary_text"}],
-            }
+            reasoning_item = {"summary": [], **(reasoning.extra)}
+            if reasoning.reasoning_text:
+                reasoning_item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
             formatted_reasonings.append(reasoning_item)
         formatted_messages.extend(formatted_reasonings)
 

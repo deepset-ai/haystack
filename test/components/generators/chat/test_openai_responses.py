@@ -2186,17 +2186,23 @@ class TestConversionMethods:
             ),
         ]
 
-    def test_convert_streaming_chunks_to_chat_message_with_tool_call(self, streaming_chunks_with_tool_call):
+    def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
+        self, streaming_chunks_with_tool_call
+    ):
         chat_message = _convert_streaming_chunks_to_chat_message(streaming_chunks_with_tool_call)
         assert chat_message == ChatMessage(
             _role="assistant",
             _content=[
+                ReasoningContent(
+                    reasoning_text="",
+                    extra={"id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c", "type": "reasoning"},
+                ),
                 ToolCall(
                     tool_name="weather",
                     arguments={"city": "Paris"},
                     id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
                     extra={"call_id": "call_OZZXFm7SLb4F3Xg8a9XVVCvv"},
-                )
+                ),
             ],
             _name=None,
             _meta={
@@ -2262,20 +2268,6 @@ class TestOpenAIResponsesChatGeneratorAsync:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-
-    @pytest.mark.asyncio
-    def test_run_with_wrong_model_async(self):
-        mock_client = MagicMock()
-        mock_client.responses.create.side_effect = OpenAIError("Invalid model name")
-
-        generator = OpenAIResponsesChatGenerator(
-            api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong"
-        )
-
-        generator.client = mock_client
-
-        with pytest.raises(OpenAIError):
-            generator.run([ChatMessage.from_user("irrelevant")])
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
