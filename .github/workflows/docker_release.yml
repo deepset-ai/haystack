@@ -62,7 +62,6 @@ jobs:
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           HAYSTACK_VERSION: "main"
-          IS_STABLE: ${{ steps.is-stable.outputs.is_stable }}
         with:
           workdir: docker
           targets: base
