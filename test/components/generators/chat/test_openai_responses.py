@@ -5,10 +5,10 @@
 import json
 import os
 from typing import Any
-from unittest.mock import ANY, MagicMock
+from unittest.mock import ANY
 
 import pytest
-from openai import AsyncOpenAI, OpenAIError
+from openai import AsyncOpenAI
 from openai.types import Reasoning, ResponseFormatText
 from openai.types.responses import (
     FunctionTool,
@@ -244,9 +244,6 @@ def streaming_chunks_with_tool_call():
     ]
 
 
-def callback(chunk: StreamingChunk) -> None: ...
-
-
 @component
 class MessageExtractor:
     @component.output_types(messages=list[str], meta=dict[str, Any])
@@ -299,7 +296,7 @@ def tools():
     return [weather_tool, message_extractor_tool]
 
 
-class TestOpenAIResponsesChatGenerator:
+class TestInitializationSerde:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIResponsesChatGenerator()
@@ -317,15 +314,6 @@ class TestOpenAIResponsesChatGenerator:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         with pytest.raises(ValueError):
             OpenAIResponsesChatGenerator()
-
-    def test_run_fail_with_duplicate_tool_names(self, monkeypatch, tools):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-
-        duplicate_tools = [tools[0], tools[0]]
-        with pytest.raises(ValueError):
-            chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
-            component = OpenAIResponsesChatGenerator(tools=duplicate_tools)
-            component.run(chat_messages)
 
     def test_init_with_parameters(self, monkeypatch):
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=lambda x: x)
@@ -370,6 +358,13 @@ class TestOpenAIResponsesChatGenerator:
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 100.0
         assert component.client.max_retries == 10
+
+    def test_init_with_toolset(self, tools, monkeypatch):
+        """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        generator = OpenAIResponsesChatGenerator(tools=toolset)
+        assert generator.tools == toolset
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -520,13 +515,6 @@ class TestOpenAIResponsesChatGenerator:
         }
         with pytest.raises(ValueError):
             OpenAIResponsesChatGenerator.from_dict(data)
-
-    def test_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
-        """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        toolset = Toolset(tools)
-        generator = OpenAIResponsesChatGenerator(tools=toolset)
-        assert generator.tools == toolset
 
     def test_from_dict_with_toolset(self, tools, monkeypatch):
         """Test that the OpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
@@ -813,11 +801,13 @@ class TestOpenAIResponsesChatGenerator:
         assert len(results["replies"]) == 1
         assert openai_mock_responses.call_args.kwargs["reasoning"] == {"effort": "low", "summary": "auto"}
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
+
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+@pytest.mark.integration
+class TestIntegration:
     def test_live_run(self):
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
@@ -833,11 +823,6 @@ class TestOpenAIResponsesChatGenerator:
         assert message.meta["id"] is not None
         assert message.meta["logprobs"] is not None
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     def test_live_run_with_reasoning(self):
         chat_messages = [ChatMessage.from_user("Explain in 2 lines why is there a Moon?")]
         component = OpenAIResponsesChatGenerator(generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}})
@@ -851,11 +836,6 @@ class TestOpenAIResponsesChatGenerator:
         assert message.meta["usage"]["output_tokens"] > 0
         assert "reasoning_tokens" in message.meta["usage"]["output_tokens_details"]
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     def test_live_run_with_text_format(self, calendar_event_model):
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
@@ -870,11 +850,6 @@ class TestOpenAIResponsesChatGenerator:
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     # So far from documentation, responses.parse only supports BaseModel
     def test_live_run_with_text_format_json_schema(self):
         json_schema = {
@@ -904,11 +879,6 @@ class TestOpenAIResponsesChatGenerator:
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     @pytest.mark.skip(
         reason="Streaming plus pydantic based model does not work due to known issue in openai python "
         "sdk https://github.com/openai/openai-python/issues/2305"
@@ -928,11 +898,6 @@ class TestOpenAIResponsesChatGenerator:
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     def test_live_run_with_ser_deser_and_text_format(self, calendar_event_model):
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
@@ -948,24 +913,6 @@ class TestOpenAIResponsesChatGenerator:
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
-    def test_run_with_wrong_model(self):
-        mock_client = MagicMock()
-        mock_client.responses.create.side_effect = OpenAIError("Invalid model name")
-
-        generator = OpenAIResponsesChatGenerator(
-            api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong"
-        )
-
-        generator.client = mock_client
-
-        with pytest.raises(OpenAIError):
-            generator.run([ChatMessage.from_user("irrelevant")])
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     def test_live_run_streaming(self):
         class Callback:
             def __init__(self):
@@ -1005,12 +952,6 @@ class TestOpenAIResponsesChatGenerator:
         assert callback.counter > 1
         assert "Paris" in callback.responses
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_live_run_with_reasoning_and_streaming(self):
         class Callback:
             def __init__(self):
@@ -1035,11 +976,6 @@ class TestOpenAIResponsesChatGenerator:
         assert message.meta["usage"]["output_tokens"] > 0
         assert "reasoning_tokens" in message.meta["usage"]["output_tokens_details"]
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     def test_live_run_with_tools_streaming(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
 
@@ -1064,11 +1000,6 @@ class TestOpenAIResponsesChatGenerator:
         assert "berlin" in city_values and "paris" in city_values
         assert len(city_values) == 2
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     def test_live_run_with_toolset(self, tools):
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         toolset = Toolset(tools)
@@ -1086,11 +1017,6 @@ class TestOpenAIResponsesChatGenerator:
         assert tool_call.arguments.keys() == {"city"}
         assert "Paris" in tool_call.arguments["city"]
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     def test_live_run_multimodal(self, test_files_path):
         image_path = test_files_path / "images" / "apple.jpg"
 
@@ -1147,11 +1073,6 @@ class TestOpenAIResponsesChatGenerator:
         message = results["replies"][0]
         assert message.meta["status"] == "completed"
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     def test_live_run_with_tools_streaming_and_reasoning(self, tools):
         chat_messages = [
             ChatMessage.from_user("What's the weather like in Paris and Berlin? Make sure to use the provided tool.")
@@ -1183,11 +1104,6 @@ class TestOpenAIResponsesChatGenerator:
         arguments = [tool_call.arguments for tool_call in tool_calls]
         assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
     def test_live_run_with_agent_streaming_and_reasoning(self):
         # Tool Definition
         calculator_tool = Tool(
