@@ -16,6 +16,7 @@ from haystack.components.embedders.backends.sentence_transformers_backend import
     _SentenceTransformersEmbeddingBackendFactory,
 )
 from haystack.lazy_imports import LazyImport
+from haystack.utils import get_progress_bar_setting
 from haystack.utils.auth import Secret, deserialize_secrets_inplace
 from haystack.utils.device import ComponentDevice
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
@@ -140,7 +141,8 @@ class SentenceTransformersDocumentImageEmbedder:
         self.device = ComponentDevice.resolve_device(device)
         self.token = token
         self.batch_size = batch_size
-        self.progress_bar = progress_bar
+        self._progress_bar_param = progress_bar
+        self.progress_bar = get_progress_bar_setting(progress_bar)
         self.normalize_embeddings = normalize_embeddings
         self.trust_remote_code = trust_remote_code
         self.local_files_only = local_files_only
@@ -167,7 +169,7 @@ class SentenceTransformersDocumentImageEmbedder:
             device=self.device.to_dict(),
             token=self.token.to_dict() if self.token else None,
             batch_size=self.batch_size,
-            progress_bar=self.progress_bar,
+            progress_bar=self._progress_bar_param,
             normalize_embeddings=self.normalize_embeddings,
             trust_remote_code=self.trust_remote_code,
             local_files_only=self.local_files_only,
