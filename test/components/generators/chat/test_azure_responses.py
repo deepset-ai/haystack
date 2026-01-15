@@ -74,7 +74,7 @@ def tools():
     return [weather_tool, message_extractor_tool]
 
 
-class TestAzureOpenAIResponsesChatGenerator:
+class TestInitialization:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -111,6 +111,15 @@ class TestAzureOpenAIResponsesChatGenerator:
         assert component.tools_strict
         assert component.max_retries is None
 
+    def test_init_with_toolset(self, tools, monkeypatch):
+        """Test that the AzureOpenAIChatGenerator can be initialized with a Toolset."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        generator = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
+        assert generator.tools == toolset
+
+
+class TestSerDe:
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -208,6 +217,38 @@ class TestAzureOpenAIResponsesChatGenerator:
             },
         }
 
+    def test_to_dict_with_toolset(self, tools, monkeypatch):
+        """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools[:1])
+        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
+        data = component.to_dict()
+
+        expected_tools_data = {
+            "type": "haystack.tools.toolset.Toolset",
+            "data": {
+                "tools": [
+                    {
+                        "type": "haystack.tools.tool.Tool",
+                        "data": {
+                            "name": "weather",
+                            "description": "useful to determine the weather in a given location",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {"city": {"type": "string"}},
+                                "required": ["city"],
+                            },
+                            "function": "generators.chat.test_azure_responses.get_weather",
+                            "outputs_to_string": None,
+                            "inputs_from_state": None,
+                            "outputs_to_state": None,
+                        },
+                    }
+                ]
+            },
+        }
+        assert data["init_parameters"]["tools"] == expected_tools_data
+
     def test_from_dict(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_AD_TOKEN", "test-ad-token")
@@ -288,6 +329,19 @@ class TestAzureOpenAIResponsesChatGenerator:
         assert generator.tools_strict == False
         assert generator.http_client_kwargs is None
 
+    def test_from_dict_with_toolset(self, tools, monkeypatch):
+        """Test that the AzureOpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        toolset = Toolset(tools)
+        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
+        data = component.to_dict()
+
+        deserialized_component = AzureOpenAIResponsesChatGenerator.from_dict(data)
+
+        assert isinstance(deserialized_component.tools, Toolset)
+        assert len(deserialized_component.tools) == len(tools)
+        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
+
     def test_pipeline_serialization_deserialization(self, tmp_path, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         generator = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -322,161 +376,8 @@ class TestAzureOpenAIResponsesChatGenerator:
         q = Pipeline.loads(p_str)
         assert p.to_dict() == q.to_dict()
 
-    def test_azure_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
-        """Test that the AzureOpenAIChatGenerator can be initialized with a Toolset."""
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
-        toolset = Toolset(tools)
-        generator = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
-        assert generator.tools == toolset
 
-    def test_from_dict_with_toolset(self, tools, monkeypatch):
-        """Test that the AzureOpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
-        toolset = Toolset(tools)
-        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
-        data = component.to_dict()
-
-        deserialized_component = AzureOpenAIResponsesChatGenerator.from_dict(data)
-
-        assert isinstance(deserialized_component.tools, Toolset)
-        assert len(deserialized_component.tools) == len(tools)
-        assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
-
-    @pytest.mark.integration
-    @pytest.mark.skipif(
-        not os.environ.get("AZURE_OPENAI_API_KEY", None) or not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
-        reason=(
-            "Please export env variables called AZURE_OPENAI_API_KEY containing "
-            "the Azure OpenAI key, AZURE_OPENAI_ENDPOINT containing "
-            "the Azure OpenAI endpoint URL to run this test."
-        ),
-    )
-    def test_live_run(self):
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
-        component = AzureOpenAIResponsesChatGenerator(azure_deployment="gpt-4o-mini")
-        results = component.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text
-        assert "gpt-4o-mini" in message.meta["model"]
-        assert message.meta["status"] == "completed"
-
-    @pytest.mark.integration
-    @pytest.mark.skipif(
-        not os.environ.get("AZURE_OPENAI_API_KEY", None) or not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
-        reason=(
-            "Please export env variables called AZURE_OPENAI_API_KEY containing "
-            "the Azure OpenAI key, AZURE_OPENAI_ENDPOINT containing "
-            "the Azure OpenAI endpoint URL to run this test."
-        ),
-    )
-    def test_live_run_with_tools(self, tools):
-        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
-        component = AzureOpenAIResponsesChatGenerator(
-            organization="HaystackCI", tools=tools, azure_deployment="gpt-4o-mini"
-        )
-        results = component.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message = results["replies"][0]
-
-        assert not message.texts
-        assert not message.text
-        assert message.tool_calls
-        tool_call = message.tool_call
-        assert isinstance(tool_call, ToolCall)
-        assert tool_call.tool_name == "weather"
-        assert tool_call.arguments == {"city": "Paris"}
-        assert message.meta["status"] == "completed"
-
-    @pytest.mark.skipif(
-        not os.environ.get("AZURE_OPENAI_API_KEY", None),
-        reason="Export an env var called AZURE_OPENAI_API_KEY containing the Azure OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    def test_live_run_with_text_format(self, calendar_event_model):
-        chat_messages = [
-            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
-        ]
-        component = AzureOpenAIResponsesChatGenerator(
-            azure_deployment="gpt-4o-mini", generation_kwargs={"text_format": calendar_event_model}
-        )
-        results = component.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)
-        assert "Marketing Summit" in msg["event_name"]
-        assert isinstance(msg["event_date"], str)
-        assert isinstance(msg["event_location"], str)
-        assert message.meta["status"] == "completed"
-
-    @pytest.mark.skipif(
-        not os.environ.get("AZURE_OPENAI_API_KEY", None),
-        reason="Export an env var called AZURE_OPENAI_API_KEY containing the Azure OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    # So far from documentation, responses.parse only supports BaseModel
-    def test_live_run_with_text_format_json_schema(self):
-        json_schema = {
-            "format": {
-                "type": "json_schema",
-                "name": "person",
-                "strict": True,
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "minLength": 1},
-                        "age": {"type": "number", "minimum": 0, "maximum": 130},
-                    },
-                    "required": ["name", "age"],
-                    "additionalProperties": False,
-                },
-            }
-        }
-        chat_messages = [ChatMessage.from_user("Jane 54 years old")]
-        component = AzureOpenAIResponsesChatGenerator(
-            azure_deployment="gpt-4o-mini", generation_kwargs={"text": json_schema}
-        )
-        results = component.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)
-        assert "Jane" in msg["name"]
-        assert msg["age"] == 54
-        assert message.meta["status"] == "completed"
-        assert message.meta["usage"]["output_tokens"] > 0
-
-    def test_to_dict_with_toolset(self, tools, monkeypatch):
-        """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
-        toolset = Toolset(tools[:1])
-        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
-        data = component.to_dict()
-
-        expected_tools_data = {
-            "type": "haystack.tools.toolset.Toolset",
-            "data": {
-                "tools": [
-                    {
-                        "type": "haystack.tools.tool.Tool",
-                        "data": {
-                            "name": "weather",
-                            "description": "useful to determine the weather in a given location",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {"city": {"type": "string"}},
-                                "required": ["city"],
-                            },
-                            "function": "generators.chat.test_azure_responses.get_weather",
-                            "outputs_to_string": None,
-                            "inputs_from_state": None,
-                            "outputs_to_state": None,
-                        },
-                    }
-                ]
-            },
-        }
-        assert data["init_parameters"]["tools"] == expected_tools_data
-
+class TestWarmUp:
     def test_warm_up_with_tools(self, monkeypatch):
         """Test that warm_up() calls warm_up on tools and is idempotent."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
@@ -568,6 +469,92 @@ class TestAzureOpenAIResponsesChatGenerator:
         assert len(warm_up_calls) == initial_count
 
 
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("AZURE_OPENAI_API_KEY", None) or not os.environ.get("AZURE_OPENAI_ENDPOINT", None),
+    reason=(
+        "Please export env variables called AZURE_OPENAI_API_KEY containing "
+        "the Azure OpenAI key, AZURE_OPENAI_ENDPOINT containing "
+        "the Azure OpenAI endpoint URL to run this test."
+    ),
+)
+class TestIntegration:
+    def test_live_run(self):
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = AzureOpenAIResponsesChatGenerator(azure_deployment="gpt-4o-mini")
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        assert "Paris" in message.text
+        assert "gpt-4o-mini" in message.meta["model"]
+        assert message.meta["status"] == "completed"
+
+    def test_live_run_with_tools(self, tools):
+        chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
+        component = AzureOpenAIResponsesChatGenerator(
+            organization="HaystackCI", tools=tools, azure_deployment="gpt-4o-mini"
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message = results["replies"][0]
+
+        assert not message.texts
+        assert not message.text
+        assert message.tool_calls
+        tool_call = message.tool_call
+        assert isinstance(tool_call, ToolCall)
+        assert tool_call.tool_name == "weather"
+        assert tool_call.arguments == {"city": "Paris"}
+        assert message.meta["status"] == "completed"
+
+    def test_live_run_with_text_format(self, calendar_event_model):
+        chat_messages = [
+            ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
+        ]
+        component = AzureOpenAIResponsesChatGenerator(
+            azure_deployment="gpt-4o-mini", generation_kwargs={"text_format": calendar_event_model}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Marketing Summit" in msg["event_name"]
+        assert isinstance(msg["event_date"], str)
+        assert isinstance(msg["event_location"], str)
+        assert message.meta["status"] == "completed"
+
+    # So far from documentation, responses.parse only supports BaseModel
+    def test_live_run_with_text_format_json_schema(self):
+        json_schema = {
+            "format": {
+                "type": "json_schema",
+                "name": "person",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "minLength": 1},
+                        "age": {"type": "number", "minimum": 0, "maximum": 130},
+                    },
+                    "required": ["name", "age"],
+                    "additionalProperties": False,
+                },
+            }
+        }
+        chat_messages = [ChatMessage.from_user("Jane 54 years old")]
+        component = AzureOpenAIResponsesChatGenerator(
+            azure_deployment="gpt-4o-mini", generation_kwargs={"text": json_schema}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        msg = json.loads(message.text)
+        assert "Jane" in msg["name"]
+        assert msg["age"] == 54
+        assert message.meta["status"] == "completed"
+        assert message.meta["usage"]["output_tokens"] > 0
+
+
 class TestAzureOpenAIResponsesChatGeneratorAsync:
     def test_init_should_also_create_async_client_with_same_args(self, tools):
         component = AzureOpenAIResponsesChatGenerator(
@@ -631,4 +618,5 @@ class TestAzureOpenAIResponsesChatGeneratorAsync:
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["status"] == "completed"
 
-    # additional tests intentionally omitted as they are covered by test_openai.py
+    # additional tests intentionally omitted as they are covered by test_openai_responses.py
+    # and test_openai_responses_conversion.py
