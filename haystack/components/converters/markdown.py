@@ -12,6 +12,7 @@ from haystack import Document, component, logging
 from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
+from haystack.utils import get_progress_bar_setting
 
 with LazyImport("Run 'pip install markdown-it-py mdit_plain'") as markdown_conversion_imports:
     from markdown_it import MarkdownIt
@@ -54,7 +55,8 @@ class MarkdownToDocument:
         markdown_conversion_imports.check()
 
         self.table_to_single_line = table_to_single_line
-        self.progress_bar = progress_bar
+        self._progress_bar_param = progress_bar
+        self.progress_bar = get_progress_bar_setting(progress_bar)
         self.store_full_path = store_full_path
 
     @component.output_types(documents=list[Document])
