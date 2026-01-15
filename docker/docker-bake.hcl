@@ -22,6 +22,9 @@ variable "IS_STABLE" {
   default = "false"
 }
 
+# 2.Y.Z releases are also tagged as "stable"
+# Example: 2.99.0 is tagged as base-2.99.0 and stable
+
 target "base" {
   dockerfile = "Dockerfile.base"
   tags = "${compact([
