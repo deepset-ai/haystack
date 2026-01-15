@@ -9,7 +9,7 @@ from haystack.components.embedders.backends.sentence_transformers_backend import
     _SentenceTransformersEmbeddingBackend,
     _SentenceTransformersEmbeddingBackendFactory,
 )
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace, get_progress_bar_setting
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 
@@ -120,7 +120,8 @@ class SentenceTransformersTextEmbedder:
         self.prefix = prefix
         self.suffix = suffix
         self.batch_size = batch_size
-        self.progress_bar = progress_bar
+        self._progress_bar_param = progress_bar
+        self.progress_bar = get_progress_bar_setting(progress_bar)
         self.normalize_embeddings = normalize_embeddings
         self.trust_remote_code = trust_remote_code
         self.revision = revision
@@ -155,7 +156,7 @@ class SentenceTransformersTextEmbedder:
             prefix=self.prefix,
             suffix=self.suffix,
             batch_size=self.batch_size,
-            progress_bar=self.progress_bar,
+            progress_bar=self._progress_bar_param,
             normalize_embeddings=self.normalize_embeddings,
             trust_remote_code=self.trust_remote_code,
             revision=self.revision,
