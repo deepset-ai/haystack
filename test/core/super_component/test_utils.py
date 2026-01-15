@@ -5,22 +5,7 @@
 from typing import Any, Optional, Union
 
 from haystack.core.component.types import GreedyVariadic, Variadic
-from haystack.core.super_component.utils import _is_compatible, _is_optional_type
-
-
-def test_is_optional_type():
-    assert _is_optional_type(Optional[int]) is True
-    assert _is_optional_type(Union[int, None]) is True
-    assert _is_optional_type(int | None) is True
-
-    assert _is_optional_type(Optional[list[int]]) is True
-    assert _is_optional_type(Union[list[int], None]) is True
-    assert _is_optional_type(list[int] | None) is True
-
-    assert _is_optional_type(None) is False
-    assert _is_optional_type(int) is False
-    assert _is_optional_type(Union[int, str]) is False
-    assert _is_optional_type(list[int]) is False
+from haystack.core.super_component.utils import _is_compatible
 
 
 class TestTypeCompatibility:
@@ -103,16 +88,22 @@ class TestTypeCompatibility:
 
         # PEP 604 with typing.Union
         is_compat, common = _is_compatible(int | str, Union[int, str])
-        assert is_compat
+        assert is_compat and common == Union[int, str]
 
         is_compat, common = _is_compatible(Union[int, str], int | str)
-        assert is_compat
+        assert is_compat and common == Union[int, str]
+
+        is_compat, common = _is_compatible(int | str, int | str)
+        assert is_compat and common == Union[int, str]
 
         is_compat, common = _is_compatible(str | None, Optional[str])
-        assert is_compat
+        assert is_compat and common == Optional[str]
 
         is_compat, common = _is_compatible(Optional[str], str | None)
-        assert is_compat
+        assert is_compat and common == Optional[str]
+
+        is_compat, common = _is_compatible(str | None, str | None)
+        assert is_compat and common == Optional[str]
 
     def test_variadic_type_compatibility(self):
         """Test compatibility with Variadic and GreedyVariadic types."""
@@ -197,7 +188,7 @@ class TestTypeCompatibility:
         nested_pep604_union = Variadic[list[str | int]]
 
         is_compat, common = _is_compatible(nested_pep604_union, list[str | int])
-        assert is_compat
+        assert is_compat and common == list[str | int]
 
     def test_complex_nested_types(self):
         """Test complex nested type scenarios."""

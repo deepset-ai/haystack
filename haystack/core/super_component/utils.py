@@ -160,10 +160,6 @@ def _unwrap_all(t: T, recursive: bool) -> T:
             else:
                 t = origin[unwrapped_args]
 
-    # Then handle top-level Optional
-    if _is_optional_type(t):
-        t = _unwrap_optionals(t, recursive=recursive)
-
     return t
 
 
@@ -173,15 +169,6 @@ def _is_variadic_type(t: T) -> bool:
     if origin is Annotated:
         args = get_args(t)
         return len(args) >= 2 and args[1] in (HAYSTACK_VARIADIC_ANNOTATION, HAYSTACK_GREEDY_VARIADIC_ANNOTATION)  # noqa: PLR2004
-    return False
-
-
-def _is_optional_type(t: T) -> bool:
-    """Check if type is an Optional type (Union[X, None] or X | None)."""
-    origin = get_origin(t)
-    if _is_union_type(origin):
-        args = get_args(t)
-        return type(None) in args
     return False
 
 
@@ -205,24 +192,3 @@ def _unwrap_variadics(t: T, recursive: bool) -> T:
     if recursive:
         return _unwrap_all(inner_type, recursive)
     return inner_type
-
-
-def _unwrap_optionals(t: T, recursive: bool) -> T:
-    """
-    Unwrap Optional[...] types (Union[X, None]).
-
-    :param t: Type to unwrap
-    :param recursive: If True, recursively unwraps nested types
-    :return: Unwrapped type if it was an Optional, original type otherwise
-    """
-    if not _is_optional_type(t):
-        return t
-
-    args = list(get_args(t))
-    args.remove(type(None))
-    result = args[0] if len(args) == 1 else Union[tuple(args)]
-
-    # Only recursively unwrap if requested
-    if recursive:
-        return _unwrap_all(result, recursive)  # type: ignore
-    return result  # type: ignore
