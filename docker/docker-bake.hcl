@@ -26,7 +26,7 @@ target "base" {
   dockerfile = "Dockerfile.base"
   tags = "${compact([
     "${IMAGE_NAME}:base-${IMAGE_TAG_SUFFIX}",
-    equal(IS_STABLE, "true") ? "${IMAGE_NAME}:stable" : ""
+    equal("${IS_STABLE}", "true") ? "${IMAGE_NAME}:stable" : ""
   ])}"
   args = {
     build_image = "python:3.12-slim"
