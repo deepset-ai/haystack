@@ -14,6 +14,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import BreakpointException
+from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED
 from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -107,6 +108,11 @@ class ExtractResults:
 
 
 class TestPipelineBreakpoints:
+    @pytest.fixture(autouse=True)
+    def enable_snapshot_saving(self, monkeypatch):
+        """Enable snapshot file saving for these integration tests."""
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
     @pytest.fixture
     def agent_pipeline(self):
         """Create a pipeline with agent, extractor, and document writer for testing."""

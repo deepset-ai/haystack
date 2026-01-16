@@ -17,6 +17,7 @@ from haystack.components.rankers import TransformersSimilarityRanker
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import BreakpointException
+from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -29,6 +30,11 @@ class TestPipelineBreakpoints:
     """
     This class contains tests for pipelines with breakpoints.
     """
+
+    @pytest.fixture(autouse=True)
+    def enable_snapshot_saving(self, monkeypatch):
+        """Enable snapshot file saving for these integration tests."""
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
 
     @pytest.fixture
     def mock_sentence_transformers_doc_embedder(self):
