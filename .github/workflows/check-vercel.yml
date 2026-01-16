@@ -1,0 +1,65 @@
+name: Wait for Vercel PR Check
+
+on:
+  pull_request:
+
+jobs:
+  wait-for-vercel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Wait for Vercel check to complete
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+
+          CHECK_NAME="vercel/preview"
+          MAX_ATTEMPTS=40      # ~10 minutes
+          SLEEP_SECONDS=15
+
+          attempt=1
+          while [ $attempt -le $MAX_ATTEMPTS ]; do
+            echo "🔄 Checking Vercel status ($attempt/$MAX_ATTEMPTS)..."
+
+            response=$(curl -s \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/pulls/$PR_NUMBER/check-runs")
+
+            check=$(echo "$response" | jq -r --arg NAME "$CHECK_NAME" '
+              .check_runs[]
+              | select(.name==$NAME)
+              | {status, conclusion}
+            ' | head -n 1)
+
+            if [ -z "$check" ]; then
+              echo "⏳ Vercel check not created yet"
+              sleep $SLEEP_SECONDS
+              attempt=$((attempt + 1))
+              continue
+            fi
+
+            status=$(echo "$check" | jq -r '.status')
+            conclusion=$(echo "$check" | jq -r '.conclusion')
+
+            echo "ℹ️ status=$status conclusion=$conclusion"
+
+            if [ "$status" = "completed" ]; then
+              if [ "$conclusion" = "failure" ]; then
+                echo "❌ Vercel deployment failed"
+                exit 1
+              fi
+
+              echo "✅ Vercel deployment finished with conclusion: $conclusion"
+              exit 0
+            fi
+
+            sleep $SLEEP_SECONDS
+            attempt=$((attempt + 1))
+          done
+
+          echo "❌ Timed out waiting for Vercel deployment result"
+          exit 1
