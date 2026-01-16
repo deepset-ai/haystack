@@ -1,75 +1,51 @@
-name: Wait for Vercel Deployment Outcome
+name: Vercel Deployment Check
 
 on:
-  pull_request:
+  deployment_status:
 
 jobs:
-  vercel-status:
+  vercel-pr-deployment:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check Vercel deployment status
+      - name: Check if deployment is for a PR
         env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URLS: ${{ toJSON(github.event.deployment.pull_request_urls) }}
         run: |
-          set -e
+          echo "Deployment pull_request_urls: $PR_URLS"
 
-          MAX_ATTEMPTS=40
-          SLEEP_SECONDS=15
+          if [ "$PR_URLS" = "null" ] || [ "$PR_URLS" = "[]" ]; then
+            echo "⚠️ Deployment not associated with a PR, skipping job."
+            exit 0
+          fi
 
-          attempt=1
-          while [ $attempt -le $MAX_ATTEMPTS ]; do
-            echo "🔄 Checking Vercel deployment ($attempt/$MAX_ATTEMPTS)..."
+          echo "✅ Deployment is associated with a PR, continuing..."
 
-            deployments=$(curl -s \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/$REPO/deployments")
+      - name: Check deployment state
+        run: |
+          state="${{ github.event.deployment_status.state }}"
+          echo "Deployment state: $state"
 
-            # Find a deployment associated with this PR
-            deployment_id=$(echo "$deployments" | jq -r '
-              .[]
-              | select(.pull_request_urls[]? | endswith("/pulls/'"$PR_NUMBER"'"))
-              | .id
-            ' | head -n 1)
+          case "$state" in
+            success)
+              echo "✅ Deployment succeeded"
+              ;;
+            failure|error)
+              echo "❌ Deployment failed"
+              exit 1
+              ;;
+            inactive)
+              echo "ℹ️ Deployment skipped or inactive"
+              ;;
+            pending|queued)
+              echo "⏳ Deployment still in progress"
+              exit 0  # Optional: can re-trigger on next status update
+              ;;
+            *)
+              echo "ℹ️ Unknown state: $state"
+              ;;
+          esac
 
-            # ✅ No deployment = skipped = OK
-            if [ -z "$deployment_id" ]; then
-              echo "✅ No deployment found (skipped)"
-              exit 0
-            fi
-
-            statuses=$(curl -s \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/$REPO/deployments/$deployment_id/statuses")
-
-            state=$(echo "$statuses" | jq -r '.[0].state')
-
-            echo "ℹ️ deployment state=$state"
-
-            case "$state" in
-              success)
-                echo "✅ Deployment succeeded"
-                exit 0
-                ;;
-              failure|error)
-                echo "❌ Deployment failed"
-                exit 1
-                ;;
-              pending|queued)
-                echo "⏳ Deployment in progress"
-                ;;
-              *)
-                echo "⏳ Waiting (state=$state)"
-                ;;
-            esac
-
-            sleep $SLEEP_SECONDS
-            attempt=$((attempt + 1))
-          done
-
-          echo "❌ Timed out waiting for deployment"
-          exit 1
+      - name: Output deployment URL
+        run: |
+          url="${{ github.event.deployment_status.target_url }}"
+          echo "Deployment URL: $url"
