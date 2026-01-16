@@ -1,14 +1,14 @@
-name: Wait for Vercel Deployment
+name: Wait for Vercel Deployment Outcome
 
 on:
   pull_request:
 
 jobs:
-  wait-for-vercel:
+  vercel-status:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Wait for Vercel deployment result
+      - name: Check Vercel deployment status
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -21,25 +21,24 @@ jobs:
 
           attempt=1
           while [ $attempt -le $MAX_ATTEMPTS ]; do
-            echo "🔄 Checking deployment status ($attempt/$MAX_ATTEMPTS)..."
+            echo "🔄 Checking Vercel deployment ($attempt/$MAX_ATTEMPTS)..."
 
-            # Get deployments associated with this PR
             deployments=$(curl -s \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/$REPO/deployments")
 
+            # Find a deployment associated with this PR
             deployment_id=$(echo "$deployments" | jq -r '
               .[]
-              | select(.pull_request_urls[]? | contains("/pulls/'"$PR_NUMBER"'"))
+              | select(.pull_request_urls[]? | endswith("/pulls/'"$PR_NUMBER"'"))
               | .id
             ' | head -n 1)
 
+            # ✅ No deployment = skipped = OK
             if [ -z "$deployment_id" ]; then
-              echo "⏳ No Vercel deployment created yet"
-              sleep $SLEEP_SECONDS
-              attempt=$((attempt + 1))
-              continue
+              echo "✅ No deployment found (skipped)"
+              exit 0
             fi
 
             statuses=$(curl -s \
@@ -53,19 +52,18 @@ jobs:
 
             case "$state" in
               success)
-                echo "✅ Vercel deployment succeeded"
+                echo "✅ Deployment succeeded"
                 exit 0
                 ;;
-              inactive)
-                echo "✅ Vercel deployment skipped"
-                exit 0
-                ;;
-              failure)
-                echo "❌ Vercel deployment failed"
+              failure|error)
+                echo "❌ Deployment failed"
                 exit 1
                 ;;
+              pending|queued)
+                echo "⏳ Deployment in progress"
+                ;;
               *)
-                echo "⏳ Deployment still in progress"
+                echo "⏳ Waiting (state=$state)"
                 ;;
             esac
 
@@ -73,5 +71,5 @@ jobs:
             attempt=$((attempt + 1))
           done
 
-          echo "❌ Timed out waiting for Vercel deployment"
+          echo "❌ Timed out waiting for deployment"
           exit 1
