@@ -234,10 +234,10 @@ class TestPipelineTool:
                     "narrow down the search space when retrieving documents.'.",
                 },
                 "top_k": {
+                    "anyOf": [{"type": "integer"}, {"type": "null"}],
                     "description": "Provided to the 'bm25_retriever' component as: 'The maximum number of documents "
                     "to return.', and Provided to the 'ranker' component as: 'The maximum number "
                     "of documents to return.'.",
-                    "type": "integer",
                 },
                 "scale_score": {
                     "description": "Provided to the 'bm25_retriever' component as: 'When `True`, scales the score "
@@ -246,7 +246,7 @@ class TestPipelineTool:
                     "component as: 'If `True`, scales the raw logit predictions using a Sigmoid "
                     "activation function.\nIf `False`, disables scaling of the raw logit predictions."
                     "\nIf set, overrides the value set at initialization.'.",
-                    "type": "boolean",
+                    "anyOf": [{"type": "boolean"}, {"type": "null"}],
                 },
                 "score_threshold": {
                     "anyOf": [{"type": "number"}, {"type": "null"}],
