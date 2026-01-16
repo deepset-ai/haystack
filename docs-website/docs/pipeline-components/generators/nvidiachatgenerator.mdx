@@ -2,35 +2,35 @@
 title: "NvidiaChatGenerator"
 id: nvidiachatgenerator
 slug: "/nvidiachatgenerator"
-description: "This Generator enables chat completion using Nvidia-hosted models."
+description: "This Generator enables chat completion using NVIDIA-hosted models."
 ---
 
 # NvidiaChatGenerator
 
-This Generator enables chat completion using Nvidia-hosted models.
+This Generator enables chat completion using NVIDIA-hosted models.
 
 <div className="key-value-table">
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                     |
-| **Mandatory init variables**           | `api_key`: API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var.         |
-| **Mandatory run variables**            | `messages`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                           |
-| **Output variables**                   | `replies`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                            |
-| **API reference**                      | [NVIDIA API](https://build.nvidia.com/models)                                            |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/nvidia |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var. |
+| **Mandatory run variables** | `messages`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects |
+| **API reference** | [NVIDIA API](https://build.nvidia.com/models) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/nvidia |
 
 </div>
 
 ## Overview
 
-`NvidiaChatGenerator` enables chat completions using NVIDIA's generative models via the NVIDIA API. It is compatible with the [ChatMessage](../../concepts/data-classes/chatmessage.mdx) format for both input and output, ensuring seamless integration in chat-based pipelines.
+`NvidiaChatGenerator` enables chat completions using NVIDIA generative models via the NVIDIA API. It is compatible with the [ChatMessage](../../concepts/data-classes/chatmessage.mdx) format for both input and output, ensuring seamless integration in chat-based pipelines.
 
-You can use LLMs self-hosted with NVIDIA NIM or models hosted on the [NVIDIA API catalog](https://build.nvidia.com/explore/discover). The default model for this component is `meta/llama-3.1-8b-instruct`.
+You can use LLMs self-hosted with NVIDIA NIM or models hosted on the [NVIDIA API Catalog](https://build.nvidia.com/explore/discover). The default model for this component is `meta/llama-3.1-8b-instruct`.
 
-To use this integration, you must have a NVIDIA API key. You can provide it with the `NVIDIA_API_KEY` environment variable or by using a [Secret](../../concepts/secret-management.mdx).
+To use this integration, you must have an NVIDIA API key. You can provide it with the `NVIDIA_API_KEY` environment variable or by using a [Secret](../../concepts/secret-management.mdx).
 
-### Tool Support
+### Tool support
 
 `NvidiaChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
 
@@ -57,7 +57,7 @@ generator = NvidiaChatGenerator(
 )
 ```
 
-For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+For more details on working with tools, refer to the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
 
 ### Streaming
 
@@ -65,25 +65,26 @@ This generator supports [streaming](guides-to-generators/choosing-the-right-gene
 
 ## Usage
 
-To start using `NvidiaChatGenerator`, first, install the `nvidia-haystack` package:
+To start using `NvidiaChatGenerator`, install the `nvidia-haystack` package:
 
 ```shell
 pip install nvidia-haystack
 ```
 
-You can use the `NvidiaChatGenerator` with all the LLMs available in the [NVIDIA API catalog](https://docs.api.nvidia.com/nim/reference) or a model deployed with NVIDIA NIM. Follow the [NVIDIA NIM for LLMs Playbook](https://developer.nvidia.com/docs/nemo-microservices/inference/playbooks/nmi_playbook.html) to learn how to deploy your desired model on your infrastructure.
+You can use `NvidiaChatGenerator` with all the LLMs available in the [NVIDIA API Catalog](https://docs.api.nvidia.com/nim/reference) or with a model deployed using NVIDIA NIM. For more information, refer to the [NVIDIA NIM for LLMs Playbook](https://developer.nvidia.com/docs/nemo-microservices/inference/playbooks/nmi_playbook.html).
 
 ### On its own
 
- To use LLMs from the NVIDIA API catalog, you need to specify the correct `api_url` if needed (the default one is `https://integrate.api.nvidia.com/v1`), and your API key. You can get your API key directly from the [catalog website](https://build.nvidia.com/explore/discover).
+To use LLMs from the NVIDIA API Catalog, specify the `api_url` if needed (the default is `https://integrate.api.nvidia.com/v1`) and your API key. You can get your API key from the [NVIDIA API Catalog](https://build.nvidia.com/explore/discover).
 
 ```python
-from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
 from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
 
 generator = NvidiaChatGenerator(
-    model="meta/llama-3.1-8b-instruct",  # or any supported NVIDIA model
-    api_key=Secret.from_env_var("NVIDIA_API_KEY")
+    model="meta/llama-3.1-8b-instruct",
+    api_key=Secret.from_env_var("NVIDIA_API_KEY"),
 )
 
 messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
@@ -96,43 +97,60 @@ With multimodal inputs:
 
 ```python
 from haystack.dataclasses import ChatMessage, ImageContent
+from haystack.utils import Secret
 from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
 
-llm = NvidiaChatGenerator(model="meta/llama-3.2-11b-vision-instruct")
+llm = NvidiaChatGenerator(
+    model="meta/llama-3.2-11b-vision-instruct",
+    api_key=Secret.from_env_var("NVIDIA_API_KEY"),
+)
 
 image = ImageContent.from_file_path("apple.jpg")
 user_message = ChatMessage.from_user(content_parts=[
-	"What does the image show? Max 5 words.",
-	image
-	])
+    "What does the image show? Max 5 words.",
+    image,
+])
 
 response = llm.run([user_message])["replies"][0].text
 print(response)
-
 # Red apple on straw.
 ```
 
-### In a Pipeline
+### In a pipeline
 
 ```python
 from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
 from haystack.utils import Secret
+from haystack_integrations.components.generators.nvidia import NvidiaChatGenerator
 
 pipe = Pipeline()
 pipe.add_component("prompt_builder", ChatPromptBuilder())
-pipe.add_component("llm", NvidiaChatGenerator(
-    model="meta/llama-3.1-8b-instruct",
-    api_key=Secret.from_env_var("NVIDIA_API_KEY")
-))
+pipe.add_component(
+    "llm",
+    NvidiaChatGenerator(
+        model="meta/llama-3.1-8b-instruct",
+        api_key=Secret.from_env_var("NVIDIA_API_KEY"),
+    ),
+)
 pipe.connect("prompt_builder", "llm")
 
 country = "Germany"
 system_message = ChatMessage.from_system("You are an assistant giving out valuable information to language learners.")
 messages = [system_message, ChatMessage.from_user("What's the official language of {{ country }}?")]
 
-res = pipe.run(data={"prompt_builder": {"template_variables": {"country": country}, "template": messages}})
+res = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"country": country},
+            "template": messages,
+        }
+    }
+)
 print(res)
 ```
+
+## Related
+
+- Cookbook: [Haystack RAG Pipeline with Self-Deployed AI models using NVIDIA NIMs](https://haystack.deepset.ai/cookbook/rag-with-nims)

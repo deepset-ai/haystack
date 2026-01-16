@@ -444,6 +444,7 @@ class OpenAIResponsesChatGenerator:
     ) -> dict[str, Any]:
         # update generation kwargs by merging with the generation kwargs passed to the run method
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+        generation_kwargs = self._resolve_flattened_kwargs(generation_kwargs)
 
         # adapt ChatMessage(s) to the format expected by the OpenAI API
         openai_formatted_messages: list[dict[str, Any]] = []
@@ -484,6 +485,20 @@ class OpenAIResponsesChatGenerator:
         # we pass a key `openai_endpoint` as a hint to the run method to use the create or parse endpoint
         # this key will be removed before the API call is made
         return {**base_args, "stream": streaming_callback is not None, "openai_endpoint": "create"}
+
+    def _resolve_flattened_kwargs(self, generation_kwargs: dict[str, Any]) -> dict[str, Any]:
+        generation_kwargs = generation_kwargs.copy()
+        if "reasoning_effort" in generation_kwargs:
+            effort = generation_kwargs.pop("reasoning_effort")
+            reasoning = generation_kwargs.setdefault("reasoning", {})
+            reasoning["effort"] = effort
+
+        if "reasoning_summary" in generation_kwargs:
+            reasoning_summary = generation_kwargs.pop("reasoning_summary")
+            reasoning = generation_kwargs.setdefault("reasoning", {})
+            reasoning["summary"] = reasoning_summary
+
+        return generation_kwargs
 
     def _handle_stream_response(self, responses: Stream, callback: SyncStreamingCallbackT) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
@@ -761,9 +776,11 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     if logprobs:
         final_response["logprobs"] = logprobs
 
-    # Add reasoning content if both id and text are available
+    # Add reasoning content if id is available
+    # Note: the API expects a reasoning id even if there is no reasoning text
+    # function calls without reasoning ids are not supported by the API
     reasoning = None
-    if reasoning_id and reasoning_text:
+    if reasoning_id:
         reasoning = ReasoningContent(reasoning_text=reasoning_text, extra={"id": reasoning_id, "type": "reasoning"})
 
     return ChatMessage.from_assistant(
@@ -847,10 +864,9 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     if reasonings:
         formatted_reasonings = []
         for reasoning in reasonings:
-            reasoning_item = {
-                **(reasoning.extra),
-                "summary": [{"text": reasoning.reasoning_text, "type": "summary_text"}],
-            }
+            reasoning_item = {"summary": [], **(reasoning.extra)}
+            if reasoning.reasoning_text:
+                reasoning_item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
             formatted_reasonings.append(reasoning_item)
         formatted_messages.extend(formatted_reasonings)
 

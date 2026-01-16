@@ -36,7 +36,7 @@ def __init__(model: str,
              n_ctx: int | None = 0,
              n_batch: int | None = 512,
              model_kwargs: dict[str, Any] | None = None,
-             generation_kwargs: dict[str, Any] | None = None)
+             generation_kwargs: dict[str, Any] | None = None) -> None
 ```
 
 **Arguments**:
