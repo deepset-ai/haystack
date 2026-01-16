@@ -1,7 +1,6 @@
 name: Docker image release
 
 on:
-  pull_request:
   workflow_dispatch:
   push:
     branches:
@@ -55,31 +54,27 @@ jobs:
         uses: docker/bake-action@v6
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
-          HAYSTACK_VERSION: "main"
+          HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
         with:
           workdir: docker
           targets: base
-          source: .
-          push: false
-          set: |
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
+          push: true
 
-      # - name: Test base image
-      #   run: |
-      #     EXPECTED_VERSION=$(cat VERSION.txt)
-      #     if [[ $EXPECTED_VERSION == *"-"* ]]; then
-      #       EXPECTED_VERSION=$(cut -d '-' -f 1 < VERSION.txt)$(cut -d '-' -f 2 < VERSION.txt)
-      #     fi
-      #     TAG="base-${{ steps.meta.outputs.version }}"
+      - name: Test base image
+        run: |
+          EXPECTED_VERSION=$(cat VERSION.txt)
+          if [[ $EXPECTED_VERSION == *"-"* ]]; then
+            EXPECTED_VERSION=$(cut -d '-' -f 1 < VERSION.txt)$(cut -d '-' -f 2 < VERSION.txt)
+          fi
+          TAG="base-${{ steps.meta.outputs.version }}"
 
-      #     PLATFORM="linux/amd64"
-      #     VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"from haystack.version import __version__; print(__version__)")
-      #     [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
+          PLATFORM="linux/amd64"
+          VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"from haystack.version import __version__; print(__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
 
-      #     PLATFORM="linux/arm64"
-      #     VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"from haystack.version import __version__; print(__version__)")
-      #     [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
+          PLATFORM="linux/arm64"
+          VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"from haystack.version import __version__; print(__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
 
-      #     # Remove image after test to avoid filling the GitHub runner and prevent its failure
-      #     docker rmi "deepset/haystack:$TAG"
+          # Remove image after test to avoid filling the GitHub runner and prevent its failure
+          docker rmi "deepset/haystack:$TAG"
