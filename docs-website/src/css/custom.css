@@ -957,3 +957,35 @@ html[data-theme='dark'] .navbar-version-badge-dropdown:hover::after,
 html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
   filter: none !important;
 }
+
+/* ========================================
+   COPY DROPDOWN - Floating Button
+   ======================================== */
+
+/* Copy dropdown floating button */
+.copy-dropdown-floating {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  z-index: 100;
+}
+
+@media (max-width: 996px) {
+  .copy-dropdown-floating {
+    top: 70px;
+    right: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .copy-dropdown-floating {
+    top: 65px;
+    right: 12px;
+  }
+}
+
+@media print {
+  .copy-dropdown-floating {
+    display: none !important;
+  }
+}
