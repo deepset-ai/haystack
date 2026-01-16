@@ -63,7 +63,12 @@ jobs:
           push: false
           set: |
             *.cache-from=type=gha
+            *.cache-from=type=registry,ref=${{ env.DOCKER_REPO_NAME }}:buildcache-amd64
+            *.cache-from=type=registry,ref=${{ env.DOCKER_REPO_NAME }}:buildcache-arm64
+
             *.cache-to=type=gha,mode=max
+            *.cache-to=type=registry,ref=${{ env.DOCKER_REPO_NAME }}:buildcache-amd64,mode=max
+            *.cache-to=type=registry,ref=${{ env.DOCKER_REPO_NAME }}:buildcache-arm64,mode=max
 
       # - name: Test base image
       #   run: |
