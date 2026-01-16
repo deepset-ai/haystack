@@ -1491,6 +1491,20 @@ def chat_completion_chunks():
 
 
 @pytest.fixture
+def chat_completion_chunk_delta_none():
+    chunk = ChatCompletionChunk(
+        id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
+        choices=[chat_completion_chunk.Choice(delta=ChoiceDelta(), index=0)],
+        created=1742207200,
+        model="gpt-5-mini",
+        object="chat.completion.chunk",
+    )
+    # pydantic complains if we set delta to None at initialization
+    chunk.choices[0].delta = None
+    return chunk
+
+
+@pytest.fixture
 def streaming_chunks():
     return [
         StreamingChunk(
@@ -1720,8 +1734,34 @@ class TestChatCompletionChunkConversion:
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
 
-    def test_handle_stream_response(self, chat_completion_chunks):
-        openai_chunks = chat_completion_chunks
+    def test_convert_chat_completion_chunk_with_delta_none(self, chat_completion_chunk_delta_none):
+        """
+        Test that a chat completion chunk with a delta set to None is converted to a streaming chunk properly.
+        This should not happen, but some OpenAI-compatible providers sometimes return a delta set to None.
+        """
+
+        result = _convert_chat_completion_chunk_to_streaming_chunk(
+            chunk=chat_completion_chunk_delta_none, previous_chunks=[]
+        )
+
+        assert result.content == ""
+        assert result.start is False
+        assert result.tool_calls is None
+        assert result.tool_call_result is None
+        assert result.index == 0
+        assert result.component_info is None
+        assert result.finish_reason is None
+        assert result.reasoning is None
+
+        assert result.meta["model"] == "gpt-5-mini"
+        assert result.meta["received_at"] is not None
+        assert result.meta["index"] == 0
+        assert result.meta["finish_reason"] is None
+        assert result.meta["usage"] is None
+        assert result.meta["tool_calls"] is None
+
+    def test_handle_stream_response(self, chat_completion_chunks, chat_completion_chunk_delta_none):
+        openai_chunks = [chat_completion_chunk_delta_none] + chat_completion_chunks
         comp = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         result = comp._handle_stream_response(openai_chunks, callback=lambda chunk: None)[0]  # type: ignore
 
