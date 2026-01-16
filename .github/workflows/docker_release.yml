@@ -5,9 +5,12 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'docs/**'
-      - 'docs-website/**'
+    paths:
+      - '.github/workflows/docker_release.yml'
+      - 'docker/**'
+      - 'haystack/**'
+      - 'pyproject.toml'
+      - 'VERSION.txt'
     tags:
       - "v2.[0-9]+.[0-9]+*"
 
@@ -42,8 +45,13 @@ jobs:
         with:
           images: $DOCKER_REPO_NAME
 
+      - name: Detect stable version
+        run: |
+          if [[ "${{ steps.meta.outputs.version }}" =~ ^2\.[0-9]+\.[0-9]+$ ]]; then
+            echo "IS_STABLE=true" >> "$GITHUB_ENV"
+          fi
       - name: Build base images
-        uses: docker/bake-action@v5
+        uses: docker/bake-action@v6
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
