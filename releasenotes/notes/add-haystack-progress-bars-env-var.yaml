@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add support for the ``HAYSTACK_PROGRESS_BARS`` environment variable to globally
+    control progress bar behavior across all Haystack components. Users can now disable
+    all progress bars by setting ``HAYSTACK_PROGRESS_BARS=0`` or enable them with
+    ``HAYSTACK_PROGRESS_BARS=1``. This restores functionality from Haystack 1.x.

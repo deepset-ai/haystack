@@ -192,7 +192,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
             self,
             chat_generator=component_to_dict(obj=self._chat_generator, name="chat_generator"),
             examples=self.examples,
-            progress_bar=self.progress_bar,
+            progress_bar=self._progress_bar_param,
             raise_on_failure=self.raise_on_failure,
         )
 

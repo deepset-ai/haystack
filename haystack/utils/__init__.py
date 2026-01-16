@@ -18,6 +18,7 @@ _import_structure = {
     "jinja2_extensions": ["Jinja2TimeExtension"],
     "jupyter": ["is_in_jupyter"],
     "misc": ["expit", "expand_page_range"],
+    "progress_helper": ["get_progress_bar_setting", "HAYSTACK_PROGRESS_ENV"],
     "requests_utils": ["request_with_retry", "async_request_with_retry"],
     "type_serialization": ["deserialize_type", "serialize_type"],
 }
@@ -44,6 +45,8 @@ if TYPE_CHECKING:
     from .jupyter import is_in_jupyter as is_in_jupyter
     from .misc import expand_page_range as expand_page_range
     from .misc import expit as expit
+    from .progress_helper import HAYSTACK_PROGRESS_ENV as HAYSTACK_PROGRESS_ENV
+    from .progress_helper import get_progress_bar_setting as get_progress_bar_setting
     from .requests_utils import async_request_with_retry as async_request_with_retry
     from .requests_utils import request_with_retry as request_with_retry
     from .type_serialization import deserialize_type as deserialize_type

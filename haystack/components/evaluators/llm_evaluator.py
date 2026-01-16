@@ -13,7 +13,7 @@ from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
-from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
+from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, get_progress_bar_setting, serialize_type
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,8 @@ class LLMEvaluator:
         self.inputs = inputs
         self.outputs = outputs
         self.examples = examples
-        self.progress_bar = progress_bar
+        self._progress_bar_param = progress_bar
+        self.progress_bar = get_progress_bar_setting(progress_bar)
 
         template = self.prepare_template()
         self.builder = PromptBuilder(template=template)
@@ -298,7 +299,7 @@ class LLMEvaluator:
             outputs=self.outputs,
             examples=self.examples,
             chat_generator=component_to_dict(obj=self._chat_generator, name="chat_generator"),
-            progress_bar=self.progress_bar,
+            progress_bar=self._progress_bar_param,
         )
 
     @classmethod
