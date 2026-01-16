@@ -547,3 +547,7 @@ class TestSnapshotSaveEnabled:
         # Verify no file was saved
         assert exc_info.value.pipeline_snapshot_file_path is None
         assert list(tmp_path.glob("*.json")) == []
+
+        # Verify snapshot object is still available for programmatic access
+        assert exc_info.value.pipeline_snapshot is not None
+        assert exc_info.value.pipeline_snapshot.break_point.component_name == "comp2"

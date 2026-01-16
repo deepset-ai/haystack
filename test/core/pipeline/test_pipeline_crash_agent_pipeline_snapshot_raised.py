@@ -10,7 +10,6 @@ from haystack.components.fetchers import LinkContentFetcher
 from haystack.components.tools import ToolInvoker
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import PipelineRuntimeError
-from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
@@ -83,9 +82,8 @@ def build_pipeline(agent: Agent):
     return pipe
 
 
-def test_pipeline_with_chat_generator_crash(monkeypatch):
+def test_pipeline_with_chat_generator_crash():
     """Test pipeline crash handling when chat generator fails."""
-    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
     pipe = build_pipeline(
         agent=Agent(
             chat_generator=MockChatGenerator(True),
@@ -102,7 +100,8 @@ def test_pipeline_with_chat_generator_crash(monkeypatch):
     assert "Error in chat generator component" in str(exception_info.value)
     assert exception_info.value.component_name == "chat_generator"
     assert exception_info.value.component_type == MockChatGenerator
-    assert "math_agent_chat_generator" in exception_info.value.pipeline_snapshot_file_path
+    # File saving is disabled by default, so pipeline_snapshot_file_path is None
+    assert exception_info.value.pipeline_snapshot_file_path is None
 
     pipeline_snapshot = exception_info.value.pipeline_snapshot
     assert pipeline_snapshot is not None, "Pipeline snapshot should be captured in the exception"
@@ -132,9 +131,8 @@ def test_pipeline_with_chat_generator_crash(monkeypatch):
         _ = pipe.run(data={}, pipeline_snapshot=pipeline_snapshot)
 
 
-def test_pipeline_with_tool_call_crash(monkeypatch):
+def test_pipeline_with_tool_call_crash():
     """Test pipeline crash handling when a tool call fails."""
-    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
     pipe = build_pipeline(
         agent=Agent(
             chat_generator=MockChatGenerator(False),
@@ -154,7 +152,8 @@ def test_pipeline_with_tool_call_crash(monkeypatch):
     assert "Error in factorial tool" in str(exception_info.value), "Exception message should contain tool error"
     assert exception_info.value.component_name == "tool_invoker"
     assert exception_info.value.component_type == ToolInvoker
-    assert "math_agent_tool_invoker" in exception_info.value.pipeline_snapshot_file_path
+    # File saving is disabled by default, so pipeline_snapshot_file_path is None
+    assert exception_info.value.pipeline_snapshot_file_path is None
 
     pipeline_snapshot = exception_info.value.pipeline_snapshot
     assert pipeline_snapshot is not None, "Pipeline snapshot should be captured in the exception"

@@ -11,7 +11,6 @@ from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.component import component
 from haystack.core.errors import PipelineRuntimeError
-from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -41,8 +40,7 @@ class MockTextEmbedder:
 
 
 class TestPipelineOutputsRaisedInException:
-    def test_hybrid_rag_pipeline_crash_on_embedding_retriever(self, monkeypatch):
-        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+    def test_hybrid_rag_pipeline_crash_on_embedding_retriever(self):
         document_store = setup_document_store()
 
         pipeline = Pipeline()
@@ -86,7 +84,8 @@ class TestPipelineOutputsRaisedInException:
         assert "Component name: 'embedding_retriever'" in str(exc_info.value)
         assert exc_info.value.component_name == "embedding_retriever"
         assert exc_info.value.component_type == InvalidOutputEmbeddingRetriever
-        assert "embedding_retriever" in exc_info.value.pipeline_snapshot_file_path
+        # File saving is disabled by default, so pipeline_snapshot_file_path is None
+        assert exc_info.value.pipeline_snapshot_file_path is None
 
         pipeline_snapshot = exc_info.value.pipeline_snapshot
         pipeline_outputs = pipeline_snapshot.pipeline_state.pipeline_outputs
