@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import os
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -31,9 +32,26 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Environment variable to control pipeline snapshot file saving (enabled by default)
+HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED = "HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED"
+
 # Type alias for snapshot callback function
 # The callback receives a PipelineSnapshot and optionally returns a file path string
 SnapshotCallback = Callable[[PipelineSnapshot], str | None]
+
+
+def _is_snapshot_save_enabled() -> bool:
+    """
+    Check if pipeline snapshot file saving is enabled via environment variable.
+
+    The environment variable HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED controls whether
+    pipeline snapshots are saved to files. By default (when the variable is not set),
+    saving is enabled. Set to any other value to disable.
+
+    :returns: True if snapshot saving is enabled, False otherwise.
+    """
+    value = os.environ.get(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true").lower()
+    return value in ("true", "1")
 
 
 def _validate_break_point_against_pipeline(break_point: Breakpoint | AgentBreakpoint, graph: MultiDiGraph) -> None:
@@ -164,6 +182,10 @@ def _save_pipeline_snapshot(
     - The file path is taken from the break point's `snapshot_file_path`.
     - If the `snapshot_file_path` is None, the function will return without saving.
 
+    The default file saving behavior can be disabled by setting the environment variable
+    `HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED` to any value other than "true" or "1". When disabled,
+    the function will return None without saving to a file (custom callbacks are still invoked).
+
     :param pipeline_snapshot: The pipeline snapshot to save.
     :param raise_on_failure: If True, raises an exception if saving fails. If False, logs the error and returns.
     :param snapshot_callback: Optional callback function that receives the PipelineSnapshot.
@@ -172,7 +194,7 @@ def _save_pipeline_snapshot(
 
     :returns:
         The full path to the saved JSON file (or the value returned by the callback), or None if
-        `snapshot_file_path` is None and no callback is provided.
+        `snapshot_file_path` is None, no callback is provided, or snapshot saving is disabled.
     :raises:
         Exception: If saving the JSON snapshot fails (when raise_on_failure is True).
     """
@@ -187,6 +209,11 @@ def _save_pipeline_snapshot(
             if raise_on_failure:
                 raise
             return None
+
+    # Check if snapshot saving is enabled via environment variable (enabled by default)
+    if not _is_snapshot_save_enabled():
+        logger.debug("Pipeline snapshot file saving is disabled via HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED env var.")
+        return None
 
     break_point = pipeline_snapshot.break_point
     snapshot_file_path = (

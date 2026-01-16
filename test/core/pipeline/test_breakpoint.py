@@ -11,7 +11,9 @@ from haystack import component
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import (
+    HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED,
     _create_pipeline_snapshot,
+    _is_snapshot_save_enabled,
     _save_pipeline_snapshot,
     _transform_json_structure,
     load_pipeline_snapshot,
@@ -424,3 +426,92 @@ class TestSnapshotCallback:
         # Verify file was saved to disk
         snapshot_files = list(tmp_path.glob("comp2_*.json"))
         assert len(snapshot_files) == 1
+
+
+class TestSnapshotSaveEnabled:
+    def test_is_snapshot_save_enabled_default(self, monkeypatch):
+        monkeypatch.delenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, raising=False)
+        assert _is_snapshot_save_enabled() is True
+
+    @pytest.mark.parametrize("value", ["true", "TRUE", "True", "1"])
+    def test_is_snapshot_save_enabled_truthy_values(self, monkeypatch, value):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, value)
+        assert _is_snapshot_save_enabled() is True
+
+    @pytest.mark.parametrize("value", ["false", "0", "no", ""])
+    def test_is_snapshot_save_enabled_falsy_values(self, monkeypatch, value):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, value)
+        assert _is_snapshot_save_enabled() is False
+
+    def test_save_pipeline_snapshot_disabled_via_env_var(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "false")
+
+        snapshot = _create_pipeline_snapshot(
+            inputs={},
+            component_inputs={},
+            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+            component_visits={"comp1": 1, "comp2": 0},
+            original_input_data={},
+            ordered_component_names=["comp1", "comp2"],
+            include_outputs_from=set(),
+            pipeline_outputs={},
+        )
+
+        result = _save_pipeline_snapshot(snapshot)
+
+        # Verify no file was created
+        assert result is None
+        assert list(tmp_path.glob("*.json")) == []
+
+    def test_save_pipeline_snapshot_enabled_via_env_var(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
+        snapshot = _create_pipeline_snapshot(
+            inputs={},
+            component_inputs={},
+            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+            component_visits={"comp1": 1, "comp2": 0},
+            original_input_data={},
+            ordered_component_names=["comp1", "comp2"],
+            include_outputs_from=set(),
+            pipeline_outputs={},
+        )
+
+        result = _save_pipeline_snapshot(snapshot)
+
+        # Verify file was created
+        snapshot_files = list(tmp_path.glob("comp2_*.json"))
+        assert len(snapshot_files) == 1
+        assert result == str(snapshot_files[0])
+
+    def test_callback_still_invoked_when_env_var_disables_saving(self, tmp_path, monkeypatch):
+        """
+        This is more a behaviour documentation test: we want to ensure that when the snapshot_callback is provided,
+        the file-saving behaviour is always bypassed (the callback is invoked instead).
+        """
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "false")
+
+        captured_snapshots = []
+
+        def custom_callback(snapshot: PipelineSnapshot) -> str:
+            captured_snapshots.append(snapshot)
+            return "custom_result"
+
+        snapshot = _create_pipeline_snapshot(
+            inputs={},
+            component_inputs={},
+            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+            component_visits={"comp1": 1, "comp2": 0},
+            original_input_data={},
+            ordered_component_names=["comp1", "comp2"],
+            include_outputs_from=set(),
+            pipeline_outputs={},
+        )
+
+        result = _save_pipeline_snapshot(snapshot, snapshot_callback=custom_callback)
+
+        # Callback should still be invoked
+        assert result == "custom_result"
+        assert len(captured_snapshots) == 1
+        # No file should be created (callback handles it)
+        assert list(tmp_path.glob("*.json")) == []
