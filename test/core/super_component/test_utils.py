@@ -66,66 +66,67 @@ def test_any_type(left, right, expected_common):
     assert common == expected_common
 
 
-def test_union_types():
-    """Test Union type compatibility."""
-    is_compat, common = _is_compatible(int, Union[int, str])
-    assert is_compat and common == int
+@pytest.mark.parametrize(
+    "left,right,expected_common",
+    [
+        (int, Union[int, str], int),
+        (Union[int, str], int, int),
+        (Union[int, str], Union[str, int], Union[int, str]),
+        (str, Union[int, str], str),
+        (str, Union[str, None], str),
+        (Union[str, None], str, str),
+        (Union[str, None], Optional[str], Optional[str]),
+        (Optional[str], Union[str, None], Optional[str]),
+        (Union[str, None], Union[str, None], Union[str, None]),
+    ],
+)
+def test_union_types_compatible(left, right, expected_common):
+    """Test compatible Union types."""
+    is_compat, common = _is_compatible(left, right)
+    assert is_compat
+    assert common == expected_common
 
-    is_compat, common = _is_compatible(Union[int, str], int)
-    assert is_compat and common == int
 
-    is_compat, common = _is_compatible(Union[int, str], Union[str, int])
-    assert is_compat and common == Union[int, str]
+@pytest.mark.parametrize(
+    "left,right,expected_common",
+    [
+        (int, int | str, int),
+        (int | str, int, int),
+        (int | str, str | int, int | str),
+        (str, str | None, str),
+        (str | None, str, str),
+        (str | None, str | None, str | None),
+        # Mixed PEP 604 and typing.Union and Optional
+        (int | str, Union[int, str], int | str),
+        (Union[int, str], int | str, Union[int, str]),
+        (str | None, Optional[str], str | None),
+        (Optional[str], str | None, Optional[str]),
+    ],
+)
+def test_union_types_pep604(left, right, expected_common):
+    """Test PEP 604 union type compatibility."""
+    is_compat, common = _is_compatible(left, right)
+    assert is_compat
+    assert common == expected_common
 
-    is_compat, common = _is_compatible(str, Union[int, str])
-    assert is_compat and common == str
 
-    is_compat, common = _is_compatible(bool, Union[int, str])
-    assert not is_compat and common is None
-
-    is_compat, common = _is_compatible(float, Union[int, str])
-    assert not is_compat and common is None
-
-    # PEP 604 union types (X | Y syntax)
-    is_compat, common = _is_compatible(int, int | str)
-    assert is_compat and common == int
-
-    is_compat, common = _is_compatible(int | str, int)
-    assert is_compat and common == int
-
-    is_compat, common = _is_compatible(int | str, str | int)
-    assert is_compat and (common == int | str or common == str | int)
-
-    is_compat, common = _is_compatible(str, str | None)
-    assert is_compat and common == str
-
-    is_compat, common = _is_compatible(str | None, str)
-    assert is_compat and common == str
-
-    is_compat, common = _is_compatible(bool, int | str)
-    assert not is_compat and common is None
-
-    is_compat, common = _is_compatible(float, int | str)
-    assert not is_compat and common is None
-
-    # PEP 604 with typing.Union
-    is_compat, common = _is_compatible(int | str, Union[int, str])
-    assert is_compat and common == int | str
-
-    is_compat, common = _is_compatible(Union[int, str], int | str)
-    assert is_compat and common == Union[int, str]
-
-    is_compat, common = _is_compatible(int | str, int | str)
-    assert is_compat and common == int | str
-
-    is_compat, common = _is_compatible(str | None, Optional[str])
-    assert is_compat and common == str | None
-
-    is_compat, common = _is_compatible(Optional[str], str | None)
-    assert is_compat and common == Optional[str]
-
-    is_compat, common = _is_compatible(str | None, str | None)
-    assert is_compat and common == str | None
+@pytest.mark.parametrize(
+    "left,right",
+    [
+        (bool, Union[int, str]),
+        (float, Union[int, str]),
+        (Union[int, str], Union[float, bool]),
+        # Pep 604
+        (bool, int | str),
+        (float, int | str),
+        (int | str, float | bool),
+    ],
+)
+def test_union_types_incompatible(left, right):
+    """Test incompatible Union types."""
+    is_compat, common = _is_compatible(left, right)
+    assert not is_compat
+    assert common is None
 
 
 def test_variadic_type_compatibility():
