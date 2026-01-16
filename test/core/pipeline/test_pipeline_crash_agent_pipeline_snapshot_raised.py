@@ -10,6 +10,7 @@ from haystack.components.fetchers import LinkContentFetcher
 from haystack.components.tools import ToolInvoker
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import PipelineRuntimeError
+from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
@@ -82,8 +83,9 @@ def build_pipeline(agent: Agent):
     return pipe
 
 
-def test_pipeline_with_chat_generator_crash():
+def test_pipeline_with_chat_generator_crash(monkeypatch):
     """Test pipeline crash handling when chat generator fails."""
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
     pipe = build_pipeline(
         agent=Agent(
             chat_generator=MockChatGenerator(True),
@@ -130,8 +132,9 @@ def test_pipeline_with_chat_generator_crash():
         _ = pipe.run(data={}, pipeline_snapshot=pipeline_snapshot)
 
 
-def test_pipeline_with_tool_call_crash():
+def test_pipeline_with_tool_call_crash(monkeypatch):
     """Test pipeline crash handling when a tool call fails."""
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
     pipe = build_pipeline(
         agent=Agent(
             chat_generator=MockChatGenerator(False),

@@ -11,6 +11,7 @@ from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.component import component
 from haystack.core.errors import PipelineRuntimeError
+from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -40,7 +41,8 @@ class MockTextEmbedder:
 
 
 class TestPipelineOutputsRaisedInException:
-    def test_hybrid_rag_pipeline_crash_on_embedding_retriever(self):
+    def test_hybrid_rag_pipeline_crash_on_embedding_retriever(self, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         document_store = setup_document_store()
 
         pipeline = Pipeline()
