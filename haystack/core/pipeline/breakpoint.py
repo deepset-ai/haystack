@@ -46,7 +46,7 @@ def _is_snapshot_save_enabled() -> bool:
 
     The environment variable HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED controls whether
     pipeline snapshots are saved to files. By default (when the variable is not set),
-    saving is enabled. Set to any other value to disable.
+    saving is enabled. Only "true" and "1" (case-insensitive) enable saving; any other value disables it.
 
     :returns: True if snapshot saving is enabled, False otherwise.
     """
