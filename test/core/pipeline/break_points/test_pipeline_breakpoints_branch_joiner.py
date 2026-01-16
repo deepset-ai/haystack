@@ -12,6 +12,7 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners import BranchJoiner
 from haystack.components.validators import JsonSchemaValidator
 from haystack.core.errors import BreakpointException
+from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import Breakpoint
@@ -20,6 +21,11 @@ from test.conftest import load_and_resume_pipeline_snapshot
 
 
 class TestPipelineBreakpoints:
+    @pytest.fixture(autouse=True)
+    def enable_snapshot_saving(self, monkeypatch):
+        """Enable snapshot file saving for these integration tests."""
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
     @pytest.fixture
     def mock_openai_chat_generator(self):
         """
