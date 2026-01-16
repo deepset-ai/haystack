@@ -634,7 +634,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     choice: ChunkChoice = chunk.choices[0]
 
     # create a list of ToolCallDelta objects from the tool calls
-    if choice.delta.tool_calls:
+    if choice.delta and choice.delta.tool_calls:
         tool_calls_deltas = []
         for tool_call in choice.delta.tool_calls:
             function = tool_call.function
@@ -668,7 +668,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     # On very first chunk the choice field only provides role info (e.g. "assistant") so we set index to None
     # We set all chunks missing the content field to index of None. E.g. can happen if chunk only contains finish
     # reason.
-    if choice.delta.content is None or choice.delta.role is not None:
+    if choice.delta and (choice.delta.content is None or choice.delta.role is not None):
         resolved_index = None
     else:
         # We set the index to be 0 since if text content is being streamed then no tool calls are being streamed
@@ -680,7 +680,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     meta = {
         "model": chunk.model,
         "index": choice.index,
-        "tool_calls": choice.delta.tool_calls,
+        "tool_calls": choice.delta.tool_calls if choice.delta and choice.delta.tool_calls else None,
         "finish_reason": choice.finish_reason,
         "received_at": datetime.now().isoformat(),
         "usage": _serialize_object(chunk.usage),
@@ -692,8 +692,12 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     if logprobs:
         meta["logprobs"] = logprobs
 
+    content = ""
+    if choice.delta and choice.delta.content:
+        content = choice.delta.content
+
     chunk_message = StreamingChunk(
-        content=choice.delta.content or "",
+        content=content,
         component_info=component_info,
         index=resolved_index,
         # The first chunk is always a start message chunk that only contains role information, so if we reach here
