@@ -79,7 +79,9 @@ def test_load_state_handles_invalid_state(tmp_path):
         load_pipeline_snapshot(pipeline_snapshot_file)
 
 
-def test_breakpoint_saves_intermediate_outputs(tmp_path):
+def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
     @component
     class SimpleComponent:
         @component.output_types(result=str)
@@ -236,7 +238,9 @@ class TestCreatePipelineSnapshot:
         assert any("Failed to serialize original input data for `pipeline.run`." in msg for msg in caplog.messages)
 
 
-def test_save_pipeline_snapshot_raises_on_failure(tmp_path, caplog):
+def test_save_pipeline_snapshot_raises_on_failure(tmp_path, caplog, monkeypatch):
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
     snapshot = _create_pipeline_snapshot(
         inputs={},
         component_inputs={},
@@ -311,7 +315,9 @@ class TestSnapshotCallback:
         # Verify NO file was created on disk even when snapshot_file_path is set
         assert list(tmp_path.glob("*.json")) == []
 
-    def test_save_pipeline_snapshot_without_callback_creates_file(self, tmp_path):
+    def test_save_pipeline_snapshot_without_callback_creates_file(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
         snapshot = _create_pipeline_snapshot(
             inputs={},
             component_inputs={},
@@ -403,7 +409,9 @@ class TestSnapshotCallback:
         # Verify no file was saved to disk
         assert list(tmp_path.glob("*.json")) == []
 
-    def test_pipeline_run_without_snapshot_callback_saves_file(self, tmp_path):
+    def test_pipeline_run_without_snapshot_callback_saves_file(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
         @component
         class SimpleComponent:
             @component.output_types(result=str)
@@ -431,7 +439,7 @@ class TestSnapshotCallback:
 class TestSnapshotSaveEnabled:
     def test_is_snapshot_save_enabled_default(self, monkeypatch):
         monkeypatch.delenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, raising=False)
-        assert _is_snapshot_save_enabled() is True
+        assert _is_snapshot_save_enabled() is False
 
     @pytest.mark.parametrize("value", ["true", "TRUE", "True", "1"])
     def test_is_snapshot_save_enabled_truthy_values(self, monkeypatch, value):

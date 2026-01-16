@@ -2,5 +2,5 @@
 features:
   - |
     Added ``HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED`` environment variable.
-    When set to ``"false"`` or ``"0"``, pipeline snapshots are not saved to disk. Enabled by default.
+    When set to ``"true"`` or ``"1"``, pipeline snapshots are saved to disk. Disabled by default.
     Note: Custom ``snapshot_callback`` functions are still invoked regardless of this setting.

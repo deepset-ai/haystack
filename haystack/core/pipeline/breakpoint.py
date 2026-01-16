@@ -46,11 +46,11 @@ def _is_snapshot_save_enabled() -> bool:
 
     The environment variable HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED controls whether
     pipeline snapshots are saved to files. By default (when the variable is not set),
-    saving is enabled. Only "true" and "1" (case-insensitive) enable saving; any other value disables it.
+    saving is disabled. Only "true" and "1" (case-insensitive) enable saving; any other value disables it.
 
     :returns: True if snapshot saving is enabled, False otherwise.
     """
-    value = os.environ.get(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true").lower()
+    value = os.environ.get(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "false").lower()
     return value in ("true", "1")
 
 
@@ -182,8 +182,8 @@ def _save_pipeline_snapshot(
     - The file path is taken from the break point's `snapshot_file_path`.
     - If the `snapshot_file_path` is None, the function will return without saving.
 
-    The default file saving behavior can be disabled by setting the environment variable
-    `HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED` to any value other than "true" or "1". When disabled,
+    The default file saving behavior is disabled. To enable it, set the environment variable
+    `HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED` to "true" or "1". When disabled,
     the function will return None without saving to a file (custom callbacks are still invoked).
 
     :param pipeline_snapshot: The pipeline snapshot to save.
