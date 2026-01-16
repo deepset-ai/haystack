@@ -59,7 +59,6 @@ dependencies = [
   "docstring-parser",       # ComponentTool
   "filetype",               # MIME type guessing for ImageContent
   "haystack-experimental",
-  "transformers"
 ]
 
 [tool.hatch.envs.default]
