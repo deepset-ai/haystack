@@ -230,3 +230,95 @@ class TestDocumentCleaner:
         assert res["documents"][0].score == document.score
         assert res["documents"][0].embedding == document.embedding
         assert res["documents"][0].sparse_embedding == document.sparse_embedding
+
+    def test_strip_whitespace(self):
+        """Test that strip_whitespace removes only leading and trailing whitespace."""
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, strip_whitespace=True
+        )
+        result = cleaner.run(
+            documents=[Document(content="   \n\nHello World\n\n  Some text here  \n\n   ")]
+        )
+        assert len(result["documents"]) == 1
+        # strip_whitespace should only remove leading/trailing whitespace, preserving internal whitespace
+        assert result["documents"][0].content == "Hello World\n\n  Some text here"
+
+    def test_strip_whitespace_preserves_internal_formatting(self):
+        """Test that strip_whitespace preserves internal whitespace like markdown formatting."""
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, strip_whitespace=True
+        )
+        markdown_content = """
+
+# Header
+
+This is a paragraph.
+
+- Item 1
+- Item 2
+
+"""
+        result = cleaner.run(documents=[Document(content=markdown_content)])
+        assert len(result["documents"]) == 1
+        expected = """# Header
+
+This is a paragraph.
+
+- Item 1
+- Item 2"""
+        assert result["documents"][0].content == expected
+
+    def test_regex_replace_single_pattern(self):
+        """Test regex_replace with a single pattern."""
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False,
+            remove_extra_whitespaces=False,
+            regex_replace={r"\n\n+": "\n"},
+        )
+        result = cleaner.run(documents=[Document(content="Line 1\n\n\n\nLine 2\n\nLine 3")])
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].content == "Line 1\nLine 2\nLine 3"
+
+    def test_regex_replace_multiple_patterns(self):
+        """Test regex_replace with multiple patterns."""
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False,
+            remove_extra_whitespaces=False,
+            regex_replace={r"\n\n+": "\n", r"\s{2,}": " "},
+        )
+        result = cleaner.run(documents=[Document(content="Hello    World\n\n\nGoodbye")])
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].content == "Hello World\nGoodbye"
+
+    def test_regex_replace_custom_replacement(self):
+        """Test regex_replace with custom replacement strings."""
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False,
+            remove_extra_whitespaces=False,
+            regex_replace={r"\[REDACTED\]": "***", r"(\d{4})-(\d{2})-(\d{2})": r"\2/\3/\1"},
+        )
+        result = cleaner.run(
+            documents=[Document(content="Name: [REDACTED], Date: 2024-01-15")]
+        )
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].content == "Name: ***, Date: 01/15/2024"
+
+    def test_strip_whitespace_and_regex_replace_combined(self):
+        """Test using both strip_whitespace and regex_replace together."""
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False,
+            remove_extra_whitespaces=False,
+            strip_whitespace=True,
+            regex_replace={r"\n\n+": "\n"},
+        )
+        result = cleaner.run(
+            documents=[Document(content="\n\n  Hello\n\n\nWorld  \n\n")]
+        )
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].content == "Hello\nWorld"
+
+    def test_init_with_new_params(self):
+        """Test that new parameters are properly initialized."""
+        cleaner = DocumentCleaner(strip_whitespace=True, regex_replace={r"\n+": "\n"})
+        assert cleaner.strip_whitespace is True
+        assert cleaner.regex_replace == {r"\n+": "\n"}
