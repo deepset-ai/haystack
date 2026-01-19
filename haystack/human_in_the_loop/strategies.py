@@ -217,6 +217,7 @@ def _prepare_tool_args(
     return final_args
 
 
+# TODO There is a bug with this function when the same tool is called multiple times in a single message.
 def _process_confirmation_strategies(
     *,
     confirmation_strategies: dict[str, ConfirmationStrategy],

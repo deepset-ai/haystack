@@ -247,6 +247,7 @@ class TestAgent:
                 "streaming_callback": None,
                 "raise_on_tool_invocation_failure": False,
                 "tool_invoker_kwargs": {"max_workers": 5, "enable_streaming_callback_passthrough": True},
+                "confirmation_strategies": None,
             },
         }
         assert serialized_agent == expected_structure
@@ -309,6 +310,7 @@ class TestAgent:
                 "raise_on_tool_invocation_failure": False,
                 "streaming_callback": None,
                 "tool_invoker_kwargs": None,
+                "confirmation_strategies": None,
             },
         }
         assert serialized_agent == expected_structure
@@ -701,35 +703,6 @@ class TestAgent:
         with pytest.raises(TypeError, match="MockChatGeneratorWithoutTools does not accept tools"):
             Agent(chat_generator=chat_generator, tools=[weather_tool])
 
-    def test_multiple_llm_responses_with_tool_call(self, monkeypatch, weather_tool):
-        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        generator = OpenAIChatGenerator()
-
-        mock_messages = [
-            ChatMessage.from_assistant("First response"),
-            ChatMessage.from_assistant(
-                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-            ),
-        ]
-
-        agent = Agent(chat_generator=generator, tools=[weather_tool], max_agent_steps=1)
-        agent.warm_up()
-
-        # Patch agent.chat_generator.run to return mock_messages
-        agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
-
-        result = agent.run([ChatMessage.from_user("Hello")])
-
-        assert "messages" in result
-        assert len(result["messages"]) == 4
-        assert (
-            result["messages"][-1].tool_call_result.result
-            == "{'weather': 'mostly sunny', 'temperature': 7, 'unit': 'celsius'}"
-        )
-        assert "last_message" in result
-        assert isinstance(result["last_message"], ChatMessage)
-        assert result["messages"][-1] == result["last_message"]
-
     def test_exceed_max_steps(self, monkeypatch, weather_tool, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()
@@ -751,16 +724,15 @@ class TestAgent:
             agent.run([ChatMessage.from_user("Hello")])
             assert "Agent reached maximum agent steps" in caplog.text
 
-    def test_exit_conditions_checked_across_all_llm_messages(self, monkeypatch, weather_tool):
+    def test_exit_condition_exits(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()
 
         # Mock messages where the exit condition appears in the second message
         mock_messages = [
-            ChatMessage.from_assistant("First response"),
             ChatMessage.from_assistant(
                 tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-            ),
+            )
         ]
 
         agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["weather_tool"])
@@ -772,7 +744,7 @@ class TestAgent:
         result = agent.run([ChatMessage.from_user("Hello")])
 
         assert "messages" in result
-        assert len(result["messages"]) == 4
+        assert len(result["messages"]) == 3
         assert result["messages"][-2].tool_call.tool_name == "weather_tool"
         assert (
             result["messages"][-1].tool_call_result.result

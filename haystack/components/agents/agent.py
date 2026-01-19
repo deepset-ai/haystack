@@ -645,7 +645,9 @@ class Agent:
                         # If Agent is not in a pipeline, we save the snapshot to a file.
                         # Checked by __component_name__ not being set.
                         if getattr(self, "__component_name__", None) is None:
-                            full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
+                            full_file_path = _save_pipeline_snapshot(
+                                pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
+                            )
                             e.pipeline_snapshot_file_path = full_file_path
                         raise e
 
