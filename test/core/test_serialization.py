@@ -11,6 +11,7 @@ from haystack.core.component import component
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.pipeline import Pipeline
 from haystack.core.serialization import (
+    component_from_dict,
     component_to_dict,
     default_from_dict,
     default_to_dict,
@@ -128,3 +129,144 @@ class UnserializableClass:
 def test_component_to_dict_invalid_type():
     with pytest.raises(SerializationError, match="unsupported value of type 'CustomData'"):
         component_to_dict(UnserializableClass(1, "s", CustomData(99, "aa")), "invalid_component")
+
+
+def test_component_to_dict_with_secret():
+    """Test that Secret instances are automatically serialized in component_to_dict."""
+    from haystack.utils import Secret
+
+    def custom_init(self, api_key=None, token=None, regular_param=None):
+        self.api_key = api_key
+        self.token = token
+        self.regular_param = regular_param
+
+    extra_fields = {"__init__": custom_init}
+    MyComponent = factory.component_class("MyComponent", extra_fields=extra_fields)
+
+    # Test with EnvVarSecret (serializable)
+    env_secret = Secret.from_env_var("TEST_API_KEY")
+    comp = MyComponent(api_key=env_secret)
+    res = component_to_dict(comp, "test_component")
+    assert res["init_parameters"]["api_key"] == env_secret.to_dict()
+    assert res["init_parameters"]["api_key"]["type"] == "env_var"
+
+    # Test with None
+    comp = MyComponent(api_key=None)
+    res = component_to_dict(comp, "test_component")
+    assert res["init_parameters"]["api_key"] is None
+
+    # Test with regular value (not a Secret)
+    comp = MyComponent(api_key="regular_string")
+    res = component_to_dict(comp, "test_component")
+    assert res["init_parameters"]["api_key"] == "regular_string"
+
+    # Test with multiple secrets
+    env_secret1 = Secret.from_env_var("TEST_API_KEY1")
+    env_secret2 = Secret.from_env_var("TEST_API_KEY2")
+    comp = MyComponent(api_key=env_secret1, token=env_secret2, regular_param="test")
+    res = component_to_dict(comp, "test_component")
+    assert res["init_parameters"]["api_key"] == env_secret1.to_dict()
+    assert res["init_parameters"]["api_key"]["type"] == "env_var"
+    assert res["init_parameters"]["token"] == env_secret2.to_dict()
+    assert res["init_parameters"]["token"]["type"] == "env_var"
+    assert res["init_parameters"]["regular_param"] == "test"
+
+
+def test_component_from_dict_with_secret():
+    """Test that serialized Secret dictionaries are automatically deserialized in component_from_dict."""
+    from haystack.utils import Secret
+
+    def custom_init(self, api_key=None, token=None, regular_param=None):
+        self.api_key = api_key
+        self.token = token
+        self.regular_param = regular_param
+
+    extra_fields = {"__init__": custom_init}
+    MyComponent = factory.component_class("MyComponent", extra_fields=extra_fields)
+
+    # Test with EnvVarSecret
+    env_secret = Secret.from_env_var("TEST_API_KEY")
+    serialized_secret = env_secret.to_dict()
+    data = {
+        "type": generate_qualified_class_name(MyComponent),
+        "init_parameters": {"api_key": serialized_secret, "regular_param": "test"},
+    }
+    comp = component_from_dict(MyComponent, data, "test_component")
+    assert isinstance(comp, MyComponent)
+    assert isinstance(comp.api_key, Secret)
+    assert comp.api_key.type.value == "env_var"
+    assert comp.regular_param == "test"
+
+    # Test with None
+    data = {
+        "type": generate_qualified_class_name(MyComponent),
+        "init_parameters": {"api_key": None, "regular_param": "test"},
+    }
+    comp = component_from_dict(MyComponent, data, "test_component")
+    assert comp.api_key is None
+    assert comp.regular_param == "test"
+
+    # Test with regular dict (not a Secret)
+    data = {
+        "type": generate_qualified_class_name(MyComponent),
+        "init_parameters": {"api_key": {"some": "dict"}, "regular_param": "test"},
+    }
+    comp = component_from_dict(MyComponent, data, "test_component")
+    assert comp.api_key == {"some": "dict"}
+    assert comp.regular_param == "test"
+
+    # Test with multiple secrets
+    env_secret1 = Secret.from_env_var("TEST_API_KEY1")
+    env_secret2 = Secret.from_env_var("TEST_API_KEY2")
+    data = {
+        "type": generate_qualified_class_name(MyComponent),
+        "init_parameters": {"api_key": env_secret1.to_dict(), "token": env_secret2.to_dict(), "regular_param": "test"},
+    }
+    comp = component_from_dict(MyComponent, data, "test_component")
+    assert isinstance(comp.api_key, Secret)
+    assert isinstance(comp.token, Secret)
+    assert comp.regular_param == "test"
+
+
+def test_component_to_dict_and_from_dict_roundtrip_with_secret():
+    """Test that serialization and deserialization work together for Secrets."""
+    from haystack.utils import Secret
+
+    def custom_init(self, api_key=None, token=None, regular_param=None):
+        self.api_key = api_key
+        self.token = token
+        self.regular_param = regular_param
+
+    extra_fields = {"__init__": custom_init}
+    MyComponent = factory.component_class("MyComponent", extra_fields=extra_fields)
+
+    # Test roundtrip with EnvVarSecret
+    original_secret = Secret.from_env_var("TEST_API_KEY")
+    comp = MyComponent(api_key=original_secret)
+
+    serialized = component_to_dict(comp, "test_component")
+    assert serialized["init_parameters"]["api_key"]["type"] == "env_var"
+
+    deserialized_comp = component_from_dict(MyComponent, serialized, "test_component")
+    assert isinstance(deserialized_comp.api_key, Secret)
+    assert deserialized_comp.api_key.type.value == "env_var"
+    assert deserialized_comp.api_key._env_vars == original_secret._env_vars
+
+    # Test roundtrip with multiple secrets
+    env_secret1 = Secret.from_env_var("TEST_API_KEY1")
+    env_secret2 = Secret.from_env_var("TEST_API_KEY2")
+    comp = MyComponent(api_key=env_secret1, token=env_secret2, regular_param="test")
+
+    serialized = component_to_dict(comp, "test_component")
+    assert serialized["init_parameters"]["api_key"]["type"] == "env_var"
+    assert serialized["init_parameters"]["token"]["type"] == "env_var"
+    assert serialized["init_parameters"]["regular_param"] == "test"
+
+    deserialized_comp = component_from_dict(MyComponent, serialized, "test_component")
+    assert isinstance(deserialized_comp.api_key, Secret)
+    assert isinstance(deserialized_comp.token, Secret)
+    assert deserialized_comp.api_key.type.value == "env_var"
+    assert deserialized_comp.token.type.value == "env_var"
+    assert deserialized_comp.regular_param == "test"
+    assert deserialized_comp.api_key._env_vars == env_secret1._env_vars
+    assert deserialized_comp.token._env_vars == env_secret2._env_vars
