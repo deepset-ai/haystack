@@ -30,6 +30,11 @@ from haystack.dataclasses import (
     ToolExecutionDecision,
 )
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
+from haystack.human_in_the_loop.strategies import (
+    _process_confirmation_strategies,
+    _process_confirmation_strategies_async,
+)
+from haystack.human_in_the_loop.types import ConfirmationStrategy
 from haystack.tools import (
     Tool,
     Toolset,
@@ -42,8 +47,6 @@ from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
 
-from .human_in_the_loop.strategies import _process_confirmation_strategies, _process_confirmation_strategies_async
-from .human_in_the_loop.types import ConfirmationStrategy
 from .state.state import State, _schema_from_dict, _schema_to_dict, _validate_schema, replace_values
 from .state.state_utils import merge_lists
 

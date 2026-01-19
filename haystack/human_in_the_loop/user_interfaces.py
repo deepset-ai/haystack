@@ -6,9 +6,9 @@ import json
 from threading import Lock
 from typing import Any
 
-from haystack.components.agents.human_in_the_loop.types import ConfirmationUI
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ConfirmationUIResult
+from haystack.human_in_the_loop.types import ConfirmationUI
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install rich'") as rich_import:

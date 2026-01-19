@@ -6,17 +6,12 @@ import os
 from typing import Any
 
 import pytest
-from haystack_experimental.components.agents.agent import Agent
 
-from haystack.components.agents.human_in_the_loop import (
-    AlwaysAskPolicy,
-    BlockingConfirmationStrategy,
-    NeverAskPolicy,
-    SimpleConsoleUI,
-)
-from haystack.components.agents.human_in_the_loop.types import ConfirmationStrategy, ConfirmationUI
+from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, ConfirmationUIResult
+from haystack.human_in_the_loop import AlwaysAskPolicy, BlockingConfirmationStrategy, NeverAskPolicy, SimpleConsoleUI
+from haystack.human_in_the_loop.types import ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -59,7 +54,7 @@ class TestAgent:
         )
         agent_dict = agent.to_dict()
         assert agent_dict == {
-            "type": "haystack_experimental.components.agents.agent.Agent",
+            "type": "haystack.components.agents.agent.Agent",
             "init_parameters": {
                 "chat_generator": {
                     "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
@@ -77,7 +72,6 @@ class TestAgent:
                         "http_client_kwargs": None,
                     },
                 },
-                "chat_message_store": None,
                 "tools": [
                     {
                         "type": "haystack.tools.tool.Tool",
@@ -89,7 +83,7 @@ class TestAgent:
                                 "required": ["a", "b"],
                                 "type": "object",
                             },
-                            "function": "test.components.agents.test_agent.addition_tool",
+                            "function": "test_agent_hitl.addition_tool",
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
@@ -105,14 +99,14 @@ class TestAgent:
                 "tool_invoker_kwargs": None,
                 "confirmation_strategies": {
                     "addition_tool": {
-                        "type": "haystack.components.agents.human_in_the_loop.strategies.BlockingConfirmationStrategy",
+                        "type": "haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy",
                         "init_parameters": {
                             "confirmation_policy": {
-                                "type": "haystack.components.agents.human_in_the_loop.policies.NeverAskPolicy",
+                                "type": "haystack.human_in_the_loop.policies.NeverAskPolicy",
                                 "init_parameters": {},
                             },
                             "confirmation_ui": {
-                                "type": "haystack.components.agents.human_in_the_loop.user_interfaces.SimpleConsoleUI",
+                                "type": "haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI",
                                 "init_parameters": {},
                             },
                         },

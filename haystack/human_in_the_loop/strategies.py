@@ -6,10 +6,10 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from haystack.components.agents import State
-from haystack.components.agents.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.components.tools.tool_invoker import ToolInvoker
 from haystack.core.serialization import default_to_dict, import_class_by_name
 from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolExecutionDecision
+from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool
 
 # To prevent circular imports

@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from haystack.components.agents.human_in_the_loop import RichConsoleUI, SimpleConsoleUI
 from haystack.dataclasses import ConfirmationUIResult
+from haystack.human_in_the_loop import RichConsoleUI, SimpleConsoleUI
 from haystack.tools import create_tool_from_function
 
 
@@ -27,9 +27,7 @@ class TestRichConsoleUI:
     def test_process_choice_confirm(self, tool, choice):
         ui = RichConsoleUI(console=MagicMock())
 
-        with patch(
-            "haystack.components.agents.human_in_the_loop.user_interfaces.Prompt.ask", side_effect=[choice, "feedback"]
-        ):
+        with patch("haystack.human_in_the_loop.user_interfaces.Prompt.ask", side_effect=[choice, "feedback"]):
             result = ui.get_user_confirmation(tool.name, tool.description, {"x": 1})
 
         assert isinstance(result, ConfirmationUIResult)
@@ -41,7 +39,7 @@ class TestRichConsoleUI:
     def test_process_choice_modify(self, tool, choice):
         ui = RichConsoleUI(console=MagicMock())
 
-        with patch("haystack.components.agents.human_in_the_loop.user_interfaces.Prompt.ask", side_effect=["m", "2"]):
+        with patch("haystack.human_in_the_loop.user_interfaces.Prompt.ask", side_effect=["m", "2"]):
             result = ui.get_user_confirmation(tool.name, tool.description, {"x": 1})
 
         assert isinstance(result, ConfirmationUIResult)
@@ -51,10 +49,7 @@ class TestRichConsoleUI:
     def test_process_choice_modify_dict_param(self, tool):
         ui = RichConsoleUI(console=MagicMock())
 
-        with patch(
-            "haystack.components.agents.human_in_the_loop.user_interfaces.Prompt.ask",
-            side_effect=["m", '{"key": "value"}'],
-        ):
+        with patch("haystack.human_in_the_loop.user_interfaces.Prompt.ask", side_effect=["m", '{"key": "value"}']):
             result = ui.get_user_confirmation(tool.name, tool.description, {"param1": {"old_key": "old_value"}})
 
         assert isinstance(result, ConfirmationUIResult)
@@ -65,7 +60,7 @@ class TestRichConsoleUI:
         ui = RichConsoleUI(console=MagicMock())
 
         with patch(
-            "haystack.components.agents.human_in_the_loop.user_interfaces.Prompt.ask",
+            "haystack.human_in_the_loop.user_interfaces.Prompt.ask",
             side_effect=["m", "invalid_json", '{"key": "value"}'],
         ):
             result = ui.get_user_confirmation(tool.name, tool.description, {"param1": {"old_key": "old_value"}})
@@ -78,10 +73,7 @@ class TestRichConsoleUI:
     def test_process_choice_reject(self, tool, choice):
         ui = RichConsoleUI(console=MagicMock())
 
-        with patch(
-            "haystack.components.agents.human_in_the_loop.user_interfaces.Prompt.ask",
-            side_effect=["n", "Changed my mind"],
-        ):
+        with patch("haystack.human_in_the_loop.user_interfaces.Prompt.ask", side_effect=["n", "Changed my mind"]):
             result = ui.get_user_confirmation(tool.name, tool.description, {"x": 1})
 
         assert isinstance(result, ConfirmationUIResult)
@@ -91,7 +83,7 @@ class TestRichConsoleUI:
     def test_to_dict(self):
         ui = RichConsoleUI()
         data = ui.to_dict()
-        assert data["type"] == ("haystack.components.agents.human_in_the_loop.user_interfaces.RichConsoleUI")
+        assert data["type"] == ("haystack.human_in_the_loop.user_interfaces.RichConsoleUI")
         assert data["init_parameters"]["console"] is None
 
     def test_from_dict(self):
@@ -190,7 +182,7 @@ class TestSimpleConsoleUI:
     def test_to_dict(self):
         ui = SimpleConsoleUI()
         data = ui.to_dict()
-        assert data["type"] == ("haystack.components.agents.human_in_the_loop.user_interfaces.SimpleConsoleUI")
+        assert data["type"] == ("haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI")
         assert data["init_parameters"] == {}
 
     def test_from_dict(self):

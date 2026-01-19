@@ -4,8 +4,8 @@
 
 import pytest
 
-from haystack.components.agents.human_in_the_loop import AlwaysAskPolicy, AskOncePolicy, NeverAskPolicy
 from haystack.dataclasses import ConfirmationUIResult
+from haystack.human_in_the_loop import AlwaysAskPolicy, AskOncePolicy, NeverAskPolicy
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -26,14 +26,11 @@ class TestAlwaysAskPolicy:
     def test_to_dict(self):
         policy = AlwaysAskPolicy()
         policy_dict = policy.to_dict()
-        assert policy_dict["type"] == "haystack.components.agents.human_in_the_loop.policies.AlwaysAskPolicy"
+        assert policy_dict["type"] == "haystack.human_in_the_loop.policies.AlwaysAskPolicy"
         assert policy_dict["init_parameters"] == {}
 
     def test_from_dict(self):
-        policy_dict = {
-            "type": "haystack.components.agents.human_in_the_loop.policies.AlwaysAskPolicy",
-            "init_parameters": {},
-        }
+        policy_dict = {"type": "haystack.human_in_the_loop.policies.AlwaysAskPolicy", "init_parameters": {}}
         policy = AlwaysAskPolicy.from_dict(policy_dict)
         assert isinstance(policy, AlwaysAskPolicy)
 
@@ -70,14 +67,11 @@ class TestAskOncePolicy:
     def test_to_dict(self):
         policy = AskOncePolicy()
         policy_dict = policy.to_dict()
-        assert policy_dict["type"] == "haystack.components.agents.human_in_the_loop.policies.AskOncePolicy"
+        assert policy_dict["type"] == "haystack.human_in_the_loop.policies.AskOncePolicy"
         assert policy_dict["init_parameters"] == {}
 
     def test_from_dict(self):
-        policy_dict = {
-            "type": "haystack.components.agents.human_in_the_loop.policies.AskOncePolicy",
-            "init_parameters": {},
-        }
+        policy_dict = {"type": "haystack.human_in_the_loop.policies.AskOncePolicy", "init_parameters": {}}
         policy = AskOncePolicy.from_dict(policy_dict)
         assert isinstance(policy, AskOncePolicy)
 
@@ -90,13 +84,10 @@ class TestNeverAskPolicy:
     def test_to_dict(self):
         policy = NeverAskPolicy()
         policy_dict = policy.to_dict()
-        assert policy_dict["type"] == "haystack.components.agents.human_in_the_loop.policies.NeverAskPolicy"
+        assert policy_dict["type"] == "haystack.human_in_the_loop.policies.NeverAskPolicy"
         assert policy_dict["init_parameters"] == {}
 
     def test_from_dict(self):
-        policy_dict = {
-            "type": "haystack.components.agents.human_in_the_loop.policies.NeverAskPolicy",
-            "init_parameters": {},
-        }
+        policy_dict = {"type": "haystack.human_in_the_loop.policies.NeverAskPolicy", "init_parameters": {}}
         policy = NeverAskPolicy.from_dict(policy_dict)
         assert isinstance(policy, NeverAskPolicy)

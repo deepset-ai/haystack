@@ -9,21 +9,21 @@ from typing import Any
 import pytest
 
 from haystack.components.agents.agent import _ExecutionContext
-from haystack.components.agents.human_in_the_loop import (
+from haystack.components.agents.state.state import State
+from haystack.dataclasses import ChatMessage, ConfirmationUIResult, ToolCall, ToolExecutionDecision
+from haystack.human_in_the_loop import (
     AlwaysAskPolicy,
     AskOncePolicy,
     BlockingConfirmationStrategy,
     NeverAskPolicy,
     SimpleConsoleUI,
 )
-from haystack.components.agents.human_in_the_loop.strategies import (
+from haystack.human_in_the_loop.strategies import (
     _apply_tool_execution_decisions,
     _run_confirmation_strategies,
     _run_confirmation_strategies_async,
     _update_chat_history,
 )
-from haystack.components.agents.state.state import State
-from haystack.dataclasses import ChatMessage, ConfirmationUIResult, ToolCall, ToolExecutionDecision
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -61,14 +61,14 @@ class TestBlockingConfirmationStrategy:
         strategy = BlockingConfirmationStrategy(confirmation_policy=AskOncePolicy(), confirmation_ui=SimpleConsoleUI())
         strategy_dict = strategy.to_dict()
         assert strategy_dict == {
-            "type": "haystack.components.agents.human_in_the_loop.strategies.BlockingConfirmationStrategy",
+            "type": "haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy",
             "init_parameters": {
                 "confirmation_policy": {
-                    "type": "haystack.components.agents.human_in_the_loop.policies.AskOncePolicy",
+                    "type": "haystack.human_in_the_loop.policies.AskOncePolicy",
                     "init_parameters": {},
                 },
                 "confirmation_ui": {
-                    "type": "haystack.components.agents.human_in_the_loop.user_interfaces.SimpleConsoleUI",
+                    "type": "haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI",
                     "init_parameters": {},
                 },
             },
@@ -76,14 +76,14 @@ class TestBlockingConfirmationStrategy:
 
     def test_from_dict(self):
         strategy_dict = {
-            "type": "haystack.components.agents.human_in_the_loop.strategies.HumanInTheLoopStrategy",
+            "type": "haystack.human_in_the_loop.strategies.HumanInTheLoopStrategy",
             "init_parameters": {
                 "confirmation_policy": {
-                    "type": "haystack.components.agents.human_in_the_loop.policies.AskOncePolicy",
+                    "type": "haystack.human_in_the_loop.policies.AskOncePolicy",
                     "init_parameters": {},
                 },
                 "confirmation_ui": {
-                    "type": "haystack.components.agents.human_in_the_loop.user_interfaces.SimpleConsoleUI",
+                    "type": "haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI",
                     "init_parameters": {},
                 },
             },

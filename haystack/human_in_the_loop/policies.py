@@ -4,8 +4,8 @@
 
 from typing import Any
 
-from haystack.components.agents.human_in_the_loop.types import ConfirmationPolicy
 from haystack.dataclasses import ConfirmationUIResult
+from haystack.human_in_the_loop.types import ConfirmationPolicy
 
 
 class AlwaysAskPolicy(ConfirmationPolicy):
