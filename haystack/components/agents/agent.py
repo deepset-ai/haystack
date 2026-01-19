@@ -21,7 +21,14 @@ from haystack.core.pipeline.breakpoint import (
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict, import_class_by_name
-from haystack.dataclasses import AgentBreakpoint, AgentSnapshot, ChatMessage, ChatRole, ToolBreakpoint
+from haystack.dataclasses import (
+    AgentBreakpoint,
+    AgentSnapshot,
+    ChatMessage,
+    ChatRole,
+    ToolBreakpoint,
+    ToolExecutionDecision,
+)
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import (
     Tool,
@@ -60,6 +67,8 @@ class _ExecutionContext:
         objects (e.g., WebSocket connections, async queues, or pub/sub clients) that strategies can use for
         non-blocking user interaction. This is passed directly to strategies via the `confirmation_strategy_context`
         parameter in their `run()` and `run_async()` methods.
+    :param tool_execution_decisions: Optional list of ToolExecutionDecision objects to use instead of prompting
+        the user. This is useful when restarting from a snapshot where tool execution decisions were already made.
     """
 
     state: State
@@ -69,6 +78,7 @@ class _ExecutionContext:
     counter: int = 0
     skip_chat_generator: bool = False
     confirmation_strategy_context: dict[str, Any] | None = None
+    tool_execution_decisions: list[ToolExecutionDecision] | None = None
 
 
 @component
