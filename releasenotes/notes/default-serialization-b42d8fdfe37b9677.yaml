@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    component_from_dict() and component_to_dict() now work with custom components out of the box also if the component has a Secret as an attribute.
+    Users no longer need to explicitly define to_dict() and from_dict() methods in their custom components to call deserialize_secrets_inplace() or api_key.to_dict().
+    component_from_dict() and component_to_dict() now handle this automatically.
