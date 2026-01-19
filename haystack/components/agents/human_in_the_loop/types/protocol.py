@@ -45,7 +45,7 @@ class ConfirmationPolicy(Protocol):
         confirmation_result: ConfirmationUIResult,
     ) -> None:
         """Update the policy based on the confirmation UI result."""
-        pass
+        return
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the policy to a dictionary."""
@@ -60,11 +60,12 @@ class ConfirmationPolicy(Protocol):
 class ConfirmationStrategy(Protocol):
     def run(
         self,
+        *,
         tool_name: str,
         tool_description: str,
         tool_params: dict[str, Any],
         tool_call_id: str | None = None,
-        **kwargs: dict[str, Any] | None,
+        confirmation_strategy_context: dict[str, Any] | None = None,
     ) -> ToolExecutionDecision:
         """
         Run the confirmation strategy for a given tool and its parameters.
@@ -74,9 +75,8 @@ class ConfirmationStrategy(Protocol):
         :param tool_params: The parameters to be passed to the tool.
         :param tool_call_id: Optional unique identifier for the tool call. This can be used to track and correlate
             the decision with a specific tool invocation.
-        :param kwargs: Additional keyword arguments. Implementations may accept `confirmation_strategy_context`
-            for passing request-scoped resources (e.g., WebSocket connections, async queues) in web/server
-            environments.
+        :param confirmation_strategy_context: Optional context dictionary for passing request-scoped resources
+            (e.g., WebSocket connections, async queues) in web/server environments.
 
         :returns:
             The result of the confirmation strategy (e.g., tool output, rejection message, etc.).
@@ -85,11 +85,12 @@ class ConfirmationStrategy(Protocol):
 
     async def run_async(
         self,
+        *,
         tool_name: str,
         tool_description: str,
         tool_params: dict[str, Any],
         tool_call_id: str | None = None,
-        **kwargs: dict[str, Any] | None,
+        confirmation_strategy_context: dict[str, Any] | None = None,
     ) -> ToolExecutionDecision:
         """
         Async version of run. Run the confirmation strategy for a given tool and its parameters.
@@ -101,9 +102,8 @@ class ConfirmationStrategy(Protocol):
         :param tool_params: The parameters to be passed to the tool.
         :param tool_call_id: Optional unique identifier for the tool call. This can be used to track and correlate
             the decision with a specific tool invocation.
-        :param kwargs: Additional keyword arguments. Implementations may accept `confirmation_strategy_context`
-            for passing request-scoped resources (e.g., WebSocket connections, async queues) in web/server
-            environments.
+        :param confirmation_strategy_context: Optional context dictionary for passing request-scoped resources
+            (e.g., WebSocket connections, async queues) in web/server environments.
 
         :returns:
             The result of the confirmation strategy (e.g., tool output, rejection message, etc.).
