@@ -6,11 +6,10 @@ import inspect
 from dataclasses import dataclass
 from typing import Any, cast
 
-from haystack import logging, tracing
+from haystack import Pipeline, component, logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
-from haystack.core.component.component import component
-from haystack.core.errors import BreakpointException, PipelineRuntimeError
+from haystack.core.errors import BreakpointException, DeserializationError, PipelineRuntimeError
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.breakpoint import (
     SnapshotCallback,
@@ -20,11 +19,9 @@ from haystack.core.pipeline.breakpoint import (
     _should_trigger_tool_invoker_breakpoint,
     _validate_tool_breakpoint_is_valid,
 )
-from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
-from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage, ChatRole
-from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, ToolBreakpoint
+from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict, import_class_by_name
+from haystack.dataclasses import AgentBreakpoint, AgentSnapshot, ChatMessage, ChatRole, ToolBreakpoint
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
 from haystack.tools import (
     Tool,
@@ -36,15 +33,17 @@ from haystack.tools import (
 )
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
-from haystack.utils.deserialization import deserialize_chatgenerator_inplace
+from haystack.utils.deserialization import deserialize_component_inplace
 
-from .state.state import State, _schema_from_dict, _schema_to_dict, _validate_schema
+from .human_in_the_loop.strategies import _process_confirmation_strategies, _process_confirmation_strategies_async
+from .human_in_the_loop.types import ConfirmationStrategy
+from .state.state import State, _schema_from_dict, _schema_to_dict, _validate_schema, replace_values
 from .state.state_utils import merge_lists
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class _ExecutionContext:
     """
     Context for executing the agent.
@@ -56,6 +55,11 @@ class _ExecutionContext:
     :param counter: A counter to track the number of steps taken in the agent's run.
     :param skip_chat_generator: A flag to indicate whether to skip the chat generator in the next iteration.
         This is useful when resuming from a ToolBreakpoint where the ToolInvoker needs to be called first.
+    :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
+        to confirmation strategies. In web/server environments, this enables passing per-request
+        objects (e.g., WebSocket connections, async queues, or pub/sub clients) that strategies can use for
+        non-blocking user interaction. This is passed directly to strategies via the `confirmation_strategy_context`
+        parameter in their `run()` and `run_async()` methods.
     """
 
     state: State
@@ -64,6 +68,7 @@ class _ExecutionContext:
     tool_invoker_inputs: dict
     counter: int = 0
     skip_chat_generator: bool = False
+    confirmation_strategy_context: dict[str, Any] | None = None
 
 
 @component
@@ -159,6 +164,7 @@ class Agent:
         streaming_callback: StreamingCallbackT | None = None,
         raise_on_tool_invocation_failure: bool = False,
         tool_invoker_kwargs: dict[str, Any] | None = None,
+        confirmation_strategies: dict[str, ConfirmationStrategy] | None = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -177,6 +183,7 @@ class Agent:
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param tool_invoker_kwargs: Additional keyword arguments to pass to the ToolInvoker.
+        :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If the exit_conditions are not valid.
         """
@@ -241,6 +248,8 @@ class Agent:
                 "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
             )
 
+        self._confirmation_strategies = confirmation_strategies or {}
+
         self._is_warmed_up = False
 
     def warm_up(self) -> None:
@@ -272,6 +281,11 @@ class Agent:
             streaming_callback=serialize_callable(self.streaming_callback) if self.streaming_callback else None,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
             tool_invoker_kwargs=self.tool_invoker_kwargs,
+            confirmation_strategies={
+                name: strategy.to_dict() for name, strategy in self._confirmation_strategies.items()
+            }
+            if self._confirmation_strategies
+            else None,
         )
 
     @classmethod
@@ -284,7 +298,7 @@ class Agent:
         """
         init_params = data.get("init_parameters", {})
 
-        deserialize_chatgenerator_inplace(init_params, key="chat_generator")
+        deserialize_component_inplace(init_params, key="chat_generator")
 
         if init_params.get("state_schema") is not None:
             init_params["state_schema"] = _schema_from_dict(init_params["state_schema"])
@@ -293,6 +307,17 @@ class Agent:
             init_params["streaming_callback"] = deserialize_callable(init_params["streaming_callback"])
 
         deserialize_tools_or_toolset_inplace(init_params, key="tools")
+
+        # TODO Potentially could use deserialize_component_inplace here
+        if "confirmation_strategies" in init_params and init_params["confirmation_strategies"] is not None:
+            for name, strategy_dict in init_params["confirmation_strategies"].items():
+                try:
+                    strategy_class = import_class_by_name(strategy_dict["type"])
+                except ImportError as e:
+                    raise DeserializationError(f"Class '{strategy_dict['type']}' not correctly imported") from e
+                if not hasattr(strategy_class, "from_dict"):
+                    raise DeserializationError(f"{strategy_class} does not have from_dict method implemented.")
+                init_params["confirmation_strategies"][name] = strategy_class.from_dict(strategy_dict)
 
         return default_from_dict(cls, data)
 
@@ -324,6 +349,7 @@ class Agent:
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | list[str] | None = None,
+        confirmation_strategy_context: dict[str, Any] | None = None,
         **kwargs,
     ) -> _ExecutionContext:
         """
@@ -337,6 +363,8 @@ class Agent:
             override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
+        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
+            to confirmation strategies.
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
         system_prompt = system_prompt or self.system_prompt
@@ -362,11 +390,18 @@ class Agent:
         if generation_kwargs is not None:
             generator_inputs["generation_kwargs"] = generation_kwargs
 
+        # We add enable_streaming_callback_passthrough to the tool invoker inputs
+        if self._tool_invoker:
+            tool_invoker_inputs["enable_streaming_callback_passthrough"] = (
+                self._tool_invoker.enable_streaming_callback_passthrough
+            )
+
         return _ExecutionContext(
             state=state,
             component_visits=dict.fromkeys(["chat_generator", "tool_invoker"], 0),
             chat_generator_inputs=generator_inputs,
             tool_invoker_inputs=tool_invoker_inputs,
+            confirmation_strategy_context=confirmation_strategy_context,
         )
 
     def _select_tools(self, tools: ToolsType | list[str] | None = None) -> ToolsType:
@@ -415,6 +450,7 @@ class Agent:
         *,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | list[str] | None = None,
+        confirmation_strategy_context: dict[str, Any] | None = None,
     ) -> _ExecutionContext:
         """
         Initialize execution context from an AgentSnapshot.
@@ -426,6 +462,8 @@ class Agent:
             override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
+        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
+            to confirmation strategies.
         """
         component_visits = snapshot.component_visits
         current_inputs = {
@@ -451,6 +489,12 @@ class Agent:
         if generation_kwargs is not None:
             generator_inputs["generation_kwargs"] = generation_kwargs
 
+        # We add enable_streaming_callback_passthrough to the tool invoker inputs
+        if self._tool_invoker:
+            tool_invoker_inputs["enable_streaming_callback_passthrough"] = (
+                self._tool_invoker.enable_streaming_callback_passthrough
+            )
+
         return _ExecutionContext(
             state=state,
             component_visits=component_visits,
@@ -458,6 +502,7 @@ class Agent:
             tool_invoker_inputs=tool_invoker_inputs,
             counter=snapshot.break_point.break_point.visit_count,
             skip_chat_generator=skip_chat_generator,
+            confirmation_strategy_context=confirmation_strategy_context,
         )
 
     def _runtime_checks(self, break_point: AgentBreakpoint | None) -> None:
@@ -485,6 +530,7 @@ class Agent:
         system_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
         snapshot_callback: SnapshotCallback | None = None,
+        confirmation_strategy_context: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -505,6 +551,10 @@ class Agent:
         :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
             The callback receives a `PipelineSnapshot` object and can return an optional string.
             If provided, the callback is used instead of the default file-saving behavior.
+        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
+            to confirmation strategies. Useful in web/server environments to provide per-request
+            objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
+            can use for non-blocking user interaction.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -528,8 +578,9 @@ class Agent:
                 snapshot=snapshot,
                 streaming_callback=streaming_callback,
                 requires_async=False,
-                tools=tools,
                 generation_kwargs=generation_kwargs,
+                tools=tools,
+                confirmation_strategy_context=confirmation_strategy_context,
             )
         else:
             exe_context = self._initialize_fresh_execution(
@@ -537,8 +588,9 @@ class Agent:
                 streaming_callback=streaming_callback,
                 requires_async=False,
                 system_prompt=system_prompt,
-                tools=tools,
                 generation_kwargs=generation_kwargs,
+                tools=tools,
+                confirmation_strategy_context=confirmation_strategy_context,
                 **kwargs,
             )
 
@@ -577,12 +629,10 @@ class Agent:
                         )
                         if isinstance(e, BreakpointException):
                             e._break_point = e.pipeline_snapshot.break_point
-                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
+                        # If Agent is not in a pipeline, we save the snapshot to a file.
                         # Checked by __component_name__ not being set.
                         if getattr(self, "__component_name__", None) is None:
-                            full_file_path = _save_pipeline_snapshot(
-                                pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
-                            )
+                            full_file_path = _save_pipeline_snapshot(pipeline_snapshot=e.pipeline_snapshot)
                             e.pipeline_snapshot_file_path = full_file_path
                         raise e
 
@@ -605,13 +655,24 @@ class Agent:
                 ):
                     break_point_to_pass = break_point.break_point
 
+                # Apply confirmation strategies and update State and messages sent to ToolInvoker
+                # Run confirmation strategies to get updated tool call messages and modified chat history
+                modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
+                    confirmation_strategies=self._confirmation_strategies,
+                    messages_with_tool_calls=llm_messages,
+                    execution_context=exe_context,
+                )
+                # Replace the chat history in state with the modified one
+                exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
+
+                # Run ToolInvoker
                 try:
                     # We only send the messages from the LLM to the tool invoker
                     tool_invoker_result = Pipeline._run_component(
                         component_name="tool_invoker",
                         component={"instance": self._tool_invoker},
                         inputs={
-                            "messages": llm_messages,
+                            "messages": modified_tool_call_messages,
                             "state": exe_context.state,
                             **exe_context.tool_invoker_inputs,
                         },
@@ -668,7 +729,7 @@ class Agent:
             result["last_message"] = msgs[-1]
         return result
 
-    async def run_async(
+    async def run_async(  # noqa: PLR0915
         self,
         messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None = None,
@@ -679,6 +740,7 @@ class Agent:
         system_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
         snapshot_callback: SnapshotCallback | None = None,
+        confirmation_strategy_context: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -704,6 +766,10 @@ class Agent:
             If provided, the callback is used instead of the default file-saving behavior.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
+        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
+            to confirmation strategies. Useful in web/server environments to provide per-request
+            objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
+            can use for non-blocking user interaction.
         :returns:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the agent's run.
@@ -727,6 +793,7 @@ class Agent:
                 requires_async=True,
                 tools=tools,
                 generation_kwargs=generation_kwargs,
+                confirmation_strategy_context=confirmation_strategy_context,
             )
         else:
             exe_context = self._initialize_fresh_execution(
@@ -736,6 +803,7 @@ class Agent:
                 system_prompt=system_prompt,
                 tools=tools,
                 generation_kwargs=generation_kwargs,
+                confirmation_strategy_context=confirmation_strategy_context,
                 **kwargs,
             )
 
@@ -796,6 +864,16 @@ class Agent:
                     )
                 ):
                     break_point_to_pass = break_point.break_point
+
+                # Apply confirmation strategies and update State and messages sent to ToolInvoker
+                # Run confirmation strategies to get updated tool call messages and modified chat history
+                modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
+                    confirmation_strategies=self._confirmation_strategies,
+                    messages_with_tool_calls=llm_messages,
+                    execution_context=exe_context,
+                )
+                # Replace the chat history in state with the modified one
+                exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
                 try:
                     # We only send the messages from the LLM to the tool invoker

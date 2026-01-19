@@ -9,7 +9,14 @@ from lazy_imports import LazyImporter
 
 _import_structure = {
     "answer": ["Answer", "ExtractedAnswer", "GeneratedAnswer"],
-    "breakpoints": ["AgentBreakpoint", "AgentSnapshot", "Breakpoint", "PipelineSnapshot", "PipelineState"],
+    "breakpoints": [
+        "AgentBreakpoint",
+        "AgentSnapshot",
+        "Breakpoint",
+        "PipelineSnapshot",
+        "PipelineState",
+        "ToolBreakpoint",
+    ],
     "byte_stream": ["ByteStream"],
     "chat_message": ["ChatMessage", "ChatRole", "ReasoningContent", "TextContent", "ToolCall", "ToolCallResult"],
     "human_in_the_loop": ["ConfirmationUIResult", "ToolExecutionDecision"],

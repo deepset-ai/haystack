@@ -10,7 +10,6 @@ from lazy_imports import LazyImporter
 _import_structure = {
     "policies": ["AlwaysAskPolicy", "AskOncePolicy", "NeverAskPolicy"],
     "strategies": ["BlockingConfirmationStrategy"],
-    "types": ["ConfirmationPolicy", "ConfirmationStrategy", "ConfirmationUI"],
     "user_interfaces": ["RichConsoleUI", "SimpleConsoleUI"],
 }
 
@@ -19,9 +18,6 @@ if TYPE_CHECKING:
     from .policies import AskOncePolicy as AskOncePolicy
     from .policies import NeverAskPolicy as NeverAskPolicy
     from .strategies import BlockingConfirmationStrategy as BlockingConfirmationStrategy
-    from .types import ConfirmationPolicy as ConfirmationPolicy
-    from .types import ConfirmationStrategy as ConfirmationStrategy
-    from .types import ConfirmationUI as ConfirmationUI
     from .user_interfaces import RichConsoleUI as RichConsoleUI
     from .user_interfaces import SimpleConsoleUI as SimpleConsoleUI
 

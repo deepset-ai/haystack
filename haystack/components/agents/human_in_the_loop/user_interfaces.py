@@ -6,7 +6,7 @@ import json
 from threading import Lock
 from typing import Any
 
-from haystack.components.agents.human_in_the_loop import ConfirmationUI
+from haystack.components.agents.human_in_the_loop.types import ConfirmationUI
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ConfirmationUIResult
 from haystack.lazy_imports import LazyImport

@@ -3,15 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import replace
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from haystack.components.agents import State
-from haystack.components.agents.agent import _ExecutionContext
-from haystack.components.agents.human_in_the_loop import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
+from haystack.components.agents.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.components.tools.tool_invoker import ToolInvoker
 from haystack.core.serialization import default_to_dict, import_class_by_name
 from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolExecutionDecision
 from haystack.tools import Tool
+
+# To prevent circular imports
+if TYPE_CHECKING:
+    from haystack.components.agents.agent import _ExecutionContext
 
 _REJECTION_FEEDBACK_TEMPLATE = "Tool execution for '{tool_name}' was rejected by the user."
 _MODIFICATION_FEEDBACK_TEMPLATE = (
@@ -218,7 +221,7 @@ def _process_confirmation_strategies(
     *,
     confirmation_strategies: dict[str, ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
-    execution_context: _ExecutionContext,
+    execution_context: "_ExecutionContext",
 ) -> tuple[list[ChatMessage], list[ChatMessage]]:
     """
     Run the confirmation strategies and return modified tool call messages and updated chat history.
