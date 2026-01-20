@@ -896,7 +896,7 @@ class Agent:
                         component_name="tool_invoker",
                         component={"instance": self._tool_invoker},
                         component_inputs={
-                            "messages": llm_messages,
+                            "messages": modified_tool_call_messages,
                             "state": exe_context.state,
                             **exe_context.tool_invoker_inputs,
                         },
