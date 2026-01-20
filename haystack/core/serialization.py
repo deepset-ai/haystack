@@ -238,7 +238,7 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
 
     Serialized Secret dictionaries in `init_parameters` are automatically detected and
     deserialized. A dictionary is considered a serialized Secret if it has a "type" key
-    with value "token" or "env_var".
+    with value "env_var".
 
     :param cls:
         The class to be used for deserialization.
@@ -259,7 +259,7 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     # Automatically detect and deserialize Secret instances
     secret_keys = []
     for key, value in init_params.items():
-        if isinstance(value, dict) and value.get("type") in ("token", "env_var"):
+        if isinstance(value, dict) and value.get("type") == "env_var":
             secret_keys.append(key)
 
     if secret_keys:

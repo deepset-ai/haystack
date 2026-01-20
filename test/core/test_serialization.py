@@ -159,9 +159,9 @@ def test_component_to_dict_with_secret():
     assert res["init_parameters"]["api_key"] is None
 
     # Test with regular value (not a Secret)
-    comp = CustomComponentWithSecrets(api_key="regular_string")
+    comp = CustomComponentWithSecrets(regular_param="regular_string")
     res = component_to_dict(comp, "test_component")
-    assert res["init_parameters"]["api_key"] == "regular_string"
+    assert res["init_parameters"]["regular_param"] == "regular_string"
 
     # Test with multiple secrets
     env_secret1 = Secret.from_env_var("TEST_API_KEY1")
