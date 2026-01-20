@@ -24,13 +24,13 @@ BM25 computes a weighted word overlap between the query string and a document to
 ```python
 def __init__(*,
              document_store: OpenSearchDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
-             fuzziness: Union[int, str] = "AUTO",
+             filters: dict[str, Any] | None = None,
+             fuzziness: int | str = "AUTO",
              top_k: int = 10,
              scale_score: bool = False,
              all_terms_must_match: bool = False,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query: Optional[dict[str, Any]] = None,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+             custom_query: dict[str, Any] | None = None,
              raise_on_failure: bool = True)
 ```
 
@@ -136,13 +136,13 @@ Deserialized component.
 @component.output_types(documents=list[Document])
 def run(
     query: str,
-    filters: Optional[dict[str, Any]] = None,
-    all_terms_must_match: Optional[bool] = None,
-    top_k: Optional[int] = None,
-    fuzziness: Optional[Union[int, str]] = None,
-    scale_score: Optional[bool] = None,
-    custom_query: Optional[dict[str, Any]] = None,
-    document_store: Optional[OpenSearchDocumentStore] = None
+    filters: dict[str, Any] | None = None,
+    all_terms_must_match: bool | None = None,
+    top_k: int | None = None,
+    fuzziness: int | str | None = None,
+    scale_score: bool | None = None,
+    custom_query: dict[str, Any] | None = None,
+    document_store: OpenSearchDocumentStore | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -208,13 +208,13 @@ A dictionary containing the retrieved documents with the following structure:
 @component.output_types(documents=list[Document])
 async def run_async(
     query: str,
-    filters: Optional[dict[str, Any]] = None,
-    all_terms_must_match: Optional[bool] = None,
-    top_k: Optional[int] = None,
-    fuzziness: Optional[Union[int, str]] = None,
-    scale_score: Optional[bool] = None,
-    custom_query: Optional[dict[str, Any]] = None,
-    document_store: Optional[OpenSearchDocumentStore] = None
+    filters: dict[str, Any] | None = None,
+    all_terms_must_match: bool | None = None,
+    top_k: int | None = None,
+    fuzziness: int | str | None = None,
+    scale_score: bool | None = None,
+    custom_query: dict[str, Any] | None = None,
+    document_store: OpenSearchDocumentStore | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -260,10 +260,10 @@ Retrieves documents from the OpenSearchDocumentStore using a vector similarity m
 ```python
 def __init__(*,
              document_store: OpenSearchDocumentStore,
-             filters: Optional[dict[str, Any]] = None,
+             filters: dict[str, Any] | None = None,
              top_k: int = 10,
-             filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query: Optional[dict[str, Any]] = None,
+             filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
+             custom_query: dict[str, Any] | None = None,
              raise_on_failure: bool = True,
              efficient_filtering: bool = False)
 ```
@@ -369,11 +369,11 @@ Deserialized component.
 @component.output_types(documents=list[Document])
 def run(
     query_embedding: list[float],
-    filters: Optional[dict[str, Any]] = None,
-    top_k: Optional[int] = None,
-    custom_query: Optional[dict[str, Any]] = None,
-    efficient_filtering: Optional[bool] = None,
-    document_store: Optional[OpenSearchDocumentStore] = None
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    custom_query: dict[str, Any] | None = None,
+    efficient_filtering: bool | None = None,
+    document_store: OpenSearchDocumentStore | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -443,11 +443,11 @@ Dictionary with key "documents" containing the retrieved Documents.
 @component.output_types(documents=list[Document])
 async def run_async(
     query_embedding: list[float],
-    filters: Optional[dict[str, Any]] = None,
-    top_k: Optional[int] = None,
-    custom_query: Optional[dict[str, Any]] = None,
-    efficient_filtering: Optional[bool] = None,
-    document_store: Optional[OpenSearchDocumentStore] = None
+    filters: dict[str, Any] | None = None,
+    top_k: int | None = None,
+    custom_query: dict[str, Any] | None = None,
+    efficient_filtering: bool | None = None,
+    document_store: OpenSearchDocumentStore | None = None
 ) -> dict[str, list[Document]]
 ```
 
@@ -589,22 +589,21 @@ results = retriever.run(query="What is reinforcement learning?", filters_bm25=No
 def __init__(document_store: OpenSearchDocumentStore,
              *,
              embedder: TextEmbedder,
-             filters_bm25: Optional[dict[str, Any]] = None,
-             fuzziness: Union[int, str] = "AUTO",
+             filters_bm25: dict[str, Any] | None = None,
+             fuzziness: int | str = "AUTO",
              top_k_bm25: int = 10,
              scale_score: bool = False,
              all_terms_must_match: bool = False,
-             filter_policy_bm25: Union[str,
-                                       FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query_bm25: Optional[dict[str, Any]] = None,
-             filters_embedding: Optional[dict[str, Any]] = None,
+             filter_policy_bm25: str | FilterPolicy = FilterPolicy.REPLACE,
+             custom_query_bm25: dict[str, Any] | None = None,
+             filters_embedding: dict[str, Any] | None = None,
              top_k_embedding: int = 10,
-             filter_policy_embedding: Union[
-                 str, FilterPolicy] = FilterPolicy.REPLACE,
-             custom_query_embedding: Optional[dict[str, Any]] = None,
-             join_mode: Union[str, JoinMode] = JoinMode.RECIPROCAL_RANK_FUSION,
-             weights: Optional[list[float]] = None,
-             top_k: Optional[int] = None,
+             filter_policy_embedding: str
+             | FilterPolicy = FilterPolicy.REPLACE,
+             custom_query_embedding: dict[str, Any] | None = None,
+             join_mode: str | JoinMode = JoinMode.RECIPROCAL_RANK_FUSION,
+             weights: list[float] | None = None,
+             top_k: int | None = None,
              sort_by_score: bool = True,
              **kwargs: Any) -> None
 ```
@@ -704,14 +703,14 @@ print(document_store.filter_documents())
 ```python
 def __init__(
         *,
-        hosts: Optional[Hosts] = None,
+        hosts: Hosts | None = None,
         index: str = "default",
         max_chunk_bytes: int = DEFAULT_MAX_CHUNK_BYTES,
         embedding_dim: int = 768,
         return_embedding: bool = False,
-        method: Optional[dict[str, Any]] = None,
-        mappings: Optional[dict[str, Any]] = None,
-        settings: Optional[dict[str, Any]] = DEFAULT_SETTINGS,
+        method: dict[str, Any] | None = None,
+        mappings: dict[str, Any] | None = None,
+        settings: dict[str, Any] | None = DEFAULT_SETTINGS,
         create_index: bool = True,
         http_auth: Any = (
             Secret.from_env_var("OPENSEARCH_USERNAME",
@@ -719,9 +718,9 @@ def __init__(
             Secret.from_env_var("OPENSEARCH_PASSWORD",
                                 strict=False),  # noqa: B008
         ),
-        use_ssl: Optional[bool] = None,
-        verify_certs: Optional[bool] = None,
-        timeout: Optional[int] = None,
+        use_ssl: bool | None = None,
+        verify_certs: bool | None = None,
+        timeout: int | None = None,
         **kwargs: Any) -> None
 ```
 
@@ -768,9 +767,9 @@ see the [official OpenSearch reference](https://opensearch-project.github.io/ope
 #### OpenSearchDocumentStore.create\_index
 
 ```python
-def create_index(index: Optional[str] = None,
-                 mappings: Optional[dict[str, Any]] = None,
-                 settings: Optional[dict[str, Any]] = None) -> None
+def create_index(index: str | None = None,
+                 mappings: dict[str, Any] | None = None,
+                 settings: dict[str, Any] | None = None) -> None
 ```
 
 Creates an index in OpenSearch.
@@ -843,8 +842,7 @@ Asynchronously returns the total number of documents in the document store.
 #### OpenSearchDocumentStore.filter\_documents
 
 ```python
-def filter_documents(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+def filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the filters provided.
@@ -866,7 +864,7 @@ A list of Documents that match the given filters.
 
 ```python
 async def filter_documents_async(
-        filters: Optional[dict[str, Any]] = None) -> list[Document]
+        filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Asynchronously returns the documents that match the filters provided.
@@ -948,7 +946,7 @@ The number of documents written to the document store.
 ```python
 def delete_documents(document_ids: list[str],
                      refresh: Literal["wait_for", True, False] = "wait_for",
-                     routing: Optional[dict[str, str]] = None) -> None
+                     routing: dict[str, str] | None = None) -> None
 ```
 
 Deletes documents that match the provided `document_ids` from the document store.
@@ -973,7 +971,7 @@ If provided, the routing value for each document will be used during deletion.
 async def delete_documents_async(
         document_ids: list[str],
         refresh: Literal["wait_for", True, False] = "wait_for",
-        routing: Optional[dict[str, str]] = None) -> None
+        routing: dict[str, str] | None = None) -> None
 ```
 
 Asynchronously deletes documents that match the provided `document_ids` from the document store.
@@ -1122,6 +1120,267 @@ completes. If False, no refresh is performed. For more details, see the
 **Returns**:
 
 The number of documents updated.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.count_documents_by_filter"></a>
+
+#### OpenSearchDocumentStore.count\_documents\_by\_filter
+
+```python
+def count_documents_by_filter(filters: dict[str, Any]) -> int
+```
+
+Returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.count_documents_by_filter_async"></a>
+
+#### OpenSearchDocumentStore.count\_documents\_by\_filter\_async
+
+```python
+async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.count_unique_metadata_by_filter"></a>
+
+#### OpenSearchDocumentStore.count\_unique\_metadata\_by\_filter
+
+```python
+def count_unique_metadata_by_filter(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Returns the number of unique values for each specified metadata field of the documents
+
+that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `metadata_fields`: List of field names to calculate unique values for.
+Field names can include or omit the "meta." prefix.
+
+**Raises**:
+
+- `ValueError`: If any of the requested fields don't exist in the index mapping.
+
+**Returns**:
+
+A dictionary mapping each metadata field name to the count of its unique values among the filtered
+documents.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.count_unique_metadata_by_filter_async"></a>
+
+#### OpenSearchDocumentStore.count\_unique\_metadata\_by\_filter\_async
+
+```python
+async def count_unique_metadata_by_filter_async(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Asynchronously returns the number of unique values for each specified metadata field of the documents
+
+that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `metadata_fields`: List of field names to calculate unique values for.
+Field names can include or omit the "meta." prefix.
+
+**Raises**:
+
+- `ValueError`: If any of the requested fields don't exist in the index mapping.
+
+**Returns**:
+
+A dictionary mapping each metadata field name to the count of its unique values among the filtered
+documents.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.get_metadata_fields_info"></a>
+
+#### OpenSearchDocumentStore.get\_metadata\_fields\_info
+
+```python
+def get_metadata_fields_info() -> dict[str, dict[str, str]]
+```
+
+Returns the information about the fields in the index.
+
+If we populated the index with documents like:
+
+```python
+    Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1})
+    Document(content="Doc 2", meta={"category": "B", "status": "inactive"})
+```
+
+This method would return:
+
+```python
+    {
+        'content': {'type': 'text'},
+        'category': {'type': 'keyword'},
+        'status': {'type': 'keyword'},
+        'priority': {'type': 'long'},
+    }
+```
+
+**Returns**:
+
+The information about the fields in the index.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.get_metadata_fields_info_async"></a>
+
+#### OpenSearchDocumentStore.get\_metadata\_fields\_info\_async
+
+```python
+async def get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+```
+
+Asynchronously returns the information about the fields in the index.
+
+If we populated the index with documents like:
+
+```python
+    Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1})
+    Document(content="Doc 2", meta={"category": "B", "status": "inactive"})
+```
+
+This method would return:
+
+```python
+    {
+        'content': {'type': 'text'},
+        'category': {'type': 'keyword'},
+        'status': {'type': 'keyword'},
+        'priority': {'type': 'long'},
+    }
+```
+
+**Returns**:
+
+The information about the fields in the index.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.get_metadata_field_min_max"></a>
+
+#### OpenSearchDocumentStore.get\_metadata\_field\_min\_max
+
+```python
+def get_metadata_field_min_max(metadata_field: str) -> dict[str, int | None]
+```
+
+Returns the minimum and maximum values for the given metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get the minimum and maximum values for.
+
+**Returns**:
+
+A dictionary with the keys "min" and "max", where each value is the minimum or maximum value of the
+metadata field across all documents.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.get_metadata_field_min_max_async"></a>
+
+#### OpenSearchDocumentStore.get\_metadata\_field\_min\_max\_async
+
+```python
+async def get_metadata_field_min_max_async(
+        metadata_field: str) -> dict[str, int | None]
+```
+
+Asynchronously returns the minimum and maximum values for the given metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get the minimum and maximum values for.
+
+**Returns**:
+
+A dictionary with the keys "min" and "max", where each value is the minimum or maximum value of the
+metadata field across all documents.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.get_metadata_field_unique_values"></a>
+
+#### OpenSearchDocumentStore.get\_metadata\_field\_unique\_values
+
+```python
+def get_metadata_field_unique_values(
+    metadata_field: str,
+    search_term: str | None = None,
+    size: int | None = 10000,
+    after: dict[str, Any] | None = None
+) -> tuple[list[str], dict[str, Any] | None]
+```
+
+Returns unique values for a metadata field, optionally filtered by a search term in the content.
+
+Uses composite aggregations for proper pagination beyond 10k results.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get unique values for.
+- `search_term`: Optional search term to filter documents by matching in the content field.
+- `size`: The number of unique values to return per page. Defaults to 10000.
+- `after`: Optional pagination key from the previous response. Use None for the first page.
+For subsequent pages, pass the `after_key` from the previous response.
+
+**Returns**:
+
+A tuple containing (list of unique values, after_key for pagination).
+The after_key is None when there are no more results. Use it in the `after` parameter
+for the next page.
+
+<a id="haystack_integrations.document_stores.opensearch.document_store.OpenSearchDocumentStore.get_metadata_field_unique_values_async"></a>
+
+#### OpenSearchDocumentStore.get\_metadata\_field\_unique\_values\_async
+
+```python
+async def get_metadata_field_unique_values_async(
+    metadata_field: str,
+    search_term: str | None = None,
+    size: int | None = 10000,
+    after: dict[str, Any] | None = None
+) -> tuple[list[str], dict[str, Any] | None]
+```
+
+Asynchronously returns unique values for a metadata field, optionally filtered by a search term in the content.
+
+Uses composite aggregations for proper pagination beyond 10k results.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get unique values for.
+- `search_term`: Optional search term to filter documents by matching in the content field.
+- `size`: The number of unique values to return per page. Defaults to 10000.
+- `after`: Optional pagination key from the previous response. Use None for the first page.
+For subsequent pages, pass the `after_key` from the previous response.
+
+**Returns**:
+
+A tuple containing (list of unique values, after_key for pagination).
+The after_key is None when there are no more results. Use it in the `after` parameter
+for the next page.
 
 <a id="haystack_integrations.document_stores.opensearch.filters"></a>
 

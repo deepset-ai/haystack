@@ -11,7 +11,9 @@ from haystack import component
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import (
+    HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED,
     _create_pipeline_snapshot,
+    _is_snapshot_save_enabled,
     _save_pipeline_snapshot,
     _transform_json_structure,
     load_pipeline_snapshot,
@@ -77,7 +79,9 @@ def test_load_state_handles_invalid_state(tmp_path):
         load_pipeline_snapshot(pipeline_snapshot_file)
 
 
-def test_breakpoint_saves_intermediate_outputs(tmp_path):
+def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
     @component
     class SimpleComponent:
         @component.output_types(result=str)
@@ -125,37 +129,6 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path):
         assert "comp1" in loaded_snapshot.include_outputs_from
         assert loaded_snapshot.break_point.component_name == "comp2"
         assert loaded_snapshot.break_point.visit_count == 0
-
-
-def test_load_pipeline_snapshot_with_old_pipeline_outputs_format(tmp_path):
-    "Test to ensure backwards compatibility with the old pipeline_outputs format"
-    # TODO: remove this test in haystack 2.23.0
-    pipeline_snapshot = {
-        "pipeline_state": {
-            "inputs": {
-                "serialization_schema": {
-                    "type": "object",
-                    "properties": {"comp2": {"type": "object", "properties": {}}},
-                },
-                "serialized_data": {"comp2": {}},
-            },
-            "component_visits": {"comp1": 1, "comp2": 0},
-            "pipeline_outputs": {"comp1": {"result": "Answer from comp1"}},
-        },
-        "break_point": {"component_name": "comp2", "visit_count": 0, "snapshot_file_path": "test_breakpoints"},
-        "agent_snapshot": None,
-        "timestamp": "2025-12-01T17:14:24.366124",
-        "original_input_data": {"serialization_schema": {"type": "object", "properties": {}}, "serialized_data": {}},
-        "ordered_component_names": ["comp1", "comp2"],
-        "include_outputs_from": ["comp1"],
-    }
-
-    pipeline_snapshot_file = tmp_path / "old_pipeline_outputs_format.json"
-    with open(pipeline_snapshot_file, "w") as f:
-        json.dump(pipeline_snapshot, f)
-
-    loaded_snapshot = load_pipeline_snapshot(pipeline_snapshot_file)
-    assert loaded_snapshot == PipelineSnapshot.from_dict(pipeline_snapshot)
 
 
 class TestCreatePipelineSnapshot:
@@ -265,7 +238,9 @@ class TestCreatePipelineSnapshot:
         assert any("Failed to serialize original input data for `pipeline.run`." in msg for msg in caplog.messages)
 
 
-def test_save_pipeline_snapshot_raises_on_failure(tmp_path, caplog):
+def test_save_pipeline_snapshot_raises_on_failure(tmp_path, caplog, monkeypatch):
+    monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
     snapshot = _create_pipeline_snapshot(
         inputs={},
         component_inputs={},
@@ -340,7 +315,9 @@ class TestSnapshotCallback:
         # Verify NO file was created on disk even when snapshot_file_path is set
         assert list(tmp_path.glob("*.json")) == []
 
-    def test_save_pipeline_snapshot_without_callback_creates_file(self, tmp_path):
+    def test_save_pipeline_snapshot_without_callback_creates_file(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
         snapshot = _create_pipeline_snapshot(
             inputs={},
             component_inputs={},
@@ -432,7 +409,9 @@ class TestSnapshotCallback:
         # Verify no file was saved to disk
         assert list(tmp_path.glob("*.json")) == []
 
-    def test_pipeline_run_without_snapshot_callback_saves_file(self, tmp_path):
+    def test_pipeline_run_without_snapshot_callback_saves_file(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
         @component
         class SimpleComponent:
             @component.output_types(result=str)
@@ -455,3 +434,120 @@ class TestSnapshotCallback:
         # Verify file was saved to disk
         snapshot_files = list(tmp_path.glob("comp2_*.json"))
         assert len(snapshot_files) == 1
+
+
+class TestSnapshotSaveEnabled:
+    def test_is_snapshot_save_enabled_default(self, monkeypatch):
+        monkeypatch.delenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, raising=False)
+        assert _is_snapshot_save_enabled() is False
+
+    @pytest.mark.parametrize("value", ["true", "TRUE", "True", "1"])
+    def test_is_snapshot_save_enabled_truthy_values(self, monkeypatch, value):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, value)
+        assert _is_snapshot_save_enabled() is True
+
+    @pytest.mark.parametrize("value", ["false", "FALSE", "False", "0"])
+    def test_is_snapshot_save_enabled_falsy_values(self, monkeypatch, value):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, value)
+        assert _is_snapshot_save_enabled() is False
+
+    def test_save_pipeline_snapshot_disabled_via_env_var(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "false")
+
+        snapshot = _create_pipeline_snapshot(
+            inputs={},
+            component_inputs={},
+            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+            component_visits={"comp1": 1, "comp2": 0},
+            original_input_data={},
+            ordered_component_names=["comp1", "comp2"],
+            include_outputs_from=set(),
+            pipeline_outputs={},
+        )
+
+        result = _save_pipeline_snapshot(snapshot)
+
+        # Verify no file was created
+        assert result is None
+        assert list(tmp_path.glob("*.json")) == []
+
+    def test_save_pipeline_snapshot_enabled_via_env_var(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+
+        snapshot = _create_pipeline_snapshot(
+            inputs={},
+            component_inputs={},
+            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+            component_visits={"comp1": 1, "comp2": 0},
+            original_input_data={},
+            ordered_component_names=["comp1", "comp2"],
+            include_outputs_from=set(),
+            pipeline_outputs={},
+        )
+
+        result = _save_pipeline_snapshot(snapshot)
+
+        # Verify file was created
+        snapshot_files = list(tmp_path.glob("comp2_*.json"))
+        assert len(snapshot_files) == 1
+        assert result == str(snapshot_files[0])
+
+    def test_callback_still_invoked_when_env_var_disables_saving(self, tmp_path, monkeypatch):
+        """
+        This is more a behaviour documentation test: we want to ensure that when the snapshot_callback is provided,
+        the file-saving behaviour is always bypassed (the callback is invoked instead).
+        """
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "false")
+
+        captured_snapshots = []
+
+        def custom_callback(snapshot: PipelineSnapshot) -> str:
+            captured_snapshots.append(snapshot)
+            return "custom_result"
+
+        snapshot = _create_pipeline_snapshot(
+            inputs={},
+            component_inputs={},
+            break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+            component_visits={"comp1": 1, "comp2": 0},
+            original_input_data={},
+            ordered_component_names=["comp1", "comp2"],
+            include_outputs_from=set(),
+            pipeline_outputs={},
+        )
+
+        result = _save_pipeline_snapshot(snapshot, snapshot_callback=custom_callback)
+
+        # Callback should still be invoked
+        assert result == "custom_result"
+        assert len(captured_snapshots) == 1
+        # No file should be created (callback handles it)
+        assert list(tmp_path.glob("*.json")) == []
+
+    def test_pipeline_run_with_env_var_disabled(self, tmp_path, monkeypatch):
+        """Test that pipeline.run respects the env var when breakpoint is triggered."""
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "false")
+
+        @component
+        class SimpleComponent:
+            @component.output_types(result=str)
+            def run(self, input_value: str) -> dict[str, str]:
+                return {"result": f"processed_{input_value}"}
+
+        pipeline = Pipeline()
+        pipeline.add_component("comp1", SimpleComponent())
+        pipeline.add_component("comp2", SimpleComponent())
+        pipeline.connect("comp1", "comp2")
+
+        break_point = Breakpoint(component_name="comp2", visit_count=0, snapshot_file_path=str(tmp_path))
+
+        with pytest.raises(BreakpointException) as exc_info:
+            pipeline.run(data={"comp1": {"input_value": "test"}}, break_point=break_point)
+
+        # Verify no file was saved
+        assert exc_info.value.pipeline_snapshot_file_path is None
+        assert list(tmp_path.glob("*.json")) == []
+
+        # Verify snapshot object is still available for programmatic access
+        assert exc_info.value.pipeline_snapshot is not None
+        assert exc_info.value.pipeline_snapshot.break_point.component_name == "comp2"

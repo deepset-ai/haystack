@@ -226,7 +226,31 @@ chat_generator = OpenAIChatGenerator(
         "max_completion_tokens": 500,
         "temperature": 0.0,
         "seed": 0,
-        "response_format": {"type": "json_object"},
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "entity_extraction",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "entities": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "entity": {"type": "string"},
+                                    "entity_type": {"type": "string"}
+                                },
+                                "required": ["entity", "entity_type"],
+                                "additionalProperties": False
+                            }
+                        }
+                    },
+                    "required": ["entities"],
+                    "additionalProperties": False
+                }
+            }
+        },
     },
     max_retries=1,
     timeout=60.0,
@@ -620,6 +644,39 @@ Creates an instance of the RegexTextExtractor component.
 - `regex_pattern`: The regular expression pattern used to extract text.
 The pattern should include a capture group to extract the desired text.
 Example: `'<issue url="(.+)">'` captures `'github.com/hahahaha'` from `'<issue url="github.com/hahahaha">'`.
+
+<a id="regex_text_extractor.RegexTextExtractor.to_dict"></a>
+
+#### RegexTextExtractor.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns**:
+
+Dictionary with serialized data.
+
+<a id="regex_text_extractor.RegexTextExtractor.from_dict"></a>
+
+#### RegexTextExtractor.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "RegexTextExtractor"
+```
+
+Deserializes the component from a dictionary.
+
+**Arguments**:
+
+- `data`: The dictionary to deserialize from.
+
+**Returns**:
+
+The deserialized component.
 
 <a id="regex_text_extractor.RegexTextExtractor.run"></a>
 

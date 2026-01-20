@@ -12,6 +12,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 
 from haystack import Pipeline, SuperComponent, component
+from haystack.components.agents import Agent
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.tools import ToolInvoker
@@ -499,6 +500,25 @@ class TestComponentTool:
 
         # Component's warm_up should only be called once
         component.warm_up.assert_called_once()
+
+    def test_from_component_with_callable_params_skipped(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"))
+
+        tool = ComponentTool(
+            component=agent,
+            name="agent_tool",
+            description="An agent tool",
+            outputs_to_string={"source": "last_message"},
+        )
+
+        assert tool.name == "agent_tool"
+        assert tool.description == "An agent tool"
+
+        param_names = list(tool.parameters.get("properties", {}).keys())
+        assert "snapshot_callback" not in param_names
+        assert "streaming_callback" not in param_names
+        assert "messages" in param_names
 
 
 class TestComponentToolInPipeline:

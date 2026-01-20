@@ -54,10 +54,10 @@ print(response)
 def __init__(*,
              api_key: Secret = Secret.from_env_var("LLAMA_API_KEY"),
              model: str = "Llama-4-Scout-17B-16E-Instruct-FP8",
-             streaming_callback: Optional[StreamingCallbackT] = None,
-             api_base_url: Optional[str] = "https://api.llama.com/compat/v1/",
-             generation_kwargs: Optional[Dict[str, Any]] = None,
-             tools: Optional[ToolsType] = None)
+             streaming_callback: StreamingCallbackT | None = None,
+             api_base_url: str | None = "https://api.llama.com/compat/v1/",
+             generation_kwargs: dict[str, Any] | None = None,
+             tools: ToolsType | None = None)
 ```
 
 Creates an instance of LlamaChatGenerator. Unless specified otherwise in the `model`, this is for Llama's
@@ -100,7 +100,7 @@ Each tool should have a unique name.
 #### MetaLlamaChatGenerator.to\_dict
 
 ```python
-def to_dict() -> Dict[str, Any]
+def to_dict() -> dict[str, Any]
 ```
 
 Serialize this component to a dictionary.

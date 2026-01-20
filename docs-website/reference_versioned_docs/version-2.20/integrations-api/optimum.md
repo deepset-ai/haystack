@@ -153,23 +153,24 @@ print(result["documents"][0].embedding)
 #### OptimumDocumentEmbedder.\_\_init\_\_
 
 ```python
-def __init__(
-        model: str = "sentence-transformers/all-mpnet-base-v2",
-        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN",
-                                                      strict=False),
-        prefix: str = "",
-        suffix: str = "",
-        normalize_embeddings: bool = True,
-        onnx_execution_provider: str = "CPUExecutionProvider",
-        pooling_mode: Optional[Union[str, OptimumEmbedderPooling]] = None,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        working_dir: Optional[str] = None,
-        optimizer_settings: Optional[OptimumEmbedderOptimizationConfig] = None,
-        quantizer_settings: Optional[OptimumEmbedderQuantizationConfig] = None,
-        batch_size: int = 32,
-        progress_bar: bool = True,
-        meta_fields_to_embed: Optional[list[str]] = None,
-        embedding_separator: str = "\n") -> None
+def __init__(model: str = "sentence-transformers/all-mpnet-base-v2",
+             token: Secret | None = Secret.from_env_var("HF_API_TOKEN",
+                                                        strict=False),
+             prefix: str = "",
+             suffix: str = "",
+             normalize_embeddings: bool = True,
+             onnx_execution_provider: str = "CPUExecutionProvider",
+             pooling_mode: str | OptimumEmbedderPooling | None = None,
+             model_kwargs: dict[str, Any] | None = None,
+             working_dir: str | None = None,
+             optimizer_settings: OptimumEmbedderOptimizationConfig
+             | None = None,
+             quantizer_settings: OptimumEmbedderQuantizationConfig
+             | None = None,
+             batch_size: int = 32,
+             progress_bar: bool = True,
+             meta_fields_to_embed: list[str] | None = None,
+             embedding_separator: str = "\n") -> None
 ```
 
 Create a OptimumDocumentEmbedder component.
@@ -321,18 +322,17 @@ print(text_embedder.run(text_to_embed))
 ```python
 def __init__(
         model: str = "sentence-transformers/all-mpnet-base-v2",
-        token: Optional[Secret] = Secret.from_env_var("HF_API_TOKEN",
-                                                      strict=False),
+        token: Secret | None = Secret.from_env_var("HF_API_TOKEN",
+                                                   strict=False),
         prefix: str = "",
         suffix: str = "",
         normalize_embeddings: bool = True,
         onnx_execution_provider: str = "CPUExecutionProvider",
-        pooling_mode: Optional[Union[str, OptimumEmbedderPooling]] = None,
-        model_kwargs: Optional[dict[str, Any]] = None,
-        working_dir: Optional[str] = None,
-        optimizer_settings: Optional[OptimumEmbedderOptimizationConfig] = None,
-        quantizer_settings: Optional[OptimumEmbedderQuantizationConfig] = None
-)
+        pooling_mode: str | OptimumEmbedderPooling | None = None,
+        model_kwargs: dict[str, Any] | None = None,
+        working_dir: str | None = None,
+        optimizer_settings: OptimumEmbedderOptimizationConfig | None = None,
+        quantizer_settings: OptimumEmbedderQuantizationConfig | None = None)
 ```
 
 Create a OptimumTextEmbedder component.

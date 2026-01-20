@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``ComponentTool``, ``create_tool_from_function``, and the ``@tool`` decorator failing to create
+    a tool schema when ``Callable`` type parameters are present (such as ``snapshot_callback``).
+    This enables using ``Agent`` as a ``ComponentTool`` without raising ``SchemaGenerationError``.

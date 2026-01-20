@@ -10,6 +10,7 @@ from typing import Any, Iterable, TypeVar
 from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
+from haystack.utils.auth import Secret, deserialize_secrets_inplace
 from haystack.utils.type_serialization import thread_safe_import
 
 logger = logging.getLogger(__name__)
@@ -181,6 +182,9 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     instance of `obj` with `from_dict`. Omitting them might cause deserialisation
     errors or unexpected behaviours later, when calling `from_dict`.
 
+    Secret instances in `init_parameters` are automatically serialized by calling
+    their `to_dict()` method.
+
     An example usage:
 
     ```python
@@ -209,7 +213,15 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     :returns:
         A dictionary representation of the instance.
     """
-    return {"type": generate_qualified_class_name(type(obj)), "init_parameters": init_parameters}
+    # Automatically serialize Secret instances
+    serialized_params = {}
+    for key, value in init_parameters.items():
+        if isinstance(value, Secret):
+            serialized_params[key] = value.to_dict()
+        else:
+            serialized_params[key] = value
+
+    return {"type": generate_qualified_class_name(type(obj)), "init_parameters": serialized_params}
 
 
 def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
@@ -223,6 +235,10 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
 
     If `data` contains an `init_parameters` field it will be used as parameters to create
     a new instance of `cls`.
+
+    Serialized Secret dictionaries in `init_parameters` are automatically detected and
+    deserialized. A dictionary is considered a serialized Secret if it has a "type" key
+    with value "env_var".
 
     :param cls:
         The class to be used for deserialization.
@@ -239,6 +255,16 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
         raise DeserializationError("Missing 'type' in serialization data")
     if data["type"] != generate_qualified_class_name(cls):
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
+
+    # Automatically detect and deserialize Secret instances
+    secret_keys = []
+    for key, value in init_params.items():
+        if isinstance(value, dict) and value.get("type") == "env_var":
+            secret_keys.append(key)
+
+    if secret_keys:
+        deserialize_secrets_inplace(init_params, keys=secret_keys)
+
     return cls(**init_params)
 
 

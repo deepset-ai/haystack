@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Annotated, Literal
+from typing import Annotated, Callable, Literal
 
 import pytest
 
@@ -98,6 +98,19 @@ def test_from_function_schema_generation_error():
 
     with pytest.raises(SchemaGenerationError):
         create_tool_from_function(function=function_with_invalid_type_hint)
+
+
+def test_from_function_with_callable_params_skipped():
+    def function_with_callback(query: str, callback: Callable[[str], None] | None = None) -> str:
+        """A function with a callable parameter."""
+        return query
+
+    tool = create_tool_from_function(function=function_with_callback)
+
+    assert tool.name == "function_with_callback"
+    param_names = list(tool.parameters.get("properties", {}).keys())
+    assert "callback" not in param_names
+    assert "query" in param_names
 
 
 def test_tool_decorator():

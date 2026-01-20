@@ -1,8 +1,8 @@
 ---
-title: "weights and bias"
-id: integrations-weights-bias
+title: "Weave"
+id: integrations-weave
 description: "Weights & Bias integration for Haystack"
-slug: "/integrations-weights-bias"
+slug: "/integrations-weave"
 ---
 
 <a id="haystack_integrations.components.connectors.weave.weave_connector"></a>
@@ -68,7 +68,7 @@ response = pipe.run(
 )
 print(response["llm"]["replies"][0])
 ```
-
+  
   You should then head to `https://wandb.ai/<user_name>/projects` and see the complete trace for your pipeline under
   the pipeline name you specified, when creating the `WeaveConnector`
 
@@ -78,7 +78,7 @@ print(response["llm"]["replies"][0])
 
 ```python
 def __init__(pipeline_name: str,
-             weave_init_kwargs: Optional[dict[str, Any]] = None) -> None
+             weave_init_kwargs: dict[str, Any] | None = None) -> None
 ```
 
 Initialize WeaveConnector.
@@ -179,30 +179,6 @@ def get_correlation_data_for_logs() -> dict[str, Any]
 
 Correlation data for logging.
 
-<a id="haystack_integrations.tracing.weave.tracer.WeaveSpan.set_content_tag"></a>
-
-#### WeaveSpan.set\_content\_tag
-
-```python
-def set_content_tag(key: str, value: Any) -> None
-```
-
-Set a single tag containing content information.
-
-Content is sensitive information such as
-- the content of a query
-- the content of a document
-- the content of an answer
-
-By default, this behavior is disabled. To enable it
-- set the environment variable `HAYSTACK_CONTENT_TRACING_ENABLED` to `true` or
-- override the `set_content_tag` method in a custom tracer implementation.
-
-**Arguments**:
-
-- `key`: the name of the tag.
-- `value`: the value of the tag.
-
 <a id="haystack_integrations.tracing.weave.tracer.WeaveTracer"></a>
 
 ### WeaveTracer
@@ -232,7 +208,7 @@ Initialize the WeaveTracer.
 #### WeaveTracer.current\_span
 
 ```python
-def current_span() -> Optional[Span]
+def current_span() -> Span | None
 ```
 
 Get the current active span.
@@ -244,8 +220,8 @@ Get the current active span.
 ```python
 @contextlib.contextmanager
 def trace(operation_name: str,
-          tags: Optional[dict[str, Any]] = None,
-          parent_span: Optional[WeaveSpan] = None) -> Iterator[WeaveSpan]
+          tags: dict[str, Any] | None = None,
+          parent_span: WeaveSpan | None = None) -> Iterator[WeaveSpan]
 ```
 
 A context manager that creates and manages spans for tracking operations in Weights & Biases Weave.
@@ -269,3 +245,4 @@ B) For component runs (operation_name == "haystack.component.run"):
 This distinction is important because Weave's calls can't be updated once created, but the content
 tags are only set on the Span at a later stage. To get the inputs on call creation, we need to create
 the call after we yield the span.
+

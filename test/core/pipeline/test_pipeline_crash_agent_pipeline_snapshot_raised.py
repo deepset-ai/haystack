@@ -100,7 +100,8 @@ def test_pipeline_with_chat_generator_crash():
     assert "Error in chat generator component" in str(exception_info.value)
     assert exception_info.value.component_name == "chat_generator"
     assert exception_info.value.component_type == MockChatGenerator
-    assert "math_agent_chat_generator" in exception_info.value.pipeline_snapshot_file_path
+    # File saving is disabled by default, so pipeline_snapshot_file_path is None
+    assert exception_info.value.pipeline_snapshot_file_path is None
 
     pipeline_snapshot = exception_info.value.pipeline_snapshot
     assert pipeline_snapshot is not None, "Pipeline snapshot should be captured in the exception"
@@ -151,7 +152,8 @@ def test_pipeline_with_tool_call_crash():
     assert "Error in factorial tool" in str(exception_info.value), "Exception message should contain tool error"
     assert exception_info.value.component_name == "tool_invoker"
     assert exception_info.value.component_type == ToolInvoker
-    assert "math_agent_tool_invoker" in exception_info.value.pipeline_snapshot_file_path
+    # File saving is disabled by default, so pipeline_snapshot_file_path is None
+    assert exception_info.value.pipeline_snapshot_file_path is None
 
     pipeline_snapshot = exception_info.value.pipeline_snapshot
     assert pipeline_snapshot is not None, "Pipeline snapshot should be captured in the exception"
