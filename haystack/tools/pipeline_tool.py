@@ -106,6 +106,7 @@ class PipelineTool(ComponentTool):
         outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
         inputs_from_state: dict[str, str] | None = None,
         outputs_to_state: dict[str, dict[str, str | Callable]] | None = None,
+        outputs_to_result: dict[str, Any] | None = None,
     ) -> None:
         """
         Create a Tool instance from a Haystack pipeline.
@@ -173,6 +174,18 @@ class PipelineTool(ComponentTool):
                 "documents": {"handler": custom_handler}
             }
             ```
+        :param outputs_to_result:
+            Optional dictionary defining how tool outputs should be converted into a ToolCallResult.
+            This allows returning multimodal content (e.g., images) from tools.
+            The handler should return either a string or a list of TextContent/ImageContent.
+            Example:
+            ```python
+            {
+                "source": "image",
+                "handler": lambda img: [img]  # img is already ImageContent
+            }
+            ```
+            Takes precedence over `outputs_to_string` if both are set.
         :raises ValueError: If the provided pipeline is not a valid Haystack Pipeline instance.
         """
         if not isinstance(pipeline, (Pipeline, AsyncPipeline)):
@@ -189,6 +202,7 @@ class PipelineTool(ComponentTool):
             outputs_to_string=outputs_to_string,
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
+            outputs_to_result=outputs_to_result,
         )
         self._unresolved_parameters = parameters
         self._pipeline = pipeline
@@ -221,6 +235,11 @@ class PipelineTool(ComponentTool):
         else:
             serialized["outputs_to_string"] = None
 
+        if self.outputs_to_result is not None and self.outputs_to_result.get("handler") is not None:
+            serialized["outputs_to_result"] = self.outputs_to_result.copy()
+            serialized["outputs_to_result"]["handler"] = serialize_callable(self.outputs_to_result["handler"])
+        # Don't include outputs_to_result in serialization if not set (for backward compatibility)
+
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 
     @classmethod
@@ -246,6 +265,14 @@ class PipelineTool(ComponentTool):
         ):
             inner_data["outputs_to_string"]["handler"] = deserialize_callable(
                 inner_data["outputs_to_string"]["handler"]
+            )
+
+        if (
+            inner_data.get("outputs_to_result") is not None
+            and inner_data["outputs_to_result"].get("handler") is not None
+        ):
+            inner_data["outputs_to_result"]["handler"] = deserialize_callable(
+                inner_data["outputs_to_result"]["handler"]
             )
 
         merged_data = {**inner_data, "pipeline": pipeline}

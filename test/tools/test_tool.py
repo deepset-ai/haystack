@@ -85,6 +85,33 @@ class TestTool:
                 outputs_to_string=outputs_to_string,
             )
 
+    def test_init_outputs_to_string_and_outputs_to_result_raises_error(self):
+        """Test that only one of outputs_to_string and outputs_to_result can be set."""
+
+        def identity_handler(x):
+            return x
+
+        with pytest.raises(ValueError, match="Only one of `outputs_to_string` and `outputs_to_result` can be set."):
+            Tool(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                function=get_weather_report,
+                outputs_to_string={"handler": format_string},
+                outputs_to_result={"handler": identity_handler},
+            )
+
+    def test_init_empty_outputs_to_result(self):
+        """Test that Tool can be initialized with an empty outputs_to_result dict."""
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            outputs_to_result={},
+        )
+        assert tool.outputs_to_result == {}
+
     def test_tool_spec(self):
         tool = Tool(
             name="weather", description="Get weather report", parameters=parameters, function=get_weather_report

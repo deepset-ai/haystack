@@ -127,7 +127,16 @@ TOOL_CALL_SCHEMA = {
 TOOL_CALL_RESULT_SCHEMA = {
     "type": "object",
     "properties": {
-        "result": {"type": "string", "description": "The result of the Tool invocation."},
+        "result": {
+            "anyOf": [
+                {"type": "string"},
+                {
+                    "items": {"anyOf": [{"$ref": "#/$defs/TextContent"}, {"$ref": "#/$defs/ImageContent"}]},
+                    "type": "array",
+                },
+            ],
+            "description": "The result of the Tool invocation.",
+        },
         "origin": {"$ref": "#/$defs/ToolCall", "description": "The Tool call that produced this result."},
         "error": {"type": "boolean", "description": "Whether the Tool invocation resulted in an error."},
     },
@@ -259,7 +268,12 @@ CHAT_MESSAGE_SCHEMA = {
             ToolCallResult,
             "A tool call result",
             {"$ref": "#/$defs/ToolCallResult", "description": "A tool call result"},
-            {"ToolCallResult": TOOL_CALL_RESULT_SCHEMA, "ToolCall": TOOL_CALL_SCHEMA},
+            {
+                "ToolCallResult": TOOL_CALL_RESULT_SCHEMA,
+                "ToolCall": TOOL_CALL_SCHEMA,
+                "TextContent": TEXT_CONTENT_SCHEMA,
+                "ImageContent": IMAGE_CONTENT_SCHEMA,
+            },
         ),
         (
             ChatMessage,

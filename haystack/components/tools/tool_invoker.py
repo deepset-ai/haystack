@@ -302,6 +302,7 @@ class ToolInvoker:
 
         :param config: Configuration dictionary that may contain "source" and "handler" keys.
         :param result: The tool result to convert to a string.
+        :param tool_call: The ToolCall object for error reporting.
         :returns: The converted tool result as a string.
         """
         source_key = config.get("source")
@@ -315,6 +316,30 @@ class ToolInvoker:
         except Exception as e:
             raise StringConversionError(tool_call.tool_name, output_to_string_handler.__name__, e)
 
+    def _output_to_result(self, config: dict[str, Any], result: Any, tool_call: ToolCall):
+        """
+        Converts a tool result to a ToolCallResult-compatible format based on the provided configuration.
+
+        :param config: Configuration dictionary that may contain "source" and "handler" keys.
+        :param result: The tool result to convert.
+        :param tool_call: The ToolCall object for error reporting.
+        :returns: The converted tool result (str or list of TextContent/ImageContent).
+        """
+        source_key = config.get("source")
+        # If a source key is provided, extract the result from that key
+        value = result.get(source_key) if source_key is not None and isinstance(result, dict) else result
+        handler = config.get("handler")
+
+        if handler is None:
+            return value
+
+        try:
+            return handler(value)
+        except Exception as e:
+            # Check if handler is a lambda or a function to get its name
+            handler_name = getattr(handler, "__name__", "lambda")
+            raise StringConversionError(tool_call.tool_name, handler_name, e)
+
     def _prepare_tool_result_message(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> ChatMessage:
         """
         Prepares a ChatMessage with the result of a tool invocation.
@@ -326,24 +351,30 @@ class ToolInvoker:
         :param tool_to_invoke:
             The Tool object that was invoked.
         :returns:
-            A ChatMessage object containing the tool result as a string.
+            A ChatMessage object containing the tool result.
         :raises
-            StringConversionError: If the conversion of the tool result to a string fails
+            StringConversionError: If the conversion of the tool result fails
             and `raise_on_failure` is True.
         """
-        outputs_config = tool_to_invoke.outputs_to_string or {}
         try:
+            # Check for outputs_to_result first (takes precedence)
+            if tool_to_invoke.outputs_to_result is not None:
+                tool_result = self._output_to_result(tool_to_invoke.outputs_to_result, result, tool_call)
+                return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
+
+            # Fall back to outputs_to_string behavior
+            outputs_config = tool_to_invoke.outputs_to_string or {}
             # Root level single output configuration
             if not outputs_config or "source" in outputs_config or "handler" in outputs_config:
                 tool_result_str = self._output_to_string(outputs_config, result, tool_call)
                 return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
 
             # Multiple outputs configuration
-            tool_result = {}
+            tool_result_dict = {}
             for output_key, config in outputs_config.items():
                 key_result_str = self._output_to_string(config, result, tool_call)
-                tool_result[output_key] = key_result_str
-            tool_result_str = self._default_output_to_string_handler(tool_result)
+                tool_result_dict[output_key] = key_result_str
+            tool_result_str = self._default_output_to_string_handler(tool_result_dict)
             return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
         except StringConversionError as e:
             if self.raise_on_failure:

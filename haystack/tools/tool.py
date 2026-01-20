@@ -76,6 +76,20 @@ class Tool:
             "documents": {"handler": custom_handler}
         }
         ```
+    :param outputs_to_result:
+        Optional dictionary defining how tool outputs should be converted into a ToolCallResult.
+        This allows returning multimodal content (e.g., images) from tools.
+        The handler should return either a string or a list of TextContent/ImageContent.
+        Example:
+        ```python
+        {
+            "handler": lambda result: [ImageContent(base64_image=result["image"], mime_type="image/png")]
+        }
+        ```
+        If "source" is provided, only the specified output key is sent to the handler.
+        If the dictionary is empty (`{}`), the tool result is returned as is.
+        If "source" is provided without "handler", the value of the specified output key is returned as is.
+        Takes precedence over `outputs_to_string` if both are set.
     """
 
     name: str
@@ -85,6 +99,7 @@ class Tool:
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
+    outputs_to_result: dict[str, Any] | None = None
 
     def __post_init__(self):  # noqa: C901, PLR0912  # pylint: disable=too-many-branches
         # Check that the function is not a coroutine (async function)
@@ -100,6 +115,9 @@ class Tool:
             Draft202012Validator.check_schema(self.parameters)
         except SchemaError as e:
             raise ValueError("The provided parameters do not define a valid JSON schema") from e
+
+        if self.outputs_to_string is not None and self.outputs_to_result is not None:
+            raise ValueError("Only one of `outputs_to_string` and `outputs_to_result` can be set.")
 
         # Validate outputs structure if provided
         if self.outputs_to_state is not None:
@@ -150,6 +168,16 @@ class Tool:
                         raise ValueError(f"outputs_to_string source for key '{key}' must be a string.")
                     if "handler" in config and not callable(config["handler"]):
                         raise ValueError(f"outputs_to_string handler for key '{key}' must be callable")
+
+        # Validate outputs_to_result if provided
+        if self.outputs_to_result is not None:
+            if "source" in self.outputs_to_result and not isinstance(self.outputs_to_result["source"], str):
+                raise ValueError("outputs_to_result source must be a string.")
+            if "handler" in self.outputs_to_result and not callable(self.outputs_to_result["handler"]):
+                raise ValueError("outputs_to_result handler must be callable")
+            for key in self.outputs_to_result:
+                if key not in {"source", "handler"}:
+                    raise ValueError("Invalid outputs_to_result config. Only 'source' and 'handler' keys are allowed.")
 
         # Validate that inputs_from_state parameter names exist as valid tool parameters
         if self.inputs_from_state is not None:
@@ -264,6 +292,13 @@ class Tool:
         else:
             data["outputs_to_string"] = None
 
+        if self.outputs_to_result is not None and self.outputs_to_result.get("handler") is not None:
+            data["outputs_to_result"] = self.outputs_to_result.copy()
+            data["outputs_to_result"]["handler"] = serialize_callable(self.outputs_to_result["handler"])
+        else:
+            # Don't include outputs_to_result in serialization if not set (for backward compatibility)
+            data.pop("outputs_to_result", None)
+
         return {"type": generate_qualified_class_name(type(self)), "data": data}
 
     @classmethod
@@ -287,6 +322,14 @@ class Tool:
         ):
             init_parameters["outputs_to_string"]["handler"] = deserialize_callable(
                 init_parameters["outputs_to_string"]["handler"]
+            )
+
+        if (
+            init_parameters.get("outputs_to_result") is not None
+            and init_parameters["outputs_to_result"].get("handler") is not None
+        ):
+            init_parameters["outputs_to_result"]["handler"] = deserialize_callable(
+                init_parameters["outputs_to_result"]["handler"]
             )
 
         return cls(**init_parameters)

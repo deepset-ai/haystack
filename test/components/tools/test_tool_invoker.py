@@ -1249,3 +1249,291 @@ class TestWarmUpTools:
         # After warmup: _tools_with_names should be refreshed with actual tool names
         assert "mcp_not_connected_placeholder_123" not in invoker._tools_with_names
         assert "get_time" in invoker._tools_with_names
+
+
+class TestToolInvokerOutputsToResult:
+    """Tests for the outputs_to_result feature that allows returning multimodal content from tools."""
+
+    def test_outputs_to_result_with_text_content(self):
+        """Test that outputs_to_result can return TextContent."""
+        from haystack.dataclasses import TextContent
+
+        def get_info():
+            return {"text": "Hello, World!"}
+
+        def text_handler(text):
+            return [TextContent(text=text)]
+
+        tool = Tool(
+            name="info_tool",
+            description="Returns information",
+            parameters={"type": "object", "properties": {}},
+            function=get_info,
+            outputs_to_result={"source": "text", "handler": text_handler},
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+        tool_call = ToolCall(tool_name="info_tool", arguments={})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message])
+        tool_messages = result["tool_messages"]
+
+        assert len(tool_messages) == 1
+        tool_result = tool_messages[0].tool_call_result
+        assert isinstance(tool_result.result, list)
+        assert len(tool_result.result) == 1
+        assert isinstance(tool_result.result[0], TextContent)
+        assert tool_result.result[0].text == "Hello, World!"
+
+    def test_outputs_to_result_with_image_content(self):
+        """Test that outputs_to_result can return ImageContent."""
+        from haystack.dataclasses import ImageContent
+
+        # A minimal valid PNG (1x1 transparent pixel)
+        minimal_png_base64 = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
+
+        def get_image():
+            return {"image_data": minimal_png_base64, "mime": "image/png"}
+
+        def image_handler(result):
+            return [ImageContent(base64_image=result["image_data"], mime_type=result["mime"])]
+
+        tool = Tool(
+            name="image_tool",
+            description="Returns an image",
+            parameters={"type": "object", "properties": {}},
+            function=get_image,
+            outputs_to_result={"handler": image_handler},
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+        tool_call = ToolCall(tool_name="image_tool", arguments={})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message])
+        tool_messages = result["tool_messages"]
+
+        assert len(tool_messages) == 1
+        tool_result = tool_messages[0].tool_call_result
+        assert isinstance(tool_result.result, list)
+        assert len(tool_result.result) == 1
+        assert isinstance(tool_result.result[0], ImageContent)
+        assert tool_result.result[0].base64_image == minimal_png_base64
+        assert tool_result.result[0].mime_type == "image/png"
+
+    def test_outputs_to_result_with_mixed_content(self):
+        """Test that outputs_to_result can return mixed TextContent and ImageContent."""
+        from haystack.dataclasses import ImageContent, TextContent
+
+        minimal_png_base64 = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
+
+        def get_mixed_content():
+            return {"description": "A sample image", "image_data": minimal_png_base64}
+
+        def mixed_handler(result):
+            return [
+                TextContent(text=result["description"]),
+                ImageContent(base64_image=result["image_data"], mime_type="image/png"),
+            ]
+
+        tool = Tool(
+            name="mixed_tool",
+            description="Returns mixed content",
+            parameters={"type": "object", "properties": {}},
+            function=get_mixed_content,
+            outputs_to_result={"handler": mixed_handler},
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+        tool_call = ToolCall(tool_name="mixed_tool", arguments={})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message])
+        tool_messages = result["tool_messages"]
+
+        assert len(tool_messages) == 1
+        tool_result = tool_messages[0].tool_call_result
+        assert isinstance(tool_result.result, list)
+        assert len(tool_result.result) == 2
+        assert isinstance(tool_result.result[0], TextContent)
+        assert isinstance(tool_result.result[1], ImageContent)
+
+    def test_outputs_to_result_and_outputs_to_string_are_mutually_exclusive(self):
+        """Test that outputs_to_result and outputs_to_string are mutually exclusive."""
+        from haystack.dataclasses import TextContent
+
+        def get_info():
+            return {"text": "actual content"}
+
+        def string_handler(x):
+            return "from outputs_to_string"
+
+        def result_handler(text):
+            return [TextContent(text="from outputs_to_result")]
+
+        with pytest.raises(ValueError, match="Only one of `outputs_to_string` and `outputs_to_result` can be set."):
+            Tool(
+                name="info_tool",
+                description="Returns information",
+                parameters={"type": "object", "properties": {}},
+                function=get_info,
+                outputs_to_string={"handler": string_handler},
+                outputs_to_result={"source": "text", "handler": result_handler},
+            )
+
+    def test_outputs_to_result_can_return_string(self):
+        """Test that outputs_to_result handler can also return a plain string."""
+
+        def get_info():
+            return {"text": "Hello"}
+
+        def string_handler(text):
+            return f"Processed: {text}"
+
+        tool = Tool(
+            name="info_tool",
+            description="Returns information",
+            parameters={"type": "object", "properties": {}},
+            function=get_info,
+            outputs_to_result={"source": "text", "handler": string_handler},
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+        tool_call = ToolCall(tool_name="info_tool", arguments={})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message])
+        tool_messages = result["tool_messages"]
+
+        tool_result = tool_messages[0].tool_call_result
+        assert tool_result.result == "Processed: Hello"
+
+    def test_outputs_to_result_error_handling_raise_on_failure_true(self):
+        """Test error handling when outputs_to_result handler fails with raise_on_failure=True."""
+
+        def get_info():
+            return {"text": "Hello"}
+
+        def failing_handler(x):
+            return 1 / 0
+
+        tool = Tool(
+            name="info_tool",
+            description="Returns information",
+            parameters={"type": "object", "properties": {}},
+            function=get_info,
+            outputs_to_result={"handler": failing_handler},
+        )
+
+        invoker = ToolInvoker(tools=[tool], raise_on_failure=True)
+        tool_call = ToolCall(tool_name="info_tool", arguments={})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        # StringConversionError is wrapped in ToolOutputMergeError by the run method
+        with pytest.raises(ToolOutputMergeError) as exc_info:
+            invoker.run(messages=[message])
+        assert "division by zero" in str(exc_info.value)
+
+    def test_outputs_to_result_error_handling_raise_on_failure_false(self):
+        """Test error handling when outputs_to_result handler fails with raise_on_failure=False."""
+
+        def get_info():
+            return {"text": "Hello"}
+
+        def failing_handler(x):
+            return 1 / 0
+
+        tool = Tool(
+            name="info_tool",
+            description="Returns information",
+            parameters={"type": "object", "properties": {}},
+            function=get_info,
+            outputs_to_result={"handler": failing_handler},
+        )
+
+        invoker = ToolInvoker(tools=[tool], raise_on_failure=False)
+        tool_call = ToolCall(tool_name="info_tool", arguments={})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message])
+        tool_messages = result["tool_messages"]
+
+        assert len(tool_messages) == 1
+        tool_result = tool_messages[0].tool_call_result
+        assert tool_result.error is True
+        assert "division by zero" in tool_result.result
+
+    def test_outputs_to_result_empty_dict_returns_as_is(self):
+        """Test that an empty outputs_to_result dict returns the result as is."""
+
+        def get_info():
+            return {"text": "Hello", "extra": "world"}
+
+        tool = Tool(
+            name="info_tool",
+            description="Returns information",
+            parameters={"type": "object", "properties": {}},
+            function=get_info,
+            outputs_to_result={},
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+        tool_call = ToolCall(tool_name="info_tool", arguments={})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message])
+        tool_messages = result["tool_messages"]
+
+        tool_result = tool_messages[0].tool_call_result
+        assert tool_result.result == {"text": "Hello", "extra": "world"}
+
+    def test_outputs_to_result_with_source_only_returns_source_value(self):
+        """Test that outputs_to_result with only 'source' returns that value."""
+
+        def get_info():
+            return {"text": "Hello", "extra": "world"}
+
+        tool = Tool(
+            name="info_tool",
+            description="Returns information",
+            parameters={"type": "object", "properties": {}},
+            function=get_info,
+            outputs_to_result={"source": "text"},
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+        tool_call = ToolCall(tool_name="info_tool", arguments={})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message])
+        tool_messages = result["tool_messages"]
+
+        tool_result = tool_messages[0].tool_call_result
+        assert tool_result.result == "Hello"
+
+    def test_outputs_to_result_with_source_only_result_not_dict(self):
+        """Test that outputs_to_result with 'source' returns result as is if result is not a dict."""
+
+        def get_info():
+            return "not a dict"
+
+        tool = Tool(
+            name="info_tool",
+            description="Returns information",
+            parameters={"type": "object", "properties": {}},
+            function=get_info,
+            outputs_to_result={"source": "text"},
+        )
+
+        invoker = ToolInvoker(tools=[tool])
+        tool_call = ToolCall(tool_name="info_tool", arguments={})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        result = invoker.run(messages=[message])
+        tool_result = result["tool_messages"][0].tool_call_result
+        assert tool_result.result == "not a dict"
