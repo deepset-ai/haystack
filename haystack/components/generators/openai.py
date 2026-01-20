@@ -22,7 +22,7 @@ from haystack.dataclasses import (
     StreamingChunk,
     select_streaming_callback,
 )
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -164,7 +164,7 @@ class OpenAIGenerator:
             organization=self.organization,
             generation_kwargs=self.generation_kwargs,
             system_prompt=self.system_prompt,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             http_client_kwargs=self.http_client_kwargs,
         )
 
@@ -178,7 +178,6 @@ class OpenAIGenerator:
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:
