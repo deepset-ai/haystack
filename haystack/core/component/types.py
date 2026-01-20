@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from types import UnionType
 from typing import Annotated, Any, Iterable, TypeAlias, TypedDict, TypeVar, get_args
 
 HAYSTACK_VARIADIC_ANNOTATION = "__haystack__variadic_t"
@@ -52,7 +51,7 @@ class InputSocket:
     """
 
     name: str
-    type: type | UnionType
+    type: type
     default_value: Any = _empty
     is_variadic: bool = field(init=False)
     is_greedy: bool = field(init=False)
