@@ -208,7 +208,7 @@ class TestApplyToolExecutionDecisions:
         tool_call = ToolCall(tool_name=tools[0].name, arguments={"a": 1, "b": 2}, id="1")
         return ChatMessage.from_assistant(tool_calls=[tool_call])
 
-    def test_apply_tool_execution_decisions_reject(self, tools, assistant_message):
+    def test_reject(self, tools, assistant_message):
         rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
             tool_call_messages=[assistant_message],
             tool_execution_decisions=[
@@ -234,7 +234,7 @@ class TestApplyToolExecutionDecisions:
         ]
         assert new_tool_call_messages == []
 
-    def test_apply_tool_execution_decisions_confirm(self, tools, assistant_message):
+    def test_confirm(self, tools, assistant_message):
         rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
             tool_call_messages=[assistant_message],
             tool_execution_decisions=[
@@ -246,7 +246,7 @@ class TestApplyToolExecutionDecisions:
         assert rejection_messages == []
         assert new_tool_call_messages == [assistant_message]
 
-    def test_apply_tool_execution_decisions_modify(self, tools, assistant_message):
+    def test_modify(self, tools, assistant_message):
         rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
             tool_call_messages=[assistant_message],
             tool_execution_decisions=[
@@ -268,6 +268,34 @@ class TestApplyToolExecutionDecisions:
                 tool_calls=[ToolCall(tool_name=tools[0].name, arguments={"a": 5, "b": 6}, id="1")]
             ),
         ]
+
+    def test_two_teds_same_name_no_ids(self):
+        message_with_tool_calls = ChatMessage.from_assistant(
+            text="I'll extract the information about the people mentioned in the context.",
+            # Same tool name with different params but missing IDs
+            tool_calls=[
+                ToolCall(tool_name="add_database_tool", arguments={"name": "Malte"}),
+                ToolCall(tool_name="add_database_tool", arguments={"name": "Milos"}),
+            ],
+        )
+        # This raises a ValueError because tool_call_id is missing and there are multiple tool calls with the same name
+        # so we cannot disambiguate which TED applies to which tool call.
+        with pytest.raises(
+            ValueError,
+            match="ToolExecutionDecisions are missing tool_call_id fields and there are multiple tool calls with the "
+            "same name",
+        ):
+            _apply_tool_execution_decisions(
+                tool_call_messages=[message_with_tool_calls],
+                tool_execution_decisions=[
+                    ToolExecutionDecision(
+                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Malte"}
+                    ),
+                    ToolExecutionDecision(
+                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Milos"}
+                    ),
+                ],
+            )
 
 
 class TestUpdateChatHistory:

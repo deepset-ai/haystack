@@ -217,7 +217,6 @@ def _prepare_tool_args(
     return final_args
 
 
-# TODO There is a bug with this function when the same tool is called multiple times in a single message.
 def _process_confirmation_strategies(
     *,
     confirmation_strategies: dict[str, ConfirmationStrategy],
@@ -233,6 +232,10 @@ def _process_confirmation_strategies(
     :returns:
         Tuple of modified messages with confirmed tool calls and updated chat history
     """
+    # If confirmations strategies is empty, return original messages and chat history
+    if not confirmation_strategies:
+        return messages_with_tool_calls, execution_context.state.get("messages")
+
     # Run confirmation strategies and get tool execution decisions
     teds = _run_confirmation_strategies(
         confirmation_strategies=confirmation_strategies,
@@ -272,6 +275,10 @@ async def _process_confirmation_strategies_async(
     :returns:
         Tuple of modified messages with confirmed tool calls and updated chat history
     """
+    # If confirmations strategies is empty, return original messages and chat history
+    if not confirmation_strategies:
+        return messages_with_tool_calls, execution_context.state.get("messages")
+
     # Run confirmation strategies and get tool execution decisions (async version)
     teds = await _run_confirmation_strategies_async(
         confirmation_strategies=confirmation_strategies,
@@ -458,6 +465,15 @@ def _apply_tool_execution_decisions(
     """
     decision_by_id = {d.tool_call_id: d for d in tool_execution_decisions if d.tool_call_id}
     decision_by_name = {d.tool_name: d for d in tool_execution_decisions if d.tool_name}
+
+    # Known limitation: If tool calls are missing IDs, we rely on tool names to match decisions to tool calls.
+    # This can lead to incorrect matches if there are multiple tool calls in the provided messages with duplicate names.
+    if not decision_by_id and len(decision_by_name) < len(tool_execution_decisions):
+        raise ValueError(
+            "ToolExecutionDecisions are missing tool_call_id fields and there are multiple tool calls with the same "
+            "name. When multiple tool calls with the same name are present, tool_call_id is required to correctly "
+            "match decisions to tool calls."
+        )
 
     def make_assistant_message(chat_message, tool_calls):
         return ChatMessage.from_assistant(
