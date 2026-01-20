@@ -76,7 +76,7 @@ class TestBlockingConfirmationStrategy:
 
     def test_from_dict(self):
         strategy_dict = {
-            "type": "haystack.human_in_the_loop.strategies.HumanInTheLoopStrategy",
+            "type": "haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy",
             "init_parameters": {
                 "confirmation_policy": {
                     "type": "haystack.human_in_the_loop.policies.AskOncePolicy",

@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING, Any
 
 from haystack.components.agents import State
 from haystack.components.tools.tool_invoker import ToolInvoker
-from haystack.core.serialization import default_to_dict, import_class_by_name
+from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolExecutionDecision
 from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool
+from haystack.utils.deserialization import deserialize_component_inplace
 
 # To prevent circular imports
 if TYPE_CHECKING:
@@ -168,15 +169,9 @@ class BlockingConfirmationStrategy:
         :returns:
             Deserialized BlockingConfirmationStrategy.
         """
-        policy_data = data["init_parameters"]["confirmation_policy"]
-        policy_class = import_class_by_name(policy_data["type"])
-        if not hasattr(policy_class, "from_dict"):
-            raise ValueError(f"Class {policy_class} does not implement from_dict method.")
-        ui_data = data["init_parameters"]["confirmation_ui"]
-        ui_class = import_class_by_name(ui_data["type"])
-        if not hasattr(ui_class, "from_dict"):
-            raise ValueError(f"Class {ui_class} does not implement from_dict method.")
-        return cls(confirmation_policy=policy_class.from_dict(policy_data), confirmation_ui=ui_class.from_dict(ui_data))
+        deserialize_component_inplace(data["init_parameters"], key="confirmation_policy")
+        deserialize_component_inplace(data["init_parameters"], key="confirmation_ui")
+        return default_from_dict(cls, data)
 
 
 def _prepare_tool_args(
