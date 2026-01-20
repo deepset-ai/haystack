@@ -6,7 +6,7 @@ from haystack.core.type_utils import _type_name
 
 from .types import InputSocket, OutputSocket
 
-SocketsDict = dict[str, InputSocket | OutputSocket]
+SocketsDict = dict[str, InputSocket] | dict[str, OutputSocket] | dict[str, InputSocket | OutputSocket]
 SocketsIOType = type[InputSocket] | type[OutputSocket]
 
 
@@ -54,7 +54,7 @@ class Sockets:  # noqa: PLW1641
         component: "Component",  # type: ignore[name-defined] # noqa: F821
         sockets_dict: SocketsDict,
         sockets_io_type: SocketsIOType,
-    ):
+    ) -> None:
         """
         Create a new Sockets object.
 
