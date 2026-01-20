@@ -11,6 +11,7 @@ from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.utils.auth import Secret, deserialize_secrets_inplace
+from haystack.utils.device import ComponentDevice
 from haystack.utils.type_serialization import thread_safe_import
 
 logger = logging.getLogger(__name__)
@@ -182,8 +183,8 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     instance of `obj` with `from_dict`. Omitting them might cause deserialisation
     errors or unexpected behaviours later, when calling `from_dict`.
 
-    Secret instances in `init_parameters` are automatically serialized by calling
-    their `to_dict()` method.
+    Secret and ComponentDevice instances in `init_parameters` are automatically
+    serialized by calling their `to_dict()` method.
 
     An example usage:
 
@@ -213,15 +214,28 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     :returns:
         A dictionary representation of the instance.
     """
-    # Automatically serialize Secret instances
+    # Automatically serialize Secret and ComponentDevice instances
     serialized_params = {}
     for key, value in init_parameters.items():
-        if isinstance(value, Secret):
+        if isinstance(value, (Secret, ComponentDevice)):
             serialized_params[key] = value.to_dict()
         else:
             serialized_params[key] = value
 
     return {"type": generate_qualified_class_name(type(obj)), "init_parameters": serialized_params}
+
+
+def _is_serialized_component_device(value: Any) -> bool:
+    """
+    Check if a value is a serialized ComponentDevice dictionary.
+
+    A dictionary is considered a serialized ComponentDevice if it has a "type" key
+    with value "single" or "multiple".
+    """
+    if not isinstance(value, dict):
+        return False
+    type_value = value.get("type")
+    return type_value in ("single", "multiple")
 
 
 def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
@@ -239,6 +253,10 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     Serialized Secret dictionaries in `init_parameters` are automatically detected and
     deserialized. A dictionary is considered a serialized Secret if it has a "type" key
     with value "env_var".
+
+    Serialized ComponentDevice dictionaries in `init_parameters` are automatically detected
+    and deserialized. A dictionary is considered a serialized ComponentDevice if it has a
+    "type" key with value "single" or "multiple".
 
     :param cls:
         The class to be used for deserialization.
@@ -264,6 +282,11 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
 
     if secret_keys:
         deserialize_secrets_inplace(init_params, keys=secret_keys)
+
+    # Automatically detect and deserialize ComponentDevice instances
+    for key, value in init_params.items():
+        if _is_serialized_component_device(value):
+            init_params[key] = ComponentDevice.from_dict(value)
 
     return cls(**init_params)
 
