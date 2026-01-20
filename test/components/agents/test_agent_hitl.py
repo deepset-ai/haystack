@@ -109,6 +109,10 @@ class TestAgent:
                                 "type": "haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI",
                                 "init_parameters": {},
                             },
+                            "reject_template": "Tool execution for '{tool_name}' was rejected by the user.",
+                            "modify_template": "The parameters for tool '{tool_name}' were updated by the user to:"
+                            "\n{final_tool_params}",
+                            "user_feedback_template": "With user feedback: {feedback}",
                         },
                     }
                 },
