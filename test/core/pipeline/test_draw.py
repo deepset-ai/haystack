@@ -82,7 +82,7 @@ def test_to_mermaid_text():
     pipe.connect("comp1.result", "comp2.value")
     pipe.connect("comp2.value", "comp1.value")
 
-    init_params = '{"theme": "neutral"}'
+    init_params = {"theme": "neutral"}
     text = _to_mermaid_text(pipe.graph, init_params)
     assert (
         text
@@ -108,7 +108,7 @@ def test_to_mermaid_text_does_not_edit_graph():
     pipe.connect("comp2.value", "comp1.value")
 
     expected_pipe = pipe.to_dict()
-    init_params = '{"theme": "neutral"}'
+    init_params = {"theme": "neutral"}
     _to_mermaid_text(pipe.graph, init_params)
     assert expected_pipe == pipe.to_dict()
 
