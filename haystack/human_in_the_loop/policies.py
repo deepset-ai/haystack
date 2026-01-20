@@ -42,7 +42,7 @@ class AskOncePolicy(ConfirmationPolicy):
     """Ask only once per tool with specific parameters."""
 
     def __init__(self) -> None:
-        self._asked_tools = {}
+        self._asked_tools: dict[str, Any] = {}
 
     def should_ask(self, tool_name: str, tool_description: str, tool_params: dict[str, Any]) -> bool:
         """
