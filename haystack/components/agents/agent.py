@@ -9,7 +9,7 @@ from typing import Any, cast
 from haystack import Pipeline, component, logging, tracing
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.tools import ToolInvoker
-from haystack.core.errors import BreakpointException, DeserializationError, PipelineRuntimeError
+from haystack.core.errors import BreakpointException, PipelineRuntimeError
 from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.breakpoint import (
     SnapshotCallback,
@@ -20,7 +20,7 @@ from haystack.core.pipeline.breakpoint import (
     _validate_tool_breakpoint_is_valid,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
-from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict, import_class_by_name
+from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import (
     AgentBreakpoint,
     AgentSnapshot,
@@ -321,16 +321,9 @@ class Agent:
 
         deserialize_tools_or_toolset_inplace(init_params, key="tools")
 
-        # TODO Potentially could use deserialize_component_inplace here
         if "confirmation_strategies" in init_params and init_params["confirmation_strategies"] is not None:
-            for name, strategy_dict in init_params["confirmation_strategies"].items():
-                try:
-                    strategy_class = import_class_by_name(strategy_dict["type"])
-                except ImportError as e:
-                    raise DeserializationError(f"Class '{strategy_dict['type']}' not correctly imported") from e
-                if not hasattr(strategy_class, "from_dict"):
-                    raise DeserializationError(f"{strategy_class} does not have from_dict method implemented.")
-                init_params["confirmation_strategies"][name] = strategy_class.from_dict(strategy_dict)
+            for name in init_params["confirmation_strategies"]:
+                deserialize_component_inplace(init_params["confirmation_strategies"], key=name)
 
         return default_from_dict(cls, data)
 
