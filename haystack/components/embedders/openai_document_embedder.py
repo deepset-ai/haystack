@@ -12,7 +12,7 @@ from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret, deserialize_secrets_inplace, get_progress_bar_setting
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,8 @@ class OpenAIDocumentEmbedder:
         self.prefix = prefix
         self.suffix = suffix
         self.batch_size = batch_size
-        self.progress_bar = progress_bar
+        self._progress_bar_param = progress_bar
+        self.progress_bar = get_progress_bar_setting(progress_bar)
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.timeout = timeout
@@ -164,7 +165,7 @@ class OpenAIDocumentEmbedder:
             prefix=self.prefix,
             suffix=self.suffix,
             batch_size=self.batch_size,
-            progress_bar=self.progress_bar,
+            progress_bar=self._progress_bar_param,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
             timeout=self.timeout,
