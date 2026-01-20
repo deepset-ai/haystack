@@ -71,6 +71,10 @@ class TestBlockingConfirmationStrategy:
                     "type": "haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI",
                     "init_parameters": {},
                 },
+                "reject_template": "Tool execution for '{tool_name}' was rejected by the user.",
+                "modify_template": "The parameters for tool '{tool_name}' were updated by the user to:"
+                "\n{final_tool_params}",
+                "user_feedback_template": "With user feedback: {feedback}",
             },
         }
 
@@ -143,7 +147,9 @@ class TestBlockingConfirmationStrategy:
         assert decision.tool_name == "test_tool"
         assert decision.execute is False
         assert decision.final_tool_params is None
-        assert decision.feedback == "Tool execution for 'test_tool' was rejected by the user. With feedback: Not needed"
+        assert decision.feedback == (
+            "Tool execution for 'test_tool' was rejected by the user. With user feedback: Not needed"
+        )
 
 
 class TestRunConfirmationStrategies:
@@ -466,6 +472,63 @@ class ConfirmationStrategyContextCapturingStrategy:
         return cls()
 
 
+class TestRunContext:
+    def test_confirmation_strategy_context_passed_to_strategy(self, tools):
+        confirmation_strategy_context = {"event_queue": "mock_queue", "redis_client": "mock_redis"}
+        execution_context = _ExecutionContext(
+            state=State(schema={"messages": {"type": list[ChatMessage]}}),
+            component_visits={"chat_generator": 0, "tool_invoker": 0},
+            chat_generator_inputs={},
+            tool_invoker_inputs={"tools": tools},
+            counter=0,
+            skip_chat_generator=False,
+            confirmation_strategy_context=confirmation_strategy_context,
+        )
+
+        capturing_strategy = ConfirmationStrategyContextCapturingStrategy()
+        teds = _run_confirmation_strategies(
+            confirmation_strategies={tools[0].name: capturing_strategy},
+            messages_with_tool_calls=[
+                ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
+            ],
+            execution_context=execution_context,
+        )
+
+        # Verify the strategy received the confirmation_strategy_context directly
+        assert capturing_strategy.captured_confirmation_strategy_context is not None
+        assert capturing_strategy.captured_confirmation_strategy_context == confirmation_strategy_context
+        assert len(teds) == 1
+        assert teds[0].execute is True
+
+    @pytest.mark.asyncio
+    async def test_confirmation_strategy_context_passed_to_strategy_async(self, tools):
+        confirmation_strategy_context = {"websocket": "mock_websocket", "request_id": "12345"}
+        execution_context = _ExecutionContext(
+            state=State(schema={"messages": {"type": list[ChatMessage]}}),
+            component_visits={"chat_generator": 0, "tool_invoker": 0},
+            chat_generator_inputs={},
+            tool_invoker_inputs={"tools": tools},
+            counter=0,
+            skip_chat_generator=False,
+            confirmation_strategy_context=confirmation_strategy_context,
+        )
+
+        capturing_strategy = ConfirmationStrategyContextCapturingStrategy()
+        teds = await _run_confirmation_strategies_async(
+            confirmation_strategies={tools[0].name: capturing_strategy},
+            messages_with_tool_calls=[
+                ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
+            ],
+            execution_context=execution_context,
+        )
+
+        # Verify the strategy received the confirmation_strategy_context directly
+        assert capturing_strategy.captured_confirmation_strategy_context is not None
+        assert capturing_strategy.captured_confirmation_strategy_context == confirmation_strategy_context
+        assert len(teds) == 1
+        assert teds[0].execute is True
+
+
 class TrueAsyncConfirmationStrategy:
     """
     A confirmation strategy with truly async behavior for testing purposes.
@@ -526,63 +589,6 @@ class TrueAsyncConfirmationStrategy:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TrueAsyncConfirmationStrategy":
         return cls(**data.get("init_parameters", {}))
-
-
-class TestRunContext:
-    def test_confirmation_strategy_context_passed_to_strategy(self, tools):
-        confirmation_strategy_context = {"event_queue": "mock_queue", "redis_client": "mock_redis"}
-        execution_context = _ExecutionContext(
-            state=State(schema={"messages": {"type": list[ChatMessage]}}),
-            component_visits={"chat_generator": 0, "tool_invoker": 0},
-            chat_generator_inputs={},
-            tool_invoker_inputs={"tools": tools},
-            counter=0,
-            skip_chat_generator=False,
-            confirmation_strategy_context=confirmation_strategy_context,
-        )
-
-        capturing_strategy = ConfirmationStrategyContextCapturingStrategy()
-        teds = _run_confirmation_strategies(
-            confirmation_strategies={tools[0].name: capturing_strategy},
-            messages_with_tool_calls=[
-                ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
-            ],
-            execution_context=execution_context,
-        )
-
-        # Verify the strategy received the confirmation_strategy_context directly
-        assert capturing_strategy.captured_confirmation_strategy_context is not None
-        assert capturing_strategy.captured_confirmation_strategy_context == confirmation_strategy_context
-        assert len(teds) == 1
-        assert teds[0].execute is True
-
-    @pytest.mark.asyncio
-    async def test_confirmation_strategy_context_passed_to_strategy_async(self, tools):
-        confirmation_strategy_context = {"websocket": "mock_websocket", "request_id": "12345"}
-        execution_context = _ExecutionContext(
-            state=State(schema={"messages": {"type": list[ChatMessage]}}),
-            component_visits={"chat_generator": 0, "tool_invoker": 0},
-            chat_generator_inputs={},
-            tool_invoker_inputs={"tools": tools},
-            counter=0,
-            skip_chat_generator=False,
-            confirmation_strategy_context=confirmation_strategy_context,
-        )
-
-        capturing_strategy = ConfirmationStrategyContextCapturingStrategy()
-        teds = await _run_confirmation_strategies_async(
-            confirmation_strategies={tools[0].name: capturing_strategy},
-            messages_with_tool_calls=[
-                ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
-            ],
-            execution_context=execution_context,
-        )
-
-        # Verify the strategy received the confirmation_strategy_context directly
-        assert capturing_strategy.captured_confirmation_strategy_context is not None
-        assert capturing_strategy.captured_confirmation_strategy_context == confirmation_strategy_context
-        assert len(teds) == 1
-        assert teds[0].execute is True
 
 
 class TestAsyncConfirmationStrategies:

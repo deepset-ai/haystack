@@ -17,10 +17,11 @@ from haystack.utils.deserialization import deserialize_component_inplace
 if TYPE_CHECKING:
     from haystack.components.agents.agent import _ExecutionContext
 
-_REJECTION_FEEDBACK_TEMPLATE = "Tool execution for '{tool_name}' was rejected by the user."
-_MODIFICATION_FEEDBACK_TEMPLATE = (
+REJECTION_FEEDBACK_TEMPLATE = "Tool execution for '{tool_name}' was rejected by the user."
+MODIFICATION_FEEDBACK_TEMPLATE = (
     "The parameters for tool '{tool_name}' were updated by the user to:\n{final_tool_params}"
 )
+USER_FEEDBACK_TEMPLATE = "With user feedback: {feedback}"
 
 
 class BlockingConfirmationStrategy:
@@ -28,7 +29,15 @@ class BlockingConfirmationStrategy:
     Confirmation strategy that blocks execution to gather user feedback.
     """
 
-    def __init__(self, *, confirmation_policy: ConfirmationPolicy, confirmation_ui: ConfirmationUI) -> None:
+    def __init__(
+        self,
+        *,
+        confirmation_policy: ConfirmationPolicy,
+        confirmation_ui: ConfirmationUI,
+        reject_template: str = REJECTION_FEEDBACK_TEMPLATE,
+        modify_template: str = MODIFICATION_FEEDBACK_TEMPLATE,
+        user_feedback_template: str = USER_FEEDBACK_TEMPLATE,
+    ) -> None:
         """
         Initialize the BlockingConfirmationStrategy with a confirmation policy and UI.
 
@@ -36,9 +45,19 @@ class BlockingConfirmationStrategy:
             The confirmation policy to determine when to ask for user confirmation.
         :param confirmation_ui:
             The user interface to interact with the user for confirmation.
+        :param reject_template:
+            Template for rejection feedback messages. It should include a `{tool_name}` placeholder.
+        :param modify_template:
+            Template for modification feedback messages. It should include `{tool_name}` and `{final_tool_params}`
+            placeholders.
+        :param user_feedback_template:
+            Template for user feedback messages. It should include a `{feedback}` placeholder.
         """
         self.confirmation_policy = confirmation_policy
         self.confirmation_ui = confirmation_ui
+        self.reject_template = reject_template
+        self.modify_template = modify_template
+        self.user_feedback_template = user_feedback_template
 
     def run(
         self,
@@ -89,18 +108,20 @@ class BlockingConfirmationStrategy:
         # Process the confirmation result
         final_args = {}
         if confirmation_ui_result.action == "reject":
-            explanation_text = _REJECTION_FEEDBACK_TEMPLATE.format(tool_name=tool_name)
+            explanation_text = self.reject_template.format(tool_name=tool_name)
             if confirmation_ui_result.feedback:
-                explanation_text += f" With feedback: {confirmation_ui_result.feedback}"
+                explanation_text += " "
+                explanation_text += self.user_feedback_template.format(feedback=confirmation_ui_result.feedback)
             return ToolExecutionDecision(
                 tool_name=tool_name, execute=False, tool_call_id=tool_call_id, feedback=explanation_text
             )
         elif confirmation_ui_result.action == "modify" and confirmation_ui_result.new_tool_params:
             # Update the tool call params with the new params
             final_args.update(confirmation_ui_result.new_tool_params)
-            explanation_text = _MODIFICATION_FEEDBACK_TEMPLATE.format(tool_name=tool_name, final_tool_params=final_args)
+            explanation_text = self.modify_template.format(tool_name=tool_name, final_tool_params=final_args)
             if confirmation_ui_result.feedback:
-                explanation_text += f" With feedback: {confirmation_ui_result.feedback}"
+                explanation_text += " "
+                explanation_text += self.user_feedback_template.format(feedback=confirmation_ui_result.feedback)
             return ToolExecutionDecision(
                 tool_name=tool_name,
                 tool_call_id=tool_call_id,
@@ -155,7 +176,12 @@ class BlockingConfirmationStrategy:
             Dictionary with serialized data.
         """
         return default_to_dict(
-            self, confirmation_policy=self.confirmation_policy.to_dict(), confirmation_ui=self.confirmation_ui.to_dict()
+            self,
+            confirmation_policy=self.confirmation_policy.to_dict(),
+            confirmation_ui=self.confirmation_ui.to_dict(),
+            reject_template=self.reject_template,
+            modify_template=self.modify_template,
+            user_feedback_template=self.user_feedback_template,
         )
 
     @classmethod
@@ -492,7 +518,7 @@ def _apply_tool_execution_decisions(
 
             if not ted.execute:
                 # rejected tool call
-                tool_result_text = ted.feedback or _REJECTION_FEEDBACK_TEMPLATE.format(tool_name=tc.tool_name)
+                tool_result_text = ted.feedback or REJECTION_FEEDBACK_TEMPLATE.format(tool_name=tc.tool_name)
                 rejection_messages.extend(
                     [
                         make_assistant_message(chat_msg, [tc]),
@@ -507,7 +533,7 @@ def _apply_tool_execution_decisions(
                 # In the modify case we add a user message explaining the modification otherwise the LLM won't know
                 # why the tool parameters changed and will likely just try and call the tool again with the
                 # original parameters.
-                user_text = ted.feedback or _MODIFICATION_FEEDBACK_TEMPLATE.format(
+                user_text = ted.feedback or MODIFICATION_FEEDBACK_TEMPLATE.format(
                     tool_name=tc.tool_name, final_tool_params=final_args
                 )
                 new_tool_call_messages.append(ChatMessage.from_user(text=user_text))
