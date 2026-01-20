@@ -56,7 +56,7 @@ class TestPipelineBreakpoints:
             embedder = SentenceTransformersDocumentEmbedder(model="mock-model", progress_bar=False)
 
             # mocked run method to return a fixed embedding
-            def mock_run(documents: list[Document]):
+            def mock_run(documents: list[Document]) -> dict[str, list[Document]]:
                 if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
                     raise TypeError(
                         "SentenceTransformersDocumentEmbedder expects a list of Documents as input."
@@ -75,7 +75,7 @@ class TestPipelineBreakpoints:
                 return {"documents": documents}
 
             # mocked run
-            embedder.run = mock_run
+            embedder.run = mock_run  # type: ignore[method-assign]
 
             # initialize the component
             embedder.warm_up()
@@ -155,7 +155,7 @@ class TestPipelineBreakpoints:
                 return {"documents": ranked_docs}
 
             # replace the run method with our mock
-            ranker.run = mock_run
+            ranker.run = mock_run  # type: ignore[method-assign]
 
             # warm_up to initialize the component
             ranker.warm_up()
@@ -199,7 +199,7 @@ class TestPipelineBreakpoints:
                 return {"embedding": embedding}
 
             # mocked run
-            embedder.run = mock_run
+            embedder.run = mock_run  # type: ignore[method-assign]
 
             # initialize the component
             embedder.warm_up()
@@ -258,7 +258,7 @@ class TestPipelineBreakpoints:
         return pipeline
 
     @pytest.fixture(scope="session")
-    def output_directory(self, tmp_path_factory) -> Path:
+    def output_directory(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
         return tmp_path_factory.mktemp("output_files")
 
     BREAKPOINT_COMPONENTS = [

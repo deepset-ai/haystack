@@ -93,6 +93,7 @@ class ExtractResults:
             # If the message contains ToolCall object extract the tool name, arguments and arguments
             if isinstance(msg._content[0], ToolCall):
                 for tool_call in msg._content:
+                    assert isinstance(tool_call, ToolCall)
                     tool_name = tool_call.tool_name
                     arguments = tool_call.arguments
                     results.append(Document(content=f"{tool_name} - Arguments: {arguments}"))
@@ -100,6 +101,7 @@ class ExtractResults:
             # If the message contains ToolCallResult extract the tool name, arguments and arguments
             if isinstance(msg._content[0], ToolCallResult):
                 for tool_call_result in msg._content:
+                    assert isinstance(tool_call_result, ToolCallResult)
                     tool_name = tool_call_result.origin.tool_name
                     result = tool_call_result.result
                     results.append(Document(content=f"{tool_name} - Result: {result}"))
@@ -164,7 +166,7 @@ class TestPipelineBreakpoints:
         return pipe, doc_store
 
     @pytest.fixture(scope="session")
-    def output_directory(self, tmp_path_factory) -> Path:
+    def output_directory(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
         return tmp_path_factory.mktemp("output_files")
 
     BREAKPOINT_COMPONENTS = ["math_agent", "extractor", "doc_writer"]

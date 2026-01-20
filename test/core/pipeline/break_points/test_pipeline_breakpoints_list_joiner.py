@@ -74,7 +74,7 @@ class TestPipelineBreakpoints:
                     }
 
                 # Replace the run method with our mock
-                generator.run = mock_run
+                generator.run = mock_run  # type: ignore[method-assign]
 
                 return generator
 
@@ -116,7 +116,7 @@ class TestPipelineBreakpoints:
         return pipe
 
     @pytest.fixture(scope="session")
-    def output_directory(self, tmp_path_factory) -> Path:
+    def output_directory(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
         return tmp_path_factory.mktemp("output_files")
 
     BREAKPOINT_COMPONENTS = ["prompt_builder", "llm", "feedback_prompt_builder", "feedback_llm", "list_joiner"]

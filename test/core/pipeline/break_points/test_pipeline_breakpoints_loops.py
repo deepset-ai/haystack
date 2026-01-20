@@ -4,9 +4,9 @@
 
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pydantic
 import pytest
 from colorama import Fore
 from pydantic import BaseModel, ValidationError
@@ -25,18 +25,19 @@ from haystack.utils.auth import Secret
 # Define the component input parameters
 @component
 class OutputValidator:
-    def __init__(self, pydantic_model: pydantic.BaseModel):
+    def __init__(self, pydantic_model: Any) -> None:
         self.pydantic_model = pydantic_model
         self.iteration_counter = 0
 
     # Define the component output
     @component.output_types(valid_replies=list[str], invalid_replies=list[str] | None, error_message=str | None)
-    def run(self, replies: list[ChatMessage]):
+    def run(self, replies: list[ChatMessage]) -> dict[str, list[ChatMessage] | str | None]:
         self.iteration_counter += 1
 
         ## Try to parse the LLM's reply ##
         # If the LLM's reply is a valid object, return `"valid_replies"`
         try:
+            assert isinstance(replies[0].text, str)
             output_dict = json.loads(replies[0].text)
             self.pydantic_model.model_validate(output_dict)
             print(
@@ -140,7 +141,7 @@ class TestPipelineBreakpointsLoops:
                         }
 
                 # Replace the run method with our mock
-                generator.run = mock_run
+                generator.run = mock_run  # type: ignore[method-assign]
 
                 return generator
 
