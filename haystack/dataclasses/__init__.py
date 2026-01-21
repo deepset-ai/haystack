@@ -19,7 +19,6 @@ _import_structure = {
     ],
     "byte_stream": ["ByteStream"],
     "chat_message": ["ChatMessage", "ChatRole", "ReasoningContent", "TextContent", "ToolCall", "ToolCallResult"],
-    "human_in_the_loop": ["ConfirmationUIResult", "ToolExecutionDecision"],
     "image_content": ["ImageContent"],
     "document": ["Document"],
     "sparse_embedding": ["SparseEmbedding"],
@@ -54,8 +53,6 @@ if TYPE_CHECKING:
     from .chat_message import ToolCall as ToolCall
     from .chat_message import ToolCallResult as ToolCallResult
     from .document import Document as Document
-    from .human_in_the_loop import ConfirmationUIResult as ConfirmationUIResult
-    from .human_in_the_loop import ToolExecutionDecision as ToolExecutionDecision
     from .image_content import ImageContent as ImageContent
     from .sparse_embedding import SparseEmbedding as SparseEmbedding
     from .streaming_chunk import AsyncStreamingCallbackT as AsyncStreamingCallbackT
