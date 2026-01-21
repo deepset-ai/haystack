@@ -20,7 +20,7 @@ from haystack.tools import Tool, create_tool_from_function
 
 
 def calculate(expression: Annotated[str, "Math expression to evaluate"]) -> dict:
-    """Evaluate basic math expressions."""
+    """Calculate the result of a mathematical expression."""
     try:
         result = eval(expression, {"__builtins__": {}})
         return {"result": result}

@@ -34,9 +34,8 @@ class TestPipelineBreakpoints:
         pipeline.add_component("answer_builder_a", AnswerBuilder())
         pipeline.add_component("answer_builder_b", AnswerBuilder())
         pipeline.add_component("answer_joiner", AnswerJoiner())
-
-        pipeline.connect("gpt-4o.replies", "answer_builder_a.replies")
-        pipeline.connect("gpt-3.replies", "answer_builder_b.replies")
+        pipeline.connect("gpt-4o.replies", "answer_builder_a")
+        pipeline.connect("gpt-3.replies", "answer_builder_b")
         pipeline.connect("answer_builder_a.answers", "answer_joiner")
         pipeline.connect("answer_builder_b.answers", "answer_joiner")
 
@@ -52,8 +51,11 @@ class TestPipelineBreakpoints:
         """
         Test that an answer joiner pipeline can be executed with breakpoints at each component.
         """
-        query = "What's NLP?"
-        messages = [ChatMessage.from_user(query)]
+        query = "What's Natural Language Processing?"
+        messages = [
+            ChatMessage.from_system("You are a helpful, respectful and honest assistant. Be super concise."),
+            ChatMessage.from_user(query),
+        ]
         data = {
             "gpt-4o": {"messages": messages},
             "gpt-3": {"messages": messages},
@@ -61,6 +63,7 @@ class TestPipelineBreakpoints:
             "answer_builder_b": {"query": query},
         }
 
+        # Create a Breakpoint on-the-fly using the shared output directory
         break_point = Breakpoint(component_name=component, visit_count=0, snapshot_file_path=str(output_directory))
 
         try:
