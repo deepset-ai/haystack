@@ -229,13 +229,21 @@ def _is_serialized_component_device(value: Any) -> bool:
     """
     Check if a value is a serialized ComponentDevice dictionary.
 
-    A dictionary is considered a serialized ComponentDevice if it has a "type" key
-    with value "single" or "multiple".
+    A dictionary is considered a serialized ComponentDevice if:
+    - It has "type": "single" and a "device" key with a string value, or
+    - It has "type": "multiple" and a "device_map" key with a dict value
+
+    This matches the structure produced by ComponentDevice.to_dict().
     """
     if not isinstance(value, dict):
         return False
+
     type_value = value.get("type")
-    return type_value in ("single", "multiple")
+    if type_value == "single":
+        return "device" in value and isinstance(value["device"], str)
+    elif type_value == "multiple":
+        return "device_map" in value and isinstance(value["device_map"], dict)
+    return False
 
 
 def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
