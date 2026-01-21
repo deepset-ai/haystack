@@ -36,7 +36,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
     warm_up_tools,
 )
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -250,7 +250,7 @@ class OpenAIResponsesChatGenerator:
             api_base_url=self.api_base_url,
             organization=self.organization,
             generation_kwargs=generation_kwargs,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             timeout=self.timeout,
             max_retries=self.max_retries,
             tools=serialized_tools,
@@ -267,11 +267,8 @@ class OpenAIResponsesChatGenerator:
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
-
         # we only deserialize the tools if they are haystack tools
         # because openai tools are not serialized in the same way
-
         tools = data["init_parameters"].get("tools")
         if tools and (
             isinstance(tools, dict)

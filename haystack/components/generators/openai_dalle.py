@@ -9,7 +9,7 @@ from openai import OpenAI
 from openai.types.image import Image
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
 
 
@@ -147,7 +147,7 @@ class DALLEImageGenerator:
             quality=self.quality,
             size=self.size,
             response_format=self.response_format,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             api_base_url=self.api_base_url,
             organization=self.organization,
             http_client_kwargs=self.http_client_kwargs,
@@ -163,6 +163,4 @@ class DALLEImageGenerator:
         :returns:
             The deserialized component instance.
         """
-        init_params = data.get("init_parameters", {})
-        deserialize_secrets_inplace(init_params, keys=["api_key"])
         return default_from_dict(cls, data)

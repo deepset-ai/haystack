@@ -7,13 +7,7 @@ from typing import Any, Literal
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ComponentInfo, StreamingCallbackT, select_streaming_callback
 from haystack.lazy_imports import LazyImport
-from haystack.utils import (
-    ComponentDevice,
-    Secret,
-    deserialize_callable,
-    deserialize_secrets_inplace,
-    serialize_callable,
-)
+from haystack.utils import ComponentDevice, Secret, deserialize_callable, serialize_callable
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 logger = logging.getLogger(__name__)
@@ -178,7 +172,7 @@ class HuggingFaceLocalGenerator:
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
             stop_words=self.stop_words,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -197,7 +191,6 @@ class HuggingFaceLocalGenerator:
         :returns:
             The deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:

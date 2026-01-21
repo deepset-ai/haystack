@@ -12,7 +12,7 @@ from tqdm import tqdm
 from tqdm.asyncio import tqdm as async_tqdm
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -156,7 +156,7 @@ class OpenAIDocumentEmbedder:
         """
         return default_to_dict(
             self,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             model=self.model,
             dimensions=self.dimensions,
             api_base_url=self.api_base_url,
@@ -183,7 +183,6 @@ class OpenAIDocumentEmbedder:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     def _prepare_texts_to_embed(self, documents: list[Document]) -> dict[str, str]:

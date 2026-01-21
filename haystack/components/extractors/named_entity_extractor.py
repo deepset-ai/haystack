@@ -10,7 +10,7 @@ from typing import Any
 
 from haystack import ComponentError, DeserializationError, Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils.auth import Secret, deserialize_secrets_inplace
+from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 from haystack.utils.hf import deserialize_hf_model_kwargs, resolve_hf_pipeline_kwargs, serialize_hf_model_kwargs
 
@@ -223,7 +223,7 @@ class NamedEntityExtractor:
             model=self._backend.model_name,
             device=self._backend.device.to_dict(),
             pipeline_kwargs=self._backend._pipeline_kwargs,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
         )
 
         hf_pipeline_kwargs = serialization_dict["init_parameters"]["pipeline_kwargs"]
@@ -243,7 +243,6 @@ class NamedEntityExtractor:
             Deserialized component.
         """
         try:
-            deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
             init_params = data.get("init_parameters", {})
             if init_params.get("device") is not None:
                 init_params["device"] = ComponentDevice.from_dict(init_params["device"])
