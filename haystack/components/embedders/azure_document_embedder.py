@@ -9,7 +9,7 @@ from openai.lib.azure import AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.embedders import OpenAIDocumentEmbedder
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -189,8 +189,8 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
             progress_bar=self.progress_bar,
             meta_fields_to_embed=self.meta_fields_to_embed,
             embedding_separator=self.embedding_separator,
-            api_key=self.api_key.to_dict() if self.api_key is not None else None,
-            azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
+            api_key=self.api_key,
+            azure_ad_token=self.azure_ad_token,
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self.default_headers,
@@ -209,7 +209,6 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         serialized_azure_ad_token_provider = data["init_parameters"].get("azure_ad_token_provider")
         if serialized_azure_ad_token_provider:
             data["init_parameters"]["azure_ad_token_provider"] = deserialize_callable(

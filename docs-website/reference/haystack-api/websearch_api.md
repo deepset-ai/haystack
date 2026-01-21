@@ -194,11 +194,15 @@ Dictionary with serialized data.
 def from_dict(cls, data: dict[str, Any]) -> "SerperDevWebSearch"
 ```
 
-Serializes the component to a dictionary.
+Deserializes the component from a dictionary.
+
+**Arguments**:
+
+- `data`: The dictionary to deserialize from.
 
 **Returns**:
 
-Dictionary with serialized data.
+The deserialized component.
 
 <a id="serper_dev.SerperDevWebSearch.run"></a>
 

@@ -8,7 +8,7 @@ from typing import Any
 from urllib.parse import urljoin
 
 from haystack import Document, component, default_from_dict, default_to_dict
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 from haystack.utils.requests_utils import async_request_with_retry, request_with_retry
 
 
@@ -103,7 +103,7 @@ class HuggingFaceTEIRanker:
             url=self.url,
             top_k=self.top_k,
             timeout=self.timeout,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             max_retries=self.max_retries,
             retry_status_codes=self.retry_status_codes,
         )
@@ -118,7 +118,6 @@ class HuggingFaceTEIRanker:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
     def _compose_response(
