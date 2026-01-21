@@ -6,6 +6,7 @@ import re
 
 import pytest
 
+from haystack.dataclasses import TextContent
 from haystack.tools import Tool, _check_duplicate_tool_names
 from haystack.tools.errors import ToolInvocationError
 
@@ -16,6 +17,10 @@ def get_weather_report(city: str) -> str:
 
 def format_string(text: str) -> str:
     return f"Formatted: {text}"
+
+
+def outputs_to_result_handler(result):
+    return [TextContent(text=result["text"])]
 
 
 parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
@@ -86,11 +91,6 @@ class TestTool:
             )
 
     def test_init_outputs_to_string_and_outputs_to_result_raises_error(self):
-        """Test that only one of outputs_to_string and outputs_to_result can be set."""
-
-        def identity_handler(x):
-            return x
-
         with pytest.raises(ValueError, match="Only one of `outputs_to_string` and `outputs_to_result` can be set."):
             Tool(
                 name="weather",
@@ -98,19 +98,8 @@ class TestTool:
                 parameters=parameters,
                 function=get_weather_report,
                 outputs_to_string={"handler": format_string},
-                outputs_to_result={"handler": identity_handler},
+                outputs_to_result={},
             )
-
-    def test_init_empty_outputs_to_result(self):
-        """Test that Tool can be initialized with an empty outputs_to_result dict."""
-        tool = Tool(
-            name="weather",
-            description="Get weather report",
-            parameters=parameters,
-            function=get_weather_report,
-            outputs_to_result={},
-        )
-        assert tool.outputs_to_result == {}
 
     def test_tool_spec(self):
         tool = Tool(
@@ -160,6 +149,29 @@ class TestTool:
                 "outputs_to_string": {"handler": "test_tool.format_string"},
                 "inputs_from_state": {"location": "city"},
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
+                "outputs_to_result": None,
+            },
+        }
+
+    def test_to_dict_outputs_to_result(self):
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            outputs_to_result={"handler": outputs_to_result_handler},
+        )
+        assert tool.to_dict() == {
+            "type": "haystack.tools.tool.Tool",
+            "data": {
+                "name": "weather",
+                "description": "Get weather report",
+                "parameters": parameters,
+                "function": "test_tool.get_weather_report",
+                "inputs_from_state": None,
+                "outputs_to_state": None,
+                "outputs_to_string": None,
+                "outputs_to_result": {"handler": "test_tool.outputs_to_result_handler"},
             },
         }
 
@@ -266,6 +278,38 @@ class TestTool:
                 parameters=parameters,
                 function=get_weather_report,
                 outputs_to_state={"result": {"source": "nonexistent"}},
+            )
+
+    def test_outputs_to_result_validation_with_invalid_handler(self):
+        with pytest.raises(ValueError, match="outputs_to_result handler must be callable"):
+            Tool(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                function=get_weather_report,
+                outputs_to_result={"handler": "some_string"},
+            )
+
+    def test_outputs_to_result_validation_with_invalid_source(self):
+        with pytest.raises(ValueError, match="outputs_to_result source must be a string"):
+            Tool(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                function=get_weather_report,
+                outputs_to_result={"source": {"handler": outputs_to_result_handler}},
+            )
+
+    def test_outputs_to_result_validation_with_invalid_config(self):
+        with pytest.raises(
+            ValueError, match="Invalid outputs_to_result config. Only 'source' and 'handler' keys are allowed."
+        ):
+            Tool(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                function=get_weather_report,
+                outputs_to_result={"invalid": "some_value"},
             )
 
 

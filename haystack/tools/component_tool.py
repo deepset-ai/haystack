@@ -113,25 +113,28 @@ class ComponentTool(Tool):
             Will fall back to the parameters defined in the component's run method signature if not provided.
         :param outputs_to_string:
             Optional dictionary defining how tool outputs should be converted into string(s).
-            Supports two formats:
+            If not provided, the tool result is converted to a string using a default handler.
+            If you want to return the tool result without string conversion, use `outputs_to_result`.
+
+            `outputs_to_string` supports two formats:
 
             1. Single output format - use "source" and/or "handler" at the root level:
-                ```python
-                {
-                    "source": "docs", "handler": format_documents
-                }
-                ```
-                If the source is provided, only the specified output key is sent to the handler.
-                If the source is omitted, the whole tool result is sent to the handler.
+            ```python
+            {
+                "source": "docs", "handler": format_documents
+            }
+            ```
+            If the source is provided, only the specified output key is sent to the handler.
+            If the source is omitted, the whole tool result is sent to the handler.
 
             2. Multiple output format - map keys to individual configurations:
-                ```python
-                {
-                    "formatted_docs": {"source": "docs", "handler": format_documents},
-                    "summary": {"source": "summary_text", "handler": str.upper}
-                }
-                ```
-                Each key maps to a dictionary that can contain "source" and/or "handler".
+            ```python
+            {
+                "formatted_docs": {"source": "docs", "handler": format_documents},
+                "summary": {"source": "summary_text", "handler": str.upper}
+            }
+            ```
+            Each key maps to a dictionary that can contain "source" and/or "handler".
         :param inputs_from_state:
             Optional dictionary mapping state keys to tool parameter names.
             Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
@@ -152,17 +155,20 @@ class ComponentTool(Tool):
             }
             ```
         :param outputs_to_result:
-            Optional dictionary defining how tool outputs should be converted into a ToolCallResult.
-            This allows returning multimodal content (e.g., images) from tools.
-            The handler should return either a string or a list of TextContent/ImageContent.
-            Example:
-            ```python
-            {
-                "source": "image",
-                "handler": lambda img: [img]  # img is already ImageContent
-            }
-            ```
-            Takes precedence over `outputs_to_string` if both are set.
+            Optional dictionary defining how the tool output is converted into a result. This is an alternative to
+            `outputs_to_string` and supports returning images.
+
+            The configuration dictionary can contain:
+            - `source`: If the tool output is a dictionary, extract the value of this key.
+            - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+                final result. The handler should typically return a list of `TextContent`/`ImageContent` objects.
+
+            Behaviors:
+            - `{}`: Returns the raw tool output as is.
+            - `{"handler": my_func}`: Passes the full tool output to `my_func`.
+            - `{"source": "my_key"}`: If the output is a dictionary, returns `output["my_key"]`.
+            - `{"source": "my_key", "handler": my_func}`: If the output is a dictionary, passes `output["my_key"]` to
+                `my_func`.
         :raises ValueError: If the component is invalid or schema generation fails.
         """
         if not isinstance(component, Component):
@@ -286,6 +292,7 @@ class ComponentTool(Tool):
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
             "outputs_to_state": _serialize_outputs_to_state(self.outputs_to_state) if self.outputs_to_state else None,
+            "outputs_to_result": self.outputs_to_result,
         }
 
         if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
@@ -295,10 +302,8 @@ class ComponentTool(Tool):
         else:
             serialized["outputs_to_string"] = None
 
-        if self.outputs_to_result is not None and self.outputs_to_result.get("handler") is not None:
-            serialized["outputs_to_result"] = self.outputs_to_result.copy()
-            serialized["outputs_to_result"]["handler"] = serialize_callable(self.outputs_to_result["handler"])
-        # Don't include outputs_to_result in serialization if not set (for backward compatibility)
+        if serialized["outputs_to_result"] is not None and serialized["outputs_to_result"].get("handler") is not None:
+            serialized["outputs_to_result"]["handler"] = serialize_callable(serialized["outputs_to_result"]["handler"])
 
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 

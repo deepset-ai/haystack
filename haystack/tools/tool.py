@@ -38,7 +38,10 @@ class Tool:
         Must be a synchronous function; async functions are not supported.
     :param outputs_to_string:
         Optional dictionary defining how tool outputs should be converted into string(s).
-        Supports two formats:
+        If not provided, the tool result is converted to a string using a default handler.
+        If you want to return the tool result without string conversion, use `outputs_to_result`.
+
+        `outputs_to_string` supports two formats:
 
         1. Single output format - use "source" and/or "handler" at the root level:
            ```python
@@ -77,19 +80,20 @@ class Tool:
         }
         ```
     :param outputs_to_result:
-        Optional dictionary defining how tool outputs should be converted into a ToolCallResult.
-        This allows returning multimodal content (e.g., images) from tools.
-        The handler should return either a string or a list of TextContent/ImageContent.
-        Example:
-        ```python
-        {
-            "handler": lambda result: [ImageContent(base64_image=result["image"], mime_type="image/png")]
-        }
-        ```
-        If "source" is provided, only the specified output key is sent to the handler.
-        If the dictionary is empty (`{}`), the tool result is returned as is.
-        If "source" is provided without "handler", the value of the specified output key is returned as is.
-        Takes precedence over `outputs_to_string` if both are set.
+        Optional dictionary defining how the tool output is converted into a result. This is an alternative to
+        `outputs_to_string` and supports returning images.
+
+        The configuration dictionary can contain:
+        - `source`: If the tool output is a dictionary, extract the value of this key.
+        - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+            final result. The handler should typically return a list of `TextContent`/`ImageContent` objects.
+
+        Behaviors:
+        - `{}`: Returns the raw tool output as is.
+        - `{"handler": my_func}`: Passes the full tool output to `my_func`.
+        - `{"source": "my_key"}`: If the output is a dictionary, returns `output["my_key"]`.
+        - `{"source": "my_key", "handler": my_func}`: If the output is a dictionary, passes `output["my_key"]` to
+            `my_func`.
     """
 
     name: str
@@ -295,9 +299,6 @@ class Tool:
         if self.outputs_to_result is not None and self.outputs_to_result.get("handler") is not None:
             data["outputs_to_result"] = self.outputs_to_result.copy()
             data["outputs_to_result"]["handler"] = serialize_callable(self.outputs_to_result["handler"])
-        else:
-            # Don't include outputs_to_result in serialization if not set (for backward compatibility)
-            data.pop("outputs_to_result", None)
 
         return {"type": generate_qualified_class_name(type(self)), "data": data}
 
