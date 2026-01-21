@@ -332,6 +332,7 @@ class TestOpenAIChatGenerator:
                             "outputs_to_state": None,
                             "outputs_to_string": None,
                             "parameters": {"x": {"type": "string"}},
+                            "outputs_to_result": None,
                         },
                     }
                 ],

@@ -56,6 +56,14 @@ class StringConversionError(ToolInvokerError):
         super().__init__(message)
 
 
+class ResultConversionError(ToolInvokerError):
+    """Exception raised when the conversion of a tool output to a result fails."""
+
+    def __init__(self, tool_name: str, conversion_function: str, error: Exception):
+        message = f"Failed to convert tool output from tool {tool_name} using '{conversion_function}'. Error: {error}"
+        super().__init__(message)
+
+
 class ToolOutputMergeError(ToolInvokerError):
     """Exception raised when merging tool outputs into state fails."""
 
@@ -318,12 +326,12 @@ class ToolInvoker:
 
     def _output_to_result(self, config: dict[str, Any], result: Any, tool_call: ToolCall):
         """
-        Converts a tool result to a ToolCallResult-compatible format based on the provided configuration.
+        Converts a tool output to a result based on the provided configuration.
 
         :param config: Configuration dictionary that may contain "source" and "handler" keys.
         :param result: The tool result to convert.
         :param tool_call: The ToolCall object for error reporting.
-        :returns: The converted tool result (str or list of TextContent/ImageContent).
+        :returns: The converted tool result (usually a list of TextContent/ImageContent).
         """
         source_key = config.get("source")
         # If a source key is provided, extract the result from that key
@@ -336,9 +344,7 @@ class ToolInvoker:
         try:
             return handler(value)
         except Exception as e:
-            # Check if handler is a lambda or a function to get its name
-            handler_name = getattr(handler, "__name__", "lambda")
-            raise StringConversionError(tool_call.tool_name, handler_name, e)
+            raise ResultConversionError(tool_call.tool_name, handler.__name__, e)
 
     def _prepare_tool_result_message(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> ChatMessage:
         """
@@ -357,12 +363,10 @@ class ToolInvoker:
             and `raise_on_failure` is True.
         """
         try:
-            # Check for outputs_to_result first (takes precedence)
             if tool_to_invoke.outputs_to_result is not None:
                 tool_result = self._output_to_result(tool_to_invoke.outputs_to_result, result, tool_call)
                 return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
 
-            # Fall back to outputs_to_string behavior
             outputs_config = tool_to_invoke.outputs_to_string or {}
             # Root level single output configuration
             if not outputs_config or "source" in outputs_config or "handler" in outputs_config:
