@@ -119,22 +119,22 @@ class ComponentTool(Tool):
             `outputs_to_string` supports two formats:
 
             1. Single output format - use "source" and/or "handler" at the root level:
-            ```python
-            {
-                "source": "docs", "handler": format_documents
-            }
-            ```
-            If the source is provided, only the specified output key is sent to the handler.
-            If the source is omitted, the whole tool result is sent to the handler.
+                ```python
+                {
+                    "source": "docs", "handler": format_documents
+                }
+                ```
+                If the source is provided, only the specified output key is sent to the handler.
+                If the source is omitted, the whole tool result is sent to the handler.
 
             2. Multiple output format - map keys to individual configurations:
-            ```python
-            {
-                "formatted_docs": {"source": "docs", "handler": format_documents},
-                "summary": {"source": "summary_text", "handler": str.upper}
-            }
-            ```
-            Each key maps to a dictionary that can contain "source" and/or "handler".
+                ```python
+                {
+                    "formatted_docs": {"source": "docs", "handler": format_documents},
+                    "summary": {"source": "summary_text", "handler": str.upper}
+                }
+                ```
+                Each key maps to a dictionary that can contain "source" and/or "handler".
         :param inputs_from_state:
             Optional dictionary mapping state keys to tool parameter names.
             Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.

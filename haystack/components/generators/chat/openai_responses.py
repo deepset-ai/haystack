@@ -803,8 +803,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         elif isinstance(part, ImageContent):
             return {
                 "type": "input_image",
-                # If no MIME type is provided, default to JPEG.
-                # OpenAI API appears to tolerate MIME type mismatches.
+                # If no MIME type is provided, default to JPEG. OpenAI API appears to tolerate MIME type mismatches.
                 "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
             }
         raise ValueError(f"Unsupported content type: {type(part)}")
