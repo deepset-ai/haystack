@@ -155,6 +155,7 @@ class TestPipelineBreakpoints:
         assert result["math_agent"]["calc_result"] == 4
         assert result["math_agent"]["factorial_result"] == 120
         assert result["doc_writer"]["documents_written"] == 5
+        assert len(doc_store.filter_documents()) == 5
 
     @pytest.fixture
     def agent_breakpoints(self, output_directory):

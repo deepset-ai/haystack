@@ -60,3 +60,5 @@ class TestPipelineBreakpoints:
             data=data,
         )
         assert result["string_joiner"]
+        assert "Builder 1: What's Natural Language Processing?" in result["string_joiner"]["strings"]
+        assert "Builder 2: What is life?" in result["string_joiner"]["strings"]

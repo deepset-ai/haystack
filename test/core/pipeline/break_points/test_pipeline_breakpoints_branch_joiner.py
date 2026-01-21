@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
+
 import pytest
 
 from haystack import component
@@ -78,4 +80,8 @@ class TestPipelineBreakpoints:
             component_name=break_point.component_name,
             data=data,
         )
-        assert result["validator"], "The result should be valid according to the schema."
+        assert result["validator"]
+        valid_json = json.loads(result["validator"]["validated"][0].text)
+        assert valid_json["first_name"] == "Peter"
+        assert valid_json["last_name"] == "Parker"
+        assert valid_json["nationality"] == "American"

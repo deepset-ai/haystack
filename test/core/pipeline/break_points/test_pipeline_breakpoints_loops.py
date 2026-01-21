@@ -134,3 +134,8 @@ class TestPipelineBreakpointsLoops:
         valid_json = json.loads(valid_reply)
         assert "cities" in valid_json
         assert len(valid_json["cities"]) == 3
+        cities_data = CitiesData.model_validate(valid_json)
+        assert len(cities_data.cities) == 3
+        assert cities_data.cities[0].name == "Berlin"
+        assert cities_data.cities[1].name == "Paris"
+        assert cities_data.cities[2].name == "Lisbon"

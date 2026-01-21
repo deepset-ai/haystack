@@ -79,3 +79,5 @@ class TestPipelineBreakpoints:
         )
         assert result["answer_joiner"]
         assert len(result["answer_joiner"]["answers"]) == 2
+        assert "GPT-4 response" in [a.data for a in result["answer_joiner"]["answers"]]
+        assert "GPT-3 response" in [a.data for a in result["answer_joiner"]["answers"]]

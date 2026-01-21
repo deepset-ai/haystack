@@ -79,4 +79,7 @@ class TestPipelineBreakpoints:
             data=data,
         )
         assert result["list_joiner"]
-        assert len(result["list_joiner"]["values"]) == 3
+        messages = result["list_joiner"]["values"]
+        assert len(messages) == 3
+        assert any("Nuclear physics is the study of atomic nuclei." in str(m) for m in messages)
+        assert any("Score: 8/10." in str(m) for m in messages)

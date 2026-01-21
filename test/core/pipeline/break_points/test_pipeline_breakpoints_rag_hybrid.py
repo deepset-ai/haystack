@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from random import random
 from typing import Any
 
-import numpy as np
 import pytest
 
 from haystack import Document, Pipeline, component
@@ -21,7 +21,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 class FakeEmbedder:
     @component.output_types(documents=list[Document], embedding=list[float])
     def run(self, text: str):
-        return {"embedding": np.ones(384).tolist()}
+        return {"embedding": [random() for _ in range(100)]}
 
 
 @component
@@ -56,7 +56,7 @@ class TestPipelineBreakpoints:
         ds = InMemoryDocumentStore()
         # Add embeddings
         for doc in documents:
-            doc.embedding = np.ones(384).tolist()
+            doc.embedding = [random() for _ in range(100)]
         ds.write_documents(documents)
         return ds
 
@@ -131,3 +131,5 @@ class TestPipelineBreakpoints:
         )
         assert "answer_builder" in result
         assert result["answer_builder"]["answers"][0].data == "Mark lives in Berlin."
+        assert len(result["answer_builder"]["answers"]) == 1
+        assert result["answer_builder"]["answers"][0].meta["model"] == "fake"
