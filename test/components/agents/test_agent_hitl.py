@@ -9,8 +9,14 @@ import pytest
 
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.dataclasses import ChatMessage, ConfirmationUIResult
-from haystack.human_in_the_loop import AlwaysAskPolicy, BlockingConfirmationStrategy, NeverAskPolicy, SimpleConsoleUI
+from haystack.dataclasses import ChatMessage
+from haystack.human_in_the_loop import (
+    AlwaysAskPolicy,
+    BlockingConfirmationStrategy,
+    ConfirmationUIResult,
+    NeverAskPolicy,
+    SimpleConsoleUI,
+)
 from haystack.human_in_the_loop.types import ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool, create_tool_from_function
 

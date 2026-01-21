@@ -26,10 +26,11 @@ from haystack.dataclasses import (
     AgentSnapshot,
     ChatMessage,
     ChatRole,
+    StreamingCallbackT,
     ToolBreakpoint,
-    ToolExecutionDecision,
+    select_streaming_callback,
 )
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT, select_streaming_callback
+from haystack.human_in_the_loop import ToolExecutionDecision
 from haystack.human_in_the_loop.strategies import (
     _process_confirmation_strategies,
     _process_confirmation_strategies_async,

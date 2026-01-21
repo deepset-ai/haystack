@@ -4,8 +4,7 @@
 
 import pytest
 
-from haystack.dataclasses import ConfirmationUIResult
-from haystack.human_in_the_loop import AlwaysAskPolicy, AskOncePolicy, NeverAskPolicy
+from haystack.human_in_the_loop import AlwaysAskPolicy, AskOncePolicy, ConfirmationUIResult, NeverAskPolicy
 from haystack.tools import Tool, create_tool_from_function
 
 

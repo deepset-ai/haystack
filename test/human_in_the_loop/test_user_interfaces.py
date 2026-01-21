@@ -6,8 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from haystack.dataclasses import ConfirmationUIResult
-from haystack.human_in_the_loop import RichConsoleUI, SimpleConsoleUI
+from haystack.human_in_the_loop import ConfirmationUIResult, RichConsoleUI, SimpleConsoleUI
 from haystack.tools import create_tool_from_function
 
 
