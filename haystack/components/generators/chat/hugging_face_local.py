@@ -24,13 +24,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
 )
 from haystack.tools.utils import warm_up_tools
-from haystack.utils import (
-    ComponentDevice,
-    Secret,
-    deserialize_callable,
-    deserialize_secrets_inplace,
-    serialize_callable,
-)
+from haystack.utils import ComponentDevice, Secret, deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
 
@@ -310,7 +304,7 @@ class HuggingFaceLocalChatGenerator:
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             chat_template=self.chat_template,
             tools=serialize_tools_or_toolset(self.tools),
             tool_parsing_function=serialize_callable(self.tool_parsing_function),
@@ -334,7 +328,6 @@ class HuggingFaceLocalChatGenerator:
             The deserialized component.
         """
         torch_and_transformers_import.check()  # leave this, cls method
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
