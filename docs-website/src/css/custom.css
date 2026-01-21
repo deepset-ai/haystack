@@ -48,6 +48,20 @@
 
   /* Content Width - wider for long class names */
   --ifm-container-width: 1024px;
+
+  /* Neutral Colors for UI Components */
+  --color-background: #ffffff;
+  --color-background-hover: #f5f7fa;
+  --color-border: #e0e0e0;
+  --color-border-hover: #d0d0d0;
+  --color-text-primary: #333333;
+  --color-text-secondary: #666666;
+  --color-shadow: rgba(0, 0, 0, 0.12);
+
+  /* Success Colors */
+  --color-success-bg: #e6f4ea;
+  --color-success-border: #b7dfc7;
+  --color-success-text: #155724;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
@@ -80,6 +94,20 @@
   --docusaurus-admonition-note-border: #92ABFF;
   --docusaurus-admonition-info-bg: rgba(182, 199, 255, 0.12);
   --docusaurus-admonition-info-border: #B6C7FF;
+
+  /* Neutral Colors for UI Components - Dark Mode */
+  --color-background: #2a2a2a;
+  --color-background-hover: #333333;
+  --color-border: #444444;
+  --color-border-hover: #555555;
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #999999;
+  --color-shadow: rgba(0, 0, 0, 0.4);
+
+  /* Success Colors - Dark Mode */
+  --color-success-bg: #1a3d1f;
+  --color-success-border: #2d5a34;
+  --color-success-text: #8fd69d;
 }
 
 body {
@@ -691,6 +719,10 @@ html[data-theme='dark'] .navbar__item.navbar-version-badge-dropdown:hover > .nav
    TABLE OF CONTENTS - Enhanced Styling
    ======================================== */
 
+.table-of-contents {
+  padding-top: 2.5rem;
+}
+
 .table-of-contents__link {
   color: #4B5563;
   position: relative;
@@ -956,4 +988,36 @@ html[data-theme='dark'] .navbar-version-badge-dropdown a.navbar__link:hover {
 html[data-theme='dark'] .navbar-version-badge-dropdown:hover::after,
 html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
   filter: none !important;
+}
+
+/* ========================================
+   COPY DROPDOWN - Floating Button
+   ======================================== */
+
+/* Copy dropdown floating button */
+.copy-dropdown-floating {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  z-index: 100;
+}
+
+@media (max-width: 996px) {
+  .copy-dropdown-floating {
+    top: 70px;
+    right: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .copy-dropdown-floating {
+    top: 65px;
+    right: 12px;
+  }
+}
+
+@media print {
+  .copy-dropdown-floating {
+    display: none !important;
+  }
 }
