@@ -10,13 +10,15 @@ import pytest
 
 from haystack.components.agents.agent import _ExecutionContext
 from haystack.components.agents.state.state import State
-from haystack.dataclasses import ChatMessage, ConfirmationUIResult, ToolCall, ToolExecutionDecision
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.human_in_the_loop import (
     AlwaysAskPolicy,
     AskOncePolicy,
     BlockingConfirmationStrategy,
+    ConfirmationUIResult,
     NeverAskPolicy,
     SimpleConsoleUI,
+    ToolExecutionDecision,
 )
 from haystack.human_in_the_loop.strategies import (
     _apply_tool_execution_decisions,

@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING, Any
 from haystack.components.agents import State
 from haystack.components.tools.tool_invoker import ToolInvoker
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolExecutionDecision
+from haystack.dataclasses import ChatMessage, StreamingCallbackT
+from haystack.human_in_the_loop import ToolExecutionDecision
 from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool
 from haystack.utils.deserialization import deserialize_component_inplace

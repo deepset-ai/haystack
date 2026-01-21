@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.dataclasses import ConfirmationUIResult, ToolExecutionDecision
+from haystack.human_in_the_loop import ConfirmationUIResult, ToolExecutionDecision
 
 
 class TestConfirmationUIResult:

@@ -8,12 +8,15 @@ from typing import TYPE_CHECKING
 from lazy_imports import LazyImporter
 
 _import_structure = {
+    "dataclasses": ["ConfirmationUIResult", "ToolExecutionDecision"],
     "policies": ["AlwaysAskPolicy", "AskOncePolicy", "NeverAskPolicy"],
     "strategies": ["BlockingConfirmationStrategy"],
     "user_interfaces": ["RichConsoleUI", "SimpleConsoleUI"],
 }
 
 if TYPE_CHECKING:
+    from .dataclasses import ConfirmationUIResult as ConfirmationUIResult
+    from .dataclasses import ToolExecutionDecision as ToolExecutionDecision
     from .policies import AlwaysAskPolicy as AlwaysAskPolicy
     from .policies import AskOncePolicy as AskOncePolicy
     from .policies import NeverAskPolicy as NeverAskPolicy

@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from haystack.dataclasses import ConfirmationUIResult
+from haystack.human_in_the_loop import ConfirmationUIResult
 from haystack.human_in_the_loop.types import ConfirmationPolicy
 
 
