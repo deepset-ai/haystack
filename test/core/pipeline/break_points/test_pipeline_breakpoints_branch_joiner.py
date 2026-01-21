@@ -2,77 +2,31 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
 import pytest
 
+from haystack import component
 from haystack.components.converters import OutputAdapter
-from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners import BranchJoiner
 from haystack.components.validators import JsonSchemaValidator
 from haystack.core.errors import BreakpointException
-from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import Breakpoint
-from haystack.utils.auth import Secret
-from test.conftest import load_and_resume_pipeline_snapshot
+
+
+@component
+class FakeChatGenerator:
+    def __init__(self, content: str):
+        self.content = content
+
+    @component.output_types(replies=list[ChatMessage])
+    def run(self, messages: list[ChatMessage], generation_kwargs: dict = None, **kwargs):
+        return {"replies": [ChatMessage.from_assistant(self.content)]}
 
 
 class TestPipelineBreakpoints:
-    @pytest.fixture(autouse=True)
-    def enable_snapshot_saving(self, monkeypatch):
-        """Enable snapshot file saving for these integration tests."""
-        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
-
     @pytest.fixture
-    def mock_openai_chat_generator(self):
-        """
-        Creates a mock for the OpenAIChatGenerator.
-        """
-        with patch("openai.resources.chat.completions.Completions.create") as mock_chat_completion_create:
-            # Create mock completion objects
-            mock_completion = MagicMock()
-            mock_completion.choices = [
-                MagicMock(
-                    finish_reason="stop",
-                    index=0,
-                    message=MagicMock(
-                        content='{"first_name": "Peter", "last_name": "Parker", "nationality": "American"}'
-                    ),
-                )
-            ]
-            mock_completion.usage = {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97}
-
-            mock_chat_completion_create.return_value = mock_completion
-
-            # Create a mock for the OpenAIChatGenerator
-            @patch.dict("os.environ", {"OPENAI_API_KEY": "test-api-key"})
-            def create_mock_generator(model_name):
-                generator = OpenAIChatGenerator(model=model_name, api_key=Secret.from_env_var("OPENAI_API_KEY"))
-
-                # Mock the run method
-                def mock_run(messages, streaming_callback=None, generation_kwargs=None, tools=None, tools_strict=None):
-                    content = '{"first_name": "Peter", "last_name": "Parker", "nationality": "American"}'
-
-                    return {
-                        "replies": [ChatMessage.from_assistant(content)],
-                        "meta": {
-                            "model": model_name,
-                            "usage": {"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
-                        },
-                    }
-
-                # Replace the run method with our mock
-                generator.run = mock_run
-
-                return generator
-
-            yield create_mock_generator
-
-    @pytest.fixture
-    def branch_joiner_pipeline(self, mock_openai_chat_generator):
+    def branch_joiner_pipeline(self):
         person_schema = {
             "type": "object",
             "properties": {
@@ -83,10 +37,11 @@ class TestPipelineBreakpoints:
             "required": ["first_name", "last_name", "nationality"],
         }
 
+        content = '{"first_name": "Peter", "last_name": "Parker", "nationality": "American"}'
+
         pipe = Pipeline()
         pipe.add_component("joiner", BranchJoiner(list[ChatMessage]))
-        # Use default model for mock generator
-        pipe.add_component("fc_llm", mock_openai_chat_generator("gpt-5-mini"))
+        pipe.add_component("fc_llm", FakeChatGenerator(content))
         pipe.add_component("validator", JsonSchemaValidator(json_schema=person_schema))
         pipe.add_component("adapter", OutputAdapter("{{chat_message}}", list[ChatMessage], unsafe=True))
 
@@ -97,15 +52,13 @@ class TestPipelineBreakpoints:
 
         return pipe
 
-    @pytest.fixture(scope="session")
-    def output_directory(self, tmp_path_factory) -> Path:
-        return tmp_path_factory.mktemp("output_files")
-
     BREAKPOINT_COMPONENTS = ["joiner", "fc_llm", "validator", "adapter"]
 
     @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
-    def test_pipeline_breakpoints_branch_joiner(self, branch_joiner_pipeline, output_directory, component):
+    def test_pipeline_breakpoints_branch_joiner(
+        self, branch_joiner_pipeline, output_directory, component, load_and_resume_pipeline_snapshot
+    ):
         data = {
             "fc_llm": {"generation_kwargs": {"response_format": {"type": "json_object"}}},
             "adapter": {"chat_message": [ChatMessage.from_user("Create JSON from Peter Parker")]},

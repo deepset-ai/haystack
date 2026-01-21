@@ -3,28 +3,24 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
-import os
-from pathlib import Path
+from typing import Annotated
 
 import pytest
 
 from haystack import Document, Pipeline, component
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.components.writers import DocumentWriter
 from haystack.core.errors import BreakpointException
-from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED
 from haystack.dataclasses import ChatMessage, ToolCall, ToolCallResult
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.tools.tool import Tool
-from test.conftest import load_and_resume_pipeline_snapshot
+from haystack.tools import Tool, create_tool_from_function
 
 
-def calculate(expression: str) -> dict:
-    """Calculate the result of a mathematical expression."""
+def calculate(expression: Annotated[str, "Math expression to evaluate"]) -> dict:
+    """Evaluate basic math expressions."""
     try:
         result = eval(expression, {"__builtins__": {}})
         return {"result": result}
@@ -32,7 +28,7 @@ def calculate(expression: str) -> dict:
         return {"error": str(e)}
 
 
-def factorial(n: int) -> dict:
+def factorial(n: Annotated[int, "Number to calculate the factorial of"]) -> dict:
     """Calculate the factorial of a number."""
     try:
         result = math.factorial(n)
@@ -41,34 +37,33 @@ def factorial(n: int) -> dict:
         return {"error": str(e)}
 
 
-def build_agent():
+@component
+class FakeChatGenerator:
+    def __init__(self, responses: list[dict]):
+        self.responses = responses
+        self.count = 0
+
+    @component.output_types(replies=list[ChatMessage])
+    def run(self, messages: list[ChatMessage], tools: list[Tool] = None, **kwargs):
+        if self.count >= len(self.responses):
+            return {"replies": [ChatMessage.from_assistant("Final answer")]}
+        res = self.responses[self.count]
+        self.count += 1
+        return res
+
+
+def build_agent(chat_generator):
     """Build an agent with calculator and factorial tools."""
-    factorial_tool = Tool(
-        name="factorial",
-        description="Calculate the factorial of a number.",
-        parameters={
-            "type": "object",
-            "properties": {"n": {"type": "integer", "description": "Number to calculate the factorial of"}},
-            "required": ["n"],
-        },
-        function=factorial,
-        outputs_to_state={"factorial_result": {"source": "result"}},
+    factorial_tool = create_tool_from_function(
+        function=factorial, outputs_to_state={"factorial_result": {"source": "result"}}
     )
 
-    calculator_tool = Tool(
-        name="calculator",
-        description="Evaluate basic math expressions.",
-        parameters={
-            "type": "object",
-            "properties": {"expression": {"type": "string", "description": "Math expression to evaluate"}},
-            "required": ["expression"],
-        },
-        function=calculate,
-        outputs_to_state={"calc_result": {"source": "result"}},
+    calculator_tool = create_tool_from_function(
+        function=calculate, name="calculator", outputs_to_state={"calc_result": {"source": "result"}}
     )
 
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(),
+        chat_generator=chat_generator,
         tools=[calculator_tool, factorial_tool],
         exit_conditions=["calculator"],
         streaming_callback=print_streaming_chunk,
@@ -86,72 +81,38 @@ class ExtractResults:
     def run(self, responses: list[ChatMessage]) -> dict:
         results = []
         for msg in responses:
-            if text := msg.text:
-                results.append(Document(content=f"{text}"))
-                continue
-
-            # If the message contains ToolCall object extract the tool name, arguments and arguments
-            if isinstance(msg._content[0], ToolCall):
-                for tool_call in msg._content:
-                    tool_name = tool_call.tool_name
-                    arguments = tool_call.arguments
-                    results.append(Document(content=f"{tool_name} - Arguments: {arguments}"))
-
-            # If the message contains ToolCallResult extract the tool name, arguments and arguments
-            if isinstance(msg._content[0], ToolCallResult):
-                for tool_call_result in msg._content:
-                    tool_name = tool_call_result.origin.tool_name
-                    result = tool_call_result.result
-                    results.append(Document(content=f"{tool_name} - Result: {result}"))
-
+            if msg.text:
+                results.append(Document(content=msg.text))
+            elif isinstance(msg._content[0], ToolCall):
+                results.extend(Document(content=f"{tc.tool_name} - Arguments: {tc.arguments}") for tc in msg._content)
+            elif isinstance(msg._content[0], ToolCallResult):
+                results.extend(Document(content=f"{tr.origin.tool_name} - Result: {tr.result}") for tr in msg._content)
         return {"documents": results}
 
 
 class TestPipelineBreakpoints:
-    @pytest.fixture(autouse=True)
-    def enable_snapshot_saving(self, monkeypatch):
-        """Enable snapshot file saving for these integration tests."""
-        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
-
     @pytest.fixture
     def agent_pipeline(self):
         """Create a pipeline with agent, extractor, and document writer for testing."""
         doc_store = InMemoryDocumentStore()
         doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.OVERWRITE)
 
-        # Build agent with mocked chat generator
-        factorial_tool = Tool(
-            name="factorial",
-            description="Calculate the factorial of a number.",
-            parameters={
-                "type": "object",
-                "properties": {"n": {"type": "integer", "description": "Number to calculate the factorial of"}},
-                "required": ["n"],
+        mock_responses = [
+            {
+                "replies": [
+                    ChatMessage.from_assistant(
+                        None,
+                        tool_calls=[
+                            ToolCall(tool_name="calculator", arguments={"expression": "2+2"}),
+                            ToolCall(tool_name="factorial", arguments={"n": 5}),
+                        ],
+                    )
+                ]
             },
-            function=factorial,
-            outputs_to_state={"factorial_result": {"source": "result"}},
-        )
+            {"replies": [ChatMessage.from_assistant("The result of 2*2 is 4. The factorial of 5 is 120.")]},
+        ]
 
-        calculator_tool = Tool(
-            name="calculator",
-            description="Evaluate basic math expressions.",
-            parameters={
-                "type": "object",
-                "properties": {"expression": {"type": "string", "description": "Math expression to evaluate"}},
-                "required": ["expression"],
-            },
-            function=calculate,
-            outputs_to_state={"calc_result": {"source": "result"}},
-        )
-
-        agent = Agent(
-            chat_generator=OpenAIChatGenerator(),
-            tools=[calculator_tool, factorial_tool],
-            exit_conditions=["calculator"],
-            streaming_callback=print_streaming_chunk,
-            state_schema={"calc_result": {"type": int}, "factorial_result": {"type": int}},
-        )
-
+        agent = build_agent(FakeChatGenerator(responses=mock_responses))
         extractor = ExtractResults()
 
         pipe = Pipeline()
@@ -163,19 +124,13 @@ class TestPipelineBreakpoints:
 
         return pipe, doc_store
 
-    @pytest.fixture(scope="session")
-    def output_directory(self, tmp_path_factory) -> Path:
-        return tmp_path_factory.mktemp("output_files")
-
     BREAKPOINT_COMPONENTS = ["math_agent", "extractor", "doc_writer"]
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
     @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
-    def test_agent_pipeline_regular_component_breakpoints(self, agent_pipeline, output_directory, component):
+    def test_agent_pipeline_regular_component_breakpoints(
+        self, agent_pipeline, output_directory, component, load_and_resume_pipeline_snapshot
+    ):
         pipeline, doc_store = agent_pipeline
         data = {
             "math_agent": {
@@ -201,46 +156,25 @@ class TestPipelineBreakpoints:
         assert result["math_agent"]["factorial_result"] == 120
         assert result["doc_writer"]["documents_written"] == 5
 
-    @pytest.fixture(scope="session")
+    @pytest.fixture
     def agent_breakpoints(self, output_directory):
+        common = {"visit_count": 0, "snapshot_file_path": str(output_directory)}
         return [
-            # Chat Generator breakpoint
+            AgentBreakpoint(agent_name="math_agent", break_point=Breakpoint(component_name="chat_generator", **common)),
             AgentBreakpoint(
-                break_point=Breakpoint(
-                    component_name="chat_generator", visit_count=0, snapshot_file_path=str(output_directory)
-                ),
                 agent_name="math_agent",
+                break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="calculator", **common),
             ),
-            # Tool Call - Calculator
             AgentBreakpoint(
-                break_point=ToolBreakpoint(
-                    component_name="tool_invoker",
-                    tool_name="calculator",
-                    visit_count=0,
-                    snapshot_file_path=str(output_directory),
-                ),
                 agent_name="math_agent",
-            ),
-            # Tool Call - Factorial
-            AgentBreakpoint(
-                break_point=ToolBreakpoint(
-                    component_name="tool_invoker",
-                    tool_name="factorial",
-                    visit_count=0,
-                    snapshot_file_path=str(output_directory),
-                ),
-                agent_name="math_agent",
+                break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="factorial", **common),
             ),
         ]
 
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
     @pytest.mark.parametrize("breakpoint_index", [0, 1, 2], ids=["chat_generator", "calculator_tool", "factorial_tool"])
     @pytest.mark.integration
     def test_agent_components_pipeline_breakpoints(
-        self, agent_breakpoints, agent_pipeline, output_directory, breakpoint_index
+        self, agent_breakpoints, agent_pipeline, output_directory, breakpoint_index, load_and_resume_pipeline_snapshot
     ):
         pipeline, doc_store = agent_pipeline
         data = {
@@ -268,6 +202,6 @@ class TestPipelineBreakpoints:
             data=data,
         )
 
-        assert result["math_agent"]["calc_result"] == 42
+        assert result["math_agent"]["calc_result"] == 4
         assert result["math_agent"]["factorial_result"] == 120
         assert result["doc_writer"]["documents_written"] != 0
