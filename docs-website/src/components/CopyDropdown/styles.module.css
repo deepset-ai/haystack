@@ -13,20 +13,20 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: var(--color-text-primary);
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
 }
 
 .copyButton:hover {
-  background-color: #f5f7fa;
-  border-color: #d0d0d0;
+  background-color: var(--color-background-hover);
+  border-color: var(--color-border-hover);
 }
 
 .copyButton:active {
@@ -34,9 +34,9 @@
 }
 
 .copyButton.success {
-  background-color: #e6f4ea;
-  border-color: #b7dfc7;
-  color: #155724;
+  background-color: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success-text);
 }
 
 .copyButton svg {
@@ -48,10 +48,10 @@
   top: calc(100% + 4px);
   right: 0;
   min-width: 280px;
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px var(--color-shadow);
   z-index: 1000;
   padding: 8px 0;
   animation: fadeIn 0.15s ease;
@@ -83,17 +83,17 @@
 }
 
 .menuItem:hover {
-  background-color: #f5f7fa;
+  background-color: var(--color-background-hover);
 }
 
 .menuItem svg {
   flex-shrink: 0;
   margin-top: 2px;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .menuItem:hover svg {
-  color: #2558ff;
+  color: var(--ifm-color-primary);
 }
 
 .menuItem svg:last-child {
@@ -113,77 +113,25 @@
 .menuItemTitle {
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: var(--color-text-primary);
   line-height: 1.4;
 }
 
 .menuItemDescription {
   font-size: 12px;
-  color: #666;
+  color: var(--color-text-secondary);
   line-height: 1.4;
   margin-top: 2px;
 }
 
 .menuItem:hover .menuItemTitle {
-  color: #2558ff;
+  color: var(--ifm-color-primary);
 }
 
 .menuDivider {
   height: 1px;
-  background-color: #e0e0e0;
+  background-color: var(--color-border);
   margin: 8px 0;
-}
-
-/* Dark mode styles */
-:global([data-theme='dark']) .copyButton {
-  background-color: #2a2a2a;
-  border-color: #444;
-  color: #e0e0e0;
-}
-
-:global([data-theme='dark']) .copyButton:hover {
-  background-color: #333;
-  border-color: #555;
-}
-
-:global([data-theme='dark']) .copyButton.success {
-  background-color: #1a3d1f;
-  border-color: #2d5a34;
-  color: #8fd69d;
-}
-
-:global([data-theme='dark']) .dropdownMenu {
-  background-color: #2a2a2a;
-  border-color: #444;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-}
-
-:global([data-theme='dark']) .menuItem:hover {
-  background-color: #333;
-}
-
-:global([data-theme='dark']) .menuItem svg {
-  color: #999;
-}
-
-:global([data-theme='dark']) .menuItem:hover svg {
-  color: #6e90ff;
-}
-
-:global([data-theme='dark']) .menuItemTitle {
-  color: #e0e0e0;
-}
-
-:global([data-theme='dark']) .menuItemDescription {
-  color: #999;
-}
-
-:global([data-theme='dark']) .menuItem:hover .menuItemTitle {
-  color: #6e90ff;
-}
-
-:global([data-theme='dark']) .menuDivider {
-  background-color: #444;
 }
 
 /* Print styles - hide the dropdown when printing */

@@ -2,41 +2,106 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import TurndownService from 'turndown';
 import styles from './styles.module.css';
 
-// Icon components
-const CopyIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-  </svg>
-);
+// Icon imports
+import CopyIcon from '@site/static/img/copy.svg';
+import ChevronDownIcon from '@site/static/img/chevron-down.svg';
+import MarkdownIcon from '@site/static/img/markdown.svg';
+import PDFIcon from '@site/static/img/pdf.svg';
 
-const ChevronDownIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
+// Create and configure Turndown service
+function createTurndownService(): TurndownService {
+  const turndownService = new TurndownService({
+    headingStyle: 'atx',
+    codeBlockStyle: 'fenced',
+    bulletListMarker: '-',
+    emDelimiter: '*',
+    strongDelimiter: '**',
+  });
 
-const MarkdownIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="16" y1="13" x2="8" y2="13" />
-    <line x1="16" y1="17" x2="8" y2="17" />
-    <polyline points="10 9 9 9 8 9" />
-  </svg>
-);
+  // Custom rule for code blocks with language detection
+  turndownService.addRule('fencedCodeBlock', {
+    filter: (node) => {
+      return (
+        node.nodeName === 'PRE' &&
+        node.firstChild !== null &&
+        node.firstChild.nodeName === 'CODE'
+      );
+    },
+    replacement: (_content, node) => {
+      const codeElement = node.firstChild as HTMLElement;
+      const className = codeElement.className || '';
+      const language = className.match(/language-(\S+)/)?.[1] || '';
+      const code = codeElement.textContent || '';
+      return `\n\`\`\`${language}\n${code.trim()}\n\`\`\`\n\n`;
+    },
+  });
 
-const PDFIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <path d="M9 15v-2h2c.6 0 1 .4 1 1s-.4 1-1 1H9z" />
-    <path d="M9 11h2" />
-  </svg>
-);
+  // Custom rule for inline code
+  turndownService.addRule('inlineCode', {
+    filter: (node) => {
+      return (
+        node.nodeName === 'CODE' &&
+        node.parentNode !== null &&
+        node.parentNode.nodeName !== 'PRE'
+      );
+    },
+    replacement: (content) => {
+      return `\`${content}\``;
+    },
+  });
+
+  // Custom rule for Docusaurus admonitions
+  turndownService.addRule('admonition', {
+    filter: (node) => {
+      return (
+        node.nodeName === 'DIV' &&
+        (node as HTMLElement).classList.contains('theme-admonition')
+      );
+    },
+    replacement: (content, node) => {
+      const element = node as HTMLElement;
+      const type = element.classList.contains('alert--warning')
+        ? 'warning'
+        : element.classList.contains('alert--danger')
+          ? 'danger'
+          : element.classList.contains('alert--info')
+            ? 'info'
+            : element.classList.contains('alert--success')
+              ? 'tip'
+              : 'note';
+      return `\n> **${type.toUpperCase()}:** ${content.trim()}\n\n`;
+    },
+  });
+
+  // Remove unwanted elements using a filter function
+  turndownService.remove((node) => {
+    if (node.nodeType !== Node.ELEMENT_NODE) return false;
+    const element = node as HTMLElement;
+    const tagName = element.tagName.toLowerCase();
+    
+    // Remove by tag name
+    if (['script', 'style', 'nav'].includes(tagName)) return true;
+    
+    // Remove by class name
+    const classesToRemove = [
+      'theme-doc-footer',
+      'copy-dropdown-container',
+      'table-of-contents',
+      'pagination-nav',
+      'theme-doc-breadcrumbs',
+      'theme-doc-version-badge',
+      'hash-link',
+    ];
+    
+    return classesToRemove.some((cls) => element.classList.contains(cls));
+  });
+
+  return turndownService;
+}
 
 interface CopyDropdownProps {
   className?: string;
@@ -47,6 +112,9 @@ export default function CopyDropdown({ className }: CopyDropdownProps) {
   const [copySuccess, setCopySuccess] = useState(false);
   const [docTitle, setDocTitle] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Memoize the Turndown service instance
+  const turndownService = useMemo(() => createTurndownService(), []);
 
   // Set the document title from the page
   useEffect(() => {
@@ -70,101 +138,30 @@ export default function CopyDropdown({ className }: CopyDropdownProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Get the page content as markdown
-  const getPageMarkdown = () => {
+  // Get the page content as markdown using Turndown
+  const getPageMarkdown = (): string => {
     const article = document.querySelector('article');
     if (!article) return '';
 
     // Clone the article to manipulate without affecting the page
     const clone = article.cloneNode(true) as HTMLElement;
-    
-    // Remove elements we don't want
-    clone.querySelectorAll('.theme-doc-footer, .copy-dropdown-container, script, style').forEach(el => el.remove());
-    
-    // Get text content with basic markdown-like formatting
+
+    // Remove elements we don't want before conversion
+    clone
+      .querySelectorAll(
+        '.theme-doc-footer, .copy-dropdown-container, script, style, .hash-link, .table-of-contents'
+      )
+      .forEach((el) => el.remove());
+
+    // Convert HTML to Markdown using Turndown
+    const content = turndownService.turndown(clone);
+
+    // Build the final markdown with header
     let markdown = `# ${docTitle}\n\n`;
     markdown += `URL: ${window.location.href}\n\n`;
     markdown += '---\n\n';
-    
-    // Process headers and content
-    const processNode = (node: Node): string => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        return node.textContent || '';
-      }
-      
-      if (node.nodeType !== Node.ELEMENT_NODE) return '';
-      
-      const el = node as HTMLElement;
-      const tagName = el.tagName.toLowerCase();
-      
-      // Skip hidden elements
-      if (el.style.display === 'none' || el.hidden) return '';
-      
-      let result = '';
-      
-      switch (tagName) {
-        case 'h1':
-          result = `# ${el.textContent?.trim()}\n\n`;
-          break;
-        case 'h2':
-          result = `## ${el.textContent?.trim()}\n\n`;
-          break;
-        case 'h3':
-          result = `### ${el.textContent?.trim()}\n\n`;
-          break;
-        case 'h4':
-          result = `#### ${el.textContent?.trim()}\n\n`;
-          break;
-        case 'h5':
-          result = `##### ${el.textContent?.trim()}\n\n`;
-          break;
-        case 'h6':
-          result = `###### ${el.textContent?.trim()}\n\n`;
-          break;
-        case 'p':
-          result = `${el.textContent?.trim()}\n\n`;
-          break;
-        case 'ul':
-        case 'ol':
-          Array.from(el.children).forEach((li, index) => {
-            const prefix = tagName === 'ol' ? `${index + 1}. ` : '- ';
-            result += `${prefix}${li.textContent?.trim()}\n`;
-          });
-          result += '\n';
-          break;
-        case 'pre':
-        case 'code':
-          if (tagName === 'pre' || el.parentElement?.tagName.toLowerCase() !== 'pre') {
-            result = `\`\`\`\n${el.textContent?.trim()}\n\`\`\`\n\n`;
-          }
-          break;
-        case 'a':
-          result = `[${el.textContent?.trim()}](${el.getAttribute('href')})`;
-          break;
-        case 'strong':
-        case 'b':
-          result = `**${el.textContent?.trim()}**`;
-          break;
-        case 'em':
-        case 'i':
-          result = `*${el.textContent?.trim()}*`;
-          break;
-        case 'blockquote':
-          result = `> ${el.textContent?.trim()}\n\n`;
-          break;
-        default:
-          Array.from(el.childNodes).forEach(child => {
-            result += processNode(child);
-          });
-      }
-      
-      return result;
-    };
-    
-    Array.from(clone.childNodes).forEach(node => {
-      markdown += processNode(node);
-    });
-    
+    markdown += content;
+
     return markdown.trim();
   };
 
