@@ -9,6 +9,7 @@
 from haystack.tools.from_function import create_tool_from_function, tool
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
 from haystack.tools.toolset import Toolset
+from haystack.tools.tool_search_toolset import ToolSearchToolset
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.pipeline_tool import PipelineTool
 from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
@@ -31,6 +32,7 @@ __all__ = [
     "PipelineTool",
     "serialize_tools_or_toolset",
     "Tool",
+    "ToolSearchToolset",
     "ToolsType",
     "Toolset",
     "tool",
