@@ -10,7 +10,7 @@ from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators import OpenAIGenerator
 from haystack.dataclasses import StreamingCallbackT
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
 
 
@@ -185,8 +185,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
             streaming_callback=callback_name,
             generation_kwargs=self.generation_kwargs,
             system_prompt=self.system_prompt,
-            api_key=self.api_key.to_dict() if self.api_key is not None else None,
-            azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
+            api_key=self.api_key,
+            azure_ad_token=self.azure_ad_token,
             timeout=self.timeout,
             max_retries=self.max_retries,
             http_client_kwargs=self.http_client_kwargs,
@@ -204,7 +204,6 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:

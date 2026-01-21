@@ -29,7 +29,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
     warm_up_tools,
 )
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model, convert_message_to_hf_format
 from haystack.utils.url_validation import is_valid_http_url
 
@@ -428,7 +428,7 @@ class HuggingFaceAPIChatGenerator:
             self,
             api_type=str(self.api_type),
             api_params=self.api_params,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
             tools=serialize_tools_or_toolset(self.tools),
@@ -439,7 +439,6 @@ class HuggingFaceAPIChatGenerator:
         """
         Deserialize this component from a dictionary.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")
