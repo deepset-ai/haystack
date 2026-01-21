@@ -90,11 +90,7 @@ class SASEvaluator:
             The serialized component as a dictionary.
         """
         return default_to_dict(
-            self,
-            model=self._model,
-            batch_size=self._batch_size,
-            device=self._device.to_dict() if self._device else None,
-            token=self._token,
+            self, model=self._model, batch_size=self._batch_size, device=self._device, token=self._token
         )
 
     @classmethod
@@ -107,8 +103,6 @@ class SASEvaluator:
         :returns:
             The deserialized component instance.
         """
-        if device := data.get("init_parameters", {}).get("device"):
-            data["init_parameters"]["device"] = ComponentDevice.from_dict(device)
         return default_from_dict(cls, data)
 
     def warm_up(self) -> None:
