@@ -797,12 +797,14 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         If the message format is invalid.
     """
 
-    def serialize_part(part, text_type="input_text", image_type="input_image"):
+    def serialize_part(part) -> dict[str, str]:
         if isinstance(part, TextContent):
-            return {"type": text_type, "text": part.text}
+            return {"type": "input_text", "text": part.text}
         elif isinstance(part, ImageContent):
             return {
-                "type": image_type,
+                "type": "input_image",
+                # If no MIME type is provided, default to JPEG.
+                # OpenAI API appears to tolerate MIME type mismatches.
                 "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
             }
         raise ValueError(f"Unsupported content type: {type(part)}")
@@ -842,8 +844,10 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
                 # Handle multimodal tool results (list of TextContent/ImageContent)
                 if isinstance(result.result, list):
                     output_content = [serialize_part(part) for part in result.result]
+                elif isinstance(result.result, str):
+                    output_content = [{"type": "input_text", "text": result.result}]
                 else:
-                    output_content = result.result
+                    raise ValueError(f"Unsupported tool result: {result.result}")
                 tool_result = {
                     "type": "function_call_output",
                     "call_id": result.origin.extra.get("call_id") if result.origin.extra else "",
@@ -879,7 +883,6 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_messages.extend(formatted_tool_calls)
 
     # system and assistant messages
-
     if text_contents:
         openai_msg["content"] = " ".join(text_contents)
         formatted_messages.append(openai_msg)
