@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from haystack import DeserializationError
+from haystack.core.errors import DeserializationError
 from haystack.core.serialization import component_from_dict, default_from_dict, import_class_by_name
 
 
