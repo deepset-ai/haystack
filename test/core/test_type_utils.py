@@ -795,8 +795,8 @@ if sys.version_info >= (3, 10):
                 pytest.param(
                     container,
                     container | None,  # type: ignore[operator]
-                    id=generate_id(container, container | None),
-                )  # type: ignore[operator]
+                    id=generate_id(container, container | None),  # type: ignore[operator]
+                )
             )
             cases.append(pytest.param(container, container | int, id=generate_id(container, container | int)))
 
