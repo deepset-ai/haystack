@@ -129,8 +129,10 @@ class ComponentTool(Tool):
                 - `source`: If provided, only the specified output key is sent to the handler.
                 - `handler`: A function that takes the tool output (or the extracted source value) and returns the
                   final result.
-                - `raw_result`: If `True`, the result is returned raw (e.g. as a list of `TextContent`/`ImageContent`)
-                  without string conversion.
+                - `raw_result`: If `True`, the result is returned raw without string conversion, but applying the
+                   `handler` if provided. This is intended for tools that return images. In this mode, the Tool
+                   function or the `handler` function must return a list of `TextContent`/`ImageContent` objects to
+                   ensure compatibility with Chat Generators.
 
             2. Multiple output format - map keys to individual configurations:
                 ```python

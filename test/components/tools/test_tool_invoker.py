@@ -865,7 +865,7 @@ class TestToolInvokerErrorHandling:
 
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
-        tool_result = datetime.datetime.now()
+        tool_result = "something"
         with pytest.raises(ResultConversionError):
             invoker._prepare_tool_result_message(result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool)
 
@@ -884,7 +884,7 @@ class TestToolInvokerErrorHandling:
 
         tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
 
-        tool_result = datetime.datetime.now()
+        tool_result = "something"
         tool_message = invoker._prepare_tool_result_message(
             result=tool_result, tool_call=tool_call, tool_to_invoke=weather_tool
         )

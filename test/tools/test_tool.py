@@ -9,6 +9,7 @@ import pytest
 from haystack.dataclasses import TextContent
 from haystack.tools import Tool, _check_duplicate_tool_names
 from haystack.tools.errors import ToolInvocationError
+from haystack.tools.tool import _deserialize_outputs_to_string, _serialize_outputs_to_string
 
 
 def get_weather_report(city: str) -> str:
@@ -145,54 +146,6 @@ class TestTool:
             },
         }
 
-    def test_to_dict_outputs_to_string_raw_result(self):
-        tool = Tool(
-            name="weather",
-            description="Get weather report",
-            parameters=parameters,
-            function=get_weather_report,
-            outputs_to_string={"handler": outputs_to_result_handler, "raw_result": True},
-        )
-        assert tool.to_dict() == {
-            "type": "haystack.tools.tool.Tool",
-            "data": {
-                "name": "weather",
-                "description": "Get weather report",
-                "parameters": parameters,
-                "function": "test_tool.get_weather_report",
-                "inputs_from_state": None,
-                "outputs_to_state": None,
-                "outputs_to_string": {"handler": "test_tool.outputs_to_result_handler", "raw_result": True},
-            },
-        }
-
-    def test_to_dict_outputs_to_string_multiple_outputs(self):
-        tool = Tool(
-            name="weather",
-            description="Get weather report",
-            parameters=parameters,
-            function=get_weather_report,
-            outputs_to_string={
-                "report": {"source": "report", "handler": format_string},
-                "temp": {"source": "temperature"},
-            },
-        )
-        assert tool.to_dict() == {
-            "type": "haystack.tools.tool.Tool",
-            "data": {
-                "name": "weather",
-                "description": "Get weather report",
-                "parameters": parameters,
-                "function": "test_tool.get_weather_report",
-                "inputs_from_state": None,
-                "outputs_to_state": None,
-                "outputs_to_string": {
-                    "report": {"source": "report", "handler": "test_tool.format_string"},
-                    "temp": {"source": "temperature"},
-                },
-            },
-        }
-
     def test_from_dict(self):
         tool_dict = {
             "type": "haystack.tools.tool.Tool",
@@ -216,6 +169,52 @@ class TestTool:
         assert tool.outputs_to_string == {"handler": format_string}
         assert tool.inputs_from_state == {"location": "city"}
         assert tool.outputs_to_state == {"documents": {"source": "docs", "handler": get_weather_report}}
+
+    def test_serialize_outputs_to_string(self):
+        config = {"handler": format_string, "source": "result", "raw_result": False}
+        serialized = _serialize_outputs_to_string(config)
+        assert serialized == {"handler": "test_tool.format_string", "source": "result", "raw_result": False}
+
+        config = {"handler": format_string}
+        serialized = _serialize_outputs_to_string(config)
+        assert serialized == {"handler": "test_tool.format_string"}
+
+        config = {"handler": outputs_to_result_handler, "raw_result": True}
+        serialized = _serialize_outputs_to_string(config)
+        assert serialized == {"handler": "test_tool.outputs_to_result_handler", "raw_result": True}
+
+        config = {
+            "report": {"source": "report", "handler": format_string},
+            "temp": {"source": "temperature", "handler": format_string},
+        }
+        serialized = _serialize_outputs_to_string(config)
+        assert serialized == {
+            "report": {"source": "report", "handler": "test_tool.format_string"},
+            "temp": {"source": "temperature", "handler": "test_tool.format_string"},
+        }
+
+    def test_deserialize_outputs_to_string(self):
+        serialized = {"handler": "test_tool.format_string", "source": "result", "raw_result": False}
+        deserialized = _deserialize_outputs_to_string(serialized)
+        assert deserialized == {"handler": format_string, "source": "result", "raw_result": False}
+
+        serialized = {"handler": "test_tool.format_string"}
+        deserialized = _deserialize_outputs_to_string(serialized)
+        assert deserialized == {"handler": format_string}
+
+        serialized = {"handler": "test_tool.outputs_to_result_handler", "raw_result": True}
+        deserialized = _deserialize_outputs_to_string(serialized)
+        assert deserialized == {"handler": outputs_to_result_handler, "raw_result": True}
+
+        serialized = {
+            "report": {"source": "report", "handler": "test_tool.format_string"},
+            "temp": {"source": "temperature", "handler": "test_tool.format_string"},
+        }
+        deserialized = _deserialize_outputs_to_string(serialized)
+        assert deserialized == {
+            "report": {"source": "report", "handler": format_string},
+            "temp": {"source": "temperature", "handler": format_string},
+        }
 
     def test_inputs_from_state_validation_with_invalid_parameter(self):
         """Test that inputs_from_state is validated against the parameters schema"""

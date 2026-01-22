@@ -320,21 +320,17 @@ class ToolInvoker:
         handler = config.get("handler")
         raw_result = config.get("raw_result", False)
 
+        if handler is None:
+            if raw_result:
+                return value
+            handler = self._default_output_to_string_handler
+
         try:
-            processed_value = handler(value) if handler is not None else value
+            return handler(value)
         except Exception as e:
             if raw_result:
                 raise ResultConversionError(tool_call.tool_name, handler.__name__, e) from e
             raise StringConversionError(tool_call.tool_name, handler.__name__, e) from e
-
-        if raw_result:
-            return processed_value
-
-        # If no handler is provided and raw_result is False, we use the default handler
-        if handler is None:
-            return self._default_output_to_string_handler(value)
-
-        return processed_value
 
     def _prepare_tool_result_message(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> ChatMessage:
         """
