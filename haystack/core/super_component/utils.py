@@ -62,7 +62,7 @@ def _types_are_compatible(type1: type | UnionType, type2: type | UnionType) -> t
 
 def _check_union_compatibility(
     type1: type | UnionType, type2: type | UnionType, type1_origin: Any, type2_origin: Any
-) -> tuple[bool, type | None]:
+) -> tuple[bool, type | UnionType | None]:
     """Handle all Union type compatibility cases (including X | Y syntax)."""
     if _is_union_type(type1_origin) and not _is_union_type(type2_origin):
         # Find all compatible types from the union
@@ -72,10 +72,8 @@ def _check_union_compatibility(
             if is_compat and common is not None:
                 compatible_types.append(common)
         if compatible_types:
-            # The constructed Union or single type must be cast to T | None
-            # to satisfy mypy, as T is specific to this function's call context.
             result_type = _build_pep604_union_type(compatible_types)
-            return True, cast(type | None, result_type)
+            return True, result_type
         return False, None
 
     if _is_union_type(type2_origin) and not _is_union_type(type1_origin):
@@ -86,10 +84,8 @@ def _check_union_compatibility(
             if is_compat and common is not None:
                 compatible_types.append(common)
         if compatible_types:
-            # The constructed Union or single type must be cast to T | None
-            # to satisfy mypy, as T is specific to this function's call context.
             result_type = _build_pep604_union_type(compatible_types)
-            return True, cast(type | None, result_type)
+            return True, result_type
         return False, None
 
     # Both are Union types
@@ -101,10 +97,8 @@ def _check_union_compatibility(
                 compatible_types.append(common)
 
     if compatible_types:
-        # The constructed Union or single type must be cast to T | None
-        # to satisfy mypy, as T is specific to this function's call context.
         result_type = _build_pep604_union_type(compatible_types)
-        return True, cast(type | None, result_type)
+        return True, result_type
     return False, None
 
 
