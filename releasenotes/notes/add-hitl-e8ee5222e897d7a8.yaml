@@ -1,0 +1,32 @@
+---
+features:
+  - |
+    Added support for human confirmation on ``Agent`` tool calls.
+    You can now configure per-tool confirmation strategies when building an ``Agent``, including always requiring confirmation,
+    never requiring it, or requesting confirmation only on first use.
+    The confirmation experience is customizable through different UI strategies, allowing fine-grained control over how and when users approve tool executions.
+
+    .. code-block:: python
+
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1"),
+            tools=[balance_tool, addition_tool, phone_tool],
+            system_prompt=(
+                "You are a helpful financial assistant. "
+                "Use the provided tool to get bank balances when needed."
+            ),
+            confirmation_strategies={
+                balance_tool.name: BlockingConfirmationStrategy(
+                    confirmation_policy=AlwaysAskPolicy(),
+                    confirmation_ui=RichConsoleUI(console=cons),
+                ),
+                addition_tool.name: BlockingConfirmationStrategy(
+                    confirmation_policy=NeverAskPolicy(),
+                    confirmation_ui=SimpleConsoleUI(),
+                ),
+                phone_tool.name: BlockingConfirmationStrategy(
+                    confirmation_policy=AskOncePolicy(),
+                    confirmation_ui=SimpleConsoleUI(),
+                ),
+            },
+        )
