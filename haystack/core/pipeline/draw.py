@@ -257,7 +257,7 @@ def _to_mermaid_image(
 
 
 def _to_mermaid_text(
-    graph: networkx.MultiDiGraph, init_params: str, super_component_mapping: dict[str, str] | None = None
+    graph: networkx.MultiDiGraph, init_params: str | dict, super_component_mapping: dict[str, str] | None = None
 ) -> str:
     """
     Converts a Networkx graph into Mermaid syntax.

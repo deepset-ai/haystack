@@ -13,28 +13,28 @@ from haystack.core.pipeline import Pipeline
 @component
 class NonPep604Producer:
     @component.output_types(value=Optional[str], items=Union[str, list[str]])
-    def run(self, text: str):
+    def run(self, text: str) -> dict[str, Union[Optional[str], Union[str, list[str]]]]:
         return {"value": text, "items": ["a", "b", "c"]}
 
 
 @component
 class NonPep604Consumer:
     @component.output_types(result=str)
-    def run(self, value: Optional[str], items: Union[str, list[str]]):
+    def run(self, value: Optional[str], items: Union[str, list[str]]) -> dict[str, str]:
         return {"result": f"{value}: {items}"}
 
 
 @component
 class Pep604Producer:
     @component.output_types(value=str | None, items=str | list[str])
-    def run(self, text: str):
+    def run(self, text: str) -> dict[str, str | None | str | list[str]]:
         return {"value": text, "items": ["a", "b", "c"]}
 
 
 @component
 class Pep604Consumer:
     @component.output_types(result=str)
-    def run(self, value: str | None, items: str | list[str]):
+    def run(self, value: str | None, items: str | list[str]) -> dict[str, str]:
         return {"result": f"{value}: {items}"}
 
 

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from typing import Any
 
 import pytest
 
@@ -22,7 +23,9 @@ class FakeChatGenerator:
         self.content = content
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], generation_kwargs: dict = None, **kwargs):
+    def run(
+        self, messages: list[ChatMessage], generation_kwargs: dict | None = None, **kwargs: Any
+    ) -> dict[str, list[ChatMessage]]:
         return {"replies": [ChatMessage.from_assistant(self.content)]}
 
 

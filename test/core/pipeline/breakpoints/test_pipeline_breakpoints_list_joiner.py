@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 import pytest
 
 from haystack import Pipeline, component
@@ -18,7 +20,7 @@ class FakeChatGenerator:
         self.response = response
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], **kwargs):
+    def run(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, list[ChatMessage]]:
         return {"replies": [ChatMessage.from_assistant(self.response)]}
 
 

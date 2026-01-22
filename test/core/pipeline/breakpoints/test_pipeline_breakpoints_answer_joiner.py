@@ -20,7 +20,7 @@ class FakeChatGenerator:
         self.model_name = model_name
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage]):
+    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
         return {"replies": [ChatMessage.from_assistant(self.content)]}
 
 

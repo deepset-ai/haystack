@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, load_pipeline_snapshot
 
 
@@ -25,7 +26,7 @@ def output_directory(tmp_path):
 def load_and_resume_pipeline_snapshot():
     """Fixture that returns a function to load and resume a pipeline from a snapshot."""
 
-    def _resume(pipeline, output_directory: Path, component_name: str, data: dict = None) -> dict:
+    def _resume(pipeline: Pipeline, output_directory: Path, component_name: str, data: dict | None = None) -> dict:
         """
         Utility function to load and resume pipeline snapshot from a breakpoint file.
 
@@ -42,7 +43,6 @@ def load_and_resume_pipeline_snapshot():
         """
         data = data or {}
         all_files = list(output_directory.glob("*"))
-        file_found = False
 
         for full_path in all_files:
             f_name = Path(full_path).name
@@ -50,8 +50,7 @@ def load_and_resume_pipeline_snapshot():
                 pipeline_snapshot = load_pipeline_snapshot(full_path)
                 return pipeline.run(data=data, pipeline_snapshot=pipeline_snapshot)
 
-        if not file_found:
-            msg = f"No files found for {component_name} in {output_directory}."
-            raise ValueError(msg)
+        msg = f"No files found for {component_name} in {output_directory}."
+        raise ValueError(msg)
 
     return _resume
