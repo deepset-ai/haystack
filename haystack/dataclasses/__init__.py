@@ -9,6 +9,14 @@ from lazy_imports import LazyImporter
 
 _import_structure = {
     "answer": ["Answer", "ExtractedAnswer", "GeneratedAnswer"],
+    "breakpoints": [
+        "AgentBreakpoint",
+        "AgentSnapshot",
+        "Breakpoint",
+        "PipelineSnapshot",
+        "PipelineState",
+        "ToolBreakpoint",
+    ],
     "byte_stream": ["ByteStream"],
     "chat_message": ["ChatMessage", "ChatRole", "ReasoningContent", "TextContent", "ToolCall", "ToolCallResult"],
     "image_content": ["ImageContent"],
@@ -31,6 +39,12 @@ if TYPE_CHECKING:
     from .answer import Answer as Answer
     from .answer import ExtractedAnswer as ExtractedAnswer
     from .answer import GeneratedAnswer as GeneratedAnswer
+    from .breakpoints import AgentBreakpoint as AgentBreakpoint
+    from .breakpoints import AgentSnapshot as AgentSnapshot
+    from .breakpoints import Breakpoint as Breakpoint
+    from .breakpoints import PipelineSnapshot as PipelineSnapshot
+    from .breakpoints import PipelineState as PipelineState
+    from .breakpoints import ToolBreakpoint as ToolBreakpoint
     from .byte_stream import ByteStream as ByteStream
     from .chat_message import ChatMessage as ChatMessage
     from .chat_message import ChatRole as ChatRole

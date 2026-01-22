@@ -13,6 +13,7 @@ from pandas import DataFrame
 from pytest_bdd import parsers, then, when
 
 from haystack import AsyncPipeline, Pipeline
+from test.tracing.utils import SpyingTracer
 
 PIPELINE_NAME_REGEX = re.compile(r"\[(.*)\]")
 
@@ -50,7 +51,8 @@ class _PipelineResult:
 
 @when("I run the Pipeline", target_fixture="pipeline_result")
 def run_pipeline(
-    pipeline_data: tuple[AsyncPipeline | Pipeline, list[PipelineRunData]], spying_tracer
+    pipeline_data: tuple[Pipeline, list[PipelineRunData]] | tuple[AsyncPipeline, list[PipelineRunData]],
+    spying_tracer: SpyingTracer,
 ) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     if isinstance(pipeline_data[0], AsyncPipeline):
         return run_async_pipeline(pipeline_data, spying_tracer)
@@ -59,7 +61,7 @@ def run_pipeline(
 
 
 def run_async_pipeline(
-    pipeline_data: tuple[AsyncPipeline, list[PipelineRunData]], spying_tracer
+    pipeline_data: tuple[AsyncPipeline, list[PipelineRunData]], spying_tracer: SpyingTracer
 ) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     """
     Attempts to run a pipeline with the given inputs.
@@ -98,7 +100,7 @@ def run_async_pipeline(
 
 
 def run_sync_pipeline(
-    pipeline_data: tuple[Pipeline, list[PipelineRunData]], spying_tracer
+    pipeline_data: tuple[Pipeline, list[PipelineRunData]], spying_tracer: SpyingTracer
 ) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
     """
     Attempts to run a pipeline with the given inputs.
@@ -132,7 +134,7 @@ def run_sync_pipeline(
 
 
 @then("draw it to file")
-def draw_pipeline(pipeline_data: tuple[Pipeline, list[PipelineRunData]], request):
+def draw_pipeline(pipeline_data: tuple[Pipeline, list[PipelineRunData]], request: pytest.FixtureRequest) -> None:
     """
     Draw the pipeline to a file with the same name as the test.
     """
@@ -141,23 +143,23 @@ def draw_pipeline(pipeline_data: tuple[Pipeline, list[PipelineRunData]], request
         pipeline = pipeline_data[0]
         graphs_dir = Path(request.config.rootpath) / "test_pipeline_graphs"
         graphs_dir.mkdir(exist_ok=True)
-        pipeline.draw(graphs_dir / f"{name}.png")
+        pipeline.draw(path=graphs_dir / f"{name}.png")
 
 
 @then("it should return the expected result")
-def check_pipeline_result(pipeline_result: list[tuple[_PipelineResult, PipelineRunData]]):
+def check_pipeline_result(pipeline_result: list[tuple[_PipelineResult, PipelineRunData]]) -> None:
     for res, data in pipeline_result:
         compare_outputs_with_dataframes(res.outputs, data.expected_outputs)
 
 
 @then("components are called with the expected inputs")
-def check_component_calls(pipeline_result: list[tuple[_PipelineResult, PipelineRunData]]):
+def check_component_calls(pipeline_result: list[tuple[_PipelineResult, PipelineRunData]]) -> None:
     for res, data in pipeline_result:
         assert compare_outputs_with_dataframes(res.component_calls, data.expected_component_calls)
 
 
 @then(parsers.parse("it must have raised {exception_class_name}"))
-def check_pipeline_raised(pipeline_result: Exception, exception_class_name: str):
+def check_pipeline_raised(pipeline_result: Exception, exception_class_name: str) -> None:
     assert pipeline_result.__class__.__name__ == exception_class_name
 
 

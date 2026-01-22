@@ -94,16 +94,19 @@ print(result["messages"][-1].text)
 #### Agent.\_\_init\_\_
 
 ```python
-def __init__(*,
-             chat_generator: ChatGenerator,
-             tools: ToolsType | None = None,
-             system_prompt: str | None = None,
-             exit_conditions: list[str] | None = None,
-             state_schema: dict[str, Any] | None = None,
-             max_agent_steps: int = 100,
-             streaming_callback: StreamingCallbackT | None = None,
-             raise_on_tool_invocation_failure: bool = False,
-             tool_invoker_kwargs: dict[str, Any] | None = None) -> None
+def __init__(
+    *,
+    chat_generator: ChatGenerator,
+    tools: ToolsType | None = None,
+    system_prompt: str | None = None,
+    exit_conditions: list[str] | None = None,
+    state_schema: dict[str, Any] | None = None,
+    max_agent_steps: int = 100,
+    streaming_callback: StreamingCallbackT | None = None,
+    raise_on_tool_invocation_failure: bool = False,
+    tool_invoker_kwargs: dict[str, Any] | None = None,
+    confirmation_strategies: dict[str, ConfirmationStrategy] | None = None
+) -> None
 ```
 
 Initialize the agent component.
@@ -124,6 +127,7 @@ The same callback can be configured to emit tool results when a tool is called.
 - `raise_on_tool_invocation_failure`: Should the agent raise an exception when a tool invocation fails?
 If set to False, the exception will be turned into a chat message and passed to the LLM.
 - `tool_invoker_kwargs`: Additional keyword arguments to pass to the ToolInvoker.
+- `confirmation_strategies`: A dictionary mapping tool names to ConfirmationStrategy instances.
 
 **Raises**:
 
@@ -187,6 +191,7 @@ def run(messages: list[ChatMessage],
         system_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
         snapshot_callback: SnapshotCallback | None = None,
+        confirmation_strategy_context: dict[str, Any] | None = None,
         **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -209,6 +214,10 @@ When passing tool names, tools are selected from the Agent's originally configur
 - `snapshot_callback`: Optional callback function that is invoked when a pipeline snapshot is created.
 The callback receives a `PipelineSnapshot` object and can return an optional string.
 If provided, the callback is used instead of the default file-saving behavior.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources
+to confirmation strategies. Useful in web/server environments to provide per-request
+objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
+can use for non-blocking user interaction.
 - `kwargs`: Additional data to pass to the State schema used by the Agent.
 The keys must match the schema defined in the Agent's `state_schema`.
 
@@ -237,6 +246,8 @@ async def run_async(messages: list[ChatMessage],
                     system_prompt: str | None = None,
                     tools: ToolsType | list[str] | None = None,
                     snapshot_callback: SnapshotCallback | None = None,
+                    confirmation_strategy_context: dict[str, Any]
+                    | None = None,
                     **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -264,6 +275,10 @@ The callback receives a `PipelineSnapshot` object and can return an optional str
 If provided, the callback is used instead of the default file-saving behavior.
 - `kwargs`: Additional data to pass to the State schema used by the Agent.
 The keys must match the schema defined in the Agent's `state_schema`.
+- `confirmation_strategy_context`: Optional dictionary for passing request-scoped resources
+to confirmation strategies. Useful in web/server environments to provide per-request
+objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
+can use for non-blocking user interaction.
 
 **Raises**:
 
