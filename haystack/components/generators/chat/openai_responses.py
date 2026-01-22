@@ -796,6 +796,18 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     :raises ValueError:
         If the message format is invalid.
     """
+
+    def serialize_part(part) -> dict[str, str]:
+        if isinstance(part, TextContent):
+            return {"type": "input_text", "text": part.text}
+        elif isinstance(part, ImageContent):
+            return {
+                "type": "input_image",
+                # If no MIME type is provided, default to JPEG. OpenAI API appears to tolerate MIME type mismatches.
+                "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
+            }
+        raise ValueError(f"Unsupported content type: {type(part)}")
+
     text_contents = message.texts
     tool_calls = message.tool_calls
     tool_call_results = message.tool_call_results
@@ -819,27 +831,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
 
     # user message
     if message._role.value == "user":
-        if len(message._content) == 1 and isinstance(message._content[0], TextContent):
-            openai_msg["content"] = message.text
-            return [openai_msg]
-
-        # if the user message contains a list of text and images, OpenAI expects a list of dictionaries
-        content = []
-        for part in message._content:
-            if isinstance(part, TextContent):
-                text_type = "input_text"
-                content.append({"type": text_type, "text": part.text})
-            elif isinstance(part, ImageContent):
-                image_item: dict[str, Any]
-                image_item = {
-                    "type": "input_image",
-                    # If no MIME type is provided, default to JPEG.
-                    # OpenAI API appears to tolerate MIME type mismatches.
-                    "image_url": f"data:{part.mime_type or 'image/jpeg'};base64,{part.base64_image}",
-                }
-
-                content.append(image_item)
-
+        content = [serialize_part(part) for part in message._content]
         openai_msg["content"] = content
         return [openai_msg]
 
@@ -848,10 +840,17 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_tool_results = []
         for result in tool_call_results:
             if result.origin.id is not None:
+                # Handle multimodal tool results (list of TextContent/ImageContent)
+                if isinstance(result.result, list):
+                    output_content = [serialize_part(part) for part in result.result]
+                elif isinstance(result.result, str):
+                    output_content = [{"type": "input_text", "text": result.result}]
+                else:
+                    raise ValueError(f"Unsupported tool result: {result.result}")
                 tool_result = {
                     "type": "function_call_output",
                     "call_id": result.origin.extra.get("call_id") if result.origin.extra else "",
-                    "output": result.result,
+                    "output": output_content,
                 }
                 formatted_tool_results.append(tool_result)
         formatted_messages.extend(formatted_tool_results)
@@ -883,7 +882,6 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_messages.extend(formatted_tool_calls)
 
     # system and assistant messages
-
     if text_contents:
         openai_msg["content"] = " ".join(text_contents)
         formatted_messages.append(openai_msg)

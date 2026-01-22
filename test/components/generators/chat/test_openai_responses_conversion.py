@@ -37,6 +37,7 @@ from haystack.components.generators.chat.openai_responses import (
 from haystack.dataclasses import (
     ChatMessage,
     ChatRole,
+    ImageContent,
     ReasoningContent,
     StreamingChunk,
     TextContent,
@@ -1223,7 +1224,55 @@ class TestConversionToStreamingChunks:
 
 
 class TestResponseToChatMessage:
-    def test_convert_chat_message_to_responses_api_format(self):
+    def test_convert_system_message(self):
+        message = ChatMessage.from_system("You are good assistant")
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {"role": "system", "content": "You are good assistant"}
+        ]
+
+    def test_convert_user_message(self):
+        message = ChatMessage.from_user("I have a question")
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {"role": "user", "content": [{"type": "input_text", "text": "I have a question"}]}
+        ]
+
+    def test_convert_multimodal_user_message(self, base64_image_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                TextContent("I have a question"),
+                ImageContent(base64_image=base64_image_string, detail="auto"),
+            ]
+        )
+        assert message.to_openai_dict_format() == {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "I have a question"},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{base64_image_string}", "detail": "auto"},
+                },
+            ],
+        }
+
+        # image content only should be supported as well
+        message = ChatMessage.from_user(content_parts=[ImageContent(base64_image=base64_image_string, detail="auto")])
+        assert message.to_openai_dict_format() == {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{base64_image_string}", "detail": "auto"},
+                }
+            ],
+        }
+
+    def test_convert_assistant_message(self):
+        message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {"role": "assistant", "content": "I have an answer"}
+        ]
+
+    def test_convert_assistant_message_w_tool_call(self):
         chat_message = ChatMessage(
             _role=ChatRole.ASSISTANT,
             _content=[
@@ -1285,7 +1334,8 @@ class TestResponseToChatMessage:
             },
             {"content": "I need to use the functions.weather tool.", "role": "assistant"},
         ]
-        # ToolCallResult cannot appear with other content
+
+    def test_convert_tool_message(self):
         tool_call_result = ChatMessage(
             _role=ChatRole.TOOL,
             _content=[
@@ -1303,5 +1353,52 @@ class TestResponseToChatMessage:
         )
 
         assert _convert_chat_message_to_responses_api_format(tool_call_result) == [
-            {"call_id": "call_a82vwFAIzku9SmBuQuecQSRq", "output": "result", "type": "function_call_output"}
+            {
+                "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
+                "output": [{"type": "input_text", "text": "result"}],
+                "type": "function_call_output",
+            }
         ]
+
+    def test_convert_tool_message_list_with_image(self, base64_image_string):
+        tool_result = [
+            TextContent(text="first result"),
+            ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+        ]
+        message = ChatMessage.from_tool(
+            tool_result=tool_result,
+            origin=ToolCall(
+                tool_name="mytool", arguments={}, id="123", extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"}
+            ),
+            error=False,
+        )
+
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {
+                "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
+                "output": [
+                    {"type": "input_text", "text": "first result"},
+                    {"type": "input_image", "image_url": f"data:image/png;base64,{base64_image_string}"},
+                ],
+                "type": "function_call_output",
+            }
+        ]
+
+    def test_convert_invalid(self):
+        message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
+        with pytest.raises(ValueError):
+            _convert_chat_message_to_responses_api_format(message)
+
+        message = ChatMessage(
+            _role=ChatRole.USER,
+            _content=[
+                TextContent(text="I have an answer"),
+                ToolCallResult(
+                    result="I have another answer",
+                    origin=ToolCall(id="123", tool_name="mytool", arguments={"a": 1}),
+                    error=False,
+                ),
+            ],
+        )
+        with pytest.raises(ValueError):
+            _convert_chat_message_to_responses_api_format(message)
