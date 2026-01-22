@@ -10,34 +10,11 @@ from typing import Any, Iterable, TypeVar
 from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
-from haystack.utils.auth import Secret, deserialize_secrets_inplace
+from haystack.utils.auth import deserialize_secrets_inplace
 from haystack.utils.device import ComponentDevice
 from haystack.utils.type_serialization import thread_safe_import
 
 logger = logging.getLogger(__name__)
-
-
-def _is_document_store(obj: Any) -> bool:
-    """
-    Check if an object implements the DocumentStore protocol.
-
-    An object is considered a DocumentStore if it has all the required methods:
-    - to_dict
-    - from_dict (as a classmethod)
-    - count_documents
-    - filter_documents
-    - write_documents
-    - delete_documents
-
-    :param obj: The object to check.
-    :returns: True if the object implements the DocumentStore protocol.
-    """
-    required_methods = ["to_dict", "count_documents", "filter_documents", "write_documents", "delete_documents"]
-    for method in required_methods:
-        if not hasattr(obj, method) or not callable(getattr(obj, method)):
-            return False
-    # Also check that from_dict exists on the class
-    return hasattr(type(obj), "from_dict") and callable(getattr(type(obj), "from_dict"))
 
 
 T = TypeVar("T")
@@ -207,8 +184,8 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     instance of `obj` with `from_dict`. Omitting them might cause deserialisation
     errors or unexpected behaviours later, when calling `from_dict`.
 
-    Secret, ComponentDevice, and DocumentStore instances in `init_parameters` are automatically
-    serialized by calling their `to_dict()` method.
+    Objects in `init_parameters` that have a `to_dict()` method are automatically
+    serialized by calling that method.
 
     An example usage:
 
@@ -238,10 +215,10 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     :returns:
         A dictionary representation of the instance.
     """
-    # Automatically serialize Secret, ComponentDevice, and DocumentStore instances
+    # Automatically serialize objects that have a to_dict method
     serialized_params = {}
     for key, value in init_parameters.items():
-        if isinstance(value, (Secret, ComponentDevice)) or _is_document_store(value):
+        if value is not None and hasattr(value, "to_dict") and callable(getattr(value, "to_dict")):
             serialized_params[key] = value.to_dict()
         else:
             serialized_params[key] = value
@@ -270,39 +247,6 @@ def _is_serialized_component_device(value: Any) -> bool:
     return False
 
 
-def _is_serialized_document_store(value: Any) -> bool:
-    """
-    Check if a value is a serialized DocumentStore dictionary.
-
-    A dictionary is considered a serialized DocumentStore if:
-    - It has a "type" key with a string value that is a fully qualified class name
-    - It has an "init_parameters" key with a dict value
-    - The class can be imported and has a "from_dict" method
-
-    This matches the structure produced by DocumentStore.to_dict().
-    """
-    if not isinstance(value, dict):
-        return False
-
-    if "type" not in value or "init_parameters" not in value:
-        return False
-
-    type_value = value.get("type")
-    if not isinstance(type_value, str) or "." not in type_value:
-        return False
-
-    # Try to import the class and check if it has DocumentStore-like methods
-    try:
-        cls = thread_safe_import(type_value.rsplit(".", 1)[0])
-        class_name = type_value.rsplit(".", 1)[1]
-        doc_store_class = getattr(cls, class_name)
-
-        required_methods = ["from_dict", "to_dict", "count_documents", "filter_documents", "write_documents"]
-        return all(hasattr(doc_store_class, method) for method in required_methods)
-    except (ImportError, AttributeError):
-        return False
-
-
 def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     """
     Utility function to deserialize a dictionary to an object.
@@ -323,9 +267,9 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     and deserialized. A dictionary is considered a serialized ComponentDevice if it has a
     "type" key with value "single" or "multiple".
 
-    Serialized DocumentStore dictionaries in `init_parameters` are automatically detected
-    and deserialized. A dictionary is considered a serialized DocumentStore if it has a
-    "type" key with a fully qualified class name and an "init_parameters" key.
+    Objects in `init_parameters` that are dictionaries with a "type" key containing a fully
+    qualified class name are automatically detected and deserialized if the class has a
+    `from_dict()` method.
 
     :param cls:
         The class to be used for deserialization.
@@ -343,18 +287,27 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     if data["type"] != generate_qualified_class_name(cls):
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
 
-    # Automatically detect and deserialize Secret, ComponentDevice, DocumentStore instances
+    # Automatically detect and deserialize objects with from_dict methods
     secret_keys = []
     for key, value in init_params.items():
-        if isinstance(value, dict) and value.get("type") == "env_var":
-            secret_keys.append(key)
-        elif _is_serialized_component_device(value):
-            init_params[key] = ComponentDevice.from_dict(value)
-        elif _is_serialized_document_store(value):
-            # Lazy import to avoid circular dependency
-            from haystack.utils.deserialization import deserialize_document_store_in_init_params_inplace
-
-            deserialize_document_store_in_init_params_inplace(data, key)
+        if isinstance(value, dict) and "type" in value:
+            type_value = value.get("type")
+            # Special handling for Secret (type == "env_var")
+            if type_value == "env_var":
+                secret_keys.append(key)
+            # Special handling for ComponentDevice (type == "single" or "multiple")
+            elif _is_serialized_component_device(value):
+                init_params[key] = ComponentDevice.from_dict(value)
+            # If type looks like a fully qualified class name, try to import it and deserialize
+            elif isinstance(type_value, str) and "." in type_value:
+                try:
+                    imported_class = import_class_by_name(type_value)
+                    if hasattr(imported_class, "from_dict") and callable(getattr(imported_class, "from_dict")):
+                        init_params[key] = imported_class.from_dict(value)
+                    else:
+                        init_params[key] = default_from_dict(imported_class, value)
+                except (ImportError, DeserializationError) as e:
+                    raise type(e)(f"Failed to deserialize '{key}': {e}") from e
 
     if secret_keys:
         deserialize_secrets_inplace(init_params, keys=secret_keys)

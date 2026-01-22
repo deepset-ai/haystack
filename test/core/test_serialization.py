@@ -561,3 +561,21 @@ def test_default_from_dict_with_document_store():
     comp = default_from_dict(CustomComponentWithDocumentStore, data)
     assert isinstance(comp.document_store, InMemoryDocumentStore)
     assert comp.name == "test"
+
+
+def test_default_from_dict_with_invalid_class_name():
+    """Test that deserialization raises ImportError with improved message when class cannot be imported."""
+    data = {
+        "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
+        "init_parameters": {
+            "document_store": {"type": "nonexistent.module.Class", "init_parameters": {}},
+            "name": "test",
+        },
+    }
+    # Verify the error message includes the parameter key and original error
+    with pytest.raises(ImportError) as exc_info:
+        default_from_dict(CustomComponentWithDocumentStore, data)
+
+    error_message = str(exc_info.value)
+    assert "Failed to deserialize 'document_store':" in error_message
+    assert "nonexistent.module.Class" in error_message
