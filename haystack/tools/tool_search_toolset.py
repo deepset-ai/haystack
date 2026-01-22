@@ -195,12 +195,16 @@ class ToolSearchToolset(Toolset):
         Prepare the toolset for use.
 
         This method indexes the catalog and creates the search_tools bootstrap tool.
+        In passthrough mode, it warms up all catalog tools directly.
         Must be called before using the toolset with an Agent.
         """
         if self._warmed_up:
             return
 
-        if not self.is_passthrough:
+        if self.is_passthrough:
+            for tool in self._catalog:
+                tool.warm_up()
+        else:
             self._search_engine = _BM25SearchEngine()
             self._search_engine.index_tools(self._catalog)
             self._bootstrap_tool = self._create_search_tool()
