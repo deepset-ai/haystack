@@ -142,7 +142,7 @@ class CustomComponentWithSecrets:
         self.regular_param = regular_param
 
     @component.output_types(value=str)
-    def run(self, value: str):
+    def run(self, value: str) -> dict[str, str]:
         return {"value": value}
 
 
@@ -270,7 +270,7 @@ class CustomComponentWithDevice:
         self.name = name
 
     @component.output_types(value=str)
-    def run(self, value: str):
+    def run(self, value: str) -> dict[str, str]:
         return {"value": value}
 
 
@@ -437,7 +437,7 @@ class CustomComponentWithDocumentStore:
         self.name = name
 
     @component.output_types(value=str)
-    def run(self, value: str):
+    def run(self, value: str) -> dict[str, str]:
         return {"value": value}
 
 
