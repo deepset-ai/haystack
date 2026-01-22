@@ -211,6 +211,16 @@ class ToolSearchToolset(Toolset):
 
         self._warmed_up = True
 
+    def clear(self) -> None:
+        """
+        Clear all discovered tools.
+
+        This method allows resetting the toolset's discovered tools between agent runs
+        when the same toolset instance is reused. This can be useful for long-running
+        applications to control memory usage or to start fresh searches.
+        """
+        self._discovered_tools.clear()
+
     def _create_search_tool(self) -> Tool:
         """Create the search_tools bootstrap tool."""
 
