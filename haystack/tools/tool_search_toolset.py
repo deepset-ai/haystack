@@ -244,7 +244,7 @@ class ToolSearchToolset(Toolset):
             name="search_tools",
             description="ALWAYS use this tool FIRST when you need to perform a task but don't have the right tool "
             "loaded yet. Search for tools by describing what functionality you need (e.g., 'weather data', "
-            "'web search', 'database query'). Returns a JSON array of tool definitions with their complete schemas. "
+            "'web search', 'database query'). Returns a confirmation message with the names of loaded tools. "
             "The found tools are automatically loaded and will be available for you to use immediately.",
             parameters={
                 "type": "object",
