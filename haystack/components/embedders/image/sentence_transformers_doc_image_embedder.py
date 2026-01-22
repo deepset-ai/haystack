@@ -164,7 +164,7 @@ class SentenceTransformersDocumentImageEmbedder:
             file_path_meta_field=self.file_path_meta_field,
             root_path=self.root_path,
             model=self.model,
-            device=self.device.to_dict(),
+            device=self.device,
             token=self.token,
             batch_size=self.batch_size,
             progress_bar=self.progress_bar,
@@ -193,8 +193,6 @@ class SentenceTransformersDocumentImageEmbedder:
             Deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)
