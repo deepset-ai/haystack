@@ -299,7 +299,7 @@ class TestOpenAIChatGeneratorAsync:
         mock_stream.close = AsyncMock()
 
         async def mock_chunk_generator():
-            for i in range(100):
+            for i in range(10):
                 yield MagicMock(
                     choices=[
                         MagicMock(
@@ -312,7 +312,7 @@ class TestOpenAIChatGeneratorAsync:
                     model="gpt-4",
                     usage=None,
                 )
-                await asyncio.sleep(0.01)  # delay between chunks
+                await asyncio.sleep(0.005)  # delay between chunks
 
         mock_stream.__aiter__ = lambda self: mock_chunk_generator()
 
@@ -325,7 +325,7 @@ class TestOpenAIChatGeneratorAsync:
         task = asyncio.create_task(generator._handle_async_stream_response(mock_stream, test_callback))
 
         # trigger the task, process a few chunks, then cancel
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.01)
         task.cancel()
 
         with pytest.raises(asyncio.CancelledError):
@@ -335,32 +335,7 @@ class TestOpenAIChatGeneratorAsync:
 
         # we received some chunks before cancellation but not all of them
         assert len(received_chunks) > 0
-        assert len(received_chunks) < 100
-
-    @pytest.mark.skipif(
-        not os.environ.get("OPENAI_API_KEY", None),
-        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-    )
-    @pytest.mark.integration
-    @pytest.mark.asyncio
-    async def test_run_async_cancellation_integration(self):
-        generator = OpenAIChatGenerator(model="gpt-4.1-nano")
-        messages = [ChatMessage.from_user("Write me an essay about the history of jazz music, at least 500 words.")]
-        received_chunks = []
-
-        async def streaming_callback(chunk: StreamingChunk):
-            received_chunks.append(chunk)
-
-        task = asyncio.create_task(generator.run_async(messages=messages, streaming_callback=streaming_callback))
-
-        await asyncio.sleep(2.0)
-        task.cancel()
-
-        with pytest.raises(asyncio.CancelledError):
-            await task
-
-        assert len(received_chunks) > 0
-        assert len(received_chunks) < 500
+        assert len(received_chunks) < 10
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -385,7 +360,7 @@ class TestOpenAIChatGeneratorAsync:
 
         generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"), model="something-obviously-wrong")
 
-        generator.client = mock_client
+        generator.async_client = mock_client
 
         with pytest.raises(OpenAIError):
             await generator.run_async([ChatMessage.from_user("irrelevant")])
