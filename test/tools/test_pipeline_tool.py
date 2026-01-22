@@ -123,7 +123,6 @@ class TestPipelineTool:
                 "outputs_to_state": None,
                 "is_pipeline_async": False,
                 "outputs_to_string": None,
-                "outputs_to_result": None,
             },
         }
 
@@ -150,7 +149,6 @@ class TestPipelineTool:
                 "outputs_to_state": None,
                 "is_pipeline_async": True,
                 "outputs_to_string": None,
-                "outputs_to_result": None,
             },
         }
 

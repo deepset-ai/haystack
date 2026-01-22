@@ -75,9 +75,13 @@ class TestTool:
         [
             pytest.param({"source": get_weather_report}, id="source-not-a-string"),
             pytest.param({"handler": "some_string"}, id="handler-not-callable"),
+            pytest.param({"raw_result": "not-a-bool"}, id="raw_result-not-a-bool"),
             pytest.param({"documents": ["some_value"]}, id="multi-value-config-not-a-dict"),
             pytest.param({"documents": {"source": get_weather_report}}, id="multi-value-source-not-a-string"),
             pytest.param({"documents": {"handler": "some_string"}}, id="multi-value-handler-not-callable"),
+            pytest.param(
+                {"documents": {"source": "docs", "raw_result": True}}, id="multi-value-raw_result-not-supported"
+            ),
         ],
     )
     def test_init_invalid_outputs_to_string_structure(self, outputs_to_string):
@@ -88,17 +92,6 @@ class TestTool:
                 parameters={"type": "object", "properties": {"city": {"type": "string"}}},
                 function=get_weather_report,
                 outputs_to_string=outputs_to_string,
-            )
-
-    def test_init_outputs_to_string_and_outputs_to_result_raises_error(self):
-        with pytest.raises(ValueError, match="Only one of `outputs_to_string` and `outputs_to_result` can be set."):
-            Tool(
-                name="weather",
-                description="Get weather report",
-                parameters=parameters,
-                function=get_weather_report,
-                outputs_to_string={"handler": format_string},
-                outputs_to_result={},
             )
 
     def test_tool_spec(self):
@@ -149,17 +142,16 @@ class TestTool:
                 "outputs_to_string": {"handler": "test_tool.format_string"},
                 "inputs_from_state": {"location": "city"},
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
-                "outputs_to_result": None,
             },
         }
 
-    def test_to_dict_outputs_to_result(self):
+    def test_to_dict_outputs_to_string_raw_result(self):
         tool = Tool(
             name="weather",
             description="Get weather report",
             parameters=parameters,
             function=get_weather_report,
-            outputs_to_result={"handler": outputs_to_result_handler},
+            outputs_to_string={"handler": outputs_to_result_handler, "raw_result": True},
         )
         assert tool.to_dict() == {
             "type": "haystack.tools.tool.Tool",
@@ -170,8 +162,34 @@ class TestTool:
                 "function": "test_tool.get_weather_report",
                 "inputs_from_state": None,
                 "outputs_to_state": None,
-                "outputs_to_string": None,
-                "outputs_to_result": {"handler": "test_tool.outputs_to_result_handler"},
+                "outputs_to_string": {"handler": "test_tool.outputs_to_result_handler", "raw_result": True},
+            },
+        }
+
+    def test_to_dict_outputs_to_string_multiple_outputs(self):
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            outputs_to_string={
+                "report": {"source": "report", "handler": format_string},
+                "temp": {"source": "temperature"},
+            },
+        )
+        assert tool.to_dict() == {
+            "type": "haystack.tools.tool.Tool",
+            "data": {
+                "name": "weather",
+                "description": "Get weather report",
+                "parameters": parameters,
+                "function": "test_tool.get_weather_report",
+                "inputs_from_state": None,
+                "outputs_to_state": None,
+                "outputs_to_string": {
+                    "report": {"source": "report", "handler": "test_tool.format_string"},
+                    "temp": {"source": "temperature"},
+                },
             },
         }
 
@@ -278,38 +296,6 @@ class TestTool:
                 parameters=parameters,
                 function=get_weather_report,
                 outputs_to_state={"result": {"source": "nonexistent"}},
-            )
-
-    def test_outputs_to_result_validation_with_invalid_handler(self):
-        with pytest.raises(ValueError, match="outputs_to_result handler must be callable"):
-            Tool(
-                name="weather",
-                description="Get weather report",
-                parameters=parameters,
-                function=get_weather_report,
-                outputs_to_result={"handler": "some_string"},
-            )
-
-    def test_outputs_to_result_validation_with_invalid_source(self):
-        with pytest.raises(ValueError, match="outputs_to_result source must be a string"):
-            Tool(
-                name="weather",
-                description="Get weather report",
-                parameters=parameters,
-                function=get_weather_report,
-                outputs_to_result={"source": {"handler": outputs_to_result_handler}},
-            )
-
-    def test_outputs_to_result_validation_with_invalid_config(self):
-        with pytest.raises(
-            ValueError, match="Invalid outputs_to_result config. Only 'source' and 'handler' keys are allowed."
-        ):
-            Tool(
-                name="weather",
-                description="Get weather report",
-                parameters=parameters,
-                function=get_weather_report,
-                outputs_to_result={"invalid": "some_value"},
             )
 
 

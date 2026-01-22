@@ -37,20 +37,22 @@ class Tool:
         The function that will be invoked when the Tool is called.
         Must be a synchronous function; async functions are not supported.
     :param outputs_to_string:
-        Optional dictionary defining how tool outputs should be converted into string(s).
+        Optional dictionary defining how tool outputs should be converted into string(s) or results.
         If not provided, the tool result is converted to a string using a default handler.
-        If you want to return the tool result without string conversion, use `outputs_to_result`.
 
         `outputs_to_string` supports two formats:
 
-        1. Single output format - use "source" and/or "handler" at the root level:
+        1. Single output format - use "source", "handler", and/or "raw_result" at the root level:
            ```python
            {
-               "source": "docs", "handler": format_documents
+               "source": "docs", "handler": format_documents, "raw_result": False
            }
            ```
-           If the source is provided, only the specified output key is sent to the handler.
-           If the source is omitted, the whole tool result is sent to the handler.
+           - `source`: If provided, only the specified output key is sent to the handler.
+           - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+             final result.
+           - `raw_result`: If `True`, the result is returned raw (e.g. as a list of `TextContent`/`ImageContent`)
+             without string conversion.
 
         2. Multiple output format - map keys to individual configurations:
            ```python
@@ -60,6 +62,7 @@ class Tool:
            }
            ```
            Each key maps to a dictionary that can contain "source" and/or "handler".
+           Note that `raw_result` is not supported in the multiple output format.
     :param inputs_from_state:
         Optional dictionary mapping state keys to tool parameter names.
         Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
@@ -79,21 +82,6 @@ class Tool:
             "documents": {"handler": custom_handler}
         }
         ```
-    :param outputs_to_result:
-        Optional dictionary defining how the tool output is converted into a result. This is an alternative to
-        `outputs_to_string` and supports returning images.
-
-        The configuration dictionary can contain:
-        - `source`: If the tool output is a dictionary, extract the value of this key.
-        - `handler`: A function that takes the tool output (or the extracted source value) and returns the
-            final result. The handler should typically return a list of `TextContent`/`ImageContent` objects.
-
-        Behaviors:
-        - `{}`: Returns the raw tool output as is.
-        - `{"handler": my_func}`: Passes the full tool output to `my_func`.
-        - `{"source": "my_key"}`: If the output is a dictionary, returns `output["my_key"]`.
-        - `{"source": "my_key", "handler": my_func}`: If the output is a dictionary, passes `output["my_key"]` to
-            `my_func`.
     """
 
     name: str
@@ -103,7 +91,6 @@ class Tool:
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
-    outputs_to_result: dict[str, Any] | None = None
 
     def __post_init__(self):  # noqa: C901, PLR0912  # pylint: disable=too-many-branches
         # Check that the function is not a coroutine (async function)
@@ -119,9 +106,6 @@ class Tool:
             Draft202012Validator.check_schema(self.parameters)
         except SchemaError as e:
             raise ValueError("The provided parameters do not define a valid JSON schema") from e
-
-        if self.outputs_to_string is not None and self.outputs_to_result is not None:
-            raise ValueError("Only one of `outputs_to_string` and `outputs_to_result` can be set.")
 
         # Validate outputs structure if provided
         if self.outputs_to_state is not None:
@@ -149,20 +133,32 @@ class Tool:
                 raise ValueError("outputs_to_string source must be a string.")
             if "handler" in self.outputs_to_string and not callable(self.outputs_to_string["handler"]):
                 raise ValueError("outputs_to_string handler must be callable")
-            if "source" in self.outputs_to_string or "handler" in self.outputs_to_string:
+            if "raw_result" in self.outputs_to_string and not isinstance(self.outputs_to_string["raw_result"], bool):
+                raise ValueError("outputs_to_string raw_result must be a boolean.")
+
+            if (
+                "source" in self.outputs_to_string
+                or "handler" in self.outputs_to_string
+                or "raw_result" in self.outputs_to_string
+            ):
                 # Single output configuration
                 for key in self.outputs_to_string:
-                    if key not in {"source", "handler"}:
+                    if key not in {"source", "handler", "raw_result"}:
                         raise ValueError(
                             "Invalid outputs_to_string config. "
-                            "When using 'source' or 'handler' at the root level, no other keys are allowed. "
-                            "Use individual output configs instead."
+                            "When using 'source', 'handler' or 'raw_result' at the root level, no other keys are "
+                            " allowed. Use individual output configs instead."
                         )
             else:
                 # Multiple outputs configuration
                 for key, config in self.outputs_to_string.items():
                     if not isinstance(config, dict):
                         raise ValueError(f"outputs_to_string configuration for key '{key}' must be a dictionary")
+                    if "raw_result" in config:
+                        raise ValueError(
+                            f"Invalid outputs_to_string configuration for key '{key}': "
+                            f"'raw_result' is not supported in the multiple output format."
+                        )
                     if "source" not in config:
                         raise ValueError(
                             f"Invalid outputs_to_string configuration for key '{key}': "
@@ -172,16 +168,6 @@ class Tool:
                         raise ValueError(f"outputs_to_string source for key '{key}' must be a string.")
                     if "handler" in config and not callable(config["handler"]):
                         raise ValueError(f"outputs_to_string handler for key '{key}' must be callable")
-
-        # Validate outputs_to_result if provided
-        if self.outputs_to_result is not None:
-            if "source" in self.outputs_to_result and not isinstance(self.outputs_to_result["source"], str):
-                raise ValueError("outputs_to_result source must be a string.")
-            if "handler" in self.outputs_to_result and not callable(self.outputs_to_result["handler"]):
-                raise ValueError("outputs_to_result handler must be callable")
-            for key in self.outputs_to_result:
-                if key not in {"source", "handler"}:
-                    raise ValueError("Invalid outputs_to_result config. Only 'source' and 'handler' keys are allowed.")
 
         # Validate that inputs_from_state parameter names exist as valid tool parameters
         if self.inputs_from_state is not None:
@@ -289,16 +275,8 @@ class Tool:
         if self.outputs_to_state is not None:
             data["outputs_to_state"] = _serialize_outputs_to_state(self.outputs_to_state)
 
-        if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
-            # This is soft-copied as to not modify the attributes in place
-            data["outputs_to_string"] = self.outputs_to_string.copy()
-            data["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
-        else:
-            data["outputs_to_string"] = None
-
-        if self.outputs_to_result is not None and self.outputs_to_result.get("handler") is not None:
-            data["outputs_to_result"] = self.outputs_to_result.copy()
-            data["outputs_to_result"]["handler"] = serialize_callable(self.outputs_to_result["handler"])
+        if self.outputs_to_string is not None:
+            data["outputs_to_string"] = _serialize_outputs_to_string(self.outputs_to_string)
 
         return {"type": generate_qualified_class_name(type(self)), "data": data}
 
@@ -317,21 +295,8 @@ class Tool:
         if "outputs_to_state" in init_parameters and init_parameters["outputs_to_state"]:
             init_parameters["outputs_to_state"] = _deserialize_outputs_to_state(init_parameters["outputs_to_state"])
 
-        if (
-            init_parameters.get("outputs_to_string") is not None
-            and init_parameters["outputs_to_string"].get("handler") is not None
-        ):
-            init_parameters["outputs_to_string"]["handler"] = deserialize_callable(
-                init_parameters["outputs_to_string"]["handler"]
-            )
-
-        if (
-            init_parameters.get("outputs_to_result") is not None
-            and init_parameters["outputs_to_result"].get("handler") is not None
-        ):
-            init_parameters["outputs_to_result"]["handler"] = deserialize_callable(
-                init_parameters["outputs_to_result"]["handler"]
-            )
+        if init_parameters.get("outputs_to_string") is not None:
+            init_parameters["outputs_to_string"] = _deserialize_outputs_to_string(init_parameters["outputs_to_string"])
 
         return cls(**init_parameters)
 
@@ -376,6 +341,54 @@ def _deserialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -
     """
     deserialized_outputs = {}
     for key, config in outputs_to_state.items():
+        deserialized_config = config.copy()
+        if "handler" in config:
+            deserialized_config["handler"] = deserialize_callable(config["handler"])
+        deserialized_outputs[key] = deserialized_config
+    return deserialized_outputs
+
+
+def _serialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[str, Any]:
+    """
+    Serializes the outputs_to_string dictionary, converting any callable handlers to their string representation.
+
+    :param outputs_to_string: The outputs_to_string dictionary to serialize.
+    :returns: The serialized outputs_to_string dictionary.
+    """
+    if "source" in outputs_to_string or "handler" in outputs_to_string or "raw_result" in outputs_to_string:
+        # Single output configuration
+        serialized_outputs = outputs_to_string.copy()
+        if "handler" in outputs_to_string:
+            serialized_outputs["handler"] = serialize_callable(outputs_to_string["handler"])
+        return serialized_outputs
+
+    # Multiple outputs configuration
+    serialized_outputs = {}
+    for key, config in outputs_to_string.items():
+        serialized_config = config.copy()
+        if "handler" in config:
+            serialized_config["handler"] = serialize_callable(config["handler"])
+        serialized_outputs[key] = serialized_config
+    return serialized_outputs
+
+
+def _deserialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[str, Any]:
+    """
+    Deserializes the outputs_to_string dictionary, converting any string handlers back to callables.
+
+    :param outputs_to_string: The outputs_to_string dictionary to deserialize.
+    :returns: The deserialized outputs_to_string dictionary.
+    """
+    if "source" in outputs_to_string or "handler" in outputs_to_string or "raw_result" in outputs_to_string:
+        # Single output configuration
+        deserialized_outputs = outputs_to_string.copy()
+        if "handler" in outputs_to_string:
+            deserialized_outputs["handler"] = deserialize_callable(outputs_to_string["handler"])
+        return deserialized_outputs
+
+    # Multiple outputs configuration
+    deserialized_outputs = {}
+    for key, config in outputs_to_string.items():
         deserialized_config = config.copy()
         if "handler" in config:
             deserialized_config["handler"] = deserialize_callable(config["handler"])

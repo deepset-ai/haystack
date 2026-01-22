@@ -330,7 +330,6 @@ class TestToolInvokerSerde:
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
-                                    "outputs_to_result": None,
                                 },
                             }
                         ],
@@ -860,7 +859,7 @@ class TestToolInvokerErrorHandling:
             description="Provides weather information for a given location.",
             parameters=weather_parameters,
             function=weather_function,
-            outputs_to_result={"handler": handler},
+            outputs_to_string={"handler": handler, "raw_result": True},
         )
         invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=True)
 
@@ -879,7 +878,7 @@ class TestToolInvokerErrorHandling:
             description="Provides weather information for a given location.",
             parameters=weather_parameters,
             function=weather_function,
-            outputs_to_result={"handler": handler},
+            outputs_to_string={"handler": handler, "raw_result": True},
         )
         invoker = ToolInvoker(tools=[weather_tool], raise_on_failure=False)
 
@@ -1079,41 +1078,43 @@ class TestToolInvokerUtilities:
         )
         assert state.data == {"temperature": "14"}
 
-    def test_output_to_result_empty_config(self, base64_image_string):
+    def test_process_output_empty_config(self, invoker, base64_image_string):
         image_content = ImageContent(base64_image=base64_image_string, mime_type="image/png")
 
-        result = ToolInvoker._output_to_result(
-            config={}, result=[image_content], tool_call=ToolCall(tool_name="retrieve_image", arguments={})
+        result = invoker._process_output(
+            config={"raw_result": True},
+            result=[image_content],
+            tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
         )
         assert result == [image_content]
 
-    def test_output_to_result_source_only(self, base64_image_string):
+    def test_process_output_source_only(self, invoker, base64_image_string):
         image_content = ImageContent(base64_image=base64_image_string, mime_type="image/png")
 
-        result = ToolInvoker._output_to_result(
-            config={"source": "images"},
+        result = invoker._process_output(
+            config={"source": "images", "raw_result": True},
             result={"images": [image_content]},
             tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
         )
         assert result == [image_content]
 
-    def test_output_to_result_handler_only(self, base64_image_string):
+    def test_process_output_handler_only(self, invoker, base64_image_string):
         def handler(result: dict) -> list[ImageContent]:
             return [ImageContent(base64_image=result["base64_image_string"], mime_type=result["mime_type"])]
 
-        result = ToolInvoker._output_to_result(
-            config={"handler": handler},
+        result = invoker._process_output(
+            config={"handler": handler, "raw_result": True},
             result={"base64_image_string": base64_image_string, "mime_type": "image/png"},
             tool_call=ToolCall(tool_name="retrieve_image", arguments={}),
         )
         assert result == [ImageContent(base64_image=base64_image_string, mime_type="image/png")]
 
-    def test_output_to_result_source_and_handler(self, base64_image_string):
+    def test_process_output_source_and_handler(self, invoker, base64_image_string):
         def handler(result: dict) -> list[ImageContent]:
             return [ImageContent(base64_image=result["base64_image_string"], mime_type=result["mime_type"])]
 
-        result = ToolInvoker._output_to_result(
-            config={"source": "images", "handler": handler},
+        result = invoker._process_output(
+            config={"source": "images", "handler": handler, "raw_result": True},
             result={
                 "images": {"base64_image_string": base64_image_string, "mime_type": "image/png"},
                 "other_key": "other_value",
@@ -1129,7 +1130,7 @@ class TestToolInvokerUtilities:
                 TextContent(text=f"temperature: {result['temperature']} {result['unit']}"),
             ]
 
-        weather_tool.outputs_to_result = {"handler": handler}
+        weather_tool.outputs_to_string = {"handler": handler, "raw_result": True}
 
         invoker = ToolInvoker(tools=[weather_tool])
 

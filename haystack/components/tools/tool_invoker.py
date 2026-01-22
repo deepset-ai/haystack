@@ -304,48 +304,37 @@ class ToolInvoker:
 
         return str(serializable)
 
-    def _output_to_string(self, config: dict[str, Any], result: Any, tool_call: ToolCall) -> str:
+    def _process_output(self, config: dict[str, Any], result: Any, tool_call: ToolCall) -> Any:
         """
-        Converts a tool result to a string based on the provided configuration.
+        Processes a tool result based on the provided configuration.
 
-        :param config: Configuration dictionary that may contain "source" and "handler" keys.
-        :param result: The tool result to convert to a string.
+        :param config: Configuration dictionary that may contain "source", "handler", and "raw_result" keys.
+        :param result: The tool result to process.
         :param tool_call: The ToolCall object for error reporting.
-        :returns: The converted tool result as a string.
+        :returns: The processed tool result.
         """
         source_key = config.get("source")
         # If a source key is provided, we extract the result from the source key
-        value = result.get(source_key) if source_key is not None else result
-        # If no handler is provided, we use the default handler
-        output_to_string_handler = config.get("handler", self._default_output_to_string_handler)
-
-        try:
-            return output_to_string_handler(value)
-        except Exception as e:
-            raise StringConversionError(tool_call.tool_name, output_to_string_handler.__name__, e)
-
-    @staticmethod
-    def _output_to_result(config: dict[str, Any], result: Any, tool_call: ToolCall):
-        """
-        Converts a tool output to a result based on the provided configuration.
-
-        :param config: Configuration dictionary that may contain "source" and "handler" keys.
-        :param result: The tool result to convert.
-        :param tool_call: The ToolCall object for error reporting.
-        :returns: The converted tool result (usually a list of TextContent/ImageContent).
-        """
-        source_key = config.get("source")
-        # If a source key is provided, extract the result from that key
         value = result.get(source_key) if source_key is not None and isinstance(result, dict) else result
-        handler = config.get("handler")
 
-        if handler is None:
-            return value
+        handler = config.get("handler")
+        raw_result = config.get("raw_result", False)
 
         try:
-            return handler(value)
+            processed_value = handler(value) if handler is not None else value
         except Exception as e:
-            raise ResultConversionError(tool_call.tool_name, handler.__name__, e)
+            if raw_result:
+                raise ResultConversionError(tool_call.tool_name, handler.__name__, e) from e
+            raise StringConversionError(tool_call.tool_name, handler.__name__, e) from e
+
+        if raw_result:
+            return processed_value
+
+        # If no handler is provided and raw_result is False, we use the default handler
+        if handler is None:
+            return self._default_output_to_string_handler(value)
+
+        return processed_value
 
     def _prepare_tool_result_message(self, result: Any, tool_call: ToolCall, tool_to_invoke: Tool) -> ChatMessage:
         """
@@ -364,21 +353,27 @@ class ToolInvoker:
             ResultConversionError: If the conversion to result of the tool output fails and `raise_on_failure` is True.
         """
         try:
-            if tool_to_invoke.outputs_to_result is not None:
-                tool_result = self._output_to_result(tool_to_invoke.outputs_to_result, result, tool_call)
-                return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
-
             outputs_config = tool_to_invoke.outputs_to_string or {}
             # Root level single output configuration
-            if not outputs_config or "source" in outputs_config or "handler" in outputs_config:
-                tool_result_str = self._output_to_string(outputs_config, result, tool_call)
-                return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
+            if (
+                not outputs_config
+                or "source" in outputs_config
+                or "handler" in outputs_config
+                or "raw_result" in outputs_config
+            ):
+                tool_result = self._process_output(outputs_config, result, tool_call)
+                return ChatMessage.from_tool(tool_result=tool_result, origin=tool_call)
 
             # Multiple outputs configuration
             tool_result_dict = {}
             for output_key, config in outputs_config.items():
-                key_result_str = self._output_to_string(config, result, tool_call)
-                tool_result_dict[output_key] = key_result_str
+                # For multiple outputs, we don't support raw_result, so we use _default_output_to_string_handler
+                # if no handler is provided, or just the handler's output.
+                source_key = config.get("source")
+                value = result.get(source_key) if source_key is not None and isinstance(result, dict) else result
+                handler = config.get("handler", self._default_output_to_string_handler)
+                tool_result_dict[output_key] = handler(value)
+
             tool_result_str = self._default_output_to_string_handler(tool_result_dict)
             return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
         except (StringConversionError, ResultConversionError) as e:

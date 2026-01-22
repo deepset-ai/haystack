@@ -201,7 +201,6 @@ class TestHuggingFaceLocalChatGenerator:
                     "description": "useful to determine the weather in a given location",
                     "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
                     "function": "generators.chat.test_hugging_face_local.get_weather",
-                    "outputs_to_result": None,
                 },
             }
         ]
@@ -759,7 +758,6 @@ class TestHuggingFaceLocalChatGeneratorAsync:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
-                            "outputs_to_result": None,
                         },
                     }
                 ]

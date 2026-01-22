@@ -254,7 +254,6 @@ class TestSerDe:
                             "name": "name",
                             "outputs_to_state": None,
                             "outputs_to_string": None,
-                            "outputs_to_result": None,
                             "parameters": {"x": {"type": "string"}},
                         },
                     }
@@ -892,7 +891,7 @@ class TestIntegration:
         image_retriever_tool = create_tool_from_function(
             name="retrieve_image", description="Tool to retrieve an image", function=retrieve_image
         )
-        image_retriever_tool.outputs_to_result = {}
+        image_retriever_tool.outputs_to_string = {"raw_result": True}
 
         agent = Agent(
             chat_generator=OpenAIResponsesChatGenerator(model="gpt-5-nano"),
