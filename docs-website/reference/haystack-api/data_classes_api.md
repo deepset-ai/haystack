@@ -83,6 +83,287 @@ Deserialize the object from a dictionary.
 
 Deserialized object.
 
+<a id="breakpoints"></a>
+
+## Module breakpoints
+
+<a id="breakpoints.Breakpoint"></a>
+
+### Breakpoint
+
+A dataclass to hold a breakpoint for a component.
+
+**Arguments**:
+
+- `component_name`: The name of the component where the breakpoint is set.
+- `visit_count`: The number of times the component must be visited before the breakpoint is triggered.
+- `snapshot_file_path`: Optional path to store a snapshot of the pipeline when the breakpoint is hit.
+This is useful for debugging purposes, allowing you to inspect the state of the pipeline at the time of the
+breakpoint and to resume execution from that point.
+
+<a id="breakpoints.Breakpoint.to_dict"></a>
+
+#### Breakpoint.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Convert the Breakpoint to a dictionary representation.
+
+**Returns**:
+
+A dictionary containing the component name, visit count, and debug path.
+
+<a id="breakpoints.Breakpoint.from_dict"></a>
+
+#### Breakpoint.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict) -> "Breakpoint"
+```
+
+Populate the Breakpoint from a dictionary representation.
+
+**Arguments**:
+
+- `data`: A dictionary containing the component name, visit count, and debug path.
+
+**Returns**:
+
+An instance of Breakpoint.
+
+<a id="breakpoints.ToolBreakpoint"></a>
+
+### ToolBreakpoint
+
+A dataclass representing a breakpoint specific to tools used within an Agent component.
+
+Inherits from Breakpoint and adds the ability to target individual tools. If `tool_name` is None,
+the breakpoint applies to all tools within the Agent component.
+
+**Arguments**:
+
+- `tool_name`: The name of the tool to target within the Agent component. If None, applies to all tools.
+
+<a id="breakpoints.ToolBreakpoint.to_dict"></a>
+
+#### ToolBreakpoint.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Convert the Breakpoint to a dictionary representation.
+
+**Returns**:
+
+A dictionary containing the component name, visit count, and debug path.
+
+<a id="breakpoints.ToolBreakpoint.from_dict"></a>
+
+#### ToolBreakpoint.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict) -> "Breakpoint"
+```
+
+Populate the Breakpoint from a dictionary representation.
+
+**Arguments**:
+
+- `data`: A dictionary containing the component name, visit count, and debug path.
+
+**Returns**:
+
+An instance of Breakpoint.
+
+<a id="breakpoints.AgentBreakpoint"></a>
+
+### AgentBreakpoint
+
+A dataclass representing a breakpoint tied to an Agent’s execution.
+
+This allows for debugging either a specific component (e.g., the chat generator) or a tool used by the agent.
+It enforces constraints on which component names are valid for each breakpoint type.
+
+**Arguments**:
+
+- `agent_name`: The name of the agent component in a pipeline where the breakpoint is set.
+- `break_point`: An instance of Breakpoint or ToolBreakpoint indicating where to break execution.
+
+**Raises**:
+
+- `ValueError`: If the component_name is invalid for the given breakpoint type:
+- Breakpoint must have component_name='chat_generator'.
+- ToolBreakpoint must have component_name='tool_invoker'.
+
+<a id="breakpoints.AgentBreakpoint.to_dict"></a>
+
+#### AgentBreakpoint.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Convert the AgentBreakpoint to a dictionary representation.
+
+**Returns**:
+
+A dictionary containing the agent name and the breakpoint details.
+
+<a id="breakpoints.AgentBreakpoint.from_dict"></a>
+
+#### AgentBreakpoint.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict) -> "AgentBreakpoint"
+```
+
+Populate the AgentBreakpoint from a dictionary representation.
+
+**Arguments**:
+
+- `data`: A dictionary containing the agent name and the breakpoint details.
+
+**Returns**:
+
+An instance of AgentBreakpoint.
+
+<a id="breakpoints.AgentSnapshot"></a>
+
+### AgentSnapshot
+
+<a id="breakpoints.AgentSnapshot.to_dict"></a>
+
+#### AgentSnapshot.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Convert the AgentSnapshot to a dictionary representation.
+
+**Returns**:
+
+A dictionary containing the agent state, timestamp, and breakpoint.
+
+<a id="breakpoints.AgentSnapshot.from_dict"></a>
+
+#### AgentSnapshot.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict) -> "AgentSnapshot"
+```
+
+Populate the AgentSnapshot from a dictionary representation.
+
+**Arguments**:
+
+- `data`: A dictionary containing the agent state, timestamp, and breakpoint.
+
+**Returns**:
+
+An instance of AgentSnapshot.
+
+<a id="breakpoints.PipelineState"></a>
+
+### PipelineState
+
+A dataclass to hold the state of the pipeline at a specific point in time.
+
+**Arguments**:
+
+- `component_visits`: A dictionary mapping component names to their visit counts.
+- `inputs`: The inputs processed by the pipeline at the time of the snapshot.
+- `pipeline_outputs`: Dictionary containing the final outputs of the pipeline up to the breakpoint.
+
+<a id="breakpoints.PipelineState.to_dict"></a>
+
+#### PipelineState.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Convert the PipelineState to a dictionary representation.
+
+**Returns**:
+
+A dictionary containing the inputs, component visits,
+and pipeline outputs.
+
+<a id="breakpoints.PipelineState.from_dict"></a>
+
+#### PipelineState.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict) -> "PipelineState"
+```
+
+Populate the PipelineState from a dictionary representation.
+
+**Arguments**:
+
+- `data`: A dictionary containing the inputs, component visits,
+and pipeline outputs.
+
+**Returns**:
+
+An instance of PipelineState.
+
+<a id="breakpoints.PipelineSnapshot"></a>
+
+### PipelineSnapshot
+
+A dataclass to hold a snapshot of the pipeline at a specific point in time.
+
+**Arguments**:
+
+- `original_input_data`: The original input data provided to the pipeline.
+- `ordered_component_names`: A list of component names in the order they were visited.
+- `pipeline_state`: The state of the pipeline at the time of the snapshot.
+- `break_point`: The breakpoint that triggered the snapshot.
+- `agent_snapshot`: Optional agent snapshot if the breakpoint is an agent breakpoint.
+- `timestamp`: A timestamp indicating when the snapshot was taken.
+- `include_outputs_from`: Set of component names whose outputs should be included in the pipeline results.
+
+<a id="breakpoints.PipelineSnapshot.to_dict"></a>
+
+#### PipelineSnapshot.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Convert the PipelineSnapshot to a dictionary representation.
+
+**Returns**:
+
+A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input data,
+ordered component names, include_outputs_from, and pipeline outputs.
+
+<a id="breakpoints.PipelineSnapshot.from_dict"></a>
+
+#### PipelineSnapshot.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict) -> "PipelineSnapshot"
+```
+
+Populate the PipelineSnapshot from a dictionary representation.
+
+**Arguments**:
+
+- `data`: A dictionary containing the pipeline state, timestamp, breakpoint, agent snapshot, original input
+data, ordered component names, include_outputs_from, and pipeline outputs.
+
 <a id="byte_stream"></a>
 
 ## Module byte\_stream
@@ -267,6 +548,37 @@ def from_str(string: str) -> "ChatRole"
 
 Convert a string to a ChatRole enum.
 
+<a id="chat_message.TextContent"></a>
+
+### TextContent
+
+The textual content of a chat message.
+
+**Arguments**:
+
+- `text`: The text content of the message.
+
+<a id="chat_message.TextContent.to_dict"></a>
+
+#### TextContent.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Convert TextContent into a dictionary.
+
+<a id="chat_message.TextContent.from_dict"></a>
+
+#### TextContent.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "TextContent"
+```
+
+Create a TextContent from a dictionary.
+
 <a id="chat_message.ToolCall"></a>
 
 ### ToolCall
@@ -364,37 +676,6 @@ Creates a ToolCallResult from a dictionary.
 **Returns**:
 
 The created object.
-
-<a id="chat_message.TextContent"></a>
-
-### TextContent
-
-The textual content of a chat message.
-
-**Arguments**:
-
-- `text`: The text content of the message.
-
-<a id="chat_message.TextContent.to_dict"></a>
-
-#### TextContent.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Convert TextContent into a dictionary.
-
-<a id="chat_message.TextContent.from_dict"></a>
-
-#### TextContent.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "TextContent"
-```
-
-Create a TextContent from a dictionary.
 
 <a id="chat_message.ReasoningContent"></a>
 
@@ -720,7 +1001,7 @@ A new ChatMessage instance.
 ```python
 @classmethod
 def from_tool(cls,
-              tool_result: str,
+              tool_result: ToolCallResultContentT,
               origin: ToolCall,
               error: bool = False,
               meta: dict[str, Any] | None = None) -> "ChatMessage"
@@ -781,7 +1062,7 @@ def to_openai_dict_format(
         require_tool_call_ids: bool = True) -> dict[str, Any]
 ```
 
-Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
+Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
 **Arguments**:
 
@@ -795,7 +1076,7 @@ Set to False to allow Tool Calls without `id`, which may be suitable for shallow
 
 **Returns**:
 
-The ChatMessage in the format expected by OpenAI's Chat API.
+The ChatMessage in the format expected by OpenAI's Chat Completions API.
 
 <a id="chat_message.ChatMessage.from_openai_dict_format"></a>
 

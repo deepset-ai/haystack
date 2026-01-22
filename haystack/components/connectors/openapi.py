@@ -6,7 +6,7 @@ from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 
 with LazyImport("Run 'pip install openapi-llm'") as openapi_llm_imports:
     from openapi_llm.client.openapi import OpenAPIClient
@@ -71,10 +71,7 @@ class OpenAPIConnector:
         Serialize this component to a dictionary.
         """
         return default_to_dict(
-            self,
-            openapi_spec=self.openapi_spec,
-            credentials=self.credentials.to_dict() if self.credentials else None,
-            service_kwargs=self.service_kwargs,
+            self, openapi_spec=self.openapi_spec, credentials=self.credentials, service_kwargs=self.service_kwargs
         )
 
     @classmethod
@@ -82,7 +79,6 @@ class OpenAPIConnector:
         """
         Deserialize this component from a dictionary.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["credentials"])
         return default_from_dict(cls, data)
 
     @component.output_types(response=dict[str, Any])

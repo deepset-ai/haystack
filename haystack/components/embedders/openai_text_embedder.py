@@ -9,7 +9,7 @@ from openai import AsyncOpenAI, OpenAI
 from openai.types import CreateEmbeddingResponse
 
 from haystack import component, default_from_dict, default_to_dict
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
 
 
@@ -131,7 +131,7 @@ class OpenAITextEmbedder:
         """
         return default_to_dict(
             self,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             model=self.model,
             dimensions=self.dimensions,
             api_base_url=self.api_base_url,
@@ -153,7 +153,6 @@ class OpenAITextEmbedder:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     def _prepare_input(self, text: str) -> dict[str, Any]:

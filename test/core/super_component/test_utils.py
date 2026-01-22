@@ -242,10 +242,10 @@ def test_mixed_variadic_types():
     # Variadic with Union
     var_union = Variadic[Union[int, str]]
 
-    is_compat, common = _is_compatible(var_union, Union[int, str])
+    is_compat, common = _is_compatible(var_union, Union[int, str])  # type: ignore[arg-type]
     assert is_compat and common == Union[int, str]
 
-    is_compat, common = _is_compatible(Union[int, str], var_union)
+    is_compat, common = _is_compatible(Union[int, str], var_union)  # type: ignore[arg-type]
     assert is_compat and common == Union[int, str]
 
     # GreedyVariadic with Optional

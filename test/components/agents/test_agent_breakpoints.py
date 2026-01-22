@@ -13,7 +13,7 @@ from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.core.errors import BreakpointException
-from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
+from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, load_pipeline_snapshot
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, ToolBreakpoint
 from haystack.tools import Tool, Toolset
@@ -139,12 +139,14 @@ class TestAgentBreakpoints:
                 "serialization_schema": {
                     "type": "object",
                     "properties": {
+                        "enable_streaming_callback_passthrough": {"type": "boolean"},
                         "messages": {"type": "array", "items": {}},
                         "state": {"type": "haystack.components.agents.state.state.State"},
                         "tools": {"type": "array", "items": {"type": "haystack.tools.tool.Tool"}},
                     },
                 },
                 "serialized_data": {
+                    "enable_streaming_callback_passthrough": False,
                     "messages": [],
                     "state": {
                         "schema": {
@@ -271,6 +273,7 @@ class TestAgentBreakpoints:
                 "serialization_schema": {
                     "type": "object",
                     "properties": {
+                        "enable_streaming_callback_passthrough": {"type": "boolean"},
                         "messages": {
                             "type": "array",
                             "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
@@ -280,6 +283,7 @@ class TestAgentBreakpoints:
                     },
                 },
                 "serialized_data": {
+                    "enable_streaming_callback_passthrough": False,
                     "messages": [
                         {
                             "role": "assistant",
@@ -410,7 +414,8 @@ class TestAgentBreakpoints:
             },
         }
 
-    def test_resume_from_chat_generator(self, agent, tmp_path):
+    def test_resume_from_chat_generator(self, agent, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         debug_path = str(tmp_path / "debug_snapshots")
         agent_breakpoint = AgentBreakpoint(
             break_point=Breakpoint(component_name="chat_generator", snapshot_file_path=debug_path),
@@ -436,7 +441,8 @@ class TestAgentBreakpoints:
         # There should be 4 messages: user + assistant + tool call result + final assistant message
         assert len(result["messages"]) == 4
 
-    def test_resume_from_tool_invoker(self, agent, tmp_path):
+    def test_resume_from_tool_invoker(self, agent, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         debug_path = str(tmp_path / "debug_snapshots")
         tool_bp = ToolBreakpoint(component_name="tool_invoker", snapshot_file_path=debug_path)
@@ -460,7 +466,8 @@ class TestAgentBreakpoints:
         assert "last_message" in result
         assert len(result["messages"]) > 0
 
-    def test_resume_from_tool_invoker_and_new_breakpoint(self, weather_tool, tmp_path):
+    def test_resume_from_tool_invoker_and_new_breakpoint(self, weather_tool, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         agent = Agent(
             chat_generator=MockChatGenerator(
                 [
@@ -592,7 +599,8 @@ class TestAgentBreakpoints:
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
-    def test_live_resume_from_tool_invoker(self, tmp_path, weather_tool):
+    def test_live_resume_from_tool_invoker(self, tmp_path, weather_tool, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4o"), tools=[weather_tool])
         debug_path = str(tmp_path / "debug_snapshots")
         agent_breakpoint = AgentBreakpoint(
@@ -648,7 +656,8 @@ class TestAsyncAgentBreakpoints:
         assert "messages" in exc_info.value.inputs["tool_invoker"]["serialized_data"]
 
     @pytest.mark.asyncio
-    async def test_resume_from_chat_generator_async(self, agent, tmp_path):
+    async def test_resume_from_chat_generator_async(self, agent, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         debug_path = str(tmp_path / "debug_snapshots")
         chat_generator_bp = Breakpoint(component_name="chat_generator", snapshot_file_path=debug_path)
         agent_breakpoint = AgentBreakpoint(break_point=chat_generator_bp, agent_name="test_agent")
@@ -674,7 +683,8 @@ class TestAsyncAgentBreakpoints:
         assert len(result["messages"]) == 4
 
     @pytest.mark.asyncio
-    async def test_resume_from_tool_invoker_async(self, agent, tmp_path):
+    async def test_resume_from_tool_invoker_async(self, agent, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         debug_path = str(tmp_path / "debug_snapshots")
         messages = [ChatMessage.from_user("What's the weather in Berlin?")]
         tool_bp = ToolBreakpoint(component_name="tool_invoker", tool_name="weather_tool", snapshot_file_path=debug_path)
@@ -700,7 +710,8 @@ class TestAsyncAgentBreakpoints:
         assert len(result["messages"]) > 0
 
     @pytest.mark.asyncio
-    async def test_resume_from_tool_invoker_and_new_breakpoint_async(self, weather_tool, tmp_path):
+    async def test_resume_from_tool_invoker_and_new_breakpoint_async(self, weather_tool, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         agent = Agent(
             chat_generator=MockChatGenerator(
                 [

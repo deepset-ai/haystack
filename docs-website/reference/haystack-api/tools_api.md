@@ -97,17 +97,24 @@ Create a Tool instance from a Haystack component.
 - `description`: Optional description (defaults to component's docstring).
 - `parameters`: A JSON schema defining the parameters expected by the Tool.
 Will fall back to the parameters defined in the component's run method signature if not provided.
-- `outputs_to_string`: Optional dictionary defining how tool outputs should be converted into string(s).
-Supports two formats:
+- `outputs_to_string`: Optional dictionary defining how tool outputs should be converted into string(s) or results.
+If not provided, the tool result is converted to a string using a default handler.
 
-1. Single output format - use "source" and/or "handler" at the root level:
+`outputs_to_string` supports two formats:
+
+1. Single output format - use "source", "handler", and/or "raw_result" at the root level:
     ```python
     {
-        "source": "docs", "handler": format_documents
+        "source": "docs", "handler": format_documents, "raw_result": False
     }
     ```
-    If the source is provided, only the specified output key is sent to the handler.
-    If the source is omitted, the whole tool result is sent to the handler.
+    - `source`: If provided, only the specified output key is sent to the handler.
+    - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+      final result.
+    - `raw_result`: If `True`, the result is returned raw without string conversion, but applying the
+       `handler` if provided. This is intended for tools that return images. In this mode, the Tool
+       function or the `handler` function must return a list of `TextContent`/`ImageContent` objects to
+       ensure compatibility with Chat Generators.
 
 2. Multiple output format - map keys to individual configurations:
     ```python
@@ -117,6 +124,7 @@ Supports two formats:
     }
     ```
     Each key maps to a dictionary that can contain "source" and/or "handler".
+    Note that `raw_result` is not supported in the multiple output format.
 - `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
 Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
 - `outputs_to_state`: Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
@@ -205,7 +213,8 @@ def create_tool_from_function(
         name: str | None = None,
         description: str | None = None,
         inputs_from_state: dict[str, str] | None = None,
-        outputs_to_state: dict[str, dict[str, Any]] | None = None) -> "Tool"
+        outputs_to_state: dict[str, dict[str, Any]] | None = None,
+        outputs_to_string: dict[str, Any] | None = None) -> "Tool"
 ```
 
 Create a Tool instance from a function.
@@ -256,14 +265,50 @@ If a parameter is annotated using `typing.Annotated`, its metadata will be used 
 To intentionally leave the description empty, pass an empty string.
 - `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
 Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
-- `outputs_to_state`: Optional dictionary defining how tool outputs map to state and message handling.
+- `outputs_to_state`: Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
+If the source is provided only the specified output key is sent to the handler.
 Example:
 ```python
 {
-    "documents": {"source": "docs", "handler": custom_handler},
-    "message": {"source": "summary", "handler": format_summary}
+    "documents": {"source": "docs", "handler": custom_handler}
 }
 ```
+If the source is omitted the whole tool result is sent to the handler.
+Example:
+```python
+{
+    "documents": {"handler": custom_handler}
+}
+```
+- `outputs_to_string`: Optional dictionary defining how tool outputs should be converted into string(s) or results.
+If not provided, the tool result is converted to a string using a default handler.
+
+`outputs_to_string` supports two formats:
+
+1. Single output format - use "source", "handler", and/or "raw_result" at the root level:
+   ```python
+   {
+       "source": "docs", "handler": format_documents, "raw_result": False
+   }
+   ```
+   - `source`: If provided, only the specified output key is sent to the handler. If not provided, the whole
+      tool result is sent to the handler.
+   - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+     final result.
+   - `raw_result`: If `True`, the result is returned raw without string conversion, but applying the `handler`
+     if provided. This is intended for tools that return images. In this mode, the Tool function or the
+     `handler` must return a list of `TextContent`/`ImageContent` objects to ensure compatibility with Chat
+     Generators.
+
+2. Multiple output format - map keys to individual configurations:
+   ```python
+   {
+       "formatted_docs": {"source": "docs", "handler": format_documents},
+       "summary": {"source": "summary_text", "handler": str.upper}
+   }
+   ```
+   Each key maps to a dictionary that can contain "source" and/or "handler".
+   Note that `raw_result` is not supported in the multiple output format.
 
 **Raises**:
 
@@ -285,7 +330,8 @@ def tool(
     name: str | None = None,
     description: str | None = None,
     inputs_from_state: dict[str, str] | None = None,
-    outputs_to_state: dict[str, dict[str, Any]] | None = None
+    outputs_to_state: dict[str, dict[str, Any]] | None = None,
+    outputs_to_string: dict[str, Any] | None = None
 ) -> Tool | Callable[[Callable], Tool]
 ```
 
@@ -332,12 +378,301 @@ print(get_weather)
 - `function`: The function to decorate (when used without parameters)
 - `name`: Optional custom name for the tool
 - `description`: Optional custom description
-- `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names
-- `outputs_to_state`: Optional dictionary defining how tool outputs map to state and message handling
+- `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
+Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
+- `outputs_to_state`: Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
+If the source is provided only the specified output key is sent to the handler.
+Example:
+```python
+{
+    "documents": {"source": "docs", "handler": custom_handler}
+}
+```
+If the source is omitted the whole tool result is sent to the handler.
+Example:
+```python
+{
+    "documents": {"handler": custom_handler}
+}
+```
+- `outputs_to_string`: Optional dictionary defining how tool outputs should be converted into string(s) or results.
+If not provided, the tool result is converted to a string using a default handler.
+
+`outputs_to_string` supports two formats:
+
+1. Single output format - use "source", "handler", and/or "raw_result" at the root level:
+   ```python
+   {
+       "source": "docs", "handler": format_documents, "raw_result": False
+   }
+   ```
+   - `source`: If provided, only the specified output key is sent to the handler. If not provided, the whole
+      tool result is sent to the handler.
+   - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+     final result.
+   - `raw_result`: If `True`, the result is returned raw without string conversion, but applying the `handler`
+     if provided. This is intended for tools that return images. In this mode, the Tool function or the
+     `handler` must return a list of `TextContent`/`ImageContent` objects to ensure compatibility with Chat
+     Generators.
+
+2. Multiple output format - map keys to individual configurations:
+   ```python
+   {
+       "formatted_docs": {"source": "docs", "handler": format_documents},
+       "summary": {"source": "summary_text", "handler": str.upper}
+   }
+   ```
+   Each key maps to a dictionary that can contain "source" and/or "handler".
+   Note that `raw_result` is not supported in the multiple output format.
 
 **Returns**:
 
 Either a Tool instance or a decorator function that will create one
+
+<a id="pipeline_tool"></a>
+
+## Module pipeline\_tool
+
+<a id="pipeline_tool.PipelineTool"></a>
+
+### PipelineTool
+
+A Tool that wraps Haystack Pipelines, allowing them to be used as tools by LLMs.
+
+PipelineTool automatically generates LLM-compatible tool schemas from pipeline input sockets,
+which are derived from the underlying components in the pipeline.
+
+Key features:
+- Automatic LLM tool calling schema generation from pipeline inputs
+- Description extraction of pipeline inputs based on the underlying component docstrings
+
+To use PipelineTool, you first need a Haystack pipeline.
+Below is an example of creating a PipelineTool
+
+## Usage Example:
+
+```python
+from haystack import Document, Pipeline
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
+from haystack.components.embedders.sentence_transformers_document_embedder import (
+    SentenceTransformersDocumentEmbedder
+)
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.retrievers import InMemoryEmbeddingRetriever
+from haystack.components.agents import Agent
+from haystack.tools import PipelineTool
+
+# Initialize a document store and add some documents
+document_store = InMemoryDocumentStore()
+document_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+documents = [
+    Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
+    Document(
+        content="He is best known for his contributions to the design of the modern alternating current (AC) "
+                "electricity supply system."
+    ),
+]
+document_embedder.warm_up()
+docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
+document_store.write_documents(docs_with_embeddings)
+
+# Build a simple retrieval pipeline
+retrieval_pipeline = Pipeline()
+retrieval_pipeline.add_component(
+    "embedder", SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+)
+retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+
+retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
+
+# Wrap the pipeline as a tool
+retriever_tool = PipelineTool(
+    pipeline=retrieval_pipeline,
+    input_mapping={"query": ["embedder.text"]},
+    output_mapping={"retriever.documents": "documents"},
+    name="document_retriever",
+    description="For any questions about Nikola Tesla, always use this tool",
+)
+
+# Create an Agent with the tool
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+    tools=[retriever_tool]
+)
+
+# Let the Agent handle a query
+result = agent.run([ChatMessage.from_user("Who was Nikola Tesla?")])
+
+# Print result of the tool call
+print("Tool Call Result:")
+print(result["messages"][2].tool_call_result.result)
+print("")
+
+# Print answer
+print("Answer:")
+print(result["messages"][-1].text)
+```
+
+<a id="pipeline_tool.PipelineTool.__init__"></a>
+
+#### PipelineTool.\_\_init\_\_
+
+```python
+def __init__(
+    pipeline: Pipeline | AsyncPipeline,
+    *,
+    name: str,
+    description: str,
+    input_mapping: dict[str, list[str]] | None = None,
+    output_mapping: dict[str, str] | None = None,
+    parameters: dict[str, Any] | None = None,
+    outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
+    inputs_from_state: dict[str, str] | None = None,
+    outputs_to_state: dict[str, dict[str, str | Callable]] | None = None
+) -> None
+```
+
+Create a Tool instance from a Haystack pipeline.
+
+**Arguments**:
+
+- `pipeline`: The Haystack pipeline to wrap as a tool.
+- `name`: Name of the tool.
+- `description`: Description of the tool.
+- `input_mapping`: A dictionary mapping component input names to pipeline input socket paths.
+If not provided, a default input mapping will be created based on all pipeline inputs.
+Example:
+```python
+input_mapping={
+    "query": ["retriever.query", "prompt_builder.query"],
+}
+```
+- `output_mapping`: A dictionary mapping pipeline output socket paths to component output names.
+If not provided, a default output mapping will be created based on all pipeline outputs.
+Example:
+```python
+output_mapping={
+    "retriever.documents": "documents",
+    "generator.replies": "replies",
+}
+```
+- `parameters`: A JSON schema defining the parameters expected by the Tool.
+Will fall back to the parameters defined in the component's run method signature if not provided.
+- `outputs_to_string`: Optional dictionary defining how tool outputs should be converted into string(s) or results.
+If not provided, the tool result is converted to a string using a default handler.
+
+`outputs_to_string` supports two formats:
+
+1. Single output format - use "source", "handler", and/or "raw_result" at the root level:
+    ```python
+    {
+        "source": "docs", "handler": format_documents, "raw_result": False
+    }
+    ```
+    - `source`: If provided, only the specified output key is sent to the handler.
+    - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+      final result.
+    - `raw_result`: If `True`, the result is returned raw without string conversion, but applying the
+       `handler` if provided. This is intended for tools that return images. In this mode, the Tool
+       function or the `handler` function must return a list of `TextContent`/`ImageContent` objects to
+       ensure compatibility with Chat Generators.
+
+2. Multiple output format - map keys to individual configurations:
+    ```python
+    {
+        "formatted_docs": {"source": "docs", "handler": format_documents},
+        "summary": {"source": "summary_text", "handler": str.upper}
+    }
+    ```
+    Each key maps to a dictionary that can contain "source" and/or "handler".
+    Note that `raw_result` is not supported in the multiple output format.
+- `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
+Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
+- `outputs_to_state`: Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
+If the source is provided only the specified output key is sent to the handler.
+Example:
+```python
+{
+    "documents": {"source": "docs", "handler": custom_handler}
+}
+```
+If the source is omitted the whole tool result is sent to the handler.
+Example:
+```python
+{
+    "documents": {"handler": custom_handler}
+}
+```
+
+**Raises**:
+
+- `ValueError`: If the provided pipeline is not a valid Haystack Pipeline instance.
+
+<a id="pipeline_tool.PipelineTool.to_dict"></a>
+
+#### PipelineTool.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Serializes the PipelineTool to a dictionary.
+
+**Returns**:
+
+The serialized dictionary representation of PipelineTool.
+
+<a id="pipeline_tool.PipelineTool.from_dict"></a>
+
+#### PipelineTool.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "PipelineTool"
+```
+
+Deserializes the PipelineTool from a dictionary.
+
+**Arguments**:
+
+- `data`: The dictionary representation of PipelineTool.
+
+**Returns**:
+
+The deserialized PipelineTool instance.
+
+<a id="pipeline_tool.PipelineTool.warm_up"></a>
+
+#### PipelineTool.warm\_up
+
+```python
+def warm_up()
+```
+
+Prepare the ComponentTool for use.
+
+<a id="pipeline_tool.PipelineTool.tool_spec"></a>
+
+#### PipelineTool.tool\_spec
+
+```python
+@property
+def tool_spec() -> dict[str, Any]
+```
+
+Return the Tool specification to be used by the Language Model.
+
+<a id="pipeline_tool.PipelineTool.invoke"></a>
+
+#### PipelineTool.invoke
+
+```python
+def invoke(**kwargs: Any) -> Any
+```
+
+Invoke the Tool with the provided keyword arguments.
 
 <a id="tool"></a>
 
@@ -364,17 +699,25 @@ pipeline/agent setup.
 - `parameters`: A JSON schema defining the parameters expected by the Tool.
 - `function`: The function that will be invoked when the Tool is called.
 Must be a synchronous function; async functions are not supported.
-- `outputs_to_string`: Optional dictionary defining how tool outputs should be converted into string(s).
-Supports two formats:
+- `outputs_to_string`: Optional dictionary defining how tool outputs should be converted into string(s) or results.
+If not provided, the tool result is converted to a string using a default handler.
 
-1. Single output format - use "source" and/or "handler" at the root level:
+`outputs_to_string` supports two formats:
+
+1. Single output format - use "source", "handler", and/or "raw_result" at the root level:
    ```python
    {
-       "source": "docs", "handler": format_documents
+       "source": "docs", "handler": format_documents, "raw_result": False
    }
    ```
-   If the source is provided, only the specified output key is sent to the handler.
-   If the source is omitted, the whole tool result is sent to the handler.
+   - `source`: If provided, only the specified output key is sent to the handler. If not provided, the whole
+      tool result is sent to the handler.
+   - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+     final result.
+   - `raw_result`: If `True`, the result is returned raw without string conversion, but applying the `handler`
+     if provided. This is intended for tools that return images. In this mode, the Tool function or the
+     `handler` must return a list of `TextContent`/`ImageContent` objects to ensure compatibility with Chat
+     Generators.
 
 2. Multiple output format - map keys to individual configurations:
    ```python
@@ -384,6 +727,7 @@ Supports two formats:
    }
    ```
    Each key maps to a dictionary that can contain "source" and/or "handler".
+   Note that `raw_result` is not supported in the multiple output format.
 - `inputs_from_state`: Optional dictionary mapping state keys to tool parameter names.
 Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
 - `outputs_to_state`: Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.

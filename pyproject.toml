@@ -119,6 +119,9 @@ dependencies = [
   "nltk>=3.9.1", # NLTKDocumentSplitter, RecursiveDocumentSplitter
   "tiktoken", # RecursiveDocumentSplitter
 
+  # Human in the Loop
+  "rich",                 # Console rendering for HITL
+
   # OpenAPI
   "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
   "openapi3",
@@ -159,7 +162,7 @@ integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test
 all = 'pytest {args:test}'
 
 # TODO We want to eventually type the whole test folder
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/pipeline/features/test_run.py}"
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/}"
 lint = "pylint -ry -j 0 {args:haystack}"
 
 [tool.hatch.envs.e2e]

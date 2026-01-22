@@ -10,7 +10,7 @@ from openai import OpenAI
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ByteStream
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -114,7 +114,7 @@ class RemoteWhisperTranscriber:
         """
         return default_to_dict(
             self,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
             model=self.model,
             organization=self.organization,
             api_base_url=self.api_base_url,
@@ -132,7 +132,6 @@ class RemoteWhisperTranscriber:
         :returns:
             The deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])

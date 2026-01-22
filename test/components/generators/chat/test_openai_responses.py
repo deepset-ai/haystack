@@ -15,8 +15,8 @@ from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, ToolCall
-from haystack.tools import ComponentTool, Tool, Toolset
+from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, StreamingChunk, TextContent, ToolCall
+from haystack.tools import ComponentTool, Tool, Toolset, create_tool_from_function
 from haystack.utils import Secret
 
 
@@ -880,6 +880,31 @@ class TestIntegration:
         # Verify state was updated
         assert "calc_result" in response
         assert response["messages"][-1].text is not None
+
+    def test_live_run_agent_with_images_in_tool_result(self, test_files_path):
+        def retrieve_image():
+            return [
+                TextContent("Here is the retrieved image."),
+                ImageContent.from_file_path(test_files_path / "images" / "apple.jpg", size=(100, 100), detail="low"),
+            ]
+
+        image_retriever_tool = create_tool_from_function(
+            name="retrieve_image",
+            description="Tool to retrieve an image",
+            function=retrieve_image,
+            outputs_to_string={"raw_result": True},
+        )
+
+        agent = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(model="gpt-5-nano"),
+            system_prompt="You are an Agent that can retrieve images and describe them.",
+            tools=[image_retriever_tool],
+        )
+
+        user_message = ChatMessage.from_user("Retrieve the image and describe it in max 5 words.")
+        result = agent.run(messages=[user_message])
+
+        assert "apple" in result["last_message"].text.lower()
 
 
 class TestOpenAIResponsesChatGeneratorAsync:

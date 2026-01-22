@@ -20,7 +20,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
     warm_up_tools,
 )
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
 
 
@@ -250,8 +250,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             generation_kwargs=generation_kwargs,
             timeout=self.timeout,
             max_retries=self.max_retries,
-            api_key=self.api_key.to_dict() if self.api_key is not None else None,
-            azure_ad_token=self.azure_ad_token.to_dict() if self.azure_ad_token is not None else None,
+            api_key=self.api_key,
+            azure_ad_token=self.azure_ad_token,
             default_headers=self.default_headers,
             tools=serialize_tools_or_toolset(self.tools),
             tools_strict=self.tools_strict,
@@ -268,7 +268,6 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key", "azure_ad_token"])
         deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")

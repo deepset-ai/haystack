@@ -770,3 +770,268 @@ completes. If False, no refresh is performed. For more details, see the
 
 The number of documents updated.
 
+<a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.count_documents_by_filter"></a>
+
+#### ElasticsearchDocumentStore.count\_documents\_by\_filter
+
+```python
+def count_documents_by_filter(filters: dict[str, Any]) -> int
+```
+
+Returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.count_documents_by_filter_async"></a>
+
+#### ElasticsearchDocumentStore.count\_documents\_by\_filter\_async
+
+```python
+async def count_documents_by_filter_async(filters: dict[str, Any]) -> int
+```
+
+Asynchronously returns the number of documents that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+
+**Returns**:
+
+The number of documents that match the filters.
+
+<a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.count_unique_metadata_by_filter"></a>
+
+#### ElasticsearchDocumentStore.count\_unique\_metadata\_by\_filter
+
+```python
+def count_unique_metadata_by_filter(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Returns the number of unique values for each specified metadata field of the documents
+
+that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `metadata_fields`: List of field names to calculate unique values for.
+Field names can include or omit the "meta." prefix.
+
+**Raises**:
+
+- `ValueError`: If any of the requested fields don't exist in the index mapping.
+
+**Returns**:
+
+A dictionary mapping each metadata field name to the count of its unique values among the filtered
+documents.
+
+<a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.count_unique_metadata_by_filter_async"></a>
+
+#### ElasticsearchDocumentStore.count\_unique\_metadata\_by\_filter\_async
+
+```python
+async def count_unique_metadata_by_filter_async(
+        filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]
+```
+
+Asynchronously returns the number of unique values for each specified metadata field of the documents
+
+that match the provided filters.
+
+**Arguments**:
+
+- `filters`: The filters to apply to count documents.
+For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
+- `metadata_fields`: List of field names to calculate unique values for.
+Field names can include or omit the "meta." prefix.
+
+**Raises**:
+
+- `ValueError`: If any of the requested fields don't exist in the index mapping.
+
+**Returns**:
+
+A dictionary mapping each metadata field name to the count of its unique values among the filtered
+documents.
+
+<a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.get_metadata_fields_info"></a>
+
+#### ElasticsearchDocumentStore.get\_metadata\_fields\_info
+
+```python
+def get_metadata_fields_info() -> dict[str, dict[str, str]]
+```
+
+Returns the information about the fields in the index.
+
+If we populated the index with documents like:
+
+```python
+    Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1})
+    Document(content="Doc 2", meta={"category": "B", "status": "inactive"})
+```
+
+This method would return:
+
+```python
+    {
+        'content': {'type': 'text'},
+        'category': {'type': 'keyword'},
+        'status': {'type': 'keyword'},
+        'priority': {'type': 'long'},
+    }
+```
+
+**Returns**:
+
+The information about the fields in the index.
+
+<a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.get_metadata_fields_info_async"></a>
+
+#### ElasticsearchDocumentStore.get\_metadata\_fields\_info\_async
+
+```python
+async def get_metadata_fields_info_async() -> dict[str, dict[str, str]]
+```
+
+Asynchronously returns the information about the fields in the index.
+
+If we populated the index with documents like:
+
+```python
+    Document(content="Doc 1", meta={"category": "A", "status": "active", "priority": 1})
+    Document(content="Doc 2", meta={"category": "B", "status": "inactive"})
+```
+
+This method would return:
+
+```python
+    {
+        'content': {'type': 'text'},
+        'category': {'type': 'keyword'},
+        'status': {'type': 'keyword'},
+        'priority': {'type': 'long'},
+    }
+```
+
+**Returns**:
+
+The information about the fields in the index.
+
+<a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.get_metadata_field_min_max"></a>
+
+#### ElasticsearchDocumentStore.get\_metadata\_field\_min\_max
+
+```python
+def get_metadata_field_min_max(metadata_field: str) -> dict[str, int | None]
+```
+
+Returns the minimum and maximum values for the given metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get the minimum and maximum values for.
+
+**Returns**:
+
+A dictionary with the keys "min" and "max", where each value is the minimum or maximum value of the
+metadata field across all documents.
+
+<a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.get_metadata_field_min_max_async"></a>
+
+#### ElasticsearchDocumentStore.get\_metadata\_field\_min\_max\_async
+
+```python
+async def get_metadata_field_min_max_async(
+        metadata_field: str) -> dict[str, int | None]
+```
+
+Asynchronously returns the minimum and maximum values for the given metadata field.
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get the minimum and maximum values for.
+
+**Returns**:
+
+A dictionary with the keys "min" and "max", where each value is the minimum or maximum value of the
+metadata field across all documents.
+
+<a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.get_metadata_field_unique_values"></a>
+
+#### ElasticsearchDocumentStore.get\_metadata\_field\_unique\_values
+
+```python
+def get_metadata_field_unique_values(
+    metadata_field: str,
+    search_term: str | None = None,
+    size: int | None = 10000,
+    after: dict[str, Any] | None = None
+) -> tuple[list[str], dict[str, Any] | None]
+```
+
+Returns unique values for a metadata field, optionally filtered by a search term in the content.
+
+Uses composite aggregations for proper pagination beyond 10k results.
+
+See: https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-composite-aggregation
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get unique values for.
+- `search_term`: Optional search term to filter documents by matching in the content field.
+- `size`: The number of unique values to return per page. Defaults to 10000.
+- `after`: Optional pagination key from the previous response. Use None for the first page.
+For subsequent pages, pass the `after_key` from the previous response.
+
+**Returns**:
+
+A tuple containing (list of unique values, after_key for pagination).
+The after_key is None when there are no more results. Use it in the `after` parameter
+for the next page.
+
+<a id="haystack_integrations.document_stores.elasticsearch.document_store.ElasticsearchDocumentStore.get_metadata_field_unique_values_async"></a>
+
+#### ElasticsearchDocumentStore.get\_metadata\_field\_unique\_values\_async
+
+```python
+async def get_metadata_field_unique_values_async(
+    metadata_field: str,
+    search_term: str | None = None,
+    size: int | None = 10000,
+    after: dict[str, Any] | None = None
+) -> tuple[list[str], dict[str, Any] | None]
+```
+
+Asynchronously returns unique values for a metadata field, optionally filtered by a search term in the content.
+
+Uses composite aggregations for proper pagination beyond 10k results.
+
+See: https://www.elastic.co/docs/reference/aggregations/search-aggregations-bucket-composite-aggregation
+
+**Arguments**:
+
+- `metadata_field`: The metadata field to get unique values for.
+- `search_term`: Optional search term to filter documents by matching in the content field.
+- `size`: The number of unique values to return per page. Defaults to 10000.
+- `after`: Optional pagination key from the previous response. Use None for the first page.
+For subsequent pages, pass the `after_key` from the previous response.
+
+**Returns**:
+
+A tuple containing (list of unique values, after_key for pagination).
+The after_key is None when there are no more results. Use it in the `after` parameter
+for the next page.
+
