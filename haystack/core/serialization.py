@@ -354,7 +354,7 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
             # Lazy import to avoid circular dependency
             from haystack.utils.deserialization import deserialize_document_store_in_init_params_inplace
 
-            deserialize_document_store_in_init_params_inplace(init_params, key)
+            deserialize_document_store_in_init_params_inplace(data, key)
 
     if secret_keys:
         deserialize_secrets_inplace(init_params, keys=secret_keys)
