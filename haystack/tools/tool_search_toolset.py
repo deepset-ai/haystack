@@ -235,6 +235,7 @@ class ToolSearchToolset(Toolset):
             # by not returning the full tool definitions.
             tool_names = []
             for tool, _score in results:
+                tool.warm_up()
                 self._discovered_tools[tool.name] = tool
                 tool_names.append(tool.name)
 
