@@ -319,6 +319,16 @@ class ToolSearchToolset(Toolset):
             return is_bootstrap or item in self._discovered_tools.values()
         return False
 
+    def __getitem__(self, index: int) -> Tool:
+        """
+        Get a tool by index.
+
+        :param index: Index of the tool to retrieve.
+        :returns: The tool at the given index.
+        :raises IndexError: If the index is out of range.
+        """
+        return list(self)[index]
+
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize the toolset to a dictionary.
