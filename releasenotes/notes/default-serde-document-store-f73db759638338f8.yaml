@@ -1,6 +1,7 @@
 ---
 features:
   - |
-    component_from_dict() and component_to_dict() now work with custom components out of the box also if the component has a DocumentStore as an attribute.
-    Users no longer need to explicitly define to_dict() and from_dict() methods in their custom components to call deserialize_document_store_in_init_params_inplace or document_store.to_dict().
-    component_from_dict() and component_to_dict() now handle this automatically.
+    component_from_dict() and component_to_dict() now work out of the box with custom components that have an object as init parameter as long as it defines to_dict and from_dict methods.
+    Users no longer need to explicitly define to_dict and from_dict methods in their custom components in such cases.
+    For example, a custom retriever, which has a DocumentStore as an init parameter, does not need explicitly defined to_dict/from_dict methods.
+    component_from_dict() and component_to_dict() now handle such cases automatically.
