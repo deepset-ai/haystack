@@ -27,6 +27,12 @@ Exception raised when a tool is not found in the list of available tools.
 
 Exception raised when the conversion of a tool result to a string fails.
 
+<a id="tool_invoker.ResultConversionError"></a>
+
+### ResultConversionError
+
+Exception raised when the conversion of a tool output to a result fails.
+
 <a id="tool_invoker.ToolOutputMergeError"></a>
 
 ### ToolOutputMergeError
