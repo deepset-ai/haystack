@@ -18,7 +18,6 @@ loaders:
         "pypdf",
         "tika",
         "txt",
-        "utils",
         "xlsx",
       ]
     ignore_when_discovered: ["__init__"]
