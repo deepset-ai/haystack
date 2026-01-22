@@ -349,8 +349,8 @@ def test_output_types_decorator_mismatch_run_async_run():
     @component
     class MockComponent:
         @component.output_types(value=int)
-        def run(self, value: int) -> dict[str, int]:
-            return {"value": 1}
+        def run(self, value: int) -> dict[str, str]:
+            return {"value": "1"}
 
         @component.output_types(value=str)
         async def run_async(self, value: int) -> dict[str, str]:
