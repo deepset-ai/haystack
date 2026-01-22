@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
-from typing import Annotated
+from typing import Annotated, Any
 
 import pytest
 
@@ -39,12 +39,14 @@ def factorial(n: Annotated[int, "Number to calculate the factorial of"]) -> dict
 
 @component
 class FakeChatGenerator:
-    def __init__(self, responses: list[dict]):
+    def __init__(self, responses: list[dict]) -> None:
         self.responses = responses
         self.count = 0
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: list[Tool] = None, **kwargs):
+    def run(
+        self, messages: list[ChatMessage], tools: list[Tool] | None = None, **kwargs: Any
+    ) -> dict[str, list[ChatMessage]]:
         if self.count >= len(self.responses):
             return {"replies": [ChatMessage.from_assistant("Final answer")]}
         res = self.responses[self.count]
@@ -84,9 +86,17 @@ class ExtractResults:
             if msg.text:
                 results.append(Document(content=msg.text))
             elif isinstance(msg._content[0], ToolCall):
-                results.extend(Document(content=f"{tc.tool_name} - Arguments: {tc.arguments}") for tc in msg._content)
+                results.extend(
+                    Document(content=f"{tc.tool_name} - Arguments: {tc.arguments}")
+                    for tc in msg._content
+                    if isinstance(tc, ToolCall)
+                )
             elif isinstance(msg._content[0], ToolCallResult):
-                results.extend(Document(content=f"{tr.origin.tool_name} - Result: {tr.result}") for tr in msg._content)
+                results.extend(
+                    Document(content=f"{tr.origin.tool_name} - Result: {tr.result}")
+                    for tr in msg._content
+                    if isinstance(tr, ToolCallResult)
+                )
         return {"documents": results}
 
 
@@ -159,16 +169,30 @@ class TestPipelineBreakpoints:
 
     @pytest.fixture
     def agent_breakpoints(self, output_directory):
-        common = {"visit_count": 0, "snapshot_file_path": str(output_directory)}
         return [
-            AgentBreakpoint(agent_name="math_agent", break_point=Breakpoint(component_name="chat_generator", **common)),
             AgentBreakpoint(
                 agent_name="math_agent",
-                break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="calculator", **common),
+                break_point=Breakpoint(
+                    component_name="chat_generator", visit_count=0, snapshot_file_path=str(output_directory)
+                ),
             ),
             AgentBreakpoint(
                 agent_name="math_agent",
-                break_point=ToolBreakpoint(component_name="tool_invoker", tool_name="factorial", **common),
+                break_point=ToolBreakpoint(
+                    component_name="tool_invoker",
+                    tool_name="calculator",
+                    visit_count=0,
+                    snapshot_file_path=str(output_directory),
+                ),
+            ),
+            AgentBreakpoint(
+                agent_name="math_agent",
+                break_point=ToolBreakpoint(
+                    component_name="tool_invoker",
+                    tool_name="factorial",
+                    visit_count=0,
+                    snapshot_file_path=str(output_directory),
+                ),
             ),
         ]
 
