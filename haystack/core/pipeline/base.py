@@ -580,6 +580,9 @@ class PipelineBase:  # noqa: PLW1641
             # This is already connected, nothing to do
             return self
 
+        # TODO Here we could introduce the auto-variadic behavior
+        #      We do something slightly odd with variadic types they basically become iterables --> need to investigate
+        #      why.
         if receiver_socket.senders and not receiver_socket.is_variadic:
             # Only variadic input sockets can receive from multiple senders
             msg = (
@@ -900,6 +903,7 @@ class PipelineBase:  # noqa: PLW1641
                 component_inputs = data.get(component_name, {})
                 if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
                     raise ValueError(f"Missing input for component {component_name}: {socket_name}")
+                # TODO Another place that would need socket.is_variadic to be updated to True for auto-variadic inputs
                 if socket.senders and socket_name in component_inputs and not socket.is_variadic:
                     raise ValueError(
                         f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
@@ -1065,6 +1069,9 @@ class PipelineBase:  # noqa: PLW1641
                     greedy_inputs_to_remove.add(socket_name)
                     consumed_inputs[socket_name] = [socket_inputs[0]]
                 elif is_socket_lazy_variadic(socket):
+                    # TODO This seems to be a core issue here? Since at this stage it seems like we are passing
+                    #      a list of input_type when the component expects the raw input_type?
+                    #      E.g. list[list[Document]] when the component expects list[Document]
                     # We use all inputs provided to the socket on a lazy variadic socket.
                     consumed_inputs[socket_name] = socket_inputs
 
@@ -1094,30 +1101,43 @@ class PipelineBase:  # noqa: PLW1641
         """
         priority_queue = FIFOPriorityQueue()
         for component_name in component_names:
-            component = self._get_component_with_graph_metadata_and_visits(
-                component_name, component_visits[component_name]
-            )
-            priority = self._calculate_priority(component, inputs.get(component_name, {}))
+            comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
+            priority = self._calculate_priority(comp, inputs.get(component_name, {}))
             priority_queue.push(component_name, priority)
 
         return priority_queue
 
     @staticmethod
-    def _calculate_priority(component: dict, inputs: dict) -> ComponentPriority:
+    def _calculate_priority(comp: dict, inputs: dict) -> ComponentPriority:
         """
         Calculates the execution priority for a component depending on the component's inputs.
 
-        :param component: Component metadata and component instance.
+        :param comp: Component metadata and component instance.
         :param inputs: Inputs to the component.
         :returns: Priority value for the component.
         """
-        if not can_component_run(component, inputs):
+        # TODO I think I see a hole in logic here:
+        #      If a Joiner receives input from user data + some earlier component in the pipeline it will execute.
+        #      This is b/c can_component_run will return True since the two gates pass:
+        #      - received_trigger is True since user data is present
+        #      - are_all_sockets_ready will return True since for Variadic sockets we only consider if there's at least
+        #        one input
+        #      So why isn't this a problem when a Joiner connects two streams within the pipeline?
+        #      Huh so can_component_run is only used in determining priority here. So even though the above scenario
+        #      fails the first if-check it isn't automatically marked as READY or HIGHEST. Instead it falls through to
+        #      the all_predecessors_executed check which will return False since not all predecessors have executed.
+        #      Side note _calculate_priority is used multiple times since _fill_queue is called after each component
+        #      execution
+        if not can_component_run(comp, inputs):
             return ComponentPriority.BLOCKED
-        elif is_any_greedy_socket_ready(component, inputs) and are_all_sockets_ready(component, inputs):
+        elif is_any_greedy_socket_ready(comp, inputs) and are_all_sockets_ready(comp, inputs):
+            # This priority is explicitly used in AsyncPipeline + implicitly in _is_queue_stale
+            # Implicit b/c it checks via ">" operator if there is a component with HIGHEST priority
             return ComponentPriority.HIGHEST
-        elif all_predecessors_executed(component, inputs):
+        elif all_predecessors_executed(comp, inputs):
+            # This priority is explicitly used in AsyncPipeline + in _is_queue_stale
             return ComponentPriority.READY
-        elif are_all_lazy_variadic_sockets_resolved(component, inputs):
+        elif are_all_lazy_variadic_sockets_resolved(comp, inputs):
             return ComponentPriority.DEFER
         else:
             return ComponentPriority.DEFER_LAST
@@ -1148,19 +1168,18 @@ class PipelineBase:  # noqa: PLW1641
             or None if no component in the queue can run.
         :raises: PipelineMaxComponentRuns if the next runnable component has exceeded the maximum number of runs.
         """
-        priority_and_component_name: tuple[ComponentPriority, str] | None = (
-            None if (item := priority_queue.get()) is None else (ComponentPriority(item[0]), str(item[1]))
-        )
+        item = priority_queue.get()
 
-        if priority_and_component_name is None:
+        # If no component is runnable, return None
+        if item is None:
             return None
 
-        priority, component_name = priority_and_component_name
+        component_name = item[1]
         comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
         if comp["visits"] > self._max_runs_per_component:
             msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
             raise PipelineMaxComponentRuns(msg)
-        return priority, component_name, comp
+        return ComponentPriority(item[0]), component_name, comp
 
     @staticmethod
     def _add_missing_input_defaults(
@@ -1174,6 +1193,9 @@ class PipelineBase:  # noqa: PLW1641
         """
         for name, socket in component_input_sockets.items():
             if not socket.is_mandatory and name not in component_inputs:
+                # TODO Again feels weird we have to re-wrap the default value for variadic sockets
+                #      Especially since we don't have any components that have a variadic socket with a default value
+                #      --> check tests
                 if socket.is_variadic:
                     component_inputs[name] = [socket.default_value]
                 else:

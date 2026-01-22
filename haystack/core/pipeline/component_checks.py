@@ -37,7 +37,7 @@ def has_any_trigger(component: dict, inputs: dict) -> bool:
     A trigger can only cause a component to execute ONCE because:
     1. Components consume inputs from predecessors before execution (they are deleted).
     2. Inputs from outside the pipeline can only trigger a component when it is executed for the first time.
-    3.  `Pipeline.run` can only trigger a component when it is executed for the first time.
+    3. `Pipeline.run` can only trigger a component when it is executed for the first time.
 
     :param component: Component metadata and the component instance.
     :param inputs: Inputs for the component.
