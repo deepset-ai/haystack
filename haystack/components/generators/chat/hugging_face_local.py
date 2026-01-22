@@ -256,7 +256,7 @@ class HuggingFaceLocalChatGenerator:
         """
         Cleanup when the instance is being destroyed.
         """
-        if self._owns_executor:
+        if hasattr(self, "_owns_executor") and self._owns_executor and hasattr(self, "executor"):
             self.executor.shutdown(wait=True)
 
     def shutdown(self) -> None:
