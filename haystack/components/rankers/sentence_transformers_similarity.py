@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret
 from haystack.utils.hf import deserialize_hf_model_kwargs, serialize_hf_model_kwargs
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as torch_and_sentence_transformers_import:
@@ -171,9 +171,9 @@ class SentenceTransformersSimilarityRanker:
         """
         serialization_dict = default_to_dict(
             self,
-            device=self.device.to_dict(),
+            device=self.device,
             model=self.model,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             top_k=self.top_k,
             query_prefix=self.query_prefix,
             query_suffix=self.query_suffix,
@@ -205,11 +205,8 @@ class SentenceTransformersSimilarityRanker:
             Deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
-        deserialize_secrets_inplace(init_params, keys=["token"])
 
         return default_from_dict(cls, data)
 

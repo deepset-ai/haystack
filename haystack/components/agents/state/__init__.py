@@ -2,7 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .state import State
-from .state_utils import merge_lists, replace_values
+import sys
+from typing import TYPE_CHECKING
 
-__all__ = ["State", "merge_lists", "replace_values"]
+from lazy_imports import LazyImporter
+
+_import_structure = {"state": ["State", "merge_lists", "replace_values"]}
+
+if TYPE_CHECKING:
+    from .state import State as State
+    from .state_utils import merge_lists as merge_lists
+    from .state_utils import replace_values as replace_values
+
+else:
+    sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
