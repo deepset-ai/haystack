@@ -54,29 +54,29 @@ def test_component_with_empty_dict_as_output_appears_in_results():
             self.prefix = prefix
 
         @component.output_types(value=str | None)
-        def run(self, text: str | None):
+        def run(self, text: str | None) -> dict[str, str | None]:
             return {"value": f"{self.prefix}: {text}"}
 
         @component.output_types(value=str | None)
-        async def run_async(self, text: str | None):
+        async def run_async(self, text: str | None) -> dict[str, str | None]:
             return {"value": f"{self.prefix}: {text}"}
 
     @component
     class EmptyProcessor:
         @component.output_types()
-        def run(self, sources: list[str]):
+        def run(self, sources: list[str]) -> dict:
             # Returns empty dict when sources is empty
             return {}
 
         @component.output_types()
-        async def run_async(self, sources: list[str]):
+        async def run_async(self, sources: list[str]) -> dict:
             # Returns empty dict when sources is empty
             return {}
 
     @component
     class Combiner:
         @component.output_types(combined=str)
-        def run(self, input_a: str | None, input_b: str | None):
+        def run(self, input_a: str | None, input_b: str | None) -> dict[str, str]:
             if input_a is None:
                 input_a = ""
             if input_b is None:
@@ -84,7 +84,7 @@ def test_component_with_empty_dict_as_output_appears_in_results():
             return {"combined": f"{input_a} | {input_b}"}
 
         @component.output_types(combined=str)
-        async def run_async(self, input_a: str | None, input_b: str | None):
+        async def run_async(self, input_a: str | None, input_b: str | None) -> dict[str, str]:
             if input_a is None:
                 input_a = ""
             if input_b is None:

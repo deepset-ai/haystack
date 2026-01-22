@@ -8,19 +8,12 @@ from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.converters import OutputAdapter
 from haystack.components.joiners import StringJoiner
 from haystack.core.errors import BreakpointException
-from haystack.core.pipeline.breakpoint import HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import Breakpoint
-from test.conftest import load_and_resume_pipeline_snapshot
 
 
 class TestPipelineBreakpoints:
-    @pytest.fixture(autouse=True)
-    def enable_snapshot_saving(self, monkeypatch):
-        """Enable snapshot file saving for these integration tests."""
-        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
-
     @pytest.fixture
     def string_joiner_pipeline(self):
         pipeline = Pipeline()
@@ -41,15 +34,13 @@ class TestPipelineBreakpoints:
 
         return pipeline
 
-    @pytest.fixture(scope="session")
-    def output_directory(self, tmp_path_factory):
-        return tmp_path_factory.mktemp("output_files")
-
     BREAKPOINT_COMPONENTS = ["prompt_builder_1", "prompt_builder_2", "adapter_1", "adapter_2", "string_joiner"]
 
     @pytest.mark.parametrize("component", BREAKPOINT_COMPONENTS, ids=BREAKPOINT_COMPONENTS)
     @pytest.mark.integration
-    def test_string_joiner_pipeline(self, string_joiner_pipeline, output_directory, component):
+    def test_string_joiner_pipeline(
+        self, string_joiner_pipeline, output_directory, component, load_and_resume_pipeline_snapshot
+    ):
         string_1 = "What's Natural Language Processing?"
         string_2 = "What is life?"
         data = {"prompt_builder_1": {"query": string_1}, "prompt_builder_2": {"query": string_2}}
@@ -69,3 +60,5 @@ class TestPipelineBreakpoints:
             data=data,
         )
         assert result["string_joiner"]
+        assert "Builder 1: What's Natural Language Processing?" in result["string_joiner"]["strings"]
+        assert "Builder 2: What is life?" in result["string_joiner"]["strings"]

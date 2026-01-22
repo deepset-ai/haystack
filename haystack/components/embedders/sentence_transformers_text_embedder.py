@@ -150,7 +150,7 @@ class SentenceTransformersTextEmbedder:
         serialization_dict = default_to_dict(
             self,
             model=self.model,
-            device=self.device.to_dict(),
+            device=self.device,
             token=self.token,
             prefix=self.prefix,
             suffix=self.suffix,
@@ -183,8 +183,6 @@ class SentenceTransformersTextEmbedder:
             Deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)

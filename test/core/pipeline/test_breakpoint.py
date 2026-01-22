@@ -127,6 +127,7 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
         assert loaded_snapshot.pipeline_state.component_visits["comp1"] == 1
         assert loaded_snapshot.pipeline_state.component_visits["comp2"] == 0
         assert "comp1" in loaded_snapshot.include_outputs_from
+        assert isinstance(loaded_snapshot.break_point, Breakpoint)
         assert loaded_snapshot.break_point.component_name == "comp2"
         assert loaded_snapshot.break_point.visit_count == 0
 
@@ -340,6 +341,7 @@ class TestSnapshotCallback:
 
         # Verify file contains valid snapshot data
         loaded = load_pipeline_snapshot(snapshot_files[0])
+        assert isinstance(loaded.break_point, Breakpoint)
         assert loaded.break_point.component_name == "comp2"
 
     def test_save_pipeline_snapshot_callback_raises_exception_no_file_created(self, tmp_path, caplog):
@@ -403,6 +405,7 @@ class TestSnapshotCallback:
 
         # Verify callback was called
         assert len(captured_snapshots) == 1
+        assert isinstance(captured_snapshots[0].break_point, Breakpoint)
         assert captured_snapshots[0].break_point.component_name == "comp2"
         # Verify the file path in exception is from callback
         assert exc_info.value.pipeline_snapshot_file_path == "custom_snapshot_id"
@@ -550,4 +553,5 @@ class TestSnapshotSaveEnabled:
 
         # Verify snapshot object is still available for programmatic access
         assert exc_info.value.pipeline_snapshot is not None
+        assert isinstance(exc_info.value.pipeline_snapshot.break_point, Breakpoint)
         assert exc_info.value.pipeline_snapshot.break_point.component_name == "comp2"
