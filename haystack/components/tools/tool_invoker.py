@@ -348,8 +348,8 @@ class ToolInvoker:
             StringConversionError: If the conversion to string of the tool output fails and `raise_on_failure` is True.
             ResultConversionError: If the conversion to result of the tool output fails and `raise_on_failure` is True.
         """
+        outputs_config = tool_to_invoke.outputs_to_string or {}
         try:
-            outputs_config = tool_to_invoke.outputs_to_string or {}
             # Root level single output configuration
             if (
                 not outputs_config
@@ -363,12 +363,8 @@ class ToolInvoker:
             # Multiple outputs configuration
             tool_result_dict = {}
             for output_key, config in outputs_config.items():
-                # For multiple outputs, we don't support raw_result, so we use _default_output_to_string_handler
-                # if no handler is provided, or just the handler's output.
-                source_key = config.get("source")
-                value = result.get(source_key) if source_key is not None and isinstance(result, dict) else result
-                handler = config.get("handler", self._default_output_to_string_handler)
-                tool_result_dict[output_key] = handler(value)
+                # For multiple outputs, we don't support raw_result and always convert to string
+                tool_result_dict[output_key] = self._process_output({**config, "raw_result": False}, result, tool_call)
 
             tool_result_str = self._default_output_to_string_handler(tool_result_dict)
             return ChatMessage.from_tool(tool_result=tool_result_str, origin=tool_call)
