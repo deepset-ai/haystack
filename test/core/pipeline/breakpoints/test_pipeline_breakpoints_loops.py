@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from typing import Any
 
-import pydantic
 import pytest
 from pydantic import BaseModel, ValidationError
 
@@ -18,14 +18,15 @@ from haystack.dataclasses.breakpoints import Breakpoint
 
 @component
 class OutputValidator:
-    def __init__(self, pydantic_model: pydantic.BaseModel):
+    def __init__(self, pydantic_model: Any):
         self.pydantic_model = pydantic_model
         self.iteration_counter = 0
 
     @component.output_types(valid_replies=list[ChatMessage], invalid_replies=list[ChatMessage], error_message=str)
-    def run(self, replies: list[ChatMessage]):
+    def run(self, replies: list[ChatMessage]) -> dict[str, list[ChatMessage] | str]:
         self.iteration_counter += 1
         try:
+            assert replies[0].text is not None
             output_dict = json.loads(replies[0].text)
             self.pydantic_model.model_validate(output_dict)
             return {"valid_replies": replies}
@@ -39,7 +40,7 @@ class FakeChatGenerator:
         self.response = response
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage]):
+    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
         return {"replies": [ChatMessage.from_assistant(self.response)]}
 
 
