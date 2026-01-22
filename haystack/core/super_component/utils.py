@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from types import UnionType
-from typing import Annotated, Any, cast, get_args, get_origin
+from typing import Annotated, Any, get_args, get_origin
 
 from haystack.core.component.types import HAYSTACK_GREEDY_VARIADIC_ANNOTATION, HAYSTACK_VARIADIC_ANNOTATION
 from haystack.utils.type_serialization import _build_pep604_union_type, _is_union_type
@@ -132,7 +132,7 @@ def _check_non_union_compatibility(
         common_args.append(common)
 
     # Reconstruct the type with common arguments
-    return True, cast(type | None, type1_origin[tuple(common_args)])
+    return True, type1_origin[tuple(common_args)]
 
 
 def _unwrap_all(t: type | UnionType, recursive: bool) -> type | UnionType:
@@ -153,7 +153,7 @@ def _unwrap_all(t: type | UnionType, recursive: bool) -> type | UnionType:
             unwrapped_args = tuple(_unwrap_all(arg, recursive) for arg in args)
             # types.UnionType (PEP 604 X | Y) is not subscriptable, so we use _build_pep604_union_type
             if origin is UnionType:
-                t = cast(type, _build_pep604_union_type(list(unwrapped_args)))
+                t = _build_pep604_union_type(list(unwrapped_args))
             else:
                 t = origin[unwrapped_args]
 
