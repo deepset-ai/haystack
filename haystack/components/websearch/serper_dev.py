@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 import requests
 
 from haystack import ComponentError, Document, component, default_from_dict, default_to_dict, logging
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 
 logger = logging.getLogger(__name__)
 
@@ -93,18 +93,19 @@ class SerperDevWebSearch:
             allowed_domains=self.allowed_domains,
             exclude_subdomains=self.exclude_subdomains,
             search_params=self.search_params,
-            api_key=self.api_key.to_dict(),
+            api_key=self.api_key,
         )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SerperDevWebSearch":
         """
-        Serializes the component to a dictionary.
+        Deserializes the component from a dictionary.
 
+        :param data:
+            The dictionary to deserialize from.
         :returns:
-                Dictionary with serialized data.
+            The deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["api_key"])
         return default_from_dict(cls, data)
 
     def _is_domain_allowed(self, url: str) -> bool:

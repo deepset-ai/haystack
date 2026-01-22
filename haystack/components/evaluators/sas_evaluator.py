@@ -9,7 +9,7 @@ from numpy import mean as np_mean
 from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, expit
-from haystack.utils.auth import Secret, deserialize_secrets_inplace
+from haystack.utils.auth import Secret
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as sas_import:
     from sentence_transformers import CrossEncoder, SentenceTransformer, util
@@ -90,11 +90,7 @@ class SASEvaluator:
             The serialized component as a dictionary.
         """
         return default_to_dict(
-            self,
-            model=self._model,
-            batch_size=self._batch_size,
-            device=self._device.to_dict() if self._device else None,
-            token=self._token.to_dict() if self._token else None,
+            self, model=self._model, batch_size=self._batch_size, device=self._device, token=self._token
         )
 
     @classmethod
@@ -107,9 +103,6 @@ class SASEvaluator:
         :returns:
             The deserialized component instance.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
-        if device := data.get("init_parameters", {}).get("device"):
-            data["init_parameters"]["device"] = ComponentDevice.from_dict(device)
         return default_from_dict(cls, data)
 
     def warm_up(self) -> None:

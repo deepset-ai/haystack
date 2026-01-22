@@ -16,7 +16,7 @@ from haystack.dataclasses import (
     select_streaming_callback,
 )
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Secret, deserialize_callable, deserialize_secrets_inplace, serialize_callable
+from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.hf import HFGenerationAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
@@ -190,7 +190,7 @@ class HuggingFaceAPIGenerator:
             self,
             api_type=str(self.api_type),
             api_params=self.api_params,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             generation_kwargs=self.generation_kwargs,
             streaming_callback=callback_name,
         )
@@ -200,7 +200,6 @@ class HuggingFaceAPIGenerator:
         """
         Deserialize this component from a dictionary.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         init_params = data["init_parameters"]
         serialized_callback_handler = init_params.get("streaming_callback")
         if serialized_callback_handler:

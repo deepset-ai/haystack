@@ -6,7 +6,7 @@ from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.lazy_imports import LazyImport
-from haystack.utils import Secret, deserialize_secrets_inplace
+from haystack.utils import Secret
 from haystack.utils.hf import HFEmbeddingAPIType, HFModelType, check_valid_model
 from haystack.utils.url_validation import is_valid_http_url
 
@@ -184,7 +184,7 @@ class HuggingFaceAPITextEmbedder:
             api_params=self.api_params,
             prefix=self.prefix,
             suffix=self.suffix,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
             truncate=self.truncate,
             normalize=self.normalize,
         )
@@ -199,7 +199,6 @@ class HuggingFaceAPITextEmbedder:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         return default_from_dict(cls, data)
 
     @component.output_types(embedding=list[float])

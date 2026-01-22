@@ -6,7 +6,7 @@ from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.lazy_imports import LazyImport
-from haystack.utils import ComponentDevice, Secret, deserialize_secrets_inplace
+from haystack.utils import ComponentDevice, Secret
 
 with LazyImport(message="Run 'pip install transformers[torch,sentencepiece]'") as torch_and_transformers_import:
     from transformers import AutoConfig, Pipeline, pipeline
@@ -154,7 +154,7 @@ class TransformersTextRouter:
             labels=self.labels,
             model=self.huggingface_pipeline_kwargs["model"],
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
-            token=self.token.to_dict() if self.token else None,
+            token=self.token,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]
@@ -173,7 +173,6 @@ class TransformersTextRouter:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"], keys=["token"])
         if data["init_parameters"].get("huggingface_pipeline_kwargs") is not None:
             deserialize_hf_model_kwargs(data["init_parameters"]["huggingface_pipeline_kwargs"])
         return default_from_dict(cls, data)
