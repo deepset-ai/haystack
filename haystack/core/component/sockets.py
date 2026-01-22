@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 from haystack.core.type_utils import _type_name
 
 from .types import InputSocket, OutputSocket
 
-SocketsDict = dict[str, InputSocket] | dict[str, OutputSocket] | dict[str, InputSocket | OutputSocket]
+SocketsDict = dict[str, InputSocket | OutputSocket]
 SocketsIOType = type[InputSocket] | type[OutputSocket]
 
 
@@ -121,7 +123,7 @@ class Sockets:  # noqa: PLW1641
         # __repr__ method and that would lead to infinite recursion since we call Sockets.__repr__ in it.
         return object.__repr__(self._component)
 
-    def __getattribute__(self, name):
+    def __getattribute__(self, name: Any) -> Any:
         try:
             sockets = object.__getattribute__(self, "_sockets")
             if name in sockets:

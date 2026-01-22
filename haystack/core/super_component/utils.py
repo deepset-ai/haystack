@@ -16,7 +16,7 @@ class _delegate_default:
 T = TypeVar("T")
 
 
-def _is_compatible(type1: T | UnionType, type2: T | UnionType, unwrap_nested: bool = True) -> tuple[bool, T | None]:
+def _is_compatible(type1: T, type2: T, unwrap_nested: bool = True) -> tuple[bool, T | None]:
     """
     Check if two types are compatible (bidirectional/symmetric check).
 
