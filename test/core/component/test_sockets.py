@@ -4,14 +4,17 @@
 
 import pytest
 
-from haystack.core.component.sockets import InputSocket, Sockets
+from haystack.core.component.sockets import InputSocket, OutputSocket, Sockets
 from haystack.testing.factory import component_class
 
 
 class TestSockets:
     def test_init(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
-        sockets = {"input_1": InputSocket("input_1", int), "input_2": InputSocket("input_2", int)}
+        sockets: dict[str, InputSocket | OutputSocket] = {
+            "input_1": InputSocket("input_1", int),
+            "input_2": InputSocket("input_2", int),
+        }
         io = Sockets(component=comp, sockets_dict=sockets, sockets_io_type=InputSocket)
         assert io._component == comp
         assert "input_1" in io.__dict__
