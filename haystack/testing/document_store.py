@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
 import random
 from datetime import datetime
 
@@ -169,6 +170,95 @@ class DeleteDocumentsTest:
 
         # No Document has been deleted
         assert document_store.count_documents() == 1
+
+    def test_delete_all_documents(self, document_store: DocumentStore):
+        """
+        Test delete_all_documents() normal behaviour.
+
+        This test verifies that delete_all_documents() removes all documents from the store
+        and that the store remains functional after deletion.
+        """
+        # Write some documents
+        docs = [Document(content="first doc", id="1"), Document(content="second doc", id="2")]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        # Delete all documents
+        document_store.delete_all_documents()
+        assert document_store.count_documents() == 0
+
+        # Verify store is still functional - can write new documents
+        new_doc = Document(content="new doc after delete all", id="3")
+        document_store.write_documents([new_doc])
+        assert document_store.count_documents() == 1
+
+    def test_delete_all_documents_empty_store(self, document_store: DocumentStore):
+        """
+        Test delete_all_documents() on an empty store.
+
+        This should not raise an error and should leave the store empty.
+        """
+        assert document_store.count_documents() == 0
+        document_store.delete_all_documents()
+        assert document_store.count_documents() == 0
+
+    def test_delete_all_documents_without_recreate_index(self, document_store: DocumentStore):
+        """
+        Test delete_all_documents() with recreate_index=False.
+
+        This test only runs for stores that support the recreate_index parameter.
+        Stores that don't support this parameter will skip this test.
+        """
+        # Check if delete_all_documents supports recreate_index parameter
+        sig = inspect.signature(document_store.delete_all_documents)
+        if "recreate_index" not in sig.parameters:
+            pytest.skip("Store doesn't support recreate_index parameter")
+
+        # Write some documents
+        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        # Delete all documents without recreating index
+        document_store.delete_all_documents(recreate_index=False)
+        assert document_store.count_documents() == 0
+
+        # Verify store is still functional
+        new_doc = Document(id="3", content="New document after delete all")
+        document_store.write_documents([new_doc])
+        assert document_store.count_documents() == 1
+
+    def test_delete_all_documents_with_recreate_index(self, document_store: DocumentStore):
+        """
+        Test delete_all_documents() with recreate_index=True.
+
+        This test verifies that when recreate_index=True, the index/collection structure
+        is preserved after deletion. This test only runs for stores that support the
+        recreate_index parameter.
+        """
+        # Check if delete_all_documents supports recreate_index parameter
+        sig = inspect.signature(document_store.delete_all_documents)
+        if "recreate_index" not in sig.parameters:
+            pytest.skip("Store doesn't support recreate_index parameter")
+
+        # Write some documents
+        docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
+        document_store.write_documents(docs)
+        assert document_store.count_documents() == 2
+
+        # Delete all documents with recreating index
+        document_store.delete_all_documents(recreate_index=True)
+        assert document_store.count_documents() == 0
+
+        # Verify store is still functional and can accept new documents
+        new_doc = Document(id="3", content="New document after delete all with recreate")
+        document_store.write_documents([new_doc])
+        assert document_store.count_documents() == 1
+
+        # Verify the document can be retrieved
+        retrieved = document_store.filter_documents()
+        assert len(retrieved) == 1
+        assert retrieved[0].content == "New document after delete all with recreate"
 
 
 def create_filterable_docs() -> list[Document]:
