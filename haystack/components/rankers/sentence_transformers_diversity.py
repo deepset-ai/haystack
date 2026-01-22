@@ -217,7 +217,7 @@ class SentenceTransformersDiversityRanker:
             self,
             model=self.model_name_or_path,
             top_k=self.top_k,
-            device=self.device.to_dict(),
+            device=self.device,
             token=self.token,
             similarity=str(self.similarity),
             query_prefix=self.query_prefix,
@@ -248,8 +248,6 @@ class SentenceTransformersDiversityRanker:
             The deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
         return default_from_dict(cls, data)

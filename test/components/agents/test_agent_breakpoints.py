@@ -140,12 +140,14 @@ class TestAgentBreakpoints:
                 "serialization_schema": {
                     "type": "object",
                     "properties": {
+                        "enable_streaming_callback_passthrough": {"type": "boolean"},
                         "messages": {"type": "array", "items": {}},
                         "state": {"type": "haystack.components.agents.state.state.State"},
                         "tools": {"type": "array", "items": {"type": "haystack.tools.tool.Tool"}},
                     },
                 },
                 "serialized_data": {
+                    "enable_streaming_callback_passthrough": False,
                     "messages": [],
                     "state": {
                         "schema": {
@@ -274,6 +276,7 @@ class TestAgentBreakpoints:
                 "serialization_schema": {
                     "type": "object",
                     "properties": {
+                        "enable_streaming_callback_passthrough": {"type": "boolean"},
                         "messages": {
                             "type": "array",
                             "items": {"type": "haystack.dataclasses.chat_message.ChatMessage"},
@@ -283,6 +286,7 @@ class TestAgentBreakpoints:
                     },
                 },
                 "serialized_data": {
+                    "enable_streaming_callback_passthrough": False,
                     "messages": [
                         {
                             "role": "assistant",

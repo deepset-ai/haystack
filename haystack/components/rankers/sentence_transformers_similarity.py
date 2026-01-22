@@ -171,7 +171,7 @@ class SentenceTransformersSimilarityRanker:
         """
         serialization_dict = default_to_dict(
             self,
-            device=self.device.to_dict(),
+            device=self.device,
             model=self.model,
             token=self.token,
             top_k=self.top_k,
@@ -205,8 +205,6 @@ class SentenceTransformersSimilarityRanker:
             Deserialized component.
         """
         init_params = data["init_parameters"]
-        if init_params.get("device") is not None:
-            init_params["device"] = ComponentDevice.from_dict(init_params["device"])
         if init_params.get("model_kwargs") is not None:
             deserialize_hf_model_kwargs(init_params["model_kwargs"])
 

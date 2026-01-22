@@ -119,6 +119,9 @@ dependencies = [
   "nltk>=3.9.1", # NLTKDocumentSplitter, RecursiveDocumentSplitter
   "tiktoken", # RecursiveDocumentSplitter
 
+  # Human in the Loop
+  "rich",                 # Console rendering for HITL
+
   # OpenAPI
   "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
   "openapi3",
