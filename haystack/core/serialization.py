@@ -10,7 +10,7 @@ from typing import Any, Iterable, TypeVar
 from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
-from haystack.utils.auth import deserialize_secrets_inplace
+from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 from haystack.utils.type_serialization import thread_safe_import
 
@@ -288,13 +288,12 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
         raise DeserializationError(f"Class '{data['type']}' can't be deserialized as '{cls.__name__}'")
 
     # Automatically detect and deserialize objects with from_dict methods
-    secret_keys = []
     for key, value in init_params.items():
         if isinstance(value, dict) and "type" in value:
             type_value = value.get("type")
             # Special handling for Secret (type == "env_var")
             if type_value == "env_var":
-                secret_keys.append(key)
+                init_params[key] = Secret.from_dict(value)
             # Special handling for ComponentDevice (type == "single" or "multiple")
             elif _is_serialized_component_device(value):
                 init_params[key] = ComponentDevice.from_dict(value)
@@ -308,9 +307,6 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
                         init_params[key] = default_from_dict(imported_class, value)
                 except (ImportError, DeserializationError) as e:
                     raise type(e)(f"Failed to deserialize '{key}': {e}") from e
-
-    if secret_keys:
-        deserialize_secrets_inplace(init_params, keys=secret_keys)
 
     return cls(**init_params)
 
