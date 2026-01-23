@@ -37,7 +37,8 @@ jobs:
 
       - name: Install script dependencies
         # sniffio is needed because of https://github.com/deepset-ai/deepset-cloud-sdk/issues/286
-        run: pip install deepset-cloud-sdk sniffio requests
+        # we pin pyrate-limiter due to https://github.com/deepset-ai/deepset-cloud-sdk/issues/295
+        run: pip install deepset-cloud-sdk sniffio requests "pyrate-limiter<4"
 
       - name: Update new docs to Search pipeline and remove outdated docs
         env:
