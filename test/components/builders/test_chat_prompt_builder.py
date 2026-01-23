@@ -352,6 +352,13 @@ class TestChatPromptBuilder:
             )
             assert "ChatPromptBuilder has 2 prompt variables, but `required_variables` is not set. " in caplog.text
 
+
+class TestChatPromptBuilderWithJinja2TimeExtension:
+    @pytest.fixture(autouse=True)
+    def mock_now(self, monkeypatch):
+        """Mock the arrow.now function to return a fixed datetime"""
+        monkeypatch.setattr("arrow.now", lambda timezone="UTC": arrow.get("1970-01-01 00:00:00").to(timezone))
+
     def test_with_custom_dateformat(self) -> None:
         template = [ChatMessage.from_user("Formatted date: {% now 'UTC', '%Y-%m-%d' %}")]
         builder = ChatPromptBuilder(template=template)
@@ -432,6 +439,18 @@ class TestChatPromptBuilder:
         assert result[1].text == "Thank you for providing the date"
         assert result[2].role == "user"
         assert result[2].text == yesterday
+
+    def test_str_template_with_now_filter(self):
+        template = """
+        {% message role="user" %}
+        Hello, the date is {% now 'UTC', '%Y-%m-%d'%}!
+        {% endmessage %}
+        """
+        builder = ChatPromptBuilder(template=template)
+        result = builder.run()
+
+        expected_date = arrow.now("UTC").strftime("%Y-%m-%d")
+        assert result["prompt"] == [ChatMessage.from_user(f"Hello, the date is {expected_date}!")]
 
 
 class TestChatPromptBuilderDynamic:
@@ -834,18 +853,6 @@ Third line.
         builder = ChatPromptBuilder(template=template)
         result = builder.run(name="John")
         assert result["prompt"] == [ChatMessage.from_user("Hello, my name is John!\nSecond line.\nThird line.")]
-
-    def test_with_now_filter(self):
-        template = """
-        {% message role="user" %}
-        Hello, the date is {% now 'UTC', '%Y-%m-%d'%}!
-        {% endmessage %}
-        """
-        builder = ChatPromptBuilder(template=template)
-        result = builder.run()
-
-        expected_date = arrow.now("UTC").strftime("%Y-%m-%d")
-        assert result["prompt"] == [ChatMessage.from_user(f"Hello, the date is {expected_date}!")]
 
     def test_run_multiple_messages(self):
         template = """
