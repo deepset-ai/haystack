@@ -207,13 +207,13 @@ def test_set_input_types():
             return {"value": 1}
 
     comp = MockComponent(False)
-    assert comp.__haystack_input__._sockets_dict == {"value": InputSocket("value", Any)}
+    assert comp.__haystack_input__._sockets_dict == {"value": InputSocket(name="value", type=Any)}
     assert comp.run() == {"value": 1}
 
     comp = MockComponent(True)
     assert comp.__haystack_input__._sockets_dict == {
-        "value": InputSocket("value", Any),
-        "another": InputSocket("another", str),
+        "value": InputSocket(name="value", type=Any),
+        "another": InputSocket(name="another", type=str),
     }
     assert comp.run() == {"value": 1}
 

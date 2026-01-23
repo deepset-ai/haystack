@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, ContextManager, Iterator, Mapping, TextIO, TypeVar
+from typing import Any, ContextManager, Iterator, Mapping, TextIO, TypeVar, get_origin
 
 import networkx
 
@@ -31,7 +31,6 @@ from haystack.core.pipeline.component_checks import (
     are_all_sockets_ready,
     can_component_run,
     is_any_greedy_socket_ready,
-    is_socket_lazy_variadic,
 )
 from haystack.core.pipeline.utils import FIFOPriorityQueue, _deepcopy_with_exceptions, parse_connect_string
 from haystack.core.serialization import (
@@ -580,17 +579,27 @@ class PipelineBase:  # noqa: PLW1641
             # This is already connected, nothing to do
             return self
 
-        # TODO Here we could introduce the auto-variadic behavior
-        #      We do something slightly odd with variadic types they basically become iterables --> need to investigate
-        #      why.
-        if receiver_socket.senders and not receiver_socket.is_variadic:
-            # Only variadic input sockets can receive from multiple senders
-            msg = (
-                f"Cannot connect '{sender_component_name}.{sender_socket.name}' with "
-                f"'{receiver_component_name}.{receiver_socket.name}': "
-                f"{receiver_component_name}.{receiver_socket.name} is already connected to {receiver_socket.senders}.\n"
+        if receiver_socket.senders:
+            # We automatically set the receiver socket as variadic if:
+            # - it has at least one sender already connected
+            # - it's not already variadic
+            # - its origin type is list
+            origin = get_origin(receiver_socket.type) or (
+                receiver_socket.type if isinstance(receiver_socket.type, type) else None
             )
-            raise PipelineConnectError(msg)
+            if not receiver_socket.is_variadic and origin == list:
+                receiver_socket.is_variadic = True
+                receiver_socket.wrap_input_in_list = False
+
+            if not receiver_socket.is_variadic:
+                # Only variadic input sockets can receive from multiple senders
+                msg = (
+                    f"Cannot connect '{sender_component_name}.{sender_socket.name}' with "
+                    f"'{receiver_component_name}.{receiver_socket.name}': "
+                    f"{receiver_component_name}.{receiver_socket.name} is already connected to "
+                    f"{receiver_socket.senders}.\n"
+                )
+                raise PipelineConnectError(msg)
 
         # Update the sockets with the new connection
         sender_socket.receivers.append(receiver_component_name)
@@ -903,7 +912,11 @@ class PipelineBase:  # noqa: PLW1641
                 component_inputs = data.get(component_name, {})
                 if socket.senders == [] and socket.is_mandatory and socket_name not in component_inputs:
                     raise ValueError(f"Missing input for component {component_name}: {socket_name}")
-                # TODO Another place that would need socket.is_variadic to be updated to True for auto-variadic inputs
+                # TODO Another place that would need the auto-variadic logic --> less common of a use-case though
+                #      So probably fine to leave for later.
+                # Basically the check looks to see if socket.senders has one item in it (technically just more than 0)
+                # Then checks if user input data contains another input for that socket.
+                # If so, that's an error unless the socket is variadic.
                 if socket.senders and socket_name in component_inputs and not socket.is_variadic:
                     raise ValueError(
                         f"Input {socket_name} for component {component_name} is already sent by {socket.senders}."
@@ -1058,22 +1071,25 @@ class PipelineBase:  # noqa: PLW1641
             if is_resume:
                 consumed_inputs[socket_name] = socket_inputs[0]
                 continue
+
             if socket_inputs:
-                if not socket.is_variadic:
-                    # We only care about the first input provided to the socket.
-                    consumed_inputs[socket_name] = socket_inputs[0]
-                elif socket.is_greedy:
+                if socket.is_greedy:
                     # We need to keep track of greedy inputs because we always remove them, even if they come from
                     # outside the pipeline. Otherwise, a greedy input from the user would trigger a pipeline to run
                     # indefinitely.
                     greedy_inputs_to_remove.add(socket_name)
                     consumed_inputs[socket_name] = [socket_inputs[0]]
-                elif is_socket_lazy_variadic(socket):
-                    # TODO This seems to be a core issue here? Since at this stage it seems like we are passing
-                    #      a list of input_type when the component expects the raw input_type?
-                    #      E.g. list[list[Document]] when the component expects list[Document]
-                    # We use all inputs provided to the socket on a lazy variadic socket.
-                    consumed_inputs[socket_name] = socket_inputs
+                elif socket.is_lazy_variadic:
+                    if socket.wrap_input_in_list:
+                        # We use all inputs provided to the socket on a lazy variadic socket.
+                        # So keep it wrapped in a list.
+                        consumed_inputs[socket_name] = socket_inputs
+                    else:
+                        # We flatten one-level of lists for lazy variadic sockets that don't wrap inputs in lists.
+                        consumed_inputs[socket_name] = list(itertools.chain.from_iterable(socket_inputs))
+                else:
+                    # For a normal socket we only care about the first input provided to the socket.
+                    consumed_inputs[socket_name] = socket_inputs[0]
 
         # We prune all inputs except for those that were provided from outside the pipeline (e.g. user inputs).
         pruned_inputs = {
@@ -1116,18 +1132,6 @@ class PipelineBase:  # noqa: PLW1641
         :param inputs: Inputs to the component.
         :returns: Priority value for the component.
         """
-        # TODO I think I see a hole in logic here:
-        #      If a Joiner receives input from user data + some earlier component in the pipeline it will execute.
-        #      This is b/c can_component_run will return True since the two gates pass:
-        #      - received_trigger is True since user data is present
-        #      - are_all_sockets_ready will return True since for Variadic sockets we only consider if there's at least
-        #        one input
-        #      So why isn't this a problem when a Joiner connects two streams within the pipeline?
-        #      Huh so can_component_run is only used in determining priority here. So even though the above scenario
-        #      fails the first if-check it isn't automatically marked as READY or HIGHEST. Instead it falls through to
-        #      the all_predecessors_executed check which will return False since not all predecessors have executed.
-        #      Side note _calculate_priority is used multiple times since _fill_queue is called after each component
-        #      execution
         if not can_component_run(comp, inputs):
             return ComponentPriority.BLOCKED
         elif is_any_greedy_socket_ready(comp, inputs) and are_all_sockets_ready(comp, inputs):
@@ -1193,9 +1197,10 @@ class PipelineBase:  # noqa: PLW1641
         """
         for name, socket in component_input_sockets.items():
             if not socket.is_mandatory and name not in component_inputs:
-                # TODO Again feels weird we have to re-wrap the default value for variadic sockets
-                #      Especially since we don't have any components that have a variadic socket with a default value
-                #      --> check tests
+                # NOTE: Based on this logic we expect users to provide a default value in the function definition that
+                #       matches the type within the Variadic type. E.g. Variadic[str] = "test". The pipeline then wraps
+                #       it into a list[str]. However, if a user runs this component outside a pipeline, e.g. directly
+                #       calling the run() method, the default value is not wrapped and is incorrect.
                 if socket.is_variadic:
                     component_inputs[name] = [socket.default_value]
                 else:
@@ -1275,9 +1280,10 @@ class PipelineBase:  # noqa: PLW1641
             if receiver_name not in inputs:
                 inputs[receiver_name] = {}
 
-            if is_socket_lazy_variadic(receiver_socket):
-                # If the receiver socket is lazy variadic, we append the new input.
-                # Lazy variadic sockets can collect multiple inputs.
+            # We want this to trigger for lazy-variadic and auto-variadic sockets
+            if receiver_socket.is_lazy_variadic:
+                # If the receiver socket is lazy variadic or auto variadic, we append the new input.
+                # Lazy variadic and auto variadic sockets can collect multiple inputs.
                 _write_to_lazy_variadic_socket(
                     inputs=inputs,
                     receiver_name=receiver_name,

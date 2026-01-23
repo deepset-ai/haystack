@@ -11,7 +11,7 @@ from haystack.testing.factory import component_class
 class TestSockets:
     def test_init(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()
-        sockets = {"input_1": InputSocket("input_1", int), "input_2": InputSocket("input_2", int)}
+        sockets = {"input_1": InputSocket(name="input_1", type=int), "input_2": InputSocket(name="input_2", type=int)}
         io = Sockets(component=comp, sockets_dict=sockets, sockets_io_type=InputSocket)
         assert io._component == comp
         assert "input_1" in io.__dict__
@@ -53,7 +53,7 @@ class TestSockets:
         assert io.get("input_1") == comp.__haystack_input__._sockets_dict["input_1"]
         assert io.get("input_2") == comp.__haystack_input__._sockets_dict["input_2"]
         assert io.get("invalid") == None
-        assert io.get("invalid", InputSocket("input_2", int)) == InputSocket("input_2", int)
+        assert io.get("invalid", InputSocket(name="input_2", type=int)) == InputSocket(name="input_2", type=int)
 
     def test_contains(self):
         comp = component_class("SomeComponent", input_types={"input_1": int, "input_2": int})()

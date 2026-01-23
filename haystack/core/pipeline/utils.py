@@ -69,7 +69,6 @@ def parse_connect_string(connection: str) -> tuple[str, str | None]:
     return connection, None
 
 
-# TODO What is the point of the heapq here?
 class FIFOPriorityQueue:
     """
     A priority queue that maintains FIFO order for items of equal priority.

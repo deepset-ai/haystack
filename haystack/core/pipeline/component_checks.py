@@ -76,7 +76,7 @@ def are_all_sockets_ready(component: dict, inputs: dict, only_check_mandatory: b
 
         # Check if socket has all required inputs or is a lazy variadic socket with any input
         if has_socket_received_all_inputs(socket, socket_inputs) or (
-            is_socket_lazy_variadic(socket) and any_socket_input_received(socket_inputs)
+            socket.is_lazy_variadic and any_socket_input_received(socket_inputs)
         ):
             filled_sockets.add(socket_name)
 
@@ -159,17 +159,7 @@ def has_lazy_variadic_socket_received_all_inputs(socket: InputSocket, socket_inp
         for sock in socket_inputs
         if sock["value"] is not _NO_OUTPUT_PRODUCED and sock["sender"] is not None
     }
-
     return expected_senders == actual_senders
-
-
-def is_socket_lazy_variadic(socket: InputSocket) -> bool:
-    """
-    Checks if an InputSocket is a lazy variadic socket.
-
-    :param socket: The InputSocket of a component.
-    """
-    return socket.is_variadic and not socket.is_greedy
 
 
 def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: list[dict]) -> bool:
@@ -192,7 +182,7 @@ def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: list[dict
         return True
 
     # The socket is lazy variadic and all expected inputs were produced.
-    if is_socket_lazy_variadic(socket) and has_lazy_variadic_socket_received_all_inputs(socket, socket_inputs):
+    if socket.is_lazy_variadic and has_lazy_variadic_socket_received_all_inputs(socket, socket_inputs):
         return True
 
     # The socket is not variadic and the only expected input is complete.
@@ -220,7 +210,7 @@ def are_all_lazy_variadic_sockets_resolved(component: dict, inputs: dict) -> boo
     :param inputs: Inputs for the component.
     """
     for socket_name, socket in component["input_sockets"].items():
-        if is_socket_lazy_variadic(socket):
+        if socket.is_lazy_variadic:
             socket_inputs = inputs.get(socket_name, [])
 
             # Checks if a lazy variadic socket is ready to run.
