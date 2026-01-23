@@ -6,7 +6,6 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
-from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 
 @component
@@ -62,8 +61,7 @@ class FilterRetriever:
         :returns:
             Dictionary with serialized data.
         """
-        docstore = self.document_store.to_dict()
-        return default_to_dict(self, document_store=docstore, filters=self.filters)
+        return default_to_dict(self, document_store=self.document_store, filters=self.filters)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FilterRetriever":
@@ -75,9 +73,6 @@ class FilterRetriever:
         :returns:
             The deserialized component.
         """
-        # deserialize the document store
-        deserialize_document_store_in_init_params_inplace(data)
-
         return default_from_dict(cls, data)
 
     @component.output_types(documents=list[Document])
