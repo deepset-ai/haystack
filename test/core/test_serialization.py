@@ -573,9 +573,5 @@ def test_default_from_dict_with_invalid_class_name():
         },
     }
     # Verify the error message includes the parameter key and original error
-    with pytest.raises(ImportError) as exc_info:
+    with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*nonexistent\.module\.Class"):
         default_from_dict(CustomComponentWithDocumentStore, data)
-
-    error_message = str(exc_info.value)
-    assert "Failed to deserialize 'document_store':" in error_message
-    assert "nonexistent.module.Class" in error_message
