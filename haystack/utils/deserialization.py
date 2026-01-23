@@ -14,7 +14,7 @@ def deserialize_document_store_in_init_params_inplace(data: dict[str, Any], key:
     Deserializes a generic document store from the init_parameters of a serialized component in place.
 
     .. deprecated:: 2.23.0
-        This function is deprecated and will be removed in a future version of Haystack.
+        This function is deprecated and will be removed in Haystack version 2.24.
         It is no longer used internally and should not be used in new code.
 
     :param data:
@@ -29,7 +29,7 @@ def deserialize_document_store_in_init_params_inplace(data: dict[str, Any], key:
     """
     warnings.warn(
         "`deserialize_document_store_in_init_params_inplace` is deprecated. "
-        "It will be removed in a future version of Haystack. "
+        "It will be removed in Haystack version 2.24. "
         "It is no longer used internally and should not be used in new code.",
         DeprecationWarning,
         stacklevel=2,
