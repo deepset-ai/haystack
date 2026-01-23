@@ -21,6 +21,7 @@ from haystack.core.serialization import (
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing import factory
 from haystack.utils import ComponentDevice, Secret
+from haystack.utils.auth import EnvVarSecret
 from haystack.utils.device import Device, DeviceMap
 
 
@@ -48,7 +49,7 @@ def test_default_component_from_dict():
         MyComponent, {"type": "haystack.testing.factory.MyComponent", "init_parameters": {"some_param": 10}}
     )
     assert isinstance(comp, MyComponent)
-    assert comp.some_param == 10
+    assert comp.some_param == 10  # type: ignore[attr-defined]
 
 
 def test_default_component_from_dict_without_type():
@@ -233,8 +234,9 @@ def test_component_to_dict_and_from_dict_roundtrip_with_secret():
     assert serialized["init_parameters"]["api_key"]["type"] == "env_var"
 
     deserialized_comp = component_from_dict(CustomComponentWithSecrets, serialized, "test_component")
-    assert isinstance(deserialized_comp.api_key, Secret)
+    assert isinstance(deserialized_comp.api_key, EnvVarSecret)
     assert deserialized_comp.api_key.type.value == "env_var"
+    assert isinstance(original_secret, EnvVarSecret)
     assert deserialized_comp.api_key._env_vars == original_secret._env_vars
 
     # Test roundtrip with multiple secrets
@@ -248,11 +250,13 @@ def test_component_to_dict_and_from_dict_roundtrip_with_secret():
     assert serialized["init_parameters"]["regular_param"] == "test"
 
     deserialized_comp = component_from_dict(CustomComponentWithSecrets, serialized, "test_component")
-    assert isinstance(deserialized_comp.api_key, Secret)
-    assert isinstance(deserialized_comp.token, Secret)
+    assert isinstance(deserialized_comp.api_key, EnvVarSecret)
+    assert isinstance(deserialized_comp.token, EnvVarSecret)
     assert deserialized_comp.api_key.type.value == "env_var"
     assert deserialized_comp.token.type.value == "env_var"
     assert deserialized_comp.regular_param == "test"
+    assert isinstance(env_secret1, EnvVarSecret)
+    assert isinstance(env_secret2, EnvVarSecret)
     assert deserialized_comp.api_key._env_vars == env_secret1._env_vars
     assert deserialized_comp.token._env_vars == env_secret2._env_vars
 

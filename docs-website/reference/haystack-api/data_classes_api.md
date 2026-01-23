@@ -548,6 +548,37 @@ def from_str(string: str) -> "ChatRole"
 
 Convert a string to a ChatRole enum.
 
+<a id="chat_message.TextContent"></a>
+
+### TextContent
+
+The textual content of a chat message.
+
+**Arguments**:
+
+- `text`: The text content of the message.
+
+<a id="chat_message.TextContent.to_dict"></a>
+
+#### TextContent.to\_dict
+
+```python
+def to_dict() -> dict[str, Any]
+```
+
+Convert TextContent into a dictionary.
+
+<a id="chat_message.TextContent.from_dict"></a>
+
+#### TextContent.from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: dict[str, Any]) -> "TextContent"
+```
+
+Create a TextContent from a dictionary.
+
 <a id="chat_message.ToolCall"></a>
 
 ### ToolCall
@@ -645,37 +676,6 @@ Creates a ToolCallResult from a dictionary.
 **Returns**:
 
 The created object.
-
-<a id="chat_message.TextContent"></a>
-
-### TextContent
-
-The textual content of a chat message.
-
-**Arguments**:
-
-- `text`: The text content of the message.
-
-<a id="chat_message.TextContent.to_dict"></a>
-
-#### TextContent.to\_dict
-
-```python
-def to_dict() -> dict[str, Any]
-```
-
-Convert TextContent into a dictionary.
-
-<a id="chat_message.TextContent.from_dict"></a>
-
-#### TextContent.from\_dict
-
-```python
-@classmethod
-def from_dict(cls, data: dict[str, Any]) -> "TextContent"
-```
-
-Create a TextContent from a dictionary.
 
 <a id="chat_message.ReasoningContent"></a>
 
@@ -1001,7 +1001,7 @@ A new ChatMessage instance.
 ```python
 @classmethod
 def from_tool(cls,
-              tool_result: str,
+              tool_result: ToolCallResultContentT,
               origin: ToolCall,
               error: bool = False,
               meta: dict[str, Any] | None = None) -> "ChatMessage"
@@ -1062,7 +1062,7 @@ def to_openai_dict_format(
         require_tool_call_ids: bool = True) -> dict[str, Any]
 ```
 
-Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
+Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
 **Arguments**:
 
@@ -1076,7 +1076,7 @@ Set to False to allow Tool Calls without `id`, which may be suitable for shallow
 
 **Returns**:
 
-The ChatMessage in the format expected by OpenAI's Chat API.
+The ChatMessage in the format expected by OpenAI's Chat Completions API.
 
 <a id="chat_message.ChatMessage.from_openai_dict_format"></a>
 

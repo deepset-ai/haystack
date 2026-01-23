@@ -47,6 +47,30 @@ class ChatRole(str, Enum):
 
 
 @dataclass
+class TextContent:
+    """
+    The textual content of a chat message.
+
+    :param text: The text content of the message.
+    """
+
+    text: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Convert TextContent into a dictionary.
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "TextContent":
+        """
+        Create a TextContent from a dictionary.
+        """
+        return TextContent(**data)
+
+
+@dataclass
 class ToolCall:
     """
     Represents a Tool call prepared by the model, usually contained in an assistant message.
@@ -84,6 +108,9 @@ class ToolCall:
         return ToolCall(**data)
 
 
+ToolCallResultContentT = str | Sequence[TextContent | ImageContent]
+
+
 @dataclass
 class ToolCallResult:
     """
@@ -94,7 +121,7 @@ class ToolCallResult:
     :param error: Whether the Tool invocation resulted in an error.
     """
 
-    result: str
+    result: ToolCallResultContentT
     origin: ToolCall
     error: bool
 
@@ -104,7 +131,12 @@ class ToolCallResult:
 
         :returns: A dictionary with keys 'result', 'origin', and 'error'.
         """
-        return asdict(self)
+        serialized = asdict(self)
+        if isinstance(self.result, list):
+            if not all(isinstance(part, (TextContent, ImageContent)) for part in self.result):
+                raise ValueError("ToolCallResult result must be a string or a list of TextContent or ImageContent")
+            serialized["result"] = [_serialize_content_part(part) for part in self.result]
+        return serialized
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ToolCallResult":
@@ -121,31 +153,12 @@ class ToolCallResult:
                 "Fields `result`, `origin`, `error` are required for ToolCallResult deserialization. "
                 f"Received dictionary with keys {list(data.keys())}"
             )
-        return ToolCallResult(result=data["result"], origin=ToolCall.from_dict(data["origin"]), error=data["error"])
 
+        result = data["result"]
+        if isinstance(result, list):
+            result = [_deserialize_content_part(part) for part in result]
 
-@dataclass
-class TextContent:
-    """
-    The textual content of a chat message.
-
-    :param text: The text content of the message.
-    """
-
-    text: str
-
-    def to_dict(self) -> dict[str, Any]:
-        """
-        Convert TextContent into a dictionary.
-        """
-        return asdict(self)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TextContent":
-        """
-        Create a TextContent from a dictionary.
-        """
-        return TextContent(**data)
+        return ToolCallResult(result=result, origin=ToolCall.from_dict(data["origin"]), error=data["error"])
 
 
 @dataclass
@@ -500,7 +513,11 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
 
     @classmethod
     def from_tool(
-        cls, tool_result: str, origin: ToolCall, error: bool = False, meta: dict[str, Any] | None = None
+        cls,
+        tool_result: ToolCallResultContentT,
+        origin: ToolCall,
+        error: bool = False,
+        meta: dict[str, Any] | None = None,
     ) -> "ChatMessage":
         """
         Create a message from a Tool.
@@ -608,13 +625,13 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
 
     def to_openai_dict_format(self, require_tool_call_ids: bool = True) -> dict[str, Any]:
         """
-        Convert a ChatMessage to the dictionary format expected by OpenAI's Chat API.
+        Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
         :param require_tool_call_ids:
             If True (default), enforces that each Tool Call includes a non-null `id` attribute.
             Set to False to allow Tool Calls without `id`, which may be suitable for shallow OpenAI-compatible APIs.
         :returns:
-            The ChatMessage in the format expected by OpenAI's Chat API.
+            The ChatMessage in the format expected by OpenAI's Chat Completions API.
 
         :raises ValueError:
             If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
@@ -668,7 +685,17 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         # tool message
         if tool_call_results:
             result = tool_call_results[0]
-            openai_msg["content"] = result.result
+            if isinstance(result.result, str):
+                openai_msg["content"] = result.result
+            # OpenAI Chat Completions API does not support multimodal tool results
+            elif isinstance(result.result, list) and all(isinstance(part, TextContent) for part in result.result):
+                openai_msg["content"] = [{"type": "text", "text": part.text} for part in result.result]
+            else:
+                raise ValueError(
+                    f"Unsupported tool result: {result}. If you need to pass images in tool results, "
+                    "use OpenAI Responses API instead."
+                )
+
             if result.origin.id is not None:
                 openai_msg["tool_call_id"] = result.origin.id
             elif require_tool_call_ids:
@@ -770,6 +797,10 @@ class ChatMessage:  # pylint: disable=too-many-public-methods # it's OK since we
         if role in ["system", "developer"]:
             return cls.from_system(text=content, name=name)
 
+        if isinstance(content, list):
+            if not all("text" in el for el in content):
+                raise ValueError("To be used with OpenAI, tool results must be a string or a list of TextContent")
+            content = [TextContent(text=el["text"]) for el in content]
         return cls.from_tool(
             tool_result=content, origin=ToolCall(id=tool_call_id, tool_name="", arguments={}), error=False
         )
