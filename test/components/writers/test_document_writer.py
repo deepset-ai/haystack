@@ -4,7 +4,7 @@
 
 import pytest
 
-from haystack import DeserializationError, Document
+from haystack import Document
 from haystack.components.writers.document_writer import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
@@ -64,22 +64,31 @@ class TestDocumentWriter:
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.policy == DuplicatePolicy.SKIP
 
-    def test_from_dict_without_docstore(self):
-        data = {"type": "DocumentWriter", "init_parameters": {}}
-        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
-            DocumentWriter.from_dict(data)
+    def test_from_dict_without_policy(self):
+        data = {
+            "type": "haystack.components.writers.document_writer.DocumentWriter",
+            "init_parameters": {
+                "document_store": {
+                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                    "init_parameters": {},
+                }
+            },
+        }
+        component = DocumentWriter.from_dict(data)
+        assert isinstance(component.document_store, InMemoryDocumentStore)
+        assert component.policy == DuplicatePolicy.NONE
 
-    def test_from_dict_without_docstore_type(self):
-        data = {"type": "DocumentWriter", "init_parameters": {"document_store": {"init_parameters": {}}}}
-        with pytest.raises(DeserializationError):
+    def test_from_dict_without_docstore(self):
+        data = {"type": "haystack.components.writers.document_writer.DocumentWriter", "init_parameters": {}}
+        with pytest.raises(TypeError, match="missing 1 required positional argument: 'document_store'"):
             DocumentWriter.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
         data = {
-            "type": "DocumentWriter",
+            "type": "haystack.components.writers.document_writer.DocumentWriter",
             "init_parameters": {"document_store": {"type": "Nonexisting.DocumentStore", "init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError):
+        with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*Nonexisting\.DocumentStore"):
             DocumentWriter.from_dict(data)
 
     def test_run(self, document_store):

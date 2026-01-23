@@ -475,9 +475,10 @@ class OpenAIResponsesChatGenerator:
 
         base_args = {"model": self.model, "input": openai_formatted_messages, **openai_tools, **generation_kwargs}
 
-        # if both `text_format` and `text` are provided, `text_format` takes precedence
-        # and json schema passed to `text` is ignored
-        if generation_kwargs.get("text_format") or generation_kwargs.get("text"):
+        # if `text_format` is provided, we use the `parse` endpoint for response type parsing
+        if generation_kwargs.get("text_format"):
+            # if both `text_format` and `text` are provided, `text_format` takes precedence
+            # and json schema passed to `text` is ignored
             return {**base_args, "stream": streaming_callback is not None, "openai_endpoint": "parse"}
         # we pass a key `openai_endpoint` as a hint to the run method to use the create or parse endpoint
         # this key will be removed before the API call is made
@@ -485,15 +486,21 @@ class OpenAIResponsesChatGenerator:
 
     def _resolve_flattened_kwargs(self, generation_kwargs: dict[str, Any]) -> dict[str, Any]:
         generation_kwargs = generation_kwargs.copy()
-        if "reasoning_effort" in generation_kwargs:
-            effort = generation_kwargs.pop("reasoning_effort")
-            reasoning = generation_kwargs.setdefault("reasoning", {})
-            reasoning["effort"] = effort
 
-        if "reasoning_summary" in generation_kwargs:
-            reasoning_summary = generation_kwargs.pop("reasoning_summary")
+        reasoning_effort = generation_kwargs.pop("reasoning_effort", None)
+        if reasoning_effort is not None:
+            reasoning = generation_kwargs.setdefault("reasoning", {})
+            reasoning["effort"] = reasoning_effort
+
+        reasoning_summary = generation_kwargs.pop("reasoning_summary", None)
+        if reasoning_summary is not None:
             reasoning = generation_kwargs.setdefault("reasoning", {})
             reasoning["summary"] = reasoning_summary
+
+        verbosity = generation_kwargs.pop("verbosity", None)
+        if verbosity is not None:
+            text = generation_kwargs.setdefault("text", {})
+            text["verbosity"] = verbosity
 
         return generation_kwargs
 
