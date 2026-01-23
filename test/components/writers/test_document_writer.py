@@ -64,20 +64,24 @@ class TestDocumentWriter:
         assert isinstance(component.document_store, InMemoryDocumentStore)
         assert component.policy == DuplicatePolicy.SKIP
 
+    def test_from_dict_without_policy(self):
+        data = {
+            "type": "haystack.components.writers.document_writer.DocumentWriter",
+            "init_parameters": {
+                "document_store": {
+                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                    "init_parameters": {},
+                }
+            },
+        }
+        component = DocumentWriter.from_dict(data)
+        assert isinstance(component.document_store, InMemoryDocumentStore)
+        assert component.policy == DuplicatePolicy.NONE
+
     def test_from_dict_without_docstore(self):
         data = {"type": "haystack.components.writers.document_writer.DocumentWriter", "init_parameters": {}}
         with pytest.raises(TypeError, match="missing 1 required positional argument: 'document_store'"):
             DocumentWriter.from_dict(data)
-
-    def test_from_dict_without_docstore_type(self):
-        data = {
-            "type": "haystack.components.writers.document_writer.DocumentWriter",
-            "init_parameters": {"document_store": {"init_parameters": {}}},
-        }
-        # When document_store dict has no "type" key, it will be passed as-is to the constructor
-        # DocumentWriter doesn't validate the type in __init__, so this succeeds but document_store will be a dict
-        component = DocumentWriter.from_dict(data)
-        assert isinstance(component.document_store, dict)
 
     def test_from_dict_nonexisting_docstore(self):
         data = {
