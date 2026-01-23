@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any
 
 from haystack.core.errors import DeserializationError
@@ -11,6 +12,10 @@ from haystack.core.serialization import component_from_dict, default_from_dict, 
 def deserialize_document_store_in_init_params_inplace(data: dict[str, Any], key: str = "document_store") -> None:
     """
     Deserializes a generic document store from the init_parameters of a serialized component in place.
+
+    .. deprecated:: 2.23.0
+        This function is deprecated and will be removed in a future version of Haystack.
+        It is no longer used internally and should not be used in new code.
 
     :param data:
         The dictionary to deserialize from.
@@ -22,6 +27,13 @@ def deserialize_document_store_in_init_params_inplace(data: dict[str, Any], key:
     :raises DeserializationError:
         If the document store is not properly specified in the serialization data or its type cannot be imported.
     """
+    warnings.warn(
+        "`deserialize_document_store_in_init_params_inplace` is deprecated. "
+        "It will be removed in a future version of Haystack. "
+        "It is no longer used internally and should not be used in new code.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     init_params = data.get("init_parameters", {})
     if key not in init_params:
         raise DeserializationError(f"Missing '{key}' in serialization data")
