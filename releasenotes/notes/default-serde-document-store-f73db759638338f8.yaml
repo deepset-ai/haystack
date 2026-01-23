@@ -1,7 +1,7 @@
 ---
 features:
   - |
-    component_from_dict() and component_to_dict() now work out of the box with custom components that have an object as init parameter as long as it defines to_dict and from_dict methods.
-    Users no longer need to explicitly define to_dict and from_dict methods in their custom components in such cases.
+    component_from_dict/component_to_dict now work out of the box with custom components that have an object as init parameter as long as the object defines to_dict/from_dict methods.
+    Users no longer need to explicitly define to_dict/from_dict methods in their custom components in such cases.
     For example, a custom retriever, which has a DocumentStore as an init parameter, does not need explicitly defined to_dict/from_dict methods.
-    component_from_dict() and component_to_dict() now handle such cases automatically.
+    component_from_dict/component_to_dict now handle such cases automatically.
