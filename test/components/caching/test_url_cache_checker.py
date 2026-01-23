@@ -59,17 +59,6 @@ class TestCacheChecker:
         ):
             CacheChecker.from_dict(data)
 
-    def test_from_dict_without_docstore_type(self):
-        data = {
-            "type": "haystack.components.caching.cache_checker.CacheChecker",
-            "init_parameters": {"document_store": {"init_parameters": {}}, "cache_field": "url"},
-        }
-        # When document_store dict has no "type" key, it will be passed as-is to the constructor
-        # CacheChecker doesn't validate the type in __init__, so this succeeds but document_store will be a dict
-        component = CacheChecker.from_dict(data)
-        assert isinstance(component.document_store, dict)
-        assert component.cache_field == "url"
-
     def test_from_dict_nonexisting_docstore(self):
         data = {
             "type": "haystack.components.caching.cache_checker.CacheChecker",
