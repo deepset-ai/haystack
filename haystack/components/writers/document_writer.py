@@ -71,10 +71,7 @@ class DocumentWriter:
         :raises DeserializationError:
             If the document store is not properly specified in the serialization data or its type cannot be imported.
         """
-        init_params = data.get("init_parameters", {})
-        if "policy" in init_params:
-            init_params["policy"] = DuplicatePolicy[init_params["policy"]]
-
+        data["init_parameters"]["policy"] = DuplicatePolicy[data["init_parameters"]["policy"]]
         return default_from_dict(cls, data)
 
     @component.output_types(documents_written=int)
