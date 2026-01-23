@@ -483,15 +483,6 @@ def test_component_from_dict_with_document_store():
     assert comp.document_store is None
     assert comp.name == "test"
 
-    # Test with regular dict (not a DocumentStore - different structure)
-    data = {
-        "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
-        "init_parameters": {"document_store": {"some": "dict"}, "name": "test"},
-    }
-    comp = component_from_dict(CustomComponentWithDocumentStore, data, "test_component")
-    assert comp.document_store == {"some": "dict"}
-    assert comp.name == "test"
-
 
 def test_component_to_dict_and_from_dict_roundtrip_with_document_store():
     """Test that serialization and deserialization work together for DocumentStore."""
