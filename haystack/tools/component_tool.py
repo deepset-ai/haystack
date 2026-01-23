@@ -22,8 +22,12 @@ from haystack.tools.parameters_schema_utils import (
     _get_component_param_descriptions,
     _resolve_type,
 )
-from haystack.tools.tool import _deserialize_outputs_to_state, _serialize_outputs_to_state
-from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
+from haystack.tools.tool import (
+    _deserialize_outputs_to_state,
+    _deserialize_outputs_to_string,
+    _serialize_outputs_to_state,
+    _serialize_outputs_to_string,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,17 +115,24 @@ class ComponentTool(Tool):
             A JSON schema defining the parameters expected by the Tool.
             Will fall back to the parameters defined in the component's run method signature if not provided.
         :param outputs_to_string:
-            Optional dictionary defining how tool outputs should be converted into string(s).
-            Supports two formats:
+            Optional dictionary defining how tool outputs should be converted into string(s) or results.
+            If not provided, the tool result is converted to a string using a default handler.
 
-            1. Single output format - use "source" and/or "handler" at the root level:
+            `outputs_to_string` supports two formats:
+
+            1. Single output format - use "source", "handler", and/or "raw_result" at the root level:
                 ```python
                 {
-                    "source": "docs", "handler": format_documents
+                    "source": "docs", "handler": format_documents, "raw_result": False
                 }
                 ```
-                If the source is provided, only the specified output key is sent to the handler.
-                If the source is omitted, the whole tool result is sent to the handler.
+                - `source`: If provided, only the specified output key is sent to the handler.
+                - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+                  final result.
+                - `raw_result`: If `True`, the result is returned raw without string conversion, but applying the
+                   `handler` if provided. This is intended for tools that return images. In this mode, the Tool
+                   function or the `handler` function must return a list of `TextContent`/`ImageContent` objects to
+                   ensure compatibility with Chat Generators.
 
             2. Multiple output format - map keys to individual configurations:
                 ```python
@@ -131,6 +142,7 @@ class ComponentTool(Tool):
                 }
                 ```
                 Each key maps to a dictionary that can contain "source" and/or "handler".
+                Note that `raw_result` is not supported in the multiple output format.
         :param inputs_from_state:
             Optional dictionary mapping state keys to tool parameter names.
             Example: `{"repository": "repo"}` maps state's "repository" to tool's "repo" parameter.
@@ -272,14 +284,10 @@ class ComponentTool(Tool):
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
             "outputs_to_state": _serialize_outputs_to_state(self.outputs_to_state) if self.outputs_to_state else None,
+            "outputs_to_string": _serialize_outputs_to_string(self.outputs_to_string)
+            if self.outputs_to_string
+            else None,
         }
-
-        if self.outputs_to_string is not None and self.outputs_to_string.get("handler") is not None:
-            # This is soft-copied as to not modify the attributes in place
-            serialized["outputs_to_string"] = self.outputs_to_string.copy()
-            serialized["outputs_to_string"]["handler"] = serialize_callable(self.outputs_to_string["handler"])
-        else:
-            serialized["outputs_to_string"] = None
 
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
 
@@ -295,13 +303,8 @@ class ComponentTool(Tool):
         if "outputs_to_state" in inner_data and inner_data["outputs_to_state"]:
             inner_data["outputs_to_state"] = _deserialize_outputs_to_state(inner_data["outputs_to_state"])
 
-        if (
-            inner_data.get("outputs_to_string") is not None
-            and inner_data["outputs_to_string"].get("handler") is not None
-        ):
-            inner_data["outputs_to_string"]["handler"] = deserialize_callable(
-                inner_data["outputs_to_string"]["handler"]
-            )
+        if inner_data.get("outputs_to_string") is not None:
+            inner_data["outputs_to_string"] = _deserialize_outputs_to_string(inner_data["outputs_to_string"])
 
         return cls(
             component=component,

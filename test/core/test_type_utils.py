@@ -108,7 +108,7 @@ def generate_strict_asymmetric_cases():
         cases.append(pytest.param(t, Optional[t], id=generate_id(t, Optional[t])))
         cases.append(pytest.param(t, Union[t, complex], id=generate_id(t, Union[t, complex])))
         cases.append(pytest.param(t, Any, id=generate_id(t, Any)))
-        cases.append(pytest.param(t, t | None, id=generate_id(t, t | None)))
+        cases.append(pytest.param(t, t | None, id=generate_id(t, t | None)))  # type: ignore[operator]
         cases.append(pytest.param(t, t | complex, id=generate_id(t, t | complex)))
 
     # Classes: Optional, Union, Any
@@ -143,7 +143,9 @@ def generate_strict_asymmetric_cases():
         cases.append(pytest.param(container, Optional[container], id=generate_id(container, Optional[container])))
         cases.append(pytest.param(container, Union[container, int], id=generate_id(container, Union[container, int])))
         cases.append(pytest.param(container, Any, id=generate_id(container, Any)))
-        cases.append(pytest.param(container, container | None, id=generate_id(container, container | None)))
+        cases.append(
+            pytest.param(container, container | None, id=generate_id(container, container | None))  # type: ignore[operator]
+        )
         cases.append(pytest.param(container, container | int, id=generate_id(container, container | int)))
 
     # Extra cases
@@ -771,7 +773,7 @@ if sys.version_info >= (3, 10):
             + nested_container_types
             + extras
         ):
-            cases.append(pytest.param(t, t | None, id=generate_id(t, t | None)))
+            cases.append(pytest.param(t, t | None, id=generate_id(t, t | None)))  # type: ignore[operator]
             cases.append(pytest.param(t, t | complex, id=generate_id(t, t | complex)))
 
         # Classes: UnionType
@@ -789,7 +791,13 @@ if sys.version_info >= (3, 10):
 
         # Containers: Optional, Union, and Any compatibility
         for container in container_types:
-            cases.append(pytest.param(container, container | None, id=generate_id(container, container | None)))
+            cases.append(
+                pytest.param(
+                    container,
+                    container | None,  # type: ignore[operator]
+                    id=generate_id(container, container | None),  # type: ignore[operator]
+                )
+            )
             cases.append(pytest.param(container, container | int, id=generate_id(container, container | int)))
 
         # builtins Extra container cases

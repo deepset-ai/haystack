@@ -123,6 +123,72 @@ tool = Tool(
 ```
 After invocation, only the configured string outputs are returned to the LLM, while selected fields through `outputs_to_state` (like documents) are saved in the agent state.
 
+#### Shaping Tool outputs with `outputs_to_string`
+
+By default, a tool's return value is converted to a string using a default handler before being sent to the Language Model.
+
+You can use `outputs_to_string` to customize this behavior using one of two formats:
+1. **Single output format**: Use `source`, `handler`, and/or `raw_result` at the root level.
+    ```python
+    {
+        "source": "docs", "handler": format_documents, "raw_result": False
+    }
+    ```
+    - `source`: (Optional) Specifies the key to extract from the tool's output dictionary. If omitted, the entire result is passed to the handler.
+    - `handler`: (Optional) A function that takes the output (or the extracted source value) and returns the final result.
+    - `raw_result`: (Optional) If `True`, the result is returned "as is" without further string conversion, but applying the `handler` if provided.
+    This is intended for multimodal tools returning images. In this mode, the tool or handler should return a list of
+    `TextContent` and `ImageContent` objects for compatibility with Chat Generators.
+
+2. **Multiple output format**: Map custom keys to individual configurations.
+    ```python
+    {
+        "formatted_docs": {"source": "docs", "handler": format_documents},
+        "summary": {"source": "summary_text", "handler": str.upper}
+    }
+    ```
+    Each entry defines a `source` key and can optionally include a `handler`. The individual outputs are processed,
+    collected into a dictionary, and then converted into a single string (usually a JSON-like representation) for the LLM.
+
+    :::note
+    `raw_result` is not supported in the multiple output format.
+    :::
+
+The example below shows how to use `outputs_to_string` with `raw_result: True` to return images:
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage, ImageContent, TextContent
+from haystack.tools import create_tool_from_function
+
+
+def retrieve_image():
+    """Tool to retrieve an image"""
+    return [
+        TextContent("Here is the retrieved image."),
+        ImageContent.from_file_path("test/test_files/images/apple.jpg"),
+    ]
+
+
+image_retriever_tool = create_tool_from_function(
+    function=retrieve_image, outputs_to_string={"raw_result": True}
+)
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5-nano"),
+    system_prompt="You are an Agent that can retrieve images and describe them.",
+    tools=[image_retriever_tool],
+)
+
+user_message = ChatMessage.from_user("Retrieve the image and describe it in max 10 words.")
+result = agent.run(messages=[user_message])
+
+print(result["last_message"].text)
+# Red apple with stem resting on straw.
+
+```
+
 ### @tool decorator
 
 The `@tool` decorator simplifies converting a function into a Tool. It infers Tool name, description, and parameters from the function and automatically generates a JSON schema. It uses Python's `typing.Annotated` for the description of parameters. If you need to customize Tool name and description, use `create_tool_from_function` instead.
