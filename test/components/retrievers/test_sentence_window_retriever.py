@@ -109,8 +109,11 @@ class TestSentenceWindowRetriever:
         assert not component.raise_on_missing_meta_fields
 
     def test_from_dict_without_docstore(self):
-        data = {"type": "SentenceWindowRetriever", "init_parameters": {}}
-        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
+        data = {
+            "type": "haystack.components.retrievers.sentence_window_retriever.SentenceWindowRetriever",
+            "init_parameters": {},
+        }
+        with pytest.raises(TypeError, match="missing 1 required positional argument: 'document_store'"):
             SentenceWindowRetriever.from_dict(data)
 
     def test_from_dict_without_docstore_type(self):

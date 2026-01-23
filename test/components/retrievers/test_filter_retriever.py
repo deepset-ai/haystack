@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from haystack import DeserializationError, Pipeline
+from haystack import Pipeline
 from haystack.components.retrievers.filter_retriever import FilterRetriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -93,8 +93,8 @@ class TestFilterRetriever:
         assert component.filters == {"lang": "en"}
 
     def test_from_dict_without_docstore(self):
-        data = {"type": "InMemoryBM25Retriever", "init_parameters": {}}
-        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
+        data = {"type": "haystack.components.retrievers.filter_retriever.FilterRetriever", "init_parameters": {}}
+        with pytest.raises(TypeError, match="missing 1 required positional argument: 'document_store'"):
             FilterRetriever.from_dict(data)
 
     def test_retriever_init_filter(self, sample_document_store, sample_docs):

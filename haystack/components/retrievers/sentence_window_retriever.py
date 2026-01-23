@@ -6,7 +6,6 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.document_stores.types import DocumentStore
-from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -159,10 +158,9 @@ class SentenceWindowRetriever:
         :returns:
             Dictionary with serialized data.
         """
-        docstore = self.document_store.to_dict()
         return default_to_dict(
             self,
-            document_store=docstore,
+            document_store=self.document_store,
             window_size=self.window_size,
             source_id_meta_field=self.source_id_meta_field,
             split_id_meta_field=self.split_id_meta_field,
@@ -177,10 +175,6 @@ class SentenceWindowRetriever:
         :returns:
             Deserialized component.
         """
-        # deserialize the document store
-        deserialize_document_store_in_init_params_inplace(data)
-
-        # deserialize the component
         return default_from_dict(cls, data)
 
     @component.output_types(context_windows=list[str], context_documents=list[Document])

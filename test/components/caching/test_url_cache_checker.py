@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from haystack import DeserializationError, Document
+from haystack import Document
 from haystack.components.caching.cache_checker import CacheChecker
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.factory import document_store_class
@@ -54,23 +54,17 @@ class TestCacheChecker:
 
     def test_from_dict_without_docstore(self):
         data = {"type": "haystack.components.caching.cache_checker.CacheChecker", "init_parameters": {}}
-        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
-            CacheChecker.from_dict(data)
-
-    def test_from_dict_without_docstore_type(self):
-        data = {
-            "type": "haystack.components.caching.cache_checker.UrlCacheChecker",
-            "init_parameters": {"document_store": {"init_parameters": {}}},
-        }
-        with pytest.raises(DeserializationError):
+        with pytest.raises(
+            TypeError, match="missing 2 required positional arguments: 'document_store' and 'cache_field'"
+        ):
             CacheChecker.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
         data = {
-            "type": "haystack.components.caching.cache_checker.UrlCacheChecker",
+            "type": "haystack.components.caching.cache_checker.CacheChecker",
             "init_parameters": {"document_store": {"type": "Nonexisting.DocumentStore", "init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError):
+        with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*Nonexisting\.DocumentStore"):
             CacheChecker.from_dict(data)
 
     def test_run(self):

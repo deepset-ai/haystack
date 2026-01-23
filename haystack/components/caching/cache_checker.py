@@ -6,7 +6,6 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
-from haystack.utils import deserialize_document_store_in_init_params_inplace
 
 
 @component
@@ -58,7 +57,7 @@ class CacheChecker:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, document_store=self.document_store.to_dict(), cache_field=self.cache_field)
+        return default_to_dict(self, document_store=self.document_store, cache_field=self.cache_field)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CacheChecker":
@@ -70,9 +69,6 @@ class CacheChecker:
         :returns:
             Deserialized component.
         """
-        # deserialize the document store
-        deserialize_document_store_in_init_params_inplace(data)
-
         return default_from_dict(cls, data)
 
     @component.output_types(hits=list[Document], misses=list)

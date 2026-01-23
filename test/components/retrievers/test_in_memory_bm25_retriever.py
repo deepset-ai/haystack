@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from haystack import DeserializationError, Pipeline
+from haystack import Pipeline
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -104,13 +104,19 @@ class TestMemoryBM25Retriever:
         assert component.filter_policy == FilterPolicy.REPLACE
 
     def test_from_dict_without_docstore(self):
-        data = {"type": "InMemoryBM25Retriever", "init_parameters": {}}
-        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
+        data = {
+            "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
+            "init_parameters": {},
+        }
+        with pytest.raises(TypeError, match="missing 1 required positional argument: 'document_store'"):
             InMemoryBM25Retriever.from_dict(data)
 
     def test_from_dict_without_docstore_type(self):
-        data = {"type": "InMemoryBM25Retriever", "init_parameters": {"document_store": {"init_parameters": {}}}}
-        with pytest.raises(DeserializationError, match="Missing 'type' in document store's serialization data"):
+        data = {
+            "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
+            "init_parameters": {"document_store": {"init_parameters": {}}},
+        }
+        with pytest.raises(ValueError, match="document_store must be an instance of InMemoryDocumentStore"):
             InMemoryBM25Retriever.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
@@ -118,7 +124,7 @@ class TestMemoryBM25Retriever:
             "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
             "init_parameters": {"document_store": {"type": "Nonexisting.Docstore", "init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError):
+        with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*Nonexisting\.Docstore"):
             InMemoryBM25Retriever.from_dict(data)
 
     def test_retriever_valid_run(self, mock_docs):
