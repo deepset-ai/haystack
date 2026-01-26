@@ -204,6 +204,7 @@ class TestOpenAPIConnectorIntegration:
             credentials=Secret.from_env_var("GITHUB_TOKEN"),
         )
         # use a core operation, which has higher rate limits than search operations
+        # https://docs.github.com/en/rest/rate-limit/rate-limit?apiVersion=2022-11-28#about-rate-limits
         response = component.run(operation_id="repos_list_for_org", arguments={"org": "deepset-ai", "type": "public"})
 
         assert isinstance(response, dict)
