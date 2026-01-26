@@ -28,7 +28,7 @@ The `PaddleOCRVLDocumentConverter` takes a list of document sources and uses Pad
 
 The component returns one Haystack [`Document`](../../concepts/data-classes.mdx#document) per source, with all pages concatenated using form feed characters (`\f`) as separators. This format ensures compatibility with Haystack's [`DocumentSplitter`](../preprocessors/documentsplitter.mdx) for accurate page-wise splitting and overlap handling. The content is returned in markdown format, with images represented as `![img-id](img-id)` tags.
 
-The component takes `api_url` as a required parameter. To obtain the API URL, visit the [PaddleOCR official website](https://aistudio.baidu.com/paddleocr/task), click the **API** button in the upper-left corner, choose the example code for **Large Model document parsing(PaddleOCR-VL)**, and copy the `API_URL`.
+The component takes `api_url` as a required parameter. To obtain the API URL, visit the [PaddleOCR official website](https://aistudio.baidu.com/paddleocr), click the **API** button, choose the example code for PaddleOCR-VL, and copy the `API_URL`.
 
 By default, the component uses the `AISTUDIO_ACCESS_TOKEN` environment variable for authentication. You can also pass an `access_token` at initialization. The AI Studio access token can be obtained from [this page](https://aistudio.baidu.com/account/accessToken).
 
