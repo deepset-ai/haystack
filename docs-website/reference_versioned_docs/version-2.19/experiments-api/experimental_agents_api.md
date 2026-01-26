@@ -78,7 +78,8 @@ def __init__(*,
              confirmation_strategies: dict[str, ConfirmationStrategy]
              | None = None,
              tool_invoker_kwargs: dict[str, Any] | None = None,
-             chat_message_store: ChatMessageStore | None = None) -> None
+             chat_message_store: ChatMessageStore | None = None,
+             memory_store: MemoryStore | None = None) -> None
 ```
 
 Initialize the agent component.
@@ -99,6 +100,9 @@ The same callback can be configured to emit tool results when a tool is called.
 - `raise_on_tool_invocation_failure`: Should the agent raise an exception when a tool invocation fails?
 If set to False, the exception will be turned into a chat message and passed to the LLM.
 - `tool_invoker_kwargs`: Additional keyword arguments to pass to the ToolInvoker.
+- `chat_message_store`: The ChatMessageStore that the agent can use to store
+and retrieve chat messages history.
+- `memory_store`: The memory store that the agent can use to store and retrieve memories.
 
 **Raises**:
 
@@ -120,6 +124,7 @@ def run(messages: list[ChatMessage],
         tools: ToolsType | list[str] | None = None,
         confirmation_strategy_context: dict[str, Any] | None = None,
         chat_message_store_kwargs: dict[str, Any] | None = None,
+        memory_store_kwargs: dict[str, Any] | None = None,
         **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -145,6 +150,19 @@ objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that 
 can use for non-blocking user interaction.
 - `chat_message_store_kwargs`: Optional dictionary of keyword arguments to pass to the ChatMessageStore.
 For example, it can include the `chat_history_id` and `last_k` parameters for retrieving chat history.
+- `memory_store_kwargs`: Optional dictionary of keyword arguments to pass to the MemoryStore.
+It can include:
+- `user_id`: The user ID to search and add memories from.
+- `run_id`: The run ID to search and add memories from.
+- `agent_id`: The agent ID to search and add memories from.
+- `search_criteria`: A dictionary of containing kwargs for the `search_memories` method.
+    This can include:
+    - `filters`: A dictionary of filters to search for memories.
+    - `query`: The query to search for memories.
+        Note: If you pass this, the user query passed to the agent will be
+        ignored for memory retrieval.
+    - `top_k`: The number of memories to return.
+    - `include_memory_metadata`: Whether to include the memory metadata in the ChatMessage.
 - `kwargs`: Additional data to pass to the State schema used by the Agent.
 The keys must match the schema defined in the Agent's `state_schema`.
 
@@ -176,6 +194,7 @@ async def run_async(messages: list[ChatMessage],
                     confirmation_strategy_context: dict[str, Any]
                     | None = None,
                     chat_message_store_kwargs: dict[str, Any] | None = None,
+                    memory_store_kwargs: dict[str, Any] | None = None,
                     **kwargs: Any) -> dict[str, Any]
 ```
 
@@ -204,6 +223,20 @@ objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that 
 can use for non-blocking user interaction.
 - `chat_message_store_kwargs`: Optional dictionary of keyword arguments to pass to the ChatMessageStore.
 For example, it can include the `chat_history_id` and `last_k` parameters for retrieving chat history.
+- `kwargs`: Additional data to pass to the State schema used by the Agent.
+- `memory_store_kwargs`: Optional dictionary of keyword arguments to pass to the MemoryStore.
+It can include:
+- `user_id`: The user ID to search and add memories from.
+- `run_id`: The run ID to search and add memories from.
+- `agent_id`: The agent ID to search and add memories from.
+- `search_criteria`: A dictionary of containing kwargs for the `search_memories` method.
+    This can include:
+    - `filters`: A dictionary of filters to search for memories.
+    - `query`: The query to search for memories.
+        Note: If you pass this, the user query passed to the agent will be
+        ignored for memory retrieval.
+    - `top_k`: The number of memories to return.
+    - `include_memory_metadata`: Whether to include the memory metadata in the ChatMessage.
 - `kwargs`: Additional data to pass to the State schema used by the Agent.
 The keys must match the schema defined in the Agent's `state_schema`.
 

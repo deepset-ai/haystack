@@ -1,0 +1,82 @@
+---
+title: "SentenceTransformersDiversityRanker"
+id: sentencetransformersdiversityranker
+slug: "/sentencetransformersdiversityranker"
+description: "This is a Diversity Ranker based on Sentence Transformers."
+---
+
+# SentenceTransformersDiversityRanker
+
+This is a Diversity Ranker based on Sentence Transformers.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
+| **Mandatory init variables** | `token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory run variables** | `documents`: A list of documents  <br /> <br />`query`: A query string |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [Rankers](/reference/rankers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/sentence_transformers_diversity.py |
+
+</div>
+
+## Overview
+
+The `SentenceTransformersDiversityRanker` uses a ranking algorithm to order documents to maximize their overall diversity. It ranks a list of documents based on their similarity to the query. The component embeds the query and the documents using a pre-trained Sentence Transformers model.
+
+This Ranker’s default model is `sentence-transformers/all-MiniLM-L6-v2`.
+
+You can optionally set the `top_k` parameter, which specifies the maximum number of documents to return. If you don’t set this parameter, the component returns all documents it receives.
+
+Find the full list of optional initialization parameters in our [API reference](/reference/rankers-api#sentencetransformersdiversityranker).
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack.components.rankers import SentenceTransformersDiversityRanker
+
+ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine")
+ranker.warm_up()
+
+docs = [Document(content="Regular Exercise"), Document(content="Balanced Nutrition"), Document(content="Positive Mindset"),
+        Document(content="Eating Well"), Document(content="Doing physical activities"), Document(content="Thinking positively")]
+
+query = "How can I maintain physical fitness?"
+output = ranker.run(query=query, documents=docs)
+docs = output["documents"]
+
+print(docs)
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.rankers import SentenceTransformersDiversityRanker
+
+docs = [Document(content="The iconic Eiffel Tower is a symbol of Paris"),
+        Document(content="Visit Luxembourg Gardens for a haven of tranquility in Paris"),
+        Document(content="The Point Alexandre III bridge in Paris is famous for its Beaux-Arts style")]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store = document_store)
+ranker = SentenceTransformersDiversityRanker(meta_field="rating")
+
+document_ranker_pipeline = Pipeline()
+document_ranker_pipeline.add_component(instance=retriever, name="retriever")
+document_ranker_pipeline.add_component(instance=ranker, name="ranker")
+
+document_ranker_pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "Most famous iconic sight in Paris"
+document_ranker_pipeline.run(data={"retriever": {"query": query, "top_k": 3},
+                                   "ranker": {"query": query, "top_k": 2}})
+```
