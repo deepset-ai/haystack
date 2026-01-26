@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import sys
 from unittest.mock import Mock, patch
 
 import pytest
@@ -197,15 +198,13 @@ class TestOpenAPIConnectorIntegration:
         not os.environ.get("GITHUB_TOKEN", None), reason="Export an env var called GITHUB_TOKEN to run this test."
     )
     @pytest.mark.integration
+    @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid hitting rate limits")
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_github_api_integration(self):
         component = OpenAPIConnector(
             openapi_spec="https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
             credentials=Secret.from_env_var("GITHUB_TOKEN"),
         )
-        # use a core operation, which has higher rate limits than search operations
-        # https://docs.github.com/en/rest/rate-limit/rate-limit?apiVersion=2022-11-28#about-rate-limits
-        response = component.run(operation_id="repos_list_for_org", arguments={"org": "deepset-ai", "type": "public"})
-
+        response = component.run(operation_id="search_repos", arguments={"q": "deepset-ai"})
         assert isinstance(response, dict)
         assert "response" in response
