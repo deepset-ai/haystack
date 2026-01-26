@@ -1,0 +1,11 @@
+---
+enhancements: >
+    the conversion of longer documents or documents that make heavy use of tesseract when using the TikaDocumentConverter may fail
+    with a connection timeout error, because the tika library has a default connection timeout of 60 seconds. This enhances the
+    TikaDocumentConverter with a configurable timeout. The default timeout stays at 60 seconds.
+
+    ```python
+    from haystack.components.converters.tika import TikaDocumentConverter
+
+    converter = TikaDocumentConverter(tika_url=tika_url, timeout=300)
+    ```
