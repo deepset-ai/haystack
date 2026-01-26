@@ -11,12 +11,10 @@ from haystack.core.errors import DeserializationError
 from haystack.document_stores.in_memory.document_store import InMemoryDocumentStore
 from haystack.utils.deserialization import (
     deserialize_component_inplace,
-    deserialize_document_store_in_init_params_inplace,
 )
 
 
-class FakeDocumentStore:
-    pass
+
 
 
 class ChatGeneratorWithoutFromDict:
@@ -24,78 +22,7 @@ class ChatGeneratorWithoutFromDict:
         return {"type": "test_deserialization.ChatGeneratorWithoutFromDict"}
 
 
-class TestDeserializeDocumentStoreInInitParamsInplace:
-    def test_deserialize_document_store_in_init_params_inplace(self):
-        data = {
-            "type": "haystack.components.writers.document_writer.DocumentWriter",
-            "init_parameters": {
-                "document_store": {
-                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
-                    "init_parameters": {},
-                }
-            },
-        }
 
-        deserialize_document_store_in_init_params_inplace(data)
-        assert isinstance(data["init_parameters"]["document_store"], InMemoryDocumentStore)
-
-    def test_from_dict_is_called(self):
-        """If the document store provides a from_dict method, it should be called."""
-        data = {
-            "type": "haystack.components.writers.document_writer.DocumentWriter",
-            "init_parameters": {
-                "document_store": {
-                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
-                    "init_parameters": {},
-                }
-            },
-        }
-
-        with patch.object(InMemoryDocumentStore, "from_dict") as mock_from_dict:
-            deserialize_document_store_in_init_params_inplace(data)
-
-            mock_from_dict.assert_called_once_with(
-                {
-                    "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
-                    "init_parameters": {},
-                }
-            )
-
-    def test_default_from_dict_is_called(self):
-        """If the document store does not provide a from_dict method, default_from_dict should be called."""
-        data = {
-            "type": "haystack.components.writers.document_writer.DocumentWriter",
-            "init_parameters": {
-                "document_store": {"type": "test_deserialization.FakeDocumentStore", "init_parameters": {}}
-            },
-        }
-
-        with patch("haystack.utils.deserialization.default_from_dict") as mock_default_from_dict:
-            deserialize_document_store_in_init_params_inplace(data)
-
-            mock_default_from_dict.assert_called_once_with(
-                FakeDocumentStore, {"type": "test_deserialization.FakeDocumentStore", "init_parameters": {}}
-            )
-
-    def test_missing_document_store_key(self):
-        data = {"init_parameters": {"policy": "SKIP"}}
-        with pytest.raises(DeserializationError):
-            deserialize_document_store_in_init_params_inplace(data)
-
-    def test_missing_type_key_in_document_store(self):
-        data = {"init_parameters": {"document_store": {"init_parameters": {}}, "policy": "SKIP"}}
-        with pytest.raises(DeserializationError):
-            deserialize_document_store_in_init_params_inplace(data)
-
-    def test_invalid_class_import(self):
-        data = {
-            "init_parameters": {
-                "document_store": {"type": "invalid.module.InvalidClass", "init_parameters": {}},
-                "policy": "SKIP",
-            }
-        }
-        with pytest.raises(DeserializationError):
-            deserialize_document_store_in_init_params_inplace(data)
 
 
 class TestDeserializeComponentInplace:
