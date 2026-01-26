@@ -588,7 +588,9 @@ class PipelineBase:  # noqa: PLW1641
                 receiver_socket.type if isinstance(receiver_socket.type, type) else None
             )
             if not receiver_socket.is_variadic and origin == list:
-                receiver_socket.is_variadic = True
+                receiver_socket.is_lazy_variadic = True
+                # We also disable wrapping in list (aka flatten by one-level) so the sender outputs matches the type
+                # of the receiver socket.
                 receiver_socket.wrap_input_in_list = False
 
             if not receiver_socket.is_variadic:
@@ -1086,6 +1088,7 @@ class PipelineBase:  # noqa: PLW1641
                         consumed_inputs[socket_name] = socket_inputs
                     else:
                         # We flatten one-level of lists for lazy variadic sockets that don't wrap inputs in lists.
+                        # This way the incoming inputs match the expected type of the socket.
                         consumed_inputs[socket_name] = list(itertools.chain.from_iterable(socket_inputs))
                 else:
                     # For a normal socket we only care about the first input provided to the socket.
