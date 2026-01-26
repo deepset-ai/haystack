@@ -107,8 +107,6 @@ def pipeline_that_has_an_infinite_loop(pipeline_class):
 
 @given("a pipeline that is really complex with lots of components, forks, and loops", target_fixture="pipeline_data")
 def pipeline_complex(pipeline_class):
-    # TODO: Obviously an issue: max_runs_per_component is set to 2 but in the expected_component_calls some components
-    #  are called 3 times.
     pipeline = pipeline_class(max_runs_per_component=2)
     pipeline.add_component("greet_first", Greet(message="Hello, the value is {value}."))
     pipeline.add_component("accumulate_1", Accumulate())
