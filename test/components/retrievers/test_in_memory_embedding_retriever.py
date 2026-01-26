@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from haystack import DeserializationError, Pipeline
+from haystack import Pipeline
 from haystack.components.retrievers.in_memory.embedding_retriever import InMemoryEmbeddingRetriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -101,7 +101,7 @@ class TestMemoryEmbeddingRetriever:
             "type": "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever",
             "init_parameters": {},
         }
-        with pytest.raises(DeserializationError, match="Missing 'document_store' in serialization data"):
+        with pytest.raises(TypeError, match="missing 1 required positional argument: 'document_store'"):
             InMemoryEmbeddingRetriever.from_dict(data)
 
     def test_from_dict_without_docstore_type(self):
@@ -109,7 +109,7 @@ class TestMemoryEmbeddingRetriever:
             "type": "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever",
             "init_parameters": {"document_store": {"init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError):
+        with pytest.raises(ValueError, match="document_store must be an instance of InMemoryDocumentStore"):
             InMemoryEmbeddingRetriever.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
@@ -117,7 +117,7 @@ class TestMemoryEmbeddingRetriever:
             "type": "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever",
             "init_parameters": {"document_store": {"type": "Nonexisting.Docstore", "init_parameters": {}}},
         }
-        with pytest.raises(DeserializationError):
+        with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*Nonexisting\.Docstore"):
             InMemoryEmbeddingRetriever.from_dict(data)
 
     def test_valid_run(self):
