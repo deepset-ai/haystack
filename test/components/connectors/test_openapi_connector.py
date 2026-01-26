@@ -197,12 +197,14 @@ class TestOpenAPIConnectorIntegration:
         not os.environ.get("GITHUB_TOKEN", None), reason="Export an env var called GITHUB_TOKEN to run this test."
     )
     @pytest.mark.integration
-    @pytest.mark.flaky(reruns=3, reruns_delay=5)
+    @pytest.mark.flaky(reruns=3, reruns_delay=10)
     def test_github_api_integration(self):
         component = OpenAPIConnector(
             openapi_spec="https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
             credentials=Secret.from_env_var("GITHUB_TOKEN"),
         )
-        response = component.run(operation_id="search_repos", arguments={"q": "deepset-ai"})
+        # use a core operation, which has higher rate limits than search operations
+        response = component.run(operation_id="repos_list_for_org", arguments={"org": "deepset-ai", "type": "public"})
+
         assert isinstance(response, dict)
         assert "response" in response
